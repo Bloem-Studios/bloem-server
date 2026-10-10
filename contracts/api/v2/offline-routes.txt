@@ -369,6 +369,8 @@ POST /api/bloem/v1/admin/*
 POST /api/bloem/v1/admin/organization/groups/
 POST /api/bloem/v1/admin/organization/invitations
 POST /api/bloem/v1/admin/organization/invitations/{id}/resend
+POST /api/bloem/v1/admin/organization/native-storage/catalog/installations
+POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade
 POST /api/bloem/v1/admin/organization/native-storage/installations
 POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/disable
 POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/upgrade
@@ -392,6 +394,8 @@ POST /api/bloem/v1/admin/platform/entitlement-templates
 POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/archive
 POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/clone
 POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions
+POST /api/bloem/v1/admin/platform/native-storage/catalog/installations
+POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade
 POST /api/bloem/v1/admin/platform/native-storage/installations
 POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/disable
 POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/upgrade

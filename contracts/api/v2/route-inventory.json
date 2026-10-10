@@ -42,7 +42,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1093
+      "route_count": 1097
     },
     {
       "id": "api_v2",
@@ -64,7 +64,7 @@
     }
   ],
   "totals": {
-    "routes": 1263,
+    "routes": 1267,
     "conditional_routes": 927,
     "streaming_routes": 44,
     "websocket_routes": 4
@@ -86,7 +86,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]"
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]"
       ]
     },
     {
@@ -101,7 +101,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "adminMW.Require"
       ]
     },
@@ -117,7 +117,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "adminMW.Require",
         "handlers.RequireBloemPlatformContext"
       ]
@@ -134,7 +134,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMW.RequireAuth"
       ]
     },
@@ -150,7 +150,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMW.RequireAuth",
         "surfaces.ProfileCredentialLimit [when surfaces.ProfileCredentialLimit != nil]"
       ]
@@ -167,7 +167,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth"
       ]
     },
@@ -183,7 +183,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth",
         "apimw.RejectDirectProfileSession"
       ]
@@ -200,7 +200,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth",
         "apimw.RejectDirectProfileSession",
         "bloemAccountProfileViewer(tenantMiddleware, viewerAccessMiddleware)"
@@ -218,7 +218,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth",
         "demoGuard.Guard [when demoGuard != nil]",
         "apimw.RejectDirectProfileSession"
@@ -236,7 +236,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth",
         "demoGuard.Guard [when demoGuard != nil]",
         "deps.RateLimitMW.Handler [when deps.RateLimitMW != nil]",
@@ -255,7 +255,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth",
         "deps.RateLimitMW.Handler [when deps.RateLimitMW != nil]"
       ]
@@ -272,7 +272,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth",
         "deviceDecisionMiddlewares",
         "apimw.RejectDirectProfileSession"
@@ -290,7 +290,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth",
         "optionalLegacyTenant(tenantMiddleware)",
         "optionalProfileViewerAccess(viewerAccessMiddleware)"
@@ -308,7 +308,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth",
         "optionalLegacyTenant(tenantMiddleware)",
         "viewerAccessMiddleware.RequireViewerAccess",
@@ -327,7 +327,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth",
         "passwordChangeMiddlewares"
       ]
@@ -344,7 +344,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.RequireAuth",
         "requireActingAdmin"
       ]
@@ -361,7 +361,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret) [when deps.Config != nil]",
         "authMiddleware.RequireAuth",
         "optionalLegacyTenant(tenantMiddleware)",
@@ -382,7 +382,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret) [when deps.Config != nil]",
         "authMiddleware.RequireAuth",
         "optionalLegacyTenant(tenantMiddleware)",
@@ -404,7 +404,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret) [when deps.Config != nil]",
         "authMiddleware.RequireAuth",
         "optionalLegacyTenant(tenantMiddleware)",
@@ -426,7 +426,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret) [when deps.Config != nil]",
         "authMiddleware.RequireAuth",
         "optionalLegacyTenant(tenantMiddleware)",
@@ -449,7 +449,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret) [when deps.Config != nil]",
         "authMiddleware.RequireAuth",
         "optionalLegacyTenant(tenantMiddleware)",
@@ -471,7 +471,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret) [when deps.Config != nil]",
         "authMiddleware.RequireAuth",
         "optionalLegacyTenant(tenantMiddleware)",
@@ -493,7 +493,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
         "optionalLegacyTenant(s.tenant)",
@@ -514,7 +514,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
         "optionalLegacyTenant(s.tenant)",
@@ -536,7 +536,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
         "optionalLegacyTenant(s.tenant)",
@@ -558,7 +558,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
         "optionalLegacyTenant(s.tenant)",
@@ -580,7 +580,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
         "optionalLegacyTenant(s.tenant)",
@@ -603,7 +603,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret)",
         "s.auth.RequireAuth",
         "optionalLegacyTenant(s.tenant)",
@@ -626,7 +626,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "bloemLiveTVStreamTokens(s.auth, s.liveTV.JWTSecret) [when s.liveTV != nil]",
         "s.auth.RequireAuth",
         "optionalLegacyTenant(s.tenant)",
@@ -647,7 +647,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "client.auth.RequireAuth",
         "client.tenant.ResolveNative",
         "client.rateLimit.Handler [when client.rateLimit != nil]",
@@ -667,7 +667,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "compatapi.RelativePaths",
         "h.traceMiddleware"
       ]
@@ -684,7 +684,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "deps.RateLimitMW.AuthEndpointHandler(\"autoscan_webhook\")"
       ]
     },
@@ -700,7 +700,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "deps.RateLimitMW.AuthEndpointHandler(\"device_lookup\")"
       ]
     },
@@ -716,7 +716,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "deps.RateLimitMW.AuthEndpointHandler(\"device_poll\")"
       ]
     },
@@ -732,7 +732,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "deps.RateLimitMW.AuthEndpointHandler(\"device_start\")"
       ]
     },
@@ -748,7 +748,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "deps.RateLimitMW.AuthEndpointHandler(\"invitation\")"
       ]
     },
@@ -764,7 +764,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "deps.RateLimitMW.AuthEndpointHandler(\"login\")"
       ]
     },
@@ -780,7 +780,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "deps.RateLimitMW.AuthEndpointHandler(\"profile_login\")"
       ]
     },
@@ -796,7 +796,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "deps.RateLimitMW.AuthEndpointHandler(\"setup\")"
       ]
     },
@@ -812,7 +812,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "deps.RateLimitMW.AuthEndpointHandler(\"signup\")"
       ]
     },
@@ -828,7 +828,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "displayMiddlewares"
       ]
     },
@@ -844,7 +844,7 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID) [when deps.ActivityLogWriter != nil]",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
         "eitherPlatformCredential"
       ]
     },
@@ -4587,6 +4587,62 @@
       "listener": "api",
       "namespace": "legacy_unversioned",
       "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/native-storage/catalog/installations",
+      "route_group": "/api/bloem/v1/admin/organization/native-storage",
+      "handler": "(*internal/api/handlers.BloemNativeStorageManagementHandler).HandleCatalogInstall",
+      "handler_expr": "handler.HandleCatalogInstall",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_native_storage_management.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade",
+      "route_group": "/api/bloem/v1/admin/organization/native-storage",
+      "handler": "(*internal/api/handlers.BloemNativeStorageManagementHandler).HandleCatalogUpgrade",
+      "handler_expr": "handler.HandleCatalogUpgrade",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_native_storage_management.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
       "path": "/api/bloem/v1/admin/organization/native-storage/installations",
       "route_group": "/api/bloem/v1/admin/organization/native-storage",
       "handler": "(*internal/api/handlers.BloemNativeStorageManagementHandler).HandleInstall",
@@ -7472,6 +7528,62 @@
       "conditions": [],
       "conditional": false,
       "request_kind": "binary",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_native_storage_management.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/platform/native-storage/catalog/installations",
+      "route_group": "/api/bloem/v1/admin/platform/native-storage",
+      "handler": "(*internal/api/handlers.BloemNativeStorageManagementHandler).HandleCatalogInstall",
+      "handler_expr": "handler.HandleCatalogInstall",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_native_storage_management.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade",
+      "route_group": "/api/bloem/v1/admin/platform/native-storage",
+      "handler": "(*internal/api/handlers.BloemNativeStorageManagementHandler).HandleCatalogUpgrade",
+      "handler_expr": "handler.HandleCatalogUpgrade",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "json",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
