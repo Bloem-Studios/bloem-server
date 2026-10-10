@@ -201,6 +201,7 @@ internal/downloads/repo.go  # preserve quota serialization on a single connectio
 internal/downloads/repo_managed_test.go
 internal/downloads/service.go
 internal/downloads/service_remote_test.go
+internal/downloads/storage_reprepare.go  # PrepareAgain passes the requesting profile to Bloem's profile-aware download policy (pending maintainer approval, 2026-10-10 merge)
 internal/downloads/subscription_mutations.go
 internal/downloads/subscription_page_test.go  # share the underlying fixture pool when the download repository uses its quota adapter
 internal/downloads/subscription_service.go

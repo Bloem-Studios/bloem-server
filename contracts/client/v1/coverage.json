@@ -854,6 +854,50 @@
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     },
     {
+      "type": "internal/apiv2.AdminDownloadDevice",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminDownloadEntry",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminDownloadStorage",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminDownloadStorageCapabilitiesOutputBody",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminDownloadStorageDeleteResult",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminDownloadStorageEvent",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminDownloadStorageFile",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminDownloadStorageLocation",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminDownloadStorageUsage",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminDownloadStorageUser",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminDownloadWaitingDevice",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
       "type": "internal/apiv2.AdminDashboardLayout",
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     },
