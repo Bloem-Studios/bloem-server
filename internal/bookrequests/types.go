@@ -1,5 +1,5 @@
 // Package bookrequests owns Bloem's book request lane. Silo's TMDB requests
-// remain in their own store. Fulfilment integrations are intentionally optional.
+// remain in their own store. Fulfillment integrations are intentionally optional.
 package bookrequests
 
 import (
@@ -135,7 +135,7 @@ func normalizeISBN(raw string) (string, error) {
 		if len(value) == 10 && i == 9 && c == 'X' {
 			n = 10
 		}
-		if n < 0 || n > 9 && !(len(value) == 10 && i == 9 && n == 10) {
+		if n < 0 || n > 9 && (len(value) != 10 || i != 9 || n != 10) {
 			return "", fmt.Errorf("%w: invalid ISBN", ErrInvalid)
 		}
 		if len(value) == 10 {

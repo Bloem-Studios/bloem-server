@@ -274,6 +274,9 @@ export default defineConfig(({ mode }) => {
       // each, and Vitest's 5 s default cuts off Silo's heavier page tests
       // (AdminCollections List peeks takes about 4 s on its own).
       testTimeout: 15_000,
+      // Bloem: worker recycling reads the root config, even with projects.
+      // The host-RAM default can exceed Node's heap limit on large hosts.
+      vmMemoryLimit: "512MiB",
       // Bloem: WEBTEST_EXCLUDE (comma-separated, from the Makefile's known
       // failures) reaches every project through the shared exclude; the
       // command line's --exclude does not apply to projects.

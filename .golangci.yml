@@ -168,6 +168,13 @@ linters:
           - misspell
         text: "^`[Cc]ancelled` is a misspelling of "
 
+      # Bloem book requests retain these persisted column, wire field and
+      # action names; spell checking must not rewrite their contract.
+      - path: ^internal/bookrequests/
+        linters:
+          - misspell
+        text: "^`([Ff]ulfilment|fulfil)` is a misspelling of "
+
       # Prairie's pinned Live TV implementation intentionally retains its
       # protocol vocabulary and repeated codec/status literals. Keep that
       # imported surface reviewable against its recorded source blobs instead

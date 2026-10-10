@@ -9,7 +9,7 @@ import (
 )
 
 // ISBN-10 and ISBN-13 represent the same edition. Title/author similarities
-// cannot establish library fulfilment; requests without identifiers wait.
+// cannot establish library fulfillment; requests without identifiers wait.
 func isbnVariants(isbn string) []string {
 	out := []string{isbn}
 	if len(isbn) != 13 || isbn[:3] != "978" {
@@ -31,7 +31,7 @@ func isbnVariants(isbn string) []string {
 
 // findLibraryMatch is bounded by active ownership/entitlement and dedicated
 // audiobook folders with actual media files. An ebook sharing its ISBN, or an
-// audiobook only available to another organization, cannot fulfil this lane.
+// audiobook only available to another organization, cannot fulfill this lane.
 func findLibraryMatch(ctx context.Context, tx pgx.Tx, r Request) (string, error) {
 	if r.ISBN == "" && r.ASIN == "" {
 		return "", nil

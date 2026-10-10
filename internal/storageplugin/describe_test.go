@@ -112,7 +112,7 @@ func TestDescribeRequiresCompletedLiveResponse(t *testing.T) {
 		t.Run(kind, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			var want error = terminal
+			want := terminal
 			if kind == "deadline" {
 				ctx, cancel = context.WithDeadline(ctx, time.Now().Add(-time.Second))
 				defer cancel()
