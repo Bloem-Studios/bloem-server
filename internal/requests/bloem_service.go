@@ -36,10 +36,13 @@ func (s *Service) UpsertUserLimitInTransaction(ctx context.Context, tx pgx.Tx, v
 }
 
 // effectivePolicyForViewer resolves the requests gate against the viewer's
-// profile access group. A tenant-scoped provider (TenantGroupStore) needs a
-// validated tenant subject in the context; without one only the account layer
-// applies (no group policy). Silo's account-level providers keep Silo's path.
+// profile. The installed tenant request provider binds it to verified scope;
+// other providers retain their existing subject or account resolution.
 func (s *Service) effectivePolicyForViewer(ctx context.Context, user *models.User, viewer Viewer) (access.EffectiveUserPolicy, error) {
+	if resolver, ok := s.groupProvider.(requestAccessResolver); ok {
+		resolved, err := resolver.resolveRequestAccess(ctx, viewer.UserID, &viewer.ProfileID)
+		return access.EffectiveUserPolicy{RequestsAllowed: resolved.allowed}, err
+	}
 	if _, scoped := s.groupProvider.(accesspolicy.SubjectPolicyProvider); !scoped {
 		return access.EffectivePolicyForSubject(ctx, user, access.GroupSubject{AccountID: viewer.UserID, ProfileID: viewer.ProfileID}, s.groupProvider)
 	}

@@ -7,6 +7,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -385,6 +386,14 @@ func wireBloemRouter(
 	searchProvider catalog.CatalogSearchProvider,
 	requireActingAdmin func(http.Handler) http.Handler,
 ) {
+	if deps.DB != nil && lifecycle.requests != nil {
+		if err := lifecycle.requests.EnableTenantGroupLimits(); err != nil {
+			panic(fmt.Errorf("compose Bloem request group limits: %w", err))
+		}
+		if err := lifecycle.requests.EnableTenantRequestPolicy(); err != nil {
+			panic(fmt.Errorf("compose Bloem request policy: %w", err))
+		}
+	}
 	wireBloemLifecycle(deps, lifecycle)
 	mountBloem(r, deps, authMiddleware, tenantMiddleware, searchProvider, lifecycle.admin, requireActingAdmin)
 	mountBloemCompatAPI(r, deps)
@@ -393,6 +402,9 @@ func wireBloemRouter(
 // wireBloemV2 hands the v2 listener Bloem's native tenant identity and the
 // stream-token authorizer its media routes accept.
 func wireBloemV2(v2deps *apiv2.Dependencies, deps Dependencies, tenantMiddleware *apimw.TenantMiddleware, authMiddleware *apimw.AuthMiddleware) {
+	if deps.DB != nil {
+		wireBloemAdminRequestUsage(v2deps)
+	}
 	if tenantMiddleware != nil {
 		v2deps.TenantIdentity = tenantMiddleware.ResolveNative
 	}

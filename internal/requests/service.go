@@ -1772,7 +1772,7 @@ func (s *Service) resolvePolicy(ctx context.Context, userID int) (EffectivePolic
 	if err != nil {
 		return EffectivePolicy{}, err
 	}
-	viewerAccess, err := s.viewerRequestAccess(ctx, userID)
+	viewerAccess, err := s.requestAccessForAccount(ctx, userID)
 	if err != nil {
 		return EffectivePolicy{}, err
 	}
