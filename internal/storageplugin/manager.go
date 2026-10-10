@@ -400,12 +400,8 @@ func (m *Manager) start(s *slot) (*Session, error) {
 		return nil, err
 	}
 	provider := storagev1.NewStorageProviderClient(client.Conn())
-	description, err := provider.Describe(s.ctx, &storagev1.DescribeRequest{})
-	if err != nil {
+	if _, err := Describe(s.ctx, provider); err != nil {
 		return nil, err
-	}
-	if description.GetRevision() != 1 {
-		return nil, errors.New("unsupported private storage protocol")
 	}
 	retained = true
 	return &Session{ctx: s.ctx, done: s.done, provider: provider, process: process, command: command}, nil
@@ -422,8 +418,8 @@ func (m *Manager) monitor(s *slot, session *Session) error {
 			if session.process.Exited() {
 				return ErrUnavailable
 			}
-			description, err := session.provider.Describe(s.ctx, &storagev1.DescribeRequest{})
-			if err != nil || description.GetRevision() != 1 {
+			_, err := Describe(s.ctx, session.provider)
+			if err != nil {
 				failures++
 			} else {
 				failures = 0

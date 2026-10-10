@@ -24,7 +24,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"google.golang.org/grpc"
 )
 
 // StorageIngestor scans libraries whose location is a storage source.
@@ -163,14 +162,31 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		}
 	}()
 	provider := session.Provider()
-	describeCtx, stopDescribe := context.WithTimeout(job, 10*time.Second)
-	description, err := provider.Describe(describeCtx, &storagev1.DescribeRequest{}, grpc.MaxCallRecvMsgSize(1<<20))
-	stopDescribe()
+	description, err := storageplugin.Describe(job, provider)
 	if err != nil {
 		return result, err
 	}
 	if err = describedSource(description, source); err != nil {
 		return result, err
+	}
+	// Describe/startup may outlive a remote configuration or authorization
+	// change. Recheck before claiming a lease, publishing, or sweeping files.
+	fresh, err := c.sources.Source(job, source.Key)
+	if err != nil {
+		return result, err
+	}
+	if !nativestorage.SameSource(source, fresh) {
+		return result, storagesource.ErrSourceUnavailable
+	}
+	if err = c.resources.RequireStorageScan(job, location, fresh); err != nil {
+		return result, err
+	}
+	freshSnapshot, err := c.snapshot(job, fresh)
+	if err != nil {
+		return result, err
+	}
+	if freshSnapshot.Generation != snapshot.Generation || freshSnapshot.ArtifactChecksum != snapshot.ArtifactChecksum {
+		return result, storagesource.ErrSourceUnavailable
 	}
 
 	lease, err := c.sources.Begin(job, source.Key, "storage-scan:"+uuid.NewString(), c.leaseTTL)
@@ -247,7 +263,7 @@ func (c *StorageScanner) snapshot(ctx context.Context, source storagesource.Sour
 	}
 	if snapshot == nil || snapshot.Installation == nil || source.InstallationID == nil ||
 		int64(snapshot.Installation.ID) != *source.InstallationID || !snapshot.Installation.Enabled || snapshot.Generation == 0 ||
-		snapshot.Source.Key != source.Key || snapshot.Source.ConfigurationRevision != source.ConfigurationRevision || !snapshot.Source.Enabled {
+		!nativestorage.SameSource(source, snapshot.Source) || !snapshot.Source.Enabled {
 		return nil, storagesource.ErrSourceUnavailable
 	}
 	return snapshot, nil
@@ -287,20 +303,7 @@ func (c *StorageScanner) prepare(ctx context.Context, media mediasource.Source, 
 // describedSource checks the provider still serves the configured source with
 // revision-pinned reads.
 func describedSource(d *storagev1.DescribeResponse, source storagesource.SourceConfig) error {
-	if d.GetRevision() != 1 || len(d.GetSources()) > 128 {
-		return storagesource.ErrSourceUnavailable
-	}
-	found := 0
-	for _, described := range d.GetSources() {
-		if described.GetId() != source.ProviderSourceID {
-			continue
-		}
-		found++
-		if described.GetRootEntryId() != source.RootEntryID || !described.GetRevisionPinnedReads() {
-			return storagesource.ErrSourceUnavailable
-		}
-	}
-	if found != 1 {
+	if err := storageplugin.ValidateSourceDescription(d, source.ProviderSourceID, source.RootEntryID); err != nil {
 		return storagesource.ErrSourceUnavailable
 	}
 	return nil

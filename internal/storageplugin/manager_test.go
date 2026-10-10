@@ -246,7 +246,7 @@ waiting:
 	waitDone(t, s)
 }
 func TestCrashHealthAndBoundedRestart(t *testing.T) {
-	for _, entry := range []string{"crash", "unhealthy", "bad-revision"} {
+	for _, entry := range []string{"crash", "unhealthy", "bad-revision", "malformed-description"} {
 		t.Run(entry, func(t *testing.T) {
 			m := manager(t)
 			req := snapshot(t)
@@ -273,6 +273,76 @@ func TestCrashHealthAndBoundedRestart(t *testing.T) {
 				t.Fatalf("restart budget bypassed: %v", err)
 			}
 		})
+	}
+}
+
+func TestDescribeAdmissionStartup(t *testing.T) {
+	for _, mode := range []string{"duplicate", "empty-root", "nil-source", "long-source", "oversized"} {
+		t.Run(mode, func(t *testing.T) {
+			m := manager(t)
+			req := snapshot(t)
+			req.Config[0].Value.Fields["describe_mode"] = structpb.NewStringValue(mode)
+			s, err := m.Ensure(t.Context(), req)
+			if s != nil || err == nil {
+				t.Fatal("malformed Describe admitted a configured session")
+			}
+		})
+	}
+}
+
+func TestEmptyDescribeAdmitsUnconfiguredProcess(t *testing.T) {
+	m := manager(t)
+	req := snapshot(t)
+	req.Config[0].Value.Fields["describe_mode"] = structpb.NewStringValue("empty")
+	s, err := m.Ensure(t.Context(), req)
+	if err != nil || s == nil {
+		t.Fatalf("unconfigured provider refused: %v", err)
+	}
+}
+
+func TestCanceledDescribeStartupReapsProcess(t *testing.T) {
+	m := manager(t)
+	req := snapshot(t)
+	req.Config[0].Value.Fields["describe_mode"] = structpb.NewStringValue("block")
+	started := filepath.Join(t.TempDir(), "describe-started")
+	req.Config[0].Value.Fields["describe_notify"] = structpb.NewStringValue(started)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	result := make(chan error, 1)
+	go func() { _, err := m.Ensure(ctx, req); result <- err }()
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	poll := time.NewTicker(5 * time.Millisecond)
+	defer poll.Stop()
+waiting:
+	for {
+		select {
+		case <-poll.C:
+			if _, err := os.Stat(started); err == nil {
+				break waiting
+			}
+		case err := <-result:
+			t.Fatalf("startup returned before Describe blocked: %v", err)
+		case <-deadline.C:
+			t.Fatal("Describe was never entered")
+		}
+	}
+	cancel()
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Describe cancellation lost: %v", err)
+		}
+	case <-deadline.C:
+		t.Fatal("Describe cancellation did not return")
+	}
+	if err := m.Shutdown(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.slots[req.InstallationID].session != nil {
+		t.Fatal("canceled Describe produced a borrowable session")
 	}
 }
 func TestShutdownClosesManagerAndReaps(t *testing.T) {

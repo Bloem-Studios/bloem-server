@@ -14,6 +14,8 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"sync/atomic"
+	"time"
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	sdkruntime "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/runtime"
@@ -31,10 +33,11 @@ type object struct {
 type server struct {
 	publicv1.UnimplementedRuntimeServer
 	storagev1.UnimplementedStorageProviderServer
-	manifest     *publicv1.PluginManifest
-	objects      []object
-	mode, notify string
-	pinned       bool
+	manifest      *publicv1.PluginManifest
+	objects       []object
+	mode, notify  string
+	pinned        bool
+	describeCalls atomic.Uint32
 }
 
 func (s *server) GetManifest(context.Context, *publicv1.GetManifestRequest) (*publicv1.GetManifestResponse, error) {
@@ -75,8 +78,34 @@ func (s *server) Configure(_ context.Context, r *publicv1.ConfigureRequest) (*pu
 	}
 	return &publicv1.ConfigureResponse{}, nil
 }
-func (s *server) Describe(context.Context, *storagev1.DescribeRequest) (*storagev1.DescribeResponse, error) {
-	return &storagev1.DescribeResponse{Revision: 1, Sources: []*storagev1.Source{{Id: "books", RootEntryId: "root", RevisionPinnedReads: s.pinned}}}, nil
+func (s *server) Describe(ctx context.Context, _ *storagev1.DescribeRequest) (*storagev1.DescribeResponse, error) {
+	if s.mode == "describe-gate" && s.describeCalls.Add(1) > 1 {
+		s.signal("describe")
+		poll := time.NewTicker(5 * time.Millisecond)
+		defer poll.Stop()
+		for {
+			if _, err := os.Stat(s.notify + ".release"); err == nil {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return nil, status.FromContextError(ctx.Err()).Err()
+			case <-poll.C:
+			}
+		}
+	}
+	d := &storagev1.DescribeResponse{Revision: 1, Sources: []*storagev1.Source{{Id: "books", RootEntryId: "root", RevisionPinnedReads: s.pinned}}}
+	switch s.mode {
+	case "describe-source":
+		d.Sources[0].Id = "other"
+	case "describe-root":
+		d.Sources[0].RootEntryId = "other"
+	case "describe-duplicate":
+		d.Sources = append(d.Sources, d.Sources[0])
+	case "describe-malformed":
+		d.Sources = append(d.Sources, &storagev1.Source{Id: "other"})
+	}
+	return d, nil
 }
 func (s *server) audit(kind string) {
 	if s.notify == "" {
@@ -95,6 +124,9 @@ func (s *server) signal(kind string) {
 }
 func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1.ListResponse, error) {
 	s.audit("list")
+	if s.mode == "describe-gate" {
+		return nil, status.Error(codes.Unavailable, "unexpected listing after Describe gate")
+	}
 	if r.SourceId != "books" || r.DirectoryId != "root" || r.MaxEntries <= 0 {
 		return nil, status.Error(codes.InvalidArgument, "wrong list scope")
 	}

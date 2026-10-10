@@ -12,7 +12,6 @@ import (
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/bloemtestsdk"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
-	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -45,9 +44,17 @@ func TestPrivateSDKExecutableThroughManager(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	description, err := s.Provider().Describe(ctx, &storagev1.DescribeRequest{})
+	description, err := Describe(ctx, s.Provider())
 	if err != nil || description.GetRevision() != 1 || len(description.GetSources()) != 2 {
 		t.Fatalf("private descriptor: %v %v", description, err)
+	}
+	if err := ValidateSourceDescription(description, "fixture", "root"); err != nil {
+		t.Fatalf("published SDK source refused: %v", err)
+	}
+	for _, identity := range [][2]string{{"different-source", "root"}, {"fixture", "different-root"}} {
+		if err := ValidateSourceDescription(description, identity[0], identity[1]); err == nil {
+			t.Fatal("published SDK source admitted a retained identity mismatch")
+		}
 	}
 	f, err := mediasource.Open(ctx, mediasource.NewPluginSource(s.Provider()), mediasource.Ref{SourceID: "fixture", EntryID: "book", Revision: "v1"})
 	if err != nil {

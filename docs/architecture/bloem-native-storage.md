@@ -91,8 +91,11 @@ wiring remain separate from this state-path boundary.
 A storage library scans only as a whole library. `libraryingest.StorageScanner`:
 
 1. Checks tenancy (`RequireStorageScan`), loads the approved snapshot, starts
-   or reuses the plugin process and checks `Describe` reports the source with
-   revision-pinned reads.
+   or reuses the plugin process and obtains a fresh, bounded `Describe`.
+   The advertised source ID and root must match the retained source exactly,
+   with revision-pinned reads. After discovery, it reloads the retained source,
+   rechecks tenancy and checks the executable generation and checksum again
+   before beginning a scan lease.
 2. Begins or resumes a discovery run under a database lease (source then run
    locks; the database clock decides expiry; each takeover bumps the epoch).
    A renewal worker extends the lease and rechecks tenancy.
@@ -167,7 +170,11 @@ show the provider's thumbhash placeholder.
 The ebook reader authorizes the file through the ordinary reader resolver, then
 `nativestorage.Coordinator` resolves its file reference, checks the source and
 installation are still enabled and opens it through the plugin, pinned to the
-reference's revision. File lifetime is tied to request and runtime
+reference's revision. Every runtime borrow obtains a fresh `Describe`; the
+coordinator validates the retained source/root pair before `Stat` or `Open`,
+then reloads the reference, authorization and executable snapshot. Cover reads
+use the same admission checks. A canceled request or runtime lease cannot
+start content I/O. File lifetime is tied to request and runtime
 cancellation. GET/HEAD, ranges and conditional requests behave as for local
 files; ETags hash the opaque revision. Downloads, conversion and offline
 delivery of storage files are not supported.
@@ -183,6 +190,21 @@ Hosts request at most 512 entries and 1 MiB per page with a 30-second deadline.
 `Read` delivers exactly the requested range (at most 8 MiB) in ordered chunks
 of at most 128 KiB and must end with status OK; a partial read is discarded.
 Cursors must advance and a change token appears only on a final page.
+
+`Describe` has a ten-second deadline, a 1 MiB response bound and at most 128
+sources. The protocol revision must be 1. Every advertised source has a unique
+source ID and a nonempty root ID; both are opaque UTF-8 strings of at most
+1024 bytes without NUL. Root IDs may repeat in different source namespaces.
+An empty source list is valid for an unconfigured process, but cannot admit a
+scan or read. Startup and health checks validate the entire response, including
+unselected sources. An RPC error or cancellation invalidates its response.
+Runtime RPCs bind both the caller's context and the executable generation's
+lifetime; admitted descriptions are copied for their consumer.
+
+Advertising revision-pinned reads is a protocol requirement, not evidence
+that a storage backend preserves bytes. S3 reads require an immutable version
+or a separately verified snapshot; an ETag check alone cannot satisfy that
+requirement. Consumer admission never chooses or rewrites the retained root.
 
 ## Operations
 

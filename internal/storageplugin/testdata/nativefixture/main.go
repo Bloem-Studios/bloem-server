@@ -22,10 +22,13 @@ import (
 type server struct {
 	publicv1.UnimplementedRuntimeServer
 	storagev1.UnimplementedStorageProviderServer
-	manifest   *publicv1.PluginManifest
-	configured atomic.Bool
-	unhealthy  atomic.Bool
-	revision   atomic.Uint32
+	manifest        *publicv1.PluginManifest
+	configured      atomic.Bool
+	unhealthy       atomic.Bool
+	revision        atomic.Uint32
+	description     atomic.Pointer[storagev1.DescribeResponse]
+	describeBlocked atomic.Bool
+	describeNotify  string
 }
 
 func (s *server) GetManifest(context.Context, *publicv1.GetManifestRequest) (*publicv1.GetManifestResponse, error) {
@@ -48,6 +51,26 @@ func (s *server) Configure(ctx context.Context, r *publicv1.ConfigureRequest) (*
 		if e.Value.GetFields()["revision"].GetNumberValue() != 0 {
 			s.revision.Store(uint32(e.Value.GetFields()["revision"].GetNumberValue()))
 		}
+		s.describeNotify = e.Value.GetFields()["describe_notify"].GetStringValue()
+		mode := e.Value.GetFields()["describe_mode"].GetStringValue()
+		description := &storagev1.DescribeResponse{Sources: []*storagev1.Source{{Id: "fixture", Name: "Synthetic storage", RootEntryId: "root", RevisionPinnedReads: true}}}
+		switch mode {
+		case "empty":
+			description.Sources = nil
+		case "duplicate":
+			description.Sources = append(description.Sources, description.Sources[0])
+		case "empty-root":
+			description.Sources[0].RootEntryId = ""
+		case "nil-source":
+			description.Sources = append(description.Sources, nil)
+		case "long-source":
+			description.Sources[0].Id = strings.Repeat("s", 1025)
+		case "oversized":
+			description.Sources[0].Name = strings.Repeat("n", 1<<20)
+		case "block":
+			s.describeBlocked.Store(true)
+		}
+		s.description.Store(description)
 		if e.Value.GetFields()["block"].GetBoolValue() {
 			if path := e.Value.GetFields()["notify"].GetStringValue(); path != "" {
 				if err := os.WriteFile(path, []byte("configure started"), 0600); err != nil {
@@ -89,7 +112,16 @@ func (s *server) Describe(ctx context.Context, _ *storagev1.DescribeRequest) (*s
 	if os.Getenv("LANG") != "C" || os.Getenv("LC_ALL") != "C" || os.Getenv("TZ") != "UTC" {
 		return nil, status.Error(codes.PermissionDenied, "application environment differs")
 	}
-	return &storagev1.DescribeResponse{Revision: s.revision.Load(), Sources: []*storagev1.Source{{Id: "fixture", Name: "Synthetic storage", RevisionPinnedReads: true}}}, nil
+	if s.describeBlocked.Load() {
+		if s.describeNotify != "" {
+			if err := os.WriteFile(s.describeNotify, []byte("describe started"), 0600); err != nil {
+				return nil, status.Error(codes.Internal, "notification failed")
+			}
+		}
+		<-ctx.Done()
+		return nil, status.FromContextError(ctx.Err()).Err()
+	}
+	return &storagev1.DescribeResponse{Revision: s.revision.Load(), Sources: s.description.Load().Sources}, nil
 }
 func (s *server) Stat(ctx context.Context, r *storagev1.StatRequest) (*storagev1.StatResponse, error) {
 	switch r.EntryId {
@@ -99,6 +131,16 @@ func (s *server) Stat(ctx context.Context, r *storagev1.StatRequest) (*storagev1
 		s.revision.Store(2)
 	case "unhealthy":
 		s.unhealthy.Store(true)
+	case "malformed-description":
+		s.description.Store(&storagev1.DescribeResponse{Sources: []*storagev1.Source{{Id: "fixture", RootEntryId: ""}}})
+	case "block-description":
+		s.describeBlocked.Store(true)
+	case "change-source":
+		s.description.Store(&storagev1.DescribeResponse{Sources: []*storagev1.Source{{Id: "changed", RootEntryId: "root", RevisionPinnedReads: true}}})
+	case "change-root":
+		s.description.Store(&storagev1.DescribeResponse{Sources: []*storagev1.Source{{Id: "fixture", RootEntryId: "changed", RevisionPinnedReads: true}}})
+	case "unpinned":
+		s.description.Store(&storagev1.DescribeResponse{Sources: []*storagev1.Source{{Id: "fixture", RootEntryId: "root"}}})
 	case "block":
 		<-ctx.Done()
 		return nil, status.FromContextError(ctx.Err()).Err()

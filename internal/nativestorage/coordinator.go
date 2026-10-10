@@ -10,6 +10,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
+	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
 )
@@ -24,6 +25,8 @@ type Registry interface {
 type Lease struct {
 	Context context.Context
 	Source  mediasource.Source
+	// Description is a fresh, completed response owned by this borrower.
+	Description *storagev1.DescribeResponse
 }
 type Runtime interface {
 	Borrow(context.Context, storageplugin.Snapshot) (Lease, error)
@@ -36,7 +39,11 @@ func (r ManagedRuntime) Borrow(ctx context.Context, snapshot storageplugin.Snaps
 	if err != nil {
 		return Lease{}, err
 	}
-	return Lease{Context: s.Context(), Source: mediasource.NewPluginSource(s.Provider())}, nil
+	description, err := storageplugin.Describe(ctx, s.Provider())
+	if err != nil {
+		return Lease{}, err
+	}
+	return Lease{Context: s.Context(), Source: mediasource.NewPluginSource(s.Provider()), Description: description}, nil
 }
 func (r ManagedRuntime) Disable(id int) { r.Manager.Disable(id) }
 
@@ -83,12 +90,15 @@ func (c *Coordinator) resolve(ctx context.Context, file *models.MediaFile) (stor
 	if err != nil {
 		return source, ref, nil, err
 	}
-	if snapshot == nil || snapshot.Installation == nil || !sameSource(source, snapshot.Source) || int64(snapshot.Installation.ID) != *source.InstallationID || !snapshot.Installation.Enabled {
+	if snapshot == nil || snapshot.Installation == nil || !SameSource(source, snapshot.Source) || int64(snapshot.Installation.ID) != *source.InstallationID || !snapshot.Installation.Enabled {
 		return source, ref, nil, storagesource.ErrSourceUnavailable
 	}
 	return source, ref, snapshot, nil
 }
-func sameSource(a, b storagesource.SourceConfig) bool {
+
+// SameSource compares retained identity and configuration, without granting
+// authority. Callers must separately recheck current ownership and policy.
+func SameSource(a, b storagesource.SourceConfig) bool {
 	return a.Key == b.Key && a.OwnerID == b.OwnerID && a.InstallationID != nil && b.InstallationID != nil && *a.InstallationID == *b.InstallationID && a.PluginID == b.PluginID && a.ProviderSourceID == b.ProviderSourceID && a.RootEntryID == b.RootEntryID && a.ConfigurationRevision == b.ConfigurationRevision && a.Enabled == b.Enabled
 }
 func (c *Coordinator) OpenAuthorizedEbook(ctx context.Context, file *models.MediaFile) (mediasource.File, error) {
@@ -119,16 +129,25 @@ func (c *Coordinator) OpenAuthorizedEbook(ctx context.Context, file *models.Medi
 	if err != nil {
 		return nil, err
 	}
+	if err = storageplugin.ValidateSourceDescription(lease.Description, source.ProviderSourceID, source.RootEntryID); err != nil {
+		return nil, storagesource.ErrSourceUnavailable
+	}
 	// Startup can be slow. Never open using a view read before a remote mutation.
 	fresh, freshRef, freshSnapshot, err := c.resolve(ctx, file)
 	if err != nil {
 		return nil, err
 	}
-	if !sameSource(source, fresh) || ref != freshRef || freshSnapshot.Generation != snapshot.Generation || freshSnapshot.ArtifactChecksum != snapshot.ArtifactChecksum {
+	if !SameSource(source, fresh) || ref != freshRef || freshSnapshot.Generation != snapshot.Generation || freshSnapshot.ArtifactChecksum != snapshot.ArtifactChecksum {
 		return nil, storagesource.ErrSourceUnavailable
 	}
 	if lease.Context == nil || lease.Source == nil {
 		return nil, storagesource.ErrSourceUnavailable
+	}
+	if err = ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err = lease.Context.Err(); err != nil {
+		return nil, err
 	}
 	readCtx, cancel := context.WithCancel(ctx)
 	stop := context.AfterFunc(lease.Context, cancel)
@@ -183,15 +202,24 @@ func (c *Coordinator) OpenCover(ctx context.Context, contentID, revision string)
 	if err != nil {
 		return nil, err
 	}
+	if err = storageplugin.ValidateSourceDescription(lease.Description, ref.Source.ProviderSourceID, ref.Source.RootEntryID); err != nil {
+		return nil, storagesource.ErrSourceUnavailable
+	}
 	fresh, freshSnapshot, err := c.resolveCover(ctx, contentID, revision)
 	if err != nil {
 		return nil, err
 	}
-	if !sameSource(ref.Source, fresh.Source) || ref.Cover != fresh.Cover || freshSnapshot.Generation != snapshot.Generation || freshSnapshot.ArtifactChecksum != snapshot.ArtifactChecksum {
+	if !SameSource(ref.Source, fresh.Source) || ref.Cover != fresh.Cover || freshSnapshot.Generation != snapshot.Generation || freshSnapshot.ArtifactChecksum != snapshot.ArtifactChecksum {
 		return nil, storagesource.ErrSourceUnavailable
 	}
 	if lease.Context == nil || lease.Source == nil {
 		return nil, storagesource.ErrSourceUnavailable
+	}
+	if err = ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err = lease.Context.Err(); err != nil {
+		return nil, err
 	}
 	readCtx, cancel := context.WithCancel(ctx)
 	stop := context.AfterFunc(lease.Context, cancel)
@@ -223,7 +251,7 @@ func (c *Coordinator) resolveCover(ctx context.Context, contentID, revision stri
 	if err != nil {
 		return ref, nil, err
 	}
-	if snapshot == nil || snapshot.Installation == nil || !sameSource(ref.Source, snapshot.Source) || int64(snapshot.Installation.ID) != *ref.Source.InstallationID || !snapshot.Installation.Enabled {
+	if snapshot == nil || snapshot.Installation == nil || !SameSource(ref.Source, snapshot.Source) || int64(snapshot.Installation.ID) != *ref.Source.InstallationID || !snapshot.Installation.Enabled {
 		return ref, nil, storagesource.ErrSourceUnavailable
 	}
 	return ref, snapshot, nil

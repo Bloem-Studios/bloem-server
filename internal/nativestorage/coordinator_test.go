@@ -12,6 +12,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
+	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
 )
@@ -66,12 +67,13 @@ func (s *sourceStub) ReadRange(ctx context.Context, _ mediasource.Ref, offset, l
 }
 
 type runtimeStub struct {
-	source   *sourceStub
-	ctx      context.Context
-	snapshot storageplugin.Snapshot
-	calls    int
-	disabled int
-	after    func()
+	source      *sourceStub
+	description *storagev1.DescribeResponse
+	ctx         context.Context
+	snapshot    storageplugin.Snapshot
+	calls       int
+	disabled    int
+	after       func()
 }
 
 func (s *runtimeStub) Borrow(_ context.Context, r storageplugin.Snapshot) (Lease, error) {
@@ -80,13 +82,13 @@ func (s *runtimeStub) Borrow(_ context.Context, r storageplugin.Snapshot) (Lease
 	if s.after != nil {
 		s.after()
 	}
-	return Lease{Context: s.ctx, Source: s.source}, nil
+	return Lease{Context: s.ctx, Source: s.source, Description: s.description}, nil
 }
 func (s *runtimeStub) Disable(int) { s.disabled++ }
 func fixture(t *testing.T) (*Coordinator, *refsStub, *registryStub, *runtimeStub, *models.MediaFile) {
 	t.Helper()
 	id := int64(3)
-	r := &refsStub{source: storagesource.SourceConfig{Key: uuid.New(), OwnerID: uuid.New(), InstallationID: &id, PluginID: "native", ProviderSourceID: "retained-source", ConfigurationRevision: 2, Enabled: true}, ref: storagesource.PersistedRef{LocationID: uuid.New(), EntryID: "retained-entry", Revision: "retained-revision", LogicalPath: "book.epub"}}
+	r := &refsStub{source: storagesource.SourceConfig{Key: uuid.New(), OwnerID: uuid.New(), InstallationID: &id, PluginID: "native", ProviderSourceID: "retained-source", RootEntryID: "retained-root", ConfigurationRevision: 2, Enabled: true}, ref: storagesource.PersistedRef{LocationID: uuid.New(), EntryID: "retained-entry", Revision: "retained-revision", LogicalPath: "book.epub"}}
 	location, err := storagesource.CatalogLocation(r.ref.LocationID, r.ref.EntryID)
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +98,7 @@ func fixture(t *testing.T) (*Coordinator, *refsStub, *registryStub, *runtimeStub
 	r.cover = storagesource.CoverReference{MediaFileID: 7, FolderID: 9, ContentID: "book", FilePath: location, Location: coverLocation, Source: r.source,
 		Cover: storagesource.PersistedRef{LocationID: r.ref.LocationID, EntryID: "cover/book", Revision: "cover:1"}}
 	reg := &registryStub{snapshot: &plugins.NativeStorageSnapshot{Source: r.source, Installation: &plugins.Installation{ID: 3, InstallPath: "/approved/plugin", Enabled: true}, Generation: 5, ArtifactChecksum: "reviewed"}}
-	run := &runtimeStub{source: &sourceStub{}, ctx: context.Background()}
+	run := &runtimeStub{source: &sourceStub{}, ctx: context.Background(), description: &storagev1.DescribeResponse{Revision: 1, Sources: []*storagev1.Source{{Id: r.source.ProviderSourceID, RootEntryId: r.source.RootEntryID, RevisionPinnedReads: true}}}}
 	c := &Coordinator{References: r, Registry: reg, Runtime: run, AuthorizeFile: func(context.Context, *models.MediaFile) (*models.MediaFile, error) { return f, nil }, AuthorizeSource: func(context.Context, *models.MediaFile, storagesource.SourceConfig) error { return nil },
 		AuthorizeCover: func(context.Context, storagesource.Location, storagesource.SourceConfig) error { return nil }}
 	return c, r, reg, run, f
@@ -113,6 +115,102 @@ func TestOpenUsesRetainedReferenceAndFreshSnapshot(t *testing.T) {
 	}
 	if reg.calls < 2 || run.snapshot.InstallationID != 3 || run.snapshot.Generation != 5 || !run.snapshot.NativeOnly {
 		t.Fatalf("snapshot=%+v checks=%d", run.snapshot, reg.calls)
+	}
+}
+
+func TestOpenDescribeAdmissionBeforeStat(t *testing.T) {
+	for _, surface := range []string{"ebook", "cover"} {
+		for _, kind := range []string{"absent", "source", "root", "unpinned", "duplicate", "malformed-other"} {
+			t.Run(surface+"/"+kind, func(t *testing.T) {
+				c, _, _, run, f := fixture(t)
+				switch kind {
+				case "absent":
+					run.description = nil
+				case "source":
+					run.description.Sources[0].Id = "different-source"
+				case "root":
+					run.description.Sources[0].RootEntryId = "different-root"
+				case "unpinned":
+					run.description.Sources[0].RevisionPinnedReads = false
+				case "duplicate":
+					run.description.Sources = append(run.description.Sources, run.description.Sources[0])
+				case "malformed-other":
+					run.description.Sources = append(run.description.Sources, &storagev1.Source{Id: "other"})
+				}
+				var opened mediasource.File
+				var err error
+				if surface == "ebook" {
+					opened, err = c.OpenAuthorizedEbook(t.Context(), f)
+				} else {
+					opened, err = c.OpenCover(t.Context(), "book", "cover-rev")
+				}
+				if opened != nil {
+					opened.Close()
+				}
+				if !errors.Is(err, storagesource.ErrSourceUnavailable) || opened != nil || run.source.ctx != nil {
+					t.Fatalf("invalid Describe reached content: opened=%v stat=%v err=%v", opened != nil, run.source.ctx != nil, err)
+				}
+			})
+		}
+	}
+}
+
+func TestOpenRechecksAuthorityAfterDescribe(t *testing.T) {
+	for _, surface := range []string{"ebook", "cover"} {
+		for _, mutation := range []string{"root", "source", "generation", "checksum", "policy", "request-cancel", "session-cancel"} {
+			t.Run(surface+"/"+mutation, func(t *testing.T) {
+				c, refs, reg, run, file := fixture(t)
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				session, cancelSession := context.WithCancel(t.Context())
+				defer cancelSession()
+				run.ctx = session
+				run.after = func() {
+					switch mutation {
+					case "root":
+						refs.source.RootEntryID = "changed-root"
+						refs.cover.Source.RootEntryID = "changed-root"
+						reg.snapshot.Source.RootEntryID = "changed-root"
+					case "source":
+						refs.source.ProviderSourceID = "changed-source"
+						refs.cover.Source.ProviderSourceID = "changed-source"
+						reg.snapshot.Source.ProviderSourceID = "changed-source"
+					case "generation":
+						fresh := *reg.snapshot
+						fresh.Generation++
+						reg.snapshot = &fresh
+					case "checksum":
+						fresh := *reg.snapshot
+						fresh.ArtifactChecksum = "changed"
+						reg.snapshot = &fresh
+					case "policy":
+						c.AuthorizeSource = func(context.Context, *models.MediaFile, storagesource.SourceConfig) error {
+							return errors.New("revoked")
+						}
+						c.AuthorizeCover = func(context.Context, storagesource.Location, storagesource.SourceConfig) error {
+							return errors.New("revoked")
+						}
+					case "request-cancel":
+						cancel()
+					case "session-cancel":
+						cancelSession()
+					}
+				}
+				var opened mediasource.File
+				var err error
+				if surface == "ebook" {
+					opened, err = c.OpenAuthorizedEbook(ctx, file)
+				} else {
+					opened, err = c.OpenCover(ctx, "book", "cover-rev")
+				}
+				if opened != nil {
+					opened.Close()
+				}
+				if err == nil || opened != nil || run.source.ctx != nil {
+					t.Fatalf("authority changed during Describe: opened=%v stat=%v err=%v", opened != nil, run.source.ctx != nil, err)
+				}
+			})
+		}
 	}
 }
 func TestOpenRejectsMismatchUnavailableAndUnauthorized(t *testing.T) {
