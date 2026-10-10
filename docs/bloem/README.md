@@ -12,6 +12,7 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 
 - [Native storage](../architecture/bloem-native-storage.md) — initial S3 root discovery and storage-source ebook libraries: locations, scanning, covers and reading.
 - [Native tool input](../architecture/bloem-native-tool-input.md) — bounded pinned reads, trusted-child lifetime and host admission.
+- [Native scan reader](../architecture/bloem-native-scan-reader.md) — sealed scan pages, pinned entry reads and current scan authority.
 - [Bloem Server front page](../../.github/README.md) — what Bloem is, deployment checkpoint, quick start. The root `README.md` is upstream Silo's.
 - [Integration changelog](CHANGELOG.md) — upstream changes and Bloem adapters.
 - [October 10 upstream resolutions](upstream-merge-2026-10-10.md) — imported revisions and ownership of download, thumbnail, metadata and web changes.

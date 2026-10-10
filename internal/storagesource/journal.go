@@ -20,17 +20,11 @@ func (r *Repository) NextDirectory(ctx context.Context, lease Lease) (Checkpoint
 		return checkpoint, false, err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	if err = verifyLease(ctx, tx, lease); err != nil {
-		return checkpoint, false, err
-	}
-	err = tx.QueryRow(ctx, `SELECT directory_id,current_cursor,complete FROM bloem_storage_scan_directories WHERE run_id=$1 AND NOT complete ORDER BY directory_id LIMIT 1`, lease.RunID).Scan(&checkpoint.DirectoryID, &checkpoint.Cursor, &checkpoint.Complete)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return checkpoint, false, tx.Commit(ctx)
-	}
+	checkpoint, pending, err := pendingDirectoryTx(ctx, tx, lease)
 	if err != nil {
 		return checkpoint, false, err
 	}
-	return checkpoint, true, tx.Commit(ctx)
+	return checkpoint, pending, tx.Commit(ctx)
 }
 
 // PagePublisher publishes a listed page to the catalog inside the transaction
