@@ -271,13 +271,20 @@ func TestActiveWindowsScopeOrganizationPacks(t *testing.T) {
 	}
 }
 
-type memoryAssetStore struct{ objects map[string][]byte }
+type memoryAssetStore struct {
+	mu      sync.RWMutex
+	objects map[string][]byte
+}
 
 func (m *memoryAssetStore) PutObject(_ context.Context, _, key string, data []byte) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.objects[key] = data
 	return nil
 }
 func (m *memoryAssetStore) GetObject(_ context.Context, _, key string) ([]byte, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	if d, ok := m.objects[key]; ok {
 		return d, nil
 	}
