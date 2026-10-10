@@ -390,8 +390,13 @@ func wireBloemRouter(
 		if err := lifecycle.requests.EnableTenantGroupLimits(); err != nil {
 			panic(fmt.Errorf("compose Bloem request group limits: %w", err))
 		}
-		if err := lifecycle.requests.EnableTenantRequestPolicy(); err != nil {
-			panic(fmt.Errorf("compose Bloem request policy: %w", err))
+		// Authentication and its user repository are absent from a DB-only
+		// discovery router. Request routes are unreachable in that composition;
+		// every authenticated composition still requires the profile policy.
+		if authMiddleware != nil {
+			if err := lifecycle.requests.EnableTenantRequestPolicy(); err != nil {
+				panic(fmt.Errorf("compose Bloem request policy: %w", err))
+			}
 		}
 	}
 	wireBloemLifecycle(deps, lifecycle)

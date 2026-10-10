@@ -13,7 +13,7 @@ func (h *RequestsHandler) EnableTenantRequestPolicy() error {
 	case *mediarequests.Service:
 		return service.EnableTenantRequestPolicy()
 	case *mediarequests.TenantGroupLimitService:
-		return service.Service.EnableTenantRequestPolicy()
+		return service.EnableTenantRequestPolicy()
 	default:
 		return errors.New("tenant request policy requires the request service")
 	}
