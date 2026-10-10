@@ -14,6 +14,7 @@ import (
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/graph"
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/registry"
 	clientv1 "github.com/Silo-Server/silo-server/contracts/client/v1"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
@@ -64,6 +65,7 @@ var rootCases = []struct {
 	{"AckEnvelope", "", func() any { return &playback.AckEnvelope{} }, sampleAckEnvelope()},
 	{"ResultEnvelope", "", func() any { return &playback.ResultEnvelope{} }, sampleResultEnvelope()},
 	{"ChapterThumbnailReadyPayload", "", func() any { return &playback.ChapterThumbnailReadyPayload{} }, sampleChapterThumbnailReady()},
+	{"MarkerThumbnailReadyPayload", "", func() any { return &playback.MarkerThumbnailReadyPayload{} }, sampleMarkerThumbnailReady()},
 	{"MarkersUpdatedPayload", "", func() any { return &playback.MarkersUpdatedPayload{} }, sampleMarkersUpdated()},
 	{"SubtitleReadyPayload", "", func() any { return &playback.SubtitleReadyPayload{} }, sampleSubtitleReady()},
 	{"SubtitleTranslationStartedPayload", "", func() any { return &playback.SubtitleTranslationStartedPayload{} }, sampleSubtitleTranslationStarted()},
@@ -138,6 +140,14 @@ func sampleChapterThumbnailReady() playback.ChapterThumbnailReadyPayload {
 		ChapterIndex:       1,
 		ThumbnailURL:       "/thumb",
 		ThumbnailThumbhash: "0AwR1UYUHIA",
+	}
+}
+
+func sampleMarkerThumbnailReady() playback.MarkerThumbnailReadyPayload {
+	return playback.MarkerThumbnailReadyPayload{
+		SessionID: "session-roundtrip", FileID: 42,
+		MarkerSegment: models.MarkerSegment{Kind: models.MarkerSegmentIntro, StartSeconds: 10.5, EndSeconds: 75.25},
+		ThumbnailURL:  "/marker-thumb", ThumbnailThumbhash: "0AwR1UYUHIA", ThumbnailCaptureSeconds: 11.75,
 	}
 }
 
