@@ -20,7 +20,7 @@ func (s *Service) PrepareAgain(ctx context.Context, userID int, profileID, devic
 	if profileID == "" || deviceID == "" {
 		return nil, ErrProfileRequired
 	}
-	cfg, _, err := s.downloadConfigForUser(ctx, userID, profileID, deviceID)
+	cfg, _, err := s.downloadConfigForUser(ctx, userID, deviceID)
 	if err != nil {
 		return nil, err
 	}

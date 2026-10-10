@@ -63,8 +63,8 @@ func TestPolicyActionDeciderMatchesLegacyCreateGate(t *testing.T) {
 						legacy := newPolicyActionTestService(user, cfg, artifactsAvailable, nil)
 						withPolicy := newPolicyActionTestService(user, cfg, artifactsAvailable, pdp)
 
-						_, _, legacyErr := legacy.downloadConfigForUser(ctx, user.ID, "", "device-1")
-						_, _, policyErr := withPolicy.downloadConfigForUser(ctx, user.ID, "", "device-1")
+						_, _, legacyErr := legacy.downloadConfigForUser(ctx, user.ID, "device-1")
+						_, _, policyErr := withPolicy.downloadConfigForUser(ctx, user.ID, "device-1")
 						if !sameDownloadGateError(policyErr, legacyErr) {
 							t.Fatalf("policy create gate error = %v, want legacy %v for cfg=%+v user=%+v artifacts=%v",
 								policyErr, legacyErr, cfg, user, artifactsAvailable)
@@ -97,7 +97,7 @@ func TestPolicyActionDeciderUsesGroupDownloadFlags(t *testing.T) {
 		RequestsAllowed:          true,
 	}})
 
-	_, _, err := svc.downloadConfigForUser(ctx, user.ID, "", "device-1")
+	_, _, err := svc.downloadConfigForUser(ctx, user.ID, "device-1")
 	if !errors.Is(err, ErrDownloadNotAllowed) {
 		t.Fatalf("downloadConfigForUser() error = %v, want ErrDownloadNotAllowed", err)
 	}

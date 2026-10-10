@@ -26,6 +26,7 @@ type BloemSystemHandler struct {
 	directProfileLogin          bool
 	profileCredentialManagement bool
 	seasonalViewer              bool
+	bookRequests                bool
 	lifecyclePhase              func(context.Context) (lifecycleidempotency.Phase, error)
 }
 
@@ -41,6 +42,8 @@ func (h *BloemSystemHandler) SetDirectProfileLoginAvailable(available bool) {
 func (h *BloemSystemHandler) SetProfileCredentialManagementAvailable(available bool) {
 	h.profileCredentialManagement = available
 }
+
+func (h *BloemSystemHandler) SetBookRequestsAvailable(available bool) { h.bookRequests = available }
 
 // SetSeasonalViewerAvailable tracks the authenticated native ambience route.
 func (h *BloemSystemHandler) SetSeasonalViewerAvailable(available bool) {
@@ -159,6 +162,9 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	featureTokens := slices.Clone(bloemCapabilityTokens)
 	if h.profileCredentialManagement {
 		featureTokens = append(featureTokens, "profile_credential_management_v1")
+	}
+	if h.bookRequests {
+		featureTokens = append(featureTokens, "audiobook_requests_v1")
 	}
 	if h.seasonalViewer {
 		featureTokens = append(featureTokens, "seasonal_viewer_v1")

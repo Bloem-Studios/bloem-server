@@ -38,7 +38,7 @@ func bulkQualityTestService(t *testing.T, user *models.User) (*Service, *PolicyU
 	t.Helper()
 	svc := NewService(nil, nil, nil, nil, nil, nil, fakeUserRepo{user}, nil, nil, &config.DownloadConfig{Enabled: true, TranscodeEnabled: true})
 	svc.SetArtifactManager(&ArtifactManager{})
-	cfg, policyUser, err := svc.downloadConfigForUser(t.Context(), 1, "", "device")
+	cfg, policyUser, err := svc.downloadConfigForUser(t.Context(), 1, "device")
 	if err != nil {
 		t.Fatal(err)
 	}

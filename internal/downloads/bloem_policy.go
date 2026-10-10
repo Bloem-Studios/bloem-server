@@ -6,6 +6,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/models"
 	policyengine "github.com/Silo-Server/silo-server/internal/policy"
 )
@@ -24,18 +25,41 @@ func bloemCheckDownloadAction(ctx context.Context, decider ActionDecider, input 
 }
 
 // bloemEffectiveDownloadPolicy resolves the download policy for the
-// (account, profile) subject. With a group provider the subject is bound to
-// the request tenant; without one it is the bare account/profile pair.
-func (s *Service) bloemEffectiveDownloadPolicy(ctx context.Context, user *models.User, profileID string) (access.EffectiveUserPolicy, error) {
-	subject := access.GroupSubject{AccountID: user.ID, ProfileID: profileID}
-	if s.groupProvider != nil {
-		var err error
-		subject, err = access.GroupSubjectFromContext(ctx, user.ID, profileID)
-		if err != nil {
-			return access.EffectiveUserPolicy{}, err
+// (account, profile) subject. Tenant-aware providers require the validated
+// request tenant; ordinary Silo providers retain account-only policy.
+func (s *Service) bloemEffectiveDownloadPolicy(ctx context.Context, user *models.User) (access.EffectiveUserPolicy, error) {
+	profileID := ""
+	if subject, ok := ctx.Value(bloemDownloadProfileKey{}).(bloemDownloadProfile); ok {
+		// The profile/account binding belongs to group policy. With no group
+		// provider, preserve Silo's user-row lookup semantics; an installed PDP
+		// separately binds its final user ID to the validated tenant.
+		if s.groupProvider != nil && subject.userID != user.ID {
+			return access.EffectiveUserPolicy{}, ErrDownloadNotAllowed
 		}
+		profileID = subject.profileID
 	}
-	return access.EffectivePolicyForSubject(ctx, user, subject, s.groupProvider)
+	// Subject providers require the validated tenant even for an account-only
+	// request. Ordinary Silo providers retain their account/user-row semantics.
+	return access.EffectivePolicyForRequest(ctx, user, profileID, s.groupProvider)
+}
+
+type bloemDownloadProfileKey struct{}
+
+type bloemDownloadProfile struct {
+	userID    int
+	profileID string
+}
+
+func bloemWithDownloadProfile(ctx context.Context, userID int, profileID string) context.Context {
+	return context.WithValue(ctx, bloemDownloadProfileKey{}, bloemDownloadProfile{userID: userID, profileID: profileID})
+}
+
+func (s *Service) bloemDownloadConfigForProfile(ctx context.Context, userID int, profileID, deviceID string) (config.DownloadConfig, *PolicyUser, error) {
+	return s.downloadConfigForUser(bloemWithDownloadProfile(ctx, userID, profileID), userID, deviceID)
+}
+
+func (s *Service) bloemDownloadUserForProfile(ctx context.Context, userID int, profileID string, cfg config.DownloadConfig, deviceID string) (*PolicyUser, error) {
+	return s.downloadUserForConfig(bloemWithDownloadProfile(ctx, userID, profileID), userID, cfg, deviceID)
 }
 
 // bloemSubtitleSourceAllowed rechecks a subtitle's source file against the

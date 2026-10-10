@@ -2461,7 +2461,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.DownloadCreation = downloadSvc
 		v2deps.AdminAccountDownloads = downloadSvc
 		v2deps.AdminDownloadDevices = downloadSvc
-		v2deps.DownloadPrepareAgain = downloadSvc
+		v2deps.DownloadPrepareAgain = downloads.NewProfilePrepareAgainService(downloadSvc)
 	}
 	if ebookReaderHandler != nil {
 		v2deps.EbookProgress = ebookReaderHandler

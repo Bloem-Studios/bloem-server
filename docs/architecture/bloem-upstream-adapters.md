@@ -53,6 +53,19 @@ creates and drops its own child database; never point it at a deployed catalog.
 - [`downloads.CapabilityForProfile`](../../internal/downloads/bloem_capability.go)
   selects the profile-aware extension when a service implements it and falls
   back to the upstream account-only capability interface otherwise.
+- Download policy keeps Silo's account-only helper signatures. Bloem's
+  [profile wrappers](../../internal/downloads/bloem_policy.go) bind the selected
+  account/profile in an owned context key; tenant-aware group providers still
+  require the validated request tenant. Ordinary Silo group providers retain
+  their account policy and explicit user overrides without tenant context.
+- [`NewProfilePrepareAgainService`](../../internal/downloads/bloem_reprepare.go)
+  is mandatory in Bloem HTTP retry composition. It checks the requesting
+  profile's download and transcode authority before calling Silo's unchanged
+  `PrepareAgain`. The delegated retry rechecks transcode authority and narrows
+  its request-local configuration, so a replaced row or revoked permission
+  cannot turn an allowed original retry into a forbidden transcode. Original
+  and remux retries remain available when only transcoding is denied; server
+  settings and the service's cached configuration are not mutated.
 - Membership and profile policy continue to be evaluated in the acting
   organization. Server ownership, organization ownership, and a household's
   primary profile are different authority boundaries.

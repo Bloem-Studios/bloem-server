@@ -74,6 +74,12 @@ const (
 // directProfileAllowedRoutes admits exact routes: every mutation, plus the
 // reads that sit outside a read-only subtree.
 var directProfileAllowedRoutes = map[string][]string{
+	// Bloem audiobook requests carry strict account/profile/organization attribution.
+	"/api/bloem/v1/book-requests/capability":  {http.MethodGet},
+	"/api/bloem/v1/book-requests/mine":        {http.MethodGet},
+	"/api/bloem/v1/book-requests":             {http.MethodPost},
+	"/api/bloem/v1/book-requests/{id}":        {http.MethodGet},
+	"/api/bloem/v1/book-requests/{id}/cancel": {http.MethodPost},
 	// Ending the session.
 	"/api/v1/auth/logout": {http.MethodPost},
 

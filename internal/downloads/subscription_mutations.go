@@ -59,7 +59,7 @@ func (s *Service) UpdateSubscriptionMonitor(ctx context.Context, userID int, pro
 	if profileID == "" || deviceID == "" {
 		return nil, ErrProfileRequired
 	}
-	cfg, user, err := s.downloadConfigForUser(ctx, userID, profileID, deviceID)
+	cfg, user, err := s.bloemDownloadConfigForProfile(ctx, userID, profileID, deviceID)
 	if err != nil {
 		return nil, err
 	}

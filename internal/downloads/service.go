@@ -335,14 +335,46 @@ func (s *Service) enabledConfig(ctx context.Context) (config.DownloadConfig, err
 
 // Capability reports the download capability for a user (feature detection).
 func (s *Service) Capability(ctx context.Context, userID int) (Capability, error) {
-	return s.CapabilityForProfile(ctx, userID, "")
+	cfg := s.loadConfig(ctx)
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return Capability{}, fmt.Errorf("loading user: %w", err)
+	}
+	policyUser, err := s.effectiveDownloadUser(ctx, user)
+	if err != nil {
+		return Capability{}, fmt.Errorf("loading access group policy: %w", err)
+	}
+	c := Capability{
+		Enabled:              cfg.Enabled,
+		DownloadAllowed:      policyUser.Policy.DownloadAllowed,
+		QualityPresets:       []string{},
+		TranscodeEnabled:     cfg.TranscodeEnabled,
+		TranscodeUserAllowed: policyUser.Policy.DownloadTranscodeAllowed,
+	}
+	policyCeiling := ""
+	if s.actionDecider != nil {
+		c.QualityPresets, policyCeiling = s.policyPresetsFor(ctx, policyUser, cfg, s.artifacts != nil)
+	} else {
+		c.QualityPresets = s.policy.PresetsFor(policyUser, cfg, s.artifacts != nil)
+	}
+	c.QualityOptions = qualityOptionsFor(c.QualityPresets, cfg, policyUser, policyCeiling)
+	if len(c.QualityPresets) > 0 {
+		// Per-season download is always available when downloads are enabled;
+		// auto-download monitoring additionally requires the subscription repo.
+		c.SeasonDownload = true
+		if s.subRepo != nil {
+			c.SeriesMonitoring = true
+			c.MonitoringModes = []string{SubModeAll, SubModeFuture, SubModeLatestSeason, SubModeSpecificSeasons}
+		}
+	}
+	return c, nil
 }
 
-func (s *Service) effectiveDownloadUser(ctx context.Context, user *models.User, profileID string) (*PolicyUser, error) {
+func (s *Service) effectiveDownloadUser(ctx context.Context, user *models.User) (*PolicyUser, error) {
 	if user == nil {
 		return nil, nil
 	}
-	effective, err := s.bloemEffectiveDownloadPolicy(ctx, user, profileID)
+	effective, err := s.bloemEffectiveDownloadPolicy(ctx, user)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +422,7 @@ type CreateRequest struct {
 // otherwise it prepares a remux or transcode artifact before the row becomes
 // ready.
 func (s *Service) Create(ctx context.Context, userID int, req CreateRequest, filter catalog.AccessFilter) (*Download, error) {
-	cfg, user, err := s.downloadConfigForUser(ctx, userID, req.ProfileID, req.DeviceID)
+	cfg, user, err := s.bloemDownloadConfigForProfile(ctx, userID, req.ProfileID, req.DeviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -659,7 +691,7 @@ func (s *Service) CreateSeason(ctx context.Context, userID int, req CreateReques
 // queues ephemeral rows under one shared batch ID. Series/season downloads are
 // original-only.
 func (s *Service) createSeriesScoped(ctx context.Context, userID int, req CreateRequest, filter catalog.AccessFilter, listEpisodes func(context.Context) ([]*models.Episode, error)) ([]*Download, string, []SkippedDownload, error) {
-	cfg, user, err := s.downloadConfigForUser(ctx, userID, req.ProfileID, req.DeviceID)
+	cfg, user, err := s.bloemDownloadConfigForProfile(ctx, userID, req.ProfileID, req.DeviceID)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -1145,7 +1177,7 @@ func (s *Service) ServeDirect(ctx context.Context, w http.ResponseWriter, r *htt
 // ResolveDirectFile authorizes a browser-style original download without
 // writing response bytes. It is used by the API before minting a proxy token.
 func (s *Service) ResolveDirectFile(ctx context.Context, userID int, profileID string, fileID int, format string, filter catalog.AccessFilter) (*FileTarget, error) {
-	cfg, _, err := s.downloadConfigForUser(ctx, userID, profileID, "")
+	cfg, _, err := s.bloemDownloadConfigForProfile(ctx, userID, profileID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -1183,7 +1215,7 @@ func (s *Service) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 
 	// Re-check policy — admin may have disabled downloads or revoked permission.
-	if _, _, err := s.downloadConfigForUser(ctx, userID, profileID, deviceID); err != nil {
+	if _, _, err := s.bloemDownloadConfigForProfile(ctx, userID, profileID, deviceID); err != nil {
 		return err
 	}
 
@@ -1235,7 +1267,7 @@ func (s *Service) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.
 // re-checks current policy and content access, and returns the source/artifact
 // path for trusted proxy delegation.
 func (s *Service) ResolveManagedFile(ctx context.Context, userID int, profileID, deviceID, downloadID string, filter catalog.AccessFilter) (*FileTarget, error) {
-	cfg, _, err := s.downloadConfigForUser(ctx, userID, profileID, deviceID)
+	cfg, _, err := s.bloemDownloadConfigForProfile(ctx, userID, profileID, deviceID)
 	if err != nil {
 		return nil, err
 	}

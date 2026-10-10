@@ -190,7 +190,6 @@ internal/database/simplify_playback_authority_migration_test.go  # isolate downg
 internal/downloads/artifact_repo.go  # route quota-scoped artifact operations through the admission connection to prevent pool starvation
 internal/downloads/artifact_repo_test.go
 internal/downloads/artifact_test.go
-internal/downloads/bulk_quality_test.go  # Adapt upstream quality regression to Bloem’s explicit profile/device policy subjects
 internal/downloads/file_lookup_test.go
 internal/downloads/offline.go
 internal/downloads/policy.go
@@ -201,7 +200,6 @@ internal/downloads/repo.go  # preserve quota serialization on a single connectio
 internal/downloads/repo_managed_test.go
 internal/downloads/service.go
 internal/downloads/service_remote_test.go
-internal/downloads/storage_reprepare.go  # PrepareAgain passes the requesting profile to Bloem's profile-aware download policy (pending maintainer approval, 2026-10-10 merge)
 internal/downloads/subscription_mutations.go
 internal/downloads/subscription_page_test.go  # share the underlying fixture pool when the download repository uses its quota adapter
 internal/downloads/subscription_service.go
