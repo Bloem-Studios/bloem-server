@@ -141,6 +141,7 @@ func TestBloemBookRequestCreateStrictBodyAndIdempotency(t *testing.T) {
 		{name: "new", body: `{"title":"Book","author":"Author"}`, created: true, want: 201},
 		{name: "replay", body: `{"title":"Book","isbn":"9780306406157"}`, want: 200},
 		{name: "unknown authority field", body: `{"title":"Book","organization_id":"foreign"}`, want: 400},
+		{name: "public ebook filing unavailable", body: `{"title":"Book","isbn":"9780306406157","media_type":"book"}`, want: 400},
 		{name: "extra body", body: `{"title":"Book"}{"title":"Other"}`, want: 400},
 		{name: "truncated", body: `{"title":`, want: 400},
 		{name: "oversized", body: `{"title":"` + strings.Repeat("x", 17<<10) + `"}`, want: 400},

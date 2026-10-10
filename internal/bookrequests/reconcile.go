@@ -33,7 +33,7 @@ func isbnVariants(isbn string) []string {
 // audiobook folders with actual media files. An ebook sharing its ISBN, or an
 // audiobook only available to another organization, cannot fulfill this lane.
 func findLibraryMatch(ctx context.Context, tx pgx.Tx, r Request) (string, error) {
-	if r.ISBN == "" && r.ASIN == "" {
+	if r.MediaType != "audiobook" || r.ISBN == "" && r.ASIN == "" {
 		return "", nil
 	}
 	var id string
@@ -61,7 +61,7 @@ func (s *Service) Reconcile(ctx context.Context, limit int) (int, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 100
 	}
-	rows, err := s.pool.Query(ctx, `SELECT id FROM bloem_book_requests WHERE outcome='active' AND (status<>'completed' OR fulfilled_notified_at IS NULL) ORDER BY last_checked_at NULLS FIRST,created_at,id LIMIT $1`, limit)
+	rows, err := s.pool.Query(ctx, `SELECT id FROM bloem_book_requests WHERE media_type='audiobook' AND outcome='active' AND (status<>'completed' OR fulfilled_notified_at IS NULL) ORDER BY last_checked_at NULLS FIRST,created_at,id LIMIT $1`, limit)
 	if err != nil {
 		return 0, err
 	}
@@ -114,7 +114,7 @@ func (s *Service) reconcileOne(ctx context.Context, id string) (Request, bool, e
 		return Request{}, false, err
 	}
 	defer tx.Rollback(ctx)
-	r, err := scan(tx.QueryRow(ctx, `SELECT `+selectColumns+` FROM bloem_book_requests WHERE id=$1 AND outcome='active' AND (status<>'completed' OR fulfilled_notified_at IS NULL) FOR UPDATE SKIP LOCKED`, id))
+	r, err := scan(tx.QueryRow(ctx, `SELECT `+selectColumns+` FROM bloem_book_requests WHERE id=$1 AND media_type='audiobook' AND outcome='active' AND (status<>'completed' OR fulfilled_notified_at IS NULL) FOR UPDATE SKIP LOCKED`, id))
 	if errors.Is(err, ErrNotFound) {
 		return Request{}, false, nil
 	}

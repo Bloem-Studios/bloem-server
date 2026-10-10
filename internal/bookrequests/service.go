@@ -41,7 +41,11 @@ type policy struct {
 // Policy reads the actual profile group and organization membership, never the
 // account's default-organization projection. Book quotas have independent counters.
 func readPolicy(ctx context.Context, q querier, v Viewer) (policy, error) {
-	p := policy{Capability: Capability{Available: true, MediaTypes: []string{"audiobook"}, FulfilmentBackend: "unconfigured", ManualFulfilment: true}}
+	return readPolicyFor(ctx, q, v, "audiobook")
+}
+
+func readPolicyFor(ctx context.Context, q querier, v Viewer, mediaType string) (policy, error) {
+	p := policy{Capability: Capability{Available: true, MediaTypes: []string{mediaType}, FulfilmentBackend: "unconfigured", ManualFulfilment: true}}
 	if v.UserID <= 0 || v.ProfileID == "" || v.OrganizationID == uuid.Nil {
 		return p, ErrForbidden
 	}
@@ -97,7 +101,7 @@ func readPolicy(ctx context.Context, q querier, v Viewer) (policy, error) {
 		p.WindowDays = 7
 	}
 	p.start = time.Now().UTC().AddDate(0, 0, -p.WindowDays)
-	if err = q.QueryRow(ctx, `SELECT count(*) FROM bloem_book_requests WHERE requested_by_user_id=$1 AND created_at >= $2 AND outcome<>'declined'`, v.UserID, p.start).Scan(&p.Used); err != nil {
+	if err = q.QueryRow(ctx, `SELECT count(*) FROM bloem_book_requests WHERE requested_by_user_id=$1 AND created_at >= $2 AND outcome<>'declined' AND media_type=$3`, v.UserID, p.start, mediaType).Scan(&p.Used); err != nil {
 		return p, err
 	}
 	p.Remaining = maxInt(0, p.Limit-p.Used)
@@ -125,10 +129,14 @@ func scan(row pgx.Row) (Request, error) {
 	return r, err
 }
 func (s *Service) Get(ctx context.Context, v Viewer, id string) (Request, error) {
+	return getRequest(ctx, s.pool, v, id, "audiobook")
+}
+
+func getRequest(ctx context.Context, q querier, v Viewer, id, mediaType string) (Request, error) {
 	if _, err := uuid.Parse(id); err != nil {
 		return Request{}, ErrNotFound
 	}
-	r, err := scan(s.pool.QueryRow(ctx, `SELECT `+selectColumns+` FROM bloem_book_requests WHERE id=$1 AND organization_id=$2 AND ($3 OR (requested_by_user_id=$4 AND requested_by_profile_id=$5))`, id, v.OrganizationID, v.Admin, v.UserID, v.ProfileID))
+	r, err := scan(q.QueryRow(ctx, `SELECT `+selectColumns+` FROM bloem_book_requests WHERE id=$1 AND organization_id=$2 AND ($3 OR (requested_by_user_id=$4 AND requested_by_profile_id=$5)) AND media_type=$6`, id, v.OrganizationID, v.Admin, v.UserID, v.ProfileID, mediaType))
 	if err != nil {
 		return r, err
 	}
@@ -147,7 +155,7 @@ func (s *Service) List(ctx context.Context, v Viewer, limit, offset int) ([]Requ
 	if offset < 0 {
 		return nil, ErrInvalid
 	}
-	rows, err := s.pool.Query(ctx, `SELECT `+selectColumns+` FROM bloem_book_requests WHERE organization_id=$1 AND ($2 OR (requested_by_user_id=$3 AND requested_by_profile_id=$4)) ORDER BY created_at DESC,id DESC LIMIT $5 OFFSET $6`, v.OrganizationID, v.Admin, v.UserID, v.ProfileID, limit, offset)
+	rows, err := s.pool.Query(ctx, `SELECT `+selectColumns+` FROM bloem_book_requests WHERE organization_id=$1 AND media_type='audiobook' AND ($2 OR (requested_by_user_id=$3 AND requested_by_profile_id=$4)) ORDER BY created_at DESC,id DESC LIMIT $5 OFFSET $6`, v.OrganizationID, v.Admin, v.UserID, v.ProfileID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -168,6 +176,10 @@ func (s *Service) Create(ctx context.Context, v Viewer, in CreateInput, key stri
 	if err != nil {
 		return Request{}, false, err
 	}
+	return s.create(ctx, v, in, key, "audiobook")
+}
+
+func (s *Service) create(ctx context.Context, v Viewer, in CreateInput, key, mediaType string) (Request, bool, error) {
 	if len(key) < 16 || len(key) > 128 || strings.ContainsAny(key, "\r\n\t ") {
 		return Request{}, false, fmt.Errorf("%w: provide an Idempotency-Key of 16 to 128 characters", ErrInvalid)
 	}
@@ -183,7 +195,12 @@ func (s *Service) Create(ctx context.Context, v Viewer, in CreateInput, key stri
 	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(143,$1::int4)`, v.UserID); err != nil {
 		return Request{}, false, err
 	}
-	p, err := readPolicy(ctx, tx, v)
+	if mediaType == "book" {
+		if err = checkEbookAuthority(ctx, tx, v, true); err != nil {
+			return Request{}, false, err
+		}
+	}
+	p, err := readPolicyFor(ctx, tx, v, mediaType)
 	if err != nil {
 		return Request{}, false, err
 	}
@@ -194,9 +211,10 @@ func (s *Service) Create(ctx context.Context, v Viewer, in CreateInput, key stri
 		return Request{}, false, ErrForbidden
 	}
 	var previousDigest string
-	err = tx.QueryRow(ctx, `SELECT request_digest FROM bloem_book_requests WHERE organization_id=$1 AND requested_by_user_id=$2 AND requested_by_profile_id=$3 AND client_key=$4`, v.OrganizationID, v.UserID, v.ProfileID, key).Scan(&previousDigest)
+	var previousMediaType string
+	err = tx.QueryRow(ctx, `SELECT request_digest,media_type FROM bloem_book_requests WHERE organization_id=$1 AND requested_by_user_id=$2 AND requested_by_profile_id=$3 AND client_key=$4`, v.OrganizationID, v.UserID, v.ProfileID, key).Scan(&previousDigest, &previousMediaType)
 	if err == nil {
-		if previousDigest != digest {
+		if previousDigest != digest || previousMediaType != mediaType {
 			return Request{}, false, ErrConflict
 		}
 		r, e := scan(tx.QueryRow(ctx, `SELECT `+selectColumns+` FROM bloem_book_requests WHERE organization_id=$1 AND requested_by_user_id=$2 AND requested_by_profile_id=$3 AND client_key=$4`, v.OrganizationID, v.UserID, v.ProfileID, key))
@@ -212,7 +230,7 @@ func (s *Service) Create(ctx context.Context, v Viewer, in CreateInput, key stri
 	if p.AutoApprove {
 		status = "approved"
 	}
-	r, err := scan(tx.QueryRow(ctx, `INSERT INTO bloem_book_requests(id,organization_id,identity_key,title,author,isbn,asin,note,status,requested_by_user_id,requested_by_profile_id,client_key,request_digest) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING `+selectColumns, uuid.New(), v.OrganizationID, in.identity, in.Title, in.Author, in.ISBN, in.ASIN, in.Note, status, v.UserID, v.ProfileID, key, digest))
+	r, err := scan(tx.QueryRow(ctx, `INSERT INTO bloem_book_requests(id,organization_id,identity_key,title,author,isbn,asin,note,status,requested_by_user_id,requested_by_profile_id,client_key,request_digest,media_type) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING `+selectColumns, uuid.New(), v.OrganizationID, in.identity, in.Title, in.Author, in.ISBN, in.ASIN, in.Note, status, v.UserID, v.ProfileID, key, digest, mediaType))
 	var pe *pgconn.PgError
 	if errors.As(err, &pe) && pe.Code == "23505" {
 		return Request{}, false, ErrDuplicate
@@ -223,7 +241,7 @@ func (s *Service) Create(ctx context.Context, v Viewer, in CreateInput, key stri
 	if err = tx.Commit(ctx); err != nil {
 		return Request{}, false, err
 	}
-	if s.notifier != nil {
+	if s.notifier != nil && mediaType == "audiobook" {
 		s.notifier.Lifecycle(ctx, r, "submitted")
 		if status == "approved" {
 			s.notifier.Lifecycle(ctx, r, "auto_approved")
@@ -233,6 +251,10 @@ func (s *Service) Create(ctx context.Context, v Viewer, in CreateInput, key stri
 }
 
 func (s *Service) Act(ctx context.Context, v Viewer, id, action string, in ActionInput) (Request, error) {
+	return s.act(ctx, v, id, action, in, "audiobook")
+}
+
+func (s *Service) act(ctx context.Context, v Viewer, id, action string, in ActionInput, mediaType string) (Request, error) {
 	if in.ExpectedRevision <= 0 || len(in.Reason) > 2000 {
 		return Request{}, ErrInvalid
 	}
@@ -241,7 +263,7 @@ func (s *Service) Act(ctx context.Context, v Viewer, id, action string, in Actio
 		return Request{}, err
 	}
 	defer tx.Rollback(ctx)
-	r, err := scan(tx.QueryRow(ctx, `SELECT `+selectColumns+` FROM bloem_book_requests WHERE id=$1 AND organization_id=$2 FOR UPDATE`, id, v.OrganizationID))
+	r, err := scan(tx.QueryRow(ctx, `SELECT `+selectColumns+` FROM bloem_book_requests WHERE id=$1 AND organization_id=$2 AND media_type=$3 FOR UPDATE`, id, v.OrganizationID, mediaType))
 	if err != nil {
 		return Request{}, err
 	}
@@ -250,6 +272,11 @@ func (s *Service) Act(ctx context.Context, v Viewer, id, action string, in Actio
 	}
 	if action != "cancel" && !v.Admin {
 		return Request{}, ErrForbidden
+	}
+	if mediaType == "book" {
+		if err = checkEbookAuthority(ctx, tx, v, action == "approve"); err != nil {
+			return Request{}, err
+		}
 	}
 	if r.Revision != in.ExpectedRevision {
 		return Request{}, ErrConflict
@@ -283,7 +310,7 @@ func (s *Service) Act(ctx context.Context, v Viewer, id, action string, in Actio
 	if err = tx.Commit(ctx); err != nil {
 		return Request{}, err
 	}
-	if s.notifier != nil && action != "fulfil" {
+	if s.notifier != nil && mediaType == "audiobook" && action != "fulfil" {
 		s.notifier.Lifecycle(ctx, r, action)
 	}
 	// Fulfilled deliveries are retried by the durable reconciliation task.
