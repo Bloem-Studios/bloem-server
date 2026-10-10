@@ -50,8 +50,8 @@ const acceptanceAPIKey = "acceptance-api-key"
 func TestRetainedProvidersInstallAndMatchDeterministically(t *testing.T) {
 	pool := newAcceptanceDatabase(t)
 	fixtures := newProviderFixtures(t)
-	tmdbBinary := buildProvider(t, "../../../bloem-plugin-tmdb", "github.com/Bloem-Media/bloem-plugin-tmdb/provider.defaultBaseURL", fixtures.server.URL)
-	tvdbBinary := buildProvider(t, "../../../bloem-plugin-tvdb", "github.com/Bloem-Media/bloem-plugin-tvdb/provider.defaultBaseURL", fixtures.server.URL)
+	tmdbBinary := buildProvider(t, "../../../bloem-plugin-tmdb", fixtures.server.URL)
+	tvdbBinary := buildProvider(t, "../../../bloem-plugin-tvdb", fixtures.server.URL)
 	static := newStaticCatalog(t, tmdbBinary, tvdbBinary)
 
 	repositories := plugins.NewRepositoryStore(pool)
@@ -136,6 +136,7 @@ func TestRetainedProvidersInstallAndMatchDeterministically(t *testing.T) {
 	if fixtures.tmdbSearch.Load() < 3 || fixtures.tvdbSearch.Load() < 1 || fixtures.tvdbEpisodes.Load() < 1 {
 		t.Fatalf("fixture counters tmdb=%d tvdb=%d episodes=%d", fixtures.tmdbSearch.Load(), fixtures.tvdbSearch.Load(), fixtures.tvdbEpisodes.Load())
 	}
+	t.Logf("local provider fixture requests: tmdb_search=%d tvdb_search=%d tvdb_episodes=%d", fixtures.tmdbSearch.Load(), fixtures.tvdbSearch.Load(), fixtures.tvdbEpisodes.Load())
 }
 
 func newAcceptanceDatabase(t *testing.T) *pgxpool.Pool {
@@ -240,9 +241,17 @@ type providerBuild struct {
 	manifest *pluginv1.PluginManifest
 }
 
-func buildProvider(t *testing.T, relativeDir, variable, baseURL string) providerBuild {
+func buildProvider(t *testing.T, relativeDir, baseURL string) providerBuild {
 	t.Helper()
 	dir, _ := filepath.Abs(relativeDir)
+	moduleCmd := exec.Command("go", "list", "-m", "-f", "{{.Path}}")
+	moduleCmd.Dir = dir
+	moduleCmd.Env = append(os.Environ(), "GOWORK=off")
+	modulePath, err := moduleCmd.Output()
+	if err != nil {
+		t.Fatalf("resolve provider module %s: %v", dir, err)
+	}
+	variable := strings.TrimSpace(string(modulePath)) + "/provider.defaultBaseURL"
 	out := filepath.Join(t.TempDir(), "plugin")
 	cmd := exec.Command("go", "build", "-trimpath", "-ldflags", "-X main.version=acceptance -X "+variable+"="+baseURL, "-o", out, ".")
 	cmd.Dir = dir
