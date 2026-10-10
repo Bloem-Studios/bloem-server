@@ -342,6 +342,16 @@ func (h *LibraryHandler) DeleteLibrary(ctx context.Context, id, userID int) (*mo
 		slog.ErrorContext(ctx, "fetching library before delete", "component", "api", "library_id", id, "error", err)
 		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to load library")
 	}
+	if err := h.folderRepo.CheckDeletionAllowed(ctx, id); err != nil {
+		if errors.Is(err, catalog.ErrFolderDeletionRestricted) {
+			return nil, apiError(http.StatusConflict, policyErrorConflict, "Library is retained by an entitlement bundle")
+		}
+		if errors.Is(err, catalog.ErrFolderNotFound) {
+			return nil, apiError(http.StatusNotFound, "not_found", "Library not found")
+		}
+		slog.ErrorContext(ctx, "checking library deletion references", "component", "api", "library_id", id, "error", err)
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to check library deletion")
+	}
 
 	creator, ok := h.JobRepo.(interface {
 		CreateLibraryDeletion(context.Context, int, adminjob.DeleteLibraryRequest) (*models.AdminJob, error)

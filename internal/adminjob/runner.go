@@ -528,17 +528,18 @@ func (r *Runner) executeDeleteLibrary(job *models.AdminJob) {
 	ctx, cancel := context.WithTimeout(r.executionContext(), deleteLibraryTimeout)
 	defer cancel()
 
-	heartbeatStop := make(chan struct{})
-	go r.heartbeatLoop(ctx, job.ID, heartbeatStop)
-	defer close(heartbeatStop)
-
-	progress := func(current, total int, message string) {
-		if err := r.repo.UpdateProgress(ctx, job.ID, current, total, message); err != nil {
-			slog.Warn("admin jobs: failed to update delete progress", "job_id", job.ID, "error", err)
-			return
-		}
-		r.publishJobByID(ctx, notifications.TypeJobProgress, job.ID)
+	metadata, err := r.libraryDeletionRepository(ctx)
+	if err != nil {
+		r.failJob(job.ID, 0, 5, "Library deletion failed", err.Error())
+		return
 	}
+	// runNext owns this Runner and its claim for this execution only.
+	r.repo = metadata
+	defer metadata.pool.Close()
+	stopHeartbeat := r.startLibraryDeletionHeartbeat(ctx, job.ID)
+	defer stopHeartbeat()
+
+	progress := r.libraryDeletionProgress(ctx, job.ID)
 
 	result, err := r.libraryDelete.Execute(ctx, req, progress)
 	if err != nil {

@@ -650,7 +650,19 @@ func (r *FolderRepository) DeleteWithStats(
 ) (*DeleteFolderStats, error) {
 	stats := &DeleteFolderStats{}
 
-	// Phase 0: preflight reads (no long-lived transaction).
+	guard, err := r.beginFolderDeletion(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = guard.Rollback(ctx) }()
+	worker, err := r.folderDeletionWorker(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer worker.pool.Close()
+	r = worker
+
+	// Phase 0: preflight reads. Only the root lock spans the catalog batches.
 	if err := r.pool.QueryRow(ctx, `SELECT name FROM media_folders WHERE id = $1`, id).Scan(&stats.LibraryName); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrFolderNotFound
@@ -787,17 +799,9 @@ func (r *FolderRepository) DeleteWithStats(
 		stats.OrphanedImageDirs = filtered
 	}
 
-	if err := r.releaseFolderTenancy(ctx, id); err != nil {
+	// Phase 4: release grants and delete the root under its retained lock.
+	if err := finishFolderDeletion(ctx, guard, id); err != nil {
 		return nil, err
-	}
-
-	// Phase 4: delete the now-lightweight folder row. Tolerate 0 rows so a
-	// resumed run that already removed it still succeeds.
-	if err := retryOnDeadlock(ctx, func() error {
-		_, e := r.pool.Exec(ctx, `DELETE FROM media_folders WHERE id = $1`, id)
-		return e
-	}); err != nil {
-		return nil, fmt.Errorf("deleting folder: %w", err)
 	}
 
 	if progress != nil {
