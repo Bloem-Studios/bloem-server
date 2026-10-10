@@ -1,9 +1,10 @@
 # October 10 upstream integration
 
 This source integration preserves Silo ancestry through normal merges. The
-earlier merge imported `9d37930c6`; this integration imports all twelve commits
-through `0c7e4190445baa56c2a780c218ef3056b347ae4e`. It does not authorize a
-deployment or certify a live storage backend.
+earlier merge imported `9d37930c6`; the next integration imported all twelve
+commits through `0c7e4190445baa56c2a780c218ef3056b347ae4e`. The follow-up imports
+`2b94fb3dc` and `e437e804fcdc9834ec405a2723ce41b35c865907`. It does not authorize
+a deployment or certify a live storage backend.
 
 ## Conflict resolutions
 
@@ -36,6 +37,29 @@ The generated Kotlin and Swift contracts include upstream's
 extraction state is explicitly excluded from client generation. The owned
 bundle checker retains Bloem's allowance policy after upstream removed its
 exported budget helper; the lazy launch path uses a smaller allowance.
+
+## Episode spoilers and plugin package refusals
+
+The follow-up retains upstream's per-profile episode spoiler settings and
+episode-image provenance. The only textual conflict is the declaration of
+`sectionItemResponse` in `internal/api/handlers/sections.go`: Bloem already owns
+that declaration in `bloem_sections_ext.go`. The declaration stays in the
+companion with Bloem's promotion field. Upstream's `PosterIsEpisodeStill` and
+`BackdropIsEpisodeStill` fields are added there as nullable booleans with
+`json:"-"`, preserving v1's frozen JSON shape. Upstream's response builders and
+v2 wire fields are retained; false provenance remains distinct from unknown.
+
+The generic plugin service, catalog, installer, updater and new package-error
+implementation are taken verbatim from `e437e804f`. Catalog identity is carried
+through binary and archive requests, invalid packages are refused before
+replacement effects, and administrators receive safe permanent or transient
+refusal reasons. Bloem's native-storage registry and publication helpers keep
+their separate approval, artifact, state-identity and transactional checks.
+
+The automatic merge preserves captured plugin mutation authority, nullable
+episode-file handling, section hooks and Bloem's existing test scaffolding.
+The revision-17 settings bindings and reachable v2 client DTOs are regenerated
+in the server; sibling client repositories are not written by regeneration.
 
 ## Verification boundary
 
