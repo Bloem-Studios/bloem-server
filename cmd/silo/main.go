@@ -836,7 +836,14 @@ func main() {
 
 	if *migrateOnly {
 		migCtx, migCancel := database.MigrationContext(ctx)
+<<<<<<< HEAD
 		migErr := database.RunMigrations(migCtx, pool, migrations.BloemFS, "sql")
+=======
+		migErr := database.RunMigrations(migCtx, pool, migrations.FS, "sql")
+		if migErr == nil {
+			migErr = ensureAuditDetailIndexes(migCtx, pool)
+		}
+>>>>>>> upstream/main
 		migCancel()
 		if migErr != nil {
 			log.Fatalf("failed to run migrations: %v", migErr)
@@ -854,7 +861,15 @@ func main() {
 	isPrimaryNode := bc.Mode == "integrated" || bc.Mode == "api" || bc.Mode == ""
 	if isPrimaryNode {
 		migCtx, migCancel := database.MigrationContext(ctx)
+<<<<<<< HEAD
 		if migErr := database.RunMigrations(migCtx, pool, migrations.BloemFS, "sql"); migErr != nil {
+=======
+		migErr := database.RunMigrations(migCtx, pool, migrations.FS, "sql")
+		if migErr == nil {
+			migErr = ensureAuditDetailIndexes(migCtx, pool)
+		}
+		if migErr != nil {
+>>>>>>> upstream/main
 			migCancel()
 			log.Fatalf("failed to run migrations: %v", migErr)
 		}
@@ -3137,6 +3152,15 @@ func main() {
 				}
 				_ = deps.EventsHub.PublishJSON(ctx, evt.ChannelDownloadPreparations, event.Name, payload, evt.PublishOptions{AdminOnly: true})
 			})
+			if deps.NodeRepo != nil {
+				artifactMgr.SetStorageNodes(deps.NodeRepo)
+			}
+			artifactMgr.SetStorageNotifier(func(ctx context.Context) {
+				if deps.EventsHub == nil {
+					return
+				}
+				_ = deps.EventsHub.PublishJSON(ctx, evt.ChannelDownloadPreparations, "download_storage.changed", map[string]any{}, evt.PublishOptions{AdminOnly: true})
+			})
 			encodeTask := tasks.NewEncodeDownloadArtifactsTask(artifactMgr)
 			artifactMgr.SetKick(func() { _ = taskMgr.RunTask(appCtx, encodeTask.Key()) })
 			taskMgr.Register(encodeTask)
@@ -4840,4 +4864,9 @@ type audiobooksSettingsAdapter struct {
 
 func (a *audiobooksSettingsAdapter) GetString(ctx context.Context, key string) (string, error) {
 	return a.repo.Get(ctx, key)
+}
+
+func ensureAuditDetailIndexes(ctx context.Context, pool *pgxpool.Pool) error {
+	return partman.NewManager(pool, "activity_log", partman.Weekly, 2).EnsureIndexes(ctx,
+		"activity_log_action_time_idx", "activity_log_target_time_idx")
 }

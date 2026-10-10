@@ -101,7 +101,7 @@ func withMarkerAdminClaims(req *http.Request) *http.Request {
 
 func newMarkersHandler(writer ManualMarkerWriter) *MarkersHandler {
 	files := fakeMarkerFiles{file: &models.MediaFile{ID: 5, Duration: 1800}}
-	return NewMarkersHandler(files, writer, nil, nil, nil, nil)
+	return newTestMarkersHandler(files, writer, nil, nil, nil, nil)
 }
 
 func TestSetFileMarkersWritesManual(t *testing.T) {
@@ -133,7 +133,7 @@ func TestSetItemMarkersWritesPrimaryEpisodeFile(t *testing.T) {
 		byID:         map[int]*models.MediaFile{8: file},
 		episodeFiles: []*models.MediaFile{file},
 	}
-	h := NewMarkersHandler(files, writer, nil, nil, nil, nil)
+	h := newTestMarkersHandler(files, writer, nil, nil, nil, nil)
 
 	rec := httptest.NewRecorder()
 	h.HandleSetItemMarkers(rec, markerItemPutRequest(`{"recap":{"start":0,"end":45}}`))
@@ -177,7 +177,7 @@ func TestGetItemMarkersUsesFirstAuthorizedFile(t *testing.T) {
 		},
 		episodeFiles: []*models.MediaFile{denied, allowed},
 	}
-	h := NewMarkersHandler(files, nil, nil, nil, nil, nil)
+	h := newTestMarkersHandler(files, nil, nil, nil, nil, nil)
 	h.Authorizer = &MediaFileAuthorizer{
 		FileResolver: files,
 		ItemAccess: fakeMarkerItemAccess{
@@ -409,7 +409,7 @@ func (s signalContributor) ContributeFile(_ context.Context, _ *models.MediaFile
 func TestSetFileMarkersTriggersBackgroundContribution(t *testing.T) {
 	called := make(chan markers.ContributeOptions, 1)
 	files := fakeMarkerFiles{file: &models.MediaFile{ID: 5, Duration: 1800}}
-	h := NewMarkersHandler(files, &fakeMarkerWriter{}, signalContributor{called: called}, nil, nil, nil)
+	h := newTestMarkersHandler(files, &fakeMarkerWriter{}, signalContributor{called: called}, nil, nil, nil)
 
 	rec := httptest.NewRecorder()
 	h.HandleSetFileMarkers(rec, markerPutRequest(`{"intro":{"start":0,"end":60}}`))
@@ -430,7 +430,7 @@ func TestSetFileMarkersTriggersBackgroundContribution(t *testing.T) {
 func TestSetFileMarkersClearOnlyDoesNotContribute(t *testing.T) {
 	called := make(chan markers.ContributeOptions, 1)
 	files := fakeMarkerFiles{file: &models.MediaFile{ID: 5, Duration: 1800}}
-	h := NewMarkersHandler(files, &fakeMarkerWriter{}, signalContributor{called: called}, nil, nil, nil)
+	h := newTestMarkersHandler(files, &fakeMarkerWriter{}, signalContributor{called: called}, nil, nil, nil)
 
 	rec := httptest.NewRecorder()
 	h.HandleSetFileMarkers(rec, markerPutRequest(`{"credits":null}`))
@@ -452,7 +452,7 @@ func (f fakeContributionLister) ListByFile(context.Context, int) ([]markers.Cont
 }
 
 func TestContributeFileUsesSnakeCaseResponse(t *testing.T) {
-	h := NewMarkersHandler(
+	h := newTestMarkersHandler(
 		fakeMarkerFiles{file: &models.MediaFile{ID: 5, Duration: 1800}},
 		nil,
 		fakeMarkerContributor{outcomes: []markers.ContributionOutcome{{
@@ -493,7 +493,7 @@ func TestContributeFileUsesSnakeCaseResponse(t *testing.T) {
 
 func TestContributeFileDecodesUnknownLengthBody(t *testing.T) {
 	contributor := &captureMarkerContributor{}
-	h := NewMarkersHandler(
+	h := newTestMarkersHandler(
 		fakeMarkerFiles{file: &models.MediaFile{ID: 5, Duration: 1800}},
 		nil,
 		contributor,
@@ -523,7 +523,7 @@ func TestContributeFileDecodesUnknownLengthBody(t *testing.T) {
 
 func TestListFileContributionsUsesSnakeCaseResponse(t *testing.T) {
 	now := time.Unix(100, 0).UTC()
-	h := NewMarkersHandler(
+	h := newTestMarkersHandler(
 		fakeMarkerFiles{file: &models.MediaFile{ID: 5, Duration: 1800}},
 		nil,
 		nil,

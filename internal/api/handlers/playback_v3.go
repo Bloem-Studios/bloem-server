@@ -53,6 +53,7 @@ const (
 	subtitleCodecPGSFFmpegV3      = "hdmv_pgs_subtitle"
 	subtitleMIMEVTTV3             = "text/vtt"
 	subtitleUnavailableReasonV3   = "subtitle_artifact_unavailable"
+	subtitleTrackKindV3           = "subtitle"
 	transcodeStartFailedReasonV3  = "transcode_start_failed"
 	capabilityUnavailableReasonV3 = "transcode_node_capability_unavailable"
 	// transportStartupReadyV3 is the "outcome" of a transport startup whose
@@ -1578,7 +1579,20 @@ func (h *PlaybackHandler) handleStartPlaybackV3(w http.ResponseWriter, r *http.R
 		writePlaybackOperationError(w, err)
 		return
 	}
+	if response.Outcome == playback.OutcomePlayableV3 {
+		h.recordStartingDevice(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), deviceMetadataFromRequest(r))
+	}
 	writeJSON(w, http.StatusCreated, response)
+}
+
+// recordStartingDevice registers the device that started playback, so a
+// device that plays without ever writing a device setting still appears in
+// the profile's device registry with a current last_seen_at. Callers record
+// only a playable decision; a terminal decision means the device did not play. A start always
+// plays as the caller's own profile (profile_id must match X-Profile-Id), so
+// the declared device is the caller's own device on the caller's own profile.
+func (h *PlaybackHandler) recordStartingDevice(ctx context.Context, userID int, profileID string, device DeviceMetadata) {
+	h.DeviceSightings.RecordFor(ctx, h.StoreProvider, userID, profileID, device)
 }
 
 func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byte) (playback.DecisionResponseV3, error) {
@@ -4492,16 +4506,43 @@ func (h *PlaybackHandler) attachSubtitleArtifactV3(ctx context.Context, sessionI
 
 // downloadedSubtitleInventoryV3 lists the downloaded and AI-generated tracks
 // that follow the file's own tracks in the combined-ordinal space. The
-// repository orders by created_at, so the ordinals it produces are stable.
+// repository orders by created_at, so the ordinals it produces are stable. A
+// failed lookup lists nothing, so planning carries on as if the file had no
+// such tracks; listDownloadedSubtitlesV3 reports the failure instead.
 func (h *PlaybackHandler) downloadedSubtitleInventoryV3(ctx context.Context, file *models.MediaFile) []playback.SubtitleInventoryEntryV3 {
+	entries, _ := h.listDownloadedSubtitlesV3(ctx, file)
+	return entries
+}
+
+// listDownloadedSubtitlesV3 is downloadedSubtitleInventoryV3 that reports a
+// failed lookup, wrapped as a subtitle-store outage.
+func (h *PlaybackHandler) listDownloadedSubtitlesV3(ctx context.Context, file *models.MediaFile) ([]playback.SubtitleInventoryEntryV3, error) {
 	if h == nil || h.SubtitleRepo == nil || file == nil {
-		return nil
+		return nil, nil
 	}
 	downloaded, err := h.SubtitleRepo.ListDownloadedSubtitles(ctx, file.ID)
 	if err != nil {
-		return nil
+		return nil, wrapSubtitleStoreErrorV3(err)
 	}
-	return downloadedSubtitleEntriesV3(file, downloaded)
+	return downloadedSubtitleEntriesV3(file, downloaded), nil
+}
+
+// selectsDownloadedSubtitleV3 reports whether request selects a subtitle past
+// file's own external and embedded tracks, the range downloaded subtitles
+// occupy.
+func selectsDownloadedSubtitleV3(file *models.MediaFile, request playback.StartRequestV3) bool {
+	if file == nil {
+		return false
+	}
+	index := -1
+	if request.SubtitleTrackIndex != nil {
+		index = *request.SubtitleTrackIndex
+	} else if request.SubtitleTrackID != "" {
+		if fileID, kind, ordinal, ok := playback.ParseTrackIDV3(request.SubtitleTrackID); ok && kind == subtitleTrackKindV3 && fileID == file.ID {
+			index = ordinal
+		}
+	}
+	return index >= len(file.ExternalSubtitles)+len(file.SubtitleTracks)
 }
 
 // downloadedSubtitleEntriesV3 converts downloaded rows into inventory entries
@@ -4998,6 +5039,10 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 			if keepActiveEdition {
 				effectiveFile = currentEffectiveFile
 				keptActiveEditionForSubtitle = subtitleDropped
+			} else if errors.Is(remapErr, errSubtitleStoreUnavailableV3) {
+				// The playing plan keeps its subtitle; the change can be
+				// repeated once the downloaded subtitles can be read.
+				return playback.DecisionResponseV3{}, *record, nil, subtitleArtifactErrorV3("Downloaded subtitles are temporarily unavailable.", remapErr)
 			} else if remapErr != nil {
 				return playback.DecisionResponseV3{}, *record, nil, &transportErrorV3{reason: "track_unavailable", message: remapErr.Error()}
 			} else {
@@ -5085,7 +5130,20 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 			}
 		}
 	} else {
+<<<<<<< HEAD
 		result, toneMapCapabilityErr = h.planPlaybackWithCapabilitiesV3(r.Context(), playback.PlannerInputV3{Request: start, RequestedFile: plannerRequestedFile, EffectiveFile: effectiveFile, LowerVersion: lowerVersionForFileV3(lowerVersion, effectiveFile), ServerBitrateCapKbps: serverBitrateCapV3(r.Context()), AudioTrackIndex: audioIndex, Settings: plannerSettings, Registry: h.transformationRegistryV3(r.Context()), DVRPUStrippable: h.lazyDVRPUStrippableV3(r.Context(), effectiveFile), Now: time.Now(), AttemptedKeys: attemptedKeys, AdditionalSubtitles: h.downloadedSubtitleInventoryV3(r.Context(), effectiveFile), ForceTranscode: remoteOverrides.ForceTranscode()})
+=======
+		additional, inventoryErr := h.listDownloadedSubtitlesV3(r.Context(), effectiveFile)
+		if inventoryErr != nil && (trackChange || qualityChange) && selectsDownloadedSubtitleV3(effectiveFile, start) {
+			// A failed lookup says nothing about whether the selected track
+			// exists. Planning without it would turn the subtitle off, and
+			// later replans start from that plan's tracks, so it would stay
+			// off for the rest of the session. The playing plan carries on
+			// and the viewer can repeat the change.
+			return playback.DecisionResponseV3{}, *record, nil, subtitleArtifactErrorV3("Downloaded subtitles are temporarily unavailable.", inventoryErr)
+		}
+		result, toneMapCapabilityErr = h.planPlaybackWithCapabilitiesV3(r.Context(), playback.PlannerInputV3{Request: start, RequestedFile: plannerRequestedFile, EffectiveFile: effectiveFile, LowerVersion: lowerVersionForFileV3(lowerVersion, effectiveFile), ServerBitrateCapKbps: serverBitrateCapV3(r.Context()), AudioTrackIndex: audioIndex, Settings: plannerSettings, Registry: h.transformationRegistryV3(r.Context()), DVRPUStrippable: h.lazyDVRPUStrippableV3(r.Context(), effectiveFile), Now: time.Now(), AttemptedKeys: attemptedKeys, AdditionalSubtitles: additional})
+>>>>>>> upstream/main
 	}
 	if outputChange && result.Terminal != nil && effectiveFile.ID != currentEffectiveFile.ID {
 		// Returning to the requested edition is speculative during an output
@@ -6470,7 +6528,7 @@ func (h *PlaybackHandler) remapSubtitleSelectionV3(ctx context.Context, source, 
 				// A failed lookup says nothing about whether the track exists;
 				// dropping the selection here would store subtitles-off for the
 				// rest of the session over a transient error.
-				return false, fmt.Errorf("load downloaded subtitles: %w", err)
+				return false, fmt.Errorf("load downloaded subtitles: %w", wrapSubtitleStoreErrorV3(err))
 			}
 			downloadedIndex := index - len(source.ExternalSubtitles) - len(source.SubtitleTracks)
 			if downloadedIndex >= 0 && downloadedIndex < len(sourceDownloaded) {

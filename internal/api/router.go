@@ -789,6 +789,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var itemsHandler *handlers.ItemsHandler
 	var catalogResourceHandler *handlers.CatalogResourceHandler
 	var catalogHandler *handlers.CatalogHandler
+	var catalogResolver *catalog.CatalogResolver
 	var shuffleService *shuffle.Service
 	var literaryWorkHandler *handlers.LiteraryWorkHandler
 	var peopleHandler *handlers.PeopleHandler
@@ -963,7 +964,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 
 		catalogResourceHandler = handlers.NewCatalogResourceHandler(itemsHandler)
 		catalogResourceHandler.SetWatchlistPromoter(watchlistTitles)
-		catalogResolver := catalog.NewCatalogResolver(browseRepo, itemRepo).
+		catalogResolver = catalog.NewCatalogResolver(browseRepo, itemRepo).
 			WithEpisodeRepository(episodeRepo).
 			WithUserStoreProvider(deps.UserStoreProvider).
 			WithSearchProvider(catalogSearchService.Provider()).
@@ -1092,6 +1093,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 	var userImportHandler *handlers.UserCollectionImportHandler
 	var settingsHandler *handlers.SettingsHandler
 	var settingValuesHandler *handlers.SettingValuesHandler
+	// One device-sightings recorder for every surface that registers the
+	// request's device (legacy and canonical settings, playback start), so
+	// they share one throttle window per (profile, device).
+	deviceSightings := handlers.NewDeviceSightings()
 	// userPluginSettingsHandler is the plugin handler the user-scoped
 	// /settings/plugins routes are registered on; v2 shares it.
 	var userPluginSettingsHandler *handlers.PluginHandler
@@ -1198,6 +1203,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			userImportHandler.ArtworkResolver = deps.ArtworkResolver
 		}
 		settingsHandler = handlers.NewSettingsHandler(deps.UserStoreProvider)
+		settingsHandler.DeviceSightings = deviceSightings
 		settingsHandler.EventsHub = deps.EventsHub
 		if settingsRepo != nil {
 			settingsHandler.SetServerSettings(settingsRepo)
@@ -1208,6 +1214,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		// which degrades to "no typed settings routes" instead of no server.
 		if contract, err := settingscontract.Load(); err == nil {
 			settingValuesHandler = handlers.NewSettingValuesHandler(deps.UserStoreProvider, contract)
+			settingValuesHandler.DeviceSightings = deviceSightings
 			settingValuesHandler.EventsHub = deps.EventsHub
 			// Household management: a primary profile acting for another
 			// profile on its own account. Without the token service a
@@ -1332,6 +1339,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		// Wire UserStoreProvider for progress/history persistence.
 		if deps.UserStoreProvider != nil {
 			playbackHandler.StoreProvider = deps.UserStoreProvider
+			playbackHandler.DeviceSightings = deviceSightings
 		}
 		playbackHandler.StableIdentityResolver = watchstate.NewStableIdentityResolver(itemRepo, episodeRepo, providerIDRepo)
 		playbackHandler.CompletionObserver = deps.WatchCompletionObserver
@@ -1733,6 +1741,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 			deps.FileRepo, deps.FileRepo, contributor, contributions, notifier, slog.Default(),
 		)
 		markersHandler.BaseContext = deps.AppContext
+		if deps.DB != nil {
+			markersHandler.Libraries = catalog.NewFolderRepository(deps.DB)
+		}
 		if deps.MarkerPopulation != nil {
 			markersHandler.MarkerPopulation = deps.MarkerPopulation
 		}
@@ -1930,7 +1941,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		sections.InstallRecipeDelegate(sectionFetcher)
 		sectionHandler = handlers.NewSectionHandler(sectionRepo, sectionFetcher)
+<<<<<<< HEAD
 		configureBloemSectionExtensions(sectionHandler, deps)
+=======
+		catalogResolver.WithSectionResolver(sectionHandler)
+>>>>>>> upstream/main
 		if deps.TrendingRefresher != nil {
 			sectionHandler.TrendingRefresher = deps.TrendingRefresher
 		}
@@ -2448,6 +2463,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.DownloadSubscriptionSync = downloadSvc
 		v2deps.DownloadCreation = downloadSvc
 		v2deps.AdminAccountDownloads = downloadSvc
+		v2deps.AdminDownloadDevices = downloadSvc
+		v2deps.DownloadPrepareAgain = downloadSvc
 	}
 	if ebookReaderHandler != nil {
 		v2deps.EbookProgress = ebookReaderHandler
@@ -2613,6 +2630,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if deps.DB != nil && deps.ArtifactManager != nil {
 			v2deps.AdminDownloadPreparations = downloads.NewPreparationReader(deps.DB, profileNamesByUser(deps.UserStoreProvider))
 			v2deps.AdminDownloadPreparationControls = deps.ArtifactManager
+			v2deps.AdminDownloadStorage = deps.ArtifactManager
 		}
 		if adminPlaybackControlHandler != nil {
 			v2deps.AdminPlaybackCommands = adminPlaybackControlHandler
@@ -4814,7 +4832,7 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 
 	// Activity logging (before auth — captures all requests including failed auth).
 	if deps.ActivityLogWriter != nil {
-		r.Use(activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID))
+		r.Use(activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub))
 	}
 }
 

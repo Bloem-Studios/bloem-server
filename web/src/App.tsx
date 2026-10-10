@@ -125,6 +125,7 @@ const AdminDevices = lazy(() => import("@/pages/AdminDevices"));
 const AdminLibraries = lazy(() => import("@/pages/AdminLibraries"));
 const AdminSettingsLayout = lazy(() => import("@/pages/admin-settings/AdminSettingsLayout"));
 const AdminNodes = lazy(() => import("@/pages/AdminNodes"));
+const AdminDownloads = lazy(() => import("@/pages/AdminDownloads"));
 const AdminHomeRows = lazy(() => import("@/pages/AdminHomeRows"));
 const AdminCollections = lazy(() => import("@/pages/AdminCollections"));
 const AdminPlaybackHistory = lazy(() => import("@/pages/AdminPlaybackHistory"));
@@ -555,7 +556,36 @@ function AppRoutes() {
                     <Route path="tasks/:key" element={<AdminTaskDetail />} />
                     <Route path="stats" element={<Navigate to="/admin" replace />} />
                   </Route>
+<<<<<<< HEAD
                   {bloemAdminContextRoutes}
+=======
+                  <Route path="requests" element={<AdminRequests />} />
+                  {/* Autoscan is a tab on Libraries now; keep old links working. */}
+                  <Route path="autoscan" element={<LegacyAutoscanRedirect />} />
+                  <Route path="history" element={<AdminPlaybackHistory />} />
+                  <Route path="marker-history" element={<AdminMarkerHistory />} />
+                  <Route path="history-import" element={<AdminHistoryImport />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="users/:id" element={<AdminUserDetail />} />
+                  <Route path="access-groups" element={<AdminAccessGroups />} />
+                  <Route path="access-groups/:id" element={<AdminAccessGroups />} />
+                  <Route path="devices" element={<AdminDevices />} />
+                  <Route path="devices/:userId/:deviceId" element={<AdminDevices />} />
+                  <Route path="nodes" element={<AdminNodes />} />
+                  <Route path="downloads" element={<AdminDownloads />} />
+                  <Route path="sections" element={<AdminHomeRows />} />
+                  <Route path="home-rows" element={<LegacyAdminHomeRowsRedirect />} />
+                  <Route path="plugins" element={<AdminPlugins />} />
+                  <Route path="plugins/:pluginId" element={<AdminPluginDetail />} />
+                  <Route path="settings/*" element={<AdminSettingsLayout />} />
+                  <Route path="policy" element={<AdminPolicyLayout />} />
+                  <Route path="recommendations" element={<AdminRecommendations />} />
+                  <Route path="api-keys" element={<AdminApiKeys />} />
+                  <Route path="subtitles" element={<AdminSubtitles />} />
+                  <Route path="tasks" element={<AdminTasks />} />
+                  <Route path="tasks/:key" element={<AdminTaskDetail />} />
+                  <Route path="stats" element={<Navigate to="/admin" replace />} />
+>>>>>>> upstream/main
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Route>
                 {/* Account credentials are reachable by admins before profile selection. */}
