@@ -5,7 +5,9 @@ owned tenant adapters before composing either native listener, independently
 of lifecycle-idempotency configuration. Unsupported production dependencies
 fail composition instead of silently retaining account-wide authorization.
 Database-free composition and ordinary Silo services retain their existing
-behavior.
+behavior. A DB-only discovery router has no authentication middleware or user
+repository; it leaves request operations unavailable. Every authenticated
+composition still requires the verified-profile policy dependencies.
 
 ## Viewer requests
 
@@ -44,6 +46,23 @@ verified request organization and actor. A write locks the group's ownership
 through the revision-checked transaction. A preflight against another
 organization's group cannot authorize its quota or approval policy. These
 adapters retain the request repository's other optional capabilities.
+
+## Global routing administration
+
+Request routes and the routing mode are server-global. The existing tenant
+service decorator requires account-admin authority in the actual default
+organization before listing, reading, creating, updating, deleting, reordering
+or previewing routes, and before reading or changing the routing mode. This
+matches the existing boundary for global request settings and integrations.
+The decorator preserves the interfaces consumed by both native listeners;
+TMDB title search retains its existing behavior.
+
+Ordinary organization-only administrators already fail the account-admin
+transport gate. Current public account-session issuers do not issue an
+account-admin token bound to a hosted tenant. The additional service check
+also rejects that trusted bound-admin context, so accepting such a context in
+the future cannot give it access to server-global routing configuration.
+Denied writes leave route rows, priorities, revisions and routing mode intact.
 
 Regression coverage includes conflicting account/profile groups, sibling
 profile policies, membership and user-limit overrides, account consumption,
