@@ -27,6 +27,7 @@ type BloemNativeStorageCapabilities struct {
 	Disable                     bool `json:"disable"`
 	Uninstall                   bool `json:"uninstall"`
 	Upgrade                     bool `json:"upgrade"`
+	S3InitialRootDiscovery      bool `json:"s3_initial_root_discovery"`
 	RetainedNamespaceReinstall  bool `json:"retained_namespace_reinstall" enum:"false"`
 	Enable                      bool `json:"enable" enum:"false"`
 	BackendVerified             bool `json:"backend_verified" enum:"false"`
@@ -53,6 +54,18 @@ type BloemNativeStorageInstallBody struct {
 type BloemNativeStoragePlatformInstallBody struct {
 	BloemNativeStorageInstallBody
 	OrganizationID *uuid.UUID `json:"organization_id,omitempty" nullable:"true" doc:"Optional active organization ownership. Omitted or null uses platform ownership. Organization-scoped routes reject this field."`
+}
+
+type BloemNativeStorageDiscoverInstallBody struct {
+	ArtifactKey      string                    `json:"artifact_key" minLength:"1" doc:"Host-approved bloem.storage.s3 artifact key, at most 1024 UTF-8 bytes. The upload cannot approve its own artifact."`
+	ProviderSourceID string                    `json:"provider_source_id" minLength:"1" doc:"Exact opaque provider source to select from a fresh Describe, at most 1024 UTF-8 bytes. Its root is discovered, never supplied by the caller."`
+	Enabled          bool                      `json:"enabled" doc:"Committed enabled state. Even false requires a configured temporary discovery process."`
+	Config           map[string]map[string]any `json:"config" writeOnly:"true" doc:"Complete configuration for discovery. Caller state_path is forbidden. Encrypted at rest, never returned."`
+}
+
+type BloemNativeStoragePlatformDiscoverInstallBody struct {
+	BloemNativeStorageDiscoverInstallBody
+	OrganizationID *uuid.UUID `json:"organization_id,omitempty" nullable:"true" doc:"Optional active organization ownership. Omitted or null uses platform ownership. Organization-scoped routes reject this field, including null."`
 }
 
 type BloemNativeStorageUpgradeBody struct {
@@ -158,7 +171,7 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 			413: "request_too_large: JSON, binary or total multipart limit exceeded.",
 		})
 	}
-	if path == "/installations" || strings.HasSuffix(path, "/upgrade") {
+	if path == "/installations" || path == "/installations/discover" || strings.HasSuffix(path, "/upgrade") {
 		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{422: "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact."})
 	}
 	op.Responses[strconv.Itoa(status)] = &huma.Response{Description: summary}
@@ -179,6 +192,11 @@ func registerBloemNativeStorageDocument(reg *Registry) {
 			install = bloemNativeStorageMultipart[BloemNativeStoragePlatformInstallBody](reg)
 		}
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/installations", "install", "Install an approved artifact and source without creating a library or scan.", 201, install, false)
+		discoverInstall := bloemNativeStorageMultipart[BloemNativeStorageDiscoverInstallBody](reg)
+		if scope == "platform" {
+			discoverInstall = bloemNativeStorageMultipart[BloemNativeStoragePlatformDiscoverInstallBody](reg)
+		}
+		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/installations/discover", "discoverInstall", "Discover the root of a new approved S3 installation and publish it atomically without a library or scan.", 201, discoverInstall, false)
 		catalogInstall := bloemNativeStorageJSONBody[BloemNativeStorageInstallBody](reg)
 		if scope == "platform" {
 			catalogInstall = bloemNativeStorageJSONBody[BloemNativeStoragePlatformInstallBody](reg)
@@ -198,17 +216,18 @@ func registerBloemNativeStorageDocument(reg *Registry) {
 // generic map schemas. Runtime JSON validation remains in the chi handler.
 func bloemNativeStorageDocumentSchemas(schemas huma.Registry) {
 	for typ, fields := range map[reflect.Type][]string{
-		reflect.TypeFor[nativestorage.SourceView]():              {"organization_id", "installation_id"},
-		reflect.TypeFor[nativestorage.SourcePage]():              {"next_after"},
-		reflect.TypeFor[BloemNativeStorageInstallBody]():         {"source_key", "expected_revision"},
-		reflect.TypeFor[BloemNativeStoragePlatformInstallBody](): {"source_key", "expected_revision", "organization_id"},
+		reflect.TypeFor[nativestorage.SourceView]():                      {"organization_id", "installation_id"},
+		reflect.TypeFor[nativestorage.SourcePage]():                      {"next_after"},
+		reflect.TypeFor[BloemNativeStorageInstallBody]():                 {"source_key", "expected_revision"},
+		reflect.TypeFor[BloemNativeStoragePlatformInstallBody]():         {"source_key", "expected_revision", "organization_id"},
+		reflect.TypeFor[BloemNativeStoragePlatformDiscoverInstallBody](): {"organization_id"},
 	} {
 		schema := schemas.Schema(typ, false, "")
 		for _, name := range fields {
 			schema.Properties[name].Nullable = true
 		}
 	}
-	for _, typ := range []reflect.Type{reflect.TypeFor[BloemNativeStorageInstallBody](), reflect.TypeFor[BloemNativeStoragePlatformInstallBody](), reflect.TypeFor[BloemNativeStorageConfigurationBody]()} {
+	for _, typ := range []reflect.Type{reflect.TypeFor[BloemNativeStorageInstallBody](), reflect.TypeFor[BloemNativeStoragePlatformInstallBody](), reflect.TypeFor[BloemNativeStorageDiscoverInstallBody](), reflect.TypeFor[BloemNativeStoragePlatformDiscoverInstallBody](), reflect.TypeFor[BloemNativeStorageConfigurationBody]()} {
 		schema := schemas.Schema(typ, false, "")
 		schema.Properties["config"] = &huma.Schema{Type: "object", WriteOnly: true, AdditionalProperties: &huma.Schema{Type: "object", AdditionalProperties: true}, Description: "Complete encrypted provider configuration. Each keyed value must be an object; empty configuration is valid."}
 	}

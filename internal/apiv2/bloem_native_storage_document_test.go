@@ -7,6 +7,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/google/uuid"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 // Hand-checked against the mounted chi contract. Missing a scope or accidentally
@@ -16,7 +17,7 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 	routes := []struct{ method, path, status string }{
 		{"get", "/capabilities", "200"}, {"get", "/artifacts", "200"},
 		{"get", "/sources", "200"}, {"get", "/sources/{source_key}", "200"},
-		{"post", "/installations", "201"}, {"put", "/sources/{source_key}/configuration", "200"},
+		{"post", "/installations", "201"}, {"post", "/installations/discover", "201"}, {"put", "/sources/{source_key}/configuration", "200"},
 		{"post", "/installations/{installation_id}/disable", "200"}, {"delete", "/installations/{installation_id}", "200"},
 		{"post", "/installations/{installation_id}/upgrade", "200"},
 		{"post", "/catalog/installations", "201"}, {"post", "/catalog/installations/{installation_id}/upgrade", "200"},
@@ -27,8 +28,8 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 			count += len(value.(map[string]any))
 		}
 	}
-	if count != 22 {
-		t.Errorf("native operations = %d, want 22 mounted methods", count)
+	if count != 24 {
+		t.Errorf("native operations = %d, want 24 mounted methods", count)
 	}
 	for _, scope := range []string{"platform", "organization"} {
 		security := "bloemPlatformContext"
@@ -65,7 +66,7 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 				if route.method == "get" && op["requestBody"] != nil {
 					t.Error("GET does not accept a body")
 				}
-				if route.path == "/installations" {
+				if route.path == "/installations" || route.path == "/installations/discover" {
 					form := bloemDocObject(t, op, "requestBody", "content", "multipart/form-data")
 					schema := bloemDocSchema(t, doc, bloemDocObject(t, form, "schema"))
 					bloemDocFields(t, schema, "request", "binary")
@@ -86,6 +87,69 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestBloemNativeStorageDiscoveryDocumentRequestBoundaries(t *testing.T) {
+	doc := bloemWebDocument(t)
+	compiler := jsonschema.NewCompiler()
+	const resource = "https://schema.example.invalid/bloem-storage-discovery.json"
+	if err := compiler.AddResource(resource, doc); err != nil {
+		t.Fatal(err)
+	}
+	for _, scope := range []string{"platform", "organization"} {
+		t.Run(scope, func(t *testing.T) {
+			op := bloemDocObject(t, doc, "paths", BloemPrefix+"/admin/"+scope+"/native-storage/installations/discover", "post")
+			form := bloemDocObject(t, op, "requestBody", "content", "multipart/form-data", "schema", "properties", "request")
+			schema, err := compiler.Compile(resource + form["$ref"].(string))
+			if err != nil {
+				t.Fatal(err)
+			}
+			valid := map[string]any{"artifact_key": "approved-s3", "provider_source_id": " opaque/../source ", "enabled": false, "config": map[string]any{"connection": map[string]any{"bucket": "fixture"}}}
+			if err = schema.Validate(valid); err != nil {
+				t.Fatalf("valid discovery schema rejected: %v", err)
+			}
+			for _, field := range []string{"artifact_key", "provider_source_id", "enabled", "config"} {
+				invalid := map[string]any{}
+				for key, value := range valid {
+					if key != field {
+						invalid[key] = value
+					}
+				}
+				if schema.Validate(invalid) == nil {
+					t.Errorf("missing %s accepted", field)
+				}
+				invalid[field] = nil
+				if schema.Validate(invalid) == nil {
+					t.Errorf("null %s accepted", field)
+				}
+			}
+			for _, field := range []string{"root_entry_id", "source_key", "expected_revision"} {
+				valid[field] = nil
+				if schema.Validate(valid) == nil {
+					t.Errorf("caller %s accepted", field)
+				}
+				delete(valid, field)
+			}
+			valid["organization_id"] = nil
+			if got := schema.Validate(valid) == nil; got != (scope == "platform") {
+				t.Errorf("organization null accepted=%v for %s scope", got, scope)
+			}
+			delete(valid, "organization_id")
+			valid["config"] = map[string]any{"connection": nil}
+			if schema.Validate(valid) == nil {
+				t.Error("null configuration namespace accepted")
+			}
+			old := bloemDocObject(t, doc, "paths", BloemPrefix+"/admin/"+scope+"/native-storage/installations", "post", "requestBody", "content", "multipart/form-data", "schema", "properties", "request")
+			oldSchema, err := compiler.Compile(resource + old["$ref"].(string))
+			if err != nil {
+				t.Fatal(err)
+			}
+			valid["config"] = map[string]any{}
+			if oldSchema.Validate(valid) == nil {
+				t.Fatal("old install schema no longer requires a root")
+			}
+		})
 	}
 }
 
@@ -141,6 +205,19 @@ func TestBloemNativeStorageDocumentRequestBoundaries(t *testing.T) {
 			unknown["source_key"] = nil
 			if err := failure.Validate(unknown); err == nil {
 				t.Error("unknown recovery identifiers must be omitted, not null")
+			}
+		})
+	}
+}
+
+func TestBloemNativeStorageDiscoveryDocumentArtifactRejection(t *testing.T) {
+	doc := bloemWebDocument(t)
+	for _, scope := range []string{"platform", "organization"} {
+		t.Run(scope, func(t *testing.T) {
+			schema := bloemEngagementSchema(t, doc, "/admin/"+scope+"/native-storage/installations/discover", "post", "422")
+			body := map[string]any{"error": "artifact_rejected", "message": "Uploaded artifact rejected"}
+			if err := schema.Validate(body); err != nil {
+				t.Fatalf("artifact rejection envelope does not match the declared response: %v", err)
 			}
 		})
 	}

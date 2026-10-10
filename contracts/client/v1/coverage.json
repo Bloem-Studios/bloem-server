@@ -2078,6 +2078,14 @@
       "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
     },
     {
+      "type": "internal/apiv2.BloemNativeStorageDiscoverInstallBody",
+      "reason": "OpenAPI-only multipart discovery request for organization scope. Runtime client DTOs use the registered nativestorage.DiscoverInstallCommand; the documentation shape rejects platform-only organization_id."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStoragePlatformDiscoverInstallBody",
+      "reason": "OpenAPI-only multipart discovery request for platform scope. Runtime client DTOs use the registered nativestorage.DiscoverInstallCommand; this declaration documents optional organization ownership."
+    },
+    {
       "type": "internal/apiv2.BloemNativeStorageConfigurationBody",
       "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
     },

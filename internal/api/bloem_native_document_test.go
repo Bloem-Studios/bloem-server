@@ -164,8 +164,8 @@ func mountedNativeStorageOperations(t *testing.T) map[string]struct{} {
 // A method change or scope omission must fail even if the path still exists.
 func TestNativeStorageDocumentMatchesMountedOperations(t *testing.T) {
 	mounted := mountedNativeStorageOperations(t)
-	if len(mounted) != 22 {
-		t.Fatalf("native storage mounted operations=%d, want 22", len(mounted))
+	if len(mounted) != 24 {
+		t.Fatalf("native storage mounted operations=%d, want 24", len(mounted))
 	}
 	raw, err := apiv2.GenerateBloemOpenAPI()
 	if err != nil {

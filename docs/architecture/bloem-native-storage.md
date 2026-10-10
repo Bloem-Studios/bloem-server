@@ -86,6 +86,60 @@ production source admission still requires genuine immutable versions or a
 separately verified snapshot implementation. All-media ingestion and playback
 wiring remain separate from this state-path boundary.
 
+## Initial S3 root discovery
+
+The manual-upload `POST /installations/discover` operation in each native-storage
+admin scope installs a new approved `bloem.storage.s3` source without requiring a
+caller-selected root. Its separate command requires `artifact_key`, the exact
+opaque `provider_source_id`, `enabled` and complete `config`. Only the platform
+scope accepts optional `organization_id`. Caller root, source key and revision
+fields are rejected, including null. The existing explicit-root install operation
+keeps its request and supports disabled/unconfigured package installation.
+
+The registry reserves the final installation sequence ID and prepares its
+approved executable, frozen user configuration and private S3 state at that ID.
+No installation or source row is published during discovery. Source management
+retains host admission and rechecks current account/session, administrative scope,
+owner and organization authority after preparing the execution snapshot,
+immediately before starting its private one-shot manager. That short transaction
+ends before process startup; no database transaction or connection spans provider
+I/O. A fresh, bounded Describe must advertise the requested source, its exact
+opaque root and revision-pinned reads. Discovery performs no List, Stat or Read.
+
+After Describe, the registry seals the private state file's identity and content
+hash. The private process must be reaped before publication, so a committed
+consumer cannot open the same S3 identity database concurrently. Publication
+verifies the original directory and executable identities and sealed state again,
+including after database row waits. Missing, replaced or modified files refuse
+publication; cleanup preserves replacements it does not own.
+
+The publication transaction retains current account/session, administrative
+scope, owner and organization authority and inserts the installation, marker,
+archive, encrypted user configuration and new source atomically. It rechecks
+authority after final file hashing and snapshot construction, immediately before
+COMMIT, because retained row locks do not prevent clock-based expiry. The
+committed source retains the root byte for byte. Desired `enabled: false` still
+requires successful configured discovery, then leaves both resources disabled.
+
+Cancellation or established rollback cleans only the unpublished preparation
+after reaping. A bounded reaping timeout retains process, preparation and host
+admission ownership until the reaper finishes; it never publishes. Unknown
+COMMIT outcomes preserve the executable and state and use the existing
+`operation: install` reconciliation response. They do not trigger an automatic
+retry or compensating deletion.
+
+`s3_initial_root_discovery` is true only when the router's normal storage
+composition is ready and source management has the matching host/registry and
+runtime manager. It is not backend certification: `backend_verified` remains
+false, and immutable versions or verified snapshots remain required for reads.
+This operation does not expand library-kind support, catalog admission or serving.
+
+The Kotlin and Swift contract artifacts include the discovery command and
+capability. This administrative upload operation adds no viewer workflow to
+Bloem Apple or Android, and changes no Jellyfin library or playback behavior.
+An admin client that adopts it must check `s3_initial_root_discovery` and
+reconcile an unknown installation outcome before retrying.
+
 ## Scanning
 
 A storage library scans only as a whole library. `libraryingest.StorageScanner`:

@@ -631,8 +631,15 @@ func nativeStorageInstallRequest(cmd *nativestorage.InstallCommand, fields map[s
 // API, so no library operations are listed here.
 func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx context.Context) map[string]any {
 	ready := h != nil && h.Capabilities != nil && h.Capabilities.NativeStorageReady(ctx)
+	discoveryReady := false
+	if ready {
+		if discovery, ok := h.Capabilities.(interface{ InitialRootDiscoveryReady(context.Context) bool }); ok {
+			discoveryReady = discovery.InitialRootDiscoveryReady(ctx)
+		}
+	}
 	return map[string]any{"schema": 2, "source_management": ready, "approved_artifact_install": ready,
 		"configuration_replace_unbound": ready, "disable": ready, "uninstall": ready, "upgrade": ready,
+		"s3_initial_root_discovery":    discoveryReady,
 		"retained_namespace_reinstall": false, "enable": false, "backend_verified": false}
 }
 

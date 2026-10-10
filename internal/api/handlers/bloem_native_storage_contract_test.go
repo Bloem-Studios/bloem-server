@@ -107,3 +107,49 @@ func TestNativeStorageContractMinimalOrganizationInstall(t *testing.T) {
 		}
 	}
 }
+
+func TestNativeStorageContractDiscoverInstallScopeProjection(t *testing.T) {
+	organization := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	base := nativeStorageOrganizationDiscoverInstallRequest{
+		ArtifactKey: "approved-s3", ProviderSourceID: " opaque/../source ", Enabled: false,
+		Config: map[string]map[string]any{"connection": {"bucket": "fixture"}},
+	}
+	for _, tc := range []struct {
+		name         string
+		scope        auth.AdminScope
+		body         any
+		organization *uuid.UUID
+	}{
+		{"organization", auth.AdminScopeOrganization, base, nil},
+		{"platform", auth.AdminScopePlatform, nativeStoragePlatformDiscoverInstallRequest{nativeStorageOrganizationDiscoverInstallRequest: base}, nil},
+		{"platform_organization", auth.AdminScopePlatform, nativeStoragePlatformDiscoverInstallRequest{nativeStorageOrganizationDiscoverInstallRequest: base, OrganizationID: &organization}, &organization},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, err := json.Marshal(tc.body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var cmd nativestorage.DiscoverInstallCommand
+			fields, err := nativeStorageDecodeJSON(raw, &cmd)
+			if err == nil {
+				err = nativeStorageDiscoverInstallRequest(&cmd, fields, tc.scope)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cmd.ProviderSourceID != " opaque/../source " || cmd.Enabled || !reflect.DeepEqual(cmd.OrganizationID, tc.organization) {
+				t.Fatal("discovery projection changed identity or scope")
+			}
+			for _, name := range []string{"root_entry_id", "source_key", "expected_revision"} {
+				if _, present := fields[name]; present {
+					t.Fatalf("discovery supplied %s", name)
+				}
+			}
+			if tc.organization == nil {
+				if _, present := fields["organization_id"]; present {
+					t.Fatal("organization target must remain omitted")
+				}
+			}
+		})
+	}
+}

@@ -10,7 +10,7 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 - [Silo backend switching](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the mirrored phase, its invariants, and `make silo-switch-check`.
 - [SDK compatibility and contract generation](../architecture/bloem-sdk-compatibility.md) — plugin SDK, generated client DTOs and consumer synchronization.
 
-- [Native storage](../architecture/bloem-native-storage.md) — storage-source ebook libraries: locations, scanning, covers and reading.
+- [Native storage](../architecture/bloem-native-storage.md) — initial S3 root discovery and storage-source ebook libraries: locations, scanning, covers and reading.
 - [Bloem Server front page](../../.github/README.md) — what Bloem is, deployment checkpoint, quick start. The root `README.md` is upstream Silo's.
 - [Integration changelog](CHANGELOG.md) — upstream changes and Bloem adapters.
 - [October 10 upstream resolutions](upstream-merge-2026-10-10.md) — imported revisions and ownership of download, thumbnail, metadata and web changes.

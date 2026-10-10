@@ -20,7 +20,7 @@ func TestNativeOnboardingHTTPProtectedRouteRefusal(t *testing.T) {
 	key := "00000000-0000-0000-0000-000000000001"
 	cases := []struct{ method, suffix string }{
 		{"GET", "/capabilities"}, {"GET", "/artifacts"}, {"GET", "/sources"}, {"GET", "/sources/" + key},
-		{"POST", "/installations"}, {"PUT", "/sources/" + key + "/configuration"}, {"POST", "/installations/7/disable"},
+		{"POST", "/installations"}, {"POST", "/installations/discover"}, {"PUT", "/sources/" + key + "/configuration"}, {"POST", "/installations/7/disable"},
 		{"DELETE", "/installations/7"},
 	}
 	for _, scope := range []string{"platform", "organization"} {

@@ -18,3 +18,7 @@ func (c *nativeStorageCapabilities) NativeStorageReady(ctx context.Context) bool
 	h := d.NativeStorageManagement
 	return d.DB != nil && d.NativeStorage != nil && h != nil && h.Sources != nil && h.Registry == d.NativeStorage.Registry && d.LibraryIngester != nil
 }
+
+func (c *nativeStorageCapabilities) InitialRootDiscoveryReady(ctx context.Context) bool {
+	return c.NativeStorageReady(ctx) && c.deps.NativeStorageManagement.Sources.InitialRootDiscoveryReady()
+}

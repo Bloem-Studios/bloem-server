@@ -47,6 +47,7 @@ type nativeStorageCapabilitiesResponse struct {
 	Disable                     bool `json:"disable"`
 	Uninstall                   bool `json:"uninstall"`
 	Upgrade                     bool `json:"upgrade"`
+	S3InitialRootDiscovery      bool `json:"s3_initial_root_discovery"`
 	RetainedNamespaceReinstall  bool `json:"retained_namespace_reinstall"`
 	Enable                      bool `json:"enable"`
 	BackendVerified             bool `json:"backend_verified"`
@@ -74,4 +75,16 @@ type nativeStorageOrganizationInstallRequest struct {
 	SourceKey        *uuid.UUID                `json:"source_key,omitempty"`
 	ExpectedRevision *int64                    `json:"expected_revision,omitempty"`
 	Config           map[string]map[string]any `json:"config"`
+}
+
+type nativeStorageOrganizationDiscoverInstallRequest struct {
+	ArtifactKey      string                    `json:"artifact_key"`
+	ProviderSourceID string                    `json:"provider_source_id"`
+	Enabled          bool                      `json:"enabled"`
+	Config           map[string]map[string]any `json:"config"`
+}
+
+type nativeStoragePlatformDiscoverInstallRequest struct {
+	nativeStorageOrganizationDiscoverInstallRequest
+	OrganizationID *uuid.UUID `json:"organization_id,omitempty"`
 }

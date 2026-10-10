@@ -113,7 +113,7 @@ BLOEM_PLATFORM = {
     "compatibility": {None: "bloem-platform-compatibility"},
     "ambience": {None: "bloem-platform-engagement"},
     "promotions": {None: "bloem-platform-engagement"},
-    "native-storage": {None: "bloem-native"},
+    "native-storage": {None: "bloem-native-storage"},
 }
 
 # /api/bloem/v1/<a>[/admin/<b>] -> section
@@ -148,6 +148,8 @@ def bloem_section(parts, entry):
         rest = parts[1:]
         if not rest or rest[0] in ("*", "session"):
             return "bloem-admin-core"
+        if rest[0] in ("platform", "organization") and _first_static(rest[1:]) == "native-storage":
+            return "bloem-native-storage"
         if rest[0] == "platform":
             subject = rest[1] if len(rest) > 1 else None
             table = BLOEM_PLATFORM.get(subject)

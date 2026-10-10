@@ -37,6 +37,7 @@ func mountNativeStorageScopeRoutes(r chi.Router, handler *handlers.BloemNativeSt
 	r.Get("/sources", handler.HandleListSources)
 	r.Get("/sources/{source_key}", handler.HandleGetSource)
 	r.Post("/installations", handler.HandleInstall)
+	r.Post("/installations/discover", handler.HandleDiscoverInstall)
 	r.Post("/catalog/installations", handler.HandleCatalogInstall)
 	r.Post("/catalog/installations/{installation_id}/upgrade", handler.HandleCatalogUpgrade)
 	r.Put("/sources/{source_key}/configuration", handler.HandleReplaceConfiguration)
@@ -83,6 +84,7 @@ func nativeStorageDependencies(deps Dependencies) Dependencies {
 		h := *deps.NativeStorageManagement
 		deps.NativeStorageManagement = &h
 	}
+	deps.NativeStorageManagement.Sources.SetInstallDiscoveryHost(deps.NativeStorage)
 	deps.NativeStorageManagement.Capabilities = &nativeStorageCapabilities{deps: deps}
 	return deps
 }

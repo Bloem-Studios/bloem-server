@@ -2610,6 +2610,11 @@
           "gate": "native_storage.source_management"
         },
         {
+          "type": "DiscoverInstallCommand",
+          "direction": "request",
+          "gate": "native_storage.s3_initial_root_discovery"
+        },
+        {
           "type": "UpgradeCommand",
           "direction": "request",
           "gate": "native_storage.source_management"

@@ -96,3 +96,47 @@ func nativeS3StatePath(baseDir string, installationID int) (string, error) {
 	}
 	return filepath.Join(dir, "index.db"), nil
 }
+
+// Reserve an exclusively owned new state directory for a sequence identity.
+// Existing directories are never adopted, even when their permissions match.
+func nativeS3ReserveState(baseDir string, installationID int) (string, error) {
+	if installationID <= 0 {
+		return "", errors.New("invalid S3 installation identity")
+	}
+	parent := filepath.Join(baseDir, "state", "s3")
+	fd, err := nativeS3PrivateDirectory(parent, baseDir)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = unix.Close(fd) }()
+	leaf := "installation-" + strconv.Itoa(installationID)
+	if err := unix.Mkdirat(fd, leaf, 0700); err != nil {
+		return "", errors.New("cannot reserve new private S3 state identity")
+	}
+	path, err := nativeS3StatePath(baseDir, installationID)
+	if err != nil {
+		_ = unix.Unlinkat(fd, leaf, unix.AT_REMOVEDIR)
+		return "", err
+	}
+	return path, nil
+}
+
+// Open a bounded-purpose prepared file relative to its protected directory.
+// The open descriptor must retain host ownership, private mode and one link.
+func nativeS3OpenPrivateFile(path, baseDir string, perm os.FileMode) (*os.File, error) {
+	dir, err := nativeS3PrivateDirectory(filepath.Dir(path), baseDir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = unix.Close(dir) }()
+	fd, err := unix.Openat(dir, filepath.Base(path), unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, errors.New("cannot open private prepared native file")
+	}
+	var stat unix.Stat_t
+	if err := unix.Fstat(fd, &stat); err != nil || stat.Mode&unix.S_IFMT != unix.S_IFREG || stat.Uid != uint32(os.Geteuid()) || stat.Mode&07777 != uint32(perm) || stat.Nlink != 1 {
+		_ = unix.Close(fd)
+		return nil, errors.New("unsafe private prepared native file")
+	}
+	return os.NewFile(uintptr(fd), path), nil
+}

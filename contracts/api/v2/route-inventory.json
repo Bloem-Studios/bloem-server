@@ -42,7 +42,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1106
+      "route_count": 1108
     },
     {
       "id": "api_v2",
@@ -64,7 +64,7 @@
     }
   ],
   "totals": {
-    "routes": 1277,
+    "routes": 1279,
     "conditional_routes": 927,
     "streaming_routes": 44,
     "websocket_routes": 4
@@ -4782,6 +4782,34 @@
     {
       "listener": "api",
       "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/native-storage/installations/discover",
+      "route_group": "/api/bloem/v1/admin/organization/native-storage",
+      "handler": "(*internal/api/handlers.BloemNativeStorageManagementHandler).HandleDiscoverInstall",
+      "handler_expr": "handler.HandleDiscoverInstall",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "multipart",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_native_storage_management.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
       "method": "DELETE",
       "path": "/api/bloem/v1/admin/organization/native-storage/installations/{installation_id}",
       "route_group": "/api/bloem/v1/admin/organization/native-storage",
@@ -7713,6 +7741,34 @@
       "route_group": "/api/bloem/v1/admin/platform/native-storage",
       "handler": "(*internal/api/handlers.BloemNativeStorageManagementHandler).HandleInstall",
       "handler_expr": "handler.HandleInstall",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "multipart",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_native_storage_management.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/platform/native-storage/installations/discover",
+      "route_group": "/api/bloem/v1/admin/platform/native-storage",
+      "handler": "(*internal/api/handlers.BloemNativeStorageManagementHandler).HandleDiscoverInstall",
+      "handler_expr": "handler.HandleDiscoverInstall",
       "handler_kind": "method",
       "handler_resolved": true,
       "middleware_chain": 2,

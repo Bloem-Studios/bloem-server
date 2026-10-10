@@ -47,9 +47,10 @@ type InstallCommand struct {
 	Binary           []byte                    `json:"-"`
 }
 type SourceManagement struct {
-	pool        *pgxpool.Pool
-	registry    *plugins.NativeStorageRegistry
-	coordinator *Coordinator
+	pool                 *pgxpool.Pool
+	registry             *plugins.NativeStorageRegistry
+	coordinator          *Coordinator
+	installDiscoveryHost *Host
 }
 
 func NewSourceManagement(pool *pgxpool.Pool, registry *plugins.NativeStorageRegistry) *SourceManagement {
