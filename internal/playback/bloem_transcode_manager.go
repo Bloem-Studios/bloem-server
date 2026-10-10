@@ -2,6 +2,7 @@ package playback
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 )
 
@@ -29,12 +30,16 @@ func (m *TranscodeManager) strictAdmission() bool {
 	return m.StrictAdmissionFn()
 }
 
-// refuseUnevaluatedReconstruct reports whether reconstructSession must refuse
-// a session whose limit provider could not be evaluated. Only true when the
-// operator has opted into the strict posture: a session whose limits were
-// never evaluated is never admitted, even at the cost of refusing playback to
-// users who are within their caps.
+// refuseUnevaluatedReconstruct always refuses Bloem authority denials, including
+// wrapped denials tagged as provider failures. Strict admission additionally
+// refuses genuine failures to evaluate limits, even for users within their caps.
 func (m *TranscodeManager) refuseUnevaluatedReconstruct(ctx context.Context, sessionID string, userID int, method PlayMethod, err error) bool {
+	if errors.Is(err, ErrPlaybackNotAllowed) || errors.Is(err, ErrTenantFrozen) || errors.Is(err, ErrTenantTranscodesExceeded) {
+		slog.WarnContext(ctx, "playback session reconstruct refused by admission policy", "component", "playback",
+			"session", sessionID, "playback_session_id", sessionID,
+			"user", userID, "method", method, "error", err)
+		return true
+	}
 	if !m.strictAdmission() {
 		return false
 	}
