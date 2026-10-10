@@ -49,7 +49,9 @@ func tenantTestServer(t *testing.T) (*httptest.Server, *pgxpool.Pool) {
 	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
 		t.Fatalf("finalize membership policy authority: %v", err)
 	}
-	handler := handlers.NewAdminTenantsHandler(tenancy.NewStore(pool), auth.NewUserRepository(pool))
+	users := auth.NewUserRepository(pool)
+	members := tenancy.NewMemberService(pool, auth.NewAccountProvisioner(users, nil), users, auth.NewSessionRepository(pool))
+	handler := handlers.NewAdminTenantsHandler(tenancy.NewStore(pool), members)
 	r := chi.NewRouter()
 	r.Post("/api/v1/admin/tenants", handler.HandleCreate)
 	r.Get("/api/v1/admin/tenants", handler.HandleList)

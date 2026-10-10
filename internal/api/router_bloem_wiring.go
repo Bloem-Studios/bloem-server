@@ -268,7 +268,6 @@ func wireBloemAdmin(
 	if platformPeople != nil {
 		adminHandler.SetPlatformEntitlementBulk(entitlementStore, platformPeople, tenantOrgStore, platformAuthorizer, deps.AdminPeopleWorker)
 	}
-	adminTenantsHandler := handlers.NewAdminTenantsHandler(tenantOrgStore, userRepo)
 	memberAccounts := auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider)
 	memberService := tenancy.NewMemberService(
 		deps.DB,
@@ -279,6 +278,7 @@ func wireBloemAdmin(
 	memberService.SetCompatSessionInvalidator(deps.OnUserSessionsRevoked)
 	adminTenantMembersHandler := handlers.NewAdminTenantMembersHandler(memberService, adminHandler)
 	memberService.SetResourcePurger(adminTenantMembersHandler)
+	adminTenantsHandler := handlers.NewAdminTenantsHandler(tenantOrgStore, memberService)
 	return adminTenantsHandler, adminTenantMembersHandler
 }
 

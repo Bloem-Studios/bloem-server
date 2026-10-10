@@ -438,11 +438,9 @@ func (s *Store) SetTenantOrganizationFrozenInTransaction(ctx context.Context, tx
 // unique, guarantees the retired slug can never collide with anything a
 // future create computes.
 //
-// The admin handler calls this BEFORE deleting member accounts through the
-// user repository, not after: organizations.owner_account_id is RESTRICT,
-// not CASCADE, so deleting the owner's account while the organization still
-// names them as owner fails outright. Clearing it here removes that
-// ordering trap entirely.
+// Tenant retirement uses MemberService to remove memberships first, preserving
+// shared accounts and updating ownership before any unowned account is deleted.
+// Direct store callers retire only the organization itself.
 func (s *Store) DeleteTenantOrganization(ctx context.Context, id uuid.UUID) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -460,8 +458,8 @@ func (s *Store) DeleteTenantOrganization(ctx context.Context, id uuid.UUID) erro
 }
 
 // DeleteTenantOrganizationInTransaction retires a tenant in a caller-owned
-// transaction. Member accounts must be deleted in that same transaction by
-// the caller after owner_account_id has been cleared.
+// transaction. MemberService removes memberships on this transaction before
+// retiring the organization.
 func (s *Store) DeleteTenantOrganizationInTransaction(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
 	tag, err := tx.Exec(ctx, `
 		UPDATE organizations

@@ -15,10 +15,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
-type tenantAccountTransactionalDeleter interface {
-	DeleteInTransaction(context.Context, pgx.Tx, int) error
-}
-
 func (h *AdminTenantsHandler) handleLifecycleCreate(w http.ResponseWriter, r *http.Request, input tenancy.CreateTenantOrganizationInput, body []byte) {
 	request, ok := h.tenantLifecycleRequest(w, r, "tenant.create", nil, body, lifecycleidempotency.TargetBodyAccount)
 	if !ok {
@@ -106,8 +102,7 @@ func (h *AdminTenantsHandler) handleLifecycleLimits(w http.ResponseWriter, r *ht
 }
 
 func (h *AdminTenantsHandler) handleLifecycleDelete(w http.ResponseWriter, r *http.Request, id uuid.UUID) {
-	deleter, ok := h.userRepo.(tenantAccountTransactionalDeleter)
-	if !ok {
+	if h.members == nil {
 		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
@@ -118,28 +113,22 @@ func (h *AdminTenantsHandler) handleLifecycleDelete(w http.ResponseWriter, r *ht
 	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
 		return lifecycleidempotency.ResolveTenantOrganizationTargets(ctx, tx, id)
 	}
+	var memberIDs []int
 	result, err := h.lifecycle.Execute(r.Context(), request,
 		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-			memberIDs, err := h.store.TenantMemberAccountIDsInTransaction(ctx, tx, id)
-			if err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
-			if err := h.store.DeleteTenantOrganizationInTransaction(ctx, tx, id); err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
-			for _, accountID := range memberIDs {
-				if err := deleter.DeleteInTransaction(ctx, tx, accountID); err != nil {
-					return lifecycleidempotency.Result{}, err
-				}
-			}
-			return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
+			var err error
+			memberIDs, err = h.members.RetireOrganizationInTransaction(ctx, tx, id)
+			return lifecycleidempotency.Result{Status: http.StatusNoContent}, err
 		})
 	if err != nil {
 		h.writeTenantLifecycleError(w, err)
 		return
 	}
 	if !result.Replayed {
-		h.store.CompleteTenantOrganizationMutationAfterCommit()
+		if err := h.members.CompleteOrganizationRetirementAfterCommit(r.Context(), id, memberIDs); err != nil {
+			h.writeTenantLifecycleError(w, err)
+			return
+		}
 	}
 	writeLifecycleResult(w, result)
 }

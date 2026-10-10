@@ -30,7 +30,7 @@ import (
 // AdminTenantsHandler serves /api/v1/admin/tenants.
 type AdminTenantsHandler struct {
 	store     *tenancy.Store
-	userRepo  UserRepository
+	members   *tenancy.MemberService
 	lifecycle lifecycleidempotency.Coordinator
 	digest    lifecycleidempotency.RequestDigester
 }
@@ -43,8 +43,8 @@ func (h *AdminTenantsHandler) SetLifecycleIdempotency(coordinator lifecycleidemp
 }
 
 // NewAdminTenantsHandler builds the handler.
-func NewAdminTenantsHandler(store *tenancy.Store, userRepo UserRepository) *AdminTenantsHandler {
-	return &AdminTenantsHandler{store: store, userRepo: userRepo}
+func NewAdminTenantsHandler(store *tenancy.Store, members *tenancy.MemberService) *AdminTenantsHandler {
+	return &AdminTenantsHandler{store: store, members: members}
 }
 
 // tenantResponse is the wire shape the park adapter decodes. Field names
@@ -247,14 +247,8 @@ func (h *AdminTenantsHandler) setFrozen(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// HandleDelete handles DELETE /admin/tenants/{id}: the tenant's member
-// accounts go with it, through the SAME user deletion the admin user API
-// uses. Library content belongs to the operator, untouched.
-//
-// Order matters: the organization retires FIRST (clearing the owner
-// reference as part of that), THEN members are deleted — reversed, deleting
-// the owner's account while the organization still names them as owner
-// fails outright (RESTRICT).
+// HandleDelete retires a tenant and removes only its memberships. Accounts
+// with another membership, ownership or platform obligation are preserved.
 func (h *AdminTenantsHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	id, ok := h.tenantID(w, r)
 	if !ok {
@@ -264,24 +258,13 @@ func (h *AdminTenantsHandler) HandleDelete(w http.ResponseWriter, r *http.Reques
 		h.handleLifecycleDelete(w, r, id)
 		return
 	}
-	memberIDs, err := h.store.TenantMemberAccountIDs(r.Context(), id)
-	if err != nil {
-		if errors.Is(err, tenancy.ErrTenantOrganizationNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "No such tenant")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list tenant members")
+	if h.members == nil {
+		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Tenant retirement is temporarily unavailable")
 		return
 	}
-	if err := h.store.DeleteTenantOrganization(r.Context(), id); err != nil {
+	if err := h.members.RetireOrganization(r.Context(), id); err != nil {
 		h.writeRepoError(w, err, "Failed to delete tenant")
 		return
-	}
-	for _, userID := range memberIDs {
-		if err := h.userRepo.Delete(r.Context(), userID); err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to remove a tenant member")
-			return
-		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

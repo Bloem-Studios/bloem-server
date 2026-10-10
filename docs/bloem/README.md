@@ -65,6 +65,7 @@ same path. Read the upstream document together with its overlay.
 
 ## Architecture and invariants
 
+- [Bloem lifecycle safety](../architecture/bloem-lifecycle-safety.md) — atomic tenant retirement.
 - [Silo playback merge impact on Bloem clients](../architecture/2026-08-24-silo-server-merge-client-impact.md)
 - [Upstream reconciliation — 2026-09-08](../architecture/2026-09-08-upstream-reconciliation.md)
 - [Server admin announcements](../architecture/admin-announcements.md)

@@ -24,7 +24,8 @@ func TestTenantOrganizationDeletePreservesSharedAccounts(t *testing.T) {
 			ctx := context.Background()
 			if !lifecycle {
 				r := chi.NewRouter()
-				h := handlers.NewAdminTenantsHandler(store, users)
+				members := tenancy.NewMemberService(pool, auth.NewAccountProvisioner(users, nil), users, auth.NewSessionRepository(pool))
+				h := handlers.NewAdminTenantsHandler(store, members)
 				r.Delete("/api/v1/admin/tenants/{id}", h.HandleDelete)
 				router = r
 			}

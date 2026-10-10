@@ -53,7 +53,8 @@ func tenantOrganizationLifecycleHarness(t *testing.T) (*pgxpool.Pool, *tenancy.S
 	}
 	t.Cleanup(func() { _ = users.Delete(context.Background(), actor.ID) })
 	store := tenancy.NewStore(pool)
-	handler := handlers.NewAdminTenantsHandler(store, users)
+	members := tenancy.NewMemberService(pool, auth.NewAccountProvisioner(users, nil), users, auth.NewSessionRepository(pool))
+	handler := handlers.NewAdminTenantsHandler(store, members)
 	secret := []byte("tenant-organization-lifecycle-test")
 	handler.SetLifecycleIdempotency(
 		lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(pool), lifecycleidempotency.NewHMACKeyDigester(secret)),
@@ -102,17 +103,17 @@ func TestTenantOrganizationLifecycleReplayPreservesLaterStateAndReplacement(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	member, err := users.Create(ctx, models.CreateUserInput{
+	// This account belongs only to the retiring tenant. Shared-account
+	// preservation is covered separately; this fixture exercises numeric reuse
+	// after a legitimately unowned account is removed.
+	members := tenancy.NewMemberService(pool, auth.NewAccountProvisioner(users, nil), users, auth.NewSessionRepository(pool))
+	member, _, err := members.Create(ctx, tenant.ID, "exclusive-member-"+uuid.NewString(), tenancy.CreateMemberInput{
 		Username: "tenant-org-member-" + uuid.NewString(), Email: uuid.NewString() + "@tenant-org.test",
-		Password: "test-password", Role: models.RoleUser,
+		Password: "test-password",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.ProvisionTenantMembership(ctx, tenant.ID, member.ID, "user"); err != nil {
-		t.Fatal(err)
-	}
-
 	freezePath := "/api/v1/admin/tenants/" + tenant.ID.String() + "/freeze"
 	freezeKey := "tenant-freeze-" + uuid.NewString()
 	if got := lifecycleTenantRequest(t, router, http.MethodPost, freezePath, freezeKey, nil); got.Code != http.StatusNoContent {
