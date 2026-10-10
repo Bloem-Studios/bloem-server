@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -27,16 +28,36 @@ import (
 
 func nativeRegistryS3Fixture(t *testing.T, enabled bool) (*NativeStorageRegistry, *NativeStorageSnapshot, NativeStorageInstallRequest) {
 	t.Helper()
-	r, _, req := nativeRegistryFixture(t)
-	a := r.approved["fixture"]
-	a.Manifest = proto.CloneOf(a.Manifest)
+	pool := nativeRegistryDatabase(t)
+	cipher, err := secret.New([]byte(strings.Repeat("synthetic-test-key", 3)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// These registry tests check approved executable bytes and archive integrity,
+	// not RPC behavior. Avoid repeatedly compressing the large race test binary.
+	binaryPath, err := exec.LookPath("true")
+	if err != nil {
+		t.Fatal(err)
+	}
+	binary, err := os.ReadFile(binaryPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := approvedNativeFixture()
+	sum := sha256.Sum256(binary)
+	a.Checksum = hex.EncodeToString(sum[:])
+	a.Manifest.Checksum = a.Checksum
 	a.Manifest.PluginId = "bloem.storage.s3"
 	a.Manifest.GlobalConfigSchema = []*publicv1.ConfigSchema{{Key: "connection", JsonSchema: `{"type":"object"}`}}
-	r.approved["s3"] = a
-	r.baseDir = nativeS3PrivateRoot(t)
-	req.ArtifactKey = "s3"
-	req.Source.Enabled = enabled
-	req.Config = map[string]map[string]any{"connection": {"source_id": "synthetic-source", "secret_key": "synthetic-test-secret"}}
+	r, err := NewNativeStorageRegistry(pool, cipher, nativeS3PrivateRoot(t), map[string]NativeStorageArtifact{"s3": a})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var owner uuid.UUID
+	if err := pool.QueryRow(t.Context(), `SELECT bloem_platform_resource_owner_id()`).Scan(&owner); err != nil {
+		t.Fatal(err)
+	}
+	req := NativeStorageInstallRequest{ArtifactKey: "s3", Binary: binary, Source: storagesource.SourceConfig{OwnerID: owner, ProviderSourceID: "books", RootEntryID: "root", Enabled: enabled}, Config: map[string]map[string]any{"connection": {"source_id": "synthetic-source", "secret_key": "synthetic-test-secret"}}}
 	s, err := r.Install(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
@@ -173,13 +194,17 @@ func TestNativeS3RegistryDisabledInstallState(t *testing.T) {
 }
 
 func TestNativeStorageRegistryDisabledPackageUpgrade(t *testing.T) {
-	r, _, req := nativeRegistryFixture(t)
-	req.Source.Enabled = false
+	r, _, req := nativeRegistryS3Fixture(t, false)
+	a := r.approved["s3"]
+	a.Manifest = proto.CloneOf(a.Manifest)
+	a.Manifest.PluginId = "bloem.storage.fixture"
+	r.approved["generic"] = a
+	req.ArtifactKey = "generic"
 	installed, err := r.Install(t.Context(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	upgraded, err := r.UpgradeAuthorized(t.Context(), installed.Installation.ID, installed.Source.Key, installed.Source.OwnerID, "fixture", req.Binary, func(context.Context, pgx.Tx) error { return nil })
+	upgraded, err := r.UpgradeAuthorized(t.Context(), installed.Installation.ID, installed.Source.Key, installed.Source.OwnerID, "generic", req.Binary, func(context.Context, pgx.Tx) error { return nil })
 	if err != nil {
 		t.Fatal("committed disabled package upgrade returned failure")
 	}
