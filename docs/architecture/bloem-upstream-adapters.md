@@ -198,6 +198,16 @@ the account-creation transaction, retaining an administrator recovery path when
 local password sign-in is disabled. Provider identity and refresh-chain fields coexist with Bloem's
 device, profile, credential revision, and authentication-method bindings.
 
+Account-wide compatibility revocation uses Bloem's owned
+[`SessionRepository.DeleteByUserID`](../../internal/jellycompat/bloem_session_repository.go)
+before upstream `SessionStore.EvictUser`. The eviction generation prevents a
+persistent read already in flight from repopulating the revoked cache. A
+zero-row delete succeeds because upstream may have deleted the rows in the
+sign-out transaction; a durable failure returns before eviction and
+publication. Post-commit invalidation runs under the bounded detached context from
+`sessioninvalidation.Run`, then publishes the existing account eviction event
+for other replicas. Profile-only deletion keeps its separate scoped boundary.
+
 Both invitation acceptance paths preserve the organization stored on the
 invitation. Link invitations can receive an email at acceptance; supersession of
 another invitation remains scoped to the inviting organization. The v1 lifecycle

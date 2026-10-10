@@ -26,13 +26,9 @@ func (s *SessionStore) DeleteByUserIDContext(ctx context.Context, userID int) er
 			return err
 		}
 	}
-	s.mu.Lock()
-	for token, session := range s.sessions {
-		if session.StreamAppUserID == userID {
-			delete(s.sessions, token)
-		}
-	}
-	s.mu.Unlock()
+	// Use the upstream eviction fence as well as removing current entries:
+	// a persistent read started before deletion must not repopulate the cache.
+	s.EvictUser(userID)
 	return nil
 }
 
