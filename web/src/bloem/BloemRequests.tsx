@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import Requests from "@/pages/Requests";
 import { useAuth } from "@/hooks/useAuth";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { captureProfileRequestContext } from "@/api/client";
+import { captureProfileRequestContext, captureSessionIdentity } from "@/api/client";
 import { nativeApi } from "@/api/bloemClient";
 import {
   bookRequestsApi,
@@ -15,21 +15,36 @@ import {
 } from "@/api/bloemBookRequests";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { randomUUID } from "@/lib/uuid";
 import { RequestMediaTabs } from "./RequestMediaTabs";
 
 export default function BloemRequests() {
   const [params] = useSearchParams();
+  const { user, profile } = useAuth();
+  const identity = captureSessionIdentity();
+  const context = captureProfileRequestContext();
   const capabilities = useQuery({
-    queryKey: ["bloem-capabilities"],
+    queryKey: ["bloem-capabilities", identity.serverOrigin, identity.authContextVersion],
     queryFn: () => nativeApi<{ feature_tokens: string[] }>("/capabilities"),
   });
   const supported = capabilities.data?.feature_tokens.includes("audiobook_requests_v1");
   return (
     <>
       {supported && <RequestMediaTabs />}
-      {params.get("kind") === "audiobook" && supported ? <AudiobookRequests /> : <Requests />}
+      {params.get("kind") === "audiobook" && supported ? (
+        <AudiobookRequests
+          key={JSON.stringify([
+            user?.id,
+            profile?.id,
+            context?.serverOrigin,
+            context?.authContextVersion,
+            context?.profileId,
+            context?.profileTokenGeneration,
+          ])}
+        />
+      ) : (
+        <Requests />
+      )}
     </>
   );
 }
@@ -40,7 +55,14 @@ function AudiobookRequests() {
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const context = captureProfileRequestContext();
-  const scope = ["bloem-book-requests", user?.id, profile?.id, context?.generation] as const;
+  const scope = [
+    "bloem-book-requests",
+    user?.id,
+    profile?.id,
+    context?.authContextVersion,
+    context?.serverOrigin,
+    context?.profileTokenGeneration,
+  ] as const;
   const capability = useQuery({
     queryKey: [...scope, "capability"],
     queryFn: () => bookRequestsApi.capability(context),
@@ -126,7 +148,8 @@ function AudiobookRequests() {
           ))}
           <label className="space-y-2 text-sm font-medium sm:col-span-2">
             Note (optional)
-            <Textarea
+            <textarea
+              className="border-input focus-visible:border-ring focus-visible:ring-ring/50 min-h-24 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
               value={input.note}
               maxLength={2000}
               disabled={create.isPending}

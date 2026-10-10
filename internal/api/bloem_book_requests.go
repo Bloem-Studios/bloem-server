@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/bookrequests"
@@ -8,7 +10,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/taskmanager/tasks"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
-	"net/http"
 )
 
 func newBloemBookRequests(deps Dependencies) *handlers.BloemBookRequestsHandler {
@@ -53,11 +54,17 @@ func mountBloemAdminBookRequests(r chi.Router, h *handlers.BloemBookRequestsHand
 		return
 	}
 	r.Get("/organization/book-requests", h.HandleAdminList)
-	// Route patterns stay explicit for contract and authority inventories.
-	for _, action := range []string{"approve", "decline", "fulfil"} {
-		r.Post("/organization/book-requests/{id}/"+action, func(w http.ResponseWriter, r *http.Request) {
-			chi.RouteContext(r.Context()).URLParams.Add("action", action)
-			h.HandleAdminAction(w, r)
-		})
-	}
+	// Each route stays literal for contract and authority inventories.
+	r.Post("/organization/book-requests/{id}/approve", func(w http.ResponseWriter, r *http.Request) {
+		chi.RouteContext(r.Context()).URLParams.Add("action", "approve")
+		h.HandleAdminAction(w, r)
+	})
+	r.Post("/organization/book-requests/{id}/decline", func(w http.ResponseWriter, r *http.Request) {
+		chi.RouteContext(r.Context()).URLParams.Add("action", "decline")
+		h.HandleAdminAction(w, r)
+	})
+	r.Post("/organization/book-requests/{id}/fulfil", func(w http.ResponseWriter, r *http.Request) { //nolint:misspell // Preserve the established route spelling.
+		chi.RouteContext(r.Context()).URLParams.Add("action", "fulfil") //nolint:misspell // Match the established action identifier.
+		h.HandleAdminAction(w, r)
+	})
 }

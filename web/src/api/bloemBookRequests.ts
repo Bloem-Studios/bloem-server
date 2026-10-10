@@ -80,7 +80,7 @@ export const bookRequestsApi = {
     ),
   adminList: (context: AdminRequestContext | null, offset = 0) =>
     adminV2Api<{ requests: BookRequest[] }>(
-      `/admin/organization/book-requests?limit=100&offset=${offset}`,
+      `/organization/book-requests?limit=100&offset=${offset}`,
       {},
       "safe",
       context,
@@ -92,7 +92,7 @@ export const bookRequestsApi = {
     context: AdminRequestContext | null,
   ) =>
     adminV2Api<BookRequest>(
-      `/admin/organization/book-requests/${encodeURIComponent(row.id)}/${action}`,
+      `/organization/book-requests/${encodeURIComponent(row.id)}/${action}`,
       { method: "POST", body: JSON.stringify({ expected_revision: row.revision, reason }) },
       "none",
       context,

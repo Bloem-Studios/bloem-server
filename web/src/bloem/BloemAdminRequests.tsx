@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import AdminRequests from "@/pages/AdminRequests";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { captureAdminRequestContext } from "@/api/adminV2Client";
+import { captureSessionIdentity } from "@/api/client";
 import { nativeApi } from "@/api/bloemClient";
 import {
   bookRequestsApi,
@@ -18,15 +19,22 @@ import { RequestMediaTabs } from "./RequestMediaTabs";
 
 export default function BloemAdminRequests() {
   const [params] = useSearchParams();
+  const identity = captureSessionIdentity();
+  const { active } = useAdminContext();
+  const context = active ? captureAdminRequestContext(active.key) : null;
   const capabilities = useQuery({
-    queryKey: ["bloem-capabilities"],
+    queryKey: ["bloem-capabilities", identity.serverOrigin, identity.authContextVersion],
     queryFn: () => nativeApi<{ feature_tokens: string[] }>("/capabilities"),
   });
   const supported = capabilities.data?.feature_tokens.includes("audiobook_requests_v1");
   return (
     <>
       {supported && <RequestMediaTabs />}
-      {supported && params.get("kind") === "audiobook" ? <AudiobookQueue /> : <AdminRequests />}
+      {supported && params.get("kind") === "audiobook" ? (
+        <AudiobookQueue key={JSON.stringify([context?.key, context?.generation])} />
+      ) : (
+        <AdminRequests />
+      )}
     </>
   );
 }

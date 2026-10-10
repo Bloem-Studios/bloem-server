@@ -2610,6 +2610,33 @@
           "gate": "native_storage.source_management"
         }
       ]
+    },
+    {
+      "path": "internal/bookrequests",
+      "dialect": "bloem",
+      "gate": "audiobook_requests_v1",
+      "roots": [
+        {
+          "type": "CreateInput",
+          "direction": "request"
+        },
+        {
+          "type": "ActionInput",
+          "direction": "request"
+        },
+        {
+          "type": "Request",
+          "direction": "response"
+        },
+        {
+          "type": "Capability",
+          "direction": "response"
+        },
+        {
+          "type": "ListResponse",
+          "direction": "response"
+        }
+      ]
     }
   ],
   "serializers": {

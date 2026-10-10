@@ -40,14 +40,13 @@ func findLibraryMatch(ctx context.Context, tx pgx.Tx, r Request) (string, error)
 	err := tx.QueryRow(ctx, `
  SELECT i.content_id
  FROM media_items i
- JOIN media_item_provider_ids ids ON ids.content_id=i.content_id
  JOIN media_files mf ON mf.content_id=i.content_id
  JOIN media_folders f ON f.id=mf.media_folder_id AND f.enabled AND lower(btrim(f.type)) IN ('audiobook','audiobooks')
  JOIN resource_owners ro ON ro.id=f.owner_id
  JOIN organizations o ON o.id=$1 AND (o.status='active' OR (o.is_default AND o.status='initializing'))
  WHERE i.type='audiobook'
- AND (($2<>'' AND lower(ids.provider)='isbn' AND upper(regexp_replace(ids.provider_id,'[-[:space:]]','','g'))=ANY($3))
-   OR ($4<>'' AND lower(ids.provider)='asin' AND upper(btrim(ids.provider_id))=$4))
+	AND ($2='' OR EXISTS(SELECT 1 FROM media_item_provider_ids ids WHERE ids.content_id=i.content_id AND ids.item_type='audiobook' AND lower(ids.provider)='isbn' AND upper(regexp_replace(ids.provider_id,'[-[:space:]]','','g'))=ANY($3) FOR SHARE))
+	AND ($4='' OR EXISTS(SELECT 1 FROM media_item_provider_ids ids WHERE ids.content_id=i.content_id AND ids.item_type='audiobook' AND lower(ids.provider)='asin' AND upper(btrim(ids.provider_id))=$4 FOR SHARE))
  AND ((ro.kind='organization' AND ro.organization_id=$1)
    OR (ro.kind='platform' AND EXISTS(SELECT 1 FROM organization_entitlements e WHERE e.organization_id=$1 AND e.media_folder_id=f.id AND e.root_owner_id=ro.id AND e.status='active' FOR SHARE)))
  ORDER BY i.content_id,f.id LIMIT 1

@@ -29,6 +29,10 @@ admission or device acceptance.
 For the embedded server UI, see the [Bloem web feature coverage matrix](architecture/bloem-web-feature-coverage.md).
 It distinguishes backend capability from reachable web workflows and records the upstream merge impact of filling gaps.
 
+Audiobook requests use a separate Bloem-owned store and the
+`audiobook_requests_v1` capability. See [the request contract](#audiobook-requests)
+and [its authority and completion invariants](architecture/bloem-audiobook-requests.md).
+
 ## What `/api/bloem/v1` actually is
 
 `/api/bloem/v1` is not a versioned reimplementation of `/api/v1` — it's additive. `mountBloem` in
@@ -2918,3 +2922,87 @@ existing authenticated ebook reader operations, including GET/HEAD and byte
 ranges. Downloads, proxy and Jellyfin attachment paths refuse storage files
 through their existing not-found conventions; conversion and offline downloads
 of storage files are not supported.
+
+## Audiobook requests
+
+`audiobook_requests_v1` in `GET /api/bloem/v1/capabilities` advertises the
+mounted viewer request lane. It does not advertise a fulfilment provider or
+enable ebook requests. The per-profile capability reports current request
+policy and the independent book quota. Hosted organizations may file.
+
+All paths below are relative to `/api/bloem/v1`. Viewer operations require
+account authentication, an organization membership and a verified profile
+through `X-Profile-Id` and `X-Profile-Token` when PIN verification is required.
+Organization administrative operations require an organization administrative
+context token. A platform context alone does not grant queue access. Responses
+carry `Cache-Control: private, no-store`.
+
+| Method | Path | Result |
+| --- | --- | --- |
+| `GET` | `/book-requests/capability` | Current profile policy and audiobook quota. |
+| `GET` | `/book-requests/mine` | This account/profile's requests in the current organization. |
+| `POST` | `/book-requests` | File a request with an `Idempotency-Key`. |
+| `GET` | `/book-requests/{id}` | Read a request owned by this profile. |
+| `POST` | `/book-requests/{id}/cancel` | Withdraw a pending or approved request owned by this profile. |
+| `GET` | `/admin/organization/book-requests` | Requests in the selected administrative organization. |
+| `POST` | `/admin/organization/book-requests/{id}/approve` | Approve a pending request. |
+| `POST` | `/admin/organization/book-requests/{id}/decline` | Decline a pending request and refund its quota slot. |
+| `POST` | `/admin/organization/book-requests/{id}/fulfil` | Manually fulfil a pending or approved request. |
+
+Lists return `{"requests": [...]}` and accept `limit` (1–100, default 100) and
+`offset` (nonnegative, default 0). Pagination follows organization/profile
+filtering. Requests outside that boundary return 404 on individual operations.
+
+The capability includes `available`, `enabled`, `can_request`,
+`media_types: ["audiobook"]`, `auto_approve`, `unlimited`, `limit`, `used`,
+`remaining`, `window_days`, `fulfilment_backend: "unconfigured"`, and
+`manual_fulfilment: true`. It inherits existing membership/profile-group,
+account and global request policy values. Book counters do not consume
+movie/series request quota. Withdrawal retains book quota usage.
+
+Create accepts one JSON object, at most 16 KiB:
+
+```json
+{
+  "title": "Example audiobook",
+  "author": "Example author",
+  "isbn": "9780306406157",
+  "asin": "",
+  "note": "Optional edition details"
+}
+```
+
+Title is required and limited to 500 bytes; author is limited to 500 bytes and
+required when both identifiers are absent. Note is optional and limited to
+2000 bytes. ISBN checksum validation accepts ISBN-10/13 and stores ISBN-13.
+ASIN accepts ten letters/digits and stores uppercase. Unknown JSON fields and
+extra bodies return 400. Organization, account, profile and media type are
+server-owned fields.
+
+`Idempotency-Key` is required, contains 16–128 characters, and cannot contain
+spaces, tabs or line breaks. It is scoped to organization/account/profile.
+New requests return 201; replaying the same normalized input returns 200 with
+the original row. Changing the input under an existing key returns 409.
+Active identifier or normalized title/author duplicates within the organization
+return `409 already_requested` without disclosing another profile's row.
+
+Mutations accept `{"expected_revision": 1, "reason": "Optional explanation"}`.
+The revision must match the current row; reason is optional and limited to
+2000 bytes. Stale revisions or terminal/invalid transitions return
+`409 request_state_changed`. Request status is `pending`, `approved` or
+`completed`; outcome is `active`, `declined` or `cancelled`.
+
+Approval keeps `fulfilment=awaiting_fulfilment`. Automatic catalog completion
+requires every supplied ISBN/ASIN to match one audiobook with a media-file row
+in an enabled organization-accessible audiobook library. Title-only or ebook
+matches never qualify. Library completion records `fulfilment=library` and
+`library_content_id`; manual completion records `fulfilment=manual` with no
+library item or availability claim. See
+[the implementation invariants](architecture/bloem-audiobook-requests.md) for
+concurrency, notification and native-client integration boundaries.
+
+Other errors include `401 unauthorized`, `403 viewer_required`,
+`403 request_forbidden`, `403 requests_disabled`,
+`403 insufficient_organization_authority`, `429 request_quota_exceeded`, and
+`503 unavailable` when profile authority cannot be resolved. Rate-limit
+middleware may also return 429.

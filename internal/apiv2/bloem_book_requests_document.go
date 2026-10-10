@@ -46,7 +46,8 @@ type BloemBookRequestCapabilityOutput struct {
 }
 
 func registerBloemBookRequestsDocument(reg *Registry) {
-	const description = "Bloem-owned audiobook requests use a separate table and independent quota counters. Approval and quota values inherit current profile-group, membership/account and global request policy. A verified profile and current organization membership are required; hosted organizations may file requests. Ordinary callers can see or cancel only their own profile's requests in this organization. Approved requests stay approved/awaiting_fulfilment while the backend is unconfigured. Library completion requires a stable ISBN/ASIN match with an actual media file in an organization-accessible audiobook library; title-only matches and ebooks never fulfil an audiobook request. Ebook request routes are not enabled by this capability."
+	//nolint:misspell // awaiting_fulfilment is the established wire enum.
+	const description = "Bloem-owned audiobook requests use a separate table and independent quota counters. Approval and quota values inherit current profile-group, membership/account and global request policy. A verified profile and current organization membership are required; hosted organizations may file requests. Ordinary callers can see or cancel only their own profile's requests in this organization. Approved requests stay approved/awaiting_fulfilment while the backend is unconfigured. Library completion requires every supplied ISBN/ASIN to match one audiobook with a media-file row in an organization-accessible audiobook library; title-only matches and ebooks never fulfill an audiobook request. Catalog presence does not preflight filesystem or storage-provider liveness. Ebook request routes are not enabled by this capability."
 	errors := map[int]string{400: "invalid_request: invalid input, JSON, identity, Idempotency-Key or expected_revision.", 404: "not_found: request absent or outside this profile/organization.", 409: "already_requested or request_state_changed: a duplicate active identity, changed key payload, stale revision or invalid transition.", 429: "request_quota_exceeded: the independent audiobook quota is exhausted, or rate_limit_exceeded."}
 	capability := bloemChiDocumentOp(reg, "GET", "/book-requests/capability", "getBloemBookRequestCapability", "requests", "Read audiobook request capability and current viewer policy.", "bearerAuth", 200)
 	capability.Description = description
@@ -74,7 +75,11 @@ func registerBloemBookRequestsDocument(reg *Registry) {
 	adminList.Description = "Requires an organization administrative context. Platform-only contexts do not grant organization queue access. Pagination is applied after organization isolation."
 	bloemDocumentErrors[BloemNativeError](reg, &adminList, errors)
 	registerBloemChiDocument[BloemBookRequestAdminListInput, BloemBookRequestListOutput](reg, adminList)
-	for _, action := range []struct{ name, id, summary string }{{"approve", "approveBloemBookRequest", "Approve an audiobook request; keep it awaiting fulfilment."}, {"decline", "declineBloemBookRequest", "Decline a pending audiobook request and refund its quota slot."}, {"fulfil", "fulfilBloemBookRequest", "Manually mark an audiobook request fulfilled."}} {
+	for _, action := range []struct{ name, id, summary string }{
+		{"approve", "approveBloemBookRequest", "Approve an audiobook request; keep it awaiting fulfillment."},
+		{"decline", "declineBloemBookRequest", "Decline a pending audiobook request and refund its quota slot."},
+		{"fulfil", "fulfilBloemBookRequest", "Manually mark an audiobook request fulfilled."}, //nolint:misspell // Preserve the established route and operation identifiers.
+	} {
 		op := bloemChiDocumentOp(reg, "POST", "/admin/organization/book-requests/{id}/"+action.name, action.id, "requests", action.summary, "adminContextAuth", 200)
 		op.Description = "Requires current organization administrator authority and a matching expected_revision. Other organizations' requests return 404. Manual fulfilment records fulfilment=manual without claiming a playable library item."
 		bloemDocumentErrors[BloemNativeError](reg, &op, errors)

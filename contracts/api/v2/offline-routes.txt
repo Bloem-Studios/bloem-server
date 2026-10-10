@@ -83,6 +83,7 @@ DELETE /api/v1/profile/sections/reset
 DELETE /api/v2/*
 GET /api/bloem/v1/admin/*
 GET /api/bloem/v1/admin/organization/activity
+GET /api/bloem/v1/admin/organization/book-requests
 GET /api/bloem/v1/admin/organization/entitlement-cohorts
 GET /api/bloem/v1/admin/organization/entitlement-cohorts/{cohort_id}
 GET /api/bloem/v1/admin/organization/groups/
@@ -366,6 +367,9 @@ PATCH /api/v1/downloads/subscriptions/{id}
 PATCH /api/v1/downloads/{id}
 PATCH /api/v2/*
 POST /api/bloem/v1/admin/*
+POST /api/bloem/v1/admin/organization/book-requests/{id}/approve
+POST /api/bloem/v1/admin/organization/book-requests/{id}/decline
+POST /api/bloem/v1/admin/organization/book-requests/{id}/fulfil
 POST /api/bloem/v1/admin/organization/groups/
 POST /api/bloem/v1/admin/organization/invitations
 POST /api/bloem/v1/admin/organization/invitations/{id}/resend

@@ -52,8 +52,12 @@ func (h *BloemBookRequestsHandler) viewer(w http.ResponseWriter, r *http.Request
 		return bookrequests.Viewer{}, false
 	}
 	org, err := h.profiles.ProfileOrganization(r.Context(), c.UserID, profile)
-	if err != nil || org != t.OrganizationID {
+	if errors.Is(err, tenancy.ErrTenantNotFoundOrHidden) || err == nil && org != t.OrganizationID {
 		writeError(w, 403, "viewer_required", "The profile is unavailable in this organization")
+		return bookrequests.Viewer{}, false
+	}
+	if err != nil {
+		writeError(w, 503, "unavailable", "Audiobook requests are unavailable")
 		return bookrequests.Viewer{}, false
 	}
 	return bookrequests.Viewer{UserID: c.UserID, ProfileID: profile, OrganizationID: t.OrganizationID}, true
@@ -86,11 +90,15 @@ func (h *BloemBookRequestsHandler) HandleAdminList(w http.ResponseWriter, r *htt
 	h.list(w, r, bookrequests.Viewer{UserID: t.AccountID, OrganizationID: t.OrganizationID, Admin: true})
 }
 func (h *BloemBookRequestsHandler) list(w http.ResponseWriter, r *http.Request, v bookrequests.Viewer) {
+	if h == nil || h.service == nil {
+		writeError(w, 503, "unavailable", "Audiobook requests are unavailable")
+		return
+	}
 	limit, offset := 100, 0
 	for k, dst := range map[string]*int{"limit": &limit, "offset": &offset} {
 		if raw := r.URL.Query().Get(k); raw != "" {
 			n, e := strconv.Atoi(raw)
-			if e != nil || n < 0 {
+			if e != nil || n < 0 || k == "limit" && (n < 1 || n > 100) {
 				writeBookRequestError(w, bookrequests.ErrInvalid)
 				return
 			}
@@ -155,6 +163,10 @@ func (h *BloemBookRequestsHandler) HandleAdminAction(w http.ResponseWriter, r *h
 	h.act(w, r, bookrequests.Viewer{UserID: t.AccountID, OrganizationID: t.OrganizationID, Admin: true}, chi.URLParam(r, "action"))
 }
 func (h *BloemBookRequestsHandler) act(w http.ResponseWriter, r *http.Request, v bookrequests.Viewer, action string) {
+	if h == nil || h.service == nil {
+		writeError(w, 503, "unavailable", "Audiobook requests are unavailable")
+		return
+	}
 	if _, e := uuid.Parse(chi.URLParam(r, "id")); e != nil {
 		writeBookRequestError(w, bookrequests.ErrNotFound)
 		return

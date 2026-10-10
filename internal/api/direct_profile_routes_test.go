@@ -98,6 +98,11 @@ func TestDirectProfileAllowedRoutesAreThisExactSet(t *testing.T) {
 	}
 
 	want := []string{
+		"GET /api/bloem/v1/book-requests/capability",
+		"GET /api/bloem/v1/book-requests/mine",
+		"GET /api/bloem/v1/book-requests/{id}",
+		"POST /api/bloem/v1/book-requests",
+		"POST /api/bloem/v1/book-requests/{id}/cancel",
 		"DELETE /api/v1/audio-prefs/{series_id}",
 		"DELETE /api/v1/collections/sort-preference",
 		"DELETE /api/v1/devices/{device_id}",

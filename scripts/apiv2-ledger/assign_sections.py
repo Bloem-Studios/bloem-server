@@ -124,7 +124,7 @@ BLOEM_TOP = {
     "organizations": "bloem-native", "capabilities": "bloem-native", "persons": "bloem-native",
     "server": "bloem-native", "sync": "bloem-native",
     "ambience": "bloem-native", "profile-credentials": "bloem-native",
-    "catalog": "bloem-native",
+    "catalog": "bloem-native", "book-requests": "bloem-book-requests",
 }
 
 # /api/internal/compat/v1/<a> -> section
@@ -154,6 +154,8 @@ def bloem_section(parts, entry):
             if table is None:
                 raise SystemExit(f"unmapped bloem platform route: {entry['method']} {entry['path']}")
             return table.get(_first_static(rest[2:]), table[None])
+        if rest[0] == "organization" and _first_static(rest[1:]) == "book-requests":
+            return "bloem-book-requests"
         if rest[0] in BLOEM_ADMIN:
             return BLOEM_ADMIN[rest[0]]
         raise SystemExit(f"unmapped bloem admin route: {entry['method']} {entry['path']}")

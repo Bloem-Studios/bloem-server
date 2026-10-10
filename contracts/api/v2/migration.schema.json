@@ -85,6 +85,7 @@
         "auth-invitations",
         "bloem-admin-core",
         "bloem-admin-organization",
+        "bloem-book-requests",
         "bloem-livetv",
         "bloem-native",
         "bloem-platform-account-bulk",

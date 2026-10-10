@@ -9,7 +9,9 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
+	"github.com/Silo-Server/silo-server/internal/bookrequests"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -71,7 +73,76 @@ func mountedBloemPaths(t *testing.T) map[string]struct{} {
 		_, path, _ := strings.Cut(operation, " ")
 		out[path] = struct{}{}
 	}
+	for operation := range mountedBookRequestOperations(t) {
+		_, path, _ := strings.Cut(operation, " ")
+		out[path] = struct{}{}
+	}
 	return out
+}
+
+// Walk the same conditional registrars as production, with all authority
+// dependencies present. Fixtures that omit these dependencies hide the viewer
+// routes even though the server mounts them for an authenticated profile.
+func mountedBookRequestOperations(t *testing.T) map[string]struct{} {
+	t.Helper()
+	h := handlers.NewBloemBookRequestsHandler(bookrequests.NewService(nil, nil), seasonalMountProfiles{})
+	client := bloemClientSurface{
+		auth:   apimw.NewAuthMiddleware(seasonalMountTokens{}, seasonalMountSessions{}, nil, nil),
+		tenant: apimw.NewTenantMiddleware(seasonalMountTenant{}),
+		viewer: apimw.NewViewerAccessMiddleware(seasonalMountViewer{}),
+	}
+	router := chi.NewRouter()
+	router.Route(apiv2.BloemPrefix, func(r chi.Router) {
+		mountBloemBookRequests(r, h, client, nil)
+		r.Route("/admin", func(r chi.Router) { mountBloemAdminBookRequests(r, h) })
+	})
+	operations := map[string]struct{}{}
+	if err := chi.Walk(router, func(method, path string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		operations[method+" "+path] = struct{}{}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return operations
+}
+
+func TestBookRequestDocumentMatchesMountedOperations(t *testing.T) {
+	mounted := mountedBookRequestOperations(t)
+	if len(mounted) != 9 {
+		t.Fatalf("book request operations=%d, want 9", len(mounted))
+	}
+	raw, err := apiv2.GenerateBloemOpenAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Paths map[string]map[string]json.RawMessage `json:"paths"`
+	}
+	if err = json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	documented := map[string]struct{}{}
+	for path, item := range doc.Paths {
+		if !strings.Contains(path, "/book-requests") {
+			continue
+		}
+		for method := range item {
+			switch method {
+			case "get", "post", "put", "delete", "patch", "head", "options", "trace":
+				documented[strings.ToUpper(method)+" "+path] = struct{}{}
+			}
+		}
+	}
+	for operation := range mounted {
+		if _, ok := documented[operation]; !ok {
+			t.Errorf("mounted book request operation absent from OpenAPI: %s", operation)
+		}
+	}
+	for operation := range documented {
+		if _, ok := mounted[operation]; !ok {
+			t.Errorf("documented book request operation not mounted: %s", operation)
+		}
+	}
 }
 
 func mountedNativeStorageOperations(t *testing.T) map[string]struct{} {

@@ -897,6 +897,10 @@ POST /api/bloem/v1/admin/*	non-media
 PUT /api/bloem/v1/admin/*	non-media
 TRACE /api/bloem/v1/admin/*	non-media
 GET /api/bloem/v1/admin/organization/activity	non-media
+GET /api/bloem/v1/admin/organization/book-requests	non-media
+POST /api/bloem/v1/admin/organization/book-requests/{id}/approve	non-media
+POST /api/bloem/v1/admin/organization/book-requests/{id}/decline	non-media
+POST /api/bloem/v1/admin/organization/book-requests/{id}/fulfil	non-media
 GET /api/bloem/v1/admin/organization/entitlement-cohorts	non-media
 GET /api/bloem/v1/admin/organization/entitlement-cohorts/{cohort_id}	non-media
 DELETE /api/bloem/v1/admin/organization/entitlements/{folder_id}	non-media
