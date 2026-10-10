@@ -26,6 +26,24 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+func nativeS3PrivateRoot(t *testing.T) string {
+	t.Helper()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.MkdirTemp(home, ".bloem-s3-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(root); err != nil {
+			t.Error(err)
+		}
+	})
+	return root
+}
+
 func nativeRegistryS3Fixture(t *testing.T, enabled bool) (*NativeStorageRegistry, *NativeStorageSnapshot, NativeStorageInstallRequest) {
 	t.Helper()
 	pool := nativeRegistryDatabase(t)

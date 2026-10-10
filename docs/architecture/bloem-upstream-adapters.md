@@ -58,6 +58,13 @@ creates and drops its own child database; never point it at a deployed catalog.
   account/profile in an owned context key; tenant-aware group providers still
   require the validated request tenant. Ordinary Silo group providers retain
   their account policy and explicit user overrides without tenant context.
+- Original-file downloads also preserve Silo's `ServeDirect` and
+  `ResolveDirectFile` signatures. Owned `ServeDirectForProfile` and
+  `ResolveDirectFileForProfile` methods bind the verified subject before
+  delegation. The compatibility listener uses an owned route entry point for
+  early playback/download denial and an owned service adapter that resolves
+  the current session account, profile and tenant. Both listeners share the
+  same download service, quality ceiling and bandwidth limiters.
 - [`NewProfilePrepareAgainService`](../../internal/downloads/bloem_reprepare.go)
   is mandatory in Bloem HTTP retry composition. It checks the requesting
   profile's download and transcode authority before calling Silo's unchanged

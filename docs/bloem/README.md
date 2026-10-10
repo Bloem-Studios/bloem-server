@@ -13,6 +13,7 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 - [Native storage](../architecture/bloem-native-storage.md) — storage-source ebook libraries: locations, scanning, covers and reading.
 - [Bloem Server front page](../../.github/README.md) — what Bloem is, deployment checkpoint, quick start. The root `README.md` is upstream Silo's.
 - [Integration changelog](CHANGELOG.md) — upstream changes and Bloem adapters.
+- [October 10 upstream resolutions](upstream-merge-2026-10-10.md) — imported revisions and ownership of download, thumbnail, metadata and web changes.
 - [Upstream merge reduction verification](../operations/2026-10-05-merge-reduction.md) — owned tenant modules, restored shared files and measured merge surface.
 - [Presentation plugin cutover verification](../operations/2026-10-05-presentation-plugin-cutover.md) — worker extraction, focused checks and acceptance limits.
 - [October 5 integration verification](../operations/2026-10-05-upstream-integration.md) — Silo build 1116, fresh checks, and inherited test limitations.

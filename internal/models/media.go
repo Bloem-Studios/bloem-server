@@ -85,6 +85,7 @@ type MediaFile struct {
 	SubtitleTracks               []SubtitleTrack    // JSONB
 	ExternalSubtitles            []ExternalSubtitle // JSONB
 	Chapters                     []MediaChapter     // JSONB; nil means not yet probed for chapters
+	MarkerThumbnails             []MarkerThumbnail  `json:"-"`
 	ChapterThumbnailRetryAfter   *time.Time
 	ChapterThumbnailFailureCount int
 	ChapterThumbnailLastError    string
@@ -148,6 +149,9 @@ type MediaFile struct {
 	FirstSeenScanRunID   string
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+
+	// Non-nil only for an ephemeral on-demand overlay; fences canonical edits.
+	MarkerThumbnailBaseSegments []MarkerSegment `json:"-"`
 }
 
 // MediaChapter represents a single media chapter derived from embedded file metadata.

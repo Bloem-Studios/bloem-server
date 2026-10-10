@@ -81,7 +81,7 @@ func registerBloemBookRequestsDocument(reg *Registry) {
 		{"fulfil", "fulfilBloemBookRequest", "Manually mark an audiobook request fulfilled."}, //nolint:misspell // Preserve the established route and operation identifiers.
 	} {
 		op := bloemChiDocumentOp(reg, "POST", "/admin/organization/book-requests/{id}/"+action.name, action.id, "requests", action.summary, "adminContextAuth", 200)
-		op.Description = "Requires current organization administrator authority and a matching expected_revision. Other organizations' requests return 404. Manual fulfilment records fulfilment=manual without claiming a playable library item."
+		op.Description = "Requires current organization administrator authority and a matching expected_revision. Other organizations' requests return 404. Manual fulfilment records fulfilment=manual without claiming a playable library item." //nolint:misspell // fulfilment is the persisted wire field.
 		bloemDocumentErrors[BloemNativeError](reg, &op, errors)
 		registerBloemChiDocument[BloemBookRequestActionInput, BloemBookRequestOutput](reg, op)
 	}

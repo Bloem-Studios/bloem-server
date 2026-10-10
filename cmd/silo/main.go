@@ -99,6 +99,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/opslog"
 	"github.com/Silo-Server/silo-server/internal/partman"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/playback/planstore"
 	"github.com/Silo-Server/silo-server/internal/pluginhost"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/policy"
@@ -2254,10 +2255,14 @@ func main() {
 		deps.SkippedRootRepo = skippedRootRepo
 		deps.StaleIDRepo = staleIDRepo
 		deps.PersonRepo = personRepo
-		deps.PersonRefreshQueue = worker.NewPersonRefreshWorker(
-			personRefreshService,
-			worker.DefaultPersonRefreshWorkerConfig(),
-		)
+		personRefreshConfig := worker.DefaultPersonRefreshWorkerConfig()
+		personRefreshConfig.ClaimLease = catalog.PersonRefreshAttemptLease
+		personRefreshQueue := worker.NewPersonRefreshWorker(personRefreshService, personRefreshConfig)
+		personRefreshQueue.SetRatePerMinute(cfg.Metadata.PersonRefreshPerMinute)
+		configWatcher.OnChange(func(_, updated *config.Config) {
+			personRefreshQueue.SetRatePerMinute(updated.Metadata.PersonRefreshPerMinute)
+		})
+		deps.PersonRefreshQueue = personRefreshQueue
 		deps.PersonRefresher = personRefreshService
 		deps.Refresher = metadataService
 		deps.MetadataService = metadataService
@@ -2606,7 +2611,12 @@ func main() {
 				update.ExpectedFile = file
 				return deps.FileRepo.UpsertMarkers(ctx, file.ID, update)
 			},
-			Notify: deps.MarkerUpdateNotifier.MarkersUpdated,
+			Notify: func(ctx context.Context, file *models.MediaFile) {
+				if chapterThumbService != nil {
+					chapterThumbService.PrepareMarkerFile(ctx, file)
+				}
+				deps.MarkerUpdateNotifier.MarkersUpdated(ctx, file)
+			},
 		})
 	}
 	if chapterThumbService != nil {
@@ -2620,9 +2630,23 @@ func main() {
 			}
 			return "", fmt.Errorf("artwork URL unavailable")
 		})
-		chapterThumbService.SetNotifier(
-			playback.NewChapterThumbnailNotifier(sessionMgr, deps.PlaybackRealtimeHub, chapterThumbnailURLs, 0),
-		)
+		thumbnailNotifier := playback.NewChapterThumbnailNotifier(sessionMgr, deps.PlaybackRealtimeHub, chapterThumbnailURLs, 0, planstore.NewPostgres(deps.DB))
+		if deps.EventBus != nil {
+			publish := func(ctx context.Context, payload string) error {
+				return deps.EventBus.Publish(ctx, cache.ChannelPlayback, cache.Event{Type: cache.EventMarkerThumbnailReady, Payload: payload})
+			}
+			subscribe := func(ctx context.Context, handler func(string)) error {
+				return deps.EventBus.Subscribe(ctx, cache.ChannelPlayback, func(event cache.Event) {
+					if event.Type == cache.EventMarkerThumbnailReady {
+						handler(event.Payload)
+					}
+				})
+			}
+			if err := thumbnailNotifier.UseMarkerEventBus(appCtx, publish, subscribe); err != nil {
+				slog.Warn("subscribe marker thumbnail updates failed", "error", err)
+			}
+		}
+		chapterThumbService.SetNotifier(thumbnailNotifier)
 	}
 
 	// Build the reconciler early enough that playback handlers can trigger
@@ -3456,6 +3480,11 @@ func main() {
 		return nil
 	}
 	deps.OnUserProfileSessionsRevoked = bloemProfileSessionRevoker(&compatServer)
+	// Jellyfin-compatible downloads go through the router's download service,
+	// so they meet the same policy and share its bandwidth limiters. It stays
+	// a nil interface when the router builds no service, which refuses them.
+	var compatDownloads jellycompat.DownloadServer
+	deps.OnDownloadService = func(svc *downloads.Service) { compatDownloads = newBloemCompatDownloadServer(svc, deps.DB) }
 
 	distFS, fsErr := fs.Sub(siloweb.DistFS, "dist")
 	if fsErr != nil {
@@ -3710,6 +3739,7 @@ func main() {
 				compatDeps.FileResolver = jellycompat.GuardNativeStorageFiles(deps.FileRepo)
 				compatDeps.MediaSourceOwners = deps.FileRepo
 			}
+			compatDeps.Downloads = compatDownloads
 
 			compatDeps.SubtitleRepo = subtitles.NewPgRepository(deps.DB, deps.SecretCipher)
 

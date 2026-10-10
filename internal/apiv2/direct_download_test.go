@@ -3,6 +3,7 @@ package apiv2
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,13 +19,14 @@ import (
 
 type directDownloadFixture struct {
 	handlers.DownloadService
-	calls   int
-	err     error
-	partial bool
-	access  catalogpkg.AccessFilter
+	calls     int
+	err       error
+	partial   bool
+	committed bool
+	access    catalogpkg.AccessFilter
 }
 
-func (f *directDownloadFixture) ServeDirect(_ context.Context, w http.ResponseWriter, r *http.Request, user int, _ string, file int, format string, access catalogpkg.AccessFilter) error {
+func (f *directDownloadFixture) ServeDirectForProfile(_ context.Context, w http.ResponseWriter, r *http.Request, user int, _ string, file int, format string, access catalogpkg.AccessFilter) error {
 	f.calls++
 	f.access = access
 	if user != 1 || file != 42 || format != "original" && format != "" {
@@ -32,6 +34,9 @@ func (f *directDownloadFixture) ServeDirect(_ context.Context, w http.ResponseWr
 	}
 	if f.partial {
 		_, _ = w.Write([]byte("partial"))
+		if f.committed {
+			return fmt.Errorf("%w: PRIVATE interrupted", downloads.ErrResponseCommitted)
+		}
 		return errors.New("PRIVATE interrupted")
 	}
 	if f.err != nil {
@@ -102,22 +107,28 @@ func TestDirectDownloadDelivery(t *testing.T) {
 	}
 }
 func TestDirectDownloadPartialResponseAborts(t *testing.T) {
-	f := &directDownloadFixture{partial: true}
-	h := directDownloadTestHandler(t, f)
-	req := httptest.NewRequest("GET", Prefix+"/direct-download?file_id=42", nil)
-	for k, v := range viewerHeaders() {
-		req.Header.Set(k, v)
+	// A generic late error and the download service's committed-response
+	// error must both abort the stream without appending a problem body.
+	for _, committed := range []bool{false, true} {
+		t.Run(fmt.Sprintf("committed=%v", committed), func(t *testing.T) {
+			f := &directDownloadFixture{partial: true, committed: committed}
+			h := directDownloadTestHandler(t, f)
+			req := httptest.NewRequest("GET", Prefix+"/direct-download?file_id=42", nil)
+			for k, v := range viewerHeaders() {
+				req.Header.Set(k, v)
+			}
+			res := httptest.NewRecorder()
+			defer func() {
+				if got, ok := recover().(error); !ok || !errors.Is(got, http.ErrAbortHandler) {
+					t.Errorf("panic %v", got)
+				}
+				if res.Body.String() != "partial" || f.calls != 1 {
+					t.Errorf("appended error/replayed %s %d", res.Body, f.calls)
+				}
+			}()
+			h.ServeHTTP(res, req)
+		})
 	}
-	res := httptest.NewRecorder()
-	defer func() {
-		if got, ok := recover().(error); !ok || !errors.Is(got, http.ErrAbortHandler) {
-			t.Errorf("panic %v", got)
-		}
-		if res.Body.String() != "partial" || f.calls != 1 {
-			t.Errorf("appended error/replayed %s %d", res.Body, f.calls)
-		}
-	}()
-	h.ServeHTTP(res, req)
 }
 
 type directProxyFixture struct {
@@ -125,7 +136,7 @@ type directProxyFixture struct {
 	resolveErr error
 }
 
-func (f *directProxyFixture) ResolveDirectFile(_ context.Context, user int, profile string, file int, _ string, a catalogpkg.AccessFilter) (*downloads.FileTarget, error) {
+func (f *directProxyFixture) ResolveDirectFileForProfile(_ context.Context, user int, profile string, file int, _ string, a catalogpkg.AccessFilter) (*downloads.FileTarget, error) {
 	if user != 1 || profile != "p-owner" || file != 42 || a.ProfileID != "p-owner" {
 		return nil, downloads.ErrDownloadNotAllowed
 	}

@@ -60,6 +60,11 @@
           "gate": "realtime"
         },
         {
+          "type": "MarkerThumbnailReadyPayload",
+          "direction": "response",
+          "gate": "realtime"
+        },
+        {
           "type": "MarkersUpdatedPayload",
           "direction": "response",
           "gate": "realtime"

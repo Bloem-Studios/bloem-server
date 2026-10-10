@@ -44,7 +44,6 @@ import { useEventChannel } from "@/components/realtimeEventsContext";
 import { useSettingValuesRealtime } from "@/hooks/queries/settingValues";
 import Layout from "@/components/Layout";
 import Home from "@/pages/BloemHome";
-import Login from "@/pages/Login";
 import { useRequestFeatureStatus } from "@/hooks/queries/useRequests";
 import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
 import TasteSeedGate from "@/components/TasteSeedGate";
@@ -77,7 +76,6 @@ import {
   withDirectProfileCredentials,
   withItemCampaigns,
 } from "@/bloem/routes";
-import { prewarmCodecDetection } from "@/player/hooks/useCodecDetection";
 import { prefetchRouteChunks, type RouteChunkImport } from "@/lib/routeChunkPrefetch";
 import { importCatalog } from "@/pages/catalogRoute";
 
@@ -95,6 +93,7 @@ const AdminDownloadPreparationsRefresh = lazy(
 );
 const SettingsLayout = lazy(() => import("@/pages/SettingsLayout"));
 const SignedInSessions = lazy(() => import("@/pages/settings/SignedInSessions"));
+const Login = lazy(() => import("@/pages/Login"));
 const OAuthComplete = lazy(() => import("@/pages/OAuthComplete"));
 const ActivateDevice = lazy(() => import("@/pages/ActivateDevice"));
 const SetupWizard = lazy(() => import("@/pages/SetupWizard"));
@@ -797,7 +796,12 @@ function AdminRealtimeEventChannels() {
 
 function PlaybackCapabilityPrewarmer() {
   useEffect(() => {
-    void prewarmCodecDetection();
+    void import("@/player/hooks/useCodecDetection")
+      .then(({ prewarmCodecDetection }) => prewarmCodecDetection())
+      .catch(() => {
+        // The watch page imports the same module and probes on its own, so a
+        // failed warm-up only costs that probe's wait when playback starts.
+      });
   }, []);
   return null;
 }

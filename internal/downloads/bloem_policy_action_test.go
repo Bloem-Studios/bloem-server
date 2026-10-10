@@ -6,6 +6,8 @@ package downloads
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -108,9 +110,14 @@ func TestResolveDirectFileUsesProfileGroupDownloadDenial(t *testing.T) {
 		},
 	})
 
-	_, err := svc.ResolveDirectFile(ctx, user.ID, "profile-strict", 3, FormatOriginal, catalog.AccessFilter{})
+	_, err := svc.ResolveDirectFileForProfile(ctx, user.ID, "profile-strict", 3, FormatOriginal, catalog.AccessFilter{})
 	if !errors.Is(err, ErrDownloadNotAllowed) {
-		t.Fatalf("ResolveDirectFile() error = %v, want ErrDownloadNotAllowed", err)
+		t.Fatalf("ResolveDirectFileForProfile() error = %v, want ErrDownloadNotAllowed", err)
+	}
+	// Denial must precede file lookup and response IO on the serving entry point.
+	err = svc.ServeDirectForProfile(ctx, httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil), user.ID, "profile-strict", 3, FormatOriginal, catalog.AccessFilter{})
+	if !errors.Is(err, ErrDownloadNotAllowed) {
+		t.Fatalf("ServeDirectForProfile() error = %v, want ErrDownloadNotAllowed", err)
 	}
 }
 

@@ -119,7 +119,7 @@ func TestNativeContainmentDownloadDirectCollision(t *testing.T) {
 			raw := &nativeContainmentFiles{single: &models.MediaFile{ID: 1, ContentID: "book", FilePath: tc.path}}
 			svc := serviceWithFileRepo(GuardNativeStorageFiles(raw))
 			svc.itemAccess = allowDownloadItemAccess{}
-			target, err := svc.ResolveDirectFile(t.Context(), 7, "", 1, FormatOriginal, catalog.AccessFilter{})
+			target, err := svc.ResolveDirectFileForProfile(t.Context(), 7, "", 1, FormatOriginal, catalog.AccessFilter{})
 			if tc.deny {
 				if target != nil || !errors.Is(err, catalog.ErrItemNotFound) {
 					t.Errorf("signed target escaped: %+v %v", target, err)
@@ -128,7 +128,7 @@ func TestNativeContainmentDownloadDirectCollision(t *testing.T) {
 				t.Errorf("local target=%+v %v", target, err)
 			}
 			rr := httptest.NewRecorder()
-			err = svc.ServeDirect(t.Context(), rr, httptest.NewRequest(http.MethodGet, "/", nil), 7, "", 1, FormatOriginal, catalog.AccessFilter{})
+			err = svc.ServeDirectForProfile(t.Context(), rr, httptest.NewRequest(http.MethodGet, "/", nil), 7, "", 1, FormatOriginal, catalog.AccessFilter{})
 			if tc.deny {
 				if !errors.Is(err, catalog.ErrItemNotFound) || rr.Body.Len() != 0 || rr.Header().Get("Content-Disposition") != "" {
 					t.Errorf("escaped body=%q err=%v", rr.Body.String(), err)

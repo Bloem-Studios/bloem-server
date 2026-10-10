@@ -1674,6 +1674,10 @@
       "reason": "Catalog storage model for an external subtitle file; clients receive handler projections such as the registered playback subtitle inventory, never the storage row."
     },
     {
+      "type": "internal/models.MarkerThumbnail",
+      "reason": "Internal marker-image extraction state carries file identity, source ranges and storage keys; clients receive marker segments and the registered marker-thumbnail-ready payload instead."
+    },
+    {
       "type": "internal/models.MediaChapter",
       "reason": "Catalog storage model for a chapter; clients receive the chapter list projected by the registered playback and item responses."
     },

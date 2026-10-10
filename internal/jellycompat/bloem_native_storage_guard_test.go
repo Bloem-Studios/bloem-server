@@ -10,6 +10,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
+	"github.com/Silo-Server/silo-server/internal/downloads"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
@@ -42,7 +43,11 @@ func TestNativeContainmentJellyfinOriginalCollision(t *testing.T) {
 				telemetryCfg.Enabled = true
 				telemetry := streamtelemetry.NewRegistry(telemetryCfg, streamtelemetry.NewLocalStore(), nil)
 				t.Cleanup(func() { _ = telemetry.Stop(t.Context()) })
-				server := NewServerWithDependencies(Dependencies{StreamTelemetry: telemetry, Config: cfg, SessionStore: store, IDCodec: codec, ContentService: &stubContentService{detail: detail}, FileResolver: GuardNativeStorageFiles(testCompatFileResolver{file: &models.MediaFile{ID: 42, FilePath: tc.path}}), SessionMgr: &testCompatSessionManager{}})
+				downloadCfg := config.DownloadConfig{Enabled: true}
+				svc := downloads.NewService(nil, nil, nil,
+					downloads.GuardNativeStorageFiles(testDownloadFiles{42: {ID: 42, ContentID: "book", FilePath: tc.path}}),
+					nil, nil, testDownloadUsers{user: &models.User{ID: 1}}, testDownloadAccess{}, nil, &downloadCfg)
+				server := NewServerWithDependencies(Dependencies{StreamTelemetry: telemetry, Config: cfg, SessionStore: store, IDCodec: codec, ContentService: &stubContentService{detail: detail}, Downloads: svc, FileResolver: GuardNativeStorageFiles(testCompatFileResolver{file: &models.MediaFile{ID: 42, FilePath: tc.path}}), SessionMgr: &testCompatSessionManager{}})
 				path := "/Items/" + codec.EncodeStringID(EncodedIDItem, "book") + "/Download?api_key=" + compatSocketToken
 				rr := httptest.NewRecorder()
 				server.Handler().ServeHTTP(rr, httptest.NewRequest(method, path, nil))

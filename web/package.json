@@ -10,7 +10,6 @@
     "test": "vitest run",
     "build": "tsc -b && vite build",
     "budget:check": "node scripts/bloem-bundle-budget.mjs",
-    "budget:update": "node scripts/bloem-bundle-budget.mjs --update",
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

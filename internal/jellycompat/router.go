@@ -145,8 +145,9 @@ func NewRouter(deps Dependencies) chi.Router {
 		}
 	}
 	playbackHandler := NewPlaybackHandler(deps.Config, deps.ContentService, deps.IDCodec, deps.DeviceProfiles, deps.PlaybackStore, deps.SessionMgr, deps.FileResolver, deps.UserStoreProvider)
-	playbackHandler.accessFilter = deps.AccessFilterFn
 	playbackHandler.ScopeResolver = deps.PlaybackScopeResolver
+	playbackHandler.downloads = deps.Downloads
+	playbackHandler.accessFilter = deps.AccessFilterFn
 	startupSegmentRetention := playbackHandler.SegmentRetentionSeconds
 	playbackHandler.SegmentRetentionSeconds = func() int {
 		if cfg := deps.CurrentConfig(); cfg != nil {
@@ -338,8 +339,8 @@ func NewRouter(deps Dependencies) chi.Router {
 	// Media requests require a token or a PlaySessionId scoped to the negotiated source.
 	r.Group(func(r chi.Router) {
 		r.Use(PlaybackSessionAuth(deps.SessionStore, deps.PlaybackStore, adminAPIKeyAuth))
-		r.Method(http.MethodHead, "/Items/{id}/Download", observeCompat(deps.StreamTelemetry, http.MethodHead, "/Items/{id}/Download", playbackHandler.HandleDownload))
-		r.Get("/Items/{id}/Download", observeCompat(deps.StreamTelemetry, http.MethodGet, "/Items/{id}/Download", playbackHandler.HandleDownload))
+		r.Method(http.MethodHead, "/Items/{id}/Download", observeCompat(deps.StreamTelemetry, http.MethodHead, "/Items/{id}/Download", playbackHandler.HandleBloemDownload))
+		r.Get("/Items/{id}/Download", observeCompat(deps.StreamTelemetry, http.MethodGet, "/Items/{id}/Download", playbackHandler.HandleBloemDownload))
 		r.Method(http.MethodHead, "/Videos/{id}/stream", observeCompat(deps.StreamTelemetry, http.MethodHead, "/Videos/{id}/stream", playbackHandler.HandleVideoStream))
 		r.Get("/Audio/{itemId}/stream", observeCompat(deps.StreamTelemetry, http.MethodGet, "/Audio/{itemId}/stream", itemsHandler.HandleThemeAudio))
 		r.Head("/Audio/{itemId}/stream", observeCompat(deps.StreamTelemetry, http.MethodHead, "/Audio/{itemId}/stream", itemsHandler.HandleThemeAudio))

@@ -190,7 +190,6 @@ internal/database/simplify_playback_authority_migration_test.go  # isolate downg
 internal/downloads/artifact_repo.go  # route quota-scoped artifact operations through the admission connection to prevent pool starvation
 internal/downloads/artifact_repo_test.go
 internal/downloads/artifact_test.go
-internal/downloads/file_lookup_test.go
 internal/downloads/offline.go
 internal/downloads/policy.go
 internal/downloads/policy_action_test.go

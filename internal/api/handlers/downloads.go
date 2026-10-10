@@ -40,7 +40,7 @@ type DownloadService interface {
 	UpdateSubscription(ctx context.Context, userID int, profileID, deviceID, id string, patch downloads.SubscriptionPatch, filter catalog.AccessFilter) (*downloads.SubscriptionResult, error)
 	DeleteSubscription(ctx context.Context, userID int, profileID, deviceID, id string) error
 	SyncSubscriptions(ctx context.Context, userID int, profileID, deviceID string, filter catalog.AccessFilter) (int, error)
-	ServeDirect(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int, profileID string, fileID int, format string, filter catalog.AccessFilter) error
+	ServeDirectForProfile(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int, profileID string, fileID int, format string, filter catalog.AccessFilter) error
 	ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request, userID int, profileID, deviceID, downloadID string, filter catalog.AccessFilter) error
 	List(ctx context.Context, userID int, profileID, deviceID string) ([]*downloads.Download, error)
 	Delete(ctx context.Context, userID int, profileID, deviceID, downloadID string) error
@@ -126,14 +126,14 @@ func (h *DownloadHandler) CreateDirectDownloadLink(ctx context.Context, fileID i
 	if claims.SessionID == "" {
 		return "", time.Time{}, ErrDirectDownloadLinkSession
 	}
-	if _, err := resolver.ResolveDirectFile(ctx, claims.UserID, profileID, fileID, "", AccessFilterFromContext(ctx, "")); err != nil {
+	if _, err := resolver.ResolveDirectFileForProfile(ctx, claims.UserID, profileID, fileID, "", AccessFilterFromContext(ctx, "")); err != nil {
 		return "", time.Time{}, err
 	}
 	return h.linkIssuer.GenerateDirectDownloadLinkToken(claims.UserID, claims.Role, claims.SessionID, profileID, claims.ImpersonatorUserID, fileID)
 }
 
 type downloadFileResolver interface {
-	ResolveDirectFile(ctx context.Context, userID int, profileID string, fileID int, format string, filter catalog.AccessFilter) (*downloads.FileTarget, error)
+	ResolveDirectFileForProfile(ctx context.Context, userID int, profileID string, fileID int, format string, filter catalog.AccessFilter) (*downloads.FileTarget, error)
 	ResolveManagedFile(ctx context.Context, userID int, profileID, deviceID, downloadID string, filter catalog.AccessFilter) (*downloads.FileTarget, error)
 }
 
@@ -559,9 +559,20 @@ func (h *DownloadHandler) handleDirectDownload(w http.ResponseWriter, r *http.Re
 	// exactly as on /downloads/{id}/file above; roll the deadline with progress
 	// instead of truncating the body at 120 s.
 	sw := httpstream.NewRollingDeadlineWriter(w)
-	if err := h.svc.ServeDirect(serveCtx, sw, r, userID, profileID, fileID, r.URL.Query().Get("format"), filter); err != nil {
+	if err := h.svc.ServeDirectForProfile(serveCtx, sw, r, userID, profileID, fileID, r.URL.Query().Get("format"), filter); err != nil {
+		if errors.Is(err, downloads.ErrResponseCommitted) {
+			// Headers and part of the file already went out, so an error body
+			// would corrupt the media response. Abort it instead, as the v2
+			// stream writer requires. A client that left has canceled the
+			// request; any other failure, such as a short read from storage,
+			// is the server's.
+			if r.Context().Err() == nil {
+				slog.WarnContext(r.Context(), "direct download failed after the response started",
+					"component", "downloads", "file_id", fileID, "error", err)
+			}
+			panic(http.ErrAbortHandler)
+		}
 		h.writeDownloadError(w, err)
-		return
 	}
 }
 
@@ -570,7 +581,7 @@ func (h *DownloadHandler) redirectDirectDownload(ctx context.Context, w http.Res
 	if !ok {
 		return false, nil
 	}
-	target, err := resolver.ResolveDirectFile(ctx, userID, profileID, fileID, format, filter)
+	target, err := resolver.ResolveDirectFileForProfile(ctx, userID, profileID, fileID, format, filter)
 	if err != nil {
 		return false, err
 	}

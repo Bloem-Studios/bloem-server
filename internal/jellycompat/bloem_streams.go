@@ -8,10 +8,8 @@ import (
 )
 
 // downloadDenied applies the account/profile access policy to
-// /Items/{id}/Download and writes the 403 when it refuses. The route serves
-// the original file and Infuse also uses it for Direct Play, so a custom
-// playback-on/download-off policy cannot use that client transport;
-// offline-download security takes precedence.
+// /Items/{id}/Download and writes the 403 before decoding IDs or querying
+// content. Static=true streams retain their separate playback permission.
 func (h *PlaybackHandler) downloadDenied(w http.ResponseWriter, r *http.Request, session *Session) bool {
 	if h.accessFilter == nil {
 		return false
