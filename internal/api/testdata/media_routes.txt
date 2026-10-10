@@ -913,6 +913,8 @@ POST /api/bloem/v1/admin/organization/invitations/{id}/resend	non-media
 GET /api/bloem/v1/admin/organization/libraries	non-media
 GET /api/bloem/v1/admin/organization/native-storage/artifacts	non-media
 GET /api/bloem/v1/admin/organization/native-storage/capabilities	non-media
+POST /api/bloem/v1/admin/organization/native-storage/catalog/installations	non-media
+POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade	non-media
 POST /api/bloem/v1/admin/organization/native-storage/installations	non-media
 DELETE /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}	non-media
 POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/disable	non-media
@@ -1006,6 +1008,8 @@ GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions	non-media
 POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions	non-media
 GET /api/bloem/v1/admin/platform/native-storage/artifacts	non-media
 GET /api/bloem/v1/admin/platform/native-storage/capabilities	non-media
+POST /api/bloem/v1/admin/platform/native-storage/catalog/installations	non-media
+POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade	non-media
 POST /api/bloem/v1/admin/platform/native-storage/installations	non-media
 DELETE /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}	non-media
 POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/disable	non-media
