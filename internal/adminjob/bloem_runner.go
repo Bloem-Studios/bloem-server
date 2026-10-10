@@ -81,7 +81,7 @@ func (r *Runner) libraryDeletionProgress(ctx context.Context, jobID string) func
 			}
 		}()
 		if err := r.repo.UpdateProgress(progressCtx, jobID, current, total, message); err != nil {
-			slog.Warn("admin jobs: failed to update delete progress", "job_id", jobID, "error", err)
+			slog.WarnContext(progressCtx, "admin jobs: failed to update delete progress", "job_id", jobID, "error", err)
 			return
 		}
 		r.publishJobByID(progressCtx, notifications.TypeJobProgress, jobID)

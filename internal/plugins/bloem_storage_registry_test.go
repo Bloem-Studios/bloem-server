@@ -1,29 +1,12 @@
 package plugins
 
 import (
-	"os"
 	"runtime"
 	"strings"
 	"testing"
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 )
-
-func nativeS3PrivateRoot(t *testing.T) string {
-	t.Helper()
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// /tmp is intentionally inadmissible: its writable ancestor would permit
-	// namespace replacement. Keep these fixtures in a host-owned private tree.
-	root, err := os.MkdirTemp(home, ".bloem-s3-state-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(root) })
-	return root
-}
 
 func approvedNativeFixture() NativeStorageArtifact {
 	checksum := strings.Repeat("a", 64)

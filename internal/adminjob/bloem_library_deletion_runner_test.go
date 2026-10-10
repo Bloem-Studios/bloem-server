@@ -306,14 +306,14 @@ func TestBloemLibraryDeletionRunnerBoundsProgressPublication(t *testing.T) {
 	cfg.MinConns = 0
 	cfg.MinIdleConns = 0
 	var attempts atomic.Int32
-	cfg.BeforeAcquire = func(ctx context.Context, _ *pgx.Conn) bool {
+	cfg.PrepareConn = func(ctx context.Context, _ *pgx.Conn) (bool, error) {
 		if attempts.Add(1) > 1 {
 			// Permit the durable update, then hold publication's job read
 			// until its own context ends. Both must share the short deadline.
 			<-ctx.Done()
-			return false
+			return false, ctx.Err()
 		}
-		return true
+		return true, nil
 	}
 	pool, err := pgxpool.NewWithConfig(t.Context(), cfg)
 	if err != nil {
