@@ -103,6 +103,9 @@ func validateNativeManagementConfigForOperation(m *publicv1.PluginManifest, conf
 	if m == nil {
 		return rejected()
 	}
+	if err := validateNativeS3UserConfig(m.GetPluginId(), config); err != nil {
+		return err
+	}
 	declared := make(map[string]bool)
 	for _, schema := range m.GetGlobalConfigSchema() {
 		if schema == nil || !nativeStorageText(schema.GetKey()) || declared[schema.GetKey()] {

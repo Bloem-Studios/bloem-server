@@ -236,6 +236,9 @@ func (r *NativeStorageRegistry) install(ctx context.Context, req NativeStorageIn
 	if !ok {
 		return nil, errors.New("native artifact is not approved")
 	}
+	if err := validateNativeS3UserConfig(a.Manifest.GetPluginId(), req.Config); err != nil {
+		return nil, err
+	}
 	s := req.Source
 	if s.OwnerID == uuid.Nil || s.InstallationID != nil || (s.PluginID != "" && s.PluginID != a.Manifest.GetPluginId()) || !nativeStorageText(s.ProviderSourceID) || !nativeStorageText(s.RootEntryID) {
 		return nil, errors.New("invalid native source ownership or identity")
@@ -268,6 +271,11 @@ func (r *NativeStorageRegistry) install(ctx context.Context, req NativeStorageIn
 	archive, err := buildNativeStorageArchive(manifestJSON, req.Binary)
 	if err != nil {
 		return nil, err
+	}
+	if a.Manifest.GetPluginId() == nativeS3PluginID {
+		if err = nativeS3PrepareRoot(r.baseDir); err != nil {
+			return nil, err
+		}
 	}
 	if err = os.MkdirAll(r.baseDir, 0700); err != nil {
 		return nil, err
@@ -372,6 +380,10 @@ func (r *NativeStorageRegistry) install(ctx context.Context, req NativeStorageIn
 		entries = append(entries, &publicv1.ConfigEntry{Key: key, Value: v})
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Key < entries[j].Key })
+	entries, err = r.nativeRuntimeConfig(installation, entries)
+	if err != nil {
+		return nil, err
+	}
 	// Once COMMIT is attempted, a transport error cannot prove rollback.
 	// Retain the owned package so a committed installation stays runnable;
 	// cleanup of unreferenced directories is a separate deferred gate.
@@ -480,32 +492,7 @@ func (r *NativeStorageRegistry) Snapshot(ctx context.Context, key, owner uuid.UU
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return nil, errors.New("native install path escapes owned root")
 	}
-	rows, err := tx.Query(ctx, `SELECT config_key,config_value FROM plugin_runtime_configs WHERE plugin_installation_id=$1 ORDER BY config_key`, installation.ID)
-	if err != nil {
-		return nil, err
-	}
-	entries := make([]*publicv1.ConfigEntry, 0)
-	for rows.Next() {
-		var key string
-		var data []byte
-		if err = rows.Scan(&key, &data); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		value, err := decodeRuntimeConfigValue(r.configs.cipher, installation.ID, key, data)
-		if err != nil {
-			rows.Close()
-			return nil, err
-		}
-		v, err := structpb.NewStruct(value)
-		if err != nil {
-			rows.Close()
-			return nil, err
-		}
-		entries = append(entries, &publicv1.ConfigEntry{Key: key, Value: v})
-	}
-	err = rows.Err()
-	rows.Close()
+	entries, err := r.nativeRuntimeConfigTx(ctx, tx, installation)
 	if err != nil {
 		return nil, err
 	}
@@ -657,6 +644,9 @@ func (r *NativeStorageRegistry) replaceConfiguration(ctx context.Context, key, o
 		if !prepared.matches(s, installation, archive) {
 			return 0, nativeManagementUnavailable()
 		}
+	}
+	if err = validateNativeS3UserConfig(installation.PluginID, config); err != nil {
+		return 0, err
 	}
 	if err = r.replaceConfigTx(ctx, tx, installation.ID, config); err != nil {
 		return 0, err

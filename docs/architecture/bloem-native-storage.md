@@ -51,6 +51,41 @@ plugin in one transaction and bumps its runtime generation, so the running
 process is replaced; the source, its encrypted configuration and its library
 stay as they are. Ordinary plugin handlers hide native installations.
 
+## S3 process state
+
+The manually approved `bloem.storage.s3` provider needs a durable private
+identity and cursor database. The registry derives its `connection.state_path`
+from the installation ID under `state/s3/installation-<id>/index.db` within the
+host installation root. Executable replacement, runtime generation changes,
+credential rotation and host restart preserve this path. Separate installations
+have separate state; reinstalling a detached source creates a new installation
+and does not migrate the previous installation's identity database.
+
+The path exists only in configuration prepared for the host runtime. It is
+never persisted in `plugin_runtime_configs` or added to configuration API
+views. S3 install and configuration replacement require one native `connection`
+object and reject any supplied `state_path`, including empty or null values.
+Runtime snapshots also refuse historical supplied paths and legacy envelopes.
+An incomplete connection object may be installed; the plugin then stays
+unconfigured until its required connection settings are supplied.
+
+On Unix hosts, descriptor-relative no-follow traversal checks every ancestor.
+Ancestors must belong to the host UID or root and cannot be group- or
+world-writable, including sticky temporary directories. The installation root
+and its state directories must belong to the host UID with mode 0700. An
+existing database must be a regular file owned by that UID with mode 0600 and
+one hard link. Symlinks and unsafe permissions fail closed; the registry does
+not repair them. Hosts without these ownership checks refuse S3 state admission.
+
+Install and upgrade prepare state and runtime configuration before committing.
+A disabled installation may receive a package-only upgrade and a non-runnable
+return snapshot; its enabled flags stay false and ordinary runtime `Snapshot`
+still refuses it. This avoids reporting a committed disabled upgrade as a
+failure. The S3 provider's immutable-version checks do not certify a backend;
+production source admission still requires genuine immutable versions or a
+separately verified snapshot implementation. All-media ingestion and playback
+wiring remain separate from this state-path boundary.
+
 ## Scanning
 
 A storage library scans only as a whole library. `libraryingest.StorageScanner`:

@@ -98,3 +98,34 @@ func TestNativeOnboardingSourceApprovalProjection(t *testing.T) {
 		t.Fatal("approval projection aliases caller data")
 	}
 }
+
+// A permissive plugin schema cannot delegate host filesystem authority to an
+// organization, including an empty/null path or a legacy configuration shape.
+func TestNativeS3ConfigurationReservesHostStatePath(t *testing.T) {
+	m := &publicv1.PluginManifest{PluginId: "bloem.storage.s3", GlobalConfigSchema: []*publicv1.ConfigSchema{{Key: "connection", JsonSchema: `{"type":"object"}`}, {Key: "source_json", JsonSchema: `{"type":"object"}`}}}
+	for _, config := range []map[string]map[string]any{
+		nil,
+		{"connection": nil},
+		{"source_json": {"json": "{}", "state_path": "caller-controlled"}},
+		{"connection": {}, "source_json": {}},
+		{"connection": {"state_path": "caller-controlled"}},
+		{"connection": {"state_path": ""}},
+		{"connection": {"state_path": nil}},
+		{"connection": {"state_path": 123}},
+	} {
+		for _, operation := range []string{"artifact_rejected", "invalid_request"} {
+			err := validateNativeManagementConfigForOperation(m, config, operation)
+			var typed *catalog.NativeOnboardingError
+			if !errors.As(err, &typed) || typed.Code != "invalid_request" {
+				t.Errorf("S3 host configuration boundary returned %T; want invalid_request", err)
+			}
+		}
+	}
+	if err := validateNativeManagementConfig(m, map[string]map[string]any{"connection": {}}); err != nil {
+		t.Fatal("incomplete native connection refused")
+	}
+	m.PluginId = "bloem.storage.other"
+	if err := validateNativeManagementConfig(m, map[string]map[string]any{"connection": {"state_path": "other-plugin-setting"}}); err != nil {
+		t.Fatal("S3-specific reservation changed another plugin")
+	}
+}

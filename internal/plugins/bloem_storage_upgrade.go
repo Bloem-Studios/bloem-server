@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // UpgradeAuthorized installs a newer approved artifact of the same plugin on an
@@ -54,6 +55,11 @@ func (r *NativeStorageRegistry) upgrade(ctx context.Context, installationID int,
 	archive, err := buildNativeStorageArchive(manifestJSON, binary)
 	if err != nil {
 		return nil, err
+	}
+	if a.Manifest.GetPluginId() == nativeS3PluginID {
+		if err = nativeS3PrepareRoot(r.baseDir); err != nil {
+			return nil, err
+		}
 	}
 	if err = os.MkdirAll(r.baseDir, 0700); err != nil {
 		return nil, err
@@ -105,8 +111,13 @@ func (r *NativeStorageRegistry) upgrade(ctx context.Context, installationID int,
 	if err = authorize(ctx, tx); err != nil {
 		return nil, err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE plugin_installations SET version=$2, install_path=$3, runtime_generation=runtime_generation+1, updated_at=now() WHERE id=$1`,
-		installationID, a.Manifest.GetVersion(), path); err != nil {
+	entries, err := r.nativeRuntimeConfigTx(ctx, tx, installation)
+	if err != nil {
+		return nil, err
+	}
+	installation, err = scanInstallation(tx.QueryRow(ctx, `UPDATE plugin_installations SET version=$2, install_path=$3, runtime_generation=runtime_generation+1, updated_at=now() WHERE id=$1 RETURNING `+installationColumns,
+		installationID, a.Manifest.GetVersion(), path))
+	if err != nil {
 		return nil, err
 	}
 	tag, err := tx.Exec(ctx, `UPDATE plugin_archives SET manifest_json=$2, checksum=$3, archive_bytes=$4, updated_at=now() WHERE plugin_installation_id=$1`,
@@ -126,5 +137,8 @@ func (r *NativeStorageRegistry) upgrade(ctx context.Context, installationID int,
 		}
 		return nil, nativeManagementCommitError(err, "upgrade", key, operationID)
 	}
-	return r.Snapshot(ctx, key, owner)
+	// Configuration and private state were verified before COMMIT. Returning the
+	// retained transaction view also permits package-only upgrades of disabled
+	// installations without enabling them or admitting an ordinary Snapshot.
+	return &NativeStorageSnapshot{Source: source, Installation: installation, Generation: uint64(installation.RuntimeGeneration), ArtifactChecksum: a.Checksum, Manifest: proto.CloneOf(a.Manifest), Config: entries}, nil
 }

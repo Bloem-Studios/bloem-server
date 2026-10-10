@@ -16,6 +16,7 @@ import (
 	"time"
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
@@ -23,6 +24,301 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/proto"
 )
+
+func nativeRegistryS3Fixture(t *testing.T, enabled bool) (*NativeStorageRegistry, *NativeStorageSnapshot, NativeStorageInstallRequest) {
+	t.Helper()
+	r, _, req := nativeRegistryFixture(t)
+	a := r.approved["fixture"]
+	a.Manifest = proto.CloneOf(a.Manifest)
+	a.Manifest.PluginId = "bloem.storage.s3"
+	a.Manifest.GlobalConfigSchema = []*publicv1.ConfigSchema{{Key: "connection", JsonSchema: `{"type":"object"}`}}
+	r.approved["s3"] = a
+	r.baseDir = nativeS3PrivateRoot(t)
+	req.ArtifactKey = "s3"
+	req.Source.Enabled = enabled
+	req.Config = map[string]map[string]any{"connection": {"source_id": "synthetic-source", "secret_key": "synthetic-test-secret"}}
+	s, err := r.Install(t.Context(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r, s, req
+}
+
+func nativeS3SnapshotPath(t *testing.T, s *NativeStorageSnapshot) string {
+	t.Helper()
+	if s == nil || len(s.Config) != 1 || s.Config[0].GetKey() != "connection" {
+		t.Fatal("S3 runtime configuration shape lost")
+	}
+	path := s.Config[0].Value.Fields["state_path"].GetStringValue()
+	if !filepath.IsAbs(path) {
+		t.Fatal("host-derived S3 state path absent")
+	}
+	return path
+}
+
+func TestNativeS3RegistryStateLifetime(t *testing.T) {
+	r, installed, req := nativeRegistryS3Fixture(t, true)
+	path := nativeS3SnapshotPath(t, installed)
+	if _, supplied := req.Config["connection"]["state_path"]; supplied {
+		t.Fatal("runtime path injection mutated caller settings")
+	}
+	callerConfig := map[string]map[string]any{"connection": {"state_path": "caller-controlled"}}
+	for _, guarded := range []bool{false, true} {
+		var err error
+		if guarded {
+			_, err = r.ReplaceConfigurationAuthorized(t.Context(), installed.Source.Key, installed.Source.OwnerID, 1, callerConfig, func(context.Context, pgx.Tx) error { return nil })
+		} else {
+			_, err = r.ReplaceConfiguration(t.Context(), installed.Source.Key, installed.Source.OwnerID, callerConfig)
+		}
+		var refusal *catalog.NativeOnboardingError
+		if !errors.As(err, &refusal) || refusal.Code != "invalid_request" {
+			t.Fatal("configuration writer delegated its state path to caller")
+		}
+	}
+	badInstall := req
+	badInstall.Config = callerConfig
+	for _, guarded := range []bool{false, true} {
+		var err error
+		if guarded {
+			_, err = r.InstallAuthorized(t.Context(), badInstall, func(context.Context, pgx.Tx) error { return nil })
+		} else {
+			_, err = r.Install(t.Context(), badInstall)
+		}
+		var refusal *catalog.NativeOnboardingError
+		if !errors.As(err, &refusal) || refusal.Code != "invalid_request" {
+			t.Fatal("installation writer delegated its state path to caller")
+		}
+	}
+	if err := os.WriteFile(path, []byte("retained-fixture-state"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	check := func(snapshot *NativeStorageSnapshot) {
+		t.Helper()
+		if nativeS3SnapshotPath(t, snapshot) != path {
+			t.Fatal("configuration/release/runtime rotation changed durable S3 state path")
+		}
+		data, err := os.ReadFile(path)
+		if err != nil || string(data) != "retained-fixture-state" {
+			t.Fatal("durable S3 state lost")
+		}
+		configs, err := r.configs.ListGlobalConfigs(t.Context(), installed.Installation.ID)
+		if err != nil || len(configs) != 1 {
+			t.Fatal("persisted configuration unavailable")
+		}
+		if _, persisted := configs[0].Value["state_path"]; persisted {
+			t.Fatal("derived private path persisted in configuration/API view")
+		}
+	}
+	restarted, err := NewNativeStorageRegistry(r.pool, r.configs.cipher, r.baseDir, r.approved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := restarted.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(s)
+	if _, err := r.ReplaceConfigurationAuthorized(t.Context(), installed.Source.Key, installed.Source.OwnerID, 1,
+		map[string]map[string]any{"connection": {"source_id": "synthetic-source", "secret_key": "rotated-fixture-secret"}}, func(context.Context, pgx.Tx) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	s, err = restarted.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(s)
+	next := append(append([]byte(nil), req.Binary...), []byte("s3-upgrade")...)
+	a := r.approved["s3"]
+	a.Manifest = proto.CloneOf(a.Manifest)
+	sum := sha256.Sum256(next)
+	a.Checksum = hex.EncodeToString(sum[:])
+	a.Manifest.Checksum, a.Manifest.Version = a.Checksum, "1.1.0"
+	r.approved["s3-next"] = a
+	s, err = r.UpgradeAuthorized(t.Context(), installed.Installation.ID, installed.Source.Key, installed.Source.OwnerID, "s3-next", next, func(context.Context, pgx.Tx) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(s)
+	if s.Installation.InstallPath == installed.Installation.InstallPath {
+		t.Fatal("upgrade fixture did not replace the executable directory")
+	}
+	second, err := r.Install(t.Context(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nativeS3SnapshotPath(t, second) == path {
+		t.Fatal("separate installations share key/cursor state")
+	}
+}
+
+func TestNativeS3RegistryDisabledInstallState(t *testing.T) {
+	r, installed, req := nativeRegistryS3Fixture(t, false)
+	path := nativeS3SnapshotPath(t, installed)
+	if _, err := os.Stat(filepath.Dir(path)); err != nil {
+		t.Fatal("disabled install lacks private durable state directory")
+	}
+	if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); !errors.Is(err, storagesource.ErrSourceUnavailable) {
+		t.Fatal("disabled S3 installation became runnable")
+	}
+	upgraded, err := r.UpgradeAuthorized(t.Context(), installed.Installation.ID, installed.Source.Key, installed.Source.OwnerID, "s3", req.Binary, func(context.Context, pgx.Tx) error { return nil })
+	if err != nil {
+		t.Fatal("disabled package-only S3 upgrade returned an error")
+	}
+	if upgraded.Source.Enabled || upgraded.Installation.Enabled || upgraded.Generation != 2 || nativeS3SnapshotPath(t, upgraded) != path {
+		t.Fatal("disabled S3 upgrade lost state or enabled runtime")
+	}
+	if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); !errors.Is(err, storagesource.ErrSourceUnavailable) {
+		t.Fatal("disabled S3 upgrade admitted runtime")
+	}
+}
+
+func TestNativeStorageRegistryDisabledPackageUpgrade(t *testing.T) {
+	r, _, req := nativeRegistryFixture(t)
+	req.Source.Enabled = false
+	installed, err := r.Install(t.Context(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upgraded, err := r.UpgradeAuthorized(t.Context(), installed.Installation.ID, installed.Source.Key, installed.Source.OwnerID, "fixture", req.Binary, func(context.Context, pgx.Tx) error { return nil })
+	if err != nil {
+		t.Fatal("committed disabled package upgrade returned failure")
+	}
+	if upgraded.Generation != 2 || upgraded.Source.Enabled || upgraded.Installation.Enabled {
+		t.Fatal("disabled package upgrade changed runtime admission")
+	}
+	if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); !errors.Is(err, storagesource.ErrSourceUnavailable) {
+		t.Fatal("disabled package upgrade admitted process snapshot")
+	}
+}
+
+func TestNativeS3RegistryRejectsHistoricalPathsAndMalformedShape(t *testing.T) {
+	r, installed, req := nativeRegistryS3Fixture(t, true)
+	for _, value := range []map[string]any{{"state_path": "caller-path"}, {"state_path": ""}, {"state_path": nil}} {
+		if err := r.configs.PutGlobalConfig(t.Context(), installed.Installation.ID, "connection", value); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); err == nil {
+			t.Fatal("historical caller-supplied path reached runtime")
+		}
+	}
+	if _, err := r.UpgradeAuthorized(t.Context(), installed.Installation.ID, installed.Source.Key, installed.Source.OwnerID, "s3", req.Binary, func(context.Context, pgx.Tx) error { return nil }); err == nil {
+		t.Fatal("historical supplied S3 path accepted by upgrade")
+	}
+	var generation int64
+	if err := r.pool.QueryRow(t.Context(), `SELECT runtime_generation FROM plugin_installations WHERE id=$1`, installed.Installation.ID).Scan(&generation); err != nil || generation != 1 {
+		t.Fatal("historical supplied S3 path committed an upgrade before refusal")
+	}
+	if _, err := r.pool.Exec(t.Context(), `DELETE FROM plugin_runtime_configs WHERE plugin_installation_id=$1`, installed.Installation.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); err == nil {
+		t.Fatal("missing native connection reached runtime")
+	}
+	if err := r.configs.PutGlobalConfig(t.Context(), installed.Installation.ID, "source_json", map[string]any{"json": "{}"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); err == nil {
+		t.Fatal("legacy S3 envelope reached native runtime")
+	}
+}
+
+func TestNativeS3RegistryRefusesUnsafeStateBeforeUpgrade(t *testing.T) {
+	r, installed, req := nativeRegistryS3Fixture(t, true)
+	path := nativeS3SnapshotPath(t, installed)
+	if err := os.Chmod(filepath.Dir(path), 0770); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); err == nil {
+		t.Fatal("writable private state directory reached runtime")
+	}
+	next := append(append([]byte(nil), req.Binary...), []byte("unsafe-upgrade")...)
+	a := r.approved["s3"]
+	a.Manifest = proto.CloneOf(a.Manifest)
+	sum := sha256.Sum256(next)
+	a.Checksum = hex.EncodeToString(sum[:])
+	a.Manifest.Checksum, a.Manifest.Version = a.Checksum, "1.1.0"
+	r.approved["s3-next"] = a
+	if _, err := r.UpgradeAuthorized(t.Context(), installed.Installation.ID, installed.Source.Key, installed.Source.OwnerID, "s3-next", next, func(context.Context, pgx.Tx) error { return nil }); err == nil {
+		t.Fatal("unsafe S3 state accepted during upgrade")
+	}
+	var version string
+	if err := r.pool.QueryRow(t.Context(), `SELECT version FROM plugin_installations WHERE id=$1`, installed.Installation.ID).Scan(&version); err != nil || version != "1.0.0" {
+		t.Fatal("refused upgrade still committed its release")
+	}
+}
+
+func TestNativeS3InstallRefusesUnsafeAncestors(t *testing.T) {
+	r, _, req := nativeRegistryS3Fixture(t, true)
+	for _, kind := range []string{"symlink-base", "symlink-ancestor", "writable-ancestor", "readable-base", "writable-state", "sticky-temp"} {
+		t.Run(kind, func(t *testing.T) {
+			root := nativeS3PrivateRoot(t)
+			base := filepath.Join(root, "native")
+			switch kind {
+			case "symlink-base", "symlink-ancestor":
+				target := filepath.Join(root, "target")
+				if err := os.Mkdir(target, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, base); err != nil {
+					t.Fatal(err)
+				}
+				if kind == "symlink-ancestor" {
+					base = filepath.Join(base, "child")
+				}
+			case "writable-ancestor":
+				if err := os.Chmod(root, 0770); err != nil {
+					t.Fatal(err)
+				}
+			case "readable-base":
+				if err := os.Mkdir(base, 0750); err != nil {
+					t.Fatal(err)
+				}
+			case "writable-state":
+				if err := os.MkdirAll(filepath.Join(base, "state"), 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chmod(filepath.Join(base, "state"), 0770); err != nil {
+					t.Fatal(err)
+				}
+			case "sticky-temp":
+				base = t.TempDir()
+			}
+			r.baseDir = base
+			if _, err := r.Install(t.Context(), req); err == nil {
+				t.Fatal("unsafe S3 state namespace accepted")
+			}
+		})
+	}
+}
+
+func TestNativeS3SnapshotRefusesUnsafeStateFile(t *testing.T) {
+	r, installed, _ := nativeRegistryS3Fixture(t, true)
+	path := nativeS3SnapshotPath(t, installed)
+	for _, kind := range []string{"symlink", "public-file", "hard-link"} {
+		t.Run(kind, func(t *testing.T) {
+			defer func() { _ = os.Remove(path) }()
+			if kind == "symlink" {
+				if err := os.Symlink(filepath.Join(r.baseDir, "outside.db"), path); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := os.WriteFile(path, []byte("synthetic-state"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				if kind == "public-file" {
+					if err := os.Chmod(path, 0640); err != nil {
+						t.Fatal(err)
+					}
+				} else if err := os.Link(path, filepath.Join(r.baseDir, "other-state.db")); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := r.Snapshot(t.Context(), installed.Source.Key, installed.Source.OwnerID); err == nil {
+				t.Fatal("unsafe state file reached S3 runtime")
+			}
+		})
+	}
+}
 
 func nativeRegistryDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
