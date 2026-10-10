@@ -352,7 +352,7 @@ func newBloemV1InvitationHandler(deps Dependencies, invitationService *invitatio
 	if deps.Config.Auth.JWTSecret != "" {
 		lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 		invitationHandler.SetLifecycleIdempotency(
-			lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
+			lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
 			lifecycleidempotency.NewRequestDigester(lifecycleSecret),
 			bloemServerIdentity(deps),
 			lifecycleSecret,
