@@ -242,7 +242,10 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			removedFiles, err = c.scanner.MarkStorageEbooksRemovedTx(ctx, tx, location, removed)
 			return err
 		}
-		if err = c.sources.ApplyPage(job, lease, checkpoint, page, publish); err != nil {
+		authorize := func(ctx context.Context, tx pgx.Tx) error {
+			return c.resources.RequireStorageScanTx(ctx, tx, location, source)
+		}
+		if err = c.sources.ApplyPageAuthorized(job, lease, checkpoint, page, authorize, publish); err != nil {
 			return result, err
 		}
 		result.ScanResult.New += published.New

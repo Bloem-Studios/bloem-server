@@ -59,6 +59,11 @@ func (s *server) Configure(_ context.Context, r *publicv1.ConfigureRequest) (*pu
 		revision = "v1"
 	}
 	s.objects = fixtures(revision)
+	if s.mode == "list-metadata-gate" {
+		for _, o := range s.objects {
+			o.entry.Ebook = &storagev1.EbookMetadata{Title: "Provider Book", Authors: []string{"Fixture Writer"}}
+		}
+	}
 	if s.mode == "roots" {
 		epub := s.objects[0].data
 		s.objects = nil
@@ -134,6 +139,21 @@ func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1
 		s.signal("list")
 		<-ctx.Done()
 		return nil, status.FromContextError(ctx.Err()).Err()
+	}
+	if s.mode == "list-metadata-gate" {
+		s.signal("list")
+		poll := time.NewTicker(5 * time.Millisecond)
+		defer poll.Stop()
+		for {
+			if _, err := os.Stat(s.notify + ".release"); err == nil {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return nil, status.FromContextError(ctx.Err()).Err()
+			case <-poll.C:
+			}
+		}
 	}
 	offset := 0
 	if r.Cursor != "" {

@@ -36,6 +36,10 @@ type PagePublisher func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry
 // ApplyPage records one listed page and advances its directory checkpoint.
 // publish, when set, runs in the same transaction for the page's file entries.
 func (r *Repository) ApplyPage(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse, publish PagePublisher) error {
+	return r.applyPage(ctx, lease, checkpoint, page, nil, publish)
+}
+
+func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse, authorize PageAuthorizer, publish PagePublisher) error {
 	if checkpoint.Complete || !validText(checkpoint.DirectoryID, 1024, true) {
 		return ErrCheckpointConflict
 	}
@@ -53,6 +57,11 @@ func (r *Repository) ApplyPage(ctx context.Context, lease Lease, checkpoint Chec
 		return err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
+	if authorize != nil {
+		if err = authorize(ctx, tx); err != nil {
+			return err
+		}
+	}
 	if err = verifyLease(ctx, tx, lease); err != nil {
 		return err
 	}

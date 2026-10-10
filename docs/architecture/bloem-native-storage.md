@@ -153,10 +153,15 @@ A storage library scans only as a whole library. `libraryingest.StorageScanner`:
 2. Begins or resumes a discovery run under a database lease (source then run
    locks; the database clock decides expiry; each takeover bumps the epoch).
    A renewal worker extends the lease and rechecks tenancy.
-3. Lists each directory page by page. `ApplyPage` commits, in one transaction,
-   the page's journal entries (`bloem_storage_entries`), the directory
-   checkpoint and the page's catalog publication. A failed publication rolls
-   the page back, so a retry lists it again.
+3. Lists each directory page by page. `ApplyPageAuthorized` checks current
+   installation, source, library, owner and entitlement authority inside the
+   page transaction, before journal source/run locks. It retains those
+   resource locks through the commit of the page's journal entries
+   (`bloem_storage_entries`), directory checkpoint and catalog publication.
+   Replay also requires current authority. Provider I/O stays outside this
+   transaction. Refused authority or failed publication rolls the page back,
+   so a retry lists it again. The unfenced `ApplyPage` entry point remains
+   available for standalone journal discovery.
 4. After completion, sweeps files marked missing past the library's grace
    period, as file scans do.
 
