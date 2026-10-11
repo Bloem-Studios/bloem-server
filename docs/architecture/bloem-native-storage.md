@@ -182,7 +182,13 @@ A storage library scans only as a whole library. `libraryingest.StorageScanner`:
    Replay also requires current authority. Provider I/O stays outside this
    transaction. Refused authority or failed publication rolls the page back,
    so a retry lists it again. The unfenced `ApplyPage` entry point remains
-   available for standalone journal discovery.
+   available for standalone journal discovery. A directory the filesystem
+   scanner would never walk is recorded but not queued for listing
+   (`scanner.StorageDirectorySkipped`): Silo's ignored names (`.recyclebin`,
+   `@eaDir`, `.downloads`, ...) for every kind, plus sample, subtitle and
+   title-owned extras folders for movies. `.ignore`, `.siloignore` and
+   `.nomedia` are not read: honoring them would need a pinned read of each
+   ignore file and directory state across listing pages.
 4. Stops lease renewal, then `CompleteAuthorized` checks current resource
    authority before journal source/run locks. Its finalizer runs
    `SweepStorageLibraryTx` to reconcile memberships and orphans and sweep
@@ -212,6 +218,45 @@ are opened and parsed (`ParseNativeEbook`). Files group into items by ISBN, or
 title and authors, as file scans do. Items publish with status `matched`: the
 source is the authority for its books, so enrichment skips them and each scan
 reapplies the provider's metadata over the stored item, keeping artwork.
+
+## Movies
+
+Movie publication (`scanner.PublishStorageMoviesTx`) reads identity from the
+entry's logical path, not only its file name. The path is placed below a
+parse-only root (never persisted or opened) and run through Silo's own naming
+rules: root inference, content-group identity and edition hints. So
+`13 Eerie (2013)/xyz.mkv` is "13 Eerie" (2013), and a folder such as
+`3 A.M. (2001) {imdb-tt0248661} {tmdb-77084}` supplies its title, year and
+provider IDs. A source rooted at a single title folder exposes only file
+names, because the provider's logical path is relative to its root.
+
+- Files are probed and published only when Silo's walk would collect them:
+  sidecars (`.srt`, `.nfo`, images) are never opened, and samples, files in
+  sample/subtitle folders and local extras (convention folders owned by a
+  title folder, or `-trailer`-style suffixes) are skipped without a read. A
+  file an older scan published that is now skipped is marked missing.
+  Extras are not published; a native listing cannot prove that a title folder
+  holds media, so an extras folder counts as title-owned when its owner is
+  named like a title (`Title (Year)` or provider tags).
+- A new file joins the movie item of its content group in the library
+  (`media_files.content_group_key`): other editions and copies of the title
+  become versions of one item. Edition keys and page-local multipart totals
+  are recorded. A new group gets a `pending` item, or `ambiguous` when
+  folder and file titles conflict without provider tags.
+- After each page commits, the scan matches its pending items through the
+  metadata pipeline (`MetadataService.Process`), behind the next page's
+  listing and probing and joined before the next publication and before
+  completion. A folder or file TMDB tag (else IMDb) applies as
+  `POST /api/v2/admin/items/{id}/match/apply` does (`ModeIdentify`). Other
+  items search with their parsed title, year and Silo's alternate identities
+  (`ModeInitialMatch`); no result marks them `unmatched`. A failed request
+  leaves the item `pending` for the next scan, and an `unmatched` item with
+  provider tags is retried. Each item is attempted at most once per scan.
+- Native files are never enqueued in the path-based movie match queue,
+  whose matcher derives identity from `media_files.file_path`. The existing
+  startup queue seeding still selects `pending` and `unmatched` native files
+  in movie libraries; it can mark them `unmatched`, which the next scan
+  repairs for tagged items.
 
 ## Incremental listing
 

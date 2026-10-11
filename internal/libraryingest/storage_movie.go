@@ -40,19 +40,19 @@ func (c *StorageScanner) ConfigureNativeMovies(ready bool, reader *nativestorage
 	return nil
 }
 
-func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse) ([]scanner.StorageMovie, int, error) {
+// prepareMovies probes the page's movie files. Files Silo's walk would not
+// publish (extras, samples, ignored folders) are neither opened nor probed;
+// their IDs are returned so a file published by an older scan goes missing.
+func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse) ([]scanner.StorageMovie, int, []string, error) {
 	if !c.nativeMovieReady || c.movieReader == nil {
-		return nil, 0, storagesource.ErrSourceUnavailable
+		return nil, 0, nil, storagesource.ErrSourceUnavailable
 	}
 	// Retain only our own validated listing data. The reader seals another copy
 	// and proves pinned Stat metadata against exactly that pending checkpoint.
 	page = proto.CloneOf(page)
-	sealed, err := c.movieReader.AdmitScanPage(ctx, location, source, lease, checkpoint, page)
-	if err != nil {
-		return nil, 0, err
-	}
-	movies := make([]scanner.StorageMovie, 0, len(page.GetEntries()))
 	skipped := 0
+	var candidates []int
+	var excluded []string
 	for i, entry := range page.GetEntries() {
 		if entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_FILE {
 			continue
@@ -61,9 +61,26 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesour
 			skipped++
 			continue
 		}
+		if scanner.StorageMovieFileSkipped(entry) {
+			skipped++
+			excluded = append(excluded, entry.GetId())
+			continue
+		}
+		candidates = append(candidates, i)
+	}
+	if len(candidates) == 0 {
+		return nil, skipped, excluded, nil
+	}
+	sealed, err := c.movieReader.AdmitScanPage(ctx, location, source, lease, checkpoint, page)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	movies := make([]scanner.StorageMovie, 0, len(candidates))
+	for _, i := range candidates {
+		entry := page.GetEntries()[i]
 		file, err := c.movieReader.OpenScanEntry(ctx, sealed, i)
 		if err != nil {
-			return nil, 0, fmt.Errorf("open storage movie %q: %w", entry.GetName(), err)
+			return nil, 0, nil, fmt.Errorf("open storage movie %q: %w", entry.GetName(), err)
 		}
 		cfg := c.movieProbeConfig
 		cfg.Input.CancelSource, cfg.Input.Reauthorize, cfg.Input.ReleaseHost = file.Cancel, file.Reauthorize, nil
@@ -71,11 +88,11 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesour
 		// ScanEntryFile.Close is idempotent: successful ToolInput owns cleanup;
 		// failed admission/configuration still leaves this handle with us.
 		if err := errors.Join(probeErr, file.Close()); err != nil {
-			return nil, 0, storageMovieProbeError(entry.GetName(), err)
+			return nil, 0, nil, storageMovieProbeError(entry.GetName(), err)
 		}
 		movies = append(movies, movie)
 	}
-	return movies, skipped, nil
+	return movies, skipped, excluded, nil
 }
 
 // storageMovieProbeError names the entry and adds a reason an operator can act

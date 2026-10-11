@@ -36,10 +36,15 @@ type PagePublisher func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry
 // ApplyPage records one listed page and advances its directory checkpoint.
 // publish, when set, runs in the same transaction for the page's file entries.
 func (r *Repository) ApplyPage(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse, publish PagePublisher) error {
-	return r.applyPage(ctx, lease, checkpoint, page, nil, publish)
+	return r.applyPage(ctx, lease, checkpoint, page, nil, nil, publish)
 }
 
-func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse, authorize PageAuthorizer, publish PagePublisher) error {
+// DirectorySkipper reports a listed directory its library never lists, as
+// the filesystem scanner never walks into ignored folders. The directory's
+// entry is still recorded; no scan directory is queued for it.
+type DirectorySkipper func(*storagev1.Entry) bool
+
+func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse, skip DirectorySkipper, authorize PageAuthorizer, publish PagePublisher) error {
 	if checkpoint.Complete || !validText(checkpoint.DirectoryID, 1024, true) {
 		return ErrCheckpointConflict
 	}
@@ -100,7 +105,7 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 			return err
 		}
 	}
-	if err = applyEntries(ctx, tx, lease, page.GetEntries()); err != nil {
+	if err = applyEntries(ctx, tx, lease, page.GetEntries(), skip); err != nil {
 		return err
 	}
 	if publish != nil {
@@ -136,7 +141,7 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 	return tx.Commit(ctx)
 }
 
-func applyEntries(ctx context.Context, tx pgx.Tx, lease Lease, entries []*storagev1.Entry) error {
+func applyEntries(ctx context.Context, tx pgx.Tx, lease Lease, entries []*storagev1.Entry, skip DirectorySkipper) error {
 	// This batch is bounded by the validated 512-entry page, not library size.
 	batch := &pgx.Batch{}
 	for _, entry := range entries {
@@ -161,7 +166,7 @@ func applyEntries(ctx context.Context, tx pgx.Tx, lease Lease, entries []*storag
 		return err
 	}
 	for _, entry := range entries {
-		if entry.GetKind() == storagev1.EntryKind_ENTRY_KIND_DIRECTORY {
+		if entry.GetKind() == storagev1.EntryKind_ENTRY_KIND_DIRECTORY && (skip == nil || !skip(entry)) {
 			if _, err := tx.Exec(ctx, `INSERT INTO bloem_storage_scan_directories(run_id,directory_id) VALUES($1,$2)`, lease.RunID, entry.GetId()); err != nil {
 				return err
 			}
