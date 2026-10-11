@@ -66,6 +66,12 @@ plugin in one transaction and bumps its runtime generation, so the running
 process is replaced; the source, its encrypted configuration and its library
 stay as they are. Ordinary plugin handlers hide native installations.
 
+Configuration replacement, upgrade and removal fence the installation's runtime
+while they run. A refused or failed action that commits nothing lifts its fence:
+the unchanged generation restarts on the next read or scan. After a commit, or a
+COMMIT whose outcome is unknown, the previous generation stays fenced and only
+a committed higher generation runs.
+
 ## S3 process state
 
 The manually approved `bloem.storage.s3` provider needs a durable private
