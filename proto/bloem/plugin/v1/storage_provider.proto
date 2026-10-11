@@ -26,6 +26,11 @@ message Source {
   string name = 2;
   string root_entry_id = 3;
   bool revision_pinned_reads = 4;
+  // Explicit supported library kinds. Absence retains the host's prior
+  // fallback only; it must never imply audiobook readiness.
+  repeated string media_kinds = 5;
+  // True only when List honors directories_only without file hydration.
+  bool directory_only_listing = 6;
 }
 enum EntryKind {
   ENTRY_KIND_UNSPECIFIED = 0;
@@ -46,6 +51,9 @@ message Entry {
   // When set, the host publishes the book from it without reading the file;
   // when unset, the host reads and parses the file instead.
   EbookMetadata ebook = 8;
+  // Provider-held audio metadata does not establish a pinned file revision.
+  AudiobookMetadata audiobook = 9;
+  AudioFileMetadata audio_file = 10;
 }
 // Provider-held book metadata. Every field is optional. Strings carry at most
 // 64 KiB (description) or 4 KiB (all others); lists at most 64 items.
@@ -71,6 +79,47 @@ message EbookMetadata {
   // Optional ThumbHash placeholder for the cover, base64-encoded.
   string cover_thumbhash = 14;
 }
+// Audio strings use the ebook bounds: 64 KiB for description, 4 KiB for
+// other strings, and at most 64 values per string list.
+message AudioChapter {
+  string id = 1;
+  string title = 2;
+  double start_seconds = 3;
+  double end_seconds = 4;
+}
+message AudioFileMetadata {
+  string book_id = 1;
+  uint32 disc_number = 2;
+  uint32 track_number = 3;
+  // Timing must be finite and nonnegative.
+  double duration_seconds = 4;
+  string codec = 5;
+  string container = 6;
+  uint32 bitrate = 7;
+  uint32 sample_rate = 8;
+  uint32 channels = 9;
+  // Track-local times; host converts them to book-global positions.
+  // At most 1024 chapters, with unique nonempty IDs and finite nonnegative
+  // times: start_seconds <= end_seconds <= duration_seconds.
+  repeated AudioChapter chapters = 10;
+}
+message AudiobookMetadata {
+  string book_id = 1;
+  string title = 2;
+  repeated string authors = 3;
+  repeated string narrators = 4;
+  string description = 5;
+  string publisher = 6;
+  string published_date = 7;
+  string language = 8;
+  string isbn = 9;
+  string series = 10;
+  string series_index = 11;
+  repeated string genres = 12;
+  string cover_entry_id = 13;
+  string cover_revision = 14;
+  string cover_thumbhash = 15;
+}
 message ListRequest {
   string source_id = 1;
   string directory_id = 2;
@@ -81,6 +130,12 @@ message ListRequest {
   // reports removals in removed_entry_ids. A provider that cannot honor the
   // token returns FailedPrecondition, and the host lists the directory fully.
   string changes_since = 5;
+  // Browsing intent, separate from inventory/change-feed hydration. Supporting
+  // providers omit file work and return only directories without snapshots,
+  // change tokens or removals. Cursors must be bound to this intent. Browsing
+  // a leaf book returns an empty terminal page without stream downloads.
+  // Older providers may ignore this hint; hosts filter their entries safely.
+  bool directories_only = 6;
 }
 message ListResponse {
   repeated Entry entries = 1;

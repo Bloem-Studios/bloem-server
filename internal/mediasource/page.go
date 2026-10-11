@@ -54,6 +54,9 @@ func ValidatePage(currentCursor string, page *storagev1.ListResponse) error {
 		if err := validateInfo(info); err != nil {
 			return err
 		}
+		if err := validateAudioMetadata(entry); err != nil {
+			return err
+		}
 		if _, duplicate := seen[entry.GetId()]; duplicate {
 			return fmt.Errorf("duplicate storage entry identity")
 		}

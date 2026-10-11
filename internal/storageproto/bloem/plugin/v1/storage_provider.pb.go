@@ -164,8 +164,13 @@ type Source struct {
 	Name                string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	RootEntryId         string                 `protobuf:"bytes,3,opt,name=root_entry_id,json=rootEntryId,proto3" json:"root_entry_id,omitempty"`
 	RevisionPinnedReads bool                   `protobuf:"varint,4,opt,name=revision_pinned_reads,json=revisionPinnedReads,proto3" json:"revision_pinned_reads,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Explicit supported library kinds. Absence retains the host's prior
+	// fallback only; it must never imply audiobook readiness.
+	MediaKinds []string `protobuf:"bytes,5,rep,name=media_kinds,json=mediaKinds,proto3" json:"media_kinds,omitempty"`
+	// True only when List honors directories_only without file hydration.
+	DirectoryOnlyListing bool `protobuf:"varint,6,opt,name=directory_only_listing,json=directoryOnlyListing,proto3" json:"directory_only_listing,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Source) Reset() {
@@ -226,6 +231,20 @@ func (x *Source) GetRevisionPinnedReads() bool {
 	return false
 }
 
+func (x *Source) GetMediaKinds() []string {
+	if x != nil {
+		return x.MediaKinds
+	}
+	return nil
+}
+
+func (x *Source) GetDirectoryOnlyListing() bool {
+	if x != nil {
+		return x.DirectoryOnlyListing
+	}
+	return false
+}
+
 type Entry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -240,7 +259,10 @@ type Entry struct {
 	// Catalog metadata the provider already holds for an EPUB or PDF file.
 	// When set, the host publishes the book from it without reading the file;
 	// when unset, the host reads and parses the file instead.
-	Ebook         *EbookMetadata `protobuf:"bytes,8,opt,name=ebook,proto3" json:"ebook,omitempty"`
+	Ebook *EbookMetadata `protobuf:"bytes,8,opt,name=ebook,proto3" json:"ebook,omitempty"`
+	// Provider-held audio metadata does not establish a pinned file revision.
+	Audiobook     *AudiobookMetadata `protobuf:"bytes,9,opt,name=audiobook,proto3" json:"audiobook,omitempty"`
+	AudioFile     *AudioFileMetadata `protobuf:"bytes,10,opt,name=audio_file,json=audioFile,proto3" json:"audio_file,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -327,6 +349,20 @@ func (x *Entry) GetRevision() string {
 func (x *Entry) GetEbook() *EbookMetadata {
 	if x != nil {
 		return x.Ebook
+	}
+	return nil
+}
+
+func (x *Entry) GetAudiobook() *AudiobookMetadata {
+	if x != nil {
+		return x.Audiobook
+	}
+	return nil
+}
+
+func (x *Entry) GetAudioFile() *AudioFileMetadata {
+	if x != nil {
+		return x.AudioFile
 	}
 	return nil
 }
@@ -487,6 +523,352 @@ func (x *EbookMetadata) GetCoverThumbhash() string {
 	return ""
 }
 
+// Audio strings use the ebook bounds: 64 KiB for description, 4 KiB for
+// other strings, and at most 64 values per string list.
+type AudioChapter struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	StartSeconds  float64                `protobuf:"fixed64,3,opt,name=start_seconds,json=startSeconds,proto3" json:"start_seconds,omitempty"`
+	EndSeconds    float64                `protobuf:"fixed64,4,opt,name=end_seconds,json=endSeconds,proto3" json:"end_seconds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AudioChapter) Reset() {
+	*x = AudioChapter{}
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AudioChapter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AudioChapter) ProtoMessage() {}
+
+func (x *AudioChapter) ProtoReflect() protoreflect.Message {
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AudioChapter.ProtoReflect.Descriptor instead.
+func (*AudioChapter) Descriptor() ([]byte, []int) {
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AudioChapter) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AudioChapter) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *AudioChapter) GetStartSeconds() float64 {
+	if x != nil {
+		return x.StartSeconds
+	}
+	return 0
+}
+
+func (x *AudioChapter) GetEndSeconds() float64 {
+	if x != nil {
+		return x.EndSeconds
+	}
+	return 0
+}
+
+type AudioFileMetadata struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	BookId      string                 `protobuf:"bytes,1,opt,name=book_id,json=bookId,proto3" json:"book_id,omitempty"`
+	DiscNumber  uint32                 `protobuf:"varint,2,opt,name=disc_number,json=discNumber,proto3" json:"disc_number,omitempty"`
+	TrackNumber uint32                 `protobuf:"varint,3,opt,name=track_number,json=trackNumber,proto3" json:"track_number,omitempty"`
+	// Timing must be finite and nonnegative.
+	DurationSeconds float64 `protobuf:"fixed64,4,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	Codec           string  `protobuf:"bytes,5,opt,name=codec,proto3" json:"codec,omitempty"`
+	Container       string  `protobuf:"bytes,6,opt,name=container,proto3" json:"container,omitempty"`
+	Bitrate         uint32  `protobuf:"varint,7,opt,name=bitrate,proto3" json:"bitrate,omitempty"`
+	SampleRate      uint32  `protobuf:"varint,8,opt,name=sample_rate,json=sampleRate,proto3" json:"sample_rate,omitempty"`
+	Channels        uint32  `protobuf:"varint,9,opt,name=channels,proto3" json:"channels,omitempty"`
+	// Track-local times; host converts them to book-global positions.
+	// At most 1024 chapters, with unique nonempty IDs and finite nonnegative
+	// times: start_seconds <= end_seconds <= duration_seconds.
+	Chapters      []*AudioChapter `protobuf:"bytes,10,rep,name=chapters,proto3" json:"chapters,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AudioFileMetadata) Reset() {
+	*x = AudioFileMetadata{}
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AudioFileMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AudioFileMetadata) ProtoMessage() {}
+
+func (x *AudioFileMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AudioFileMetadata.ProtoReflect.Descriptor instead.
+func (*AudioFileMetadata) Descriptor() ([]byte, []int) {
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AudioFileMetadata) GetBookId() string {
+	if x != nil {
+		return x.BookId
+	}
+	return ""
+}
+
+func (x *AudioFileMetadata) GetDiscNumber() uint32 {
+	if x != nil {
+		return x.DiscNumber
+	}
+	return 0
+}
+
+func (x *AudioFileMetadata) GetTrackNumber() uint32 {
+	if x != nil {
+		return x.TrackNumber
+	}
+	return 0
+}
+
+func (x *AudioFileMetadata) GetDurationSeconds() float64 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
+func (x *AudioFileMetadata) GetCodec() string {
+	if x != nil {
+		return x.Codec
+	}
+	return ""
+}
+
+func (x *AudioFileMetadata) GetContainer() string {
+	if x != nil {
+		return x.Container
+	}
+	return ""
+}
+
+func (x *AudioFileMetadata) GetBitrate() uint32 {
+	if x != nil {
+		return x.Bitrate
+	}
+	return 0
+}
+
+func (x *AudioFileMetadata) GetSampleRate() uint32 {
+	if x != nil {
+		return x.SampleRate
+	}
+	return 0
+}
+
+func (x *AudioFileMetadata) GetChannels() uint32 {
+	if x != nil {
+		return x.Channels
+	}
+	return 0
+}
+
+func (x *AudioFileMetadata) GetChapters() []*AudioChapter {
+	if x != nil {
+		return x.Chapters
+	}
+	return nil
+}
+
+type AudiobookMetadata struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	BookId         string                 `protobuf:"bytes,1,opt,name=book_id,json=bookId,proto3" json:"book_id,omitempty"`
+	Title          string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Authors        []string               `protobuf:"bytes,3,rep,name=authors,proto3" json:"authors,omitempty"`
+	Narrators      []string               `protobuf:"bytes,4,rep,name=narrators,proto3" json:"narrators,omitempty"`
+	Description    string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Publisher      string                 `protobuf:"bytes,6,opt,name=publisher,proto3" json:"publisher,omitempty"`
+	PublishedDate  string                 `protobuf:"bytes,7,opt,name=published_date,json=publishedDate,proto3" json:"published_date,omitempty"`
+	Language       string                 `protobuf:"bytes,8,opt,name=language,proto3" json:"language,omitempty"`
+	Isbn           string                 `protobuf:"bytes,9,opt,name=isbn,proto3" json:"isbn,omitempty"`
+	Series         string                 `protobuf:"bytes,10,opt,name=series,proto3" json:"series,omitempty"`
+	SeriesIndex    string                 `protobuf:"bytes,11,opt,name=series_index,json=seriesIndex,proto3" json:"series_index,omitempty"`
+	Genres         []string               `protobuf:"bytes,12,rep,name=genres,proto3" json:"genres,omitempty"`
+	CoverEntryId   string                 `protobuf:"bytes,13,opt,name=cover_entry_id,json=coverEntryId,proto3" json:"cover_entry_id,omitempty"`
+	CoverRevision  string                 `protobuf:"bytes,14,opt,name=cover_revision,json=coverRevision,proto3" json:"cover_revision,omitempty"`
+	CoverThumbhash string                 `protobuf:"bytes,15,opt,name=cover_thumbhash,json=coverThumbhash,proto3" json:"cover_thumbhash,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AudiobookMetadata) Reset() {
+	*x = AudiobookMetadata{}
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AudiobookMetadata) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AudiobookMetadata) ProtoMessage() {}
+
+func (x *AudiobookMetadata) ProtoReflect() protoreflect.Message {
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AudiobookMetadata.ProtoReflect.Descriptor instead.
+func (*AudiobookMetadata) Descriptor() ([]byte, []int) {
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AudiobookMetadata) GetBookId() string {
+	if x != nil {
+		return x.BookId
+	}
+	return ""
+}
+
+func (x *AudiobookMetadata) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *AudiobookMetadata) GetAuthors() []string {
+	if x != nil {
+		return x.Authors
+	}
+	return nil
+}
+
+func (x *AudiobookMetadata) GetNarrators() []string {
+	if x != nil {
+		return x.Narrators
+	}
+	return nil
+}
+
+func (x *AudiobookMetadata) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AudiobookMetadata) GetPublisher() string {
+	if x != nil {
+		return x.Publisher
+	}
+	return ""
+}
+
+func (x *AudiobookMetadata) GetPublishedDate() string {
+	if x != nil {
+		return x.PublishedDate
+	}
+	return ""
+}
+
+func (x *AudiobookMetadata) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+func (x *AudiobookMetadata) GetIsbn() string {
+	if x != nil {
+		return x.Isbn
+	}
+	return ""
+}
+
+func (x *AudiobookMetadata) GetSeries() string {
+	if x != nil {
+		return x.Series
+	}
+	return ""
+}
+
+func (x *AudiobookMetadata) GetSeriesIndex() string {
+	if x != nil {
+		return x.SeriesIndex
+	}
+	return ""
+}
+
+func (x *AudiobookMetadata) GetGenres() []string {
+	if x != nil {
+		return x.Genres
+	}
+	return nil
+}
+
+func (x *AudiobookMetadata) GetCoverEntryId() string {
+	if x != nil {
+		return x.CoverEntryId
+	}
+	return ""
+}
+
+func (x *AudiobookMetadata) GetCoverRevision() string {
+	if x != nil {
+		return x.CoverRevision
+	}
+	return ""
+}
+
+func (x *AudiobookMetadata) GetCoverThumbhash() string {
+	if x != nil {
+		return x.CoverThumbhash
+	}
+	return ""
+}
+
 type ListRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	SourceId    string                 `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
@@ -497,14 +879,20 @@ type ListRequest struct {
 	// provider then lists only entries added or changed since that token, and
 	// reports removals in removed_entry_ids. A provider that cannot honor the
 	// token returns FailedPrecondition, and the host lists the directory fully.
-	ChangesSince  string `protobuf:"bytes,5,opt,name=changes_since,json=changesSince,proto3" json:"changes_since,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ChangesSince string `protobuf:"bytes,5,opt,name=changes_since,json=changesSince,proto3" json:"changes_since,omitempty"`
+	// Browsing intent, separate from inventory/change-feed hydration. Supporting
+	// providers omit file work and return only directories without snapshots,
+	// change tokens or removals. Cursors must be bound to this intent. Browsing
+	// a leaf book returns an empty terminal page without stream downloads.
+	// Older providers may ignore this hint; hosts filter their entries safely.
+	DirectoriesOnly bool `protobuf:"varint,6,opt,name=directories_only,json=directoriesOnly,proto3" json:"directories_only,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ListRequest) Reset() {
 	*x = ListRequest{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[5]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -516,7 +904,7 @@ func (x *ListRequest) String() string {
 func (*ListRequest) ProtoMessage() {}
 
 func (x *ListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[5]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -529,7 +917,7 @@ func (x *ListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRequest.ProtoReflect.Descriptor instead.
 func (*ListRequest) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{5}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListRequest) GetSourceId() string {
@@ -567,6 +955,13 @@ func (x *ListRequest) GetChangesSince() string {
 	return ""
 }
 
+func (x *ListRequest) GetDirectoriesOnly() bool {
+	if x != nil {
+		return x.DirectoriesOnly
+	}
+	return false
+}
+
 type ListResponse struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	Entries    []*Entry               `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
@@ -583,7 +978,7 @@ type ListResponse struct {
 
 func (x *ListResponse) Reset() {
 	*x = ListResponse{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[6]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -595,7 +990,7 @@ func (x *ListResponse) String() string {
 func (*ListResponse) ProtoMessage() {}
 
 func (x *ListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[6]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -608,7 +1003,7 @@ func (x *ListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListResponse.ProtoReflect.Descriptor instead.
 func (*ListResponse) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{6}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListResponse) GetEntries() []*Entry {
@@ -657,7 +1052,7 @@ type StatRequest struct {
 
 func (x *StatRequest) Reset() {
 	*x = StatRequest{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[7]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -669,7 +1064,7 @@ func (x *StatRequest) String() string {
 func (*StatRequest) ProtoMessage() {}
 
 func (x *StatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[7]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -682,7 +1077,7 @@ func (x *StatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatRequest.ProtoReflect.Descriptor instead.
 func (*StatRequest) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{7}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *StatRequest) GetSourceId() string {
@@ -715,7 +1110,7 @@ type StatResponse struct {
 
 func (x *StatResponse) Reset() {
 	*x = StatResponse{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[8]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -727,7 +1122,7 @@ func (x *StatResponse) String() string {
 func (*StatResponse) ProtoMessage() {}
 
 func (x *StatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[8]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -740,7 +1135,7 @@ func (x *StatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatResponse.ProtoReflect.Descriptor instead.
 func (*StatResponse) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{8}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *StatResponse) GetEntry() *Entry {
@@ -763,7 +1158,7 @@ type ReadRequest struct {
 
 func (x *ReadRequest) Reset() {
 	*x = ReadRequest{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[9]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -775,7 +1170,7 @@ func (x *ReadRequest) String() string {
 func (*ReadRequest) ProtoMessage() {}
 
 func (x *ReadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[9]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -788,7 +1183,7 @@ func (x *ReadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadRequest.ProtoReflect.Descriptor instead.
 func (*ReadRequest) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{9}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ReadRequest) GetSourceId() string {
@@ -837,7 +1232,7 @@ type ReadChunk struct {
 
 func (x *ReadChunk) Reset() {
 	*x = ReadChunk{}
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[10]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -849,7 +1244,7 @@ func (x *ReadChunk) String() string {
 func (*ReadChunk) ProtoMessage() {}
 
 func (x *ReadChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[10]
+	mi := &file_bloem_plugin_v1_storage_provider_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -862,7 +1257,7 @@ func (x *ReadChunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadChunk.ProtoReflect.Descriptor instead.
 func (*ReadChunk) Descriptor() ([]byte, []int) {
-	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{10}
+	return file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ReadChunk) GetOffset() int64 {
@@ -894,12 +1289,15 @@ const file_bloem_plugin_v1_storage_provider_proto_rawDesc = "" +
 	"\x0fDescribeRequest\"a\n" +
 	"\x10DescribeResponse\x12\x1a\n" +
 	"\brevision\x18\x01 \x01(\rR\brevision\x121\n" +
-	"\asources\x18\x02 \x03(\v2\x17.bloem.plugin.v1.SourceR\asources\"\x84\x01\n" +
+	"\asources\x18\x02 \x03(\v2\x17.bloem.plugin.v1.SourceR\asources\"\xdb\x01\n" +
 	"\x06Source\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\"\n" +
 	"\rroot_entry_id\x18\x03 \x01(\tR\vrootEntryId\x122\n" +
-	"\x15revision_pinned_reads\x18\x04 \x01(\bR\x13revisionPinnedReads\"\x92\x02\n" +
+	"\x15revision_pinned_reads\x18\x04 \x01(\bR\x13revisionPinnedReads\x12\x1f\n" +
+	"\vmedia_kinds\x18\x05 \x03(\tR\n" +
+	"mediaKinds\x124\n" +
+	"\x16directory_only_listing\x18\x06 \x01(\bR\x14directoryOnlyListing\"\x97\x03\n" +
 	"\x05Entry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
@@ -908,7 +1306,11 @@ const file_bloem_plugin_v1_storage_provider_proto_rawDesc = "" +
 	"\x04size\x18\x05 \x01(\x03R\x04size\x12,\n" +
 	"\x12modified_unix_nano\x18\x06 \x01(\x03R\x10modifiedUnixNano\x12\x1a\n" +
 	"\brevision\x18\a \x01(\tR\brevision\x124\n" +
-	"\x05ebook\x18\b \x01(\v2\x1e.bloem.plugin.v1.EbookMetadataR\x05ebook\"\xbe\x03\n" +
+	"\x05ebook\x18\b \x01(\v2\x1e.bloem.plugin.v1.EbookMetadataR\x05ebook\x12@\n" +
+	"\taudiobook\x18\t \x01(\v2\".bloem.plugin.v1.AudiobookMetadataR\taudiobook\x12A\n" +
+	"\n" +
+	"audio_file\x18\n" +
+	" \x01(\v2\".bloem.plugin.v1.AudioFileMetadataR\taudioFile\"\xbe\x03\n" +
 	"\rEbookMetadata\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x18\n" +
 	"\aauthors\x18\x02 \x03(\tR\aauthors\x12 \n" +
@@ -925,14 +1327,52 @@ const file_bloem_plugin_v1_storage_provider_proto_rawDesc = "" +
 	"page_count\x18\v \x01(\x05R\tpageCount\x12$\n" +
 	"\x0ecover_entry_id\x18\f \x01(\tR\fcoverEntryId\x12%\n" +
 	"\x0ecover_revision\x18\r \x01(\tR\rcoverRevision\x12'\n" +
-	"\x0fcover_thumbhash\x18\x0e \x01(\tR\x0ecoverThumbhash\"\xab\x01\n" +
+	"\x0fcover_thumbhash\x18\x0e \x01(\tR\x0ecoverThumbhash\"z\n" +
+	"\fAudioChapter\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12#\n" +
+	"\rstart_seconds\x18\x03 \x01(\x01R\fstartSeconds\x12\x1f\n" +
+	"\vend_seconds\x18\x04 \x01(\x01R\n" +
+	"endSeconds\"\xe1\x02\n" +
+	"\x11AudioFileMetadata\x12\x17\n" +
+	"\abook_id\x18\x01 \x01(\tR\x06bookId\x12\x1f\n" +
+	"\vdisc_number\x18\x02 \x01(\rR\n" +
+	"discNumber\x12!\n" +
+	"\ftrack_number\x18\x03 \x01(\rR\vtrackNumber\x12)\n" +
+	"\x10duration_seconds\x18\x04 \x01(\x01R\x0fdurationSeconds\x12\x14\n" +
+	"\x05codec\x18\x05 \x01(\tR\x05codec\x12\x1c\n" +
+	"\tcontainer\x18\x06 \x01(\tR\tcontainer\x12\x18\n" +
+	"\abitrate\x18\a \x01(\rR\abitrate\x12\x1f\n" +
+	"\vsample_rate\x18\b \x01(\rR\n" +
+	"sampleRate\x12\x1a\n" +
+	"\bchannels\x18\t \x01(\rR\bchannels\x129\n" +
+	"\bchapters\x18\n" +
+	" \x03(\v2\x1d.bloem.plugin.v1.AudioChapterR\bchapters\"\xda\x03\n" +
+	"\x11AudiobookMetadata\x12\x17\n" +
+	"\abook_id\x18\x01 \x01(\tR\x06bookId\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
+	"\aauthors\x18\x03 \x03(\tR\aauthors\x12\x1c\n" +
+	"\tnarrators\x18\x04 \x03(\tR\tnarrators\x12 \n" +
+	"\vdescription\x18\x05 \x01(\tR\vdescription\x12\x1c\n" +
+	"\tpublisher\x18\x06 \x01(\tR\tpublisher\x12%\n" +
+	"\x0epublished_date\x18\a \x01(\tR\rpublishedDate\x12\x1a\n" +
+	"\blanguage\x18\b \x01(\tR\blanguage\x12\x12\n" +
+	"\x04isbn\x18\t \x01(\tR\x04isbn\x12\x16\n" +
+	"\x06series\x18\n" +
+	" \x01(\tR\x06series\x12!\n" +
+	"\fseries_index\x18\v \x01(\tR\vseriesIndex\x12\x16\n" +
+	"\x06genres\x18\f \x03(\tR\x06genres\x12$\n" +
+	"\x0ecover_entry_id\x18\r \x01(\tR\fcoverEntryId\x12%\n" +
+	"\x0ecover_revision\x18\x0e \x01(\tR\rcoverRevision\x12'\n" +
+	"\x0fcover_thumbhash\x18\x0f \x01(\tR\x0ecoverThumbhash\"\xd6\x01\n" +
 	"\vListRequest\x12\x1b\n" +
 	"\tsource_id\x18\x01 \x01(\tR\bsourceId\x12!\n" +
 	"\fdirectory_id\x18\x02 \x01(\tR\vdirectoryId\x12\x16\n" +
 	"\x06cursor\x18\x03 \x01(\tR\x06cursor\x12\x1f\n" +
 	"\vmax_entries\x18\x04 \x01(\rR\n" +
 	"maxEntries\x12#\n" +
-	"\rchanges_since\x18\x05 \x01(\tR\fchangesSince\"\xcc\x01\n" +
+	"\rchanges_since\x18\x05 \x01(\tR\fchangesSince\x12)\n" +
+	"\x10directories_only\x18\x06 \x01(\bR\x0fdirectoriesOnly\"\xcc\x01\n" +
 	"\fListResponse\x120\n" +
 	"\aentries\x18\x01 \x03(\v2\x16.bloem.plugin.v1.EntryR\aentries\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
@@ -979,40 +1419,46 @@ func file_bloem_plugin_v1_storage_provider_proto_rawDescGZIP() []byte {
 }
 
 var file_bloem_plugin_v1_storage_provider_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_bloem_plugin_v1_storage_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_bloem_plugin_v1_storage_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_bloem_plugin_v1_storage_provider_proto_goTypes = []any{
-	(EntryKind)(0),           // 0: bloem.plugin.v1.EntryKind
-	(*DescribeRequest)(nil),  // 1: bloem.plugin.v1.DescribeRequest
-	(*DescribeResponse)(nil), // 2: bloem.plugin.v1.DescribeResponse
-	(*Source)(nil),           // 3: bloem.plugin.v1.Source
-	(*Entry)(nil),            // 4: bloem.plugin.v1.Entry
-	(*EbookMetadata)(nil),    // 5: bloem.plugin.v1.EbookMetadata
-	(*ListRequest)(nil),      // 6: bloem.plugin.v1.ListRequest
-	(*ListResponse)(nil),     // 7: bloem.plugin.v1.ListResponse
-	(*StatRequest)(nil),      // 8: bloem.plugin.v1.StatRequest
-	(*StatResponse)(nil),     // 9: bloem.plugin.v1.StatResponse
-	(*ReadRequest)(nil),      // 10: bloem.plugin.v1.ReadRequest
-	(*ReadChunk)(nil),        // 11: bloem.plugin.v1.ReadChunk
+	(EntryKind)(0),            // 0: bloem.plugin.v1.EntryKind
+	(*DescribeRequest)(nil),   // 1: bloem.plugin.v1.DescribeRequest
+	(*DescribeResponse)(nil),  // 2: bloem.plugin.v1.DescribeResponse
+	(*Source)(nil),            // 3: bloem.plugin.v1.Source
+	(*Entry)(nil),             // 4: bloem.plugin.v1.Entry
+	(*EbookMetadata)(nil),     // 5: bloem.plugin.v1.EbookMetadata
+	(*AudioChapter)(nil),      // 6: bloem.plugin.v1.AudioChapter
+	(*AudioFileMetadata)(nil), // 7: bloem.plugin.v1.AudioFileMetadata
+	(*AudiobookMetadata)(nil), // 8: bloem.plugin.v1.AudiobookMetadata
+	(*ListRequest)(nil),       // 9: bloem.plugin.v1.ListRequest
+	(*ListResponse)(nil),      // 10: bloem.plugin.v1.ListResponse
+	(*StatRequest)(nil),       // 11: bloem.plugin.v1.StatRequest
+	(*StatResponse)(nil),      // 12: bloem.plugin.v1.StatResponse
+	(*ReadRequest)(nil),       // 13: bloem.plugin.v1.ReadRequest
+	(*ReadChunk)(nil),         // 14: bloem.plugin.v1.ReadChunk
 }
 var file_bloem_plugin_v1_storage_provider_proto_depIdxs = []int32{
 	3,  // 0: bloem.plugin.v1.DescribeResponse.sources:type_name -> bloem.plugin.v1.Source
 	0,  // 1: bloem.plugin.v1.Entry.kind:type_name -> bloem.plugin.v1.EntryKind
 	5,  // 2: bloem.plugin.v1.Entry.ebook:type_name -> bloem.plugin.v1.EbookMetadata
-	4,  // 3: bloem.plugin.v1.ListResponse.entries:type_name -> bloem.plugin.v1.Entry
-	4,  // 4: bloem.plugin.v1.StatResponse.entry:type_name -> bloem.plugin.v1.Entry
-	1,  // 5: bloem.plugin.v1.StorageProvider.Describe:input_type -> bloem.plugin.v1.DescribeRequest
-	6,  // 6: bloem.plugin.v1.StorageProvider.List:input_type -> bloem.plugin.v1.ListRequest
-	8,  // 7: bloem.plugin.v1.StorageProvider.Stat:input_type -> bloem.plugin.v1.StatRequest
-	10, // 8: bloem.plugin.v1.StorageProvider.Read:input_type -> bloem.plugin.v1.ReadRequest
-	2,  // 9: bloem.plugin.v1.StorageProvider.Describe:output_type -> bloem.plugin.v1.DescribeResponse
-	7,  // 10: bloem.plugin.v1.StorageProvider.List:output_type -> bloem.plugin.v1.ListResponse
-	9,  // 11: bloem.plugin.v1.StorageProvider.Stat:output_type -> bloem.plugin.v1.StatResponse
-	11, // 12: bloem.plugin.v1.StorageProvider.Read:output_type -> bloem.plugin.v1.ReadChunk
-	9,  // [9:13] is the sub-list for method output_type
-	5,  // [5:9] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	8,  // 3: bloem.plugin.v1.Entry.audiobook:type_name -> bloem.plugin.v1.AudiobookMetadata
+	7,  // 4: bloem.plugin.v1.Entry.audio_file:type_name -> bloem.plugin.v1.AudioFileMetadata
+	6,  // 5: bloem.plugin.v1.AudioFileMetadata.chapters:type_name -> bloem.plugin.v1.AudioChapter
+	4,  // 6: bloem.plugin.v1.ListResponse.entries:type_name -> bloem.plugin.v1.Entry
+	4,  // 7: bloem.plugin.v1.StatResponse.entry:type_name -> bloem.plugin.v1.Entry
+	1,  // 8: bloem.plugin.v1.StorageProvider.Describe:input_type -> bloem.plugin.v1.DescribeRequest
+	9,  // 9: bloem.plugin.v1.StorageProvider.List:input_type -> bloem.plugin.v1.ListRequest
+	11, // 10: bloem.plugin.v1.StorageProvider.Stat:input_type -> bloem.plugin.v1.StatRequest
+	13, // 11: bloem.plugin.v1.StorageProvider.Read:input_type -> bloem.plugin.v1.ReadRequest
+	2,  // 12: bloem.plugin.v1.StorageProvider.Describe:output_type -> bloem.plugin.v1.DescribeResponse
+	10, // 13: bloem.plugin.v1.StorageProvider.List:output_type -> bloem.plugin.v1.ListResponse
+	12, // 14: bloem.plugin.v1.StorageProvider.Stat:output_type -> bloem.plugin.v1.StatResponse
+	14, // 15: bloem.plugin.v1.StorageProvider.Read:output_type -> bloem.plugin.v1.ReadChunk
+	12, // [12:16] is the sub-list for method output_type
+	8,  // [8:12] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_bloem_plugin_v1_storage_provider_proto_init() }
@@ -1026,7 +1472,7 @@ func file_bloem_plugin_v1_storage_provider_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_bloem_plugin_v1_storage_provider_proto_rawDesc), len(file_bloem_plugin_v1_storage_provider_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   11,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -17,7 +17,7 @@ import (
 // examples/hello-storage fixture storage tests execute. Advance it with any
 // change to proto/bloem/plugin/v1/storage_provider.proto; StorageDir fails when
 // the SDK's copy of the schema no longer matches the host's.
-const StorageModule = "github.com/Bloem-Studios/bloem-plugin-sdk@v0.26.0"
+const StorageModule = "github.com/Bloem-Studios/bloem-plugin-sdk@v0.27.0"
 
 // WorktreeEnv names an SDK checkout that overrides StorageModule while a
 // developer iterates on an unreleased SDK change.

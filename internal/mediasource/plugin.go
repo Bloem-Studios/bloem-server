@@ -9,6 +9,7 @@ import (
 
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 type pluginSource struct {
@@ -26,9 +27,12 @@ func (s *pluginSource) Stat(ctx context.Context, ref Ref) (Info, error) {
 	if s.client == nil {
 		return Info{}, fmt.Errorf("storage client is unavailable")
 	}
-	response, err := s.client.Stat(ctx, &storagev1.StatRequest{SourceId: ref.SourceID, EntryId: ref.EntryID, ExpectedRevision: ref.Revision}, grpc.MaxCallRecvMsgSize(80<<10))
+	response, err := s.client.Stat(ctx, &storagev1.StatRequest{SourceId: ref.SourceID, EntryId: ref.EntryID, ExpectedRevision: ref.Revision}, grpc.MaxCallRecvMsgSize(1<<20))
 	if err != nil {
 		return Info{}, err
+	}
+	if proto.Size(response) > 1<<20 {
+		return Info{}, fmt.Errorf("invalid storage Stat size")
 	}
 	entry := response.GetEntry()
 	if entry == nil || entry.GetId() != ref.EntryID || entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_FILE || entry.GetRevision() != ref.Revision {
@@ -36,6 +40,9 @@ func (s *pluginSource) Stat(ctx context.Context, ref Ref) (Info, error) {
 	}
 	info := Info{Name: entry.GetName(), LogicalPath: entry.GetLogicalPath(), Revision: entry.GetRevision(), Size: entry.GetSize(), ModifiedAt: time.Unix(0, entry.GetModifiedUnixNano())}
 	if err := validateInfo(info); err != nil {
+		return Info{}, err
+	}
+	if err := validateAudioMetadata(entry); err != nil {
 		return Info{}, err
 	}
 	return info, nil
