@@ -141,8 +141,10 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 	}
 	byGroup := map[string]string{}
 	if len(unresolved) > 0 {
+		// The key version bounds idx_media_files_folder_group to these keys;
+		// without it every page reads the library's whole folder range.
 		rows, err := tx.Query(ctx, `SELECT content_group_key, min(content_id) FROM media_files
-			WHERE media_folder_id = $1 AND content_group_key = ANY($2) GROUP BY content_group_key`, folder.ID, unresolved)
+			WHERE media_folder_id = $1 AND group_key_version = $3 AND content_group_key = ANY($2) GROUP BY content_group_key`, folder.ID, unresolved, ebookGroupKeyVersion)
 		if err != nil {
 			return result, err
 		}
