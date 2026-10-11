@@ -66,6 +66,12 @@ plugin in one transaction and bumps its runtime generation, so the running
 process is replaced; the source, its encrypted configuration and its library
 stay as they are. Ordinary plugin handlers hide native installations.
 
+Configuration replacement, upgrade and removal fence the installation's runtime
+while they run. A refused or failed action that commits nothing lifts its fence:
+the unchanged generation restarts on the next read or scan. After a commit, or a
+COMMIT whose outcome is unknown, the previous generation stays fenced and only
+a committed higher generation runs.
+
 ## S3 process state
 
 The manually approved `bloem.storage.s3` provider needs a durable private
@@ -263,8 +269,11 @@ then reloads the reference, authorization and executable snapshot. Cover reads
 use the same admission checks. A canceled request or runtime lease cannot
 start content I/O. File lifetime is tied to request and runtime
 cancellation. GET/HEAD, ranges and conditional requests behave as for local
-files; ETags hash the opaque revision. Downloads, conversion and offline
-delivery of storage files are not supported.
+files; ETags hash the opaque revision. A provider failure at open or before
+the first byte is sent is an ordinary HTTP error, such as 404 for a missing book
+or 503 for an unavailable provider; after bytes were sent the response is
+aborted without an error document. Downloads, conversion and offline delivery
+of storage files are not supported.
 
 ## Protocol
 

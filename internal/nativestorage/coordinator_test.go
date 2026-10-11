@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/plugins"
@@ -73,6 +74,7 @@ type runtimeStub struct {
 	snapshot    storageplugin.Snapshot
 	calls       int
 	disabled    int
+	lifted      int
 	after       func()
 }
 
@@ -85,6 +87,10 @@ func (s *runtimeStub) Borrow(_ context.Context, r storageplugin.Snapshot) (Lease
 	return Lease{Context: s.ctx, Source: s.source, Description: s.description}, nil
 }
 func (s *runtimeStub) Disable(int) { s.disabled++ }
+func (s *runtimeStub) Fence(int) func() {
+	s.disabled++
+	return func() { s.lifted++ }
+}
 func fixture(t *testing.T) (*Coordinator, *refsStub, *registryStub, *runtimeStub, *models.MediaFile) {
 	t.Helper()
 	id := int64(3)
@@ -274,11 +280,38 @@ func TestOpenLifetime(t *testing.T) {
 func TestMutationFencesAmbiguousFailure(t *testing.T) {
 	c, _, _, run, _ := fixture(t)
 	sentinel := errors.New("commit outcome unknown")
-	if err := c.FenceMutation(context.Background(), 3, func(context.Context) error { return sentinel }); !errors.Is(err, sentinel) {
+	unknown := &catalog.MutationOutcomeUnknown{Operation: "configuration", Cause: sentinel}
+	if err := c.FenceMutation(context.Background(), 3, func(context.Context) error { return unknown }); !errors.Is(err, sentinel) {
 		t.Fatal(err)
 	}
-	if run.disabled != 2 {
-		t.Fatalf("disable calls=%d", run.disabled)
+	if run.disabled != 2 || run.lifted != 0 {
+		t.Fatalf("disable calls=%d lifts=%d", run.disabled, run.lifted)
+	}
+}
+
+// A refusal commits nothing, so the installation keeps its generation and
+// must not stay fenced until restart. Success keeps the fence: availability
+// then requires the committed higher generation.
+func TestMutationLiftsFenceOnlyWhenNothingCommitted(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		err              error
+		disabled, lifted int
+	}{
+		{"refused", &catalog.NativeOnboardingError{Code: "configuration_namespace_unverified"}, 1, 1},
+		{"rejected", &catalog.NativeOnboardingError{Code: "artifact_rejected"}, 1, 1},
+		{"pre-commit failure", errors.New("lock timeout"), 1, 1},
+		{"committed", nil, 2, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _, _, run, _ := fixture(t)
+			if err := c.FenceMutation(context.Background(), 3, func(context.Context) error { return tc.err }); !errors.Is(err, tc.err) {
+				t.Fatal(err)
+			}
+			if run.disabled != tc.disabled || run.lifted != tc.lifted {
+				t.Fatalf("disable calls=%d lifts=%d, want %d and %d", run.disabled, run.lifted, tc.disabled, tc.lifted)
+			}
+		})
 	}
 }
 func TestCoordinatorRetainsHostUntilCloseAndReleasesFailedOpen(t *testing.T) {
