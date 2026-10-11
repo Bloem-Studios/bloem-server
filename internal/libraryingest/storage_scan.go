@@ -189,7 +189,10 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		return result, storagesource.ErrSourceUnavailable
 	}
 
-	lease, err := c.sources.Begin(job, source.Key, "storage-scan:"+uuid.NewString(), c.leaseTTL)
+	authorize := func(ctx context.Context, tx pgx.Tx) error {
+		return c.resources.RequireStorageScanTx(ctx, tx, location, source)
+	}
+	lease, err := c.sources.BeginAuthorized(job, source.Key, "storage-scan:"+uuid.NewString(), c.leaseTTL, authorize)
 	if err != nil {
 		return result, err
 	}
@@ -206,9 +209,6 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 
 	media := mediasource.NewPluginSource(provider)
 	listed := 0
-	authorize := func(ctx context.Context, tx pgx.Tx) error {
-		return c.resources.RequireStorageScanTx(ctx, tx, location, source)
-	}
 	for {
 		if err = job.Err(); err != nil {
 			return result, err

@@ -15,6 +15,10 @@ func validTTL(ttl time.Duration) bool { return ttl >= time.Millisecond && ttl <=
 // Begin fences any previous instance of the same owner as well as expired
 // foreign owners. Source then run is the lock order for all journal operations.
 func (r *Repository) Begin(ctx context.Context, sourceKey uuid.UUID, owner string, ttl time.Duration) (Lease, error) {
+	return r.begin(ctx, sourceKey, owner, ttl, nil)
+}
+
+func (r *Repository) begin(ctx context.Context, sourceKey uuid.UUID, owner string, ttl time.Duration, authorize BeginAuthorizer) (Lease, error) {
 	lease := Lease{SourceKey: sourceKey, Owner: owner}
 	if sourceKey == uuid.Nil || !validText(owner, 1024, true) || !validTTL(ttl) {
 		return lease, fmt.Errorf("invalid storage scan lease")
@@ -24,6 +28,11 @@ func (r *Repository) Begin(ctx context.Context, sourceKey uuid.UUID, owner strin
 		return lease, err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
+	if authorize != nil {
+		if err = authorize(ctx, tx); err != nil {
+			return lease, err
+		}
+	}
 	var root string
 	var enabled bool
 	err = tx.QueryRow(ctx, `SELECT configuration_revision,root_entry_id,enabled FROM bloem_storage_sources WHERE key=$1 FOR UPDATE`, sourceKey).Scan(&lease.ConfigurationRevision, &root, &enabled)

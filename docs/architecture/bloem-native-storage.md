@@ -5,6 +5,9 @@ storage plugin such as Bookwarehouse) instead of filesystem paths. It is
 experimental. The source is the library's **location**: a library has either
 paths or one storage location, never both.
 
+Native movie catalog publication remains disabled until playback works end to
+end. Internal scan and probe prerequisites do not imply playable support.
+
 ## Model
 
 - **Storage plugin.** A host-approved executable that serves the private
@@ -30,9 +33,12 @@ and the proxy refuse it; nothing opens it as a local path.
 ## Creating a library
 
 An administrator creates an ebook library through the ordinary v2
-`createLibrary` with `storage_source` instead of `paths`. The location is
-inserted inside the library's creation transaction, after the same tenancy
-check that gates every scan (`resourcetenancy.RequireStorageScanTx`):
+`createLibrary` with `storage_source` instead of `paths`. The creation
+transaction retains the installation's `FOR SHARE` lock before inserting the
+location, whose immediate foreign key acquires a source lock. This agrees with
+native management's installation-before-source order. The full tenancy check
+that gates every scan (`resourcetenancy.RequireStorageScanTx`) then validates
+the new location and reloads retained source fields after any lock wait:
 
 - a platform library may use a platform source;
 - an organization library may use its own organization's source, or a platform
@@ -150,9 +156,14 @@ A storage library scans only as a whole library. `libraryingest.StorageScanner`:
    with revision-pinned reads. After discovery, it reloads the retained source,
    rechecks tenancy and checks the executable generation and checksum again
    before beginning a scan lease.
-2. Begins or resumes a discovery run under a database lease (source then run
-   locks; the database clock decides expiry; each takeover bumps the epoch).
-   A renewal worker extends the lease and rechecks tenancy.
+2. `BeginAuthorized` begins or resumes discovery in a transaction that checks
+   and retains current installation, source, library, owner and entitlement
+   authority before the journal's source and run locks. A prior preflight
+   check grants no later journal write. Refused authority leaves the run,
+   checkpoints and discovery pointer unchanged. The database clock decides
+   lease expiry; each takeover bumps the epoch. Standalone discovery may use
+   `Begin` without library authority. A renewal worker extends the lease and
+   rechecks tenancy.
 3. Lists each directory page by page. `ApplyPageAuthorized` checks current
    installation, source, library, owner and entitlement authority inside the
    page transaction, before journal source/run locks. It retains those

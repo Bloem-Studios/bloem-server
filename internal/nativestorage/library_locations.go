@@ -46,6 +46,21 @@ func (l *LibraryLocations) AttachTx(ctx context.Context, tx pgx.Tx, sourceKey uu
 	if err != nil {
 		return err
 	}
+	if source.InstallationID == nil || *source.InstallationID <= 0 {
+		return ErrLocationSourceUnavailable
+	}
+	// The location INSERT takes a source KEY SHARE lock through its immediate
+	// FK. Retain the installation first, matching native management's
+	// installation -> source order. This is only a lock: the full authority
+	// check below reloads the source and validates the new location after waits.
+	var installationID int64
+	err = tx.QueryRow(ctx, "SELECT id FROM plugin_installations WHERE id=$1 FOR SHARE", *source.InstallationID).Scan(&installationID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrLocationSourceUnavailable
+	}
+	if err != nil {
+		return err
+	}
 	location, err := l.sources.AddLocationTx(ctx, tx, sourceKey, folderID)
 	if err != nil {
 		return err
