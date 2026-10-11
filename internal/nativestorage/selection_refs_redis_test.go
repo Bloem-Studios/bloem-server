@@ -2,6 +2,7 @@ package nativestorage
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -179,5 +180,47 @@ func TestRedisBrowseCursorStoreReplacementRequiresLiveActorState(t *testing.T) {
 	}
 	if data, err := store.Get(t.Context(), blocked); err != nil || len(data) != 0 {
 		t.Fatal("failed replacement published state", err)
+	}
+}
+
+func TestRedisBrowseCursorStoreConsumeRequiresLiveActorState(t *testing.T) {
+	store, client := browseRedisFixture(t)
+	actor, otherActor := uuid.NewString(), uuid.NewString()
+	key := browseStateKey(uuid.New())
+	t.Cleanup(func() {
+		if err := store.Delete(context.Background(), key, actor); err != nil {
+			t.Error("cursor cleanup", err)
+		}
+	})
+	if err := store.Put(t.Context(), key, actor, "", []byte("terminal evidence"), time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Consume(t.Context(), key, otherActor); !errors.Is(err, errBrowseCursorRestart) {
+		t.Fatalf("wrong actor consume: %v", err)
+	}
+	if data, err := store.Get(t.Context(), key); err != nil || string(data) != "terminal evidence" {
+		t.Fatalf("wrong actor destroyed retained state: %q, %v", data, err)
+	}
+	for _, index := range []string{browseStatePrefix + "all", browseStatePrefix + "actor:" + actor} {
+		if err := client.ZScore(t.Context(), index, key).Err(); err != nil {
+			t.Fatal("wrong actor destroyed index membership", err)
+		}
+	}
+	if err := store.Consume(t.Context(), key, actor); err != nil {
+		t.Fatal("rightful consume", err)
+	}
+	if err := store.Consume(t.Context(), key, actor); !errors.Is(err, errBrowseCursorRestart) {
+		t.Fatalf("replayed consume: %v", err)
+	}
+	if data, err := store.Get(t.Context(), key); err != nil || len(data) != 0 {
+		t.Fatal("consumed state remains", err)
+	}
+	for _, index := range []string{browseStatePrefix + "all", browseStatePrefix + "actor:" + actor} {
+		if err := client.ZScore(t.Context(), index, key).Err(); err != redis.Nil {
+			t.Fatal("consumed index membership remains", err)
+		}
+	}
+	if err := store.Delete(t.Context(), key, actor); err != nil {
+		t.Fatal("cleanup must remain idempotent", err)
 	}
 }

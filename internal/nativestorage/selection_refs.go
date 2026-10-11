@@ -66,11 +66,15 @@ type browseCursorState struct {
 
 // BrowseCursorStore is cluster-shared expiring pagination evidence. Put stores
 // an immutable value and atomically retires replaceKey only after saving it.
+// Consume atomically requires live state belonging to actorKey before retiring
+// it; missing, expired or consumed evidence returns errBrowseCursorRestart.
+// Delete is idempotent cleanup and does not establish continuation ownership.
 // Its implementation must bound total/per-actor entries as well as bytes/TTL.
 // Pagination evidence never grants source or administrative authority.
 type BrowseCursorStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 	Put(ctx context.Context, key, actorKey, replaceKey string, data []byte, ttl time.Duration) error
+	Consume(ctx context.Context, key, actorKey string) error
 	Delete(ctx context.Context, key, actorKey string) error
 }
 type RedisBrowseCursorStore struct{ client redis.UniversalClient }
@@ -121,6 +125,16 @@ redis.call('PEXPIRE',KEYS[1],ARGV[6])
 redis.call('PEXPIRE',KEYS[2],ARGV[6])
 return 1`
 const browseStateDeleteScript = `redis.call('DEL',KEYS[3]);redis.call('ZREM',KEYS[1],KEYS[3]);redis.call('ZREM',KEYS[2],KEYS[3]);return 1`
+const browseStateConsumeScript = `
+local clock=redis.call('TIME')
+local now=clock[1]*1000+math.floor(clock[2]/1000)
+local total=redis.call('ZSCORE',KEYS[1],KEYS[3])
+local actor=redis.call('ZSCORE',KEYS[2],KEYS[3])
+if redis.call('EXISTS',KEYS[3])~=1 or not total or not actor or tonumber(total)<=now or tonumber(actor)<=now then return -1 end
+redis.call('DEL',KEYS[3])
+redis.call('ZREM',KEYS[1],KEYS[3])
+redis.call('ZREM',KEYS[2],KEYS[3])
+return 1`
 const browseStatePrefix = "bloem:{storage-browse}:"
 
 func browseStateKey(id uuid.UUID) string { return browseStatePrefix + "state:" + id.String() }
@@ -151,6 +165,19 @@ func (s *RedisBrowseCursorStore) Delete(ctx context.Context, key, actorKey strin
 		return errors.New("browse cursor store unavailable")
 	}
 	return s.client.Eval(ctx, browseStateDeleteScript, []string{browseStatePrefix + "all", browseStatePrefix + "actor:" + actorKey, key}).Err()
+}
+func (s *RedisBrowseCursorStore) Consume(ctx context.Context, key, actorKey string) error {
+	if s == nil || s.client == nil {
+		return errors.New("browse cursor store unavailable")
+	}
+	result, err := s.client.Eval(ctx, browseStateConsumeScript, []string{browseStatePrefix + "all", browseStatePrefix + "actor:" + actorKey, key}).Int()
+	if err != nil {
+		return err
+	}
+	if result != 1 {
+		return errBrowseCursorRestart
+	}
+	return nil
 }
 
 // SetCursorStore is startup-only and reuses the host's existing shared Redis.

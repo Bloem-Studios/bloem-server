@@ -22,6 +22,7 @@ import (
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 )
 
@@ -724,6 +725,161 @@ func TestSourceBrowserRedisPaginationBeyondActorQuotaDB(t *testing.T) {
 	}
 }
 
+// Terminal pages must claim still-live pagination evidence after provider I/O.
+func TestSourceBrowserTerminalCursorRequiresLiveRedisStateDB(t *testing.T) {
+	for _, mode := range []string{"consumed", "evicted", "expired", "missing-global-index", "missing-actor-index", "expired-global-index", "expired-actor-index"} {
+		t.Run(mode, func(t *testing.T) {
+			b, a, s, p := newBrowseFixture(t)
+			store, client := browseRedisFixture(t)
+			b.SetCursorStore(store)
+			first, err := b.Browse(t.Context(), a, s.Key, BrowseRequest{Limit: 1})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var cursor browseCursor
+			if err := b.openBrowse(first.NextCursor, cursorPurpose, &cursor); err != nil {
+				t.Fatal(err)
+			}
+			key, actor := browseStateKey(cursor.StateID), browseActorKey(a)
+			t.Cleanup(func() {
+				if err := store.Delete(context.Background(), key, actor); err != nil {
+					t.Error("cursor cleanup", err)
+				}
+			})
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+			started, release := make(chan struct{}), make(chan struct{})
+			defer func() {
+				select {
+				case <-release:
+				default:
+					close(release)
+				}
+			}()
+			p.mu.Lock()
+			p.started, p.release = started, release
+			p.mu.Unlock()
+			done := make(chan error, 1)
+			go func() {
+				_, err := b.Browse(ctx, a, s.Key, BrowseRequest{DirectoryRef: first.Current.SelectionRef, Cursor: first.NextCursor, Limit: 1})
+				done <- err
+			}()
+			select {
+			case <-started:
+			case <-ctx.Done():
+				t.Fatal("terminal List was not reached")
+			}
+			switch mode {
+			case "consumed":
+				err = store.Delete(ctx, key, actor)
+			case "evicted":
+				err = client.Del(ctx, key).Err()
+			case "expired":
+				err = client.PExpireAt(ctx, key, time.Unix(1, 0)).Err()
+			case "missing-global-index":
+				err = client.ZRem(ctx, browseStatePrefix+"all", key).Err()
+			case "missing-actor-index":
+				err = client.ZRem(ctx, browseStatePrefix+"actor:"+actor, key).Err()
+			case "expired-global-index":
+				err = client.ZAdd(ctx, browseStatePrefix+"all", redis.Z{Score: 1, Member: key}).Err()
+			case "expired-actor-index":
+				err = client.ZAdd(ctx, browseStatePrefix+"actor:"+actor, redis.Z{Score: 1, Member: key}).Err()
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			close(release)
+			select {
+			case err := <-done:
+				var domain *catalog.NativeOnboardingError
+				if !errors.As(err, &domain) || domain.Code != "browse_restart_required" {
+					t.Fatalf("terminal page accepted %s cursor: %v", mode, err)
+				}
+			case <-ctx.Done():
+				t.Fatal("terminal browse did not finish")
+			}
+		})
+	}
+}
+
+func TestSourceBrowserConcurrentTerminalCursorHasOneWinnerDB(t *testing.T) {
+	b, a, s, p := newBrowseFixture(t)
+	store, client := browseRedisFixture(t)
+	b.SetCursorStore(store)
+	first, err := b.Browse(t.Context(), a, s.Key, BrowseRequest{Limit: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cursor browseCursor
+	if err := b.openBrowse(first.NextCursor, cursorPurpose, &cursor); err != nil {
+		t.Fatal(err)
+	}
+	key, actor := browseStateKey(cursor.StateID), browseActorKey(a)
+	t.Cleanup(func() {
+		if err := store.Delete(context.Background(), key, actor); err != nil {
+			t.Error("cursor cleanup", err)
+		}
+	})
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	release := make(chan struct{})
+	defer func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	}()
+	type result struct {
+		page BrowsePage
+		err  error
+	}
+	done := make(chan result, 2)
+	// Each arrival proves its request loaded the same cursor before either completes.
+	for range 2 {
+		started := make(chan struct{})
+		p.mu.Lock()
+		p.started, p.release = started, release
+		p.mu.Unlock()
+		go func() {
+			page, err := b.Browse(ctx, a, s.Key, BrowseRequest{DirectoryRef: first.Current.SelectionRef, Cursor: first.NextCursor, Limit: 1})
+			done <- result{page, err}
+		}()
+		select {
+		case <-started:
+		case <-ctx.Done():
+			t.Fatal("terminal List was not reached")
+		}
+	}
+	close(release)
+	wins, restarts := 0, 0
+	for range 2 {
+		select {
+		case result := <-done:
+			if result.err == nil {
+				wins++
+				if result.page.NextCursor != "" || len(result.page.Directories) != 1 || result.page.Directories[0].Name != "empty" {
+					t.Fatalf("unexpected terminal page: %+v", result.page)
+				}
+			} else {
+				var domain *catalog.NativeOnboardingError
+				if !errors.As(result.err, &domain) || domain.Code != "browse_restart_required" {
+					t.Fatal(result.err)
+				}
+				restarts++
+			}
+		case <-ctx.Done():
+			t.Fatal("terminal browses did not finish")
+		}
+	}
+	if wins != 1 || restarts != 1 {
+		t.Fatalf("terminal results: %d successes, %d restarts; want one each", wins, restarts)
+	}
+	if client.Exists(ctx, key).Val() != 0 || client.ZScore(ctx, browseStatePrefix+"all", key).Err() != redis.Nil || client.ZScore(ctx, browseStatePrefix+"actor:"+actor, key).Err() != redis.Nil {
+		t.Fatal("consumed state or index membership remains")
+	}
+}
+
 // Remote storage alone is replaced; encryption, token bindings and replay/page
 // validation all run in the production browser.
 type browseMemoryStore struct {
@@ -773,6 +929,17 @@ func (s *browseMemoryStore) Put(_ context.Context, key, actor, replace string, d
 func (s *browseMemoryStore) Delete(_ context.Context, key, actor string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	delete(s.values, key)
+	delete(s.actors, key)
+	return nil
+}
+
+func (s *browseMemoryStore) Consume(_ context.Context, key, actor string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.actors[key] != actor || len(s.values[key]) == 0 {
+		return errBrowseCursorRestart
+	}
 	delete(s.values, key)
 	delete(s.actors, key)
 	return nil

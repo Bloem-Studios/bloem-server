@@ -347,7 +347,7 @@ func (b *SourceBrowser) Browse(ctx context.Context, a auth.AdminContextClaims, k
 			return out, err
 		}
 	} else if previous.StateID != uuid.Nil {
-		err = b.cursorStore.Delete(ioCtx, browseStateKey(previous.StateID), browseActorKey(a))
+		err = b.cursorStore.Consume(ioCtx, browseStateKey(previous.StateID), browseActorKey(a))
 		if check := b.recheck(ioCtx, a, snapshot); check != nil {
 			return out, check
 		}
