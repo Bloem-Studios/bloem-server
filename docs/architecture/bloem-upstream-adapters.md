@@ -293,3 +293,14 @@ Once an upstream hook lands, incorporate that exact upstream commit and retire
 Bloem's corresponding shared-file difference. The tenant repository extraction
 already reuses existing upstream interfaces; most of that extraction is maintained
 Bloem code rather than new functionality to send to Silo.
+
+## Silo player authentication
+
+The web player keeps Silo's stream URL builder, subtitle inventory mapping,
+subtitle loaders and audiobook playback hook unchanged. Media URLs carry the
+access token using Silo's `token` query parameter; authentication keeps Silo's
+header-first, query-fallback extraction. Bloem's session validation, direct-profile
+route boundary, tenant identity and viewer policy still run after extraction.
+Removing URL authentication without replacing every media loader caused subtitle
+and attached-font requests to fail with 401. Follow upstream here rather than
+adding a second subtitle transport.

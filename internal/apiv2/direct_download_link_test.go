@@ -254,10 +254,8 @@ func TestDirectDownloadLinkDelivery(t *testing.T) {
 			requireProblem(t, do(t, h, http.MethodGet, base+"42&dl="+url.QueryEscape(dl), "", nil), TypeInvalidToken)
 		})
 	}
-	// A link is not an account credential anywhere else. Bloem reads no
-	// account credential from a URL, so a link passed as token is simply
-	// unauthenticated.
-	requireProblem(t, do(t, h, http.MethodGet, base+"42&token="+url.QueryEscape(valid), "", nil), TypeAuthenticationRequired)
+	// A link is not an account credential anywhere else.
+	requireProblem(t, do(t, h, http.MethodGet, base+"42&token="+url.QueryEscape(valid), "", nil), TypeInvalidToken)
 	requireProblem(t, do(t, h, http.MethodGet, Prefix+"/capabilities/downloads", "", with(bearer(valid), "X-Profile-Id", "p-kid")), TypeInvalidToken)
 	requireProblem(t, do(t, h, http.MethodGet, base+"42&token="+memberToken+"&dl="+url.QueryEscape(valid), "", nil), TypeValidationFailed)
 	if files.served != served {
@@ -282,8 +280,7 @@ func TestDirectDownloadHouseholdGate(t *testing.T) {
 				} else if rec.Code != http.StatusUnprocessableEntity {
 					t.Fatalf("HEAD: %d", rec.Code)
 				}
-				// Bloem reads no account credential from a URL.
-				if rec := do(t, h, method, path+"&token="+householdToken, "", nil); rec.Code != http.StatusUnauthorized {
+				if rec := do(t, h, method, path+"&token="+householdToken, "", nil); rec.Code != http.StatusUnprocessableEntity {
 					t.Fatalf("%s with account query token: %d %s", method, rec.Code, rec.Body)
 				}
 				if files.served != before {
@@ -292,14 +289,18 @@ func TestDirectDownloadHouseholdGate(t *testing.T) {
 			}
 			requireProblem(t, do(t, h, http.MethodGet, path, "", kidHeaders), TypeNotFound)
 			for name, headers := range map[string]map[string]string{
-				"parent with PIN proof":  parentHeaders,
-				"unrestricted household": bearer(memberToken),
-				"household API key":      bearer(householdAPIKeyToken),
-				"child, all-ages file":   kidHeaders,
+				"parent with PIN proof":   parentHeaders,
+				"unrestricted household":  bearer(memberToken),
+				"household API key":       bearer(householdAPIKeyToken),
+				"child, all-ages file":    kidHeaders,
+				"unrestricted with query": nil,
 			} {
 				p := path
 				if name == "child, all-ages file" {
 					p = Prefix + route + "?file_id=42"
+				}
+				if headers == nil {
+					p += "&token=" + memberToken
 				}
 				if rec := do(t, h, http.MethodGet, p, "", headers); rec.Code != http.StatusOK || rec.Body.String() != "0123456789" {
 					t.Fatalf("%s: %d %s", name, rec.Code, rec.Body)

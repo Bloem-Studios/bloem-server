@@ -5,6 +5,13 @@ upstream merges stay clean. This file carries Bloem's additions and overrides. *
 two disagree, this file wins.** Fork provenance and merge policy: [FORK.md](FORK.md). Bloem's
 documentation index: [docs/bloem/README.md](docs/bloem/README.md).
 
+## Shared implementation follows Silo
+
+Silo wins in shared code. Keep Bloem's footprint as small as possible: change shared
+files only where a Bloem extension needs an integration point. Retain the integration
+points needed for Bloem plugins. When a fork change breaks Silo behavior, restore
+the upstream implementation before adding an adapter.
+
 ## Naming
 
 Read "Silo" in `AGENTS.md` as **Bloem** wherever it names this product: this repository is

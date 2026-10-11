@@ -220,17 +220,21 @@ func TestDirectDownloadProxyAuthorityAndReservation(t *testing.T) {
 	}
 }
 
-func TestDirectDownloadRefusesQueryAccountTokenAndReportsUnavailable(t *testing.T) {
+func TestDirectDownloadBrowserTokenAndUnavailable(t *testing.T) {
 	f := new(directDownloadFixture)
 	h := directDownloadTestHandler(t, f)
-	for _, token := range []string{memberToken, expiredToken} {
-		for _, method := range []string{"HEAD", "GET"} {
-			res := do(t, h, method, Prefix+directDownloadPath+"?file_id=42&token="+token, "", nil)
-			if res.Code != http.StatusUnauthorized || f.calls != 0 {
-				t.Fatalf("query credential reached download: %d calls=%d", res.Code, f.calls)
-			}
+	path := Prefix + directDownloadPath + "?file_id=42&token=" + memberToken
+	for _, method := range []string{"HEAD", "GET"} {
+		res := do(t, h, method, path, "", nil)
+		if res.Code != 200 || f.access.UserID != 1 || f.access.ProfileID != "" {
+			t.Fatal(res.Code, res.Body, f.access)
 		}
 	}
+	before := f.calls
+	requireProblem(t, do(t, h, "GET", Prefix+directDownloadPath+"?file_id=42&token="+expiredToken, "", nil), TypeSessionExpired)
+	if f.calls != before {
+		t.Fatal("expired token reached file")
+	}
 	deps, _ := catalogDeps(t)
-	requireProblem(t, do(t, newTestHandler(t, deps), "GET", Prefix+directDownloadPath+"?file_id=42", "", viewerHeaders()), TypeDependencyUnavailable)
+	requireProblem(t, do(t, newTestHandler(t, deps), "GET", path, "", nil), TypeDependencyUnavailable)
 }

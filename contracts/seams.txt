@@ -118,7 +118,7 @@ internal/apiv2/admin_system_test.go  # assert actual platform capability while r
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
 internal/apiv2/auth_sessions.go
 internal/apiv2/device_login_test.go  # expected server_name follows branding.DefaultServerName, which Bloem sets to "Bloem"
-internal/apiv2/direct_download_link_test.go  # Bloem reads no account credential from a URL, so query-token cases expect 401
+internal/apiv2/direct_download_link_test.go  # profile-aware download service fixture
 internal/apiv2/direct_download_test.go
 internal/apiv2/docsui/swagger-ui-bundle.js.LICENSE.txt
 internal/apiv2/document_test.go
@@ -129,10 +129,8 @@ internal/apiv2/libraries.go  # createLibrary takes a storage_source location as 
 internal/apiv2/notification_inbox.go
 internal/apiv2/notification_inbox_test.go
 internal/apiv2/parity_test.go
-internal/apiv2/playback_delivery_test.go
 internal/apiv2/profile_token_revision_test.go  # skipped: Bloem runs profile mutations only under lifecycle transactions, which the SQLite store cannot
 internal/apiv2/profiles.go
-internal/apiv2/progress_bootstrap_test.go
 internal/apiv2/registry.go
 internal/apiv2/router.go
 internal/audiobooks/abs/author_series_handler.go
@@ -394,8 +392,6 @@ web/src/pages/admin-settings/NotificationsAdminSettings.test.tsx
 web/src/pages/admin-settings/PlaybackSettings.test.tsx
 web/src/pages/admin-settings/PlaybackSettings.tsx
 web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permission-list hook after upstream split the user detail page
-web/src/pages/audiobooks/player/useAudiobookPlayback.test.ts
-web/src/pages/audiobooks/player/useAudiobookPlayback.ts
 web/src/pages/watchtogether/StartPartySheet.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
 web/src/pages/watchtogether/room/browse/CandidateStage.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
 web/src/pages/watchtogether/room/picker/SeriesDrilldown.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
@@ -404,10 +400,6 @@ web/src/player/components/VideoPlayer.reconnect.test.tsx # Upstream reconnect ha
 web/src/player/components/VideoPlayer.test.tsx
 web/src/player/components/VideoPlayer.tsx
 web/src/player/components/WatchPage.tsx
-web/src/player/hooks/usePlaybackSession.ts
-web/src/player/hooks/useSubtitleTracks.test.tsx
-web/src/player/stream-url.test.ts
-web/src/player/stream-url.ts
 web/src/test-setup.ts
 web/src/test/requestBudget.ts  # Include Bloem public shell endpoints in deterministic boot server without exempting authenticated operations
 web/src/test/signedInBoot.test.tsx  # Exercise Bloem shell requests against real public endpoint fixtures before measuring budget

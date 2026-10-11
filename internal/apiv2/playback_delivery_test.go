@@ -48,7 +48,7 @@ func TestPlaybackDeliveryV2BytesErrorsAndAuthorization(t *testing.T) {
 		t.Fatalf("range problem metadata: %v", invalidRange.Header())
 	}
 	queryAuth := do(t, h, http.MethodGet, path+"&token="+memberToken, "", nil)
-	if queryAuth.Code != http.StatusUnauthorized {
+	if queryAuth.Code != 200 || queryAuth.Body.String() != "0123456789" {
 		t.Fatalf("media query auth: %d %s", queryAuth.Code, queryAuth.Body.String())
 	}
 	before := calls

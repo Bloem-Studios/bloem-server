@@ -28,10 +28,20 @@ export function preconnectToStreamOrigin(streamUrl: string): void {
 }
 
 /**
- * Under protocol v3 the server anchors the plan's `stream.url`. Resolve local
- * delivery paths against the API root without appending account credentials.
+ * Makes a server-issued stream path loadable by a native media element, which
+ * cannot set an Authorization header, by appending the access token as a query
+ * parameter.
+ *
+ * Under protocol v3 the plan's `stream.url` is already fully anchored by the
+ * server — the seek position, the stream token, and every other routing
+ * decision are baked in. This helper must not add playback semantics of its
+ * own; it only carries authentication.
  */
-export function buildPlayerStreamUrl(apiBaseUrl: string, streamPath: string): string {
+export function buildPlayerStreamUrl(
+  apiBaseUrl: string,
+  streamPath: string,
+  token: string | null,
+): string {
   // Realtime subtitle events carry domain-relative paths; v2 plans may also
   // replay older local paths. Project only API-local delivery routes, keeping
   // absolute distributed URLs and their signed routing untouched.
@@ -48,5 +58,13 @@ export function buildPlayerStreamUrl(apiBaseUrl: string, streamPath: string): st
     streamPath.startsWith("http://") || streamPath.startsWith("https://")
       ? streamPath
       : `${apiRoot}${streamPath}`;
-  return base;
+  if (!token) {
+    return base;
+  }
+  const query = new URLSearchParams({ token }).toString();
+  // The backend stream URL may already carry its own query string (e.g. the
+  // `?st=<streamtoken>` reconstruct token for integrated-mode direct/remux).
+  // Join with `&` in that case so we don't clobber it into `st=X?token=Y`.
+  const separator = base.includes("?") ? "&" : "?";
+  return `${base}${separator}${query}`;
 }

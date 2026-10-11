@@ -70,7 +70,7 @@ const srtTrack: PlayerSubtitleInfo = {
   codec: "subrip",
   label: "English",
   source: "embedded",
-  url: "/api/v1/stream/x/subtitles/1?st=scoped-stream-token",
+  url: "/api/v1/stream/x/subtitles/1?token=abc",
 };
 
 const fetchMock = vi.fn();
@@ -191,7 +191,7 @@ describe("useSubtitleTracks", () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(String(fetchMock.mock.calls[0]![0])).toContain("position=1398&duration=600");
-    expect(String(fetchMock.mock.calls[0]![0])).toContain("st=scoped-stream-token");
+    expect(String(fetchMock.mock.calls[0]![0])).toContain("token=abc");
   });
 
   it("resets and refetches on a forward seek past the covered window", async () => {

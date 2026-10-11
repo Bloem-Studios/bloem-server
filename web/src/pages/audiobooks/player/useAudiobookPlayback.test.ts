@@ -326,19 +326,12 @@ describe("useAudiobookPlayback", () => {
     });
   });
 
-  it("returns a flattened chapter list across files", () => {
-    const { result } = renderAudiobookPlayback();
-    expect(result.current.chapters).toHaveLength(2);
-    expect(result.current.chapters[0]!.start_seconds).toBe(0);
-    expect(result.current.chapters[1]!.start_seconds).toBe(300);
-  });
-
-  it("starts a playback session without exposing the account token", async () => {
+  it("starts a playback session and builds a tokenized stream URL", async () => {
     const { result } = renderAudiobookPlayback();
 
     await flushAsyncWork();
 
-    expect(result.current.streamUrl).toBe("/api/v2/stream/session-1");
+    expect(result.current.streamUrl).toBe("/api/v2/stream/session-1?token=token");
 
     const startCall = vi
       .mocked(fetch)
@@ -383,7 +376,7 @@ describe("useAudiobookPlayback", () => {
       await probeResult;
     });
     await flushAsyncWork();
-    expect(result.current.streamUrl).toBe("/api/v2/stream/session-1");
+    expect(result.current.streamUrl).toBe("/api/v2/stream/session-1?token=token");
     expect(
       vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/playback/start")),
     ).toHaveLength(1);
@@ -563,7 +556,7 @@ describe("useAudiobookPlayback", () => {
 
     await flushAsyncWork();
 
-    expect(result.current.streamUrl).toBe("/api/v2/stream/session-1");
+    expect(result.current.streamUrl).toBe("/api/v2/stream/session-1?token=token");
     expect(result.current.currentTime).toBe(450);
     expect(result.current.duration).toBe(600);
 

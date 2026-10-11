@@ -444,14 +444,16 @@ func GetUserID(ctx context.Context) int {
 	return claims.UserID
 }
 
-// extractBearerToken extracts a JWT or API key only from the Authorization
-// header. General credentials are never accepted from URLs: upstream falls back
-// to ?token=, which puts a full-authority credential in logs, referrers and
-// browser history. Native media elements that cannot set headers use the
-// session-bound stream token (?st=) instead, which is scoped to one session and
-// resolved into a viewer scope by RequireViewerAccess.
+// extractBearerToken extracts a JWT from the request. It checks (in order):
+//  1. Authorization: Bearer <token> header
+//  2. ?token=<token> query parameter (for native media elements that can't set headers)
 func extractBearerToken(r *http.Request) (string, bool) {
 	if token, ok := parseBearerHeader(r.Header.Get("Authorization")); ok {
+		return token, true
+	}
+
+	// Fall back to query parameter (used by <video> / <audio> src URLs).
+	if token := r.URL.Query().Get("token"); token != "" {
 		return token, true
 	}
 

@@ -240,7 +240,7 @@ func TestProgressBootstrapBearerHeaderRecheck(t *testing.T) {
 		}
 	}
 	rec := do(t, h, http.MethodGet, Prefix+"/sync/progress/capabilities?token="+url.QueryEscape(memberToken), "", map[string]string{"X-Profile-Id": "p-owner"})
-	if rec.Code != http.StatusUnauthorized {
+	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("query-only credential = %d %s", rec.Code, rec.Body.String())
 	}
 }
