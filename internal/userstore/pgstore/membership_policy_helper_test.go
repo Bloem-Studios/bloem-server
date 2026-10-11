@@ -2,14 +2,12 @@ package pgstore
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/bloemtestdb"
 )
 
 // TestMain finalizes the membership policy authority before any test runs.
@@ -20,33 +18,14 @@ import (
 // lifts it, and it also renames the legacy policy columns off users -- which is
 // why the fixtures here read and write organization_memberships instead.
 //
-// It is idempotent, so packages sharing one database can each call it.
+// The prepared database belongs to this process so EXPLAIN fixtures are not
+// affected by other packages' schema changes or statistics.
 //
 // With SILO_REQUIRE_TEST_DATABASE=1 a missing SILO_TEST_DATABASE_URL fails the
 // package instead of letting its PostgreSQL tests skip (Bloem CI contract; the
 // Silo test files themselves only skip).
 func TestMain(m *testing.M) {
-	if os.Getenv("SILO_TEST_DATABASE_URL") == "" && os.Getenv("SILO_REQUIRE_TEST_DATABASE") == "1" {
-		fmt.Fprintln(os.Stderr, "SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1")
-		os.Exit(1)
-	}
-	if dsn := os.Getenv("SILO_TEST_DATABASE_URL"); dsn != "" {
-		ctx := context.Background()
-		if pool, err := pgxpool.New(ctx, dsn); err == nil {
-			if err := markTestDatabaseAsPolicyWriter(ctx, pool, dsn); err != nil {
-				fmt.Fprintf(os.Stderr, "mark test database as policy writer: %v\n", err)
-				pool.Close()
-				os.Exit(1)
-			}
-			if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-				fmt.Fprintf(os.Stderr, "finalize membership policy authority: %v\n", err)
-				pool.Close()
-				os.Exit(1)
-			}
-			pool.Close()
-		}
-	}
-	os.Exit(m.Run())
+	os.Exit(bloemtestdb.RunIsolatedSuite(m.Run))
 }
 
 // execMembershipPolicy runs a write against organization_memberships policy
@@ -69,31 +48,4 @@ func execMembershipPolicy(t *testing.T, ctx context.Context, pool *pgxpool.Pool,
 	if err := tx.Commit(ctx); err != nil {
 		t.Fatalf("commit membership policy write: %v", err)
 	}
-}
-
-// markTestDatabaseAsPolicyWriter makes every new session on the test database
-// the v1 membership policy writer and a capable node.
-//
-// In production those markers are set per transaction by the code that owns the
-// write. Fixtures are not that code -- they seed rows directly from dozens of
-// call sites -- so the test database declares it once at the database level,
-// which is the same statement of fact: this deployment speaks the v1 protocol.
-// ALTER DATABASE .. SET only affects sessions opened afterwards, which is why it
-// runs in TestMain before any pool is built.
-func markTestDatabaseAsPolicyWriter(ctx context.Context, pool *pgxpool.Pool, dsn string) error {
-	cfg, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		return err
-	}
-	name := cfg.ConnConfig.Database
-	for _, setting := range []string{"bloem.membership_policy_writer", "bloem.schema_capability_writer"} {
-		value := "v1"
-		if _, err := pool.Exec(ctx, fmt.Sprintf(
-			"ALTER DATABASE %s SET %s = %s",
-			pgx.Identifier{name}.Sanitize(), setting, pgx.Identifier{value}.Sanitize(),
-		)); err != nil {
-			return err
-		}
-	}
-	return nil
 }
