@@ -1,0 +1,98 @@
+name: Bloem Image
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: bloem-image-main
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  publish:
+    if: >-
+      github.repository == 'Bloem-Studios/bloem-server' &&
+      ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    steps:
+      - name: Verify the exact source passed CI
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            CI_RUN_ID=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$EXPECTED_SHA&per_page=100" \
+              --jq '.workflow_runs | map(select(.head_branch == "main" and .event == "push" and .status == "completed" and .conclusion == "success")) | first | .id // empty')
+          fi
+          [[ "$CI_RUN_ID" =~ ^[0-9]+$ ]] || { echo 'No successful CI run for this source.' >&2; exit 1; }
+          gh api "repos/$GH_REPO/actions/runs/$CI_RUN_ID" > "$RUNNER_TEMP/bloem-ci.json"
+          jq -e --arg sha "$EXPECTED_SHA" --arg repo "$GH_REPO" \
+            '.head_sha == $sha and .head_branch == "main" and .event == "push" and .status == "completed" and .conclusion == "success" and .path == ".github/workflows/ci.yml" and .head_repository.full_name == $repo' \
+            "$RUNNER_TEMP/bloem-ci.json" >/dev/null
+          {
+            echo "sha=$EXPECTED_SHA"
+            echo "ci_run_id=$CI_RUN_ID"
+            echo "built_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the validated source
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+          persist-credentials: false
+
+      - name: Download its validated frontend
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist-${{ steps.source.outputs.sha }}
+          path: web/dist
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.source.outputs.ci_run_id }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish the pinned Bloem image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          build-contexts: frontend_dist=./web/dist
+          push: true
+          tags: ghcr.io/bloem-studios/bloem-server:${{ steps.source.outputs.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
+            org.opencontainers.image.created=${{ steps.source.outputs.built_at }}
+            org.opencontainers.image.source=https://github.com/Bloem-Studios/bloem-server
+          build-args: |
+            BUILD_REVISION=${{ steps.source.outputs.sha }}
+            BUILD_DIRTY=false
+            BUILD_DATE=${{ steps.source.outputs.built_at }}
