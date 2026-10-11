@@ -203,3 +203,26 @@ var wrapped = ` + expression
 	t.Fatal("fixture has no wrapped value")
 	return nil, nil, nil
 }
+
+func TestBloemNativeVideoCapturePreservesRouteAuthority(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		gates  []string
+		class  string
+		traits []string
+	}{
+		{name: "public", class: authPublic, traits: []string{}},
+		{name: "authenticated", gates: []string{"authMW.RequireAuth"}, class: authAuthenticated, traits: []string{traitAuthenticated}},
+		{name: "profile", gates: []string{"authMW.RequireAuth", "viewer.RequireViewerAccess", "apimw.RequireProfile"}, class: authProfileScoped, traits: []string{traitAuthenticated, traitProfileReq, traitViewerAccess}},
+		{name: "platform_admin", gates: []string{"adminMW.Require", "handlers.RequireBloemPlatformContext"}, class: authActingAdmin, traits: []string{traitActingAdmin, traitAdminContext}},
+		{name: "unknown_gate", gates: []string{"futureNativeVideoAuthority"}, class: authPublic, traits: []string{"unclassified_middleware"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stack := append([]string{"captureNativeVideoRequest", "apimw.RequestID", "apimw.NormalizeClientHeaders", "middleware.Recoverer"}, tc.gates...)
+			class, traits := classifyAuth(stack)
+			if class != tc.class || !slices.Equal(traits, tc.traits) {
+				t.Fatalf("captured stack authority = %q %v; want %q %v", class, traits, tc.class, tc.traits)
+			}
+		})
+	}
+}
