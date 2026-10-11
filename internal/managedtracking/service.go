@@ -62,7 +62,7 @@ func (s *Service) Grant(ctx context.Context, installation int, tenant string) er
 	defer tx.Rollback(ctx)
 	tag, err := tx.Exec(ctx, `INSERT INTO bloem_managed_grants(installation_id,tenant_id)
  SELECT i.id,o.id FROM plugin_installations i CROSS JOIN organizations o
- WHERE i.id=$1 AND i.enabled AND i.kind='plugin' AND i.plugin_id='bloem.pastime' AND o.id=$2 AND o.status='active'
+ WHERE i.id=$1 AND i.enabled AND i.kind='plugin' AND i.plugin_id='bloem.pastime' AND o.id=$2 AND (o.status='active' OR (o.is_default AND o.status='initializing'))
  ON CONFLICT(installation_id) DO UPDATE SET active=true,
  generation=CASE WHEN bloem_managed_grants.active THEN bloem_managed_grants.generation ELSE bloem_managed_grants.generation+1 END,
  min_generation=CASE WHEN bloem_managed_grants.active THEN bloem_managed_grants.min_generation ELSE bloem_managed_grants.generation+1 END,
@@ -102,7 +102,8 @@ func authority(ctx context.Context, tx pgx.Tx, installation int, lock grantLock)
 	var out Info
 	query := `SELECT g.instance_id::text,g.tenant_id::text,g.generation,g.min_generation FROM bloem_managed_grants g
  JOIN plugin_installations i ON i.id=g.installation_id JOIN organizations o ON o.id=g.tenant_id
- WHERE g.installation_id=$1 AND g.active AND i.enabled AND i.kind='plugin' AND i.plugin_id='bloem.pastime' AND o.status='active'`
+ WHERE g.installation_id=$1 AND g.active AND i.enabled AND i.kind='plugin' AND i.plugin_id='bloem.pastime'
+ AND (o.status='active' OR (o.is_default AND o.status='initializing'))`
 	switch lock {
 	case grantShare:
 		query += ` FOR SHARE OF g`
