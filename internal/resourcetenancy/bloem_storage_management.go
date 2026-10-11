@@ -3,6 +3,8 @@ package resourcetenancy
 import (
 	"context"
 	"errors"
+	"reflect"
+	"sort"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -395,4 +397,359 @@ func (s *Store) RequireStorageOwnerTx(ctx context.Context, tx pgx.Tx, actor auth
 		return Owner{}, err
 	}
 	return after[id], nil
+}
+
+// NativeSourceExpectation is private host addressing evidence, never a grant.
+// Generation fences installation replacement even when the source is unchanged.
+type NativeSourceExpectation struct {
+	Source     storagesource.SourceConfig
+	Generation uint64
+}
+
+// NativeLibraryExpectation optionally pins the library's complete location/root
+// graph. Nil Locations retains the current graph; an empty non-nil slice pins
+// the absence of locations. All existing sources are retained, including those
+// an editor is removing, without requiring removed sources to be available.
+type NativeLibraryExpectation struct {
+	FolderID  int
+	OwnerID   uuid.UUID
+	Locations []storagesource.LocationSelection
+}
+type NativeResourceSet struct {
+	Sources []NativeSourceExpectation
+	Library *NativeLibraryExpectation
+}
+
+// NativeRetainedResources describes rows retained through the caller's commit.
+// It grants neither viewer access nor readiness for any media kind.
+type NativeRetainedResources struct {
+	Sources      []NativeSourceExpectation
+	LibraryOwner Owner
+	LibraryKind  string
+	Locations    []storagesource.LocationSelection
+}
+
+const nativeSourceColumns = `key,owner_id,installation_id,plugin_id,provider_source_id,root_entry_id,configuration_revision,enabled`
+
+func nativeAggregateSource(ctx context.Context, tx pgx.Tx, key uuid.UUID, lock bool) (storagesource.SourceConfig, error) {
+	var s storagesource.SourceConfig
+	q := `SELECT ` + nativeSourceColumns + ` FROM bloem_storage_sources WHERE key=$1`
+	if lock {
+		q += ` FOR SHARE`
+	}
+	err := tx.QueryRow(ctx, q, key).Scan(&s.Key, &s.OwnerID, &s.InstallationID, &s.PluginID, &s.ProviderSourceID, &s.RootEntryID, &s.ConfigurationRevision, &s.Enabled)
+	return s, storageScanError(err)
+}
+func nativeAggregateLocations(ctx context.Context, tx pgx.Tx, folder int, lock bool) ([]storagesource.LocationSelection, error) {
+	q := `SELECT id,source_key,folder_id,selection_revision FROM library_storage_locations WHERE folder_id=$1 ORDER BY id`
+	if lock {
+		q += ` FOR SHARE`
+	}
+	rows, err := tx.Query(ctx, q, folder)
+	if err != nil {
+		return nil, storageScanError(err)
+	}
+	out := make([]storagesource.LocationSelection, 0)
+	for rows.Next() {
+		var l storagesource.Location
+		if err := rows.Scan(&l.ID, &l.SourceKey, &l.FolderID, &l.SelectionRevision); err != nil {
+			rows.Close()
+			return nil, storageScanError(err)
+		}
+		out = append(out, storagesource.LocationSelection{Location: l, Roots: make([]storagesource.SelectedRoot, 0)})
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return nil, storageScanError(err)
+	}
+	for i := range out {
+		q := `SELECT id,location_id,directory_id,name,logical_path,enabled FROM bloem_storage_selected_roots WHERE location_id=$1 ORDER BY directory_id`
+		if lock {
+			q += ` FOR SHARE`
+		}
+		rows, err := tx.Query(ctx, q, out[i].Location.ID)
+		if err != nil {
+			return nil, storageScanError(err)
+		}
+		for rows.Next() {
+			var r storagesource.SelectedRoot
+			if err := rows.Scan(&r.ID, &r.LocationID, &r.DirectoryID, &r.Name, &r.LogicalPath, &r.Enabled); err != nil {
+				rows.Close()
+				return nil, storageScanError(err)
+			}
+			out[i].Roots = append(out[i].Roots, r)
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return nil, storageScanError(err)
+		}
+	}
+	return out, nil
+}
+func nativeAggregateOrganizations(ctx context.Context, tx pgx.Tx, owners map[uuid.UUID]Owner) error {
+	ids := []uuid.UUID{}
+	for _, o := range owners {
+		if o.OrganizationID != nil {
+			ids = append(ids, *o.OrganizationID)
+		}
+	}
+	rows, err := tx.Query(ctx, `SELECT id,status FROM organizations WHERE id=ANY($1::uuid[]) ORDER BY id FOR SHARE`, ids)
+	if err != nil {
+		return storageScanError(err)
+	}
+	seen := map[uuid.UUID]bool{}
+	for rows.Next() {
+		var id uuid.UUID
+		var status string
+		if err := rows.Scan(&id, &status); err != nil {
+			rows.Close()
+			return storageScanError(err)
+		}
+		if status != "active" {
+			rows.Close()
+			return ErrResourceHidden
+		}
+		seen[id] = true
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return storageScanError(err)
+	}
+	for _, id := range ids {
+		if !seen[id] {
+			return ErrResourceHidden
+		}
+	}
+	return nil
+}
+
+// RetainNativeResourcesTx locks one aggregate in the same resource order as
+// native management: organizations/actor, sorted installations, native markers,
+// sorted sources, library, locations/roots, sorted typed owners, entitlements.
+// Addressing reads happen first and grant no authority. Every retained identity
+// is compared after its wait. A nil actor is reserved for host background work;
+// that path still checks library/source owner policy and source entitlements.
+// Call this once before taking any source, library or owner locks. Provider I/O
+// must finish before this method, and must never occur in the caller's tx.
+func (s *Store) RetainNativeResourcesTx(ctx context.Context, tx pgx.Tx, actor *auth.AdminContextClaims, set NativeResourceSet) (NativeRetainedResources, error) {
+	var out NativeRetainedResources
+	if s == nil || s.pool == nil || tx == nil {
+		return out, ErrResourceUnavailable
+	}
+	if actor == nil && set.Library == nil {
+		return out, ErrResourceHidden
+	}
+	if actor != nil && !nativeManagementActorShape(*actor) {
+		return out, ErrInvalidActor
+	}
+	if len(set.Sources) > 16 || (len(set.Sources) == 0 && set.Library == nil) {
+		return out, ErrResourceHidden
+	}
+	expected := map[uuid.UUID]NativeSourceExpectation{}
+	all := map[uuid.UUID]NativeSourceExpectation{}
+	for _, e := range set.Sources {
+		v := e.Source
+		if v.Key == uuid.Nil || v.OwnerID == uuid.Nil || v.InstallationID == nil || *v.InstallationID <= 0 || !v.Enabled || v.ConfigurationRevision <= 0 || e.Generation == 0 {
+			return out, ErrResourceHidden
+		}
+		if _, exists := expected[v.Key]; exists {
+			return out, ErrResourceHidden
+		}
+		actual, err := nativeAggregateSource(ctx, tx, v.Key, false)
+		if err != nil {
+			return out, err
+		}
+		if !nativeManagementSourceEqual(actual, v) {
+			return out, ErrResourceHidden
+		}
+		expected[v.Key] = e
+		all[v.Key] = e
+	}
+	var folderOwner uuid.UUID
+	var folderKind string
+	var folderEnabled bool
+	var locations []storagesource.LocationSelection
+	if set.Library != nil {
+		if set.Library.FolderID <= 0 {
+			return out, ErrResourceHidden
+		}
+		if err := tx.QueryRow(ctx, `SELECT owner_id,type,enabled FROM media_folders WHERE id=$1`, set.Library.FolderID).Scan(&folderOwner, &folderKind, &folderEnabled); err != nil {
+			return out, storageScanError(err)
+		}
+		if !folderEnabled || (set.Library.OwnerID != uuid.Nil && set.Library.OwnerID != folderOwner) {
+			return out, ErrResourceHidden
+		}
+		var err error
+		locations, err = nativeAggregateLocations(ctx, tx, set.Library.FolderID, false)
+		if err != nil {
+			return out, err
+		}
+		if set.Library.Locations != nil && !reflect.DeepEqual(locations, set.Library.Locations) {
+			return out, ErrResourceHidden
+		}
+		for _, l := range locations {
+			if _, exists := all[l.Location.SourceKey]; exists {
+				continue
+			}
+			source, err := nativeAggregateSource(ctx, tx, l.Location.SourceKey, false)
+			if err != nil {
+				return out, err
+			}
+			var generation uint64
+			if source.InstallationID != nil {
+				if err := tx.QueryRow(ctx, `SELECT runtime_generation FROM plugin_installations WHERE id=$1`, source.InstallationID).Scan(&generation); err != nil {
+					return out, storageScanError(err)
+				}
+			}
+			all[source.Key] = NativeSourceExpectation{Source: source, Generation: generation}
+		}
+	}
+	keys := make([]uuid.UUID, 0, len(all))
+	owners := []uuid.UUID{}
+	installations := map[int64]NativeSourceExpectation{}
+	if folderOwner != uuid.Nil {
+		owners = append(owners, folderOwner)
+	}
+	for key, e := range all {
+		keys = append(keys, key)
+		owners = append(owners, e.Source.OwnerID)
+		if e.Source.InstallationID != nil {
+			id := *e.Source.InstallationID
+			if prior, ok := installations[id]; ok && (prior.Source.OwnerID != e.Source.OwnerID || prior.Source.PluginID != e.Source.PluginID || prior.Generation != e.Generation) {
+				return out, ErrResourceHidden
+			}
+			installations[id] = e
+		}
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i].String() < keys[j].String() })
+	before, err := nativeManagementOwners(ctx, tx, owners, false)
+	if err != nil {
+		return out, err
+	}
+	if actor != nil {
+		err = retainNativeManagementActor(ctx, tx, *actor, before)
+	} else {
+		err = nativeAggregateOrganizations(ctx, tx, before)
+	}
+	if err != nil {
+		return out, err
+	}
+	ids := make([]int64, 0, len(installations))
+	for id := range installations {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	for _, id := range ids {
+		e := installations[id]
+		var owner uuid.UUID
+		var plugin, kind string
+		var enabled bool
+		var generation uint64
+		if err := tx.QueryRow(ctx, `SELECT owner_id,plugin_id,kind,enabled,runtime_generation FROM plugin_installations WHERE id=$1 FOR SHARE`, id).Scan(&owner, &plugin, &kind, &enabled, &generation); err != nil {
+			return out, storageScanError(err)
+		}
+		if owner != e.Source.OwnerID || plugin != e.Source.PluginID || kind != "plugin" || generation != e.Generation {
+			return out, ErrResourceHidden
+		}
+		for _, requested := range expected {
+			if *requested.Source.InstallationID == id && (!enabled || generation == 0) {
+				return out, ErrResourceHidden
+			}
+		}
+	}
+	for _, id := range ids {
+		e := installations[id]
+		var owner uuid.UUID
+		var protocol int
+		if err := tx.QueryRow(ctx, `SELECT owner_id,protocol_version FROM bloem_storage_installations WHERE installation_id=$1 FOR SHARE`, id).Scan(&owner, &protocol); err != nil {
+			return out, storageScanError(err)
+		}
+		if owner != e.Source.OwnerID || protocol != 1 {
+			return out, ErrResourceHidden
+		}
+	}
+	for _, key := range keys {
+		actual, err := nativeAggregateSource(ctx, tx, key, true)
+		if err != nil {
+			return out, err
+		}
+		if !nativeManagementSourceEqual(actual, all[key].Source) {
+			return out, ErrResourceHidden
+		}
+		out.Sources = append(out.Sources, all[key])
+	}
+	if set.Library != nil {
+		var owner uuid.UUID
+		var kind string
+		var enabled bool
+		if err := tx.QueryRow(ctx, `SELECT owner_id,type,enabled FROM media_folders WHERE id=$1 FOR UPDATE`, set.Library.FolderID).Scan(&owner, &kind, &enabled); err != nil {
+			return out, storageScanError(err)
+		}
+		if owner != folderOwner || kind != folderKind || !enabled {
+			return out, ErrResourceHidden
+		}
+		actual, err := nativeAggregateLocations(ctx, tx, set.Library.FolderID, true)
+		if err != nil {
+			return out, err
+		}
+		if !reflect.DeepEqual(actual, locations) {
+			return out, ErrResourceHidden
+		}
+		out.Locations = actual
+		out.LibraryKind = kind
+	}
+	after, err := nativeManagementOwners(ctx, tx, owners, true)
+	if err != nil {
+		return out, err
+	}
+	if !nativeManagementOwnersUnchanged(before, after) {
+		return out, ErrAuthorizationStateChanged
+	}
+	if set.Library != nil {
+		out.LibraryOwner = after[folderOwner]
+		if actor != nil {
+			if err := nativeManagementOwnerAccessTx(ctx, tx, *actor, out.LibraryOwner, RootRef{Kind: RootMediaFolder, ID: int64(set.Library.FolderID)}, true); err != nil {
+				return out, err
+			}
+		}
+	}
+	// Source owner/availability authority follows the sorted source order too.
+	for _, key := range keys {
+		e, requested := expected[key]
+		if !requested {
+			continue
+		}
+		owner := after[e.Source.OwnerID]
+		if actor != nil {
+			if err := nativeManagementOwnerAccessTx(ctx, tx, *actor, owner, RootRef{Kind: RootPluginInstallation, ID: *e.Source.InstallationID}, false); err != nil {
+				return out, err
+			}
+		}
+		if set.Library != nil {
+			library := out.LibraryOwner
+			if library.Kind == OwnerPlatform {
+				if owner.Kind != OwnerPlatform {
+					return out, ErrResourceHidden
+				}
+			} else if owner.Kind == OwnerOrganization {
+				if *owner.OrganizationID != *library.OrganizationID {
+					return out, ErrResourceHidden
+				}
+			} else {
+				var grant uuid.UUID
+				if err := tx.QueryRow(ctx, `SELECT id FROM organization_entitlements WHERE organization_id=$1 AND root_owner_id=$2 AND root_kind='plugin_installation' AND entitlement_kind='plugin_availability' AND plugin_installation_id=$3 AND status='active' AND security_revision>0 FOR SHARE`, *library.OrganizationID, owner.ID, *e.Source.InstallationID).Scan(&grant); err != nil {
+					return out, storageScanError(err)
+				}
+			}
+		}
+	}
+	if actor != nil {
+		if err := retainNativeManagementActor(ctx, tx, *actor, after); err != nil {
+			return out, err
+		}
+	}
+	return out, nil
 }

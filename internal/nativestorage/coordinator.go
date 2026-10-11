@@ -23,8 +23,9 @@ type Registry interface {
 	Snapshot(context.Context, uuid.UUID, uuid.UUID) (*plugins.NativeStorageSnapshot, error)
 }
 type Lease struct {
-	Context context.Context
-	Source  mediasource.Source
+	Context  context.Context
+	Provider storagev1.StorageProviderClient
+	Source   mediasource.Source
 	// Description is a fresh, completed response owned by this borrower.
 	Description *storagev1.DescribeResponse
 }
@@ -43,7 +44,7 @@ func (r ManagedRuntime) Borrow(ctx context.Context, snapshot storageplugin.Snaps
 	if err != nil {
 		return Lease{}, err
 	}
-	return Lease{Context: s.Context(), Source: mediasource.NewPluginSource(s.Provider()), Description: description}, nil
+	return Lease{Context: s.Context(), Provider: s.Provider(), Source: mediasource.NewPluginSource(s.Provider()), Description: description}, nil
 }
 func (r ManagedRuntime) Disable(id int) { r.Manager.Disable(id) }
 

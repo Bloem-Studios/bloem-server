@@ -39,6 +39,7 @@ const (
 // lifecycle transactions. It does not create queues, coordinators or grants.
 type BloemNativeStorageManagementHandler struct {
 	Sources *nativestorage.SourceManagement
+	Browser *nativestorage.SourceBrowser
 	// Registry is the same startup registry used by Sources; only its sanitized
 	// immutable artifact projection is used here.
 	Registry *plugins.NativeStorageRegistry
@@ -115,6 +116,12 @@ func NativeStorageAPIError(err error) *APIError {
 		message string
 	}{
 		"invalid_request":                    {400, "Invalid native storage request"},
+		"invalid_selection_reference":        {409, "Directory selection changed or expired; browse again"},
+		"duplicate_selection":                {400, "Directory selection is duplicated"},
+		"selection_limit_exceeded":           {422, "A library supports at most 128 selected roots and 16 plugin sources"},
+		"browse_limit_exceeded":              {422, "Directory browse exceeds its bounded query or pagination limits"},
+		"browse_restart_required":            {409, "Directory pagination changed or expired; restart browsing"},
+		"invalid_provider_page":              {502, "Storage provider returned an invalid directory page"},
 		"request_too_large":                  {413, "Native storage request exceeds the size limit"},
 		"authorization_state_stale":          {401, "Tenant authorization state is stale"},
 		"not_found":                          {404, "Resource not found"},

@@ -21,6 +21,7 @@ var (
 
 // LibraryLocations gives new libraries their storage location.
 type LibraryLocations struct {
+	browser   *SourceBrowser
 	sources   *storagesource.Repository
 	resources *resourcetenancy.Store
 }
