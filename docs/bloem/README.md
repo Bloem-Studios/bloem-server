@@ -72,7 +72,7 @@ same path. Read the upstream document together with its overlay.
 
 - [Bloem request policy](../architecture/bloem-request-policy.md) — verified profile quotas, scoped administrative usage and group limits.
 - [Audiobook requests](../architecture/bloem-audiobook-requests.md) — request authority, independent quotas, identifier matching and notification scope.
-- [Internal ebook requests](../architecture/bloem-ebook-request-foundation.md) — default-off admission, canonical ISBN identity and separation from the public audiobook lane.
+- [Ebook requests](../architecture/bloem-ebook-request-foundation.md) — default-off web/admin requests, Bookwarehouse fulfillment, durable recovery and linked-library completion.
 - [Bloem lifecycle safety](../architecture/bloem-lifecycle-safety.md) — atomic tenant retirement and encrypted invitation responses.
 - [Silo playback merge impact on Bloem clients](../architecture/2026-08-24-silo-server-merge-client-impact.md)
 - [Upstream reconciliation — 2026-09-08](../architecture/2026-09-08-upstream-reconciliation.md)

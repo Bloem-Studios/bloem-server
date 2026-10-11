@@ -9,6 +9,7 @@ import { captureProfileRequestContext, captureSessionIdentity } from "@/api/clie
 import { nativeApi } from "@/api/bloemClient";
 import {
   bookRequestsApi,
+  ebookRequestsApi,
   bookRequestState,
   type BookRequest,
   type BookRequestInput,
@@ -27,13 +28,32 @@ export default function BloemRequests() {
     queryKey: ["bloem-capabilities", identity.serverOrigin, identity.authContextVersion],
     queryFn: () => nativeApi<{ feature_tokens: string[] }>("/capabilities"),
   });
-  const supported = capabilities.data?.feature_tokens.includes("audiobook_requests_v1");
+  const audioSupported =
+    capabilities.data?.feature_tokens.includes("audiobook_requests_v1") ?? false;
+  const ebookSupported = capabilities.data?.feature_tokens.includes("ebook_requests_v1") ?? false;
+  const ebook = params.get("kind") === "ebook";
+  const audio = params.get("kind") === "audiobook";
   return (
     <>
-      {supported && <RequestMediaTabs />}
-      {params.get("kind") === "audiobook" && supported ? (
-        <AudiobookRequests
+      {(audioSupported || ebookSupported) && (
+        <RequestMediaTabs audiobooks={audioSupported} ebooks={ebookSupported} />
+      )}
+      {ebook && !ebookSupported ? (
+        <section className="mx-auto max-w-4xl space-y-4 px-4 py-6 sm:px-6">
+          <h1 className="text-3xl font-semibold">Ebook requests</h1>
+          <p role={capabilities.isError ? "alert" : "status"}>
+            {capabilities.isPending
+              ? "Checking ebook request availability…"
+              : capabilities.isError
+                ? "Unable to check ebook request availability."
+                : "Ebook requests are unavailable on this server."}
+          </p>
+        </section>
+      ) : (ebook && ebookSupported) || (audio && audioSupported) ? (
+        <BookRequests
+          ebook={ebook}
           key={JSON.stringify([
+            ebook,
             user?.id,
             profile?.id,
             context?.serverOrigin,
@@ -50,13 +70,17 @@ export default function BloemRequests() {
 }
 
 const emptyInput: BookRequestInput = { title: "", author: "", isbn: "", asin: "", note: "" };
-function AudiobookRequests() {
-  useDocumentTitle("Audiobook requests");
+function BookRequests({ ebook }: { ebook: boolean }) {
+  const label = ebook ? "Ebook" : "Audiobook";
+  const noun = label.toLowerCase();
+  const api = ebook ? ebookRequestsApi : bookRequestsApi;
+  const cache = ebook ? "bloem-ebook-requests" : "bloem-book-requests";
+  useDocumentTitle(`${label} requests`);
   const { user, profile } = useAuth();
   const qc = useQueryClient();
   const context = captureProfileRequestContext();
   const scope = [
-    "bloem-book-requests",
+    cache,
     user?.id,
     profile?.id,
     context?.authContextVersion,
@@ -65,13 +89,13 @@ function AudiobookRequests() {
   ] as const;
   const capability = useQuery({
     queryKey: [...scope, "capability"],
-    queryFn: () => bookRequestsApi.capability(context),
+    queryFn: () => api.capability(context),
     enabled: !!context,
   });
   const [offset, setOffset] = useState(0);
   const mine = useQuery({
     queryKey: [...scope, "mine", offset],
-    queryFn: () => bookRequestsApi.mine(context, offset),
+    queryFn: () => api.mine(context, offset),
     enabled: !!context,
   });
   const [input, setInput] = useState<BookRequestInput>(emptyInput);
@@ -80,44 +104,57 @@ function AudiobookRequests() {
     mutationFn: () => {
       const encoded = JSON.stringify(input);
       if (key.current?.input !== encoded) key.current = { input: encoded, key: randomUUID() };
-      return bookRequestsApi.create(input, key.current.key, context);
+      return ebook
+        ? ebookRequestsApi.create(
+            { title: input.title, author: input.author, isbn: input.isbn, note: input.note },
+            key.current.key,
+            context,
+          )
+        : bookRequestsApi.create(input, key.current.key, context);
     },
     onSuccess: () => {
       setInput(emptyInput);
       key.current = null;
-      toast.success("Audiobook requested");
-      void qc.invalidateQueries({ queryKey: ["bloem-book-requests"] });
+      toast.success(`${label} requested`);
+      void qc.invalidateQueries({ queryKey: [cache] });
     },
     onError: (err) => toast.error(err.message),
   });
   const cancel = useMutation({
-    mutationFn: (row: BookRequest) => bookRequestsApi.cancel(row, context),
+    mutationFn: (row: BookRequest) => api.cancel(row, context),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["bloem-book-requests"] });
+      void qc.invalidateQueries({ queryKey: [cache] });
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      toast.error(err.message);
+      void qc.invalidateQueries({ queryKey: [cache] });
+    },
   });
   const policy = capability.data;
-  const canRequest = policy?.can_request && (policy.unlimited || policy.remaining > 0);
+  const filingEnabled = policy?.available && policy.enabled && policy.can_request;
+  const canRequest = filingEnabled && (policy.unlimited || policy.remaining > 0);
   return (
     <section className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold">Audiobook requests</h1>
+        <h1 className="text-3xl font-semibold">{label} requests</h1>
         <p className="text-muted-foreground text-sm">
-          Request a title for your organization. Approved requests wait until the audiobook is
-          added.
+          Request a title for your organization. Approved requests wait until the {noun} is added.
         </p>
       </header>
       {capability.isError && <p role="alert">{capability.error.message}</p>}
-      {policy && !policy.can_request && (
-        <p role="status">Audiobook requests are unavailable for this profile.</p>
+      {policy && !filingEnabled && (
+        <p role="status">
+          {ebook && policy.available && !policy.enabled
+            ? "Ebook requests are currently turned off."
+            : `${label} requests are unavailable for this profile.`}
+        </p>
       )}
-      {policy?.can_request && (
+      {filingEnabled && policy && (
         <form
           className="grid gap-4 rounded-xl border p-5 sm:grid-cols-2"
           onSubmit={(event) => {
             event.preventDefault();
-            create.mutate();
+            if (canRequest && (!ebook || input.isbn.trim())) create.mutate();
           }}
         >
           <p className="text-muted-foreground text-sm sm:col-span-2">
@@ -131,9 +168,16 @@ function AudiobookRequests() {
           </p>
           {[
             { key: "title", label: "Title", required: true, max: 500 },
-            { key: "author", label: "Author", required: !input.isbn && !input.asin, max: 500 },
-            { key: "isbn", label: "ISBN (optional)", required: false, max: 32 },
-            { key: "asin", label: "ASIN (optional)", required: false, max: 10 },
+            {
+              key: "author",
+              label: ebook ? "Author (optional)" : "Author",
+              required: !ebook && !input.isbn && !input.asin,
+              max: 500,
+            },
+            { key: "isbn", label: ebook ? "ISBN" : "ISBN (optional)", required: ebook, max: 32 },
+            ...(!ebook
+              ? [{ key: "asin", label: "ASIN (optional)", required: false, max: 10 }]
+              : []),
           ].map((field) => (
             <label key={field.key} className="space-y-2 text-sm font-medium">
               {field.label}
@@ -157,19 +201,31 @@ function AudiobookRequests() {
             />
           </label>
           <p className="text-muted-foreground text-xs sm:col-span-2">
-            ISBN or ASIN helps match the audiobook when it arrives. Without an identifier, an admin
-            can mark your request fulfilled.
+            {ebook
+              ? "Provide the ISBN of the edition you want. Fulfilment is complete when the ebook is available in your library."
+              : "ISBN or ASIN helps match the audiobook when it arrives. Without an identifier, an admin can mark your request fulfilled."}
           </p>
+          {ebook && policy.fulfilment_backend === "unconfigured" && (
+            <p role="status" className="text-muted-foreground text-sm sm:col-span-2">
+              Ebook fulfillment is not configured. Approved requests will wait for setup.
+            </p>
+          )}
           <Button type="submit" disabled={!canRequest || create.isPending}>
-            {create.isPending ? "Requesting…" : "Request audiobook"}
+            {create.isPending ? "Requesting…" : `Request ${noun}`}
           </Button>
         </form>
       )}
-      <h2 className="text-xl font-semibold">Your audiobook requests</h2>
+      <h2 className="text-xl font-semibold">Your {noun} requests</h2>
+      {ebook && (
+        <p className="text-muted-foreground text-sm">
+          Cancellation is local to Bloem; the fulfilment provider may already be processing the
+          ebook.
+        </p>
+      )}
       {mine.isLoading && <p role="status">Loading requests…</p>}
       {mine.isError && <p role="alert">{mine.error.message}</p>}
       {mine.data?.requests.length === 0 && (
-        <p className="text-muted-foreground">You have no audiobook requests.</p>
+        <p className="text-muted-foreground">You have no {noun} requests.</p>
       )}
       <ul className="divide-y rounded-xl border">
         {mine.data?.requests.map((row) => (
@@ -177,16 +233,19 @@ function AudiobookRequests() {
             <div className="min-w-0 space-y-1">
               <p className="font-medium">{row.title}</p>
               <p className="text-muted-foreground text-sm">{row.author}</p>
+              {ebook && row.isbn && (
+                <p className="text-muted-foreground text-xs">ISBN {row.isbn}</p>
+              )}
               <p className="text-sm">{bookRequestState(row)}</p>
               {row.outcome_reason && (
                 <p className="text-muted-foreground text-sm">{row.outcome_reason}</p>
               )}
             </div>
-            {row.status === "completed" && row.library_content_id ? (
+            {row.status === "completed" &&
+            row.library_content_id &&
+            (!ebook || row.fulfilment === "library") ? (
               <Button asChild size="sm" variant="outline">
-                <Link to={`/item/${encodeURIComponent(row.library_content_id)}`}>
-                  Open audiobook
-                </Link>
+                <Link to={`/item/${encodeURIComponent(row.library_content_id)}`}>Open {noun}</Link>
               </Button>
             ) : (
               row.outcome === "active" &&

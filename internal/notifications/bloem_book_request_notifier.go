@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -38,7 +39,7 @@ func (n *BookRequestNotifier) Lifecycle(ctx context.Context, r bookrequests.Requ
 	go func() {
 		defer cancel()
 		if err := n.notify(dispatchCtx, r, event); err != nil {
-			slog.WarnContext(dispatchCtx, "audiobook request notice failed", "request_id", r.ID, "event", event, "error", err)
+			slog.WarnContext(dispatchCtx, "book request notice failed", "request_id", r.ID, "event", event, "error", err)
 		}
 	}()
 }
@@ -100,24 +101,9 @@ func (s *System) dispatchBookRequestNotice(ctx context.Context, r bookrequests.R
 	if !prefs.Enabled {
 		return nil
 	}
-	body := AlertBody{Title: "Audiobook request fulfilled", Body: fmt.Sprintf("An administrator marked your request for %s fulfilled.", r.Title), Deeplink: "/requests?kind=audiobook", Severity: SeverityInfo, Dismissible: true}
-	switch event {
-	case "submitted":
-		body.Title = "New audiobook request"
-		body.Body = fmt.Sprintf("%s was requested in your organization.", r.Title)
-		body.Deeplink = "/admin/requests?kind=audiobook"
-	case "approve":
-		body.Title = "Audiobook request approved"
-		body.Body = fmt.Sprintf("Your request for %s was approved and is awaiting fulfillment.", r.Title)
-	case "decline":
-		body.Title = "Audiobook request declined"
-		body.Body = fmt.Sprintf("Your request for %s was declined.", r.Title)
-		if r.OutcomeReason != "" {
-			body.Body += " " + r.OutcomeReason
-		}
-	case "fulfilled":
-	default:
-		return nil
+	body, err := bookRequestAlert(r, event)
+	if err != nil {
+		return err
 	}
 	raw, err := json.Marshal(body)
 	if err != nil {
@@ -128,4 +114,34 @@ func (s *System) dispatchBookRequestNotice(ctx context.Context, r bookrequests.R
 	id := uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("bloem-book-request:%s:%s:%d:%s", r.ID, event, recipient.UserID, recipient.ProfileID))).String()
 	_, err = s.DispatchOperational(ctx, Delivery{ID: id, UserID: recipient.UserID, ProfileID: recipient.ProfileID, Type: DeliveryTypeSystemAlert, Body: raw}, OperationalDispatch{WebhookFilter: func(hook Webhook) bool { return hook.NotifyRequests }})
 	return err
+}
+
+func bookRequestAlert(r bookrequests.Request, event string) (AlertBody, error) {
+	label, titleLabel, kind := "audiobook", "Audiobook", "audiobook"
+	if r.MediaType == "book" {
+		label, titleLabel, kind = "ebook", "Ebook", "ebook"
+	}
+	body := AlertBody{Title: titleLabel + " request fulfilled", Body: fmt.Sprintf("An administrator marked your request for %s fulfilled.", r.Title), Deeplink: "/requests?kind=" + kind, Severity: SeverityInfo, Dismissible: true}
+	switch event {
+	case "submitted":
+		body.Title = "New " + label + " request"
+		body.Body = fmt.Sprintf("%s was requested in your organization.", r.Title)
+		body.Deeplink = "/admin/requests?kind=" + kind
+	case "approve":
+		body.Title = titleLabel + " request approved"
+		body.Body = fmt.Sprintf("Your request for %s was approved and is awaiting fulfillment.", r.Title)
+	case "decline":
+		body.Title = titleLabel + " request declined"
+		body.Body = fmt.Sprintf("Your request for %s was declined.", r.Title)
+		if r.OutcomeReason != "" {
+			body.Body += " " + r.OutcomeReason
+		}
+	case "fulfilled":
+		if r.MediaType == "book" {
+			return AlertBody{}, errors.New("ebook fulfillment requires a library item")
+		}
+	default:
+		return AlertBody{}, errors.New("unsupported book request notice")
+	}
+	return body, nil
 }

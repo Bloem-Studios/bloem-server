@@ -755,6 +755,24 @@
           "direction": "request",
           "dialect": "bloem",
           "gate": "native_storage.source_management"
+        },
+        {
+          "type": "EbookRequestSetup",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "ebook_requests_v1"
+        },
+        {
+          "type": "EbookRequestPolicy",
+          "direction": "both",
+          "dialect": "bloem",
+          "gate": "ebook_requests_v1"
+        },
+        {
+          "type": "EbookRequestConnectionInput",
+          "direction": "request",
+          "dialect": "bloem",
+          "gate": "ebook_requests_v1"
         }
       ]
     },

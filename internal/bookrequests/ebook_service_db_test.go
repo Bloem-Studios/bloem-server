@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
@@ -282,7 +283,7 @@ func (n *ebookNoticeSpy) Lifecycle(_ context.Context, r Request, event string) {
 }
 func (*ebookNoticeSpy) Fulfilled(context.Context, Request) error { return nil }
 
-func TestInternalEbookDoesNotUseAudiobookNotificationsDatabase(t *testing.T) {
+func TestEbookLifecycleNotificationsKeepMediaKindDatabase(t *testing.T) {
 	s, v, pool := databaseFixture(t)
 	setEbookOptIn(t, pool, "true")
 	bookSQL(t, pool, `UPDATE request_settings SET global_auto_approval_enabled=true`)
@@ -296,7 +297,7 @@ func TestInternalEbookDoesNotUseAudiobookNotificationsDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	submit(t, s, v, CreateInput{Title: "Audio edition", ISBN: "9780306406157"})
-	if len(n.events) != 2 || n.events[0] != "audiobook:submitted" || n.events[1] != "audiobook:auto_approved" {
+	if strings.Join(n.events, ",") != "book:submitted,book:auto_approved,book:cancel,audiobook:submitted,audiobook:auto_approved" {
 		t.Fatalf("ebook used audiobook notices or audio behavior changed: %v", n.events)
 	}
 }

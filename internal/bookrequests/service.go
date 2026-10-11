@@ -21,8 +21,9 @@ type Notifier interface {
 }
 
 type Service struct {
-	pool     *pgxpool.Pool
-	notifier Notifier
+	pool             *pgxpool.Pool
+	notifier         Notifier
+	ebookFulfillment Fulfillment
 }
 
 func NewService(pool *pgxpool.Pool, notifier Notifier) *Service {
@@ -241,7 +242,7 @@ func (s *Service) create(ctx context.Context, v Viewer, in CreateInput, key, med
 	if err = tx.Commit(ctx); err != nil {
 		return Request{}, false, err
 	}
-	if s.notifier != nil && mediaType == "audiobook" {
+	if s.notifier != nil {
 		s.notifier.Lifecycle(ctx, r, "submitted")
 		if status == "approved" {
 			s.notifier.Lifecycle(ctx, r, "auto_approved")
@@ -274,7 +275,7 @@ func (s *Service) act(ctx context.Context, v Viewer, id, action string, in Actio
 		return Request{}, ErrForbidden
 	}
 	if mediaType == "book" {
-		if err = checkEbookAuthority(ctx, tx, v, action == "approve"); err != nil {
+		if err = checkEbookAuthority(ctx, tx, v, action == "approve" || action == "retry"); err != nil {
 			return Request{}, err
 		}
 	}
@@ -297,20 +298,37 @@ func (s *Service) act(ctx context.Context, v Viewer, id, action string, in Actio
 		r.Outcome = "declined"
 	case "cancel":
 		r.Outcome = "cancelled"
+		if mediaType == "book" {
+			if _, err = tx.Exec(ctx, `UPDATE bloem_ebook_request_dispatches SET lease_token=NULL,lease_until=NULL WHERE request_id=$1`, r.ID); err != nil {
+				return Request{}, err
+			}
+		}
+	case "retry":
+		if mediaType != "book" || r.Status != "approved" || r.Fulfilment != "failed" && r.Fulfilment != "retrying" {
+			return Request{}, ErrConflict
+		}
+		if err = s.retryEbookTx(ctx, tx, r); err != nil {
+			return Request{}, err
+		}
+		r.Fulfilment = "retrying"
 	case "fulfil":
 		r.Status = "completed"
 		r.Fulfilment = "manual"
 	default:
 		return Request{}, ErrInvalid
 	}
-	r, err = scan(tx.QueryRow(ctx, `UPDATE bloem_book_requests SET status=$2,outcome=$3,outcome_reason=$4,fulfilment=$5,completed_at=CASE WHEN $2='completed' THEN now() ELSE NULL END,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING `+selectColumns, id, r.Status, r.Outcome, strings.TrimSpace(in.Reason), r.Fulfilment))
+	reason := strings.TrimSpace(in.Reason)
+	if mediaType == "book" && action == "retry" {
+		reason = "Checking the existing submission without submitting again."
+	}
+	r, err = scan(tx.QueryRow(ctx, `UPDATE bloem_book_requests SET status=$2,outcome=$3,outcome_reason=$4,fulfilment=$5,completed_at=CASE WHEN $2='completed' THEN now() ELSE NULL END,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING `+selectColumns, id, r.Status, r.Outcome, reason, r.Fulfilment))
 	if err != nil {
 		return Request{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {
 		return Request{}, err
 	}
-	if s.notifier != nil && mediaType == "audiobook" && action != "fulfil" {
+	if s.notifier != nil && action != "fulfil" {
 		s.notifier.Lifecycle(ctx, r, action)
 	}
 	// Fulfilled deliveries are retried by the durable reconciliation task.

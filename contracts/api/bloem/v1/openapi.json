@@ -444,6 +444,46 @@
         ],
         "type": "object"
       },
+      "BloemEbookRequestCreateInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "isbn": {
+            "description": "Valid ISBN-10 or ISBN-13; normalized to canonical ISBN-13.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "title": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "isbn"
+        ],
+        "type": "object"
+      },
+      "BloemEbookRequestLibraryInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "library_id": {
+            "description": "Eligible native Bookwarehouse ebook library; zero removes the binding.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "library_id"
+        ],
+        "type": "object"
+      },
       "BloemItemCollection": {
         "additionalProperties": false,
         "properties": {
@@ -2469,6 +2509,146 @@
         ],
         "type": "object"
       },
+      "EbookIntegration": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "library_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "library_id"
+        ],
+        "type": "object"
+      },
+      "EbookLibrary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "EbookRequestConnectionInput": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_http": {
+            "type": "boolean"
+          },
+          "api_key": {
+            "type": "string"
+          },
+          "base_url": {
+            "type": "string"
+          },
+          "capability_id": {
+            "type": "string"
+          },
+          "installation_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "base_url",
+          "api_key",
+          "installation_id",
+          "capability_id"
+        ],
+        "type": "object"
+      },
+      "EbookRequestInstallation": {
+        "additionalProperties": false,
+        "properties": {
+          "capability_id": {
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "capability_id"
+        ],
+        "type": "object"
+      },
+      "EbookRequestPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "EbookRequestSetup": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "installations": {
+            "items": {
+              "$ref": "#/components/schemas/EbookRequestInstallation"
+            },
+            "type": "array"
+          },
+          "integrations": {
+            "items": {
+              "$ref": "#/components/schemas/EbookIntegration"
+            },
+            "type": "array"
+          },
+          "libraries": {
+            "items": {
+              "$ref": "#/components/schemas/EbookLibrary"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "available",
+          "enabled",
+          "integrations",
+          "libraries",
+          "installations"
+        ],
+        "type": "object"
+      },
       "FormFile": {
         "additionalProperties": false,
         "properties": {
@@ -4040,6 +4220,966 @@
           }
         ],
         "summary": "Manually mark an audiobook request fulfilled.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/ebook-request-integrations": {
+      "get": {
+        "description": "Mutations require platform administrator authority within an organization administrative context for the durable default organization. Platform-only contexts and hosted organizations cannot configure this lane. Connection credentials are encrypted by the host and never included in responses. Hosted organizations receive available=false and empty configuration lists.",
+        "operationId": "getBloemEbookRequestSetup",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbookRequestSetup"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "adminContextAuth": []
+          }
+        ],
+        "summary": "Read ebook policy, connections and eligible libraries/installations.",
+        "tags": [
+          "requests"
+        ]
+      },
+      "post": {
+        "description": "Mutations require platform administrator authority within an organization administrative context for the durable default organization. Platform-only contexts and hosted organizations cannot configure this lane. Connection credentials are encrypted by the host and never included in responses. Supported media types are fixed to book and EPUB is the default. HTTP requires explicit allow_http for a trusted local endpoint. Native storage installations cannot serve this capability.",
+        "operationId": "createBloemEbookRequestIntegration",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbookRequestConnectionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbookIntegration"
+                }
+              }
+            },
+            "description": "Created",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "adminContextAuth": []
+          }
+        ],
+        "summary": "Create an explicit Bookwarehouse ebook fulfillment connection.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/ebook-request-integrations/{id}/library": {
+      "put": {
+        "description": "Mutations require platform administrator authority within an organization administrative context for the durable default organization. Platform-only contexts and hosted organizations cannot configure this lane. Connection credentials are encrypted by the host and never included in responses. library_id=0 clears the binding. Existing dispatched work retains its original library and configuration identity.",
+        "operationId": "setBloemEbookRequestIntegrationLibrary",
+        "parameters": [
+          {
+            "description": "Opaque request integration ID, often a decimal Sonyflake string.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Opaque request integration ID, often a decimal Sonyflake string.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemEbookRequestLibraryInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbookIntegration"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "adminContextAuth": []
+          }
+        ],
+        "summary": "Bind a connection to an eligible native Bookwarehouse ebook library.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/ebook-request-policy": {
+      "put": {
+        "description": "Mutations require platform administrator authority within an organization administrative context for the durable default organization. Platform-only contexts and hosted organizations cannot configure this lane. Connection credentials are encrypted by the host and never included in responses. The default is false. Disabling prevents new requests and new provider work; work already submitted may continue at Bookwarehouse. History and local cancellation remain available.",
+        "operationId": "setBloemEbookRequestPolicy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbookRequestPolicy"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbookRequestPolicy"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "adminContextAuth": []
+          }
+        ],
+        "summary": "Explicitly enable or disable ebook request admission and dispatch.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/ebook-requests": {
+      "get": {
+        "description": "Ebook requests are default-off, web/admin first, and limited to the durable default organization. Enabled accounts, active membership and a verified current profile are required. ISBN is mandatory and normalized to ISBN-13. Quotas and persistence remain separate from audiobook and TMDB requests. Authorized history and cancellation remain available after opt-out. Approval uses a separately installed ordinary Bookwarehouse request plugin and an explicit book connection linked to a native Bookwarehouse ebook library. Provider success alone never fulfills a request: a matching ebook must be scanned into the retained linked library. Cancellation is local; provider work already started may continue. Automatic audiobook acquisition is not enabled by these routes.",
+        "operationId": "listBloemAdminEbookRequests",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "adminContextAuth": []
+          }
+        ],
+        "summary": "List ebook requests in the selected default organization.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/ebook-requests/{id}/approve": {
+      "post": {
+        "description": "Ebook requests are default-off, web/admin first, and limited to the durable default organization. Enabled accounts, active membership and a verified current profile are required. ISBN is mandatory and normalized to ISBN-13. Quotas and persistence remain separate from audiobook and TMDB requests. Authorized history and cancellation remain available after opt-out. Approval uses a separately installed ordinary Bookwarehouse request plugin and an explicit book connection linked to a native Bookwarehouse ebook library. Provider success alone never fulfills a request: a matching ebook must be scanned into the retained linked library. Cancellation is local; provider work already started may continue. Automatic audiobook acquisition is not enabled by these routes. Current organization administrator authority and a matching expected_revision are required. Uncertain submissions are recovered through read-only provider checks; they are never blindly resubmitted. Manual ebook completion is unavailable.",
+        "operationId": "approveBloemEbookRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Request"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "adminContextAuth": []
+          }
+        ],
+        "summary": "Approve a pending ebook request.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/ebook-requests/{id}/decline": {
+      "post": {
+        "description": "Ebook requests are default-off, web/admin first, and limited to the durable default organization. Enabled accounts, active membership and a verified current profile are required. ISBN is mandatory and normalized to ISBN-13. Quotas and persistence remain separate from audiobook and TMDB requests. Authorized history and cancellation remain available after opt-out. Approval uses a separately installed ordinary Bookwarehouse request plugin and an explicit book connection linked to a native Bookwarehouse ebook library. Provider success alone never fulfills a request: a matching ebook must be scanned into the retained linked library. Cancellation is local; provider work already started may continue. Automatic audiobook acquisition is not enabled by these routes. Current organization administrator authority and a matching expected_revision are required. Uncertain submissions are recovered through read-only provider checks; they are never blindly resubmitted. Manual ebook completion is unavailable.",
+        "operationId": "declineBloemEbookRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Request"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "adminContextAuth": []
+          }
+        ],
+        "summary": "Decline a pending ebook request and refund its quota slot.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/ebook-requests/{id}/retry": {
+      "post": {
+        "description": "Ebook requests are default-off, web/admin first, and limited to the durable default organization. Enabled accounts, active membership and a verified current profile are required. ISBN is mandatory and normalized to ISBN-13. Quotas and persistence remain separate from audiobook and TMDB requests. Authorized history and cancellation remain available after opt-out. Approval uses a separately installed ordinary Bookwarehouse request plugin and an explicit book connection linked to a native Bookwarehouse ebook library. Provider success alone never fulfills a request: a matching ebook must be scanned into the retained linked library. Cancellation is local; provider work already started may continue. Automatic audiobook acquisition is not enabled by these routes. Current organization administrator authority and a matching expected_revision are required. Uncertain submissions are recovered through read-only provider checks; they are never blindly resubmitted. Manual ebook completion is unavailable.",
+        "operationId": "retryBloemEbookRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Request"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "adminContextAuth": []
+          }
+        ],
+        "summary": "Recover uncertain provider state or retry a safely failed ebook dispatch.",
         "tags": [
           "requests"
         ]
@@ -11029,6 +12169,719 @@
           "catalog"
         ],
         "x-silo-class": "profile_scoped"
+      }
+    },
+    "/api/bloem/v1/ebook-requests": {
+      "post": {
+        "description": "Ebook requests are default-off, web/admin first, and limited to the durable default organization. Enabled accounts, active membership and a verified current profile are required. ISBN is mandatory and normalized to ISBN-13. Quotas and persistence remain separate from audiobook and TMDB requests. Authorized history and cancellation remain available after opt-out. Approval uses a separately installed ordinary Bookwarehouse request plugin and an explicit book connection linked to a native Bookwarehouse ebook library. Provider success alone never fulfills a request: a matching ebook must be scanned into the retained linked library. Cancellation is local; provider work already started may continue. Automatic audiobook acquisition is not enabled by these routes. Replaying the same normalized payload with its durable Idempotency-Key returns HTTP 200; a changed payload returns 409. Unknown JSON fields, ASIN and extra bodies are rejected.",
+        "operationId": "createBloemEbookRequest",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 16,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemEbookRequestCreateInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Request"
+                }
+              }
+            },
+            "description": "Created",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Request"
+                }
+              }
+            },
+            "description": "Created",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "File an ISBN ebook request.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/ebook-requests/capability": {
+      "get": {
+        "description": "Ebook requests are default-off, web/admin first, and limited to the durable default organization. Enabled accounts, active membership and a verified current profile are required. ISBN is mandatory and normalized to ISBN-13. Quotas and persistence remain separate from audiobook and TMDB requests. Authorized history and cancellation remain available after opt-out. Approval uses a separately installed ordinary Bookwarehouse request plugin and an explicit book connection linked to a native Bookwarehouse ebook library. Provider success alone never fulfills a request: a matching ebook must be scanned into the retained linked library. Cancellation is local; provider work already started may continue. Automatic audiobook acquisition is not enabled by these routes.",
+        "operationId": "getBloemEbookRequestCapability",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Capability"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read ebook request capability and current viewer policy.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/ebook-requests/mine": {
+      "get": {
+        "description": "Ebook requests are default-off, web/admin first, and limited to the durable default organization. Enabled accounts, active membership and a verified current profile are required. ISBN is mandatory and normalized to ISBN-13. Quotas and persistence remain separate from audiobook and TMDB requests. Authorized history and cancellation remain available after opt-out. Approval uses a separately installed ordinary Bookwarehouse request plugin and an explicit book connection linked to a native Bookwarehouse ebook library. Provider success alone never fulfills a request: a matching ebook must be scanned into the retained linked library. Cancellation is local; provider work already started may continue. Automatic audiobook acquisition is not enabled by these routes.",
+        "operationId": "listBloemEbookRequests",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "format": "int64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List this profile's ebook request history.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/ebook-requests/{id}": {
+      "get": {
+        "description": "Ebook requests are default-off, web/admin first, and limited to the durable default organization. Enabled accounts, active membership and a verified current profile are required. ISBN is mandatory and normalized to ISBN-13. Quotas and persistence remain separate from audiobook and TMDB requests. Authorized history and cancellation remain available after opt-out. Approval uses a separately installed ordinary Bookwarehouse request plugin and an explicit book connection linked to a native Bookwarehouse ebook library. Provider success alone never fulfills a request: a matching ebook must be scanned into the retained linked library. Cancellation is local; provider work already started may continue. Automatic audiobook acquisition is not enabled by these routes.",
+        "operationId": "getBloemEbookRequest",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Request"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read an ebook request owned by this profile.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/ebook-requests/{id}/cancel": {
+      "post": {
+        "description": "Ebook requests are default-off, web/admin first, and limited to the durable default organization. Enabled accounts, active membership and a verified current profile are required. ISBN is mandatory and normalized to ISBN-13. Quotas and persistence remain separate from audiobook and TMDB requests. Authorized history and cancellation remain available after opt-out. Approval uses a separately installed ordinary Bookwarehouse request plugin and an explicit book connection linked to a native Bookwarehouse ebook library. Provider success alone never fulfills a request: a matching ebook must be scanned into the retained linked library. Cancellation is local; provider work already started may continue. Automatic audiobook acquisition is not enabled by these routes. A matching expected_revision is required; quota usage is retained.",
+        "operationId": "cancelBloemEbookRequest",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Request"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Withdraw a pending or approved ebook request locally.",
+        "tags": [
+          "requests"
+        ]
       }
     },
     "/api/bloem/v1/livetv/capability": {

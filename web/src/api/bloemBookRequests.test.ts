@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   bookRequestsApi,
+  ebookRequestsApi,
   bookRequestState,
   type BookRequest,
   type BookRequestInput,
@@ -41,6 +42,147 @@ beforeEach(() => {
   setProfileId("viewer");
   setProfileToken("viewer-pin");
   setAdminV2Token(null);
+});
+
+describe("ebook request authority", () => {
+  it("saves ebook opt-in with captured authority and does not replay failed saves", async () => {
+    activateAdminV2Context("org-admin-token", "organization:org-a");
+    const context = captureAdminRequestContext("organization:org-a");
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ enabled: true }))
+      .mockResolvedValueOnce(Response.json({ error: "busy" }, { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(ebookRequestsApi.setPolicy(true, context)).resolves.toEqual({ enabled: true });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "/api/bloem/v1/admin/organization/ebook-request-policy",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("PUT");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ enabled: true });
+    await expect(ebookRequestsApi.setPolicy(false, context)).rejects.toMatchObject({ status: 503 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    activateAdminV2Context("other-org-token", "organization:other");
+    await expect(ebookRequestsApi.setPolicy(false, context)).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+  it("does not replay connection creation after an availability failure", async () => {
+    activateAdminV2Context("org-admin-token", "organization:org-a");
+    const context = captureAdminRequestContext("organization:org-a");
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(Response.json({ error: "busy" }, { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const connection = {
+      name: "Books",
+      base_url: "https://books.example",
+      api_key: "synthetic-provider-key",
+      installation_id: 3,
+      capability_id: "request-router",
+    };
+    await expect(ebookRequestsApi.createIntegration(connection, context)).rejects.toMatchObject({
+      status: 503,
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "/api/bloem/v1/admin/organization/ebook-request-integrations",
+    );
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual(connection);
+  });
+  it("files only ebook fields with one key across transport retry", async () => {
+    const ebook = { ...row, media_type: "book" as const, isbn: "9780306406157" };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("connection reset"))
+      .mockResolvedValueOnce(Response.json(ebook));
+    vi.stubGlobal("fetch", fetchMock);
+    const filing = { title: "Edition", author: "Author", isbn: ebook.isbn, note: "" };
+    await expect(
+      ebookRequestsApi.create(filing, "stable-ebook-key-123", captureProfileRequestContext()),
+    ).resolves.toEqual(ebook);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [url, init] of fetchMock.mock.calls) {
+      expect(url).toBe("/api/bloem/v1/ebook-requests");
+      expect(JSON.parse(String(init?.body))).toEqual(filing);
+      expect(new Headers(init?.headers).get("Idempotency-Key")).toBe("stable-ebook-key-123");
+      expect(new Headers(init?.headers).get("X-Profile-Id")).toBe("viewer");
+    }
+  });
+  it("routes capability, history and revision cancellation separately from audiobooks", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json(row));
+    vi.stubGlobal("fetch", fetchMock);
+    const context = captureProfileRequestContext();
+    await ebookRequestsApi.capability(context);
+    await ebookRequestsApi.mine(context, 100);
+    await ebookRequestsApi.get(row.id, context);
+    await ebookRequestsApi.cancel(row, context);
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "/api/bloem/v1/ebook-requests/capability",
+      "/api/bloem/v1/ebook-requests/mine?limit=100&offset=100",
+      "/api/bloem/v1/ebook-requests/request-id",
+      "/api/bloem/v1/ebook-requests/request-id/cancel",
+    ]);
+    expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
+      expected_revision: 4,
+    });
+  });
+  it("uses captured admin authority for retry and linked-library setup", async () => {
+    activateAdminV2Context("org-admin-token", "organization:org-a");
+    const context = captureAdminRequestContext("organization:org-a");
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json(row));
+    vi.stubGlobal("fetch", fetchMock);
+    await ebookRequestsApi.adminList(context, 100);
+    await ebookRequestsApi.adminAction(row, "retry", "", context);
+    await ebookRequestsApi.integrations(context);
+    await ebookRequestsApi.setLibrary("connection-a", 12, context);
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "/api/bloem/v1/admin/organization/ebook-requests?limit=100&offset=100",
+      "/api/bloem/v1/admin/organization/ebook-requests/request-id/retry",
+      "/api/bloem/v1/admin/organization/ebook-request-integrations",
+      "/api/bloem/v1/admin/organization/ebook-request-integrations/connection-a/library",
+    ]);
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      expected_revision: 4,
+      reason: "",
+    });
+    expect(fetchMock.mock.calls[3]?.[1]?.method).toBe("PUT");
+    expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({ library_id: 12 });
+    activateAdminV2Context("other-org-token", "organization:other");
+    await expect(ebookRequestsApi.setLibrary("connection-a", 13, context)).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+  it("distinguishes provider progress from accessible library completion", () => {
+    const ebook = { ...row, media_type: "book" as const };
+    expect(bookRequestState({ ...ebook, fulfilment: "searching" })).toBe(
+      "Approved · searching for ebook",
+    );
+    expect(bookRequestState({ ...ebook, fulfilment: "awaiting_library" })).toBe(
+      "Approved · awaiting library availability",
+    );
+    expect(bookRequestState({ ...ebook, fulfilment: "failed" })).toBe(
+      "Approved · fulfilment failed",
+    );
+    expect(bookRequestState({ ...ebook, fulfilment: "future_state" })).toBe(
+      "Approved · awaiting fulfilment",
+    );
+    expect(bookRequestState({ ...ebook, fulfilment: "constructor" })).toBe(
+      "Approved · awaiting fulfilment",
+    );
+    expect(bookRequestState({ ...ebook, status: "completed", fulfilment: "manual" })).toBe(
+      "Awaiting library availability",
+    );
+    expect(
+      bookRequestState({
+        ...ebook,
+        status: "completed",
+        fulfilment: "library",
+        library_content_id: "ebook-1",
+      }),
+    ).toBe("In your library");
+  });
 });
 afterEach(() => {
   vi.unstubAllGlobals();

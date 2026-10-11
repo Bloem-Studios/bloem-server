@@ -40,8 +40,8 @@ type CreateInput struct {
 	identity string
 }
 
-// EbookCreateInput is internal request admission, separate from the existing
-// HTTP audiobook input. Ebooks require an ISBN; ASIN/title identities are not
+// EbookCreateInput admits ebooks separately from the existing HTTP audiobook
+// input. Ebooks require an ISBN; ASIN/title identities are not
 // accepted in this lane.
 type EbookCreateInput struct {
 	Title  string

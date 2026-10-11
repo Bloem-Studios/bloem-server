@@ -26,7 +26,7 @@ Membership `requests_allowed` overrides the group gate. Account request-limit
 and approval overrides take precedence over group settings, then global request
 settings. Organization administrators retain the existing exemption from group
 policy; an explicit membership/account restriction still applies. Counters are
-independent of Silo's movie/series and internal ebook lanes, and shared by an
+independent of Silo's movie/series and ebook lanes, and shared by an
 account's audiobook requests across its profiles and organizations. Withdrawal consumes quota; decline
 refunds it.
 

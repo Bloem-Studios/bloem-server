@@ -27,6 +27,7 @@ type BloemSystemHandler struct {
 	profileCredentialManagement bool
 	seasonalViewer              bool
 	bookRequests                bool
+	ebookRequests               bool
 	lifecyclePhase              func(context.Context) (lifecycleidempotency.Phase, error)
 }
 
@@ -44,6 +45,8 @@ func (h *BloemSystemHandler) SetProfileCredentialManagementAvailable(available b
 }
 
 func (h *BloemSystemHandler) SetBookRequestsAvailable(available bool) { h.bookRequests = available }
+
+func (h *BloemSystemHandler) SetEbookRequestsAvailable(available bool) { h.ebookRequests = available }
 
 // SetSeasonalViewerAvailable tracks the authenticated native ambience route.
 func (h *BloemSystemHandler) SetSeasonalViewerAvailable(available bool) {
@@ -165,6 +168,9 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	}
 	if h.bookRequests {
 		featureTokens = append(featureTokens, "audiobook_requests_v1")
+	}
+	if h.ebookRequests {
+		featureTokens = append(featureTokens, "ebook_requests_v1")
 	}
 	if h.seasonalViewer {
 		featureTokens = append(featureTokens, "seasonal_viewer_v1")

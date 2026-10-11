@@ -8,6 +8,11 @@ import { setAccessToken, setProfileId, setProfileToken } from "@/api/client";
 
 const mocks = vi.hoisted(() => ({
   supported: true,
+  ebookSupported: false,
+  ebookCapability: vi.fn(),
+  ebookMine: vi.fn(),
+  ebookCreate: vi.fn(),
+  ebookCancel: vi.fn(),
   capability: vi.fn(),
   mine: vi.fn(),
   create: vi.fn(),
@@ -30,7 +35,12 @@ vi.mock("@/hooks/useAuth", async () => {
 vi.mock("@/hooks/useDocumentTitle", () => ({ useDocumentTitle: () => {} }));
 vi.mock("@/pages/Requests", () => ({ default: () => <h1>Video requests</h1> }));
 vi.mock("@/api/bloemClient", () => ({
-  nativeApi: async () => ({ feature_tokens: mocks.supported ? ["audiobook_requests_v1"] : [] }),
+  nativeApi: async () => ({
+    feature_tokens: [
+      ...(mocks.supported ? ["audiobook_requests_v1"] : []),
+      ...(mocks.ebookSupported ? ["ebook_requests_v1"] : []),
+    ],
+  }),
 }));
 vi.mock("@/api/bloemBookRequests", async () => {
   const actual =
@@ -42,6 +52,12 @@ vi.mock("@/api/bloemBookRequests", async () => {
       mine: mocks.mine,
       create: mocks.create,
       cancel: mocks.cancel,
+    },
+    ebookRequestsApi: {
+      capability: mocks.ebookCapability,
+      mine: mocks.ebookMine,
+      create: mocks.ebookCreate,
+      cancel: mocks.ebookCancel,
     },
   };
 });
@@ -98,6 +114,7 @@ function open(url?: string) {
 }
 beforeEach(() => {
   mocks.supported = true;
+  mocks.ebookSupported = false;
   mocks.auth = { user: { id: 1 }, profile: { id: "viewer" } };
   setAccessToken("account-a");
   setProfileId("viewer");
@@ -106,6 +123,129 @@ beforeEach(() => {
   mocks.mine.mockReset().mockResolvedValue({ requests: [] });
   mocks.create.mockReset().mockResolvedValue(request("New book"));
   mocks.cancel.mockReset().mockResolvedValue(request("Cancelled", { outcome: "cancelled" }));
+  mocks.ebookCapability.mockReset().mockResolvedValue({ ...policy, manual_fulfilment: false });
+  mocks.ebookMine.mockReset().mockResolvedValue({ requests: [] });
+  mocks.ebookCreate.mockReset().mockResolvedValue(request("Ebook", { media_type: "book" }));
+  mocks.ebookCancel
+    .mockReset()
+    .mockResolvedValue(request("Cancelled ebook", { media_type: "book", outcome: "cancelled" }));
+});
+
+describe("ebook Requests hub", () => {
+  it("uses ebook quota without limiting audiobook filing", async () => {
+    mocks.ebookSupported = true;
+    mocks.ebookCapability.mockResolvedValue({ ...policy, remaining: 0, used: 10 });
+    open("/requests?kind=ebook");
+    expect(await screen.findByRole("button", { name: "Request ebook" })).toBeDisabled();
+    expect(screen.getByText(/0 of 10 requests left/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Audiobooks" }));
+    expect(await screen.findByRole("button", { name: "Request audiobook" })).toBeEnabled();
+  });
+  it("adds Ebooks to the existing route with an ISBN-required form and no ASIN", async () => {
+    mocks.ebookSupported = true;
+    open("/requests");
+    fireEvent.click(await screen.findByRole("button", { name: "Ebooks" }));
+    await screen.findByRole("heading", { name: "Ebook requests" });
+    expect(await screen.findByRole("textbox", { name: "ISBN" })).toBeRequired();
+    expect(screen.getByRole("textbox", { name: "Author (optional)" })).not.toBeRequired();
+    expect(screen.queryByRole("textbox", { name: /ASIN/ })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Title" }), {
+      target: { value: "Edition" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Request ebook" }));
+    expect(mocks.ebookCreate).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole("textbox", { name: "ISBN" }), {
+      target: { value: "9780306406157" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Request ebook" }));
+    await waitFor(() =>
+      expect(mocks.ebookCreate).toHaveBeenCalledWith(
+        { title: "Edition", author: "", isbn: "9780306406157", note: "" },
+        expect.any(String),
+        expect.objectContaining({ profileId: "viewer" }),
+      ),
+    );
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it("shows an unavailable ebook destination without calling unadvertised endpoints", async () => {
+    open("/requests?kind=ebook");
+    await screen.findByText("Ebook requests are unavailable on this server.");
+    expect(mocks.ebookCapability).not.toHaveBeenCalled();
+    expect(mocks.ebookMine).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Video requests" })).not.toBeInTheDocument();
+  });
+  it("keeps history and local cancellation after opt-out without showing a filing form", async () => {
+    mocks.ebookSupported = true;
+    mocks.ebookCapability.mockResolvedValue({ ...policy, enabled: false, can_request: false });
+    const row = request("Processing ebook", { media_type: "book", fulfilment: "searching" });
+    mocks.ebookMine.mockResolvedValue({ requests: [row] });
+    open("/requests?kind=ebook");
+    await screen.findByText("Ebook requests are currently turned off.");
+    expect(screen.queryByRole("textbox", { name: "Title" })).not.toBeInTheDocument();
+    expect(screen.getByText("Approved · searching for ebook")).toBeInTheDocument();
+    expect(screen.getByText(/Cancellation is local to Bloem/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel request" }));
+    await waitFor(() =>
+      expect(mocks.ebookCancel).toHaveBeenCalledWith(
+        row,
+        expect.objectContaining({ profileId: "viewer" }),
+      ),
+    );
+  });
+  it("retains ebook filing keys on retry and resets draft and history after profile changes", async () => {
+    mocks.ebookSupported = true;
+    mocks.ebookCreate.mockRejectedValue(new Error("Connection lost"));
+    mocks.ebookMine.mockImplementation(async (context) => ({
+      requests: [request(context.profileId, { media_type: "book" })],
+    }));
+    open("/requests?kind=ebook");
+    const title = await screen.findByRole("textbox", { name: "Title" });
+    fireEvent.change(title, { target: { value: "Edition" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "ISBN" }), {
+      target: { value: "9780306406157" },
+    });
+    const submit = screen.getByRole("button", { name: "Request ebook" });
+    fireEvent.click(submit);
+    await waitFor(() => expect(mocks.ebookCreate).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(submit).toBeEnabled());
+    fireEvent.click(submit);
+    await waitFor(() => expect(mocks.ebookCreate).toHaveBeenCalledTimes(2));
+    expect(mocks.ebookCreate.mock.calls[0]?.[1]).toBe(mocks.ebookCreate.mock.calls[1]?.[1]);
+    await act(async () => {
+      setProfileId("sibling");
+      mocks.setAuth({ user: { id: 1 }, profile: { id: "sibling" } });
+    });
+    await screen.findByText("sibling");
+    expect(screen.getByRole("textbox", { name: "Title" })).toHaveValue("");
+    expect(screen.queryByText("viewer")).not.toBeInTheDocument();
+  });
+  it("links only ebooks completed in the library, not backend-completed or manual rows", async () => {
+    mocks.ebookSupported = true;
+    mocks.ebookMine.mockResolvedValue({
+      requests: [
+        request("Provider finished", { media_type: "book", fulfilment: "awaiting_library" }),
+        request("Unexpected manual", {
+          media_type: "book",
+          status: "completed",
+          fulfilment: "manual",
+          library_content_id: "not-library",
+        }),
+        request("Library ebook", {
+          media_type: "book",
+          status: "completed",
+          fulfilment: "library",
+          library_content_id: "ebook 1",
+        }),
+      ],
+    });
+    open("/requests?kind=ebook");
+    await screen.findByText("Provider finished");
+    expect(screen.getAllByRole("link", { name: "Open ebook" })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Open ebook" })).toHaveAttribute(
+      "href",
+      "/item/ebook%201",
+    );
+  });
 });
 
 describe("audiobook Requests hub", () => {

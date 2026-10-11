@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -25,12 +27,30 @@ type BloemBookRequestsService interface {
 }
 
 type BloemBookRequestsHandler struct {
-	service  BloemBookRequestsService
-	profiles BloemSeasonalViewerProfiles
+	service    BloemBookRequestsService
+	profiles   BloemSeasonalViewerProfiles
+	kind       string
+	ebooks     *BloemBookRequestsHandler
+	ebookSetup BloemEbookRequestSetup
 }
 
 func NewBloemBookRequestsHandler(s BloemBookRequestsService, p BloemSeasonalViewerProfiles) *BloemBookRequestsHandler {
-	return &BloemBookRequestsHandler{service: s, profiles: p}
+	return &BloemBookRequestsHandler{service: s, profiles: p, kind: "Audiobook"}
+}
+
+func (h *BloemBookRequestsHandler) requestKind() string {
+	if h != nil && h.kind != "" {
+		return h.kind
+	}
+	return "Audiobook"
+}
+
+func (h *BloemBookRequestsHandler) writeRequestError(w http.ResponseWriter, err error) {
+	writeKindBookRequestError(w, err, h.requestKind())
+}
+
+func (h *BloemBookRequestsHandler) unavailable(w http.ResponseWriter) {
+	writeError(w, 503, "unavailable", h.requestKind()+" requests are unavailable")
 }
 func (h *BloemBookRequestsHandler) viewer(w http.ResponseWriter, r *http.Request) (bookrequests.Viewer, bool) {
 	w.Header().Set("Cache-Control", "private, no-store")
@@ -48,7 +68,7 @@ func (h *BloemBookRequestsHandler) viewer(w http.ResponseWriter, r *http.Request
 		return bookrequests.Viewer{}, false
 	}
 	if h == nil || h.service == nil || h.profiles == nil {
-		writeError(w, 503, "unavailable", "Audiobook requests are unavailable")
+		h.unavailable(w)
 		return bookrequests.Viewer{}, false
 	}
 	org, err := h.profiles.ProfileOrganization(r.Context(), c.UserID, profile)
@@ -57,7 +77,7 @@ func (h *BloemBookRequestsHandler) viewer(w http.ResponseWriter, r *http.Request
 		return bookrequests.Viewer{}, false
 	}
 	if err != nil {
-		writeError(w, 503, "unavailable", "Audiobook requests are unavailable")
+		h.unavailable(w)
 		return bookrequests.Viewer{}, false
 	}
 	return bookrequests.Viewer{UserID: c.UserID, ProfileID: profile, OrganizationID: t.OrganizationID}, true
@@ -69,7 +89,7 @@ func (h *BloemBookRequestsHandler) HandleCapability(w http.ResponseWriter, r *ht
 	}
 	out, err := h.service.Capability(r.Context(), v)
 	if err != nil {
-		writeBookRequestError(w, err)
+		h.writeRequestError(w, err)
 		return
 	}
 	writeJSON(w, 200, out)
@@ -91,7 +111,7 @@ func (h *BloemBookRequestsHandler) HandleAdminList(w http.ResponseWriter, r *htt
 }
 func (h *BloemBookRequestsHandler) list(w http.ResponseWriter, r *http.Request, v bookrequests.Viewer) {
 	if h == nil || h.service == nil {
-		writeError(w, 503, "unavailable", "Audiobook requests are unavailable")
+		h.unavailable(w)
 		return
 	}
 	limit, offset := 100, 0
@@ -99,7 +119,7 @@ func (h *BloemBookRequestsHandler) list(w http.ResponseWriter, r *http.Request, 
 		if raw := r.URL.Query().Get(k); raw != "" {
 			n, e := strconv.Atoi(raw)
 			if e != nil || n < 0 || k == "limit" && (n < 1 || n > 100) {
-				writeBookRequestError(w, bookrequests.ErrInvalid)
+				h.writeRequestError(w, bookrequests.ErrInvalid)
 				return
 			}
 			*dst = n
@@ -107,7 +127,7 @@ func (h *BloemBookRequestsHandler) list(w http.ResponseWriter, r *http.Request, 
 	}
 	out, err := h.service.List(r.Context(), v, limit, offset)
 	if err != nil {
-		writeBookRequestError(w, err)
+		h.writeRequestError(w, err)
 		return
 	}
 	if out == nil {
@@ -122,7 +142,7 @@ func (h *BloemBookRequestsHandler) HandleGet(w http.ResponseWriter, r *http.Requ
 	}
 	out, err := h.service.Get(r.Context(), v, chi.URLParam(r, "id"))
 	if err != nil {
-		writeBookRequestError(w, err)
+		h.writeRequestError(w, err)
 		return
 	}
 	writeJSON(w, 200, out)
@@ -133,12 +153,25 @@ func (h *BloemBookRequestsHandler) HandleCreate(w http.ResponseWriter, r *http.R
 		return
 	}
 	var in bookrequests.CreateInput
-	if !readBookRequestBody(w, r, &in) {
-		return
+	if h.requestKind() == "Ebook" {
+		var body struct {
+			Title  string `json:"title"`
+			Author string `json:"author"`
+			ISBN   string `json:"isbn"`
+			Note   string `json:"note,omitempty"`
+		}
+		if !readBookRequestBody(w, r, &body) {
+			return
+		}
+		in = bookrequests.CreateInput{Title: body.Title, Author: body.Author, ISBN: body.ISBN, Note: body.Note}
+	} else {
+		if !readBookRequestBody(w, r, &in) {
+			return
+		}
 	}
 	out, created, err := h.service.Create(r.Context(), v, in, r.Header.Get("Idempotency-Key"))
 	if err != nil {
-		writeBookRequestError(w, err)
+		h.writeRequestError(w, err)
 		return
 	}
 	status := http.StatusOK
@@ -164,11 +197,11 @@ func (h *BloemBookRequestsHandler) HandleAdminAction(w http.ResponseWriter, r *h
 }
 func (h *BloemBookRequestsHandler) act(w http.ResponseWriter, r *http.Request, v bookrequests.Viewer, action string) {
 	if h == nil || h.service == nil {
-		writeError(w, 503, "unavailable", "Audiobook requests are unavailable")
+		h.unavailable(w)
 		return
 	}
 	if _, e := uuid.Parse(chi.URLParam(r, "id")); e != nil {
-		writeBookRequestError(w, bookrequests.ErrNotFound)
+		h.writeRequestError(w, bookrequests.ErrNotFound)
 		return
 	}
 	var in bookrequests.ActionInput
@@ -177,7 +210,7 @@ func (h *BloemBookRequestsHandler) act(w http.ResponseWriter, r *http.Request, v
 	}
 	out, err := h.service.Act(r.Context(), v, chi.URLParam(r, "id"), action, in)
 	if err != nil {
-		writeBookRequestError(w, err)
+		h.writeRequestError(w, err)
 		return
 	}
 	writeJSON(w, 200, out)
@@ -197,20 +230,24 @@ func readBookRequestBody(w http.ResponseWriter, r *http.Request, out any) bool {
 	return true
 }
 func writeBookRequestError(w http.ResponseWriter, err error) {
-	status, code, message := 500, "internal_error", "Audiobook request could not be completed"
+	writeKindBookRequestError(w, err, "Audiobook")
+}
+func writeKindBookRequestError(w http.ResponseWriter, err error, kind string) {
+	lower := strings.ToLower(kind)
+	status, code, message := 500, "internal_error", kind+" request could not be completed"
 	switch {
 	case errors.Is(err, bookrequests.ErrForbidden):
-		status, code, message = 403, "request_forbidden", "Audiobook requests are not permitted"
+		status, code, message = 403, "request_forbidden", kind+" requests are not permitted"
 	case errors.Is(err, bookrequests.ErrNotFound):
-		status, code, message = 404, "not_found", "Audiobook request not found"
+		status, code, message = 404, "not_found", kind+" request not found"
 	case errors.Is(err, bookrequests.ErrInvalid):
 		status, code, message = 400, "invalid_request", err.Error()
 	case errors.Is(err, bookrequests.ErrDuplicate):
-		status, code, message = 409, "already_requested", "This audiobook already has an active request in this organization"
+		status, code, message = 409, "already_requested", fmt.Sprintf("This %s already has an active request in this organization", lower)
 	case errors.Is(err, bookrequests.ErrConflict):
 		status, code, message = 409, "request_state_changed", "The request changed; reload and try again"
 	case errors.Is(err, bookrequests.ErrQuota):
-		status, code, message = 429, "request_quota_exceeded", "Your audiobook request quota is full"
+		status, code, message = 429, "request_quota_exceeded", "Your "+lower+" request quota is full"
 	case errors.Is(err, bookrequests.ErrDisabled):
 		status, code, message = 403, "requests_disabled", "Requests are disabled"
 	}

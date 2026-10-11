@@ -32,6 +32,9 @@ It distinguishes backend capability from reachable web workflows and records the
 Audiobook requests use a separate Bloem-owned store and the
 `audiobook_requests_v1` capability. See [the request contract](#audiobook-requests)
 and [its authority and completion invariants](architecture/bloem-audiobook-requests.md).
+Ebook requests advertise `ebook_requests_v1` and use a separate default-off
+web/admin lane. See [the ebook contract](#ebook-requests) and
+[its fulfillment and recovery invariants](architecture/bloem-ebook-request-foundation.md).
 
 ## What `/api/bloem/v1` actually is
 
@@ -2972,6 +2975,61 @@ records container, routing and recovery limits. Downloads and Jellyfin
 attachment paths refuse storage files
 through their existing not-found conventions; conversion and offline downloads
 of storage files are not supported.
+
+## Ebook requests
+
+`ebook_requests_v1` advertises the mounted web/admin ebook lane. Its per-profile
+capability reports the current default-off policy and an independent quota.
+Only the durable default organization can file; hosted organizations cannot.
+Authentication, current membership and profile/PIN checks match the audiobook
+viewer boundary. These routes are not part of the direct-profile allowlist.
+
+All paths below have the `/api/bloem/v1` prefix.
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| `GET` | `/ebook-requests/capability` | Current profile policy, ebook quota and fulfillment availability. |
+| `GET` | `/ebook-requests/mine` | This profile's ebook history, including after opt-out. |
+| `POST` | `/ebook-requests` | File an ISBN ebook request with a durable `Idempotency-Key`. |
+| `GET` | `/ebook-requests/{id}` | Read a request owned by this profile. |
+| `POST` | `/ebook-requests/{id}/cancel` | Withdraw locally with `expected_revision`. |
+| `GET` | `/admin/organization/ebook-requests` | Default-organization ebook queue. |
+| `POST` | `/admin/organization/ebook-requests/{id}/approve` | Approve with `expected_revision`. |
+| `POST` | `/admin/organization/ebook-requests/{id}/decline` | Decline and refund quota with `expected_revision`. |
+| `POST` | `/admin/organization/ebook-requests/{id}/retry` | Resume safe recovery or retry with `expected_revision`. |
+| `GET` | `/admin/organization/ebook-request-integrations` | Read `{available, enabled, integrations, libraries, installations}`. |
+| `POST` | `/admin/organization/ebook-request-integrations` | Add an explicit EPUB Bookwarehouse request connection. |
+| `PUT` | `/admin/organization/ebook-request-integrations/{id}/library` | Bind `{library_id}` to an eligible native ebook library; zero clears it. |
+| `PUT` | `/admin/organization/ebook-request-policy` | Persist explicit `{enabled: boolean}`. |
+
+Filing accepts `{title, author?, isbn, note?}`. ISBN-10 normalizes to ISBN-13;
+ASIN, extra fields and multiple JSON bodies are rejected. An identical filing
+key replay returns 200; new filing returns 201; changed payloads conflict.
+Request IDs are UUIDs; connection IDs are opaque strings. List pagination uses
+`limit` up to 100 and nonnegative `offset`. Responses are private and no-store.
+
+Setup mutations require platform administrator authority within the default
+organization's administrative context. Connection input is
+`{name, base_url, api_key, installation_id, capability_id, allow_http?}`.
+Only the separately installed ordinary `bloem.requests.bookwarehouse` plugin
+qualifies. Credentials are encrypted and absent from setup responses.
+EPUB/HTTPS are defaults; trusted local HTTP and PDF require explicit opt-ins.
+The ebook policy and library binding must be saved independently.
+
+Approved requests wait for an eligible connection and retain its configuration
+and library identity during dispatch. Provider states include queued, searching,
+downloading, unknown and awaiting a library scan. Bookwarehouse completion alone
+does not fulfill a request. Only an ISBN match with a current native file in the
+retained linked library completes it; manual completion is unavailable.
+Uncertain submissions recover through read-only checks, including after
+cancel/refile, without another blind acquisition POST. Cancellation is local;
+already-started provider work may continue.
+
+The existing notification channels use ebook labels and links. Library
+completion rechecks the recipient's current catalog access. See
+[the implementation invariants](architecture/bloem-ebook-request-foundation.md).
+Apple/Android ebook request adoption and automatic audiobook acquisition remain
+deferred. Jellyfin and Audiobookshelf have no request-route parity requirement.
 
 ## Audiobook requests
 

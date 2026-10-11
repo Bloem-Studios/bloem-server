@@ -10,7 +10,7 @@
   "consumer_method": "Client call sites were extracted by scripts/apiv2-ledger/extract_consumers.py from web/src (this repo) and the origin/main trees of silo-apple and silo-android at the commits pinned in source_trees (re-resolve a sibling site with git show <sha>:<file> in that repo, never against a moving branch): path literals and templates passed to HTTP/WebSocket calls, plus paths built by helper functions that return a template, templates rooted at the API base URL, Kotlin buildString/const val builders, and Swift let/static let path bindings, with interpolations normalized to a wildcard and matched against inventory paths by method (scripts/apiv2-ledger/match_consumers.py). scripts/apiv2-ledger/sweep_uncredited.py then greps the last two static segments of every inventory path across all three trees and every hit not within four lines of a credited site was resolved by hand. Server-internal and compat consumers are Go URL builders and callers in this repo. Sites marked match=manual were resolved by hand where the path is assembled from variables the scripts cannot follow. Call-site files are repository-root-relative for their repo (web: src/... under web/; apple: iosApp/...; android: shared/, android-shared/, androidApp/, androidTvApp/; server: this repository root). Absence of a first-party consumer is not proof of disuse.",
   "field_reference": "internal/contractledger validates this file against migration.schema.json and reconciles it against the route inventory: listener, namespace, method, path, registration_index, handler, handler_kind, source_file, route_group, middleware_chain, auth_class, auth_traits, conditional, conditions, delegates_to (inventory empty string is null here), request_kind, response_media_kind, streams, and upgrades_websocket are copied from the inventory row and must match it, except that dynamic_plugin_proxy rows record both media kinds as dynamic_proxy; profile_required and admin_required are derived from auth_traits. Every other field is curated by hand and preserved when scripts/apiv2-ledger/build_ledger.py merges a regenerated inventory into this file.",
   "totals": {
-    "entries": 1189
+    "entries": 1202
   },
   "entries": [
     {
@@ -1658,7 +1658,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 82,
+          "line": 122,
           "types": [
             "BookRequest"
           ],
@@ -1713,7 +1713,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 94,
+          "line": 134,
           "types": [
             "BookRequest"
           ],
@@ -1768,7 +1768,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 94,
+          "line": 134,
           "types": [
             "BookRequest"
           ],
@@ -1823,7 +1823,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 94,
+          "line": 134,
           "types": [
             "BookRequest"
           ],
@@ -1844,6 +1844,462 @@
         "operation_id": null
       },
       "notes": "Bloem-owned audiobook request lane at /api/bloem/v1, documented in docs/architecture/bloem-audiobook-requests.md. Native Apple and Android adoption is pending; this row does not assert native runtime acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/admin/organization/ebook-request-integrations",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleEbookIntegrationList",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 192,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-admin-organization",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/ebook-request-integrations",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleEbookIntegrationCreate",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 206,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-admin-organization",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
+      "path": "/api/bloem/v1/admin/organization/ebook-request-integrations/{id}/library",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleEbookIntegrationLibrary",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 213,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-admin-organization",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
+      "path": "/api/bloem/v1/admin/organization/ebook-request-policy",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleEbookRequestPolicy",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 199,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-admin-organization",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/admin/organization/ebook-requests",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAdminList",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 173,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-admin-organization",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/ebook-requests/{id}/approve",
+      "registration_index": 0,
+      "handler": "literal:api:/api/bloem/v1/admin/organization/ebook-requests/{id}/approve",
+      "handler_kind": "literal",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 185,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-admin-organization",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/ebook-requests/{id}/decline",
+      "registration_index": 0,
+      "handler": "literal:api:/api/bloem/v1/admin/organization/ebook-requests/{id}/decline",
+      "handler_kind": "literal",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 185,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-admin-organization",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/ebook-requests/{id}/retry",
+      "registration_index": 0,
+      "handler": "literal:api:/api/bloem/v1/admin/organization/ebook-requests/{id}/retry",
+      "handler_kind": "literal",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 185,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-admin-organization",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
     },
     {
       "listener": "api",
@@ -12376,7 +12832,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 68,
+          "line": 108,
           "types": [
             "BookRequestInput",
             "BookRequest"
@@ -12435,7 +12891,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 58,
+          "line": 98,
           "types": [
             "BookRequestCapability"
           ],
@@ -12493,7 +12949,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 63,
+          "line": 103,
           "types": [
             "BookRequest"
           ],
@@ -12599,7 +13055,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 75,
+          "line": 115,
           "types": [
             "BookRequest"
           ],
@@ -12713,6 +13169,306 @@
         "operation_id": null
       },
       "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Conditionally registered: s.itemCollections != nil. v2 registers the operation unconditionally and reports capability state instead."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/ebook-requests",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleCreate",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1",
+      "middleware_chain": 30,
+      "auth_class": "profile_scoped",
+      "auth_traits": [
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "profile_required": true,
+      "admin_required": false,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 159,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "browse_search",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/ebook-requests/capability",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleCapability",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1",
+      "middleware_chain": 30,
+      "auth_class": "profile_scoped",
+      "auth_traits": [
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "profile_required": true,
+      "admin_required": false,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 144,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "browse_search",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/ebook-requests/mine",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleMine",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1",
+      "middleware_chain": 30,
+      "auth_class": "profile_scoped",
+      "auth_traits": [
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "profile_required": true,
+      "admin_required": false,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 149,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "browse_search",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/ebook-requests/{id}",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleGet",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1",
+      "middleware_chain": 30,
+      "auth_class": "profile_scoped",
+      "auth_traits": [
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "profile_required": true,
+      "admin_required": false,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 154,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "browse_search",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/ebook-requests/{id}/cancel",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleCancel",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1",
+      "middleware_chain": 30,
+      "auth_class": "profile_scoped",
+      "auth_traits": [
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "profile_required": true,
+      "admin_required": false,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 166,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "browse_search",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
     },
     {
       "listener": "api",

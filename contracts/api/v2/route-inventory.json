@@ -42,7 +42,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1108
+      "route_count": 1121
     },
     {
       "id": "api_v2",
@@ -64,8 +64,8 @@
     }
   ],
   "totals": {
-    "routes": 1279,
-    "conditional_routes": 927,
+    "routes": 1292,
+    "conditional_routes": 940,
     "streaming_routes": 44,
     "websocket_routes": 4
   },
@@ -77,6 +77,7 @@
     {
       "id": 1,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -92,6 +93,7 @@
     {
       "id": 2,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -108,6 +110,7 @@
     {
       "id": 3,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -125,6 +128,7 @@
     {
       "id": 4,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -141,6 +145,7 @@
     {
       "id": 5,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -158,6 +163,7 @@
     {
       "id": 6,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -174,6 +180,7 @@
     {
       "id": 7,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -191,6 +198,7 @@
     {
       "id": 8,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -209,6 +217,7 @@
     {
       "id": 9,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -227,6 +236,7 @@
     {
       "id": 10,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -246,6 +256,7 @@
     {
       "id": 11,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -263,6 +274,7 @@
     {
       "id": 12,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -281,6 +293,7 @@
     {
       "id": 13,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -299,6 +312,7 @@
     {
       "id": 14,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -318,6 +332,7 @@
     {
       "id": 15,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -335,6 +350,7 @@
     {
       "id": 16,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -352,6 +368,7 @@
     {
       "id": 17,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -373,6 +390,7 @@
     {
       "id": 18,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -395,6 +413,7 @@
     {
       "id": 19,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -417,6 +436,7 @@
     {
       "id": 20,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -440,6 +460,7 @@
     {
       "id": 21,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -462,6 +483,7 @@
     {
       "id": 22,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -484,6 +506,7 @@
     {
       "id": 23,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -505,6 +528,7 @@
     {
       "id": 24,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -527,6 +551,7 @@
     {
       "id": 25,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -549,6 +574,7 @@
     {
       "id": 26,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -571,6 +597,7 @@
     {
       "id": 27,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -594,6 +621,7 @@
     {
       "id": 28,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -617,6 +645,7 @@
     {
       "id": 29,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -638,6 +667,7 @@
     {
       "id": 30,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -658,6 +688,7 @@
     {
       "id": 31,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -675,6 +706,7 @@
     {
       "id": 32,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -691,6 +723,7 @@
     {
       "id": 33,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -707,6 +740,7 @@
     {
       "id": 34,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -723,6 +757,7 @@
     {
       "id": 35,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -739,6 +774,7 @@
     {
       "id": 36,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -755,6 +791,7 @@
     {
       "id": 37,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -771,6 +808,7 @@
     {
       "id": 38,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -787,6 +825,7 @@
     {
       "id": 39,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -803,6 +842,7 @@
     {
       "id": 40,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -819,6 +859,7 @@
     {
       "id": 41,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -835,6 +876,7 @@
     {
       "id": 42,
       "middleware": [
+        "captureNativeVideoRequest",
         "apimw.RequestID",
         "apimw.NormalizeClientHeaders",
         "preflight.Handler [when deps.DB != nil]",
@@ -4209,6 +4251,246 @@
       ],
       "conditions": [],
       "conditional": false,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/admin/organization/ebook-request-integrations",
+      "route_group": "/api/bloem/v1/admin",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleEbookIntegrationList",
+      "handler_expr": "ebooks.HandleEbookIntegrationList",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/ebook-request-integrations",
+      "route_group": "/api/bloem/v1/admin",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleEbookIntegrationCreate",
+      "handler_expr": "ebooks.HandleEbookIntegrationCreate",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
+      "path": "/api/bloem/v1/admin/organization/ebook-request-integrations/{id}/library",
+      "route_group": "/api/bloem/v1/admin",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleEbookIntegrationLibrary",
+      "handler_expr": "ebooks.HandleEbookIntegrationLibrary",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
+      "path": "/api/bloem/v1/admin/organization/ebook-request-policy",
+      "route_group": "/api/bloem/v1/admin",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleEbookRequestPolicy",
+      "handler_expr": "ebooks.HandleEbookRequestPolicy",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/admin/organization/ebook-requests",
+      "route_group": "/api/bloem/v1/admin",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAdminList",
+      "handler_expr": "ebooks.HandleAdminList",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/ebook-requests/{id}/approve",
+      "route_group": "/api/bloem/v1/admin",
+      "handler": "literal:api:/api/bloem/v1/admin/organization/ebook-requests/{id}/approve",
+      "handler_expr": "func(w http.ResponseWriter, r *http.Request) { chi.RouteContext(r.Context()).URLParams.Add(\"action\", \"approve\") ebooks.HandleAdminAction(w, r) }",
+      "handler_kind": "literal",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/ebook-requests/{id}/decline",
+      "route_group": "/api/bloem/v1/admin",
+      "handler": "literal:api:/api/bloem/v1/admin/organization/ebook-requests/{id}/decline",
+      "handler_expr": "func(w http.ResponseWriter, r *http.Request) { chi.RouteContext(r.Context()).URLParams.Add(\"action\", \"decline\") ebooks.HandleAdminAction(w, r) }",
+      "handler_kind": "literal",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/ebook-requests/{id}/retry",
+      "route_group": "/api/bloem/v1/admin",
+      "handler": "literal:api:/api/bloem/v1/admin/organization/ebook-requests/{id}/retry",
+      "handler_expr": "func(w http.ResponseWriter, r *http.Request) { chi.RouteContext(r.Context()).URLParams.Add(\"action\", \"retry\") ebooks.HandleAdminAction(w, r) }",
+      "handler_kind": "literal",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
       "request_kind": "json",
       "response_media_kind": "json",
       "delegates_to": "",
@@ -11006,6 +11288,171 @@
       "success_statuses": null,
       "error_codes": null,
       "source_file": "internal/api/router_bloem_client.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/ebook-requests",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleCreate",
+      "handler_expr": "ebooks.HandleCreate",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 30,
+      "auth_class": "profile_scoped",
+      "auth_traits": [
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/ebook-requests/capability",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleCapability",
+      "handler_expr": "ebooks.HandleCapability",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 30,
+      "auth_class": "profile_scoped",
+      "auth_traits": [
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/ebook-requests/mine",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleMine",
+      "handler_expr": "ebooks.HandleMine",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 30,
+      "auth_class": "profile_scoped",
+      "auth_traits": [
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/ebook-requests/{id}",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleGet",
+      "handler_expr": "ebooks.HandleGet",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 30,
+      "auth_class": "profile_scoped",
+      "auth_traits": [
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/ebook-requests/{id}/cancel",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleCancel",
+      "handler_expr": "ebooks.HandleCancel",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 30,
+      "auth_class": "profile_scoped",
+      "auth_traits": [
+        "authenticated",
+        "profile_required",
+        "rate_limited",
+        "tenant_scoped",
+        "viewer_access"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
     },
     {
       "listener": "api",

@@ -1,37 +1,92 @@
-# Internal ebook request admission
+# Bloem ebook requests
 
-`bookrequests.CreateEbook`, `GetEbook` and `ActEbook` provide an internal
-foundation for ebook requests. The public request routes, capabilities and
-web flows continue to expose audiobooks only. This foundation has no
-Bookwarehouse request router, acquisition worker, catalog reconciliation or
-notification delivery.
+Ebook requests use `internal/bookrequests` and the Bloem-owned
+`bloem_book_requests` table with media type `book`. The existing Requests page
+and organization admin queue select this lane with `kind=ebook`. Audiobooks
+retain their own routes, quota counters, retry semantics and manual completion;
+Silo's TMDB request table remains separate.
+
+## Admission and authority
 
 Filing and approval require the exact unencrypted value `true` for
-`bloem.requests.ebooks_enabled`; the admin setting defaults to `false`.
-The caller's organization must be the durable default organization, with
-an enabled account and active membership. An administrator cannot bypass
-the hosted-organization restriction. Ordinary callers also need a current
-profile belonging to their account and organization. `Viewer.Admin` remains
-verified authority supplied by the trusted caller.
+`bloem.requests.ebooks_enabled`; the default is `false`. Global request policy
+must also permit the operation. The caller needs an enabled account and active
+membership in the durable default organization. Ordinary viewers need a
+verified current profile belonging to that account and organization. Hosted
+organizations cannot file, including their administrators.
 
-Filing also applies the existing request/group policy. Authorized reads,
-cancellation and denial recheck identity and membership while remaining
-available after acquisition opt-out. Approval leaves the request awaiting
-fulfilment; internal manual completion is unavailable.
+Authorized history, denial and local cancellation remain available after
+opt-out. Mutations require the current request revision. Withdrawal retains
+quota usage; denial refunds it. Quotas inherit existing request/group policy
+but count ebooks independently from audiobooks and movie/series requests.
 
-Ebooks use media type `book` and require a valid canonical ISBN-13, including
-conversion from ISBN-10. ASIN and title-only identities are unavailable.
-Identity indexes and account admission locks prevent concurrent duplicate
-filings. Quotas, reads, actions and reconciliation are isolated by media type.
-Audiobook reconciliation cannot complete an ebook with the same ISBN, and
-the existing audiobook notification integration receives no ebook events.
+ISBN is mandatory. Valid ISBN-10 converts to canonical ISBN-13; ASIN and
+title-only identities are unavailable. Filing uses a durable Idempotency-Key
+scoped to organization, account and profile. Identical normalized retries
+return the retained request; changed payloads or cross-kind key reuse conflict.
+Existing audiobook digests remain valid.
 
-Idempotency keys retain their organization/account/profile scope. Reusing a
-key across media types returns a conflict; existing audiobook payload digests
-and retries retain their previous meaning. The additive migration widens the
-request table's media-type constraint and enforces ebook identity shape. Its
-rollback refuses atomically while ebook rows exist, preserving request history.
+## Fulfillment boundary
 
-Public ebook operations, capability and client adoption, kind-aware
-notifications and fulfilment routing require separate implementation before
-this foundation can be exposed to users.
+Acquisition uses a separate ordinary plugin, `bloem.requests.bookwarehouse`,
+through the existing SDK `request_router.v1` interface. Native storage plugins
+cannot declare this capability. Connections reuse the encrypted
+`request_integrations` store and must explicitly advertise `book`; an empty
+media-type list does not qualify. Integration IDs are opaque strings.
+
+Platform administrators configure the lane from an administrative context for
+the default organization. Policy, connection creation and library binding are
+separate mutations. Connections default to EPUB and HTTPS; trusted local HTTP
+requires explicit opt-in. PDF requires an explicit connection configuration
+opt-in. Responses never contain connection credentials.
+
+Each connection must be linked to an enabled native Bookwarehouse ebook library
+accessible to the default organization. Approved requests remain awaiting
+fulfillment when no eligible bound connection exists. Dispatch freezes a
+secret-free descriptor containing the connection, installation, configuration,
+binding and storage-source revision. Changes invalidate its use rather than
+silently redirecting existing provider work to another library or account.
+
+## Recovery and concurrency
+
+The hidden book reconciliation task runs every five minutes with bounded
+batches. PostgreSQL leases permit multiple server replicas. Provider RPCs run
+outside database transactions, after persisting a dispatch-start marker.
+Policy epochs fence responses across transient disable/enable changes; narrow
+observers accept ordinary upstream settings writes while advancing only
+Bloem-owned state.
+
+Bookwarehouse lacks atomic idempotency. After an uncertain submission or process
+loss, recovery and status calls only read provider state. They never blindly
+repeat the acquisition POST. Retained receipts bind the canonical ISBN, format
+and original submission identity. Canceling and refiling the same ISBN retains
+that submission identity and recovers previous work before any new submission.
+Unresolved state remains visible for admin review and retry.
+
+Cancellation affects Bloem only. Bookwarehouse may continue work already
+started. Disabling acquisition blocks new provider work; it does not promise
+provider cancellation. Provider errors exposed to clients exclude credentials
+and raw backend responses.
+
+## Completion and notifications
+
+Provider completion means awaiting a library scan. Fulfillment requires an
+ISBN-matching ebook in the retained linked library with a current native file
+reference, canonical catalog location and the retained storage-source identity.
+A filesystem replacement, missing file, foreign library, audiobook or title
+match cannot complete the request. Manual ebook fulfillment is unavailable.
+Catalog completion does not claim provider liveness or a successful reader open.
+
+Submitted notices go to current organization administrators; approval, decline
+and completion go to the current requester. Kind-aware lifecycle notices link
+to the ebook lane. Library-completion delivery checks current catalog access
+and retries durably. No tenant book titles go to deployment-wide broadcasts.
+
+## Client scope
+
+`ebook_requests_v1` advertises the mounted API, while its per-profile capability
+reports opt-in and current policy. This increment supports embedded web/admin
+flows. Ebook request adoption in Bloem Apple and Android is deferred; ebook
+routes are not added to the direct-profile session allowlist. Jellyfin and
+Audiobookshelf do not expose this Bloem request API. Automatic audiobook
+acquisition remains deferred.
