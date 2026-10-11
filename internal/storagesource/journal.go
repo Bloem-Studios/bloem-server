@@ -100,7 +100,7 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 			return err
 		}
 	}
-	if err = applyEntries(ctx, tx, lease, page.GetEntries()); err != nil {
+	if err = applyEntries(ctx, tx, lease, checkpoint.DirectoryID, page.GetEntries()); err != nil {
 		return err
 	}
 	if publish != nil {
@@ -127,7 +127,10 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 	if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_scan_cursors(run_id,directory_id,cursor_sha256,cursor,page_sha256) VALUES($1,$2,$3,$4,$5)`, lease.RunID, checkpoint.DirectoryID, cursorHash[:], checkpoint.Cursor, digest[:]); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_scan_directories SET current_cursor=$3,complete=$4,processed_count=processed_count+$5 WHERE run_id=$1 AND directory_id=$2`, lease.RunID, checkpoint.DirectoryID, page.GetNextCursor(), page.GetComplete(), len(page.GetEntries())); err != nil {
+	// The first page decides whether this run lists the directory in full.
+	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_scan_directories SET current_cursor=$3,complete=$4,processed_count=processed_count+$5,
+ full_listing=CASE WHEN current_cursor='' THEN $6 ELSE full_listing END WHERE run_id=$1 AND directory_id=$2`,
+		lease.RunID, checkpoint.DirectoryID, page.GetNextCursor(), page.GetComplete(), len(page.GetEntries()), checkpoint.FullListing); err != nil {
 		return err
 	}
 	if err = verifyLease(ctx, tx, lease); err != nil {
@@ -136,14 +139,16 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 	return tx.Commit(ctx)
 }
 
-func applyEntries(ctx context.Context, tx pgx.Tx, lease Lease, entries []*storagev1.Entry) error {
+// applyEntries records the entries directoryID listed. The directory is the
+// one that last listed each entry, which its next full listing reconciles.
+func applyEntries(ctx context.Context, tx pgx.Tx, lease Lease, directoryID string, entries []*storagev1.Entry) error {
 	// This batch is bounded by the validated 512-entry page, not library size.
 	batch := &pgx.Batch{}
 	for _, entry := range entries {
-		batch.Queue(`INSERT INTO bloem_storage_entries(source_key,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,last_seen_run)
-  VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-  ON CONFLICT(source_key,entry_id) DO UPDATE SET name=EXCLUDED.name,logical_path=EXCLUDED.logical_path,kind=EXCLUDED.kind,size=EXCLUDED.size,modified_unix_nano=EXCLUDED.modified_unix_nano,revision=EXCLUDED.revision,configuration_revision=EXCLUDED.configuration_revision,last_seen_run=EXCLUDED.last_seen_run,absence_confirmed_at=NULL
-  WHERE bloem_storage_entries.last_seen_run<>EXCLUDED.last_seen_run`, lease.SourceKey, entry.GetId(), entry.GetName(), entry.GetLogicalPath(), int32(entry.GetKind()), entry.GetSize(), entry.GetModifiedUnixNano(), entry.GetRevision(), lease.ConfigurationRevision, lease.RunID)
+		batch.Queue(`INSERT INTO bloem_storage_entries(source_key,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,last_seen_run,directory_id)
+  VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+  ON CONFLICT(source_key,entry_id) DO UPDATE SET name=EXCLUDED.name,logical_path=EXCLUDED.logical_path,kind=EXCLUDED.kind,size=EXCLUDED.size,modified_unix_nano=EXCLUDED.modified_unix_nano,revision=EXCLUDED.revision,configuration_revision=EXCLUDED.configuration_revision,last_seen_run=EXCLUDED.last_seen_run,absence_confirmed_at=NULL,directory_id=EXCLUDED.directory_id
+  WHERE bloem_storage_entries.last_seen_run<>EXCLUDED.last_seen_run`, lease.SourceKey, entry.GetId(), entry.GetName(), entry.GetLogicalPath(), int32(entry.GetKind()), entry.GetSize(), entry.GetModifiedUnixNano(), entry.GetRevision(), lease.ConfigurationRevision, lease.RunID, directoryID)
 	}
 	results := tx.SendBatch(ctx, batch)
 	for range entries {

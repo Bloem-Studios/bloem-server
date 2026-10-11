@@ -190,11 +190,13 @@ type catalogFile struct {
 
 func (c *catalogScan) files() map[string]catalogFile {
 	c.t.Helper()
-	rows, err := c.pool.Query(c.t.Context(), `SELECT r.entry_id,i.title,f.missing_since IS NOT NULL,m.content_id IS NOT NULL,
-		f.xmin::text,i.xmin::text,r.xmin::text,COALESCE(m.xmin::text,''),
+	// A missing file's orphaned item is deleted at completion; the file stays
+	// until the grace period ends.
+	rows, err := c.pool.Query(c.t.Context(), `SELECT r.entry_id,COALESCE(i.title,''),f.missing_since IS NOT NULL,m.content_id IS NOT NULL,
+		f.xmin::text,COALESCE(i.xmin::text,''),r.xmin::text,COALESCE(m.xmin::text,''),
 		COALESCE((SELECT string_agg(p.xmin::text,',' ORDER BY p.id) FROM item_people p WHERE p.content_id=f.content_id),''),
-		f.updated_at,i.updated_at
-		FROM bloem_storage_file_refs r JOIN media_files f ON f.id=r.media_file_id JOIN media_items i ON i.content_id=f.content_id
+		f.updated_at,COALESCE(i.updated_at,'epoch')
+		FROM bloem_storage_file_refs r JOIN media_files f ON f.id=r.media_file_id LEFT JOIN media_items i ON i.content_id=f.content_id
 		LEFT JOIN media_item_libraries m ON m.content_id=f.content_id AND m.media_folder_id=f.media_folder_id
 		WHERE r.location_id=$1`, c.location.ID)
 	if err != nil {

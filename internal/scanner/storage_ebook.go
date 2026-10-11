@@ -529,6 +529,27 @@ func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, loc
 	return int(tag.RowsAffected()), nil
 }
 
+// MarkUnlistedStorageFilesTx marks missing the location's files whose entries
+// the run's full listings prove gone: entries last listed by a directory the
+// run listed in full, or, when it listed everything, any entry it did not list.
+// Call it only in the run's completion transaction. As with removals, the
+// sweep deletes them after the grace period and a listing restores them.
+func (s *Scanner) MarkUnlistedStorageFilesTx(ctx context.Context, tx pgx.Tx, location storagesource.Location, listed storagesource.FullListings) (int, error) {
+	if len(listed.Directories) == 0 && !listed.Everything {
+		return 0, nil
+	}
+	tag, err := tx.Exec(ctx, `UPDATE media_files f SET missing_since = NOW()
+		FROM bloem_storage_file_refs r
+		LEFT JOIN bloem_storage_entries e ON e.source_key = $2 AND e.entry_id = r.entry_id
+		WHERE r.location_id = $1 AND f.id = r.media_file_id AND f.missing_since IS NULL
+		  AND e.last_seen_run IS DISTINCT FROM $3 AND ($4 OR e.directory_id = ANY($5))`,
+		location.ID, location.SourceKey, listed.RunID, listed.Everything, listed.Directories)
+	if err != nil {
+		return 0, fmt.Errorf("mark unlisted storage files: %w", err)
+	}
+	return int(tag.RowsAffected()), nil
+}
+
 // SweepStorageLibraryTx reconciles a pathless storage library and empties its
 // expired trash inside the caller's authorized completion transaction. The
 // library repository retains its orphan, present-file and removal-grace guards.

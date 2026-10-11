@@ -224,21 +224,29 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		if !more {
 			// Stop renewing first so a renewal cannot race completion.
 			stopRenew()
-			var trashed int
+			var trashed, unlisted int
 			var orphanedImageDirs []string
 			finalize := func(ctx context.Context, tx pgx.Tx) error {
-				var err error
+				// Absence is inferred only here, once every listing completed.
+				listed, err := storagesource.FullListingsTx(ctx, tx, lease)
+				if err != nil {
+					return err
+				}
+				if unlisted, err = c.scanner.MarkUnlistedStorageFilesTx(ctx, tx, location, listed); err != nil {
+					return err
+				}
 				trashed, orphanedImageDirs, err = c.scanner.SweepStorageLibraryTx(ctx, tx, folder)
 				return err
 			}
 			if err = c.sources.CompleteAuthorized(job, lease, authorize, finalize); err != nil {
 				return result, err
 			}
+			result.ScanResult.Missing += unlisted
 			result.ScanResult.FilesDeleted += trashed
 			c.scanner.CleanupStorageLibraryArtwork(job, orphanedImageDirs)
 			return result, nil
 		}
-		page, err := c.sources.FetchPage(job, lease, checkpoint, provider)
+		page, err := c.sources.FetchPage(job, lease, &checkpoint, provider)
 		if err != nil {
 			return result, err
 		}

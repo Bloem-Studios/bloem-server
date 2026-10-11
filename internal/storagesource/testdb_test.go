@@ -173,7 +173,7 @@ func discoverPage(r *Repository, ctx context.Context, lease Lease, client storag
 		err = r.Complete(ctx, lease)
 		return err == nil, err
 	}
-	page, err := r.FetchPage(ctx, lease, checkpoint, client)
+	page, err := r.FetchPage(ctx, lease, &checkpoint, client)
 	if err != nil {
 		return false, err
 	}
