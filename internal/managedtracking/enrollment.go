@@ -56,13 +56,15 @@ func (s *Service) EnsureConnection(ctx context.Context, id int, e Enrollment) er
 		return ErrAuthority
 	}
 	var p Profile
-	err = tx.QueryRow(ctx, `SELECT account_id::text,profile_id,default_profile_id,account_name,name,email,account_revision,revision,account_active,active FROM bloem_managed_profiles WHERE tenant_id=$1 AND account_id=$2 AND profile_id=$3`, info.Scope, e.Profile.AccountID, e.Profile.ProfileID).Scan(&p.AccountID, &p.ProfileID, &p.DefaultProfileID, &p.AccountName, &p.Name, &p.Email, &p.AccountRevision, &p.Revision, &p.AccountActive, &p.Active)
+	err = tx.QueryRow(ctx, `SELECT account_id::text,profile_id,default_profile_id,account_name,name,email,account_revision,revision,account_active,active,identity_issuer,identity_subject FROM bloem_managed_profiles WHERE tenant_id=$1 AND account_id=$2 AND profile_id=$3`, info.Scope, e.Profile.AccountID, e.Profile.ProfileID).Scan(&p.AccountID, &p.ProfileID, &p.DefaultProfileID, &p.AccountName, &p.Name, &p.Email, &p.AccountRevision, &p.Revision, &p.AccountActive, &p.Active, &p.VerifiedIdentityIssuer, &p.VerifiedIdentitySubject)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrAuthority
 	}
 	if err != nil {
 		return err
 	}
+	// The verified identity is part of the profile, so a plugin can neither
+	// drop, alter nor inject one.
 	if p != e.Profile || e.Active != (p.Active && p.AccountActive) {
 		return ErrAuthority
 	}

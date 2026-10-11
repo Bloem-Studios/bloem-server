@@ -30,6 +30,10 @@ type Profile struct {
 	Revision         uint64 `json:"revision"`
 	AccountActive    bool   `json:"account_active"`
 	Active           bool   `json:"active"`
+	// The account's verified sign-in identity, or both empty. omitempty keeps
+	// the payload digest of enrollments recorded without one unchanged.
+	VerifiedIdentityIssuer  string `json:"verified_identity_issuer,omitempty"`
+	VerifiedIdentitySubject string `json:"verified_identity_subject,omitempty"`
 }
 type Info struct {
 	InstanceID, Scope string
@@ -201,7 +205,8 @@ func (s *Service) ListProfiles(ctx context.Context, installation int, snapshot, 
  SELECT $1,row_number() OVER(ORDER BY account_id,(profile_id=default_profile_id) DESC,profile_id),jsonb_build_object(
  'account_id',account_id::text,'profile_id',profile_id,'default_profile_id',default_profile_id,
  'account_name',account_name,'name',name,'email',email,'account_revision',account_revision,'revision',revision,
- 'account_active',account_active,'active',active) FROM bloem_managed_profiles WHERE tenant_id=$2`, snapshot, out.Scope)
+ 'account_active',account_active,'active',active,
+ 'verified_identity_issuer',identity_issuer,'verified_identity_subject',identity_subject) FROM bloem_managed_profiles WHERE tenant_id=$2`, snapshot, out.Scope)
 		if err != nil {
 			return out, err
 		}

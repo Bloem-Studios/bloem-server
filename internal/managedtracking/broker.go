@@ -3,6 +3,9 @@ package managedtracking
 import (
 	"context"
 	"errors"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	managedv1 "github.com/Silo-Server/silo-server/internal/managedtracking/wire"
 	"google.golang.org/grpc"
@@ -50,10 +53,23 @@ func (b *brokerService) GetInfo(ctx context.Context, _ *managedv1.InfoRequest) (
 	return &managedv1.InfoResponse{Capability: Capability, InstanceId: info.InstanceID, EnrollmentScope: info.Scope, CredentialGeneration: info.Generation}, nil
 }
 func profileWire(p Profile) *managedv1.Profile {
-	return &managedv1.Profile{AccountId: p.AccountID, ProfileId: p.ProfileID, DefaultProfileId: p.DefaultProfileID, AccountName: p.AccountName, Name: p.Name, Email: p.Email, AccountRevision: p.AccountRevision, Revision: p.Revision, AccountActive: p.AccountActive, Active: p.Active}
+	return &managedv1.Profile{AccountId: p.AccountID, ProfileId: p.ProfileID, DefaultProfileId: p.DefaultProfileID, AccountName: p.AccountName, Name: p.Name, Email: p.Email, AccountRevision: p.AccountRevision, Revision: p.Revision, AccountActive: p.AccountActive, Active: p.Active, VerifiedIdentityIssuer: p.VerifiedIdentityIssuer, VerifiedIdentitySubject: p.VerifiedIdentitySubject}
 }
 func profileDTO(p *managedv1.Profile) Profile {
-	return Profile{AccountID: p.GetAccountId(), ProfileID: p.GetProfileId(), DefaultProfileID: p.GetDefaultProfileId(), AccountName: p.GetAccountName(), Name: p.GetName(), Email: p.GetEmail(), AccountRevision: p.GetAccountRevision(), Revision: p.GetRevision(), AccountActive: p.GetAccountActive(), Active: p.GetActive()}
+	return Profile{AccountID: p.GetAccountId(), ProfileID: p.GetProfileId(), DefaultProfileID: p.GetDefaultProfileId(), AccountName: p.GetAccountName(), Name: p.GetName(), Email: p.GetEmail(), AccountRevision: p.GetAccountRevision(), Revision: p.GetRevision(), AccountActive: p.GetAccountActive(), Active: p.GetActive(), VerifiedIdentityIssuer: p.GetVerifiedIdentityIssuer(), VerifiedIdentitySubject: p.GetVerifiedIdentitySubject()}
+}
+
+// identityShapeValid accepts no identity, or an https issuer of at most 500
+// characters with a subject of at most 255, neither containing control
+// characters. Whether it is the account's identity is the projection's call:
+// EnsureConnection requires the profile to equal it exactly.
+func identityShapeValid(issuer, subject string) bool {
+	if issuer == "" && subject == "" {
+		return true
+	}
+	return subject != "" && strings.HasPrefix(issuer, "https://") &&
+		utf8.RuneCountInString(issuer) <= 500 && utf8.RuneCountInString(subject) <= 255 &&
+		!strings.ContainsFunc(issuer, unicode.IsControl) && !strings.ContainsFunc(subject, unicode.IsControl)
 }
 func (b *brokerService) ListProfiles(ctx context.Context, r *managedv1.ListRequest) (*managedv1.ListResponse, error) {
 	page, err := b.service.ListProfiles(ctx, b.installation, r.GetSnapshotId(), r.GetCursor(), int(r.GetLimit()))
@@ -67,7 +83,7 @@ func (b *brokerService) ListProfiles(ctx context.Context, r *managedv1.ListReque
 	return out, nil
 }
 func (b *brokerService) EnsureConnection(ctx context.Context, r *managedv1.EnrollmentRequest) (*managedv1.EnrollmentResponse, error) {
-	if r.GetProfile() == nil || r.Profile.GetVerifiedIdentityIssuer() != "" || r.Profile.GetVerifiedIdentitySubject() != "" {
+	if r.GetProfile() == nil || !identityShapeValid(r.Profile.GetVerifiedIdentityIssuer(), r.Profile.GetVerifiedIdentitySubject()) {
 		return nil, safeRPC(ErrAuthority)
 	}
 	e := Enrollment{Profile: profileDTO(r.Profile), ProviderID: r.ProviderId, ID: r.EnrollmentId, DestinationAccountID: r.DestinationAccountId, DestinationProfileID: r.DestinationProfileId, Credential: r.Credential, Active: r.Active, Generation: r.CredentialGeneration}
