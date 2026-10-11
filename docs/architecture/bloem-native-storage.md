@@ -269,8 +269,11 @@ then reloads the reference, authorization and executable snapshot. Cover reads
 use the same admission checks. A canceled request or runtime lease cannot
 start content I/O. File lifetime is tied to request and runtime
 cancellation. GET/HEAD, ranges and conditional requests behave as for local
-files; ETags hash the opaque revision. Downloads, conversion and offline
-delivery of storage files are not supported.
+files; ETags hash the opaque revision. A provider failure at open or before
+the first byte is sent is an ordinary HTTP error, such as 404 for a missing book
+or 503 for an unavailable provider; after bytes were sent the response is
+aborted without an error document. Downloads, conversion and offline delivery
+of storage files are not supported.
 
 ## Protocol
 
