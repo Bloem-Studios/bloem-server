@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -29,7 +30,15 @@ func TestEventAuthorityCommittedSourceDigestReplayAndHistoryOverlap(t *testing.T
 	}
 	auth := &pluginv1.WatchSyncAuthenticatedContext{CapabilityId: "pastime", Credentials: &pluginv1.WatchSyncCredentials{AccessToken: e.Credential, SecretAttributes: map[string]string{"instance_id": info.InstanceID, "account_id": p.AccountID, "profile_id": p.ProfileID}}}
 	event := &pluginv1.WatchSyncEvent{EventId: "completed-fixture", Operation: pluginv1.WatchSyncOperation_WATCH_SYNC_OPERATION_SCROBBLE_STOP, PlaybackSessionId: "session", WatchHistoryId: "viewing", OccurredAt: timestamppb.New(time.Now()), Media: &pluginv1.WatchSyncMedia{MediaItemId: "fixture-media", MediaType: pluginv1.WatchSyncMediaType_WATCH_SYNC_MEDIA_TYPE_MOVIE, ExternalIds: map[string]string{"tmdb": "10"}}, DurationSeconds: 100, PositionSeconds: 95, Completed: true}
-	if !errors.Is(s.RecordEvents(ctx, id, auth, []*pluginv1.WatchSyncEvent{event}), ErrAuthority) {
+	record := func(e *pluginv1.WatchSyncEvent) *pluginv1.WatchSyncEvent {
+		t.Helper()
+		wire, err := s.RecordEvents(ctx, id, auth, []*pluginv1.WatchSyncEvent{e})
+		if err != nil || len(wire) != 1 {
+			t.Fatalf("record: %v %v", wire, err)
+		}
+		return wire[0]
+	}
+	if record(event) != nil {
 		t.Fatal("uncommitted event accepted")
 	}
 	if _, err := s.Pool.Exec(ctx, `INSERT INTO user_watch_history(id,user_id,profile_id,media_item_id,duration_seconds,completed) VALUES('viewing',$1,$2,'fixture-media',100,true)`, p.AccountID, p.ProfileID); err != nil {
@@ -41,29 +50,35 @@ func TestEventAuthorityCommittedSourceDigestReplayAndHistoryOverlap(t *testing.T
 	if err := repo.UpsertScrobbleSession(ctx, watchsync.ScrobbleEvent{PlaybackSessionID: "session", MediaItemID: "fixture-media", HistoryID: "viewing", PositionSeconds: 95, DurationSeconds: 100, Completed: true}, conn.ID, "stop_confirming"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.RecordEvents(ctx, id, auth, []*pluginv1.WatchSyncEvent{event}); err != nil {
-		t.Fatal(err)
+	wire := record(event)
+	if wire == nil || wire.EventId == event.EventId || !strings.HasPrefix(wire.EventId, wireEventPrefix) {
+		t.Fatalf("committed event not vouched for under a host ID: %v", wire)
 	}
-	a, err := s.ResolveEvent(ctx, id, info.InstanceID, p.AccountID, p.ProfileID, event.EventId, digestEvent(event))
+	a, err := s.ResolveEvent(ctx, id, info.InstanceID, p.AccountID, p.ProfileID, wire.EventId, digestEvent(wire))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a.Revision == 0 || a.ConsumptionID == "" || !bytes.Equal(a.Digest, digestEvent(event)) {
+	if a.Revision == 0 || a.ConsumptionID == "" || !bytes.Equal(a.Digest, digestEvent(wire)) {
 		t.Fatal("missing authority")
 	}
-	if err = s.RecordEvents(ctx, id, auth, []*pluginv1.WatchSyncEvent{event}); err != nil {
-		t.Fatal(err)
+	if again := record(event); again == nil || again.EventId != wire.EventId {
+		t.Fatal("exact replay changed its host event")
 	}
+	// The same caller ID with a different payload is a different event, not a
+	// conflict; without a source for its state it is rejected on its own.
 	bad := proto.Clone(event).(*pluginv1.WatchSyncEvent)
 	bad.PositionSeconds = 90
-	if !errors.Is(s.RecordEvents(ctx, id, auth, []*pluginv1.WatchSyncEvent{bad}), ErrConflict) {
-		t.Fatal("event ID conflict accepted")
+	if record(bad) != nil {
+		t.Fatal("event without a matching source accepted")
 	}
-	if _, err = s.ResolveEvent(ctx, id, info.InstanceID, p.AccountID, "foreign", event.EventId, digestEvent(event)); !errors.Is(err, ErrAuthority) {
+	if _, err = s.ResolveEvent(ctx, id, info.InstanceID, p.AccountID, "foreign", wire.EventId, digestEvent(wire)); !errors.Is(err, ErrAuthority) {
 		t.Fatal("foreign profile resolved")
 	}
-	if _, err = s.ResolveEvent(ctx, id, info.InstanceID, p.AccountID, p.ProfileID, event.EventId, make([]byte, 32)); !errors.Is(err, ErrAuthority) {
+	if _, err = s.ResolveEvent(ctx, id, info.InstanceID, p.AccountID, p.ProfileID, wire.EventId, make([]byte, 32)); !errors.Is(err, ErrAuthority) {
 		t.Fatal("wrong digest resolved")
+	}
+	if _, err = s.ResolveEvent(ctx, id, info.InstanceID, p.AccountID, p.ProfileID, event.EventId, digestEvent(event)); !errors.Is(err, ErrAuthority) {
+		t.Fatal("caller event ID resolved without a host receipt")
 	}
 	history := proto.Clone(event).(*pluginv1.WatchSyncEvent)
 	history.EventId = "viewing"
@@ -71,10 +86,14 @@ func TestEventAuthorityCommittedSourceDigestReplayAndHistoryOverlap(t *testing.T
 	history.PlaybackSessionId = ""
 	history.Completed = false
 	history.PositionSeconds = 0
-	if err = s.RecordEvents(ctx, id, auth, []*pluginv1.WatchSyncEvent{history}); err != nil {
-		t.Fatal(err)
+	historyWire := record(history)
+	if historyWire == nil {
+		t.Fatal("history export rejected")
 	}
-	h, err := s.ResolveEvent(ctx, id, info.InstanceID, p.AccountID, p.ProfileID, history.EventId, digestEvent(history))
+	if !historyWire.OccurredAt.AsTime().Equal(wire.OccurredAt.AsTime()) {
+		t.Fatal("deliveries of one viewing carry different occurrence times")
+	}
+	h, err := s.ResolveEvent(ctx, id, info.InstanceID, p.AccountID, p.ProfileID, historyWire.EventId, digestEvent(historyWire))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +103,7 @@ func TestEventAuthorityCommittedSourceDigestReplayAndHistoryOverlap(t *testing.T
 	if err = s.Revoke(ctx, id); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = s.ResolveEvent(ctx, id, info.InstanceID, p.AccountID, p.ProfileID, event.EventId, digestEvent(event)); !errors.Is(err, ErrAuthority) {
+	if _, err = s.ResolveEvent(ctx, id, info.InstanceID, p.AccountID, p.ProfileID, wire.EventId, digestEvent(wire)); !errors.Is(err, ErrAuthority) {
 		t.Fatal("revoked event authority survives")
 	}
 }

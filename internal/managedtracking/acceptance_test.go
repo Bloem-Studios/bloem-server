@@ -190,6 +190,83 @@ func TestRealPluginAndPastimeHouseholdAcceptance(t *testing.T) {
 	if got[child].Plays != 1 || got[child].Position != 20 || got[p.ProfileID].Plays != 0 || got[second].Plays != 0 {
 		t.Fatalf("profile isolation/history overlap: %+v", got)
 	}
+	// The native playback path, through watch sync and the real plugin: a
+	// resumed session and a completed non-confirmed stop both reach Pastime.
+	native, e := client.WatchSyncProvider("pastime")
+	if e != nil {
+		t.Fatal(e)
+	}
+	notify := make(chan struct{}, 16)
+	provider, e := watchsync.NewPluginProvider(watchsync.PluginProviderOptions{
+		InstallationID: id, ProviderKey: watchsync.PluginProviderKey(id, "bloem.pastime", "pastime", false), CapabilityID: "pastime", DisplayName: "Pastime",
+		Descriptor: &pluginv1.WatchSyncProviderDescriptor{
+			AuthMethods:         []pluginv1.WatchSyncAuthMethod{pluginv1.WatchSyncAuthMethod_WATCH_SYNC_AUTH_METHOD_API_KEY},
+			SupportedMediaTypes: []pluginv1.WatchSyncMediaType{pluginv1.WatchSyncMediaType_WATCH_SYNC_MEDIA_TYPE_MOVIE},
+			MaxBatchSize:        100, ScrobblePlayback: true, ExportWatched: true,
+		},
+		ResolveClient: func(context.Context, int, string) (watchsync.WatchSyncPluginClient, error) {
+			return notifyingClient{WatchSyncPluginClient: s.WrapClient(id, native), notify: notify}, nil
+		},
+		Repository: repo,
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	registry := watchsync.NewRegistry()
+	if e = registry.Register(provider); e != nil {
+		t.Fatal(e)
+	}
+	svc := watchsync.NewService(repo, registry)
+	dispatched := func() {
+		t.Helper()
+		select {
+		case <-notify:
+		case <-ctx.Done():
+			t.Fatal("native dispatch never reached the plugin")
+		}
+	}
+	session := uuid.NewString()
+	play := func(position float64) watchsync.ScrobbleEvent {
+		return watchsync.ScrobbleEvent{PlaybackSessionID: session, UserID: account, ProfileID: second, MediaItemID: "native-media", Kind: "movie", TMDBID: "42", PositionSeconds: position, DurationSeconds: 100, OccurredAt: time.Now().UTC()}
+	}
+	for _, step := range []func() error{
+		func() error { return svc.ScrobbleStart(ctx, play(0)) },
+		func() error { return svc.ScrobblePause(ctx, play(30)) },
+		func() error { return svc.ScrobbleStart(ctx, play(40)) },
+	} {
+		if e = step(); e != nil {
+			t.Fatal(e)
+		}
+		dispatched()
+	}
+	if got = state(); got[second].Position != 40 || got[second].Plays != 0 {
+		t.Fatalf("resumed session did not reach Pastime: %+v", got[second])
+	}
+	viewing := uuid.NewString()
+	if _, err = s.Pool.Exec(ctx, `INSERT INTO user_watch_history(id,user_id,profile_id,media_item_id,duration_seconds,completed) VALUES($1,$2,$3,'native-media',100,true)`, viewing, account, second); err != nil {
+		t.Fatal(err)
+	}
+	stop := play(97)
+	stop.DurationSeconds = 101
+	stop.HistoryID = viewing
+	stop.Completed = true
+	if e = svc.ScrobbleStop(ctx, stop); e != nil {
+		t.Fatal(e)
+	}
+	dispatched()
+	if got = state(); got[second].Plays != 1 || got[second].Position != 0 {
+		t.Fatalf("completed native stop did not reach Pastime: %+v", got[second])
+	}
+	// Its history export is the same viewing, not a second play.
+	if out, e := s.WrapClient(id, native).ApplyEvents(ctx, &pluginv1.WatchSyncApplyEventsRequest{Context: &pluginv1.WatchSyncAuthenticatedContext{CapabilityId: "pastime", Credentials: func() *pluginv1.WatchSyncCredentials {
+		conn, _, _ := repo.GetConnection(ctx, watchsync.PluginProviderKey(id, "bloem.pastime", "pastime", false), account, second)
+		return &pluginv1.WatchSyncCredentials{AccessToken: conn.AccessToken, SecretAttributes: conn.SecretAttributes}
+	}()}, Events: []*pluginv1.WatchSyncEvent{{EventId: viewing, WatchHistoryId: viewing, Operation: pluginv1.WatchSyncOperation_WATCH_SYNC_OPERATION_MARK_WATCHED, OccurredAt: timestamppb.Now(), DurationSeconds: 100, Media: &pluginv1.WatchSyncMedia{MediaItemId: "native-media", MediaType: pluginv1.WatchSyncMediaType_WATCH_SYNC_MEDIA_TYPE_MOVIE, ExternalIds: map[string]string{"tmdb": "42"}}}}}); e != nil || out.GetFault() != nil || len(out.GetResults()) != 1 || out.Results[0].GetFault() != nil {
+		t.Fatalf("history export of the native viewing failed: %v %v", out, e)
+	}
+	if got = state(); got[second].Plays != 1 {
+		t.Fatalf("history export duplicated the native viewing: %+v", got[second])
+	}
 	// Future profile creation, rename and deletion converge through the same connector.
 	added := uuid.NewString()
 	if _, err = s.Pool.Exec(ctx, `INSERT INTO user_profiles(id,user_id,name,organization_id,access_group_id) VALUES($1,$2,'Future child',$3,$4)`, added, account, info.Scope, group); err != nil {

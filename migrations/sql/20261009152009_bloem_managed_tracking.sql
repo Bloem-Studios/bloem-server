@@ -1,6 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
 -- Durable projection/outbox; no new required fields on upstream-owned tables.
+-- The inventory deliberately carries no email address: Pastime never links
+-- accounts by email, so the household's addresses stay on this server.
 CREATE TABLE bloem_managed_clock(singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),revision bigint NOT NULL DEFAULT 0 CHECK(revision>=0));
 INSERT INTO bloem_managed_clock VALUES(true,0);
 CREATE TABLE bloem_managed_profiles(
@@ -26,6 +28,19 @@ CREATE TABLE bloem_managed_snapshot_rows(
 
 CREATE TABLE bloem_managed_page_cursors(snapshot_id uuid NOT NULL REFERENCES bloem_managed_snapshots(id) ON DELETE CASCADE,token uuid NOT NULL,ordinal integer NOT NULL,PRIMARY KEY(snapshot_id,token));
 
+-- Pastime accepts trimmed names of 1-80 characters without control
+-- characters; one unacceptable name must never stall a household's reconcile.
+CREATE FUNCTION bloem_managed_display_name(value text, fallback text) RETURNS text LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE
+ blank text := '[ '||chr(160)||chr(5760)||chr(8192)||'-'||chr(8202)||chr(8232)||chr(8233)||chr(8239)||chr(8287)||chr(12288)||']';
+ out text;
+BEGIN
+ out := regexp_replace(coalesce(value,''),'['||chr(1)||'-'||chr(31)||chr(127)||'-'||chr(159)||']',' ','g');
+ out := regexp_replace(out,'^'||blank||'+|'||blank||'+$','','g');
+ out := regexp_replace(left(out,80),blank||'+$','');
+ IF out='' THEN RETURN fallback; END IF;
+ RETURN out;
+END $$;
 CREATE FUNCTION bloem_managed_refresh_account(target integer) RETURNS void LANGUAGE plpgsql AS $$
 DECLARE rev bigint; tenant uuid; default_id text;
 BEGIN
@@ -42,7 +57,7 @@ BEGIN
   UPDATE bloem_managed_profiles SET account_active=false,active=false,account_revision=rev,revision=rev
   WHERE tenant_id=tenant AND account_id=target;
   INSERT INTO bloem_managed_profiles
-  SELECT tenant,u.id,p.id,coalesce(default_id,p.id),u.username,coalesce(u.email,''),p.name,
+  SELECT tenant,u.id,p.id,coalesce(default_id,p.id),bloem_managed_display_name(u.username,'Account'),'',bloem_managed_display_name(p.name,'Profile'),
    u.enabled AND m.status='active' AND o.status='active',true,rev,rev
   FROM users u JOIN user_profiles p ON p.user_id=u.id
   JOIN organization_memberships m ON m.account_id=u.id AND m.organization_id=tenant
@@ -54,8 +69,8 @@ BEGIN
    account_revision=rev,revision=rev;
   -- Preserve tombstones but keep account metadata/revision consistent across rows.
   UPDATE bloem_managed_profiles SET default_profile_id=coalesce(default_id,default_profile_id),
-   account_name=coalesce((SELECT username FROM users WHERE id=target),account_name),
-   email=coalesce((SELECT email FROM users WHERE id=target),email),
+   account_name=coalesce((SELECT bloem_managed_display_name(username,'Account') FROM users WHERE id=target),account_name),
+   email='',
    account_active=coalesce((SELECT u.enabled AND m.status='active' AND o.status='active'
     FROM users u JOIN organization_memberships m ON m.account_id=u.id AND m.organization_id=tenant
     JOIN organizations o ON o.id=tenant WHERE u.id=target),false)
@@ -77,7 +92,7 @@ BEGIN
  END IF;
  IF TG_OP='DELETE' THEN RETURN OLD; END IF;RETURN NEW;
 END $$;
-CREATE TRIGGER bloem_managed_users AFTER INSERT OR DELETE OR UPDATE OF username,email,enabled ON users FOR EACH ROW EXECUTE FUNCTION bloem_managed_identity_changed();
+CREATE TRIGGER bloem_managed_users AFTER INSERT OR DELETE OR UPDATE OF username,enabled ON users FOR EACH ROW EXECUTE FUNCTION bloem_managed_identity_changed();
 CREATE TRIGGER bloem_managed_profiles AFTER INSERT OR DELETE OR UPDATE OF name,is_primary,user_id,organization_id ON user_profiles FOR EACH ROW EXECUTE FUNCTION bloem_managed_identity_changed();
 CREATE TRIGGER bloem_managed_memberships AFTER INSERT OR DELETE OR UPDATE OF status ON organization_memberships FOR EACH ROW EXECUTE FUNCTION bloem_managed_identity_changed();
 CREATE FUNCTION bloem_managed_organization_changed() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -99,5 +114,6 @@ DROP TRIGGER bloem_managed_profiles ON user_profiles;
 DROP TRIGGER bloem_managed_users ON users;
 DROP FUNCTION bloem_managed_identity_changed();
 DROP FUNCTION bloem_managed_refresh_account(integer);
+DROP FUNCTION bloem_managed_display_name(text,text);
 DROP TABLE bloem_managed_page_cursors,bloem_managed_snapshot_rows,bloem_managed_snapshots,bloem_managed_grants,bloem_managed_changes,bloem_managed_profiles,bloem_managed_clock;
 -- +goose StatementEnd

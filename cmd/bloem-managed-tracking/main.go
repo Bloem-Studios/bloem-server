@@ -52,7 +52,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		_, err = fmt.Fprintln(out, "Managed tracking revoked.")
 		return err
 	}
-	info, err := s.GetInfo(ctx, *id)
+	// Status is read-only: looking never renews the credential generation.
+	info, err := s.Describe(ctx, *id)
 	if err != nil {
 		return errors.New("managed-tracking authority unavailable")
 	}
@@ -63,7 +64,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	}{info.InstanceID, info.Scope, info.Generation})
 }
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// A grant backfills the tenant's existing watch history in one statement.
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
 	if err := run(ctx, os.Args[1:], os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)

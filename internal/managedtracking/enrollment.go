@@ -41,11 +41,14 @@ func (s *Service) EnsureConnection(ctx context.Context, id int, e Enrollment) er
 		return err
 	}
 	defer tx.Rollback(ctx)
-	// Publication fence precedes grant locks, matching inventory/source writers.
-	if _, err = tx.Exec(ctx, `SELECT revision FROM bloem_managed_clock WHERE singleton FOR UPDATE`); err != nil {
+	if err = managedWriter(ctx, tx); err != nil {
 		return err
 	}
-	info, err := authority(ctx, tx, id)
+	// A shared grant lock holds rotation and revocation until this enrollment
+	// commits; they then disable what it wrote. No server-wide lock is taken:
+	// events re-check the projection, so a concurrent identity change only
+	// leaves work for the next reconcile.
+	info, err := authority(ctx, tx, id, grantShare)
 	if err != nil {
 		return err
 	}
@@ -72,17 +75,24 @@ func (s *Service) EnsureConnection(ctx context.Context, id int, e Enrollment) er
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}
+	key := watchsync.PluginProviderKey(id, "bloem.pastime", "pastime", false)
+	account, _ := strconv.Atoi(p.AccountID)
 	if beforeID == e.ID {
 		if !bytes.Equal(before, digest[:]) {
 			return ErrConflict
 		}
-		return tx.Commit(ctx)
-	}
-	if beforeID != "" && (destAccount != e.DestinationAccountID || destProfile != e.DestinationProfileID) {
+		// Replay converges only when the connection still holds exactly this
+		// enrollment; a removed or overwritten connection is rewritten below.
+		converged, err := s.connectionConverged(ctx, tx, key, account, info.InstanceID, p, e)
+		if err != nil {
+			return err
+		}
+		if converged {
+			return tx.Commit(ctx)
+		}
+	} else if beforeID != "" && (destAccount != e.DestinationAccountID || destProfile != e.DestinationProfileID) {
 		return ErrConflict
 	}
-	key := watchsync.PluginProviderKey(id, "bloem.pastime", "pastime", false)
-	account, _ := strconv.Atoi(p.AccountID)
 	token, bundle := "", ""
 	if e.Active {
 		token, err = s.Cipher.Encrypt(e.Credential, watchsync.TokenAAD("access_token", key, account, p.ProfileID))
@@ -114,7 +124,56 @@ func (s *Service) EnsureConnection(ctx context.Context, id int, e Enrollment) er
 	}
 	return tx.Commit(ctx)
 }
+
+// managedWriter marks the transaction as the managed-credential writer that
+// bloem_managed_connection_guard lets through.
+func managedWriter(ctx context.Context, tx pgx.Tx) error {
+	_, err := tx.Exec(ctx, `SELECT set_config('bloem.managed_tracking_writer','v1',true)`)
+	return err
+}
+
+// connectionConverged reports whether the stored connection is exactly what
+// enrollment e writes: for an active enrollment, enabled with e's credential
+// and attributes; otherwise, holding no credential and nothing enabled.
+func (s *Service) connectionConverged(ctx context.Context, tx pgx.Tx, key string, account int, instance string, p Profile, e Enrollment) (bool, error) {
+	var token, bundle string
+	var scrobble, export bool
+	err := tx.QueryRow(ctx, `SELECT access_token,plugin_credentials,scrobble_enabled,export_watched_enabled FROM watch_provider_connections WHERE provider=$1 AND user_id=$2 AND profile_id=$3`, key, account, p.ProfileID).Scan(&token, &bundle, &scrobble, &export)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return !e.Active, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !e.Active {
+		// A suspended account keeps its active profile's row, emptied.
+		return p.Active && token == "" && bundle == "" && !scrobble && !export, nil
+	}
+	if !scrobble || !export {
+		return false, nil
+	}
+	plain, err := s.Cipher.Decrypt(token, watchsync.TokenAAD("access_token", key, account, p.ProfileID))
+	if err != nil || plain != e.Credential {
+		return false, nil
+	}
+	raw, err := s.Cipher.Decrypt(bundle, watchsync.TokenAAD("plugin_credentials", key, account, p.ProfileID))
+	if err != nil {
+		return false, nil
+	}
+	var stored struct {
+		AccessToken      string            `json:"access_token"`
+		SecretAttributes map[string]string `json:"secret_attributes"`
+	}
+	if json.Unmarshal([]byte(raw), &stored) != nil || stored.AccessToken != e.Credential {
+		return false, nil
+	}
+	return stored.SecretAttributes["account_id"] == p.AccountID && stored.SecretAttributes["profile_id"] == p.ProfileID && stored.SecretAttributes["instance_id"] == instance, nil
+}
+
 func disableConnections(ctx context.Context, tx pgx.Tx, id int) error {
+	if err := managedWriter(ctx, tx); err != nil {
+		return err
+	}
 	_, err := tx.Exec(ctx, `UPDATE watch_provider_connections SET access_token='',refresh_token='',plugin_credentials='',scrobble_enabled=false,export_watched_enabled=false,updated_at=clock_timestamp() WHERE provider=$1`, watchsync.PluginProviderKey(id, "bloem.pastime", "pastime", false))
 	return err
 }
@@ -124,7 +183,7 @@ func (s *Service) Revoke(ctx context.Context, id int) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
-	tag, err := tx.Exec(ctx, `UPDATE bloem_managed_grants SET active=false,generation=generation+1,renewed_at=clock_timestamp() WHERE installation_id=$1`, id)
+	tag, err := tx.Exec(ctx, `UPDATE bloem_managed_grants SET active=false,generation=generation+1,min_generation=generation+1,renewed_at=clock_timestamp() WHERE installation_id=$1`, id)
 	if err != nil {
 		return err
 	}
@@ -144,10 +203,10 @@ func (s *Service) Rotate(ctx context.Context, id int) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if _, err = authority(ctx, tx, id); err != nil {
+	if _, err = authority(ctx, tx, id, grantUpdate); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE bloem_managed_grants SET generation=generation+1,renewed_at=clock_timestamp(),acked_revision=0 WHERE installation_id=$1`, id); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE bloem_managed_grants SET generation=generation+1,min_generation=generation+1,renewed_at=clock_timestamp(),acked_revision=0 WHERE installation_id=$1`, id); err != nil {
 		return err
 	}
 	if err = disableConnections(ctx, tx, id); err != nil {

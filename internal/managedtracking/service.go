@@ -33,6 +33,9 @@ type Profile struct {
 type Info struct {
 	InstanceID, Scope string
 	Generation        uint64
+	// minGeneration is the oldest enrollment generation that still
+	// authorizes events (see bloem_managed_grants.min_generation).
+	minGeneration uint64
 }
 type Page struct {
 	Info
@@ -51,11 +54,17 @@ func (s *Service) Grant(ctx context.Context, installation int, tenant string) er
 	if _, err := uuid.Parse(tenant); err != nil {
 		return ErrAuthority
 	}
-	tag, err := s.Pool.Exec(ctx, `INSERT INTO bloem_managed_grants(installation_id,tenant_id)
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	tag, err := tx.Exec(ctx, `INSERT INTO bloem_managed_grants(installation_id,tenant_id)
  SELECT i.id,o.id FROM plugin_installations i CROSS JOIN organizations o
  WHERE i.id=$1 AND i.enabled AND i.kind='plugin' AND i.plugin_id='bloem.pastime' AND o.id=$2 AND o.status='active'
  ON CONFLICT(installation_id) DO UPDATE SET active=true,
  generation=CASE WHEN bloem_managed_grants.active THEN bloem_managed_grants.generation ELSE bloem_managed_grants.generation+1 END,
+ min_generation=CASE WHEN bloem_managed_grants.active THEN bloem_managed_grants.min_generation ELSE bloem_managed_grants.generation+1 END,
  renewed_at=CASE WHEN bloem_managed_grants.active THEN bloem_managed_grants.renewed_at ELSE clock_timestamp() END,
  acked_revision=CASE WHEN bloem_managed_grants.active THEN bloem_managed_grants.acked_revision ELSE 0 END
  WHERE bloem_managed_grants.tenant_id=EXCLUDED.tenant_id`, installation, tenant)
@@ -65,40 +74,83 @@ func (s *Service) Grant(ctx context.Context, installation int, tenant string) er
 	if tag.RowsAffected() == 0 {
 		return ErrAuthority
 	}
-	return nil
+	// Existing completed history of the tenant gets source revisions older
+	// than any playback after the grant. Idempotent; RecordEvents covers rows
+	// that commit concurrently with this backfill.
+	if _, err = tx.Exec(ctx, `INSERT INTO bloem_managed_playback_sources(user_id,profile_id,media_item_id,history_id,action,duration,completed)
+ SELECT h.user_id,h.profile_id,h.media_item_id,h.id,'history',coalesce(h.duration_seconds,0),true
+ FROM user_watch_history h JOIN user_profiles p ON p.id=h.profile_id
+ WHERE p.organization_id=$1 AND h.completed AND NOT EXISTS(SELECT 1 FROM bloem_managed_playback_sources s
+  WHERE s.action='history' AND s.history_id=h.id AND s.media_item_id=h.media_item_id AND s.user_id=h.user_id AND s.profile_id=h.profile_id)
+ ORDER BY h.watched_at,h.id`, tenant); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
-func authority(ctx context.Context, tx pgx.Tx, installation int) (Info, error) {
+
+type grantLock int
+
+const (
+	grantRead grantLock = iota
+	// grantShare blocks rotation and revocation until the caller commits.
+	grantShare
+	grantUpdate
+)
+
+func authority(ctx context.Context, tx pgx.Tx, installation int, lock grantLock) (Info, error) {
 	var out Info
-	err := tx.QueryRow(ctx, `SELECT g.instance_id::text,g.tenant_id::text,g.generation FROM bloem_managed_grants g
+	query := `SELECT g.instance_id::text,g.tenant_id::text,g.generation,g.min_generation FROM bloem_managed_grants g
  JOIN plugin_installations i ON i.id=g.installation_id JOIN organizations o ON o.id=g.tenant_id
- WHERE g.installation_id=$1 AND g.active AND i.enabled AND i.kind='plugin' AND i.plugin_id='bloem.pastime' AND o.status='active'
- FOR UPDATE OF g`, installation).Scan(&out.InstanceID, &out.Scope, &out.Generation)
+ WHERE g.installation_id=$1 AND g.active AND i.enabled AND i.kind='plugin' AND i.plugin_id='bloem.pastime' AND o.status='active'`
+	switch lock {
+	case grantShare:
+		query += ` FOR SHARE OF g`
+	case grantUpdate:
+		query += ` FOR UPDATE OF g`
+	}
+	err := tx.QueryRow(ctx, query, installation).Scan(&out.InstanceID, &out.Scope, &out.Generation, &out.minGeneration)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, ErrAuthority
 	}
 	return out, err
 }
+
+// GetInfo is the reconciler's entry point on the plugin broker. Every 30 days
+// it renews the credential generation so the next traversal issues fresh
+// credentials; existing connections keep working until each profile's
+// replacement is enrolled. It also prunes event receipts nobody can resolve.
 func (s *Service) GetInfo(ctx context.Context, installation int) (Info, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return Info{}, err
 	}
 	defer tx.Rollback(ctx)
-	out, err := authority(ctx, tx, installation)
+	out, err := authority(ctx, tx, installation, grantRead)
 	if err != nil {
 		return out, err
 	}
-	var renew bool
-	if err = tx.QueryRow(ctx, `SELECT renewed_at<clock_timestamp()-interval '30 days' FROM bloem_managed_grants WHERE installation_id=$1`, installation).Scan(&renew); err != nil {
+	err = tx.QueryRow(ctx, `UPDATE bloem_managed_grants SET generation=generation+1,renewed_at=clock_timestamp(),acked_revision=0
+ WHERE installation_id=$1 AND active AND renewed_at<clock_timestamp()-interval '30 days' RETURNING generation`, installation).Scan(&out.Generation)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return out, err
 	}
-	if renew {
-		if err = tx.QueryRow(ctx, `UPDATE bloem_managed_grants SET generation=generation+1,renewed_at=clock_timestamp(),acked_revision=0 WHERE installation_id=$1 RETURNING generation`, installation).Scan(&out.Generation); err != nil {
-			return out, err
-		}
-		if err = disableConnections(ctx, tx, installation); err != nil {
-			return out, err
-		}
+	if _, err = tx.Exec(ctx, `DELETE FROM bloem_managed_events WHERE installation_id=$1 AND created_at<clock_timestamp()-interval '30 days'`, installation); err != nil {
+		return out, err
+	}
+	return out, tx.Commit(ctx)
+}
+
+// Describe reports the current authority without any side effect. Operator
+// status checks use it so that looking never renews or revokes anything.
+func (s *Service) Describe(ctx context.Context, installation int) (Info, error) {
+	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
+	if err != nil {
+		return Info{}, err
+	}
+	defer tx.Rollback(ctx)
+	out, err := authority(ctx, tx, installation, grantRead)
+	if err != nil {
+		return out, err
 	}
 	return out, tx.Commit(ctx)
 }
@@ -113,18 +165,20 @@ func (s *Service) ListProfiles(ctx context.Context, installation int, snapshot, 
 		return out, err
 	}
 	defer tx.Rollback(ctx)
-	// Acquire publication fence before reading grant/source projection. Trigger
-	// writers lock this row, so watermark and copied records describe one commit.
-	var revision int64
-	if err = tx.QueryRow(ctx, `SELECT revision FROM bloem_managed_clock WHERE singleton FOR UPDATE`).Scan(&revision); err != nil {
-		return out, err
-	}
-	out.Info, err = authority(ctx, tx, installation)
-	if err != nil {
-		return out, err
-	}
 	offset := 0
+	if out.Info, err = authority(ctx, tx, installation, grantShare); err != nil {
+		return out, err
+	}
 	if snapshot == "" {
+		// A new snapshot acquires the identity publication fence before reading
+		// the projection. Identity trigger writers lock this row, so the
+		// watermark and the copied records describe one commit point. The grant
+		// is locked first: identity writers never wait on grants, so this order
+		// cannot close a cycle with revocation and a cascading profile delete.
+		var revision int64
+		if err = tx.QueryRow(ctx, `SELECT revision FROM bloem_managed_clock WHERE singleton FOR UPDATE`).Scan(&revision); err != nil {
+			return out, err
+		}
 		snapshot = uuid.NewString()
 		_, err = tx.Exec(ctx, `DELETE FROM bloem_managed_snapshots WHERE installation_id=$1 AND expires_at<clock_timestamp()`, installation)
 		if err != nil {
@@ -216,7 +270,7 @@ func (s *Service) ReadChanges(ctx context.Context, installation int) (bool, erro
 		return false, err
 	}
 	defer tx.Rollback(ctx)
-	info, err := authority(ctx, tx, installation)
+	info, err := authority(ctx, tx, installation, grantRead)
 	if err != nil {
 		return false, err
 	}
@@ -236,7 +290,7 @@ func (s *Service) AckChanges(ctx context.Context, installation int, watermark st
 		return err
 	}
 	defer tx.Rollback(ctx)
-	info, err := authority(ctx, tx, installation)
+	info, err := authority(ctx, tx, installation, grantUpdate)
 	if err != nil {
 		return err
 	}
