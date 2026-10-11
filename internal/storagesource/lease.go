@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func validTTL(ttl time.Duration) bool { return ttl >= time.Millisecond && ttl <= 24*time.Hour }
@@ -42,13 +43,45 @@ func (r *Repository) begin(ctx context.Context, sourceKey uuid.UUID, owner strin
 	if err != nil {
 		return lease, err
 	}
+	// Retain the binding before locking its run. Waiting here could invert the
+	// deletion trigger's location -> run order while Begin owns a prior run.
+	locations, err := tx.Query(ctx, `SELECT id,selection_revision FROM library_storage_locations WHERE source_key=$1 ORDER BY id LIMIT 2 FOR KEY SHARE NOWAIT`, sourceKey)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "55P03" {
+			return lease, ErrStaleLease
+		}
+		return lease, err
+	}
+	count := 0
+	for locations.Next() {
+		count++
+		if err := locations.Scan(&lease.LocationID, &lease.SelectionRevision); err != nil {
+			locations.Close()
+			return lease, err
+		}
+	}
+	err = locations.Err()
+	locations.Close()
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "55P03" {
+			return lease, ErrStaleLease
+		}
+		return lease, err
+	}
+	if count != 1 {
+		return lease, ErrReferenceConflict
+	}
 	var oldConfig int64
 	var oldOwner string
-	err = tx.QueryRow(ctx, `SELECT id,configuration_revision,lease_epoch,owner FROM bloem_storage_scan_runs WHERE source_key=$1 AND state='running' FOR UPDATE`, sourceKey).Scan(&lease.RunID, &oldConfig, &lease.Epoch, &oldOwner)
+	var oldLocation uuid.UUID
+	var oldSelection int64
+	err = tx.QueryRow(ctx, `SELECT id,configuration_revision,lease_epoch,owner,location_id,selection_revision FROM bloem_storage_scan_runs WHERE source_key=$1 AND state='running' FOR UPDATE`, sourceKey).Scan(&lease.RunID, &oldConfig, &lease.Epoch, &oldOwner, &oldLocation, &oldSelection)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return lease, err
 	}
-	if err == nil && oldConfig == lease.ConfigurationRevision {
+	if err == nil && oldConfig == lease.ConfigurationRevision && oldLocation == lease.LocationID && oldSelection == lease.SelectionRevision {
 		var active bool
 		if err = tx.QueryRow(ctx, `SELECT lease_until>clock_timestamp() FROM bloem_storage_scan_runs WHERE id=$1`, lease.RunID).Scan(&active); err != nil {
 			return lease, err
@@ -66,7 +99,7 @@ func (r *Repository) begin(ctx context.Context, sourceKey uuid.UUID, owner strin
 		}
 		lease.RunID = uuid.New()
 		lease.Epoch = 1
-		_, err = tx.Exec(ctx, `INSERT INTO bloem_storage_scan_runs(id,source_key,configuration_revision,state,lease_epoch,owner,lease_until) VALUES($1,$2,$3,'running',1,$4,clock_timestamp()+($5::bigint*interval '1 millisecond'))`, lease.RunID, sourceKey, lease.ConfigurationRevision, owner, ttl.Milliseconds())
+		_, err = tx.Exec(ctx, `INSERT INTO bloem_storage_scan_runs(id,source_key,configuration_revision,state,lease_epoch,owner,lease_until,location_id,selection_revision) VALUES($1,$2,$3,'running',1,$4,clock_timestamp()+($5::bigint*interval '1 millisecond'),$6,$7)`, lease.RunID, sourceKey, lease.ConfigurationRevision, owner, ttl.Milliseconds(), lease.LocationID, lease.SelectionRevision)
 		if err == nil {
 			_, err = tx.Exec(ctx, `INSERT INTO bloem_storage_scan_directories(run_id,directory_id) VALUES($1,$2)`, lease.RunID, root)
 		}
@@ -99,14 +132,17 @@ func verifyLease(ctx context.Context, tx pgx.Tx, lease Lease) error {
 	}
 	var actual Lease
 	var state string
-	err = tx.QueryRow(ctx, `SELECT source_key,configuration_revision,lease_epoch,owner,state FROM bloem_storage_scan_runs WHERE id=$1 FOR UPDATE`, lease.RunID).Scan(&actual.SourceKey, &actual.ConfigurationRevision, &actual.Epoch, &actual.Owner, &state)
+	var currentSelection bool
+	err = tx.QueryRow(ctx, `SELECT r.source_key,r.configuration_revision,r.lease_epoch,r.owner,r.state,r.location_id,r.selection_revision,
+	 EXISTS(SELECT 1 FROM library_storage_locations l WHERE l.id=r.location_id AND l.source_key=r.source_key AND l.selection_revision=r.selection_revision)
+	 FROM bloem_storage_scan_runs r WHERE r.id=$1 FOR UPDATE`, lease.RunID).Scan(&actual.SourceKey, &actual.ConfigurationRevision, &actual.Epoch, &actual.Owner, &state, &actual.LocationID, &actual.SelectionRevision, &currentSelection)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrStaleLease
 	}
 	if err != nil {
 		return err
 	}
-	if actual.SourceKey != lease.SourceKey || actual.ConfigurationRevision != lease.ConfigurationRevision || actual.Epoch != lease.Epoch || actual.Owner != lease.Owner || state != "running" {
+	if actual.SourceKey != lease.SourceKey || actual.ConfigurationRevision != lease.ConfigurationRevision || actual.Epoch != lease.Epoch || actual.Owner != lease.Owner || state != "running" || actual.LocationID != lease.LocationID || actual.SelectionRevision != lease.SelectionRevision || !currentSelection {
 		return ErrStaleLease
 	}
 	var active bool

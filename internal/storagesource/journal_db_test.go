@@ -18,6 +18,8 @@ func scanFixture(t *testing.T) (*Repository, SourceConfig, Lease, Checkpoint) {
 	t.Helper()
 	pool := storageTestPool(t)
 	s, r := fixtureSource(t, pool)
+	fixtureFolder(t, pool, 91000)
+	fixtureLocation(t, r, s.Key, 91000)
 	lease, err := r.Begin(context.Background(), s.Key, "worker-one", time.Minute)
 	if err != nil {
 		t.Fatal(err)

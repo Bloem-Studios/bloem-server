@@ -117,10 +117,10 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 		}
 	}
 	if page.GetComplete() && page.GetChangeToken() != "" {
-		if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_change_tokens(source_key,directory_id,token,configuration_revision,issued_at)
- VALUES($1,$2,$3,$4,now())
- ON CONFLICT(source_key,directory_id) DO UPDATE SET token=EXCLUDED.token,configuration_revision=EXCLUDED.configuration_revision,issued_at=EXCLUDED.issued_at`,
-			lease.SourceKey, checkpoint.DirectoryID, page.GetChangeToken(), lease.ConfigurationRevision); err != nil {
+		if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_change_tokens(source_key,directory_id,token,configuration_revision,issued_at,location_id,selection_revision)
+ VALUES($1,$2,$3,$4,now(),$5,$6)
+ ON CONFLICT(location_id,directory_id) DO UPDATE SET token=EXCLUDED.token,configuration_revision=EXCLUDED.configuration_revision,selection_revision=EXCLUDED.selection_revision,issued_at=EXCLUDED.issued_at`,
+			lease.SourceKey, checkpoint.DirectoryID, page.GetChangeToken(), lease.ConfigurationRevision, lease.LocationID, lease.SelectionRevision); err != nil {
 			return err
 		}
 	}

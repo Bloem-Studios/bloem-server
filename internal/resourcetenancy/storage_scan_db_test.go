@@ -138,7 +138,7 @@ func newNativeScanFixture(t *testing.T, mode string) *nativeScanFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	x.binding = storagesource.Location{ID: uuid.New(), SourceKey: x.source.Key, FolderID: folder}
+	x.binding = storagesource.Location{ID: uuid.New(), SourceKey: x.source.Key, FolderID: folder, SelectionRevision: 1}
 	nativeScanSQL(t, pool, "INSERT INTO library_storage_locations(id,source_key,folder_id) VALUES($1,$2,$3)", x.binding.ID, x.binding.SourceKey, x.binding.FolderID)
 	if mode == "entitled" {
 		nativeScanSQL(t, pool, "INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,plugin_installation_id,status,granted_by_service) VALUES($1,'plugin_availability','plugin_installation',$2,$3,'active','native-test')", x.org, platform, installation)

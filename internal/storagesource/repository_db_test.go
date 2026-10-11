@@ -40,14 +40,14 @@ func TestFolderLocationIsTheLibrarysStorageLocation(t *testing.T) {
 	if _, ok, err := r.FolderLocation(t.Context(), 91002); err != nil || ok {
 		t.Fatalf("local library reported a storage location: %v %v", ok, err)
 	}
-	// A source backs one library.
+	// A library/source pair retains one location.
 	tx, err := r.pool.Begin(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	if _, err := r.AddLocationTx(t.Context(), tx, s.Key, 91002); !errors.Is(err, ErrSourceInUse) {
-		t.Fatalf("second library admitted for one source: %v", err)
+	if _, err := r.AddLocationTx(t.Context(), tx, s.Key, 91001); !errors.Is(err, ErrSourceInUse) {
+		t.Fatalf("duplicate library/source pair admitted: %v", err)
 	}
 	if _, err := r.pool.Exec(t.Context(), `DELETE FROM bloem_storage_sources WHERE key=$1`, s.Key); err == nil {
 		t.Fatal("source backing a library removed")

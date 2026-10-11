@@ -60,6 +60,17 @@ func AttachFilesTx(ctx context.Context, tx pgx.Tx, configurationRevision int64, 
 	if int(tag.RowsAffected()) != len(refs) {
 		return ErrReferenceConflict
 	}
+	// Preserve legacy full-source publication. Selected-subdirectory membership
+	// is supplied by the scoped discovery publisher, never inferred from paths.
+	_, err = tx.Exec(ctx, `INSERT INTO bloem_storage_file_roots(location_id,media_file_id,root_id)
+	 SELECT x.location_id,x.media_file_id,r.id FROM bloem_storage_file_refs x
+	 JOIN library_storage_locations l ON l.id=x.location_id
+	 JOIN bloem_storage_sources s ON s.key=l.source_key
+	 JOIN bloem_storage_selected_roots r ON r.location_id=l.id AND r.directory_id=s.root_entry_id AND r.enabled
+	 WHERE x.media_file_id=ANY($1) ON CONFLICT(location_id,media_file_id,root_id) DO NOTHING`, fileIDs)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -115,7 +126,7 @@ type CoverReference struct {
 // artworkkey.StorageCoverRevision names it. A cover that changed since its URL
 // was issued is not found.
 func (r *Repository) CoverReference(ctx context.Context, contentID, revision string) (CoverReference, error) {
-	rows, err := r.pool.Query(ctx, `SELECT f.id,f.media_folder_id,f.content_id,f.file_path,l.id,l.source_key,l.folder_id,
+	rows, err := r.pool.Query(ctx, `SELECT f.id,f.media_folder_id,f.content_id,f.file_path,l.id,l.source_key,l.folder_id,l.selection_revision,
  s.key,s.owner_id,s.installation_id,s.plugin_id,s.provider_source_id,s.root_entry_id,s.configuration_revision,s.enabled,
  x.location_id,x.cover_entry_id,x.cover_revision,
  COALESCE(s.enabled AND i.enabled AND i.plugin_id=s.plugin_id AND i.owner_id=s.owner_id,false)
@@ -133,7 +144,7 @@ func (r *Repository) CoverReference(ctx context.Context, contentID, revision str
 	for rows.Next() {
 		var c CoverReference
 		var available bool
-		if err := rows.Scan(&c.MediaFileID, &c.FolderID, &c.ContentID, &c.FilePath, &c.Location.ID, &c.Location.SourceKey, &c.Location.FolderID,
+		if err := rows.Scan(&c.MediaFileID, &c.FolderID, &c.ContentID, &c.FilePath, &c.Location.ID, &c.Location.SourceKey, &c.Location.FolderID, &c.Location.SelectionRevision,
 			&c.Source.Key, &c.Source.OwnerID, &c.Source.InstallationID, &c.Source.PluginID, &c.Source.ProviderSourceID, &c.Source.RootEntryID, &c.Source.ConfigurationRevision, &c.Source.Enabled,
 			&c.Cover.LocationID, &c.Cover.EntryID, &c.Cover.Revision, &available); err != nil {
 			return CoverReference{}, err

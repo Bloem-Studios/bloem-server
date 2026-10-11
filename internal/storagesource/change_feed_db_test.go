@@ -49,6 +49,8 @@ func scanAll(t *testing.T, r *Repository, s SourceConfig, client storagev1.Stora
 func TestChangeFeedListsOnlyChangesAfterACompleteListing(t *testing.T) {
 	pool := storageTestPool(t)
 	s, r := fixtureSource(t, pool)
+	fixtureFolder(t, pool, 91001)
+	fixtureLocation(t, r, s.Key, 91001)
 	var mu sync.Mutex
 	var requests []string
 	client := providerClient(t, func(_ context.Context, req *storagev1.ListRequest) (*storagev1.ListResponse, error) {

@@ -34,8 +34,9 @@ type SourceConfig struct {
 
 // Location is a library's storage location: the source its files come from.
 type Location struct {
-	ID, SourceKey uuid.UUID
-	FolderID      int
+	ID, SourceKey     uuid.UUID
+	FolderID          int
+	SelectionRevision int64
 }
 type PersistedRef struct {
 	LocationID                     uuid.UUID
@@ -43,6 +44,8 @@ type PersistedRef struct {
 }
 type Lease struct {
 	RunID, SourceKey             uuid.UUID
+	LocationID                   uuid.UUID
+	SelectionRevision            int64
 	ConfigurationRevision, Epoch int64
 	Owner                        string
 }

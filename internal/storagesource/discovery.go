@@ -38,14 +38,14 @@ func (r *Repository) FetchPage(ctx context.Context, lease Lease, checkpoint Chec
 	}
 	var token string
 	err = r.pool.QueryRow(ctx, `SELECT token FROM bloem_storage_change_tokens
-		WHERE source_key=$1 AND directory_id=$2 AND configuration_revision=$3 AND issued_at > now() - ($4::bigint * interval '1 second')`,
-		lease.SourceKey, checkpoint.DirectoryID, lease.ConfigurationRevision, int64(maxChangeTokenAge/time.Second)).Scan(&token)
+		WHERE source_key=$1 AND directory_id=$2 AND configuration_revision=$3 AND issued_at > now() - ($4::bigint * interval '1 second') AND location_id=$5 AND selection_revision=$6`,
+		lease.SourceKey, checkpoint.DirectoryID, lease.ConfigurationRevision, int64(maxChangeTokenAge/time.Second), lease.LocationID, lease.SelectionRevision).Scan(&token)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
 	page, err := fetchPage(ctx, client, sourceID, checkpoint, token)
 	if token != "" && status.Code(err) == codes.FailedPrecondition {
-		if _, err := r.pool.Exec(ctx, `DELETE FROM bloem_storage_change_tokens WHERE source_key=$1 AND directory_id=$2`, lease.SourceKey, checkpoint.DirectoryID); err != nil {
+		if _, err := r.pool.Exec(ctx, `DELETE FROM bloem_storage_change_tokens WHERE location_id=$1 AND directory_id=$2 AND configuration_revision=$3 AND selection_revision=$4 AND token=$5`, lease.LocationID, checkpoint.DirectoryID, lease.ConfigurationRevision, lease.SelectionRevision, token); err != nil {
 			return nil, err
 		}
 		return fetchPage(ctx, client, sourceID, checkpoint, "")

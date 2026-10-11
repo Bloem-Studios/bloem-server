@@ -104,7 +104,7 @@ func (s *Store) RequireStorageScanTx(ctx context.Context, tx pgx.Tx, binding sto
 		return ErrResourceHidden
 	}
 	var actualBinding storagesource.Location
-	err = tx.QueryRow(ctx, "SELECT id,source_key,folder_id FROM library_storage_locations WHERE id=$1 FOR SHARE", binding.ID).Scan(&actualBinding.ID, &actualBinding.SourceKey, &actualBinding.FolderID)
+	err = tx.QueryRow(ctx, "SELECT id,source_key,folder_id,selection_revision FROM library_storage_locations WHERE id=$1 FOR SHARE", binding.ID).Scan(&actualBinding.ID, &actualBinding.SourceKey, &actualBinding.FolderID, &actualBinding.SelectionRevision)
 	if err != nil {
 		return storageScanError(err)
 	}
