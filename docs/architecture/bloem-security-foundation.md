@@ -355,6 +355,16 @@ once and compares it on every subsequent check. Explicit tenant or device claims
 never use this fallback, and client headers cannot change the captured device.
 Unbound older tickets fail closed. The binding is not accepted from or exposed to clients.
 
+Playback-control v2 tickets use the same Bloem authority adapter. Authenticated
+ticket creation captures the original tenant; the public WebSocket upgrade
+restores and revalidates that binding before the shared handler checks playback
+session, profile and installation ownership. The shared handler's periodic
+checks use the same validator. Resolving a fresh tenant from only the account
+and profile could retarget authority; accepting the request without tenant
+context instead rejects otherwise valid control tickets. Neither is permitted.
+The wire protocol, one-use ticket consumption, Origin checks, PIN verification,
+access fingerprint, ownership and revocation rules remain unchanged.
+
 Disposable rebuilt-browser acceptance received a real v2 events `hello` and kept the
 socket healthy for 18 seconds, beyond its 15-second authority recheck. The same run
 completed home/seasonal HTTP reads without runtime errors. Current-organization seasonal
