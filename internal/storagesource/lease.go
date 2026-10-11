@@ -155,6 +155,37 @@ func verifyLease(ctx context.Context, tx pgx.Tx, lease Lease) error {
 	return nil
 }
 
+// Release ends this owner's claim when its scan stops without completing, so a
+// retry resumes the journal at once instead of failing as a stale lease until
+// the claim expires. Only this exact owner and epoch of a running run is
+// released; a newer claim or a finished run is left untouched. The run and its
+// journal are kept: the next Begin takes the run over with a new epoch. The
+// caller must have joined every operation that used the lease.
+func (r *Repository) Release(ctx context.Context, lease Lease) error {
+	if lease.RunID == uuid.Nil || lease.SourceKey == uuid.Nil || lease.Epoch <= 0 || !validText(lease.Owner, 1024, true) {
+		return fmt.Errorf("invalid storage scan lease")
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	// Source then run is the lock order for all journal operations.
+	var key uuid.UUID
+	err = tx.QueryRow(ctx, `SELECT key FROM bloem_storage_sources WHERE key=$1 FOR UPDATE`, lease.SourceKey).Scan(&key)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_scan_runs SET lease_until=LEAST(lease_until,clock_timestamp())
+		WHERE id=$1 AND source_key=$2 AND owner=$3 AND lease_epoch=$4 AND state='running'`, lease.RunID, lease.SourceKey, lease.Owner, lease.Epoch); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (r *Repository) Renew(ctx context.Context, lease Lease, ttl time.Duration) error {
 	if !validTTL(ttl) {
 		return fmt.Errorf("invalid storage lease duration")

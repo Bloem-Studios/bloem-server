@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path"
 	"strconv"
 	"strings"
@@ -57,24 +58,29 @@ func (e *Executor) tryStorageIngest(ctx context.Context, folder *models.MediaFol
 	}
 	scanCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	result, err := e.storageIngest(scanCtx, cancel, folder, location)
+	return result, true, storageScanOutcome(scanCtx, folder, location, err)
+}
+
+func (e *Executor) storageIngest(scanCtx context.Context, cancel context.CancelFunc, folder *models.MediaFolder, location storagesource.Location) (*Result, error) {
 	entry, err := e.begin(scanCtx, scopeClaim{folderID: folder.ID, mode: scopeModeLibrary}, cancel)
 	if err != nil {
-		return nil, true, err
+		return nil, err
 	}
 	defer e.finish(entry)
 	reportProgress(scanCtx, ProgressUpdate{Phase: "preparing", Message: "Preparing storage scan"})
 	result, err := e.storageIngestor.ScanStorageFolder(scanCtx, folder, location)
 	if err != nil {
-		return result, true, err
+		return result, err
 	}
 	if e.folders != nil {
 		if err = e.folders.UpdateLastScanned(scanCtx, folder.ID, e.now().UTC()); err != nil {
-			return result, true, fmt.Errorf("update storage library last scanned: %w", err)
+			return result, fmt.Errorf("update storage library last scanned: %w", err)
 		}
 	}
 	if shouldPublish(result) && e.events != nil {
 		if err = e.events.Publish(scanCtx, cache.ChannelCatalog, cache.Event{Type: cache.EventScanComplete, Payload: strconv.Itoa(folder.ID)}); err != nil {
-			return result, true, err
+			return result, err
 		}
 	}
 	if shouldPublish(result) && e.realtime != nil {
@@ -84,12 +90,53 @@ func (e *Executor) tryStorageIngest(ctx context.Context, folder *models.MediaFol
 			Updated: scanResultCount(result.ScanResult, func(v *scanner.ScanResult) int { return v.Updated }),
 			Missing: scanResultCount(result.ScanResult, func(v *scanner.ScanResult) int { return v.Missing }),
 		}); err != nil {
-			return result, true, err
+			return result, err
 		}
 	}
 	reportProgress(scanCtx, ProgressUpdate{Phase: "completed", Message: "Storage scan completed"})
-	return result, true, nil
+	return result, nil
 }
+
+// storageScanOutcome decides how the scan queue reports a storage scan. The
+// queue reports any error tree containing context.Canceled as an operator
+// cancellation, without a message. Provider streams, tool bridges and the
+// scan's own job context report their teardown that way too, so only the
+// cancellation of scanCtx itself (an operator cancel, a superseding claim or
+// shutdown) is reported as cancelled. Every other failure is reported failed,
+// with its message and a log line.
+func storageScanOutcome(scanCtx context.Context, folder *models.MediaFolder, location storagesource.Location, err error) error {
+	if err == nil {
+		return nil
+	}
+	if canceled := scanCtx.Err(); canceled != nil {
+		slog.InfoContext(scanCtx, "storage scan canceled", "component", "libraryingest", "library_id", folder.ID, "storage_source", location.SourceKey)
+		if errors.Is(canceled, context.Canceled) && !errors.Is(err, context.Canceled) {
+			// A provider may report the cancellation as its own status error.
+			err = errors.Join(err, canceled)
+		}
+		return err
+	}
+	failure := &storageScanFailure{cause: err}
+	slog.ErrorContext(scanCtx, "storage scan failed", "component", "libraryingest", "library_id", folder.ID, "storage_source", location.SourceKey, "error", failure.Error())
+	return failure
+}
+
+// storageScanFailure is a storage scan failure while the scan was not
+// canceled. It hides context.Canceled leaves from classification, because they
+// come from internal teardown, and keeps every other cause available to
+// errors.Is and errors.As.
+type storageScanFailure struct{ cause error }
+
+func (e *storageScanFailure) Error() string {
+	return "storage scan failed: " + strings.ReplaceAll(e.cause.Error(), "\n", "; ")
+}
+
+func (e *storageScanFailure) Is(target error) bool {
+	// Hide exactly the sentinel the scan queue treats as an operator cancel.
+	return target != context.Canceled && errors.Is(e.cause, target) //nolint:errorlint // Identity with the sentinel is the intended check.
+}
+
+func (e *storageScanFailure) As(target any) bool { return errors.As(e.cause, target) }
 
 // StorageScanner lists a storage source and publishes each listed page to its
 // library's catalog in the page's own transaction. Books with provider
@@ -162,7 +209,13 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	defer stopSession()
 	defer func() {
 		if cause := context.Cause(job); cause != nil && !errors.Is(cause, context.Canceled) {
-			err = errors.Join(err, cause)
+			if storageRenewalOnlyCanceled(err) {
+				// The job's cancellation is a consequence of cause, such as a
+				// failed renewal or a lost plugin session; report the cause.
+				err = cause
+			} else {
+				err = errors.Join(err, cause)
+			}
 		}
 	}()
 	provider := session.Provider()
@@ -200,10 +253,20 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	if err != nil {
 		return result, err
 	}
+	stopRenew := func() {}
+	defer func() {
+		// A scan that stops without completing releases its claim, so a retry
+		// resumes the journal at once instead of failing as a stale lease
+		// until the claim expires. Renewal and every lease user have joined.
+		if err != nil {
+			stopRenew()
+			c.releaseLease(ctx, lease)
+		}
+	}()
 	if lease.ConfigurationRevision != source.ConfigurationRevision {
 		return result, storagesource.ErrStaleLease
 	}
-	stopRenew := startStorageRenewal(job, cancel, c.leaseTTL/3, func(ctx context.Context) error {
+	stopRenew = startStorageRenewal(job, cancel, c.leaseTTL/3, func(ctx context.Context) error {
 		if err := c.resources.RequireStorageScan(ctx, location, source); err != nil {
 			return err
 		}
@@ -278,6 +341,17 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		listed += len(page.GetEntries())
 		reportProgress(job, ProgressUpdate{Phase: "processing", Message: "Listing storage source",
 			FilesDiscovered: listed, FilesProcessed: listed, New: result.ScanResult.New, Updated: result.ScanResult.Updated})
+	}
+}
+
+// releaseLease runs after the scan has stopped, possibly because ctx was
+// canceled, so it uses a bounded context of its own. A failed release only
+// delays a retry until the claim expires.
+func (c *StorageScanner) releaseLease(ctx context.Context, lease storagesource.Lease) {
+	releaseCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	if err := c.sources.Release(releaseCtx, lease); err != nil {
+		slog.WarnContext(ctx, "storage scan: release lease", "component", "libraryingest", "storage_source", lease.SourceKey, "run_id", lease.RunID, "error", err)
 	}
 }
 
