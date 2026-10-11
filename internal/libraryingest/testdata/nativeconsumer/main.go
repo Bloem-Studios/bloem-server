@@ -68,6 +68,12 @@ func (s *server) Configure(_ context.Context, r *publicv1.ConfigureRequest) (*pu
 			return nil, status.Error(codes.InvalidArgument, "movie fixture unavailable")
 		}
 		s.pinned = s.mode != "movies-no-pin"
+		if s.mode == "movies-abandon" {
+			// One movie larger than a probe reads, like a remote object.
+			s.objects = s.objects[:1]
+			s.objects[0].data = bytes.Repeat([]byte{0}, 64<<10)
+			s.objects[0].entry.Size = int64(len(s.objects[0].data))
+		}
 		if s.mode == "movies-invalid" {
 			s.objects[0].data = []byte("not a movie container")
 			s.objects[0].entry.Size = int64(len(s.objects[0].data))
@@ -245,6 +251,13 @@ func (s *server) Read(r *storagev1.ReadRequest, out grpc.ServerStreamingServer[s
 			case <-poll.C:
 			}
 		}
+	}
+	if s.mode == "movies-abandon" && r.Offset > 0 {
+		// A remote range still streaming when the probe exits; only the
+		// host's cleanup ends it.
+		s.signal("read")
+		<-out.Context().Done()
+		return status.FromContextError(out.Context().Err()).Err()
 	}
 	if s.mode == "crash" {
 		s.signal("crash")

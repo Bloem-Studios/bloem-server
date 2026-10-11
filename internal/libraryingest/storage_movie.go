@@ -3,11 +3,17 @@ package libraryingest
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"os/exec"
 
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/scanner"
+	"github.com/Silo-Server/silo-server/internal/storageplugin"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -57,7 +63,7 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesour
 		}
 		file, err := c.movieReader.OpenScanEntry(ctx, sealed, i)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("open storage movie %q: %w", entry.GetName(), err)
 		}
 		cfg := c.movieProbeConfig
 		cfg.Input.CancelSource, cfg.Input.Reauthorize, cfg.Input.ReleaseHost = file.Cancel, file.Reauthorize, nil
@@ -65,9 +71,54 @@ func (c *StorageScanner) prepareMovies(ctx context.Context, location storagesour
 		// ScanEntryFile.Close is idempotent: successful ToolInput owns cleanup;
 		// failed admission/configuration still leaves this handle with us.
 		if err := errors.Join(probeErr, file.Close()); err != nil {
-			return nil, 0, err
+			return nil, 0, storageMovieProbeError(entry.GetName(), err)
 		}
 		movies = append(movies, movie)
 	}
 	return movies, skipped, nil
+}
+
+// storageMovieProbeError names the entry and adds a reason an operator can act
+// on. Probe errors omit provider details, tool output and the bridge argument
+// by design, so the reason is chosen from typed causes only, never from their
+// text. The entry name is already persisted as the file's title hint.
+func storageMovieProbeError(name string, err error) error {
+	if reason := storageMovieProbeReason(err); reason != "" {
+		return fmt.Errorf("probe storage movie %q: %w (%s)", name, err, reason)
+	}
+	return fmt.Errorf("probe storage movie %q: %w", name, err)
+}
+
+func storageMovieProbeReason(err error) string {
+	var exit *exec.ExitError
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		return "timed out reading the file"
+	case errors.Is(err, nativestorage.ErrToolInputBudget):
+		return "read budget exhausted"
+	case errors.Is(err, nativestorage.ErrToolInputBusy):
+		return "too many concurrent reads"
+	case errors.Is(err, scanner.ErrNativeProbeOutputBudget):
+		return "probe output too large"
+	case errors.Is(err, storagesource.ErrReferenceConflict):
+		return "the file changed during the scan"
+	case errors.Is(err, storagesource.ErrStaleLease):
+		return "the scan lost its lease"
+	case errors.Is(err, storageplugin.ErrUnavailable), errors.Is(err, storagesource.ErrSourceUnavailable):
+		return "storage source unavailable"
+	}
+	if code := status.Code(err); code != codes.OK && code != codes.Unknown {
+		return "provider read failed: " + code.String()
+	}
+	switch {
+	case errors.Is(err, io.ErrUnexpectedEOF):
+		return "provider returned a short read"
+	case errors.As(err, &exit):
+		return "ffprobe could not read the file"
+	case errors.Is(err, scanner.ErrNativeProbeInvalid):
+		return "not a readable movie"
+	case errors.Is(err, context.Canceled):
+		return "the read was interrupted"
+	}
+	return ""
 }

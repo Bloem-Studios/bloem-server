@@ -21,6 +21,16 @@ returned every requested byte. Source, authority, cancellation and budget
 failures remain sticky and invalidate the tool result even if the child exits
 successfully after accepting partial input.
 
+Cleanup's own teardown is the one exception. A tool may exit while a range it
+no longer needs is still being served; ffprobe routinely leaves an open-ended
+range in flight. Cleanup cancels the source before it joins handlers, so that
+read fails, and a handler failure observed after the tool has joined and
+cleanup has begun is not recorded. It cannot affect the result: the failed
+chunk reached the tool as no byte, and a handler records any failure before it
+answers, so a failed read the tool waited on was recorded before the tool
+joined. Failures while the tool still runs, or before cleanup begins, stay
+sticky, even on a range the tool had already abandoned.
+
 `Run` accepts one trusted callback. The callback must use its context to
 terminate the child and must reap that child before returning; it must not call
 `Close` itself. Cleanup stops HTTP admission, cancels source and HTTP work,

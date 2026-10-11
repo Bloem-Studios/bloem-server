@@ -192,6 +192,18 @@ A storage library scans only as a whole library. `libraryingest.StorageScanner`:
    cleanup or an expired lease rolls back both cleanup and completion.
    Orphaned artwork is removed after commit. Standalone discovery may still
    use `Complete` without catalog finalization.
+5. A scan that stops without completing, failed or cancelled, stops renewal
+   and `Release`s its own owner and epoch. The run and its journal stay, so a
+   retry resumes at once instead of failing as a stale lease until the claim
+   expires.
+
+The scan queue reports any error containing `context.Canceled` as an operator
+cancellation, with no message. Provider streams, the tool bridge and the
+scan's job context report their own teardown that way too, so the executor
+reports a storage scan as cancelled only when the scan's own context was
+cancelled. Any other failure is reported as failed and logged, with a message
+that names the movie entry and a reason chosen from typed causes; provider
+details and tool output stay out of it.
 
 Publication (`scanner.PublishStorageEbooksTx`) is set-based: a page of up to
 512 entries costs a fixed number of statements. Entries carrying provider

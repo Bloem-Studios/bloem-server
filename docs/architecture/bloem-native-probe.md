@@ -12,6 +12,9 @@ budget; the supplement runs before the child starts. Source and authority
 failures remain sticky, including a terminal cause joined with EOF. Ordinary
 EOF at the known size preserves valid partial reads. A zero child exit cannot
 override a read failure, cancellation, output overflow or final authority check.
+The probe reader follows the bridge's teardown rule: once cleanup cancels the
+source, a read of a range the exited child abandoned still fails, but it does
+not fail the probe.
 
 ffprobe is restricted to the selected container and the HTTP/TCP protocols
 needed for the literal-loopback bridge. MOV external data references and

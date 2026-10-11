@@ -63,6 +63,12 @@ func nativeMovieScanArtifact(t *testing.T) ([]byte, *publicv1.PluginManifest) {
 
 func newNativeMovieScanFixture(t *testing.T, binary []byte, manifest *publicv1.PluginManifest, ready bool, mode string) nativeMovieScanFixture {
 	t.Helper()
+	return newNativeMovieScanFixtureWithProbe(t, binary, manifest, ready, mode, "")
+}
+
+// An empty ffprobe uses the installed binary.
+func newNativeMovieScanFixtureWithProbe(t *testing.T, binary []byte, manifest *publicv1.PluginManifest, ready bool, mode, ffprobe string) nativeMovieScanFixture {
+	t.Helper()
 	pool := scanAdmissionDatabase(t)
 	cipher, err := secret.New([]byte(strings.Repeat("synthetic-test-key", 3)))
 	if err != nil {
@@ -125,9 +131,10 @@ func newNativeMovieScanFixture(t *testing.T, binary []byte, manifest *publicv1.P
 			t.Error(err)
 		}
 	})
-	ffprobe, err := exec.LookPath("ffprobe")
-	if err != nil {
-		t.Fatal("ffprobe required for native movie ingestion")
+	if ffprobe == "" {
+		if ffprobe, err = exec.LookPath("ffprobe"); err != nil {
+			t.Fatal("ffprobe required for native movie ingestion")
+		}
 	}
 	publisher := scanner.NewScanner(scanner.NewFileRepository(pool), ffprobe, nil, 1, true, 0)
 	resources := resourcetenancy.NewStore(pool)
