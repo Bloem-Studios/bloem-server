@@ -49,6 +49,13 @@ func newReadAheadFake(size int) *readAheadFake {
 	return &readAheadFake{data: data, failAt: -1, cancelled: make(chan struct{})}
 }
 
+// fresh returns an uncanceled source with the same bytes. Closing a reader
+// with fetches in flight cancels its source for good, as PlaybackFile does,
+// so subtests must not share one.
+func (f *readAheadFake) fresh() *readAheadFake {
+	return &readAheadFake{data: f.data, failAt: -1, cancelled: make(chan struct{})}
+}
+
 func (f *readAheadFake) Info() mediasource.Info {
 	return mediasource.Info{Name: "movie.mkv", Revision: "etag-1", Size: int64(len(f.data))}
 }
@@ -163,7 +170,7 @@ func TestReadAheadMatchesSourceBytes(t *testing.T) {
 	fake := newReadAheadFake(5<<20 + 12345)
 	size := int64(len(fake.data))
 	t.Run("sequential", func(t *testing.T) {
-		reader := newTestReadAhead(t, fake, smallReadAhead)
+		reader := newTestReadAhead(t, fake.fresh(), smallReadAhead)
 		digest := sha256.New()
 		buffer := make([]byte, 32<<10)
 		n, err := io.CopyBuffer(digest, struct{ io.Reader }{reader}, buffer)
@@ -175,7 +182,7 @@ func TestReadAheadMatchesSourceBytes(t *testing.T) {
 		}
 	})
 	t.Run("positional", func(t *testing.T) {
-		reader := newTestReadAhead(t, fake, smallReadAhead)
+		reader := newTestReadAhead(t, fake.fresh(), smallReadAhead)
 		random := rand.New(rand.NewPCG(1, 2))
 		cases := [][2]int64{{0, 1}, {65535, 2}, {65536, 65536}, {100, 300 << 10}, {size - 10, 10}, {size - 1, 1}}
 		for range 200 {
@@ -198,7 +205,7 @@ func TestReadAheadMatchesSourceBytes(t *testing.T) {
 		}
 	})
 	t.Run("seek", func(t *testing.T) {
-		reader := newTestReadAhead(t, fake, smallReadAhead)
+		reader := newTestReadAhead(t, fake.fresh(), smallReadAhead)
 		if end, err := reader.Seek(0, io.SeekEnd); err != nil || end != size {
 			t.Fatalf("seek end = %d, %v", end, err)
 		}
@@ -214,8 +221,7 @@ func TestReadAheadMatchesSourceBytes(t *testing.T) {
 		}
 	})
 	t.Run("range hint", func(t *testing.T) {
-		hinted := newReadAheadFake(len(fake.data))
-		hinted.data = fake.data
+		hinted := fake.fresh()
 		reader := newTestReadAhead(t, hinted, smallReadAhead)
 		start, end := int64(200_000), int64(300_000)
 		reader.SetRangeEnd(end)
@@ -259,7 +265,7 @@ func TestReadAheadServeContentRanges(t *testing.T) {
 				return w
 			}
 			want := serve(bytes.NewReader(fake.data), nil)
-			reader := newTestReadAhead(t, fake, smallReadAhead)
+			reader := newTestReadAhead(t, fake.fresh(), smallReadAhead)
 			got := serve(reader, reader.SetRangeEnd)
 			if got.Code != want.Code || got.Header().Get("Content-Range") != want.Header().Get("Content-Range") || got.Header().Get("Content-Length") != want.Header().Get("Content-Length") {
 				t.Fatalf("status %d %v, want %d %v", got.Code, got.Header(), want.Code, want.Header())
