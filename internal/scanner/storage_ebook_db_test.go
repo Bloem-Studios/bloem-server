@@ -146,13 +146,14 @@ func TestPublishStorageEbooksFromProviderMetadata(t *testing.T) {
 		t.Fatalf("shared author stored %d times: %v", people, err)
 	}
 
-	// A rescan applies changed metadata and revisions without duplicating anything.
+	// A rescan applies changed metadata and revisions without duplicating
+	// anything. The PDF keeps its revision; its changed metadata still counts.
 	dune.Title, dune.Series = "Dune (Revised)", ""
 	result = publishStorageEbooks(t, pool, s, folder, location,
 		storageEbookEntry("dune", "epub", dune, "sha256:a2"),
 		storageEbookEntry("dune", "pdf", dune, "sha256:b"),
 		storageEbookEntry("notes", "epub", other, "sha256:c"))
-	if result != (StoragePublishResult{Updated: 1, Unchanged: 2}) {
+	if result != (StoragePublishResult{Updated: 2, Unchanged: 1}) {
 		t.Fatalf("rescan result = %+v", result)
 	}
 	if err := pool.QueryRow(ctx, `SELECT title FROM media_items WHERE content_id=$1`, duneID).Scan(&title); err != nil || title != "Dune (Revised)" {

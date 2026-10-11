@@ -146,6 +146,9 @@ func (s *server) signal(kind string) {
 }
 func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1.ListResponse, error) {
 	s.audit("list")
+	if s.mode == "catalog" {
+		return s.listCatalog(r)
+	}
 	if s.mode == "describe-gate" {
 		return nil, status.Error(codes.Unavailable, "unexpected listing after Describe gate")
 	}

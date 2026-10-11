@@ -212,6 +212,14 @@ a book listed again before then is restored. A token the provider refuses
 seven days falls back to a full listing, which also reconciles anything a change
 feed missed. Without a change feed, a listing never proves absence.
 
+A listed book whose entry is unchanged is not republished. Its file reference
+records a digest of the entry it was published from (`entry_sha256`: revision,
+provider metadata and cover), and a present file whose entry is listed again
+with the same digest, configuration revision and library membership writes
+only its journal entry. A forced full listing of an unchanged library rewrites
+`bloem_storage_entries`, not its catalog rows. A metadata-only change counts as
+updated and republishes that book.
+
 ## Covers
 
 Covers stay with their source; the host never copies them into artwork
