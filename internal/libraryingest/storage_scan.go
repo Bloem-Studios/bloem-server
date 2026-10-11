@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -104,6 +105,7 @@ type StorageScanner struct {
 	nativeMovieReady bool
 	movieReader      *nativestorage.ScanReader
 	movieProbeConfig scanner.NativeProbeConfig
+	movieMetadata    NativeMovieMetadata
 }
 
 var _ StorageIngestor = (*StorageScanner)(nil)
@@ -156,6 +158,14 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	if err != nil {
 		return result, err
 	}
+	// Movie matching runs behind the listing. Registered before the job's
+	// cancel, so an early return cancels in-flight matches before joining them.
+	var matching sync.WaitGroup
+	defer matching.Wait()
+	matchStats := &nativeMovieMatchStats{}
+	// One attempt per item per scan: a later page's copy of a title whose
+	// match just failed waits for the next scan.
+	matchAttempted := make(map[string]bool)
 	job, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
 	stopSession := context.AfterFunc(session.Context(), func() { cancel(storageplugin.ErrUnavailable) })
@@ -212,6 +222,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	defer stopRenew()
 
 	media := mediasource.NewPluginSource(provider)
+	skipDirectory := func(entry *storagev1.Entry) bool { return scanner.StorageDirectorySkipped(folder.Type, entry) }
 	listed := 0
 	for {
 		if err = job.Err(); err != nil {
@@ -222,6 +233,8 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			return result, err
 		}
 		if !more {
+			// Matches commit catalog changes; finish them before the sweep.
+			matching.Wait()
 			// Stop renewing first so a renewal cannot race completion.
 			stopRenew()
 			var trashed int
@@ -236,6 +249,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			}
 			result.ScanResult.FilesDeleted += trashed
 			c.scanner.CleanupStorageLibraryArtwork(job, orphanedImageDirs)
+			matchStats.log(job, folder.ID)
 			return result, nil
 		}
 		page, err := c.sources.FetchPage(job, lease, checkpoint, provider)
@@ -245,20 +259,30 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		var books []scanner.StorageEbook
 		var movies []scanner.StorageMovie
 		var skipped int
+		var excluded []string
 		if librarykind.IsMovie(folder.Type) {
-			movies, skipped, err = c.prepareMovies(job, location, source, lease, checkpoint, page)
+			movies, skipped, excluded, err = c.prepareMovies(job, location, source, lease, checkpoint, page)
 		} else {
 			books, skipped, err = c.prepare(job, media, source, page.GetEntries())
 		}
 		if err != nil {
 			return result, err
 		}
+		// The previous page's matches may move items to their provider
+		// identity; publish against settled catalog rows.
+		matching.Wait()
 		var published scanner.StoragePublishResult
+		var matches []scanner.StorageMovieMatch
 		var removedFiles int
 		publish := func(ctx context.Context, tx pgx.Tx, _ []*storagev1.Entry, removed []string) error {
 			var err error
 			if librarykind.IsMovie(folder.Type) {
-				published, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, movies)
+				var moviePage scanner.StorageMoviePublishResult
+				moviePage, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, movies)
+				published, matches = moviePage.StoragePublishResult, moviePage.Matches
+				// A file an older scan published that the library now skips
+				// (an extra, a sample) goes missing like a removed one.
+				removed = append(slices.Clone(removed), excluded...)
 			} else {
 				published, err = c.scanner.PublishStorageEbooksTx(ctx, tx, folder, location, source.ConfigurationRevision, books)
 			}
@@ -268,8 +292,20 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			removedFiles, err = c.scanner.MarkStorageEbooksRemovedTx(ctx, tx, location, removed)
 			return err
 		}
-		if err = c.sources.ApplyPageAuthorized(job, lease, checkpoint, page, authorize, publish); err != nil {
+		if err = c.sources.ApplyPageAuthorizedSkipping(job, lease, checkpoint, page, skipDirectory, authorize, publish); err != nil {
 			return result, err
+		}
+		matches = slices.DeleteFunc(matches, func(m scanner.StorageMovieMatch) bool {
+			attempted := matchAttempted[m.ContentID]
+			matchAttempted[m.ContentID] = true
+			return attempted
+		})
+		if len(matches) > 0 && c.movieMetadata != nil {
+			matching.Add(1)
+			go func() {
+				defer matching.Done()
+				c.matchMovies(job, folder.ID, matches, matchStats)
+			}()
 		}
 		result.ScanResult.New += published.New
 		result.ScanResult.Updated += published.Updated

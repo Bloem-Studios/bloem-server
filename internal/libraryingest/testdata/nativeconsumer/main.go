@@ -63,7 +63,11 @@ func (s *server) Configure(_ context.Context, r *publicv1.ConfigureRequest) (*pu
 	s.objects = fixtures(revision)
 	if strings.HasPrefix(s.mode, "movies") {
 		var err error
-		s.objects, err = movieFixtures(s.notify, revision)
+		if s.mode == "movies-folders" {
+			s.objects, err = movieFolderFixtures(s.notify, revision)
+		} else {
+			s.objects, err = movieFixtures(s.notify, revision)
+		}
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, "movie fixture unavailable")
 		}

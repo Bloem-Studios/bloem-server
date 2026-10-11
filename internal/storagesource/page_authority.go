@@ -18,8 +18,14 @@ type PageAuthorizer func(context.Context, pgx.Tx) error
 // in their established order before the journal locks its source and run.
 // Standalone discovery may use ApplyPage without catalog authority.
 func (r *Repository) ApplyPageAuthorized(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse, authorize PageAuthorizer, publish PagePublisher) error {
+	return r.ApplyPageAuthorizedSkipping(ctx, lease, checkpoint, page, nil, authorize, publish)
+}
+
+// ApplyPageAuthorizedSkipping is ApplyPageAuthorized for a library that never
+// lists the directories skip reports.
+func (r *Repository) ApplyPageAuthorizedSkipping(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse, skip DirectorySkipper, authorize PageAuthorizer, publish PagePublisher) error {
 	if authorize == nil {
 		return fmt.Errorf("storage page authority required")
 	}
-	return r.applyPage(ctx, lease, checkpoint, page, authorize, publish)
+	return r.applyPage(ctx, lease, checkpoint, page, skip, authorize, publish)
 }
