@@ -216,7 +216,25 @@ Removed entries mark their files missing; the post-scan sweep removes them, and
 a book listed again before then is restored. A token the provider refuses
 (`FailedPrecondition`), from another configuration revision, or older than
 seven days falls back to a full listing, which also reconciles anything a change
-feed missed. Without a change feed, a listing never proves absence.
+feed missed: each run records whether it requested a directory's first page
+without a token (`bloem_storage_scan_directories.full_listing`) and which
+directory last listed each journal entry (`bloem_storage_entries.directory_id`).
+Only a completed run proves absence, in its completion transaction
+(`MarkUnlistedStorageFilesTx`): a file is marked missing when a directory the
+run listed in full no longer lists its entry, or, when the run listed every
+directory in full, when the run did not list its entry at all (entries of a
+directory no longer listed, or journaled before directories were recorded). A
+full listing that returned no entries proves nothing, as an empty filesystem
+root does not. Incremental, partial, cancelled and failed listings never prove
+absence. Marked files follow the removal grace period and sweep.
+
+A listed book whose entry is unchanged is not republished. Its file reference
+records a digest of the entry it was published from (`entry_sha256`: revision,
+provider metadata and cover), and a present file whose entry is listed again
+with the same digest, configuration revision and library membership writes
+only its journal entry. A forced full listing of an unchanged library rewrites
+`bloem_storage_entries`, not its catalog rows. A metadata-only change counts as
+updated and republishes that book.
 
 ## Covers
 

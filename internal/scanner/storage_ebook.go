@@ -1,7 +1,9 @@
 package scanner
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"sort"
 	"strconv"
@@ -17,6 +19,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/titleutil"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 )
 
 // StorageEbook is one listed storage file, with the metadata to publish it.
@@ -107,18 +110,26 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 		paths[i] = path
 	}
 
-	type existingFile struct{ contentID, revision string }
+	// A current file is present in the library under this configuration, so
+	// listing its entry again unchanged leaves nothing to republish.
+	type existingFile struct {
+		contentID, revision string
+		digest              []byte
+		current             bool
+	}
 	existing := map[string]existingFile{}
-	rows, err := tx.Query(ctx, `SELECT f.file_path, f.content_id, COALESCE(r.revision, '')
+	rows, err := tx.Query(ctx, `SELECT f.file_path, f.content_id, COALESCE(r.revision, ''), r.entry_sha256,
+		f.missing_since IS NULL AND r.configuration_revision IS NOT DISTINCT FROM $3 AND EXISTS(SELECT 1 FROM media_item_libraries m
+			WHERE m.content_id = f.content_id AND m.media_folder_id = f.media_folder_id)
 		FROM media_files f LEFT JOIN bloem_storage_file_refs r ON r.media_file_id = f.id
-		WHERE f.media_folder_id = $1 AND f.file_path = ANY($2)`, folder.ID, paths)
+		WHERE f.media_folder_id = $1 AND f.file_path = ANY($2)`, folder.ID, paths, configurationRevision)
 	if err != nil {
 		return result, err
 	}
 	for rows.Next() {
 		var path string
 		var f existingFile
-		if err := rows.Scan(&path, &f.contentID, &f.revision); err != nil {
+		if err := rows.Scan(&path, &f.contentID, &f.revision, &f.digest, &f.current); err != nil {
 			rows.Close()
 			return result, err
 		}
@@ -141,8 +152,10 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 	}
 	byGroup := map[string]string{}
 	if len(unresolved) > 0 {
+		// The key version bounds idx_media_files_folder_group to these keys;
+		// without it every page reads the library's whole folder range.
 		rows, err := tx.Query(ctx, `SELECT content_group_key, min(content_id) FROM media_files
-			WHERE media_folder_id = $1 AND content_group_key = ANY($2) GROUP BY content_group_key`, folder.ID, unresolved)
+			WHERE media_folder_id = $1 AND group_key_version = $3 AND content_group_key = ANY($2) GROUP BY content_group_key`, folder.ID, unresolved, ebookGroupKeyVersion)
 		if err != nil {
 			return result, err
 		}
@@ -160,17 +173,27 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 		}
 	}
 	contentIDs := make([]string, len(books))
+	digests := make([][]byte, len(books))
+	republish := make([]int, 0, len(books))
 	for i := range books {
+		digests[i] = storageEntryDigest(books[i].Entry)
 		if f, ok := existing[paths[i]]; ok {
 			contentIDs[i] = f.contentID
-			if f.revision == books[i].Entry.GetRevision() {
-				result.Unchanged++
-			} else {
+			changed := f.revision != books[i].Entry.GetRevision() || (f.digest != nil && !bytes.Equal(f.digest, digests[i]))
+			if changed {
 				result.Updated++
+			} else {
+				result.Unchanged++
+			}
+			// Republication rewrites every catalog row of a book. A forced full
+			// re-listing would otherwise rewrite the whole library each time.
+			if changed || !f.current || f.digest == nil {
+				republish = append(republish, i)
 			}
 			continue
 		}
 		result.New++
+		republish = append(republish, i)
 		if id, ok := byGroup[groupKeys[i]]; ok && groupKeys[i] != "" {
 			contentIDs[i] = id
 			continue
@@ -183,6 +206,14 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 		if groupKeys[i] != "" {
 			byGroup[groupKeys[i]] = id
 		}
+	}
+
+	if len(republish) == 0 {
+		return result, nil
+	}
+	if len(republish) < len(books) {
+		books, paths, groupKeys = storagePick(books, republish), storagePick(paths, republish), storagePick(groupKeys, republish)
+		contentIDs, digests = storagePick(contentIDs, republish), storagePick(digests, republish)
 	}
 
 	// Items: the first book of each item supplies its metadata, applied over
@@ -265,7 +296,7 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 	for i, b := range books {
 		refs[i] = storagesource.FileRef{MediaFileID: fileIDs[paths[i]], PersistedRef: storagesource.PersistedRef{
 			LocationID: location.ID, EntryID: b.Entry.GetId(), Revision: b.Entry.GetRevision(), LogicalPath: b.Entry.GetLogicalPath(),
-		}, CoverEntryID: b.CoverEntryID, CoverRevision: b.CoverRevision}
+		}, CoverEntryID: b.CoverEntryID, CoverRevision: b.CoverRevision, EntrySHA256: digests[i]}
 	}
 	if err := storagesource.AttachFilesTx(ctx, tx, configurationRevision, refs); err != nil {
 		return result, fmt.Errorf("attach storage files: %w", err)
@@ -281,6 +312,33 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 		return result, err
 	}
 	return result, nil
+}
+
+// storageEbookPublication versions how a listed entry becomes catalog rows.
+// Bump it when that changes, so the next listing republishes every book.
+const storageEbookPublication = "bloem.storage.ebook.publication.v1"
+
+// storageEntryDigest identifies everything a book is published from: the
+// listed entry, including its provider metadata and cover, and its revision,
+// which pins any file parsed for metadata. Nil disables skipping.
+func storageEntryDigest(e *storagev1.Entry) []byte {
+	raw, err := proto.MarshalOptions{Deterministic: true}.Marshal(e)
+	if err != nil {
+		return nil
+	}
+	h := sha256.New()
+	h.Write([]byte(storageEbookPublication))
+	h.Write([]byte{0})
+	h.Write(raw)
+	return h.Sum(nil)
+}
+
+func storagePick[T any](values []T, indexes []int) []T {
+	out := make([]T, len(indexes))
+	for i, j := range indexes {
+		out[i] = values[j]
+	}
+	return out
 }
 
 // applyStorageCover points an item's poster at the cover its source serves on
@@ -467,6 +525,27 @@ func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, loc
 		WHERE r.media_file_id = f.id AND r.location_id = $1 AND r.entry_id = ANY($2) AND f.missing_since IS NULL`, location.ID, entryIDs)
 	if err != nil {
 		return 0, fmt.Errorf("mark removed storage ebooks: %w", err)
+	}
+	return int(tag.RowsAffected()), nil
+}
+
+// MarkUnlistedStorageFilesTx marks missing the location's files whose entries
+// the run's full listings prove gone: entries last listed by a directory the
+// run listed in full, or, when it listed everything, any entry it did not list.
+// Call it only in the run's completion transaction. As with removals, the
+// sweep deletes them after the grace period and a listing restores them.
+func (s *Scanner) MarkUnlistedStorageFilesTx(ctx context.Context, tx pgx.Tx, location storagesource.Location, listed storagesource.FullListings) (int, error) {
+	if len(listed.Directories) == 0 && !listed.Everything {
+		return 0, nil
+	}
+	tag, err := tx.Exec(ctx, `UPDATE media_files f SET missing_since = NOW()
+		FROM bloem_storage_file_refs r
+		LEFT JOIN bloem_storage_entries e ON e.source_key = $2 AND e.entry_id = r.entry_id
+		WHERE r.location_id = $1 AND f.id = r.media_file_id AND f.missing_since IS NULL
+		  AND e.last_seen_run IS DISTINCT FROM $3 AND ($4 OR e.directory_id = ANY($5))`,
+		location.ID, location.SourceKey, listed.RunID, listed.Everything, listed.Directories)
+	if err != nil {
+		return 0, fmt.Errorf("mark unlisted storage files: %w", err)
 	}
 	return int(tag.RowsAffected()), nil
 }
