@@ -298,7 +298,10 @@ func (s *NativeVideoService) Serve(w http.ResponseWriter, r *http.Request, sessi
 	if err != nil {
 		return err
 	}
-	defer opened.Close()
+	// The read-ahead takes ownership of opened. Closing runs after the result
+	// check below, also when it aborts: Close cancels fetches in flight.
+	var owner io.Closer = opened
+	defer func() { _ = owner.Close() }()
 	if session.PlayMethod != playback.PlayDirect {
 		return &APIError{Status: 415, Code: "unsupported", Message: "Native video requires a direct or HLS transport"}
 	}
@@ -323,16 +326,45 @@ func (s *NativeVideoService) Serve(w http.ResponseWriter, r *http.Request, sessi
 	w.Header().Set("ETag", fmt.Sprintf("\"%x\"", digest))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Type", nativeVideoContentType(file.Container))
-	if err := opened.Reauthorize(ctx); err != nil {
+	reader, err := nativestorage.NewReadAhead(ctx, opened, nativeVideoDirectReadAhead)
+	if err != nil {
 		return err
 	}
-	stream := &nativeEbookStream{File: opened}
+	owner = reader
+	// This check also opens the first authorization window for the reads.
+	if err := reader.Reauthorize(ctx); err != nil {
+		return err
+	}
+	if r.Header.Get("If-Range") == "" {
+		reader.SetRangeEnd(nativestorage.RangeEnd(r.Header.Get("Range"), binding.Info.Size))
+	}
+	stream := &nativeEbookStream{File: reader}
 	http.ServeContent(httpstream.NewRollingDeadlineWriter(w), r.WithContext(ctx), "video."+file.Container, binding.Info.ModifiedAt, stream)
-	if stream.failure != nil || opened.Err() != nil || ctx.Err() != nil {
+	if stream.failure != nil || reader.Err() != nil || opened.Err() != nil || ctx.Err() != nil {
 		panic(http.ErrAbortHandler)
 	}
 	return nil
 }
+
+// Native direct play reads 1 MiB provider ranges on aligned block boundaries,
+// three ahead of a sequential client, instead of one provider read per 32 KiB
+// copy. Memory is at most 5 MiB per response. Delivery stops at the next read
+// after a session stop or source failure, and within one second of a
+// revocation that only a fresh authority check observes (see
+// nativestorage.ReadAheadConfig).
+var nativeVideoDirectReadAhead = nativestorage.ReadAheadConfig{BlockBytes: 1 << 20, CacheBlocks: 5, PrefetchBlocks: 3, AuthorizationWindow: time.Second}
+
+// FFmpeg reads progressive remux and HLS input through the tool bridge. One
+// read-ahead serves every HTTP range of one execution; the bridge copies 1 MiB
+// chunks and admits four concurrent ranges, so an FFmpeg seek that reconnects
+// before the previous range drains does not exhaust its slots.
+var nativeVideoToolReadAhead = nativestorage.ReadAheadConfig{BlockBytes: 1 << 20, CacheBlocks: 6, PrefetchBlocks: 3, AuthorizationWindow: time.Second}
+
+const (
+	nativeVideoToolChunkBytes = 1 << 20
+	nativeVideoToolReads      = 4
+)
+
 func nativeVideoContentType(container string) string {
 	switch nativeVideoFormat(container) {
 	case "mov":
@@ -380,14 +412,21 @@ func (s *NativeVideoService) InputSource(ctx context.Context, session *playback.
 			_ = opened.Close()
 			return nil, nativestorage.ErrToolInputBudget
 		}
-		input, err := nativestorage.NewToolInput(opened.Context(), opened, nativestorage.ToolInputConfig{CancelSource: opened.Cancel, Reauthorize: func(check context.Context) error {
+		reader, err := nativestorage.NewReadAhead(opened.Context(), opened, nativeVideoToolReadAhead)
+		if err != nil {
+			_ = opened.Close()
+			return nil, err
+		}
+		// The tool input owns the reader, which owns opened. CancelSource
+		// still cancels opened, failing any read-ahead fetch in flight.
+		input, err := nativestorage.NewToolInput(opened.Context(), reader, nativestorage.ToolInputConfig{CancelSource: opened.Cancel, Reauthorize: func(check context.Context) error {
 			if s.Deny.Denied(check, frozenSession.ID) {
 				return errPlaybackSessionEnded
 			}
 			return opened.Reauthorize(check)
-		}, MaxBytes: max(int64(1<<30), binding.Info.Size*8), ChunkBytes: 128 << 10, MaxConcurrentReads: 2, Timeout: 12 * time.Hour})
+		}, MaxBytes: max(int64(1<<30), binding.Info.Size*8), ChunkBytes: nativeVideoToolChunkBytes, MaxConcurrentReads: nativeVideoToolReads, Timeout: 12 * time.Hour})
 		if err != nil {
-			_ = opened.Close()
+			_ = reader.Close()
 		}
 		return input, err
 	}}
