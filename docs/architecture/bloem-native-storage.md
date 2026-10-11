@@ -27,8 +27,12 @@ end. Internal scan and probe prerequisites do not imply playable support.
   `bloem-storage:` + SHA-256 of the location UUID and the length-prefixed entry
   ID. It is an internal identity, never a filename, mounted path or URL.
 
-The whole `bloem-storage:` namespace is reserved. Downloads, Jellyfin delivery
-and the proxy refuse it; nothing opens it as a local path.
+The whole `bloem-storage:` namespace is reserved, including malformed identities.
+Ordinary playback and streaming refuse it before filesystem probing, missing-file
+marking or tool invocation. Alternate editions and multipart resume also exclude
+native identities. The native ebook reader uses its separate source resolver.
+Downloads, Jellyfin delivery and the proxy refuse the namespace; nothing opens it
+as a local path.
 
 ## Creating a library
 

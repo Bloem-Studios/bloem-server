@@ -335,7 +335,7 @@ func NewPlaybackHandler(sessionMgr SessionManagerInterface, opts ...FilePathReso
 	}
 	h.wireRemotePlaybackStop()
 	if len(opts) > 0 {
-		h.fileResolver = opts[0]
+		h.fileResolver = guardNativePlaybackFiles(opts[0])
 	}
 	// Wire the shared transcode manager with closures so it reads the handler's
 	// (often late-set) config/store/secret fields lazily at call time, avoiding a
@@ -2241,9 +2241,9 @@ func (h *PlaybackHandler) findAlternateFiles(ctx context.Context, source *models
 	var files []*models.MediaFile
 	var err error
 	if source.EpisodeID != "" {
-		files, err = h.FileVersionFetcher.GetByEpisodeID(ctx, source.EpisodeID)
+		files, err = guardNativePlaybackVersions(h.FileVersionFetcher).GetByEpisodeID(ctx, source.EpisodeID)
 	} else {
-		files, err = h.FileVersionFetcher.GetByContentID(ctx, source.ContentID)
+		files, err = guardNativePlaybackVersions(h.FileVersionFetcher).GetByContentID(ctx, source.ContentID)
 	}
 	if err != nil {
 		return nil, err

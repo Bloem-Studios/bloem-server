@@ -3437,7 +3437,7 @@ func (h *PlaybackHandler) multipartResumeFileV3(ctx context.Context, file *model
 	if h == nil || h.FileVersionFetcher == nil || file == nil || file.PresentationPartTotal <= 1 || absolute <= 0 {
 		return nil, 0, nil
 	}
-	parts, err := h.FileVersionFetcher.GetByContentID(ctx, file.ContentID)
+	parts, err := guardNativePlaybackVersions(h.FileVersionFetcher).GetByContentID(ctx, file.ContentID)
 	if err != nil {
 		return nil, 0, err
 	}

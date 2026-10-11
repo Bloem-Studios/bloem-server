@@ -107,7 +107,7 @@ func (h *StreamHandler) ffmpegPath() string {
 func NewStreamHandler(sessionMgr SessionManagerInterface, fileResolver FilePathResolver) *StreamHandler {
 	return &StreamHandler{
 		sessionMgr:   sessionMgr,
-		fileResolver: fileResolver,
+		fileResolver: guardNativePlaybackFiles(fileResolver),
 		// A bare manager (no recipe store) behaves as "no reconstruct" — plain
 		// GetSession + ownership — so HandleStream has a single code path. The
 		// router overwrites this with the shared manager to enable reconstruct.
