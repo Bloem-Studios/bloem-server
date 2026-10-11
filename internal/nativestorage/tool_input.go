@@ -54,6 +54,7 @@ type ToolInput struct {
 
 	mu                sync.Mutex
 	closing, used     bool
+	joined            bool
 	spent             int64
 	sticky            error
 	toolJoined        chan struct{}
@@ -129,6 +130,7 @@ func (t *ToolInput) Run(run func(context.Context, string) error) (result error) 
 		if err := t.ctx.Err(); err != nil && t.sticky == nil {
 			t.sticky = &toolInputFailure{err}
 		}
+		t.joined = true
 		close(t.toolJoined)
 		t.mu.Unlock()
 		result = errors.Join(result, t.Close())
@@ -171,12 +173,38 @@ func (t *ToolInput) fail(err error) {
 	t.cancel()
 }
 
+// failServing records a failure observed by an HTTP handler, except one seen
+// after the tool has joined and Close has begun. Close cancels the lifetime
+// and the source before it joins handlers, so a range the tool abandoned
+// (ffprobe exits with an open-ended range still being served) fails as a
+// consequence of that teardown. Such a failure cannot affect the tool's
+// result: a chunk reaches HTTP only after its whole read and authority checks
+// succeed, and a handler records any failure before it answers, so a failed
+// read the tool waited on was recorded before the tool could join. Failures
+// while the tool still runs are always recorded.
+func (t *ToolInput) failServing(err error) {
+	if err == nil {
+		return
+	}
+	t.mu.Lock()
+	if t.closing && t.joined {
+		t.mu.Unlock()
+		return
+	}
+	if t.sticky == nil {
+		t.sticky = &toolInputFailure{err}
+	}
+	t.mu.Unlock()
+	t.cancel()
+}
+
 // Close stops admission, cancels source/HTTP IO, joins the tool and active
 // handlers, explicitly closes File, and releases host admission exactly once.
 // A consumer that has not yet joined retains host admission; no cleanup timeout
 // releases its runtime. File's own cancellation hooks retain their semantics.
 // The bounded lifetime triggers this cleanup independently of a caller
-// remembering to close an idle handle.
+// remembering to close an idle handle. Reads that fail because this cleanup
+// canceled them are not recorded; see failServing.
 func (t *ToolInput) Close() error {
 	if t == nil {
 		return nil

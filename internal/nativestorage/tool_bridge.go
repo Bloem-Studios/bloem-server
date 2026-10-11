@@ -54,17 +54,17 @@ func (t *ToolInput) serveToolRange(w http.ResponseWriter, r *http.Request) {
 	case t.slots <- struct{}{}:
 		defer func() { <-t.slots }()
 	default:
-		t.fail(ErrToolInputBusy)
+		t.failServing(ErrToolInputBusy)
 		http.Error(w, "tool input unavailable", http.StatusTooManyRequests)
 		return
 	}
 	if err := t.config.Reauthorize(t.ctx); err != nil {
-		t.fail(err)
+		t.failServing(err)
 		http.Error(w, "tool input unavailable", http.StatusServiceUnavailable)
 		return
 	}
 	if err := t.ctx.Err(); err != nil {
-		t.fail(err)
+		t.failServing(err)
 		http.Error(w, "tool input unavailable", http.StatusServiceUnavailable)
 		return
 	}
@@ -95,7 +95,8 @@ func (t *ToolInput) serveToolRange(w http.ResponseWriter, r *http.Request) {
 		}
 		chunk := buffer[:int(min(remaining, int64(len(buffer))))]
 		if err := t.readToolChunk(chunk, start); err != nil {
-			t.fail(err)
+			// Recorded unless it is the teardown of a range the tool abandoned.
+			t.failServing(err)
 			if started {
 				panic(http.ErrAbortHandler) // Truncate the fixed-length stream.
 			}
