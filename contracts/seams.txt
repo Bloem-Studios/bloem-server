@@ -258,6 +258,8 @@ internal/playback/plan_v3.go
 internal/playback/protocol_v3.go
 internal/playback/session.go
 internal/playback/session_test.go
+internal/playback/subtitle_fonts.go  # temporary backport of Silo-Server/silo-server#2262; remove after upstream merges the font extraction fix
+internal/playback/subtitle_fonts_test.go  # temporary backport of Silo-Server/silo-server#2262; remove after upstream merges the font extraction fix
 internal/playback/testdata/protocol_v3/decision_response.json
 internal/playback/testdata/protocol_v3/native-decision_response.json
 internal/playback/transcode.go
