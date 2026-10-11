@@ -901,6 +901,14 @@ GET /api/bloem/v1/admin/organization/book-requests	non-media
 POST /api/bloem/v1/admin/organization/book-requests/{id}/approve	non-media
 POST /api/bloem/v1/admin/organization/book-requests/{id}/decline	non-media
 POST /api/bloem/v1/admin/organization/book-requests/{id}/fulfil	non-media
+GET /api/bloem/v1/admin/organization/ebook-request-integrations	non-media
+POST /api/bloem/v1/admin/organization/ebook-request-integrations	non-media
+PUT /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/library	non-media
+PUT /api/bloem/v1/admin/organization/ebook-request-policy	non-media
+GET /api/bloem/v1/admin/organization/ebook-requests	non-media
+POST /api/bloem/v1/admin/organization/ebook-requests/{id}/approve	non-media
+POST /api/bloem/v1/admin/organization/ebook-requests/{id}/decline	non-media
+POST /api/bloem/v1/admin/organization/ebook-requests/{id}/retry	non-media
 GET /api/bloem/v1/admin/organization/entitlement-cohorts	non-media
 GET /api/bloem/v1/admin/organization/entitlement-cohorts/{cohort_id}	non-media
 DELETE /api/bloem/v1/admin/organization/entitlements/{folder_id}	non-media

@@ -229,9 +229,6 @@ func readBookRequestBody(w http.ResponseWriter, r *http.Request, out any) bool {
 	}
 	return true
 }
-func writeBookRequestError(w http.ResponseWriter, err error) {
-	writeKindBookRequestError(w, err, "Audiobook")
-}
 func writeKindBookRequestError(w http.ResponseWriter, err error, kind string) {
 	lower := strings.ToLower(kind)
 	status, code, message := 500, "internal_error", kind+" request could not be completed"

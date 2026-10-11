@@ -84,6 +84,8 @@ DELETE /api/v2/*
 GET /api/bloem/v1/admin/*
 GET /api/bloem/v1/admin/organization/activity
 GET /api/bloem/v1/admin/organization/book-requests
+GET /api/bloem/v1/admin/organization/ebook-request-integrations
+GET /api/bloem/v1/admin/organization/ebook-requests
 GET /api/bloem/v1/admin/organization/entitlement-cohorts
 GET /api/bloem/v1/admin/organization/entitlement-cohorts/{cohort_id}
 GET /api/bloem/v1/admin/organization/groups/
@@ -370,6 +372,10 @@ POST /api/bloem/v1/admin/*
 POST /api/bloem/v1/admin/organization/book-requests/{id}/approve
 POST /api/bloem/v1/admin/organization/book-requests/{id}/decline
 POST /api/bloem/v1/admin/organization/book-requests/{id}/fulfil
+POST /api/bloem/v1/admin/organization/ebook-request-integrations
+POST /api/bloem/v1/admin/organization/ebook-requests/{id}/approve
+POST /api/bloem/v1/admin/organization/ebook-requests/{id}/decline
+POST /api/bloem/v1/admin/organization/ebook-requests/{id}/retry
 POST /api/bloem/v1/admin/organization/groups/
 POST /api/bloem/v1/admin/organization/invitations
 POST /api/bloem/v1/admin/organization/invitations/{id}/resend
@@ -523,6 +529,8 @@ POST /api/v1/requests/{id}/cancel
 POST /api/v1/theme/catalog/refresh
 POST /api/v2/*
 PUT /api/bloem/v1/admin/*
+PUT /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/library
+PUT /api/bloem/v1/admin/organization/ebook-request-policy
 PUT /api/bloem/v1/admin/organization/entitlements/{folder_id}
 PUT /api/bloem/v1/admin/organization/groups/{id}
 PUT /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/configuration
