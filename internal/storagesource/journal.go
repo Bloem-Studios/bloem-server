@@ -141,13 +141,14 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 
 // applyEntries records the entries directoryID listed. The directory is the
 // one that last listed each entry, which its next full listing reconciles.
+// Listing an entry clears any suspicion that it is absent.
 func applyEntries(ctx context.Context, tx pgx.Tx, lease Lease, directoryID string, entries []*storagev1.Entry) error {
 	// This batch is bounded by the validated 512-entry page, not library size.
 	batch := &pgx.Batch{}
 	for _, entry := range entries {
 		batch.Queue(`INSERT INTO bloem_storage_entries(source_key,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,last_seen_run,directory_id)
   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-  ON CONFLICT(source_key,entry_id) DO UPDATE SET name=EXCLUDED.name,logical_path=EXCLUDED.logical_path,kind=EXCLUDED.kind,size=EXCLUDED.size,modified_unix_nano=EXCLUDED.modified_unix_nano,revision=EXCLUDED.revision,configuration_revision=EXCLUDED.configuration_revision,last_seen_run=EXCLUDED.last_seen_run,absence_confirmed_at=NULL,directory_id=EXCLUDED.directory_id
+  ON CONFLICT(source_key,entry_id) DO UPDATE SET name=EXCLUDED.name,logical_path=EXCLUDED.logical_path,kind=EXCLUDED.kind,size=EXCLUDED.size,modified_unix_nano=EXCLUDED.modified_unix_nano,revision=EXCLUDED.revision,configuration_revision=EXCLUDED.configuration_revision,last_seen_run=EXCLUDED.last_seen_run,absence_confirmed_at=NULL,absence_suspected_at=NULL,directory_id=EXCLUDED.directory_id
   WHERE bloem_storage_entries.last_seen_run<>EXCLUDED.last_seen_run`, lease.SourceKey, entry.GetId(), entry.GetName(), entry.GetLogicalPath(), int32(entry.GetKind()), entry.GetSize(), entry.GetModifiedUnixNano(), entry.GetRevision(), lease.ConfigurationRevision, lease.RunID, directoryID)
 	}
 	results := tx.SendBatch(ctx, batch)

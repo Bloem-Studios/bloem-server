@@ -219,14 +219,25 @@ seven days falls back to a full listing, which also reconciles anything a change
 feed missed: each run records whether it requested a directory's first page
 without a token (`bloem_storage_scan_directories.full_listing`) and which
 directory last listed each journal entry (`bloem_storage_entries.directory_id`).
-Only a completed run proves absence, in its completion transaction
-(`MarkUnlistedStorageFilesTx`): a file is marked missing when a directory the
-run listed in full no longer lists its entry, or, when the run listed every
-directory in full, when the run did not list its entry at all (entries of a
-directory no longer listed, or journaled before directories were recorded). A
-full listing that returned no entries proves nothing, as an empty filesystem
-root does not. Incremental, partial, cancelled and failed listings never prove
-absence. Marked files follow the removal grace period and sweep.
+A full listing is not a point-in-time snapshot. The Bookwarehouse provider
+fixes an upper bound when a directory listing starts and leaves books updated
+after it to the next listing, so a present book the cursor had not yet reached
+can be missing from a full listing; the change token that listing issues lists
+it next time. Absence therefore takes two completed runs, both decided in the
+completion transaction (`MarkUnlistedStorageFilesTx`). A run's full listings
+make an entry suspect (`bloem_storage_entries.absence_suspected_at`) when a
+directory the run listed in full no longer lists it, or, when the run listed
+every directory in full, when the run did not list it at all (entries of a
+directory no longer listed, or journaled before directories were recorded).
+Listing an entry clears the suspicion. A later completed run that has not
+listed a suspect entry marks its file missing. A full listing that returned no
+entries is suspect itself, as an empty filesystem root is: it raises no
+suspicion, and a run with one confirms only entries of the directories it
+listed with entries. Incremental, partial, cancelled and failed listings never
+raise a suspicion. A book updated during both a full
+listing and the following listing, each time before the listing reached it,
+can still be marked missing; the listing after that restores it. Marked files
+follow the removal grace period and sweep.
 
 A listed book whose entry is unchanged is not republished. Its file reference
 records a digest of the entry it was published from (`entry_sha256`: revision,

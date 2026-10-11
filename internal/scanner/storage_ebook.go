@@ -529,23 +529,39 @@ func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, loc
 	return int(tag.RowsAffected()), nil
 }
 
-// MarkUnlistedStorageFilesTx marks missing the location's files whose entries
-// the run's full listings prove gone: entries last listed by a directory the
-// run listed in full, or, when it listed everything, any entry it did not list.
+// MarkUnlistedStorageFilesTx infers absence from full listings over two
+// completed runs. A full listing is not a snapshot: Bookwarehouse fixes an
+// upper bound when a directory listing starts and leaves books updated after
+// it to the next listing, so a present book can be missing from one full
+// listing. The run first marks missing the location's files whose entries an
+// earlier run suspected and no listing has listed since: entries of a
+// directory this run listed, or, unless one of its full listings returned
+// nothing, any such entry. It then suspects the entries its own full listings
+// omit: entries last listed by a directory it listed in full, or, when it
+// listed everything, any entry it did not list.
 // Call it only in the run's completion transaction. As with removals, the
-// sweep deletes them after the grace period and a listing restores them.
+// sweep deletes missing files after the grace period and a listing restores
+// them.
 func (s *Scanner) MarkUnlistedStorageFilesTx(ctx context.Context, tx pgx.Tx, location storagesource.Location, listed storagesource.FullListings) (int, error) {
-	if len(listed.Directories) == 0 && !listed.Everything {
-		return 0, nil
-	}
 	tag, err := tx.Exec(ctx, `UPDATE media_files f SET missing_since = NOW()
-		FROM bloem_storage_file_refs r
-		LEFT JOIN bloem_storage_entries e ON e.source_key = $2 AND e.entry_id = r.entry_id
-		WHERE r.location_id = $1 AND f.id = r.media_file_id AND f.missing_since IS NULL
-		  AND e.last_seen_run IS DISTINCT FROM $3 AND ($4 OR e.directory_id = ANY($5))`,
-		location.ID, location.SourceKey, listed.RunID, listed.Everything, listed.Directories)
+		FROM bloem_storage_entries e
+		JOIN bloem_storage_file_refs r ON r.location_id = $1 AND r.entry_id = e.entry_id
+		WHERE e.source_key = $2 AND e.absence_suspected_at IS NOT NULL AND e.last_seen_run IS DISTINCT FROM $3
+		  AND (NOT $4 OR e.directory_id = ANY($5))
+		  AND f.id = r.media_file_id AND f.missing_since IS NULL`,
+		location.ID, location.SourceKey, listed.RunID, listed.EmptyFullListing, listed.Listed)
 	if err != nil {
 		return 0, fmt.Errorf("mark unlisted storage files: %w", err)
+	}
+	if len(listed.Directories) > 0 || listed.Everything {
+		if _, err := tx.Exec(ctx, `UPDATE bloem_storage_entries e SET absence_suspected_at = NOW()
+			FROM bloem_storage_file_refs r
+			JOIN media_files f ON f.id = r.media_file_id AND f.missing_since IS NULL
+			WHERE r.location_id = $1 AND e.source_key = $2 AND e.entry_id = r.entry_id AND e.absence_suspected_at IS NULL
+			  AND e.last_seen_run IS DISTINCT FROM $3 AND ($4 OR e.directory_id = ANY($5))`,
+			location.ID, location.SourceKey, listed.RunID, listed.Everything, listed.Directories); err != nil {
+			return 0, fmt.Errorf("suspect unlisted storage files: %w", err)
+		}
 	}
 	return int(tag.RowsAffected()), nil
 }

@@ -54,7 +54,8 @@ func (r *Repository) FetchPage(ctx context.Context, lease Lease, checkpoint *Che
 		token = ""
 		page, err = fetchPage(ctx, client, sourceID, *checkpoint, "")
 	}
-	// Without a change token the provider lists every entry of the directory.
+	// Without a change token the provider lists the directory in full, though
+	// not necessarily as a snapshot (see FullListings).
 	checkpoint.FullListing = err == nil && token == ""
 	return page, err
 }
