@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

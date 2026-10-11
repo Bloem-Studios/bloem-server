@@ -94,7 +94,7 @@ func TestRealPluginAndPastimeHouseholdAcceptance(t *testing.T) {
 		t.Fatal(err)
 	}
 	host := pluginhost.NewHost(pluginhost.Config{BrokerRegistrar: s.RegisterBroker, InstanceState: plugins.NewInstanceStateStore(s.Pool, s.Cipher).ForScope("fixture")})
-	t.Cleanup(func() { host.Shutdown(context.Background()) })
+	t.Cleanup(func() { _ = host.Shutdown(context.Background()) })
 	var client *pluginhost.Client
 	start := func() {
 		var e error

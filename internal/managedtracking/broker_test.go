@@ -2,14 +2,15 @@ package managedtracking
 
 import (
 	"context"
+	"net"
+	"testing"
+
 	managedv1 "github.com/Silo-Server/silo-server/internal/managedtracking/wire"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
-	"net"
-	"testing"
 )
 
 func TestNativeBrokerRejectsUnrelatedPluginAndCallerScope(t *testing.T) {
@@ -23,7 +24,7 @@ func TestNativeBrokerRejectsUnrelatedPluginAndCallerScope(t *testing.T) {
 			listener := bufconn.Listen(1 << 20)
 			server := grpc.NewServer()
 			s.RegisterBroker(server, tc.plugin, tc.id)
-			go server.Serve(listener)
+			go func() { _ = server.Serve(listener) }()
 			t.Cleanup(server.Stop)
 			conn, err := grpc.NewClient("passthrough:///fixture", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) { return listener.Dial() }), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {

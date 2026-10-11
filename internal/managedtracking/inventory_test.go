@@ -2,8 +2,9 @@ package managedtracking
 
 import (
 	"errors"
-	"github.com/google/uuid"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestInventoryNeverExportsAnotherTenantProfile(t *testing.T) {

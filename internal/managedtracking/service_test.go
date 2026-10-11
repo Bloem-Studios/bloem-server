@@ -2,15 +2,16 @@ package managedtracking
 
 import (
 	"context"
+	"os"
+	"strings"
+	"testing"
+
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"os"
-	"strings"
-	"testing"
 )
 
 func fixture(t *testing.T) (*Service, *pgxpool.Pool, int, string, int, string) {

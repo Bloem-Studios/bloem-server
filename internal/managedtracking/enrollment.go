@@ -152,22 +152,34 @@ func (s *Service) connectionConverged(ctx context.Context, tx pgx.Tx, key string
 	if !scrobble || !export {
 		return false, nil
 	}
-	plain, err := s.Cipher.Decrypt(token, watchsync.TokenAAD("access_token", key, account, p.ProfileID))
-	if err != nil || plain != e.Credential {
+	// An undecryptable value is not an error here: it is a connection that
+	// no longer holds this enrollment, which the caller rewrites.
+	if plain, ok := s.open(token, watchsync.TokenAAD("access_token", key, account, p.ProfileID)); !ok || plain != e.Credential {
 		return false, nil
 	}
-	raw, err := s.Cipher.Decrypt(bundle, watchsync.TokenAAD("plugin_credentials", key, account, p.ProfileID))
-	if err != nil {
+	raw, ok := s.open(bundle, watchsync.TokenAAD("plugin_credentials", key, account, p.ProfileID))
+	if !ok {
 		return false, nil
 	}
-	var stored struct {
-		AccessToken      string            `json:"access_token"`
-		SecretAttributes map[string]string `json:"secret_attributes"`
-	}
-	if json.Unmarshal([]byte(raw), &stored) != nil || stored.AccessToken != e.Credential {
-		return false, nil
-	}
-	return stored.SecretAttributes["account_id"] == p.AccountID && stored.SecretAttributes["profile_id"] == p.ProfileID && stored.SecretAttributes["instance_id"] == instance, nil
+	stored, ok := decodeCredentials(raw)
+	return ok && stored.AccessToken == e.Credential && stored.SecretAttributes["account_id"] == p.AccountID && stored.SecretAttributes["profile_id"] == p.ProfileID && stored.SecretAttributes["instance_id"] == instance, nil
+}
+
+type credentialBundle struct {
+	AccessToken      string            `json:"access_token"`
+	SecretAttributes map[string]string `json:"secret_attributes"`
+}
+
+func decodeCredentials(raw string) (credentialBundle, bool) {
+	var b credentialBundle
+	err := json.Unmarshal([]byte(raw), &b)
+	return b, err == nil
+}
+
+// open decrypts a stored value, reporting only whether it opened.
+func (s *Service) open(ciphertext, aad string) (string, bool) {
+	plain, err := s.Cipher.Decrypt(ciphertext, aad)
+	return plain, err == nil
 }
 
 func disableConnections(ctx context.Context, tx pgx.Tx, id int) error {

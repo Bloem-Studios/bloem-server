@@ -3,6 +3,7 @@ package managedtracking
 import (
 	"context"
 	"errors"
+
 	managedv1 "github.com/Silo-Server/silo-server/internal/managedtracking/wire"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

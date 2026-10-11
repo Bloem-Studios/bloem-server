@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+
 	"github.com/Silo-Server/silo-server/internal/managedtracking"
 	"github.com/Silo-Server/silo-server/internal/watchsync"
 )

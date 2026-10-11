@@ -7,12 +7,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/Silo-Server/silo-server/internal/managedtracking"
-	"github.com/Silo-Server/silo-server/internal/secret"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"io"
 	"os"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/managedtracking"
+	"github.com/Silo-Server/silo-server/internal/secret"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func run(ctx context.Context, args []string, out io.Writer) error {

@@ -135,8 +135,11 @@ func (s *Service) recordEvent(ctx context.Context, tx pgx.Tx, id, user int, acco
 	if !validEvent(event) {
 		return nil, errEventRejected
 	}
-	e := proto.Clone(event).(*pluginv1.WatchSyncEvent)
-	action := ""
+	e, ok := proto.Clone(event).(*pluginv1.WatchSyncEvent)
+	if !ok {
+		return nil, errEventRejected
+	}
+	var action string
 	history := false
 	switch e.Operation {
 	case pluginv1.WatchSyncOperation_WATCH_SYNC_OPERATION_MARK_WATCHED:
@@ -302,7 +305,10 @@ func (c *outboundClient) ApplyEvents(ctx context.Context, r *pluginv1.WatchSyncA
 	if err != nil {
 		return nil, err
 	}
-	forward := proto.Clone(r).(*pluginv1.WatchSyncApplyEventsRequest)
+	forward, ok := proto.Clone(r).(*pluginv1.WatchSyncApplyEventsRequest)
+	if !ok {
+		return nil, ErrAuthority
+	}
 	forward.Events = nil
 	for _, event := range wire {
 		if event != nil {
@@ -324,7 +330,10 @@ func (c *outboundClient) ApplyEvents(ctx context.Context, r *pluginv1.WatchSyncA
 			byWire[result.GetEventId()] = result
 		}
 	}
-	out := proto.Clone(response).(*pluginv1.WatchSyncApplyEventsResponse)
+	out, ok := proto.Clone(response).(*pluginv1.WatchSyncApplyEventsResponse)
+	if !ok {
+		return nil, ErrAuthority
+	}
 	out.Results = nil
 	for i, event := range r.Events {
 		if wire[i] == nil {
@@ -335,10 +344,11 @@ func (c *outboundClient) ApplyEvents(ctx context.Context, r *pluginv1.WatchSyncA
 			})
 			continue
 		}
-		if result, ok := byWire[wire[i].GetEventId()]; ok {
-			mapped := proto.Clone(result).(*pluginv1.WatchSyncApplyResult)
-			mapped.EventId = event.GetEventId()
-			out.Results = append(out.Results, mapped)
+		if result, found := byWire[wire[i].GetEventId()]; found {
+			if mapped, ok := proto.Clone(result).(*pluginv1.WatchSyncApplyResult); ok {
+				mapped.EventId = event.GetEventId()
+				out.Results = append(out.Results, mapped)
+			}
 		}
 	}
 	return out, nil

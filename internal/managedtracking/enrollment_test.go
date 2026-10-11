@@ -3,11 +3,12 @@ package managedtracking
 import (
 	"context"
 	"errors"
-	"github.com/Silo-Server/silo-server/internal/secret"
-	"github.com/Silo-Server/silo-server/internal/watchsync"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/Silo-Server/silo-server/internal/secret"
+	"github.com/Silo-Server/silo-server/internal/watchsync"
 )
 
 func enrollmentFixture(t *testing.T) (*Service, int, Profile) {

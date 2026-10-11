@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"errors"
-	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
-	"github.com/Silo-Server/silo-server/internal/watchsync"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
+	"github.com/Silo-Server/silo-server/internal/watchsync"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func digestEvent(e *pluginv1.WatchSyncEvent) []byte {
