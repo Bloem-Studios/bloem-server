@@ -97,8 +97,9 @@ func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateReq
 		if len(req.Paths) != 0 {
 			return LibraryView{}, fieldError("storage_source", "A library uses either paths or a storage source, not both")
 		}
-		if !librarykind.IsEbook(req.Type) {
-			return LibraryView{}, fieldError("storage_source", "Storage sources support ebook libraries only")
+		// Attachment checks actual movie readiness and source authority in tx.
+		if !librarykind.SupportsNativeStorage(req.Type, true) {
+			return LibraryView{}, fieldError("storage_source", "Storage sources support ebook and movie libraries only")
 		}
 		if h.StorageLocations == nil {
 			return LibraryView{}, apiError(http.StatusServiceUnavailable, "storage_unavailable", "Storage sources are not available on this server")

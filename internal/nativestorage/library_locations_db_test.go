@@ -93,6 +93,31 @@ func TestCreateLibraryWithStorageSource(t *testing.T) {
 	}
 }
 
+func TestCreateMovieLibraryRequiresNativePlaybackReadiness(t *testing.T) {
+	pool, source := storageSourceFixture(t)
+	if _, err := createStorageLibrary(t, pool, "movies", source.Key); !errors.Is(err, ErrLocationSourceUnavailable) {
+		t.Fatalf("movie attachment without playback readiness: %v", err)
+	}
+	locations := NewLibraryLocations(pool)
+	locations.SetNativeMovieReady(true)
+	folder, err := catalog.NewFolderRepository(pool).Create(t.Context(), catalog.CreateFolderInput{
+		Type: "movies", Name: "Native movie readiness test",
+		AttachStorage: func(ctx context.Context, tx pgx.Tx, folderID int) error {
+			return locations.AttachTx(ctx, tx, source.Key, folderID)
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM organization_entitlements WHERE media_folder_id=$1`, folder.ID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id=$1`, folder.ID)
+	})
+	if folder.StorageSourceKey == nil || *folder.StorageSourceKey != source.Key || len(folder.Paths) != 0 {
+		t.Fatalf("movie attachment = %v paths=%v", folder.StorageSourceKey, folder.Paths)
+	}
+}
+
 func TestCreateLibraryRefusesUnusableStorageSource(t *testing.T) {
 	pool, source := storageSourceFixture(t)
 	for name, tc := range map[string]struct {
