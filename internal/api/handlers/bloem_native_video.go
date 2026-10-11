@@ -148,8 +148,10 @@ func rememberNativeVideoSnapshot(ctx context.Context, value NativeVideoBinding) 
 	state.files[value.Identity.FileID] = value
 	return nil
 }
+
+// sameNativeVideo compares the source a binding pins, not its delegation.
 func sameNativeVideo(a, b NativeVideoBinding) bool {
-	return a.Identity == b.Identity && a.Info == b.Info && a.Format == b.Format
+	return a.Identity == b.Identity && sameNativeVideoInfo(a.Info, b.Info) && a.Format == b.Format
 }
 func (s *NativeVideoService) open(ctx context.Context, file *models.MediaFile) (NativeVideoFile, NativeVideoBinding, error) {
 	if s == nil {
@@ -171,7 +173,7 @@ func (s *NativeVideoService) openWith(ctx context.Context, file *models.MediaFil
 	if opened == nil {
 		return nil, NativeVideoBinding{}, nativeVideoUnavailable()
 	}
-	value := NativeVideoBinding{Identity: opened.Identity(), Info: opened.Info(), Format: nativeVideoFormat(file.Container)}
+	value := normalizeNativeVideoBinding(NativeVideoBinding{Identity: opened.Identity(), Info: opened.Info(), Format: nativeVideoFormat(file.Container)})
 	if value.Identity.FileID != file.ID || value.Identity.FilePath != file.FilePath || value.Identity.MediaFolderID != file.MediaFolderID || value.Identity.ContentID != file.ContentID || value.Info.Size < 0 || value.Info.Revision == "" || value.Info.Revision != value.Identity.Reference.Revision {
 		_ = opened.Close()
 		return nil, NativeVideoBinding{}, storagesource.ErrReferenceConflict
@@ -370,7 +372,7 @@ func (s *NativeVideoService) InputSource(ctx context.Context, session *playback.
 		if err != nil {
 			return nil, err
 		}
-		if actual != binding {
+		if !sameNativeVideoBinding(actual, binding) {
 			_ = opened.Close()
 			return nil, storagesource.ErrReferenceConflict
 		}
@@ -405,7 +407,7 @@ func (s *NativeVideoService) InputSource(ctx context.Context, session *playback.
 			return err
 		}
 		defer opened.Close()
-		if actual != binding {
+		if !sameNativeVideoBinding(actual, binding) {
 			return storagesource.ErrReferenceConflict
 		}
 		if err = opened.Reauthorize(check); err != nil {
