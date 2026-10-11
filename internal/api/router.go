@@ -410,6 +410,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	deps = nativeStorageDependencies(deps)
 	declareNativeMediaRoutes()
 	r := chi.NewRouter()
+	r.Use(captureNativeVideoRequest)
 	audienceTickets := bloemAudienceTickets(deps)
 
 	useBaseMiddleware(r, deps)
@@ -2478,6 +2479,13 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.EbookConfig = ebookReaderHandler
 		nativeEbookFiles = nativeStorageReader(deps, ebookReaderHandler)
 		attachNativeStorageReader(deps, nativeEbookFiles)
+		if coordinator, ok := nativeEbookFiles.Native.(*nativestorage.Coordinator); ok && playbackHandler != nil {
+			nativeVideoPlayback(deps, coordinator, playbackHandler, streamHandler, authMiddleware, viewerAccessMiddleware)
+			if playbackHandler.NativeVideo != nil {
+				playbackHandler.InstallNativeVideoRecovery()
+				attachNativeVideoReadiness(deps, playbackHandler, streamHandler, libraryHandler)
+			}
+		}
 		v2deps.EbookFiles = nativeEbookFiles
 		v2deps.EbookAnnotations = ebookReaderHandler
 	}

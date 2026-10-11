@@ -12,6 +12,15 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// SetNativeMovieReady is startup-only, before this Store handles requests or
+// scans. It must never be changed concurrently with authority checks. False is
+// the default and retains the native movie publication/attachment hold.
+func (s *Store) SetNativeMovieReady(ready bool) {
+	if s != nil {
+		s.nativeMovieReady = ready
+	}
+}
+
 // RequireStorageScan authorizes a host background scan of a library's storage
 // location: the library and the source's installation must have compatible
 // owners. It establishes no account membership or end-user access. Its short
@@ -91,7 +100,7 @@ func (s *Store) RequireStorageScanTx(ctx context.Context, tx pgx.Tx, binding sto
 	if err != nil {
 		return storageScanError(err)
 	}
-	if !librarykind.IsEbook(kind) || !enabled {
+	if !librarykind.SupportsNativeStorage(kind, s.nativeMovieReady) || !enabled {
 		return ErrResourceHidden
 	}
 	var actualBinding storagesource.Location

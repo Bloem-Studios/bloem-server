@@ -107,7 +107,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
-	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/s3client"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/scanqueue"
@@ -116,7 +115,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/server"
 	"github.com/Silo-Server/silo-server/internal/serveridentity"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
-	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/storagetransition"
 	"github.com/Silo-Server/silo-server/internal/streamtelemetry"
 	"github.com/Silo-Server/silo-server/internal/subtitles"
@@ -1225,8 +1223,15 @@ func main() {
 			// Reclaim orphaned transcode dirs at boot and hourly thereafter, bound
 			// to appCtx so it stops on shutdown.
 			srv.StartOrphanSweeper(appCtx)
-			handler = srv.Handler()
-			shutdownStandalone = srv.Shutdown
+			nativeRoot, err := filepath.Abs(filepath.Join(resolvePluginCacheDir(), "native-storage"))
+			if err != nil {
+				log.Fatalf("native worker storage root: %v", err)
+			}
+			workerRowID, _ := watcher.NodeRowID()
+			handler, shutdownStandalone, err = configureStandaloneNativeVideo(srv, api.Dependencies{DB: pool, SecretCipher: dataCipher, RedisClient: redisClient}, workerRowID, nativeRoot, os.Getenv("BLOEM_NATIVE_STORAGE_APPROVALS"))
+			if err != nil {
+				log.Fatalf("native worker video: %v", err)
+			}
 		}
 
 		_ = opsRepo
@@ -2290,10 +2295,7 @@ func main() {
 			deps.RealtimeHub,
 		)
 		if deps.NativeStorage != nil {
-			storageScanner, err := libraryingest.NewStorageScanner(
-				deps.NativeStorage, storagesource.NewRepository(deps.DB),
-				resourcetenancy.NewStore(deps.DB), deps.Scanner,
-			)
+			storageScanner, err := newNativeMovieStorageScanner(&deps)
 			if err != nil {
 				log.Fatalf("storage library scanner: %v", err)
 			}

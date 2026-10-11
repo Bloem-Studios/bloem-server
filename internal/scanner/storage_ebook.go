@@ -471,15 +471,15 @@ func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, loc
 	return int(tag.RowsAffected()), nil
 }
 
-// SweepStorageLibraryTx reconciles a pathless ebook library and empties its
+// SweepStorageLibraryTx reconciles a pathless storage library and empties its
 // expired trash inside the caller's authorized completion transaction. The
 // library repository retains its orphan, present-file and removal-grace guards.
-// Native ebook publication has no episode memberships or filesystem roots.
+// Native ebook and movie publication has no episode memberships or filesystem roots.
 // The returned artwork directories may be removed only after a successful commit.
 func (s *Scanner) SweepStorageLibraryTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder) (int, []string, error) {
 	if s == nil || s.libraryRepo == nil || s.fileRepo == nil || tx == nil || folder == nil ||
-		!librarykind.IsEbook(folder.Type) || len(folder.Paths) != 0 {
-		return 0, nil, fmt.Errorf("storage ebook sweep: scanner or library not configured")
+		(!librarykind.IsEbook(folder.Type) && !librarykind.IsMovie(folder.Type)) || len(folder.Paths) != 0 {
+		return 0, nil, fmt.Errorf("storage sweep: scanner or library not configured")
 	}
 	_, _, orphanedImageDirs, err := s.libraryRepo.ReconcileFolderMembershipTx(ctx, tx, folder.ID, nil)
 	if err != nil {

@@ -26,9 +26,10 @@ import (
 // and accepts no path, URL or independently selected entry identity.
 // Its lifetime must remain inside the scan's publication boundary.
 type ScanReader struct {
-	pool    *pgxpool.Pool
-	host    *Host
-	runtime Runtime
+	pool             *pgxpool.Pool
+	host             *Host
+	runtime          Runtime
+	nativeMovieReady bool
 }
 
 // ScanPage seals the validated provider page, its current pending checkpoint
@@ -55,6 +56,14 @@ func NewScanReader(pool *pgxpool.Pool, host *Host) (*ScanReader, error) {
 		return nil, storagesource.ErrSourceUnavailable
 	}
 	return &ScanReader{pool: pool, host: host, runtime: ManagedRuntime{Manager: host.Manager}}, nil
+}
+
+// SetNativeMovieReady is startup-only, before this reader admits any pages or
+// entries. It must never race provider reads or authority checks.
+func (r *ScanReader) SetNativeMovieReady(ready bool) {
+	if r != nil {
+		r.nativeMovieReady = ready
+	}
 }
 
 // AdmitScanPage accepts a page fetched by the trusted scan coordinator for its
@@ -129,7 +138,9 @@ func (r *ScanReader) authorize(ctx context.Context, p *ScanPage) (scanOwnerEvide
 	if _, err = tx.Exec(ctx, "SET LOCAL lock_timeout='2s'; SET LOCAL statement_timeout='10s'"); err != nil {
 		return owners, err
 	}
-	if err = resourcetenancy.NewStore(r.pool).RequireStorageScanTx(ctx, tx, p.location, p.source); err != nil {
+	resources := resourcetenancy.NewStore(r.pool)
+	resources.SetNativeMovieReady(r.nativeMovieReady)
+	if err = resources.RequireStorageScanTx(ctx, tx, p.location, p.source); err != nil {
 		return owners, err
 	}
 	// A snapshot read before acquiring authority locks cannot fence a generation
@@ -195,7 +206,7 @@ func (r *ScanReader) OpenScanEntry(ctx context.Context, p *ScanPage, index int) 
 	if err != nil {
 		return nil, err
 	}
-	if err = storageplugin.ValidateSourceDescription(borrowed.Description, p.source.ProviderSourceID, p.source.RootEntryID); err != nil {
+	if err = ValidateReadDescription(borrowed.Description, p.source.ProviderSourceID, p.source.RootEntryID, snapshot); err != nil {
 		return nil, storagesource.ErrSourceUnavailable
 	}
 	if borrowed.Context == nil || borrowed.Source == nil {

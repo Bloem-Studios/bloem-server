@@ -1596,6 +1596,9 @@ func (h *PlaybackHandler) recordStartingDevice(ctx context.Context, userID int, 
 }
 
 func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byte) (playback.DecisionResponseV3, error) {
+	if h.NativeVideo != nil {
+		r = r.WithContext(withNativeVideoSnapshots(r.Context()))
+	}
 	r = r.WithContext(withPlaybackRoutingPolicySnapshotV3(r.Context(), h.playbackRoutingPolicyV3()))
 	timings := newPlaybackStartTimingsV3()
 	var req playback.StartRequestV3
@@ -1686,7 +1689,7 @@ func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt
 	effectiveFile := requestedFile
 	settings, settingsErr := h.plannerSettingsV3Result(r.Context())
 	timings.mark("planner_settings")
-	if err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {
+	if err := h.nativeVideoPreflight(r, effectiveFile); err != nil {
 		return playback.DecisionResponseV3{}, playbackPreflightOperationError(err)
 	}
 	timings.mark("file_preflight")
@@ -1715,7 +1718,7 @@ func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt
 			} else if target != nil {
 				effectiveFile = h.ensurePlaybackProbe(r.Context(), target)
 				audioIndex = remapAudioIndexV3(requestedFile, effectiveFile, audioIndex)
-				if err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {
+				if err := h.nativeVideoPreflight(r, effectiveFile); err != nil {
 					return playback.DecisionResponseV3{}, playbackPreflightOperationError(err)
 				}
 				req.StartPosition = &local
@@ -1771,7 +1774,7 @@ func (h *PlaybackHandler) startPlaybackApplicationV3(r *http.Request, body []byt
 				if err != nil {
 					candidateResult = playback.PlannerResultV3{Terminal: &playback.TerminalV3{Reason: terminalSubtitleUnavailableInVersionV3, Message: err.Error(), Retryable: false}}
 				} else {
-					if err := preflightPlaybackFile(r.Context(), candidateFile, h.MissingMarker, h.EventsHub); err != nil {
+					if err := h.nativeVideoPreflight(r, candidateFile); err != nil {
 						continue
 					}
 					candidateResult, candidateToneMapErr = h.planPlaybackWithCapabilitiesV3(r.Context(), playback.PlannerInputV3{Request: candidateReq, RequestedFile: requestedFile, EffectiveFile: candidateFile, LowerVersion: lowerVersionForFileV3(lowerVersion, candidateFile), ServerBitrateCapKbps: serverBitrateCapV3(r.Context()), AudioTrackIndex: candidateAudioIndex, Settings: settings, Registry: h.transformationRegistryV3(r.Context()), DVRPUStrippable: h.lazyDVRPUStrippableV3(r.Context(), candidateFile), Now: time.Now(), AdditionalSubtitles: h.downloadedSubtitleInventoryV3(r.Context(), candidateFile)})
@@ -2194,7 +2197,7 @@ func (h *PlaybackHandler) runPlaybackStartSideEffectsV3(task playbackStartSideEf
 	if ctx.Err() != nil {
 		return
 	}
-	if h.ChapterThumbnailQueuer != nil {
+	if h.ChapterThumbnailQueuer != nil && !NativeVideoSupported(&task.file) {
 		slog.InfoContext(ctx,
 			"queueing chapter thumbnails", "component", "api",
 			"source", "playback_start",
@@ -2207,7 +2210,9 @@ func (h *PlaybackHandler) runPlaybackStartSideEffectsV3(task playbackStartSideEf
 	if ctx.Err() != nil {
 		return
 	}
-	h.maybeQueueLazyPlaybackMarkers(ctx, &task.session, &task.file)
+	if !NativeVideoSupported(&task.file) {
+		h.maybeQueueLazyPlaybackMarkers(ctx, &task.session, &task.file)
+	}
 	if ctx.Err() != nil {
 		return
 	}
@@ -2298,7 +2303,33 @@ func (h *PlaybackHandler) prepareTransportWithPolicyAndExclusionsV3(
 	policy config.PlaybackRoutingPolicy,
 	initialExcludedShapes map[string]struct{},
 ) (preparedTransportV3, *transportErrorV3) {
-	timeline, timelineErr := h.prepareTransportTimelineV3(r.Context(), session, file, result)
+	if h.NativeVideo != nil {
+		unlock := h.tm.LockSessionLifecycle(session.ID)
+		admissionErr := h.nativeVideoPredecessorAdmissionV3(r.Context(), session, result)
+		unlock()
+		if admissionErr != nil {
+			return preparedTransportV3{}, admissionErr
+		}
+	}
+	if NativeVideoSupported(file) && h.NativeVideo != nil {
+		if result.Plan == nil || result.Plan.Delivery != playback.DeliveryTranscodeHLSV3 && result.Plan.Delivery != playback.DeliveryRemuxHLSV3 {
+			return h.prepareNativeVideoTransportV3(r, session, file, result, mode, policy)
+		}
+		routeSession := *session
+		routeSession.MediaFileID = file.ID
+		if err := h.NativeVideo.Bind(r.Context(), &routeSession, file); err != nil {
+			return preparedTransportV3{}, &transportErrorV3{reason: "source_revision_changed", message: "Native video revision is unavailable; start a new attempt.", cause: err}
+		}
+	}
+	var timeline preparedTimelineV3
+	var timelineErr *transportErrorV3
+	if NativeVideoSupported(file) && h.NativeVideo != nil {
+		routeSession := *session
+		routeSession.MediaFileID = file.ID
+		timeline, timelineErr = h.nativeVideoTimelineV3(r.Context(), &routeSession, file, result)
+	} else {
+		timeline, timelineErr = h.prepareTransportTimelineV3(r.Context(), session, file, result)
+	}
 	if timelineErr != nil {
 		return preparedTransportV3{}, timelineErr
 	}
@@ -2346,6 +2377,16 @@ func (h *PlaybackHandler) prepareTransportWithPolicyAndExclusionsV3(
 		}
 
 		plan := decision.Plan
+		if NativeVideoSupported(file) && plan.ProxyNode != nil {
+			// Retry the API relay shape on the same worker; the proxy has no
+			// typed source authority for a native catalog reference.
+			if releaser, ok := h.NodePlanner.(sessionReservationReleaserV3); ok {
+				releaser.ReleaseSession(session.ID)
+			}
+			excludedShapes[decision.Shape.ID] = struct{}{}
+			lastErr = combineTransportErrorsV3(lastErr, nativeVideoProxyAdmissionErrorV3())
+			continue
+		}
 		nodeURL := plan.TranscodeNode.URL
 		transformations, capabilityErr := h.remoteTransformationsV3(r.Context(), nodeURL)
 		if capabilityErr == nil {
@@ -2568,6 +2609,11 @@ func planRequiresServerTransformationsV3(plan *playback.PlanV3) bool {
 }
 
 func (h *PlaybackHandler) prepareIdentityTransportV3(r *http.Request, session *playback.Session, file *models.MediaFile, result playback.PlannerResultV3, timeline preparedTimelineV3, mode mediaAuthModeV3, policy config.PlaybackRoutingPolicy, excludedShapes map[string]struct{}) (preparedTransportV3, *transportErrorV3) {
+	if h.NativeVideo != nil {
+		if admissionErr := h.nativeVideoPredecessorAdmissionV3(r.Context(), session, result); admissionErr != nil {
+			return preparedTransportV3{}, admissionErr
+		}
+	}
 	// The shared resolver removes proxy shapes when this client cannot address
 	// an authorized origin, then applies the same policy ordering as every HLS
 	// path. Legacy and authorized-origin attempts differ only in URL authority.
@@ -2651,6 +2697,13 @@ func (h *PlaybackHandler) prepareIdentityTransportV3(r *http.Request, session *p
 		h.beforeIdentityLifecycleLockV3()
 	}
 	unlockLifecycle = h.tm.LockSessionLifecycle(session.ID)
+	if h.NativeVideo != nil {
+		if admissionErr := h.nativeVideoPredecessorAdmissionV3(r.Context(), session, result); admissionErr != nil {
+			releaseLifecycle()
+			releaseReservation()
+			return preparedTransportV3{}, admissionErr
+		}
+	}
 	// Accepted start/replan plans always carry their live session ID. Low-level
 	// transport tests deliberately omit it so they can exercise route assembly
 	// without reconstructing the surrounding request transaction.
@@ -3031,7 +3084,7 @@ func (h *PlaybackHandler) putNodeRecipeV3(ctx context.Context, transportID strin
 }
 
 // putRequiredNodeRecipeV3 persists the active authority for a progressive
-// remux executed by a transcode node. Unlike the reconstruction-only write
+// remux or native HLS executed by a transcode node. Unlike the reconstruction-only write
 // above, this one is part of route admission: the node checks the record before
 // every new remux request, and stop deletes it, so a still-valid stream token
 // cannot resurrect FFmpeg after a node replacement.
@@ -3049,7 +3102,15 @@ func (h *PlaybackHandler) putRequiredNodeRecipeV3(ctx context.Context, transport
 // store's TTL is only the backstop for the paths that never run (a crashed API
 // process); every deliberate teardown deletes here.
 func (h *PlaybackHandler) deleteNodeRecipeV3(ctx context.Context, transportID string) {
-	if h == nil || h.NodeRecipeStore == nil || transportID == "" {
+	if h == nil || transportID == "" {
+		return
+	}
+	if h.NativeVideo != nil && h.NativeVideo.WorkerGrants.Enabled() {
+		if err := h.NativeVideo.WorkerGrants.RevokeTransport(context.WithoutCancel(ctx), transportID); err != nil {
+			slog.WarnContext(ctx, "failed to revoke native video transport", "component", "api", "transport", transportID, "error", err)
+		}
+	}
+	if h.NodeRecipeStore == nil {
 		return
 	}
 	if err := h.NodeRecipeStore.Delete(context.WithoutCancel(ctx), transportID); err != nil {
@@ -3064,6 +3125,9 @@ func (h *PlaybackHandler) deleteNodeRecipeV3(ctx context.Context, transportID st
 // stop, not a best-effort cleanup: the caller must retain the session and let
 // the client retry.
 func (h *PlaybackHandler) deleteRequiredProgressiveRemuxAuthorityV3(ctx context.Context, session *playback.Session) error {
+	if err := h.revokeRequiredNativeVideoAuthority(ctx, session); err != nil {
+		return err
+	}
 	if !requiresProgressiveRemuxAuthorityV3(session) {
 		return nil
 	}
@@ -3437,7 +3501,7 @@ func (h *PlaybackHandler) multipartResumeFileV3(ctx context.Context, file *model
 	if h == nil || h.FileVersionFetcher == nil || file == nil || file.PresentationPartTotal <= 1 || absolute <= 0 {
 		return nil, 0, nil
 	}
-	parts, err := guardNativePlaybackVersions(h.FileVersionFetcher).GetByContentID(ctx, file.ContentID)
+	parts, err := h.playbackVersionFiles().GetByContentID(ctx, file.ContentID)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -3758,6 +3822,11 @@ func (h *PlaybackHandler) startReadyAutoLocalPlaybackTransportV3(ctx context.Con
 
 // prepareLocalTransportV3 starts a local HLS generation for the selected plan.
 func (h *PlaybackHandler) prepareLocalTransportV3(r *http.Request, session *playback.Session, file *models.MediaFile, result playback.PlannerResultV3, timeline preparedTimelineV3, mode mediaAuthModeV3) (preparedTransportV3, *transportErrorV3) {
+	if h.NativeVideo != nil {
+		if admissionErr := h.nativeVideoPredecessorAdmissionV3(r.Context(), session, result); admissionErr != nil {
+			return preparedTransportV3{}, admissionErr
+		}
+	}
 	cfg := h.playbackConfig()
 	if err := os.MkdirAll(cfg.TranscodeDir, 0o755); err != nil {
 		return preparedTransportV3{}, &transportErrorV3{reason: "internal_error", message: "Failed to prepare the transcode directory.", cause: err}
@@ -3771,7 +3840,21 @@ func (h *PlaybackHandler) prepareLocalTransportV3(r *http.Request, session *play
 	sourceMetadata := sourceExecutionMetadataV3(file, result)
 	sourceProfile, sourceBitDepth := sourceVideoTranscodeFactsV3(file, result)
 	unlock := h.tm.LockSessionLifecycle(session.ID)
+	if h.NativeVideo != nil {
+		if admissionErr := h.nativeVideoPredecessorAdmissionV3(r.Context(), session, result); admissionErr != nil {
+			unlock()
+			return preparedTransportV3{}, admissionErr
+		}
+	}
 	opts := playback.TranscodeOpts{InputPath: file.FilePath, OutputDir: outputDir, OutputSubdir: outputSubdir, SessionID: session.ID, SourceVideoCodec: sourceMetadata.VideoCodec, SourceVideoProfile: sourceProfile, SourceVideoBitDepth: sourceBitDepth, SourceAudioChannels: result.SourceAudioChannels, SoftwareVideoDecode: sourceMetadata.SoftwareVideoDecode, ToneMapPolicy: result.ToneMapPolicy, ToneMapMode: result.ToneMapMode, ToneMapSourceKind: result.ToneMapSourceKind, ToneMapRecipeVersion: result.ToneMapRecipeVersion, ToneMapPreflightRequired: result.ToneMapPreflightRequired, ToneMapSourceRevision: result.ToneMapSourceRevision, VideoBitstreamFilter: videoBitstreamFilterForPlanV3(result.Plan), VideoSampleEntry: videoSampleEntryForPlanV3(result.Plan), SeekSeconds: timeline.seekSeconds, StreamOriginSeconds: timeline.streamOriginSeconds, CopySeekAnchorResolved: timeline.copySeekAnchorResolved, StartSegmentNumber: timeline.startSegmentNumber, TargetResolution: result.TargetResolution, TargetCodecVideo: videoCodec, TargetCodecAudio: result.TargetAudioCodec, TargetAudioChannels: result.TargetAudioChannels, TargetAudioBitrateKbps: result.TargetAudioBitrateKbps, TargetBitrateKbps: result.TargetBitrateKbps, SegmentDuration: playback.DefaultSegmentDuration, SegmentRetentionSeconds: cfg.SegmentRetentionSeconds, FFmpegPath: cfg.FFmpegPath, HWAccel: cfg.HWAccel, HWDevice: cfg.HWDevice, AudioTrackIndex: plannedAudioTrackIndexV3(result, session.AudioTrackIndex), SubtitleTrackIndex: result.SubtitleTransportTrackIndex, SubtitleBurnIn: result.SubtitleBurnIn, SubtitleCodec: result.SubtitleCodec, TotalDuration: sourceMetadata.DurationSeconds, FastStart: true, NodeType: playbackNodeIntegratedV3, ExecutionMode: playbackNodeIntegratedV3, FFmpegLogSink: h.FFmpegLogSink}
+	if NativeVideoSupported(file) && h.NativeVideo != nil {
+		var inputErr error
+		opts.InputSource, opts.InputFormat, inputErr = h.NativeVideo.InputSource(r.Context(), session, file)
+		if inputErr != nil {
+			unlock()
+			return preparedTransportV3{}, &transportErrorV3{reason: "source_unavailable", message: "Native video revision is unavailable.", cause: inputErr}
+		}
+	}
 	if opts.ToneMapMode != "" {
 		opts.ToneMapDVConfigPresent = sourceMetadata.ToneMapDVConfigPresent
 		opts.ToneMapDVBLCompatIDPresent = sourceMetadata.ToneMapDVBLCompatIDPresent
@@ -3976,6 +4059,28 @@ func combineTransportErrorsV3(first, second *transportErrorV3) *transportErrorV3
 
 // prepareRemoteTransportV3 starts an HLS generation on the selected transcode node.
 func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *playback.Session, file *models.MediaFile, result playback.PlannerResultV3, nodePlan nodepool.Plan, timeline preparedTimelineV3, mode mediaAuthModeV3) (preparedTransportV3, *transportErrorV3) {
+	var unlock func()
+	nativeLockHeld := false
+	if h.NativeVideo != nil {
+		if admissionErr := h.nativeVideoPredecessorAdmissionV3(r.Context(), session, result); admissionErr != nil {
+			return preparedTransportV3{}, admissionErr
+		}
+		if NativeVideoSupported(file) && nodePlan.ProxyNode != nil {
+			return preparedTransportV3{}, nativeVideoProxyAdmissionErrorV3()
+		}
+		// Native admission must be rechecked before a worker start, not at
+		// commit where a refusal would abort the previous live session.
+		unlock = h.tm.LockSessionLifecycle(session.ID)
+		nativeLockHeld = true
+		defer func() {
+			if nativeLockHeld {
+				unlock()
+			}
+		}()
+		if admissionErr := h.nativeVideoPredecessorAdmissionV3(r.Context(), session, result); admissionErr != nil {
+			return preparedTransportV3{}, admissionErr
+		}
+	}
 	node := nodePlan.TranscodeNode
 	transportID := transportGenerationV3(session.ID, result.Plan.PlanID)
 	videoCodec := result.TargetVideoCodec
@@ -4021,6 +4126,23 @@ func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla
 		req.ToneMapDVBLCompatIDPresent = sourceMetadata.ToneMapDVBLCompatIDPresent
 		req.ToneMapDVBLPresent = sourceMetadata.ToneMapDVBLPresent
 		req.ToneMapDVRPUPresent = sourceMetadata.ToneMapDVRPUPresent
+	}
+	nativeGrant := NativeVideoSupported(file)
+	retainNativeGrant := false
+	if nativeGrant {
+		if h.NativeVideo == nil || h.NativeVideo.WorkerGrants == nil {
+			return preparedTransportV3{}, &transportErrorV3{reason: "source_unavailable", message: "Native worker source authority is unavailable."}
+		}
+		routeSession := *session
+		routeSession.MediaFileID = file.ID
+		if err := h.NativeVideo.WorkerGrants.Prepare(r.Context(), node.ID, h.NativeVideo, &routeSession, req); err != nil {
+			return preparedTransportV3{}, &transportErrorV3{reason: "source_unavailable", message: "Native worker source authority is unavailable.", cause: err}
+		}
+		defer func() {
+			if !retainNativeGrant {
+				h.deleteNodeRecipeV3(r.Context(), transportID)
+			}
+		}()
 	}
 	remoteStartAt := time.Now()
 	nodeResp, status, err := h.startRemotePlaybackTransport(r.Context(), node.URL, req)
@@ -4085,6 +4207,20 @@ func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla
 		card.RoutingEgress = string(noderouting.EgressProxy)
 		card.RoutingEgressNodeID = nodePlan.ProxyNode.ID
 	}
+	if nativeGrant {
+		if err := h.NativeVideo.WorkerGrants.Accept(r.Context(), node.ID, transportID, card); err != nil {
+			h.tm.StopRemoteTranscode(transportID, node.URL)
+			return preparedTransportV3{}, &transportErrorV3{reason: "source_unavailable", message: "Native worker source authority could not be accepted.", cause: err}
+		}
+	}
+	if nativeGrant && mode.headerAuth {
+		// Every native worker GET needs this accepted serving recipe, including
+		// the first manifest. Persist it before publishing any proxy authority.
+		if err := h.putRequiredNodeRecipeV3(r.Context(), transportID, card); err != nil {
+			h.tm.StopRemoteTranscode(transportID, node.URL)
+			return preparedTransportV3{}, &transportErrorV3{reason: "source_unavailable", message: "Native worker serving authority could not be persisted.", cause: err}
+		}
+	}
 	confirmedHWAccel := card.EffectiveEncoderHWAccel()
 	url := fmt.Sprintf("/playback/transcode/%s/master.m3u8", session.ID)
 	// Either URL builder only returns an absolute proxy URL when a proxy was
@@ -4103,7 +4239,7 @@ func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla
 	case mode.proxyEgress:
 		url, servedByProxy, priorGrant = h.grantManifestURLV3(r.Context(), card, nodePlan.ProxyNode, accessPath)
 	}
-	if mode.headerAuth {
+	if mode.headerAuth && !nativeGrant {
 		// No client-visible URL carries a stream token in this mode, so neither the
 		// client nor the API relay can hand the node its recipe back after the node
 		// restarts. Store it for the node to fetch. Both sub-modes need it: the
@@ -4124,7 +4260,9 @@ func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla
 	committed := false
 	previousNodeURL := session.TranscodeNodeURL
 	previousTransportID := remoteTransportID(session)
-	unlock := h.tm.LockSessionLifecycle(session.ID)
+	if unlock == nil {
+		unlock = h.tm.LockSessionLifecycle(session.ID)
+	}
 	routingEgress := noderouting.EgressAPI
 	egressNodeID := 0
 	egressNodeURL := ""
@@ -4179,6 +4317,8 @@ func (h *PlaybackHandler) prepareRemoteTransportV3(r *http.Request, session *pla
 	if routingWorkloadV3(result) == noderouting.WorkloadRemux {
 		rollbackRequired = func() error { return rollbackTransport(true) }
 	}
+	retainNativeGrant = true
+	nativeLockHeld = false // The prepared transport now owns commit/rollback unlock.
 	return preparedTransportV3{url: url, nodeURL: node.URL, transportID: transportID, hwAccel: confirmedHWAccel, toneMapMode: confirmedToneMapMode,
 		routingWorkload: routingWorkloadV3(result), routingExecution: noderouting.ExecutionTranscode, routingExecutorID: node.ID, routingExecutorURL: node.URL,
 		routingEgress: routingEgress, routingEgressID: egressNodeID, routingEgressURL: egressNodeURL, commit: func() *transportErrorV3 {
@@ -4843,6 +4983,12 @@ func (h *PlaybackHandler) raceCopySafetyV3(fileID int, plan *playback.PlanV3) {
 	if h == nil || h.CopySafetyRacer == nil || fileID <= 0 || plan == nil {
 		return
 	}
+	if h.NativeVideo != nil && h.NativeVideo.Files != nil {
+		file, err := h.NativeVideo.Files.GetByID(context.Background(), fileID)
+		if err != nil || NativeVideoSupported(file) {
+			return
+		}
+	}
 	h.CopySafetyRacer.RaceScanForPlan(fileID, plan)
 }
 
@@ -5014,7 +5160,7 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		// Prefer returning to the requested edition, but a quality/output/track
 		// change must not abandon a healthy active alternate merely because the
 		// inactive original has gone missing since playback started.
-		if requestedEditionResolved && preflightPlaybackFile(r.Context(), requestedFile, h.MissingMarker, h.EventsHub) == nil {
+		if requestedEditionResolved && h.nativeVideoPreflight(r, requestedFile) == nil {
 			effectiveFile = requestedFile
 		}
 		// Track identities only need remapping when the effective edition
@@ -5053,7 +5199,7 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		}
 	}
 	start.FileID = effectiveFile.ID
-	if err := preflightPlaybackFile(r.Context(), effectiveFile, h.MissingMarker, h.EventsHub); err != nil {
+	if err := h.nativeVideoPreflight(r, effectiveFile); err != nil {
 		return playback.DecisionResponseV3{}, *record, nil, &transportErrorV3{
 			reason:  "source_unavailable",
 			message: "The effective media source is unavailable.",
@@ -5199,7 +5345,7 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 					}}
 				} else {
 					candidateStart.FileID = candidateFile.ID
-					if err := preflightPlaybackFile(r.Context(), candidateFile, h.MissingMarker, h.EventsHub); err != nil {
+					if err := h.nativeVideoPreflight(r, candidateFile); err != nil {
 						continue
 					}
 					candidateResult, candidateToneMapErr = h.planPlaybackWithCapabilitiesV3(r.Context(), playback.PlannerInputV3{Request: candidateStart, RequestedFile: plannerRequestedFile, EffectiveFile: candidateFile, LowerVersion: lowerVersionForFileV3(lowerVersion, candidateFile), ServerBitrateCapKbps: serverBitrateCapV3(r.Context()), AudioTrackIndex: candidateAudioIndex, Settings: plannerSettings, Registry: h.transformationRegistryV3(r.Context()), DVRPUStrippable: h.lazyDVRPUStrippableV3(r.Context(), candidateFile), Now: time.Now(), AttemptedKeys: attemptedKeys, AdditionalSubtitles: h.downloadedSubtitleInventoryV3(r.Context(), candidateFile), ForceTranscode: remoteOverrides.ForceTranscode()})
@@ -6922,6 +7068,9 @@ func videoSampleEntryForPlanV3(plan *playback.PlanV3) string {
 // suppressing the filter downstream would leave those claims describing a
 // stream the server is no longer producing.
 func (h *PlaybackHandler) lazyDVRPUStrippableV3(ctx context.Context, file *models.MediaFile) func() bool {
+	if NativeVideoSupported(file) {
+		return func() bool { return false }
+	}
 	if file == nil || strings.TrimSpace(file.FilePath) == "" {
 		return nil
 	}

@@ -68,6 +68,17 @@ func validateDescription(description *storagev1.DescribeResponse) error {
 // revision-pinned reads. IDs are opaque and compared byte for byte. This checks
 // advertised capability, not whether the backend really preserves revisions.
 func ValidateSourceDescription(description *storagev1.DescribeResponse, sourceID, rootID string) error {
+	return validateSourceDescription(description, sourceID, rootID, true)
+}
+
+// ValidateCheckedETagSourceDescription checks the retained source/root without
+// requiring an immutable-read advertisement. Only an explicit host admission
+// policy may use it; ETag validators do not prove immutable bytes.
+func ValidateCheckedETagSourceDescription(description *storagev1.DescribeResponse, sourceID, rootID string) error {
+	return validateSourceDescription(description, sourceID, rootID, false)
+}
+
+func validateSourceDescription(description *storagev1.DescribeResponse, sourceID, rootID string, requirePinned bool) error {
 	if err := validateDescription(description); err != nil {
 		return err
 	}
@@ -76,7 +87,7 @@ func ValidateSourceDescription(description *storagev1.DescribeResponse, sourceID
 	}
 	for _, source := range description.GetSources() {
 		if source.GetId() == sourceID {
-			if source.GetRootEntryId() != rootID || !source.GetRevisionPinnedReads() {
+			if source.GetRootEntryId() != rootID || requirePinned && !source.GetRevisionPinnedReads() {
 				return ErrUnavailable
 			}
 			return nil

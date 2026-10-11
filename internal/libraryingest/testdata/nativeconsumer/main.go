@@ -14,6 +14,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 type object struct {
@@ -59,6 +61,21 @@ func (s *server) Configure(_ context.Context, r *publicv1.ConfigureRequest) (*pu
 		revision = "v1"
 	}
 	s.objects = fixtures(revision)
+	if strings.HasPrefix(s.mode, "movies") {
+		var err error
+		s.objects, err = movieFixtures(s.notify, revision)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "movie fixture unavailable")
+		}
+		s.pinned = s.mode != "movies-no-pin"
+		if s.mode == "movies-invalid" {
+			s.objects[0].data = []byte("not a movie container")
+			s.objects[0].entry.Size = int64(len(s.objects[0].data))
+		}
+		if s.mode == "movies-empty" || s.mode == "movies-removed" {
+			s.objects = nil
+		}
+	}
 	if s.mode == "list-metadata-gate" {
 		for _, o := range s.objects {
 			o.entry.Ebook = &storagev1.EbookMetadata{Title: "Provider Book", Authors: []string{"Fixture Writer"}}
@@ -165,6 +182,9 @@ func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1
 	}
 	end := min(offset+2, len(s.objects))
 	page := &storagev1.ListResponse{Complete: end == len(s.objects)}
+	if s.mode == "movies-removed" {
+		page.RemovedEntryIds = []string{"01-movie", "02-movie"}
+	}
 	for _, o := range s.objects[offset:end] {
 		page.Entries = append(page.Entries, o.entry)
 	}
@@ -193,6 +213,11 @@ func (s *server) Stat(_ context.Context, r *storagev1.StatRequest) (*storagev1.S
 	if err != nil {
 		return nil, err
 	}
+	if s.mode == "movies-stat-conflict" {
+		copy := proto.CloneOf(o.entry)
+		copy.Revision = "unlisted-version"
+		return &storagev1.StatResponse{Entry: copy}, nil
+	}
 	return &storagev1.StatResponse{Entry: o.entry}, nil
 }
 func (s *server) Read(r *storagev1.ReadRequest, out grpc.ServerStreamingServer[storagev1.ReadChunk]) error {
@@ -206,6 +231,21 @@ func (s *server) Read(r *storagev1.ReadRequest, out grpc.ServerStreamingServer[s
 		<-out.Context().Done()
 		return status.FromContextError(out.Context().Err()).Err()
 	}
+	if s.mode == "movies-read-gate" {
+		s.signal("read")
+		poll := time.NewTicker(5 * time.Millisecond)
+		defer poll.Stop()
+		for {
+			if _, err := os.Stat(s.notify + ".release"); err == nil {
+				break
+			}
+			select {
+			case <-out.Context().Done():
+				return status.FromContextError(out.Context().Err()).Err()
+			case <-poll.C:
+			}
+		}
+	}
 	if s.mode == "crash" {
 		s.signal("crash")
 		os.Exit(7)
@@ -217,7 +257,7 @@ func (s *server) Read(r *storagev1.ReadRequest, out grpc.ServerStreamingServer[s
 		return status.Error(codes.OutOfRange, "range")
 	}
 	end := r.Offset + r.Length
-	if s.mode == "late" {
+	if s.mode == "late" || s.mode == "movies-late" {
 		if err = out.Send(&storagev1.ReadChunk{Offset: r.Offset, Data: o.data[r.Offset:end], Eof: true}); err != nil {
 			return err
 		}

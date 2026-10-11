@@ -13,7 +13,8 @@ import (
 )
 
 type Store struct {
-	pool *pgxpool.Pool
+	pool             *pgxpool.Pool
+	nativeMovieReady bool
 }
 
 func NewStore(pool *pgxpool.Pool) *Store {

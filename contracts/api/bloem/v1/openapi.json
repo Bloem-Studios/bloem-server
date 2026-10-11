@@ -640,10 +640,38 @@
             ],
             "type": "boolean"
           },
+          "native_movie_libraries": {
+            "description": "Movie attachment and scanning are composed with native video playback; individual sources still require admission under their retained read policy.",
+            "type": "boolean"
+          },
+          "native_video_downloads": {
+            "enum": [
+              false
+            ],
+            "type": "boolean"
+          },
+          "native_video_jellyfin": {
+            "enum": [
+              false
+            ],
+            "type": "boolean"
+          },
+          "native_video_playback": {
+            "description": "Native API video playback is composed; this does not certify a backend or client runtime.",
+            "type": "boolean"
+          },
+          "native_video_remote_execution": {
+            "description": "Shared worker grants and header-auth serving recipes are composed for remote HLS; the selected worker still needs its own approved runtime and retained provider identity.",
+            "type": "boolean"
+          },
           "retained_namespace_reinstall": {
             "enum": [
               false
             ],
+            "type": "boolean"
+          },
+          "s3_checked_etag_reads": {
+            "description": "Explicit checked-etag admission is supported for approved S3 source configuration. This does not enable a source or prove immutable bytes.",
             "type": "boolean"
           },
           "s3_initial_root_discovery": {
@@ -675,6 +703,12 @@
           "uninstall",
           "upgrade",
           "s3_initial_root_discovery",
+          "s3_checked_etag_reads",
+          "native_movie_libraries",
+          "native_video_playback",
+          "native_video_remote_execution",
+          "native_video_downloads",
+          "native_video_jellyfin",
           "retained_namespace_reinstall",
           "enable",
           "backend_verified"

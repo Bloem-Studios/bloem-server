@@ -137,7 +137,7 @@ func (s *SourceManagement) DiscoverInstall(ctx context.Context, actor auth.Admin
 					break
 				}
 			}
-			discoverErr = storageplugin.ValidateSourceDescription(description, snapshot.Source.ProviderSourceID, root)
+			discoverErr = ValidateReadDescription(description, snapshot.Source.ProviderSourceID, root, snapshot)
 			if discoverErr == nil {
 				discoverErr = s.registry.CaptureInitialS3DiscoveryState(discovery, prepared)
 			}

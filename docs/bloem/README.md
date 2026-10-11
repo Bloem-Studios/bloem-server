@@ -10,7 +10,8 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 - [Silo backend switching](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the mirrored phase, its invariants, and `make silo-switch-check`.
 - [SDK compatibility and contract generation](../architecture/bloem-sdk-compatibility.md) — plugin SDK, generated client DTOs and consumer synchronization.
 
-- [Native storage](../architecture/bloem-native-storage.md) — initial S3 root discovery and storage-source ebook libraries: locations, scanning, covers and reading.
+- [Native storage](../architecture/bloem-native-storage.md) — initial S3 root discovery and storage-source ebook/movie libraries: locations, scanning, covers and reading.
+- [Native video playback](../architecture/bloem-native-video-playback.md) — source admission, movie publication, execution ownership, worker HLS and supported surfaces.
 - [Native tool input](../architecture/bloem-native-tool-input.md) — bounded pinned reads, trusted-child lifetime and host admission.
 - [Native scan reader](../architecture/bloem-native-scan-reader.md) — sealed scan pages, pinned entry reads and current scan authority.
 - [Native probe](../architecture/bloem-native-probe.md) — trusted ffprobe input, shared read budgets and process cleanup.

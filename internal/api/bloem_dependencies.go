@@ -23,10 +23,14 @@ import (
 //
 //	api.Dependencies{DB: pool, BloemDependencies: api.BloemDependencies{LiveTV: svc}}
 type BloemDependencies struct {
-	Ambience        *ambience.Service   // S-3 seasonal ambience packs (nil when DB unavailable)
-	Promotions      *promotions.Service // S-2 promotion cards (nil when DB unavailable)
-	HostStatsSource handlers.HostStatsSource
-	LiveTV          *livetv.Service // shared Live TV / OTA / DVR service (may be nil)
+	// NativeMovieScannerReady witnesses startup assembly of the scan reader,
+	// trusted probe and publication coordinator. It is not backend health proof
+	// or viewer playback authority, and no request/config setting may change it.
+	NativeMovieScannerReady bool
+	Ambience                *ambience.Service   // S-3 seasonal ambience packs (nil when DB unavailable)
+	Promotions              *promotions.Service // S-2 promotion cards (nil when DB unavailable)
+	HostStatsSource         handlers.HostStatsSource
+	LiveTV                  *livetv.Service // shared Live TV / OTA / DVR service (may be nil)
 
 	// OnUserProfileSessionsRevoked drops compatibility sessions bound to the
 	// named profiles of one account.

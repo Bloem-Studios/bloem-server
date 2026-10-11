@@ -1323,6 +1323,18 @@ public data class nativeStorageCapabilitiesResponse(
     public val upgrade: Boolean = false,
     @SerialName("s3_initial_root_discovery")
     public val s3InitialRootDiscovery: Boolean = false,
+    @SerialName("s3_checked_etag_reads")
+    public val s3CheckedETagReads: Boolean = false,
+    @SerialName("native_movie_libraries")
+    public val nativeMovieLibraries: Boolean = false,
+    @SerialName("native_video_playback")
+    public val nativeVideoPlayback: Boolean = false,
+    @SerialName("native_video_remote_execution")
+    public val nativeVideoRemoteExecution: Boolean = false,
+    @SerialName("native_video_downloads")
+    public val nativeVideoDownloads: Boolean = false,
+    @SerialName("native_video_jellyfin")
+    public val nativeVideoJellyfin: Boolean = false,
     @SerialName("retained_namespace_reinstall")
     public val retainedNamespaceReinstall: Boolean = false,
     @SerialName("enable")

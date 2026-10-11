@@ -64,9 +64,10 @@ type ToolInput struct {
 }
 
 // NewToolInput transfers file/admission ownership only on success. The caller
-// must already have admitted immutable reads and bind CancelSource to the same
-// source/runtime lifetime as File. Reauthorize completes a fresh authority
-// check before and after each read; it must retain no transaction across IO.
+// must already have admitted reads under the retained source policy and bind
+// CancelSource to the same source/runtime lifetime as File. Reauthorize completes
+// a fresh authority check before and after each read; it must retain no
+// transaction across IO.
 func NewToolInput(ctx context.Context, file mediasource.File, config ToolInputConfig) (*ToolInput, error) {
 	if ctx == nil || file == nil || config.CancelSource == nil || config.Reauthorize == nil || config.MaxBytes <= 0 ||
 		config.ChunkBytes <= 0 || config.ChunkBytes > 8<<20 || config.MaxConcurrentReads <= 0 || config.MaxConcurrentReads > 8 || config.Timeout <= 0 {

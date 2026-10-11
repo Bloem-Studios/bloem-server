@@ -22,6 +22,7 @@ import (
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
 	"github.com/Silo-Server/silo-server/internal/subtitles"
 )
@@ -41,6 +42,7 @@ type FilePathResolver interface {
 
 // StreamHandler handles HTTP endpoints for streaming media content.
 type StreamHandler struct {
+	NativeVideo   *NativeVideoService
 	sessionMgr    SessionManagerInterface
 	fileResolver  FilePathResolver
 	MissingMarker MissingFileMarker
@@ -186,6 +188,10 @@ func (h *StreamHandler) HandleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.serveNativeVideoSession(w, r, session, claims) {
+		return
+	}
+
 	file, err := h.fileResolver.GetByID(r.Context(), session.MediaFileID)
 	if err != nil {
 		if isPlaybackFileLookupMissing(err) {
@@ -305,7 +311,7 @@ func (h *StreamHandler) loadSidecarSession(ctx context.Context, reference, sessi
 	} else if !errors.Is(err, playback.ErrSessionNotFound) {
 		loadCard = nil
 	}
-	if loadCard != nil && !playbackLibraryAllowsSourceCtx(ctx, h.fileResolver, loadCard.MediaFileID) {
+	if loadCard != nil && !h.subtitleLibraryAllowsRecipe(ctx, *loadCard) {
 		return nil, nil, apiError(http.StatusNotFound, playbackSessionNotFoundErrorCode, "Playback session not found")
 	}
 	session, status, _ := h.TM.LoadOrReconstructSessionDetail(ctx, h.sessionMgr.GetSession, sessionID, userID, loadCard)
@@ -372,7 +378,7 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
-	file, err := h.fileResolver.GetByID(r.Context(), fileID)
+	file, err := h.subtitleMetadataFiles().GetByID(r.Context(), fileID)
 	if err != nil || file == nil {
 		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 		return
@@ -380,6 +386,12 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 	if !playbackLibraryAllowsFile(r, file) {
 		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 		return
+	}
+	if storagesource.IsNativeLocation(file.FilePath) {
+		if err := h.subtitleFilePreflight(r.Context(), session, file); err != nil {
+			writeAPIError(w, nativeVideoDeliveryError(err))
+			return
+		}
 	}
 
 	trackIndex, err = subtitleRouteIndex(file, trackIndex, r.URL.Query())
@@ -434,6 +446,10 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 	}
 	externalCount := len(file.ExternalSubtitles)
 	if trackIndex < externalCount {
+		if storagesource.IsNativeLocation(file.FilePath) {
+			writeError(w, http.StatusNotFound, "not_found", "Subtitle track not found")
+			return
+		}
 		sub := file.ExternalSubtitles[trackIndex]
 		if !subtitleSidecarFormatSupported(sub.Format, requestedFormat, false) {
 			writeError(w, http.StatusUnsupportedMediaType, "unsupported_media_type",
@@ -502,7 +518,11 @@ func (h *StreamHandler) handleSubtitle(w http.ResponseWriter, r *http.Request) {
 		// demuxed, so the first byte lands within ~1s even on network
 		// storage. Works identically for direct-play, remux, and
 		// transcode because it doesn't depend on any other ffmpeg.
-		h.streamEmbeddedSubtitle(w, r, file, embeddedIndex, requestedFormat)
+		if storagesource.IsNativeLocation(file.FilePath) {
+			h.serveNativeEmbeddedSubtitle(w, r, session, file, embeddedIndex, requestedFormat)
+		} else {
+			h.streamEmbeddedSubtitle(w, r, file, embeddedIndex, requestedFormat)
+		}
 		return
 	}
 
@@ -737,14 +757,17 @@ func (h *StreamHandler) SubtitleFonts(ctx context.Context, in SubtitleFontReques
 	if err != nil {
 		return nil, apiError(http.StatusBadRequest, "bad_request", err.Error())
 	}
-	file, err := h.fileResolver.GetByID(ctx, fileID)
+	file, err := h.subtitleMetadataFiles().GetByID(ctx, fileID)
 	if err != nil || file == nil {
 		return nil, apiError(http.StatusNotFound, "not_found", "Media file not found")
 	}
 	if !playbackLibraryAllowsFileCtx(ctx, file) {
 		return nil, apiError(http.StatusNotFound, "not_found", "Media file not found")
 	}
-	if err := preflightPlaybackFile(ctx, file, h.MissingMarker, h.EventsHub); err != nil {
+	if err := h.subtitleFilePreflight(ctx, session, file); err != nil {
+		if storagesource.IsNativeLocation(file.FilePath) {
+			return nil, nativeVideoDeliveryError(err)
+		}
 		if isPlaybackFileMissing(err) {
 			h.abortPlaybackSession(ctx, session)
 			return nil, apiError(http.StatusNotFound, "not_found", "Source media file is missing")
@@ -771,7 +794,12 @@ func (h *StreamHandler) SubtitleFonts(ctx context.Context, in SubtitleFontReques
 	if !playback.IsASS(file.SubtitleTracks[embeddedIndex].Codec) {
 		return nil, apiError(http.StatusBadRequest, "bad_request", "Subtitle font bundles are only available for ASS/SSA tracks")
 	}
-	fonts, err := playback.ExtractAttachedSubtitleFonts(ctx, file.FilePath, h.ffmpegPath())
+	var fonts []playback.SubtitleFontAttachment
+	if storagesource.IsNativeLocation(file.FilePath) {
+		fonts, err = h.nativeSubtitleFonts(ctx, session, file)
+	} else {
+		fonts, err = playback.ExtractAttachedSubtitleFonts(ctx, file.FilePath, h.ffmpegPath())
+	}
 	if err != nil {
 		slog.WarnContext(ctx, "subtitle font extraction failed", "component", "api",
 			"file_id", file.ID, "track", trackIndex, "error", err)

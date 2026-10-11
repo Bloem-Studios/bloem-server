@@ -184,6 +184,7 @@ type copySeekAnchorResolver func(
 
 // PlaybackHandler handles playback session HTTP endpoints.
 type PlaybackHandler struct {
+	NativeVideo             *NativeVideoService
 	sessionMgr              SessionManagerInterface
 	fileResolver            FilePathResolver            // optional; enables stream_url in responses
 	StoreProvider           userstore.UserStoreProvider // optional; enables progress/history persistence
@@ -486,7 +487,7 @@ func semanticPlayMethod(s *playback.Session) playback.PlayMethod {
 // "copy is allowed") and is resolved asynchronously once the plan is issued, so
 // starting playback never waits on a multi-second read of the source.
 func (h *PlaybackHandler) ensurePlaybackProbe(ctx context.Context, file *models.MediaFile) *models.MediaFile {
-	if h == nil || h.ProbeEnsurer == nil || file == nil {
+	if h == nil || h.ProbeEnsurer == nil || file == nil || NativeVideoSupported(file) {
 		return file
 	}
 	repaired, err := h.ProbeEnsurer.EnsureCopySafetyCached(ctx, file)
@@ -885,7 +886,7 @@ func (h *PlaybackHandler) loadFileByPreferredID(
 		return nil, fmt.Errorf("file resolver not configured")
 	}
 	if preferredID > 0 {
-		file, err := h.fileResolver.GetByID(ctx, preferredID)
+		file, err := h.playbackMetadataFiles().GetByID(ctx, preferredID)
 		if err == nil && file != nil {
 			return file, nil
 		}
@@ -894,7 +895,7 @@ func (h *PlaybackHandler) loadFileByPreferredID(
 		}
 	}
 	if fallbackID > 0 && fallbackID != preferredID {
-		return h.fileResolver.GetByID(ctx, fallbackID)
+		return h.playbackMetadataFiles().GetByID(ctx, fallbackID)
 	}
 	return nil, nil
 }
@@ -1629,10 +1630,21 @@ func (h *PlaybackHandler) HandleStopPlayback(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *PlaybackHandler) loadAuthorizedFile(r *http.Request, fileID int) (*models.MediaFile, error) {
-	if h.fileResolver == nil || h.ItemAccess == nil {
+	resolver := h.fileResolver
+	if h.NativeVideo != nil && h.NativeVideo.Files != nil {
+		file, err := h.NativeVideo.Files.GetByID(r.Context(), fileID)
+		if err == nil && NativeVideoSupported(file) {
+			resolver = h.NativeVideo.Files
+		}
+	}
+	return h.loadAuthorizedFileFrom(r, resolver, fileID)
+}
+
+func (h *PlaybackHandler) loadAuthorizedFileFrom(r *http.Request, resolver FilePathResolver, fileID int) (*models.MediaFile, error) {
+	if resolver == nil || h.ItemAccess == nil {
 		return nil, fmt.Errorf("playback authorization dependencies not configured")
 	}
-	file, err := h.fileResolver.GetByID(r.Context(), fileID)
+	file, err := resolver.GetByID(r.Context(), fileID)
 	if err != nil {
 		return nil, mapMediaFileLookupError(err)
 	}
@@ -1777,7 +1789,7 @@ func (h *PlaybackHandler) HandleGetTranscodeManifest(w http.ResponseWriter, r *h
 	if !requireNativeSessionAPIEgressV3(w, session) {
 		return
 	}
-	if !playbackLibraryAllowsSource(r, h.fileResolver, session.MediaFileID) {
+	if !h.nativeVideoLibraryAllowsSession(r, session) {
 		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 		return
 	}
@@ -1896,7 +1908,7 @@ func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht
 	if !requireNativeSessionAPIEgressV3(w, session) {
 		return
 	}
-	if !playbackLibraryAllowsSource(r, h.fileResolver, session.MediaFileID) {
+	if !h.nativeVideoLibraryAllowsSession(r, session) {
 		writeError(w, http.StatusNotFound, "not_found", "Media file not found")
 		return
 	}
@@ -2064,6 +2076,9 @@ func (h *PlaybackHandler) HandleGetTranscodeSegment(w http.ResponseWriter, r *ht
 	w.Header().Set("Pragma", "no-cache")
 	defer func() { _ = segmentLease.Close() }()
 	sw := httpstream.NewRollingDeadlineWriter(w)
+	if h.serveNativeVideoSegment(sw, r, session, transcodeSession.Opts().InputPath, segmentLease, transcodeSession) {
+		return
+	}
 	http.ServeContent(sw, r, segmentLease.Info.Name(), segmentLease.Info.ModTime(), segmentLease.File)
 	if r.Method == http.MethodGet &&
 		sw.CompletedFullResponse(segmentLease.Info.Size()) {
@@ -2241,9 +2256,9 @@ func (h *PlaybackHandler) findAlternateFiles(ctx context.Context, source *models
 	var files []*models.MediaFile
 	var err error
 	if source.EpisodeID != "" {
-		files, err = guardNativePlaybackVersions(h.FileVersionFetcher).GetByEpisodeID(ctx, source.EpisodeID)
+		files, err = h.playbackVersionFiles().GetByEpisodeID(ctx, source.EpisodeID)
 	} else {
-		files, err = guardNativePlaybackVersions(h.FileVersionFetcher).GetByContentID(ctx, source.ContentID)
+		files, err = h.playbackVersionFiles().GetByContentID(ctx, source.ContentID)
 	}
 	if err != nil {
 		return nil, err

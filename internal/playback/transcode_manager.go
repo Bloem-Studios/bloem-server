@@ -79,6 +79,12 @@ type TranscodeManager struct {
 	// StrictAdmissionFn is Bloem's strict reconstruct admission hook; see
 	// bloem_transcode_manager.go. Nil keeps upstream behavior.
 	StrictAdmissionFn func() bool
+	// RestoreInputSource restores nonpersisted input authority/format from a
+	// host-owned immutable recipe companion. Nil preserves local-file execution.
+	RestoreInputSource func(context.Context, *RecipeCard, *TranscodeOpts) error
+	// AuthorizeSessionReconstruction checks host-owned source authority before
+	// a recipe can register a playback session. Nil preserves ordinary recovery.
+	AuthorizeSessionReconstruction func(context.Context, RecipeCard) error
 
 	// Package-private execution seams keep reconstruction lifecycle tests
 	// deterministic without invoking a host FFmpeg binary. Production always
@@ -682,6 +688,13 @@ func (m *TranscodeManager) reconstructSession(ctx context.Context, sessionID str
 	if deferToneMapConfirmation && method == PlayTranscode {
 		toneMapMode = ""
 	}
+	if m.AuthorizeSessionReconstruction != nil {
+		if err := m.AuthorizeSessionReconstruction(ctx, card); err != nil {
+			slog.WarnContext(ctx, "playback session reconstruct source authorization refused", "component", "playback",
+				"session", sessionID, "playback_session_id", sessionID, "error", err)
+			return nil, nil, false
+		}
+	}
 	s := &Session{
 		ID:                            card.SessionID,
 		UserID:                        card.UserID,
@@ -888,6 +901,11 @@ func (m *TranscodeManager) doReconstructTranscode(ctx context.Context, sessionID
 	cfg := m.runtimeConfig()
 	outputDir := reconstructionOutputDir(cfg.TranscodeDir, sessionID, card.OutputSubdir)
 	opts := card.TranscodeOpts(outputDir, cfg.FFmpegPath, m.logSink())
+	if m.RestoreInputSource != nil {
+		if err := m.RestoreInputSource(ctx, &card, &opts); err != nil {
+			return nil, err
+		}
+	}
 	// Recipe cards preserve the original launch tuning, but a reconstruction is
 	// not a fresh generation: restore the conservative manifest lead so recovery
 	// never exposes a hardware encoder after only one fragment.

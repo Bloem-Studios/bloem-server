@@ -1,25 +1,28 @@
 # Bloem native storage
 
-Native storage lets an ebook library read its books from a storage source (a
+Native storage lets an ebook or movie library read its files from a storage source (a
 storage plugin such as Bookwarehouse) instead of filesystem paths. It is
 experimental. The source is the library's **location**: a library has either
 paths or one storage location, never both.
 
-Native movie catalog publication remains disabled until playback works end to
-end. Internal scan and probe prerequisites do not imply playable support.
+Movie admission is startup-only. The host configures the scan reader and bounded
+probe before starting queues; the API then admits movie attachment only after
+composing the native playback service. An incomplete composition retains the
+publication hold. This describes code readiness, not production source certification.
 
 ## Model
 
 - **Storage plugin.** A host-approved executable that serves the private
   `bloem.plugin.v1.StorageProvider` service (`Describe`, `List`, `Stat`,
-  revision-pinned `Read`). Installations are recorded in `plugin_installations`
+  revision-checked `Read`). Installations are recorded in `plugin_installations`
   and marked native in `bloem_storage_installations`.
 - **Storage source.** `bloem_storage_sources`: one configured source of an
   installation, with a retained UUID key, owner, encrypted configuration and a
   configuration revision. A source outlives its installation's removal.
 - **Library storage location.** `library_storage_locations`: binds one source to
   one library. A library has at most one location, a source backs at most one
-  library, and only enabled `ebooks` libraries can have one. A storage library
+  library. Enabled `ebooks` libraries can have one; enabled `movies` libraries
+  also require the scanner and playback readiness boundary. A storage library
   never gains paths and cannot change its source.
 - **File reference.** `bloem_storage_file_refs`: a published catalog file's
   location, entry ID, revision and display path, plus the cover the provider
@@ -28,15 +31,17 @@ end. Internal scan and probe prerequisites do not imply playable support.
   ID. It is an internal identity, never a filename, mounted path or URL.
 
 The whole `bloem-storage:` namespace is reserved, including malformed identities.
-Ordinary playback and streaming refuse it before filesystem probing, missing-file
-marking or tool invocation. Alternate editions and multipart resume also exclude
-native identities. The native ebook reader uses its separate source resolver.
-Downloads, Jellyfin delivery and the proxy refuse the namespace; nothing opens it
-as a local path.
+Path-only consumers refuse it before filesystem probing, missing-file marking
+or tool invocation. The native ebook reader and video service use separate
+authorized source resolvers. Alternate editions and multipart start may select
+supported native video only when that service is installed. Downloads and
+Jellyfin delivery still refuse the namespace. Nothing opens it as a local path.
+The [video execution contract](bloem-native-video-playback.md) describes native
+API serving, worker HLS and the remaining surface limits.
 
 ## Creating a library
 
-An administrator creates an ebook library through the ordinary v2
+An administrator creates an ebook or admitted movie library through the ordinary v2
 `createLibrary` with `storage_source` instead of `paths`. The creation
 transaction retains the installation's `FOR SHARE` lock before inserting the
 location, whose immediate foreign key acquires a source lock. This agrees with
@@ -91,10 +96,10 @@ Install and upgrade prepare state and runtime configuration before committing.
 A disabled installation may receive a package-only upgrade and a non-runnable
 return snapshot; its enabled flags stay false and ordinary runtime `Snapshot`
 still refuses it. This avoids reporting a committed disabled upgrade as a
-failure. The S3 provider's immutable-version checks do not certify a backend;
-production source admission still requires genuine immutable versions or a
-separately verified snapshot implementation. All-media ingestion and playback
-wiring remain separate from this state-path boundary.
+failure. The S3 provider's checks do not certify a backend. Strict admission
+requires genuine immutable versions or a separately verified snapshot;
+explicit checked-ETag admission is described below. Other library kinds remain outside
+native movie ingestion and playback admission.
 
 ## Initial S3 root discovery
 
@@ -113,8 +118,9 @@ retains host admission and rechecks current account/session, administrative scop
 owner and organization authority after preparing the execution snapshot,
 immediately before starting its private one-shot manager. That short transaction
 ends before process startup; no database transaction or connection spans provider
-I/O. A fresh, bounded Describe must advertise the requested source, its exact
-opaque root and revision-pinned reads. Discovery performs no List, Stat or Read.
+I/O. A fresh, bounded Describe must advertise the requested source and its exact
+opaque root, and satisfy the retained read policy below. Discovery performs no
+List, Stat or Read.
 
 After Describe, the registry seals the private state file's identity and content
 hash. The private process must be reaped before publication, so a committed
@@ -141,7 +147,7 @@ retry or compensating deletion.
 `s3_initial_root_discovery` is true only when the router's normal storage
 composition is ready and source management has the matching host/registry and
 runtime manager. It is not backend certification: `backend_verified` remains
-false, and immutable versions or verified snapshots remain required for reads.
+false. The retained source read policy still applies to every consumer.
 This operation does not expand library-kind support, catalog admission or serving.
 
 The Kotlin and Swift contract artifacts include the discovery command and
@@ -157,7 +163,7 @@ A storage library scans only as a whole library. `libraryingest.StorageScanner`:
 1. Checks tenancy (`RequireStorageScan`), loads the approved snapshot, starts
    or reuses the plugin process and obtains a fresh, bounded `Describe`.
    The advertised source ID and root must match the retained source exactly,
-   with revision-pinned reads. After discovery, it reloads the retained source,
+   under its retained read policy. After discovery, it reloads the retained source,
    rechecks tenancy and checks the executable generation and checksum again
    before beginning a scan lease.
 2. `BeginAuthorized` begins or resumes discovery in a transaction that checks
@@ -282,10 +288,27 @@ unselected sources. An RPC error or cancellation invalidates its response.
 Runtime RPCs bind both the caller's context and the executable generation's
 lifetime; admitted descriptions are copied for their consumer.
 
-Advertising revision-pinned reads is a protocol requirement, not evidence
-that a storage backend preserves bytes. S3 reads require an immutable version
-or a separately verified snapshot; an ETag check alone cannot satisfy that
-requirement. Consumer admission never chooses or rewrites the retained root.
+Strict read admission requires an advertised revision-pinned guarantee and
+genuine immutable backend versions or a separately verified snapshot. The
+advertisement is not evidence that a backend preserves bytes.
+
+The host also supports explicit `connection.revision_mode: "checked-etag"`
+for the approved `bloem.storage.s3` adapter. Admission requires the exact
+retained S3 installation and provider source, a single `connection` object,
+and a matching configured `source_id`. This exception applies consistently to
+initial discovery, listing, scan probes, playback, ebooks and covers; it never
+rewrites the retained root or bypasses source/configuration/generation fences.
+The omitted/default mode remains strict. `s3_checked_etag_reads` reports host
+support, without enabling any source or certifying an installed adapter.
+
+Checked mode advertises `revision_pinned_reads: false`. Genuine version IDs
+remain preferred. Unversioned reads check the expected ETag and size before
+GET and after the complete exact body, before successful final EOF; HEAD and
+GET also send `If-Match`. A gateway can ignore that condition. These checks
+detect some drift but cannot prove immutable bytes or continuity between
+ranges. Failed ranges are discarded by the host's bounded reader. Switching
+the mode is a configuration change governed by the existing empty-namespace
+replacement rule; it is not an in-place toggle for attached libraries.
 
 ## Operations
 

@@ -632,14 +632,25 @@ func nativeStorageInstallRequest(cmd *nativestorage.InstallCommand, fields map[s
 func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx context.Context) map[string]any {
 	ready := h != nil && h.Capabilities != nil && h.Capabilities.NativeStorageReady(ctx)
 	discoveryReady := false
+	movies, video, remoteVideo := false, false, false
 	if ready {
 		if discovery, ok := h.Capabilities.(interface{ InitialRootDiscoveryReady(context.Context) bool }); ok {
 			discoveryReady = discovery.InitialRootDiscoveryReady(ctx)
 		}
+		if v, ok := h.Capabilities.(interface {
+			NativeMovieLibrariesReady(context.Context) bool
+			NativeVideoReady(context.Context) bool
+			NativeRemoteVideoReady(context.Context) bool
+		}); ok {
+			movies, video, remoteVideo = v.NativeMovieLibrariesReady(ctx), v.NativeVideoReady(ctx), v.NativeRemoteVideoReady(ctx)
+		}
 	}
 	return map[string]any{"schema": 2, "source_management": ready, "approved_artifact_install": ready,
 		"configuration_replace_unbound": ready, "disable": ready, "uninstall": ready, "upgrade": ready,
-		"s3_initial_root_discovery":    discoveryReady,
+		"s3_initial_root_discovery": discoveryReady,
+		"s3_checked_etag_reads":     ready,
+		"native_movie_libraries":    movies, "native_video_playback": video, "native_video_remote_execution": remoteVideo,
+		"native_video_downloads": false, "native_video_jellyfin": false,
 		"retained_namespace_reinstall": false, "enable": false, "backend_verified": false}
 }
 

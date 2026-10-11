@@ -129,7 +129,7 @@ func (c *Coordinator) OpenAuthorizedEbook(ctx context.Context, file *models.Medi
 	if err != nil {
 		return nil, err
 	}
-	if err = storageplugin.ValidateSourceDescription(lease.Description, source.ProviderSourceID, source.RootEntryID); err != nil {
+	if err = ValidateReadDescription(lease.Description, source.ProviderSourceID, source.RootEntryID, snapshot); err != nil {
 		return nil, storagesource.ErrSourceUnavailable
 	}
 	// Startup can be slow. Never open using a view read before a remote mutation.
@@ -202,7 +202,7 @@ func (c *Coordinator) OpenCover(ctx context.Context, contentID, revision string)
 	if err != nil {
 		return nil, err
 	}
-	if err = storageplugin.ValidateSourceDescription(lease.Description, ref.Source.ProviderSourceID, ref.Source.RootEntryID); err != nil {
+	if err = ValidateReadDescription(lease.Description, ref.Source.ProviderSourceID, ref.Source.RootEntryID, snapshot); err != nil {
 		return nil, storagesource.ErrSourceUnavailable
 	}
 	fresh, freshSnapshot, err := c.resolveCover(ctx, contentID, revision)

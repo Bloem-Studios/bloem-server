@@ -4096,6 +4096,12 @@ public enum Handlers {
         public let uninstall: Bool
         public let upgrade: Bool
         public let s3InitialRootDiscovery: Bool
+        public let s3CheckedETagReads: Bool
+        public let nativeMovieLibraries: Bool
+        public let nativeVideoPlayback: Bool
+        public let nativeVideoRemoteExecution: Bool
+        public let nativeVideoDownloads: Bool
+        public let nativeVideoJellyfin: Bool
         public let retainedNamespaceReinstall: Bool
         public let enable: Bool
         public let backendVerified: Bool
@@ -4109,6 +4115,12 @@ public enum Handlers {
             case uninstall = "uninstall"
             case upgrade = "upgrade"
             case s3InitialRootDiscovery = "s3_initial_root_discovery"
+            case s3CheckedETagReads = "s3_checked_etag_reads"
+            case nativeMovieLibraries = "native_movie_libraries"
+            case nativeVideoPlayback = "native_video_playback"
+            case nativeVideoRemoteExecution = "native_video_remote_execution"
+            case nativeVideoDownloads = "native_video_downloads"
+            case nativeVideoJellyfin = "native_video_jellyfin"
             case retainedNamespaceReinstall = "retained_namespace_reinstall"
             case enable = "enable"
             case backendVerified = "backend_verified"
@@ -4123,6 +4135,12 @@ public enum Handlers {
             uninstall: Bool = false,
             upgrade: Bool = false,
             s3InitialRootDiscovery: Bool = false,
+            s3CheckedETagReads: Bool = false,
+            nativeMovieLibraries: Bool = false,
+            nativeVideoPlayback: Bool = false,
+            nativeVideoRemoteExecution: Bool = false,
+            nativeVideoDownloads: Bool = false,
+            nativeVideoJellyfin: Bool = false,
             retainedNamespaceReinstall: Bool = false,
             enable: Bool = false,
             backendVerified: Bool = false
@@ -4135,6 +4153,12 @@ public enum Handlers {
             self.uninstall = uninstall
             self.upgrade = upgrade
             self.s3InitialRootDiscovery = s3InitialRootDiscovery
+            self.s3CheckedETagReads = s3CheckedETagReads
+            self.nativeMovieLibraries = nativeMovieLibraries
+            self.nativeVideoPlayback = nativeVideoPlayback
+            self.nativeVideoRemoteExecution = nativeVideoRemoteExecution
+            self.nativeVideoDownloads = nativeVideoDownloads
+            self.nativeVideoJellyfin = nativeVideoJellyfin
             self.retainedNamespaceReinstall = retainedNamespaceReinstall
             self.enable = enable
             self.backendVerified = backendVerified
@@ -4150,6 +4174,12 @@ public enum Handlers {
             self.uninstall = try container.decodeIfPresent(Bool.self, forKey: .uninstall) ?? false
             self.upgrade = try container.decodeIfPresent(Bool.self, forKey: .upgrade) ?? false
             self.s3InitialRootDiscovery = try container.decodeIfPresent(Bool.self, forKey: .s3InitialRootDiscovery) ?? false
+            self.s3CheckedETagReads = try container.decodeIfPresent(Bool.self, forKey: .s3CheckedETagReads) ?? false
+            self.nativeMovieLibraries = try container.decodeIfPresent(Bool.self, forKey: .nativeMovieLibraries) ?? false
+            self.nativeVideoPlayback = try container.decodeIfPresent(Bool.self, forKey: .nativeVideoPlayback) ?? false
+            self.nativeVideoRemoteExecution = try container.decodeIfPresent(Bool.self, forKey: .nativeVideoRemoteExecution) ?? false
+            self.nativeVideoDownloads = try container.decodeIfPresent(Bool.self, forKey: .nativeVideoDownloads) ?? false
+            self.nativeVideoJellyfin = try container.decodeIfPresent(Bool.self, forKey: .nativeVideoJellyfin) ?? false
             self.retainedNamespaceReinstall = try container.decodeIfPresent(Bool.self, forKey: .retainedNamespaceReinstall) ?? false
             self.enable = try container.decodeIfPresent(Bool.self, forKey: .enable) ?? false
             self.backendVerified = try container.decodeIfPresent(Bool.self, forKey: .backendVerified) ?? false
@@ -4165,6 +4195,12 @@ public enum Handlers {
             try container.encode(self.uninstall, forKey: .uninstall)
             try container.encode(self.upgrade, forKey: .upgrade)
             try container.encode(self.s3InitialRootDiscovery, forKey: .s3InitialRootDiscovery)
+            try container.encode(self.s3CheckedETagReads, forKey: .s3CheckedETagReads)
+            try container.encode(self.nativeMovieLibraries, forKey: .nativeMovieLibraries)
+            try container.encode(self.nativeVideoPlayback, forKey: .nativeVideoPlayback)
+            try container.encode(self.nativeVideoRemoteExecution, forKey: .nativeVideoRemoteExecution)
+            try container.encode(self.nativeVideoDownloads, forKey: .nativeVideoDownloads)
+            try container.encode(self.nativeVideoJellyfin, forKey: .nativeVideoJellyfin)
             try container.encode(self.retainedNamespaceReinstall, forKey: .retainedNamespaceReinstall)
             try container.encode(self.enable, forKey: .enable)
             try container.encode(self.backendVerified, forKey: .backendVerified)

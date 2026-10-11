@@ -2835,6 +2835,23 @@ remain false. `s3_initial_root_discovery` also requires source management's
 discovery owner to be attached to the matching host/registry and runtime manager.
 No production backend is certified by these flags.
 
+`native_video_playback` reports native API video composition.
+`native_movie_libraries` additionally requires the configured native movie
+scanner and library attachment readiness. `native_video_remote_execution`
+reports shared HLS worker grants and serving-recipe composition; each worker
+still needs its own approved runtime and retained provider identity.
+`native_video_downloads` and `native_video_jellyfin` remain false.
+`s3_checked_etag_reads` reports explicit checked-ETag admission support when
+storage composition is ready. Strict immutable-version or verified-snapshot
+admission remains the default. An approved S3 source can explicitly configure
+`connection.revision_mode: "checked-etag"` with its matching `source_id` to
+permit unversioned ETag/size checks. The host retains that configuration through
+every consumer; the flag does not enable a source or prove immutable bytes.
+Checked mode advertises `revision_pinned_reads: false`, and can miss changes
+between checks, including when a gateway ignores `If-Match`. Configuration
+replacement still requires an empty namespace. These additive booleans
+preserve `schema: 2`.
+
 Installation, discovery and upgrade use multipart uploads. Other mutation bodies require `application/json` and are
 limited to 1 MiB. Field names are exact; unknown or duplicate fields, trailing
 JSON and invalid UTF-8 are rejected. Revisions are positive integers. Read
@@ -2944,11 +2961,15 @@ Unknown outcomes include `operation_id`, `operation` and any authorized known
 ### Libraries and reading
 
 `createLibrary` with `storage_source` answers `422` (`body.storage_source`) for
-an unknown, disabled or unentitled source or a non-ebook library, and `409
+an unknown, disabled or unentitled source or an unsupported library kind, and `409
 storage_source_in_use` when the source already backs a library. Storage
 libraries scan only as a whole library; their published EPUB/PDF files use the
 existing authenticated ebook reader operations, including GET/HEAD and byte
-ranges. Downloads, proxy and Jellyfin attachment paths refuse storage files
+ranges. Movies also require startup scanner/playback readiness and use the
+ordinary native v2 playback plan and HTTP stream URLs. The
+[video execution contract](architecture/bloem-native-video-playback.md)
+records container, routing and recovery limits. Downloads and Jellyfin
+attachment paths refuse storage files
 through their existing not-found conventions; conversion and offline downloads
 of storage files are not supported.
 

@@ -35,10 +35,16 @@ func init() {
 // TranscodeOpts holds configuration for an HLS transcode session.
 type TranscodeOpts struct {
 	InputPath string
-	OutputDir string // e.g., /tmp/silo-transcode/{session_id}/
+	// InputSource supplies a fresh supervised typed source for each execution.
+	// InputFormat is the trusted demuxer supplied with that source; neither is
+	// persisted in RecipeCard. InputPath remains the durable catalog identity.
+	InputSource *TranscodeInputSource
+	InputFormat string
+	OutputDir   string // e.g., /tmp/silo-transcode/{session_id}/
 	// subtitleFilterInputPath is a parser-safe local alias used only by the
 	// libass subtitles filter. FFmpeg still opens InputPath as the media input.
 	subtitleFilterInputPath string
+	subtitleFilterFontsDir  string
 	// OutputSubdir is the signed, root-relative reconstruction directory. Empty
 	// retains the legacy flat {session_id} layout.
 	OutputSubdir         string
@@ -214,6 +220,7 @@ const (
 
 // TranscodeSession manages a running ffmpeg HLS transcode process.
 type TranscodeSession struct {
+	executionInput       *transcodeExecutionInput
 	cmd                  *exec.Cmd
 	cancel               context.CancelFunc
 	opts                 TranscodeOpts
@@ -360,6 +367,14 @@ const (
 
 // StartTranscode launches an ffmpeg process that produces HLS segments.
 func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession, error) {
+	var bindErr error
+	opts, bindErr = bindTranscodeInput(ctx, opts)
+	if bindErr != nil {
+		return nil, bindErr
+	}
+	if err := validateTranscodeInput(opts); err != nil {
+		return nil, err
+	}
 	if !validVideoSampleEntry(opts.VideoSampleEntry) ||
 		opts.VideoSampleEntry != "" && !strings.EqualFold(opts.TargetCodecVideo, "copy") &&
 			(opts.VideoSampleEntry != VideoSampleEntryHVC1 || !strings.EqualFold(opts.TargetCodecVideo, transcodeCodecHEVC)) {
@@ -434,24 +449,37 @@ func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession,
 		hwWorkloadDevice:     hwWorkloadDevice,
 	}
 
-	args := buildFFmpegArgs(opts)
+	commandCtx, executionOpts, input, err := prepareTranscodeInput(ctx, opts)
+	if err != nil {
+		cancel()
+		releaseHWDevice()
+		return nil, err
+	}
+	args := buildFFmpegArgs(executionOpts)
 	bin := opts.FFmpegPath
 	if bin == "" {
 		bin = ffmpegBinary()
 	}
 
-	log.Printf("playback: ffmpeg cmd: %s %s", bin, strings.Join(args, " "))
+	if input == nil {
+		log.Printf("playback: ffmpeg cmd: %s %s", bin, strings.Join(args, " "))
+	}
 	s.logFFmpegEvent(ctx, "ffmpeg process starting", "")
 
-	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd := exec.CommandContext(commandCtx, bin, args...)
+	configureTranscodeInputCommand(cmd, input)
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
 		cancel()
 		releaseHWDevice()
-		return nil, fmt.Errorf("create stdin pipe: %w", err)
+		return nil, fmt.Errorf("create stdin pipe: %w", input.complete(err))
 	}
 	cmd.Dir = opts.OutputDir
-	cmd.Stderr = s.newStderrWriter(ctx)
+	if input == nil {
+		cmd.Stderr = s.newStderrWriter(ctx)
+	} else {
+		cmd.Stderr = io.Discard
+	}
 	cmd.WaitDelay = 3 * time.Second
 
 	// Stamp the generation before the process can write anything, so every file
@@ -463,9 +491,10 @@ func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession,
 		cancel()
 		releaseHWDevice()
 		s.logFFmpegEvent(ctx, "ffmpeg process exit error", err.Error())
-		return nil, fmt.Errorf("start ffmpeg: %w", err)
+		return nil, fmt.Errorf("start ffmpeg: %w", input.complete(err))
 	}
 	s.cmd = cmd
+	s.executionInput = input
 	s.stdinPipe = stdinPipe
 	s.generationStartedAt = startedAt
 	s.inheritedManifest = inheritedManifest
@@ -473,13 +502,22 @@ func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession,
 
 	// Monitor ffmpeg in background. The process-specific reservation is released
 	// before done closes, so waiters can safely launch a replacement process.
-	go s.monitorFFmpeg(ctx, cmd, s.done, releaseHWDevice)
+	go s.monitorFFmpeg(commandCtx, cmd, s.done, releaseHWDevice, input)
 
 	return s, nil
 }
 
-func (s *TranscodeSession) monitorFFmpeg(ctx context.Context, cmd *exec.Cmd, done chan struct{}, releaseHWDevice func()) {
-	waitErr := cmd.Wait()
+func (s *TranscodeSession) monitorFFmpeg(ctx context.Context, cmd *exec.Cmd, done chan struct{}, releaseHWDevice func(), inputs ...*transcodeExecutionInput) {
+	var input *transcodeExecutionInput
+	if len(inputs) > 0 {
+		input = inputs[0]
+	}
+	var waitErr error
+	if input == nil {
+		waitErr = cmd.Wait()
+	} else {
+		waitErr = input.complete(waitTranscodeInputProcess(ctx, cmd))
+	}
 	// The child no longer owns the device once Wait returns. Release before
 	// flushing/logging so slow diagnostics cannot make the allocator count a
 	// process that has already exited.
@@ -696,6 +734,12 @@ func validateToneMapSource(ctx context.Context, opts TranscodeOpts) error {
 	if opts.ToneMapMode == "" {
 		return nil
 	}
+	if opts.InputSource != nil {
+		if opts.InputSource.Validate == nil {
+			return ErrToneMapSourceValidationUnavailable
+		}
+		return opts.InputSource.Validate(ctx, opts)
+	}
 	if err := opts.ToneMapSourceRevision.ValidatePath(opts.InputPath); err != nil {
 		if errors.Is(err, tonemap.ErrSourceRevisionChanged) {
 			return err
@@ -801,6 +845,12 @@ func buildFFmpegArgs(opts TranscodeOpts) []string {
 	}
 
 	// Input file.
+	if opts.InputSource != nil {
+		args = append(args, "-protocol_whitelist", "http,tcp", "-http_proxy", "", "-f", opts.InputFormat, "-format_whitelist", opts.InputFormat)
+		if opts.InputFormat == "mov" {
+			args = append(args, "-enable_drefs", "0", "-use_absolute_path", "0")
+		}
+	}
 	args = append(args, "-i", opts.InputPath)
 	args = append(args, "-map_metadata", "-1")
 	args = append(args, "-map_chapters", "-1")
@@ -1455,6 +1505,7 @@ func toneMappedTextSubtitleFilter(opts TranscodeOpts) string {
 		subtitleInputPath = opts.subtitleFilterInputPath
 	}
 	subFilter := fmt.Sprintf("subtitles='%s':si=%d", escapeFilterPath(subtitleInputPath), opts.SubtitleTrackIndex)
+	subFilter = appendSourceSubtitleFonts(subFilter, opts)
 	scale := resolutionToScale(opts.TargetResolution)
 	cpuTail := subFilter
 	if scale != "" {
@@ -1793,6 +1844,7 @@ func appendSubtitleBurnInArgs(args []string, opts TranscodeOpts) []string {
 	}
 	subFilter := fmt.Sprintf("subtitles=filename='%s':si=%d",
 		escapeFilterPath(subtitleInputPath), opts.SubtitleTrackIndex)
+	subFilter = appendSourceSubtitleFonts(subFilter, opts)
 
 	// Build the CPU filter portion: scale (if any) then subtitle overlay.
 	// Scale must come before subtitles so text is rendered at target resolution.
@@ -1958,6 +2010,9 @@ const subtitleFilterAliasName = "subtitle-source.media"
 // A stable alias in the session directory keeps the media input unchanged and
 // is retained for seek restarts with the rest of TranscodeOpts.
 func prepareSubtitleFilterInput(opts *TranscodeOpts) error {
+	if opts.InputSource != nil {
+		return nil // fresh typed extraction installs the execution-only artifact
+	}
 	if !opts.SubtitleBurnIn || opts.SubtitleTrackIndex < 0 || NeedsBurnIn(opts.SubtitleCodec) {
 		return nil
 	}
@@ -2029,6 +2084,9 @@ func (s *TranscodeSession) GetManifest() ([]byte, error) {
 func (s *TranscodeSession) getManifest(currentGeneration bool) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.sourceInputErrorLocked(); err != nil {
+		return nil, err
+	}
 
 	manifestPath := filepath.Join(s.outputDir, "stream.m3u8")
 	data, info, err := readManifestFile(manifestPath)
@@ -2174,6 +2232,12 @@ func (s *TranscodeSession) waitForManifest(ctx context.Context, timeout time.Dur
 // use the synthetic full VOD manifest only while its segment count is bounded;
 // longer media uses FFmpeg's real sliding playlist.
 func (s *TranscodeSession) BuildPlaybackManifest(segPrefix, rawQuery string) ([]byte, error) {
+	s.mu.Lock()
+	inputErr := s.sourceInputErrorLocked()
+	s.mu.Unlock()
+	if inputErr != nil {
+		return nil, inputErr
+	}
 	opts := s.Opts()
 	if strings.EqualFold(opts.TargetCodecVideo, "copy") ||
 		!CanGenerateSyntheticManifest(opts.TotalDuration, opts.SegmentDuration) {
@@ -2857,6 +2921,11 @@ func syntheticManifestQuery(segmentCount int, rawQuery string) (definition, suff
 
 // GetSegment returns the file path of a named segment if it exists.
 func (s *TranscodeSession) GetSegment(name string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.sourceInputErrorLocked(); err != nil {
+		return "", err
+	}
 	// Sanitize the name to prevent directory traversal.
 	clean := filepath.Base(name)
 	segPath := filepath.Join(s.outputDir, clean)
@@ -2897,6 +2966,9 @@ func (l *SegmentLease) Close() error {
 func (s *TranscodeSession) OpenSegment(name string) (*SegmentLease, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.sourceInputErrorLocked(); err != nil {
+		return nil, err
+	}
 	if s.restarting != nil {
 		return nil, ErrSegmentNotFound
 	}
@@ -3197,6 +3269,25 @@ func (s *TranscodeSession) restart(
 		return flight.err
 	}
 	cancelValidation()
+	if err := validateTranscodeInput(opts); err != nil {
+		flight.err = err
+		s.mu.Lock()
+		s.restarting = nil
+		s.mu.Unlock()
+		close(flight.done)
+		return err
+	}
+	restartCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	commandCtx, executionOpts, input, inputErr := prepareTranscodeInput(restartCtx, opts)
+	if inputErr != nil {
+		cancel()
+		flight.err = inputErr
+		s.mu.Lock()
+		s.restarting = nil
+		s.mu.Unlock()
+		close(flight.done)
+		return inputErr
+	}
 	s.StopThrottler()
 
 	// Kill current process without removing output directory.
@@ -3254,19 +3345,31 @@ func (s *TranscodeSession) restart(
 			startSegment, previousOpts.TargetCodecVideo, opts.TargetCodecVideo)
 	}
 
-	args := buildFFmpegArgs(opts)
+	argument := executionOpts.InputPath
+	subtitlePath, subtitleIndex := executionOpts.subtitleFilterInputPath, executionOpts.SubtitleTrackIndex
+	fontsDir := executionOpts.subtitleFilterFontsDir
+	executionOpts = opts
+	executionOpts.InputPath = argument
+	if input != nil {
+		executionOpts.subtitleFilterInputPath, executionOpts.SubtitleTrackIndex = subtitlePath, subtitleIndex
+		executionOpts.subtitleFilterFontsDir = fontsDir
+	}
+	args := buildFFmpegArgs(executionOpts)
 	bin := opts.FFmpegPath
 	if bin == "" {
 		bin = ffmpegBinary()
 	}
 
-	log.Printf("playback: ffmpeg restart cmd: %s %s", bin, strings.Join(args, " "))
+	if input == nil {
+		log.Printf("playback: ffmpeg restart cmd: %s %s", bin, strings.Join(args, " "))
+	}
 	s.logFFmpegEvent(ctx, "ffmpeg process restart", "")
 
 	// As on initial start, the caller bounds synchronous validation; the new
 	// FFmpeg process keeps running after the segment request completes.
-	ctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
-	cmd := exec.CommandContext(ctx, bin, args...)
+	ctx = restartCtx
+	cmd := exec.CommandContext(commandCtx, bin, args...)
+	configureTranscodeInputCommand(cmd, input)
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
 		cancel()
@@ -3276,10 +3379,14 @@ func (s *TranscodeSession) restart(
 		s.waitErr = err
 		s.mu.Unlock()
 		close(flight.done)
-		return fmt.Errorf("create stdin pipe: %w", err)
+		return fmt.Errorf("create stdin pipe: %w", input.complete(err))
 	}
 	cmd.Dir = opts.OutputDir
-	cmd.Stderr = s.newStderrWriter(ctx)
+	if input == nil {
+		cmd.Stderr = s.newStderrWriter(ctx)
+	} else {
+		cmd.Stderr = io.Discard
+	}
 	cmd.WaitDelay = 3 * time.Second
 
 	// The previous process released its reservation before closing done. Keep
@@ -3304,7 +3411,7 @@ func (s *TranscodeSession) restart(
 		s.mu.Unlock()
 		close(flight.done)
 		s.logFFmpegEvent(ctx, "ffmpeg process exit error", err.Error())
-		return fmt.Errorf("restart ffmpeg: %w", err)
+		return fmt.Errorf("restart ffmpeg: %w", input.complete(err))
 	}
 
 	s.mu.Lock()
@@ -3313,6 +3420,7 @@ func (s *TranscodeSession) restart(
 	}
 	s.cmd = cmd
 	s.cancel = cancel
+	s.executionInput = input
 	s.opts = opts
 	s.running = true
 	s.restarting = nil
@@ -3326,7 +3434,7 @@ func (s *TranscodeSession) restart(
 	s.mu.Unlock()
 	close(flight.done)
 
-	go s.monitorFFmpeg(ctx, cmd, s.done, releaseHWDevice)
+	go s.monitorFFmpeg(commandCtx, cmd, s.done, releaseHWDevice, input)
 
 	if hook != nil {
 		hook(ctx)
@@ -3347,6 +3455,12 @@ func (s *TranscodeSession) WaitForSegment(name string, timeout time.Duration) (s
 
 	deadline := time.After(timeout)
 	for {
+		s.mu.Lock()
+		inputErr := s.sourceInputErrorLocked()
+		s.mu.Unlock()
+		if inputErr != nil {
+			return "", inputErr
+		}
 		info, statErr := os.Stat(segPath)
 		segReady := statErr == nil && info.Size() > 0
 		if segReady {
@@ -3707,13 +3821,7 @@ func (s *TranscodeSession) ResolveSegmentRecoveryTarget(ctx context.Context, seg
 		return target, true, nil
 	}
 
-	streamOriginSeconds, _, err := ResolveCopySeekAnchor(
-		ctx,
-		opts.FFmpegPath,
-		opts.InputPath,
-		seekSeconds,
-		opts.SegmentDuration,
-	)
+	streamOriginSeconds, _, err := sourceCopySeekAnchor(ctx, opts, seekSeconds)
 	if err != nil {
 		return SegmentRecoveryTarget{}, false, err
 	}

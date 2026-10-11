@@ -526,6 +526,24 @@ func nativeProbeAwait(t *testing.T, done <-chan struct{}) {
 	}
 }
 
+// Trigger deadline propagation after the child starts its read. A timer
+// measured from startup can expire before a race-instrumented helper reads.
+// ToolInput's own timer is covered separately by its lifetime tests.
+type nativeProbeDeadlineContext struct {
+	context.Context
+	done <-chan struct{}
+}
+
+func (c nativeProbeDeadlineContext) Done() <-chan struct{} { return c.done }
+func (c nativeProbeDeadlineContext) Err() error {
+	select {
+	case <-c.done:
+		return context.DeadlineExceeded
+	default:
+		return c.Context.Err()
+	}
+}
+
 func TestNativeProbeCancellationJoinsChildAndReadBeforeRelease(t *testing.T) {
 	for _, mode := range []string{"parent", "deadline"} {
 		t.Run(mode, func(t *testing.T) {
@@ -548,22 +566,26 @@ func TestNativeProbeCancellationJoinsChildAndReadBeforeRelease(t *testing.T) {
 				}
 				close(released)
 			}
+			probeContext := parent
+			cancelProbe := cancelParent
 			if mode == "deadline" {
-				cfg.Input.Timeout = time.Second
+				deadline := make(chan struct{})
+				var once sync.Once
+				cancelProbe = func() { once.Do(func() { close(deadline) }) }
+				probeContext = nativeProbeDeadlineContext{Context: parent, done: deadline}
 			}
+			defer cancelProbe()
 			tool := nativeProbeTestTool(t, "read")
 			result := make(chan error, 1)
 			go func() {
-				got, err := ProbeNative(parent, tool, blocked, cfg)
+				got, err := ProbeNative(probeContext, tool, blocked, cfg)
 				if got != nil {
 					err = errors.Join(err, errors.New("accepted canceled result"))
 				}
 				result <- err
 			}()
 			nativeProbeAwait(t, blocked.started)
-			if mode == "parent" {
-				cancelParent()
-			}
+			cancelProbe()
 			nativeProbeAwait(t, blocked.canceled)
 			select {
 			case <-released:

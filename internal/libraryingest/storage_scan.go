@@ -93,13 +93,17 @@ func (e *Executor) tryStorageIngest(ctx context.Context, folder *models.MediaFol
 
 // StorageScanner lists a storage source and publishes each listed page to its
 // library's catalog in the page's own transaction. Books with provider
-// metadata publish without their files being read; others are parsed.
+// metadata publish without their files being read; others are parsed. Admitted
+// movies are probed through ScanReader before that authorized transaction.
 type StorageScanner struct {
-	host      *nativestorage.Host
-	sources   *storagesource.Repository
-	resources *resourcetenancy.Store
-	scanner   *scanner.Scanner
-	leaseTTL  time.Duration
+	host             *nativestorage.Host
+	sources          *storagesource.Repository
+	resources        *resourcetenancy.Store
+	scanner          *scanner.Scanner
+	leaseTTL         time.Duration
+	nativeMovieReady bool
+	movieReader      *nativestorage.ScanReader
+	movieProbeConfig scanner.NativeProbeConfig
 }
 
 var _ StorageIngestor = (*StorageScanner)(nil)
@@ -127,8 +131,8 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	if folder == nil || folder.ID != location.FolderID {
 		return result, storagesource.ErrReferenceConflict
 	}
-	if !librarykind.IsEbook(folder.Type) || !folder.Enabled {
-		return result, fmt.Errorf("storage locations support enabled ebook libraries only")
+	if !librarykind.SupportsNativeStorage(folder.Type, c.nativeMovieReady) || !folder.Enabled {
+		return result, fmt.Errorf("storage library kind is not ready")
 	}
 	// Runtime admission covers every provider call and renewal worker; Shutdown
 	// cannot reap a plugin process under an active scan.
@@ -166,7 +170,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	if err != nil {
 		return result, err
 	}
-	if err = describedSource(description, source); err != nil {
+	if err = describedSource(description, source, snapshot); err != nil {
 		return result, err
 	}
 	// Describe/startup may outlive a remote configuration or authorization
@@ -238,7 +242,14 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		if err != nil {
 			return result, err
 		}
-		books, skipped, err := c.prepare(job, media, source, page.GetEntries())
+		var books []scanner.StorageEbook
+		var movies []scanner.StorageMovie
+		var skipped int
+		if librarykind.IsMovie(folder.Type) {
+			movies, skipped, err = c.prepareMovies(job, location, source, lease, checkpoint, page)
+		} else {
+			books, skipped, err = c.prepare(job, media, source, page.GetEntries())
+		}
 		if err != nil {
 			return result, err
 		}
@@ -246,7 +257,12 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		var removedFiles int
 		publish := func(ctx context.Context, tx pgx.Tx, _ []*storagev1.Entry, removed []string) error {
 			var err error
-			if published, err = c.scanner.PublishStorageEbooksTx(ctx, tx, folder, location, source.ConfigurationRevision, books); err != nil {
+			if librarykind.IsMovie(folder.Type) {
+				published, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, movies)
+			} else {
+				published, err = c.scanner.PublishStorageEbooksTx(ctx, tx, folder, location, source.ConfigurationRevision, books)
+			}
+			if err != nil {
 				return err
 			}
 			removedFiles, err = c.scanner.MarkStorageEbooksRemovedTx(ctx, tx, location, removed)
@@ -310,10 +326,14 @@ func (c *StorageScanner) prepare(ctx context.Context, media mediasource.Source, 
 	return books, skipped, nil
 }
 
-// describedSource checks the provider still serves the configured source with
-// revision-pinned reads.
-func describedSource(d *storagev1.DescribeResponse, source storagesource.SourceConfig) error {
-	if err := storageplugin.ValidateSourceDescription(d, source.ProviderSourceID, source.RootEntryID); err != nil {
+// describedSource checks the configured source and retained read policy.
+// Tests without a retained runtime snapshot keep strict admission.
+func describedSource(d *storagev1.DescribeResponse, source storagesource.SourceConfig, snapshots ...*plugins.NativeStorageSnapshot) error {
+	var snapshot *plugins.NativeStorageSnapshot
+	if len(snapshots) == 1 {
+		snapshot = snapshots[0]
+	}
+	if err := nativestorage.ValidateReadDescription(d, source.ProviderSourceID, source.RootEntryID, snapshot); err != nil {
 		return storagesource.ErrSourceUnavailable
 	}
 	return nil

@@ -48,6 +48,12 @@ type nativeStorageCapabilitiesResponse struct {
 	Uninstall                   bool `json:"uninstall"`
 	Upgrade                     bool `json:"upgrade"`
 	S3InitialRootDiscovery      bool `json:"s3_initial_root_discovery"`
+	S3CheckedETagReads          bool `json:"s3_checked_etag_reads"`
+	NativeMovieLibraries        bool `json:"native_movie_libraries"`
+	NativeVideoPlayback         bool `json:"native_video_playback"`
+	NativeVideoRemoteExecution  bool `json:"native_video_remote_execution"`
+	NativeVideoDownloads        bool `json:"native_video_downloads"`
+	NativeVideoJellyfin         bool `json:"native_video_jellyfin"`
 	RetainedNamespaceReinstall  bool `json:"retained_namespace_reinstall"`
 	Enable                      bool `json:"enable"`
 	BackendVerified             bool `json:"backend_verified"`

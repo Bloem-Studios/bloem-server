@@ -29,8 +29,16 @@ func NewLibraryLocations(pool *pgxpool.Pool) *LibraryLocations {
 	return &LibraryLocations{sources: storagesource.NewRepository(pool), resources: resourcetenancy.NewStore(pool)}
 }
 
+// SetNativeMovieReady is startup-only, before library attachment is admitted.
+// It preserves the resource authority check and changes only its kind hold.
+func (l *LibraryLocations) SetNativeMovieReady(ready bool) {
+	if l != nil {
+		l.resources.SetNativeMovieReady(ready)
+	}
+}
+
 // AttachTx makes sourceKey the storage location of the library being created
-// in tx. The library must be an enabled ebook library, and its owner must be
+// in tx. The library must be an enabled admitted library, and its owner must be
 // allowed to use the source's installation; the same check gates every scan.
 func (l *LibraryLocations) AttachTx(ctx context.Context, tx pgx.Tx, sourceKey uuid.UUID, folderID int) error {
 	if l == nil {
