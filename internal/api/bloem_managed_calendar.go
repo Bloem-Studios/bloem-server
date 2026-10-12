@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -138,6 +139,15 @@ func (s *managedCalendarSource) Authority(ctx context.Context, p managedtracking
 	digest := sha256.Sum256(raw)
 	return hex.EncodeToString(digest[:]), nil
 }
+
+// managedCalendarArtworkID retains asset identifiers and omits remote URLs.
+// The destination accepts metadata references, never remote image sources.
+func managedCalendarArtworkID(value string) string {
+	if strings.Contains(value, "://") || strings.HasPrefix(value, "//") {
+		return ""
+	}
+	return value
+}
 func calendarIDSet(ids []string) map[string]bool {
 	out := make(map[string]bool, len(ids))
 	for _, id := range ids {
@@ -242,9 +252,9 @@ func (s *managedCalendarSource) Events(ctx context.Context, p managedtracking.Pr
 		for _, e := range out {
 			e.ExternalIds = identifiers[e.ContentId]
 			e.SeriesExternalIds = identifiers[e.SeriesId]
-			e.ArtworkId = artwork[e.ContentId]
+			e.ArtworkId = managedCalendarArtworkID(artwork[e.ContentId])
 			if e.ArtworkId == "" {
-				e.ArtworkId = artwork[e.SeriesId]
+				e.ArtworkId = managedCalendarArtworkID(artwork[e.SeriesId])
 			}
 		}
 	}

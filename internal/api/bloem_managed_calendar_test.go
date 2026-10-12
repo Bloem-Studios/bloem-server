@@ -50,3 +50,19 @@ func TestManagedCalendarFingerprintTracksVisibility(t *testing.T) {
 		t.Fatalf("visibility change not detected: %s %s %v", a, c, err)
 	}
 }
+
+func TestManagedCalendarArtworkNeverExportsRemoteURLs(t *testing.T) {
+	for _, tc := range []struct{ input, want string }{
+		{"https://images.example/poster.jpg", ""},
+		{"http://images.example/poster.jpg", ""},
+		{"//images.example/poster.jpg", ""},
+		{"s3://bucket/poster.jpg", ""},
+		{"artwork/poster.jpg", "artwork/poster.jpg"},
+		{"native-cover:entry", "native-cover:entry"},
+		{"", ""},
+	} {
+		if got := managedCalendarArtworkID(tc.input); got != tc.want {
+			t.Errorf("artwork %q: got %q, want %q", tc.input, got, tc.want)
+		}
+	}
+}
