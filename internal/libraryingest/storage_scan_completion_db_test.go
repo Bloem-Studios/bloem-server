@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -175,7 +176,7 @@ func testStorageScanCompletionAuthority(t *testing.T, binary []byte, manifest *p
 		case "cleanup-failure":
 			// Fail after the finalizer has changed catalog rows: none of its
 			// changes may survive the rejected journal completion.
-			if _, err := pool.Exec(ctx, "ALTER TABLE bloem_storage_scan_runs ADD CONSTRAINT test_owned_completion_failure CHECK(state <> 'complete')"); err != nil {
+			if _, err := pool.Exec(ctx, fmt.Sprintf("ALTER TABLE bloem_storage_scan_runs ADD CONSTRAINT test_owned_completion_failure CHECK(source_key <> '%s'::uuid OR state <> 'complete')", installed.Source.Key)); err != nil {
 				t.Fatal(err)
 			}
 		}

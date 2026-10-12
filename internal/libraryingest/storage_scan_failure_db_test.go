@@ -136,7 +136,7 @@ func TestNativeMovieStorageIngestReportsFailureAndCancellation(t *testing.T) {
 			t.Fatalf("internal failure reported as a cancellation: %v", err)
 		}
 		message := err.Error()
-		if !strings.HasPrefix(message, `storage scan failed: probe storage movie "Native.Movie.2024.mp4": native media probe failed (`) || strings.Contains(message, "\n") || strings.Contains(message, "http://") {
+		if !strings.HasPrefix(message, fmt.Sprintf(`storage scan failed: storage location %s: probe storage movie "Native.Movie.2024.mp4": native media probe failed (`, f.location.ID)) || strings.Contains(message, "\n") || strings.Contains(message, "http://") {
 			t.Fatalf("failure message is not actionable or exposes private detail: %q", message)
 		}
 		if code := status.Code(err); code != codes.Unavailable {
