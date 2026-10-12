@@ -4,10 +4,14 @@ package pluginhost_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -17,15 +21,12 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
-	publicmanifest "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/manifest"
 
 	"github.com/Silo-Server/silo-server/internal/cache"
 	"github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/pluginhost"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 )
-
-const sdkExamplesDir = "/opt/worktrees/silo-plugin-sdk-rh/examples"
 
 // fakePlugin captures the host-side state we need per started plugin to wire
 // the dispatcher.
@@ -34,7 +35,6 @@ type fakePlugin struct {
 	pluginID       string
 	binaryPath     string
 	manifest       *pluginv1.PluginManifest
-	parsedManifest *publicmanifest.Manifest
 	client         *pluginhost.Client
 }
 
@@ -98,25 +98,6 @@ func (b *inMemoryBus) Subscribe(_ context.Context, channel string, h cache.Event
 
 func (b *inMemoryBus) Close() error { return nil }
 
-// installationViewFromParsed turns a parsed SDK manifest into the dispatcher's
-// InstallationView, copying only the event_consumer.v1 capability's
-// subscriptions_by_capability data the dispatcher needs.
-func installationViewFromParsed(installationID int, m *publicmanifest.Manifest) plugins.InstallationView {
-	view := plugins.InstallationView{
-		InstallationID: installationID,
-		PluginID:       m.GetPluginId(),
-	}
-	for _, cap := range m.Capabilities {
-		for _, sub := range cap.SubscriptionsByCapability {
-			view.SubscriptionsByCapability = append(view.SubscriptionsByCapability, plugins.CapabilitySubscription{
-				Capability: sub.Capability,
-				Events:     append([]string(nil), sub.Events...),
-			})
-		}
-	}
-	return view
-}
-
 // capabilitiesFromManifest mirrors the production conversion: it asks
 // plugins.CapabilityRecordsFromManifest for the host-side records (which
 // flatten the proto's Subscriptions/DisplayName/etc into Metadata["..."]),
@@ -135,24 +116,55 @@ func capabilitiesFromManifest(t *testing.T, installationID int, manifest *plugin
 	return out
 }
 
-func buildSDKExample(t *testing.T, name string) string {
+var dispatchFixtureBuild = sync.OnceValues(func() ([]byte, error) {
+	dir, err := os.MkdirTemp("", "silo-dispatch-fixture-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dir)
+	bin := filepath.Join(dir, "dispatch")
+	cmd := exec.Command("go", "build", "-o", bin, "./testdata/fakedispatch")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("build dispatch fixture: %w\n%s", err, output)
+	}
+	return os.ReadFile(bin)
+})
+
+func buildDispatchFixture(t *testing.T, name string) string {
 	t.Helper()
+	binary, err := dispatchFixtureBuild()
+	if err != nil {
+		t.Fatal(err)
+	}
 	out := filepath.Join(t.TempDir(), name)
-	cmd := exec.Command("go", "build", "-o", out, ".")
-	cmd.Dir = filepath.Join(sdkExamplesDir, name)
-	if b, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build %s: %v\n%s", name, err, b)
+	if err := os.WriteFile(out, binary, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	checksum := sha256.Sum256(binary)
+	manifest := &pluginv1.PluginManifest{
+		PluginId: "example." + name, Version: "1.0.0", SiloApiVersion: "v1",
+		Checksum:           hex.EncodeToString(checksum[:]),
+		SupportedPlatforms: []*pluginv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}},
+		Capabilities:       []*pluginv1.CapabilityDescriptor{{Type: "scheduled_task.v1", Id: "emit-once"}, {Type: "scheduled_task.v1", Id: "emit-targeted"}, {Type: "scheduled_task.v1", Id: "ping"}},
+	}
+	if name == "fake-consumer" || name == "fake-target" {
+		manifest.Capabilities = append(manifest.Capabilities, &pluginv1.CapabilityDescriptor{Type: "event_consumer.v1", Id: "events", Subscriptions: []string{"plugin.example.fake-router.submitted", "plugin.example.fake-publisher.foo-event"}})
+	}
+	data, err := protojson.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(filepath.Dir(out), "manifest.json"), data, 0o600); err != nil {
+		t.Fatal(err)
 	}
 	return out
 }
 
-// startFakePlugin builds the named SDK example, reads its proto manifest from
-// the binary's `manifest` subcommand and its on-disk manifest.json (which
-// carries the proto-extension fields the proto-only manifest lacks), starts
-// the plugin via host.Start, and returns the captured state.
+// startFakePlugin builds a repository-local SDK fixture, reads the proto
+// manifest through its CLI, and starts the real broker-backed plugin process.
 func startFakePlugin(t *testing.T, host *pluginhost.Host, name string, installationID int) *fakePlugin {
 	t.Helper()
-	bin := buildSDKExample(t, name)
+	bin := buildDispatchFixture(t, name)
 
 	manifestBytes, err := exec.Command(bin, "manifest").Output()
 	if err != nil {
@@ -161,15 +173,6 @@ func startFakePlugin(t *testing.T, host *pluginhost.Host, name string, installat
 	manifest := &pluginv1.PluginManifest{}
 	if err := protojson.Unmarshal(manifestBytes, manifest); err != nil {
 		t.Fatalf("parse manifest protojson for %s: %v", name, err)
-	}
-
-	srcManifest, err := os.ReadFile(filepath.Join(sdkExamplesDir, name, "manifest.json"))
-	if err != nil {
-		t.Fatalf("read source manifest for %s: %v", name, err)
-	}
-	parsed, err := publicmanifest.Parse(srcManifest)
-	if err != nil {
-		t.Fatalf("publicmanifest.Parse(%s): %v", name, err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -190,7 +193,6 @@ func startFakePlugin(t *testing.T, host *pluginhost.Host, name string, installat
 		pluginID:       manifest.GetPluginId(),
 		binaryPath:     bin,
 		manifest:       manifest,
-		parsedManifest: parsed,
 		client:         client,
 	}
 }
@@ -238,6 +240,16 @@ func (o *hubObserver) seen() []events.Envelope {
 	return out
 }
 
+func (o *hubObserver) count(name string) int {
+	count := 0
+	for _, env := range o.seen() {
+		if env.Event == name {
+			count++
+		}
+	}
+	return count
+}
+
 func (o *hubObserver) waitFor(t *testing.T, predicate func(events.Envelope) bool, timeout time.Duration) (events.Envelope, bool) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
@@ -252,10 +264,9 @@ func (o *hubObserver) waitFor(t *testing.T, predicate func(events.Envelope) bool
 	return events.Envelope{}, false
 }
 
-// TestCapabilityScopedDispatchEndToEnd asserts that a consumer subscribed to
-// `request_router.v1` capability via `subscriptions_by_capability` receives an
-// event published by a router that declares `request_router.v1`.
-func TestCapabilityScopedDispatchEndToEnd(t *testing.T) {
+// TestEventNameDispatchEndToEnd verifies manifest event-name subscriptions
+// loaded from the installation store across the real plugin broker.
+func TestEventNameDispatchEndToEnd(t *testing.T) {
 	bus := newInMemoryBus()
 	hub := events.NewHub("test", bus)
 	if err := hub.Start(context.Background()); err != nil {
@@ -271,20 +282,24 @@ func TestCapabilityScopedDispatchEndToEnd(t *testing.T) {
 
 	router := startFakePlugin(t, host, "fake-router", 1)
 	consumer := startFakePlugin(t, host, "fake-consumer", 2)
+	peer := startFakePlugin(t, host, "fake-target", 3)
 
 	store := &dispatchTestStore{
 		installations: []*plugins.Installation{
 			{ID: router.installationID, PluginID: router.pluginID, Enabled: true},
 			{ID: consumer.installationID, PluginID: consumer.pluginID, Enabled: true},
+			{ID: peer.installationID, PluginID: peer.pluginID, Enabled: true},
 		},
 		capabilities: map[int][]*plugins.Capability{
 			router.installationID:   capabilitiesFromManifest(t, router.installationID, router.manifest),
 			consumer.installationID: capabilitiesFromManifest(t, consumer.installationID, consumer.manifest),
+			peer.installationID:     capabilitiesFromManifest(t, peer.installationID, peer.manifest),
 		},
 	}
 	resolver := &dispatchTestResolver{clients: map[int]*pluginhost.Client{
 		router.installationID:   router.client,
 		consumer.installationID: consumer.client,
+		peer.installationID:     peer.client,
 	}}
 
 	dispatcher := plugins.NewEventDispatcherWithTypedResolver(bus, hub, store, resolver, 4)
@@ -292,11 +307,6 @@ func TestCapabilityScopedDispatchEndToEnd(t *testing.T) {
 		t.Fatalf("dispatcher.Start: %v", err)
 	}
 	t.Cleanup(dispatcher.Stop)
-
-	dispatcher.OnInstallationsChanged([]plugins.InstallationView{
-		installationViewFromParsed(router.installationID, router.parsedManifest),
-		installationViewFromParsed(consumer.installationID, consumer.parsedManifest),
-	})
 
 	triggerScheduledTask(t, router, "emit-once")
 
@@ -307,7 +317,26 @@ func TestCapabilityScopedDispatchEndToEnd(t *testing.T) {
 		t.Fatalf("router emission %q never reached the hub. seen: %v", emitted, eventNames(observer.seen()))
 	}
 	if _, ok := observer.waitFor(t, func(env events.Envelope) bool { return env.Event == forwarded }, 5*time.Second); !ok {
-		t.Fatalf("consumer never re-published %q (capability-scoped dispatch failed). seen: %v", forwarded, eventNames(observer.seen()))
+		t.Fatalf("consumer never re-published %q (event-name dispatch failed). seen: %v", forwarded, eventNames(observer.seen()))
+	}
+	peerForward := "plugin." + peer.pluginID + ".received." + emitted
+	if _, ok := observer.waitFor(t, func(env events.Envelope) bool { return env.Event == peerForward }, 5*time.Second); !ok {
+		t.Fatalf("second subscriber never received %q. seen: %v", peerForward, eventNames(observer.seen()))
+	}
+
+	dispatcher.Stop()
+	triggerScheduledTask(t, router, "emit-once")
+	if _, ok := observer.waitFor(t, func(env events.Envelope) bool { return env.Event == emitted && observer.count(emitted) == 2 }, 5*time.Second); !ok {
+		t.Fatal("publisher stopped emitting after dispatcher shutdown")
+	}
+	if _, ok := observer.waitFor(t, func(events.Envelope) bool { return observer.count(forwarded) > 1 || observer.count(peerForward) > 1 }, 750*time.Millisecond); ok {
+		t.Fatal("stopped dispatcher delivered another event")
+	}
+	if err := host.Stop(router.installationID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := host.Client(router.installationID); !errors.Is(err, pluginhost.ErrClientNotFound) {
+		t.Fatalf("stopped publisher remains available: %v", err)
 	}
 }
 
@@ -355,12 +384,6 @@ func TestTargetedPublishReachesOnlyNamedPlugin(t *testing.T) {
 		t.Fatalf("dispatcher.Start: %v", err)
 	}
 	t.Cleanup(dispatcher.Stop)
-
-	dispatcher.OnInstallationsChanged([]plugins.InstallationView{
-		installationViewFromParsed(publisher.installationID, publisher.parsedManifest),
-		installationViewFromParsed(consumer.installationID, consumer.parsedManifest),
-		installationViewFromParsed(target.installationID, target.parsedManifest),
-	})
 
 	triggerScheduledTask(t, publisher, "emit-targeted")
 

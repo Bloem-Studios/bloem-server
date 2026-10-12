@@ -5,7 +5,6 @@ package pluginhost_test
 import (
 	"context"
 	"os/exec"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 )
 
 const (
-	examplePluginDir  = "/opt/worktrees/silo-plugin-sdk-rh/examples/hello-runtime-host"
 	expectedEventName = "plugin.example.hello-runtime-host.ping"
 )
 
@@ -102,11 +100,5 @@ func TestPluginPublishEvent_FlowsToHub(t *testing.T) {
 
 func buildExamplePlugin(t *testing.T) string {
 	t.Helper()
-	out := filepath.Join(t.TempDir(), "hello-runtime-host")
-	cmd := exec.Command("go", "build", "-o", out, ".")
-	cmd.Dir = examplePluginDir
-	if b, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build example plugin: %v\n%s", err, b)
-	}
-	return out
+	return buildDispatchFixture(t, "hello-runtime-host")
 }
