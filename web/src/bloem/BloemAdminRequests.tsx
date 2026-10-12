@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RequestMediaTabs } from "./RequestMediaTabs";
+import { AudiobookAcquisitionPanel } from "./AudiobookAcquisitionPanel";
 import { EbookRequestIntegrationPanel } from "./EbookRequestIntegrationPanel";
 
 export default function BloemAdminRequests() {
@@ -129,6 +130,7 @@ function BookQueue({ ebook }: { ebook: boolean }) {
       ) : (
         <>
           {ebook && active?.authority === "platform_admin" && <EbookRequestIntegrationPanel />}
+          {!ebook && <AudiobookAcquisitionPanel />}
           {ebook && (
             <p className="text-muted-foreground text-sm">
               Provider progress is shown below. Ebooks become fulfilled only when they are available
