@@ -324,6 +324,8 @@ internal/sections/fetcher.go
 internal/sections/types.go
 internal/subtitles/provider_language_test.go  # reviewed test-only exception: repository reads preserve upstream raw legacy language
 internal/transcodenode/server_test.go
+internal/userdb/bridgeimport/import_db_test.go  # reviewed test-only exception: seed frozen schema22 with historical SQL
+internal/userdb/bridgeimport/store_reads_test.go  # reviewed test-only exception: compare historical source profiles and independently derived Bloem metadata
 internal/userstore/pgstore/profile_advisory_age_test.go  # Assert advisory-age invalidation on authoritative profile membership revision
 internal/userstore/pgstore/profile_libraries.go
 internal/userstore/pgstore/profile_pin_revision_test.go  # the account policy revision lives on the default-organization membership in Bloem
