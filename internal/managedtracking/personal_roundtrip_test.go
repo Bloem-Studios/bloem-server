@@ -27,7 +27,7 @@ func TestRealPluginPersonalStateRoundTripThroughSilo(t *testing.T) {
 	s, id, p := enrollmentFixture(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 	defer cancel()
-	if _, err := s.Pool.Exec(ctx, `INSERT INTO plugin_capabilities(plugin_installation_id,capability_type,capability_id,metadata) VALUES($1,'watch_sync_provider.v1','pastime','{"managed_personal_state":true}')`, id); err != nil {
+	if _, err := s.Pool.Exec(ctx, `INSERT INTO plugin_capabilities(plugin_installation_id,capability_type,capability_id,metadata) VALUES($1,'watch_sync_provider.v1','pastime','{"metadata":{"managed_personal_state":true}}')`, id); err != nil {
 		t.Fatal(err)
 	}
 	run := startPastimeAcceptance(t, ctx, s, id, pluginBinary, fixtureBinary)

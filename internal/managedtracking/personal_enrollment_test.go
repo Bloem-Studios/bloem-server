@@ -36,7 +36,7 @@ func TestPersonalEnrollmentRequiresCapablePluginAndConvergesReplay(t *testing.T)
 		}
 	}
 	read(false)
-	if _, err = s.Pool.Exec(ctx, `INSERT INTO plugin_capabilities(plugin_installation_id,capability_type,capability_id,metadata) VALUES($1,'watch_sync_provider.v1','pastime','{"managed_personal_state":true}')`, id); err != nil {
+	if _, err = s.Pool.Exec(ctx, `INSERT INTO plugin_capabilities(plugin_installation_id,capability_type,capability_id,metadata) VALUES($1,'watch_sync_provider.v1','pastime','{"metadata":{"managed_personal_state":true}}')`, id); err != nil {
 		t.Fatal(err)
 	}
 	if err = s.EnsureConnection(ctx, id, e); err != nil {

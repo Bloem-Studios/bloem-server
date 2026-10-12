@@ -33,7 +33,7 @@ func TestPersonalImportPreservesNewerNativeChangesAndQueuesCorrection(t *testing
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = s.Pool.Exec(ctx, `INSERT INTO plugin_capabilities(plugin_installation_id,capability_type,capability_id,metadata) VALUES($1,'watch_sync_provider.v1','pastime','{"managed_personal_state":true}')`, id)
+			_, err = s.Pool.Exec(ctx, `INSERT INTO plugin_capabilities(plugin_installation_id,capability_type,capability_id,metadata) VALUES($1,'watch_sync_provider.v1','pastime','{"metadata":{"managed_personal_state":true}}')`, id)
 			if err != nil {
 				t.Fatal(err)
 			}

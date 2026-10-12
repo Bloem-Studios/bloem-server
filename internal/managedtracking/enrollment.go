@@ -79,7 +79,7 @@ func (s *Service) EnsureConnection(ctx context.Context, id int, e Enrollment) er
 	}
 	key := watchsync.PluginProviderKey(id, "bloem.pastime", "pastime", false)
 	var personal bool
-	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_capabilities WHERE plugin_installation_id=$1 AND capability_type='watch_sync_provider.v1' AND capability_id='pastime' AND metadata @> '{"managed_personal_state":true}'::jsonb)`, id).Scan(&personal); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_capabilities WHERE plugin_installation_id=$1 AND capability_type='watch_sync_provider.v1' AND capability_id='pastime' AND metadata->'metadata' @> '{"managed_personal_state":true}'::jsonb)`, id).Scan(&personal); err != nil {
 		return err
 	}
 	personal = personal && e.Active
