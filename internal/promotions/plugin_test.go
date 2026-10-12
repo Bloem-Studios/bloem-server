@@ -5,35 +5,44 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/bloempresentation"
 )
 
-func TestPromotionWorkerProcess(t *testing.T) {
-	if len(os.Args) == 0 || os.Args[len(os.Args)-1] != "promotions-test-worker" {
-		return
+// The production call budget includes startup. Re-executing this package's
+// race-instrumented test binary spends that budget initializing unrelated test
+// dependencies; use the same bundled worker that the server launches instead.
+var promotionWorkerBinary = sync.OnceValues(func() ([]byte, error) {
+	dir, err := os.MkdirTemp("", "bloem-promotions-worker-")
+	if err != nil {
+		return nil, err
 	}
-	if err := RunPlugin(os.Stdin, os.Stdout); err != nil {
-		os.Exit(8)
+	defer os.RemoveAll(dir)
+	binary := filepath.Join(dir, "promotions-worker")
+	build := exec.Command("go", "build", "-race=false", "-o", binary, "../../cmd/bloem-presentation-promotions")
+	if output, err := build.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("build bundled promotions worker: %w\n%s", err, output)
 	}
-	os.Exit(0)
-}
+	return os.ReadFile(binary)
+})
 
 func promotionTestClient(t *testing.T) *bloempresentation.Client {
 	t.Helper()
-	executable, err := os.Executable()
+	binary, err := promotionWorkerBinary()
 	if err != nil {
 		t.Fatal(err)
 	}
 	wrapper := filepath.Join(t.TempDir(), "promotions-worker")
-	quoted := "'" + strings.ReplaceAll(executable, "'", "'\\''") + "'"
-	if err := os.WriteFile(wrapper, []byte("#!/bin/sh\nexec "+quoted+" -test.run=^TestPromotionWorkerProcess$ promotions-test-worker\n"), 0700); err != nil {
+	if err := os.WriteFile(wrapper, binary, 0700); err != nil {
 		t.Fatal(err)
 	}
 	client, err := bloempresentation.New(wrapper)
