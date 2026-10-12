@@ -8,14 +8,34 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/models"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func TestLocalCleanupPreservesNativeFilesIncludingExpiredMissingDB(t *testing.T) {
+// Mixed cleanup deliberately retains membership-less items for another lane.
+// Remove fixture-owned items while their surviving files still identify them,
+// before the base fixture deletes the folder and loses that association.
+func mixedStorageFixture(t *testing.T) (*pgxpool.Pool, *Scanner, *models.MediaFolder, storagesource.Location) {
+	t.Helper()
 	pool, s, folder, location := storageEbookFixture(t)
+	t.Cleanup(func() {
+		_, err := pool.Exec(context.Background(), `DELETE FROM media_items WHERE content_id IN (
+   SELECT content_id FROM media_files WHERE media_folder_id=$1
+   UNION SELECT content_id FROM media_item_libraries WHERE media_folder_id=$1
+  )`, folder.ID)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+	return pool, s, folder, location
+}
+
+func TestLocalCleanupPreservesNativeFilesIncludingExpiredMissingDB(t *testing.T) {
+	pool, s, folder, location := mixedStorageFixture(t)
 	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("native", "epub", &storagev1.EbookMetadata{Title: "Native"}, "r1"))
 	var id int
 	if err := pool.QueryRow(t.Context(), `SELECT id FROM media_files WHERE media_folder_id=$1`, folder.ID).Scan(&id); err != nil {
@@ -35,7 +55,7 @@ func TestLocalCleanupPreservesNativeFilesIncludingExpiredMissingDB(t *testing.T)
 }
 
 func TestLocalReconciliationRetainsExpiredNativeVersionDB(t *testing.T) {
-	pool, s, folder, location := storageEbookFixture(t)
+	pool, s, folder, location := mixedStorageFixture(t)
 	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("native", "epub", &storagev1.EbookMetadata{Title: "Native"}, "r1"))
 	var contentID string
 	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE media_folder_id=$1`, folder.ID).Scan(&contentID); err != nil {
@@ -65,7 +85,7 @@ func TestLocalReconciliationRetainsExpiredNativeVersionDB(t *testing.T) {
 }
 
 func TestStorageEbookJoinsCuratedLocalMetadataDB(t *testing.T) {
-	pool, s, folder, location := storageEbookFixture(t)
+	pool, s, folder, location := mixedStorageFixture(t)
 	meta := &storagev1.EbookMetadata{Title: "Original", Authors: []string{"Curated Author"}, Isbn: "9780441013593"}
 	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("local", "epub", meta, "r1"))
 	var id string
@@ -97,7 +117,7 @@ func TestStorageEbookJoinsCuratedLocalMetadataDB(t *testing.T) {
 }
 
 func TestLocalAudiobookScanPreservesNativeAudioInMixedLibraryDB(t *testing.T) {
-	pool, s, folder, location := storageEbookFixture(t)
+	pool, s, folder, location := mixedStorageFixture(t)
 	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("native", "epub", &storagev1.EbookMetadata{Title: "Native"}, "r1"))
 	// Seed audio catalog facts without implementing the later audio publisher.
 	if _, err := pool.Exec(t.Context(), `UPDATE media_items SET type='audiobook' WHERE content_id IN(SELECT content_id FROM media_files WHERE media_folder_id=$1)`, folder.ID); err != nil {
@@ -130,7 +150,7 @@ func TestLocalAudiobookScanPreservesNativeAudioInMixedLibraryDB(t *testing.T) {
 }
 
 func TestStorageCompletionSweepsOnlyCompletingLocationDB(t *testing.T) {
-	pool, s, folder, location := storageEbookFixture(t)
+	pool, s, folder, location := mixedStorageFixture(t)
 	sourceRepo := storagesource.NewRepository(pool)
 	source, err := sourceRepo.CreateSource(t.Context(), storagesource.SourceConfig{PluginID: "fixture", ProviderSourceID: "other-" + fmt.Sprint(time.Now().UnixNano()), RootEntryID: "root", ConfigurationRevision: 1, Enabled: true})
 	if err != nil {
@@ -199,7 +219,7 @@ func TestStorageCompletionSweepsOnlyCompletingLocationDB(t *testing.T) {
 }
 
 func TestNilMaintenanceScopeRetainsOriginalNativeTrashBehaviorDB(t *testing.T) {
-	pool, s, folder, location := storageEbookFixture(t)
+	pool, s, folder, location := mixedStorageFixture(t)
 	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("native", "epub", &storagev1.EbookMetadata{Title: "Native"}, "r1"))
 	if _, err := pool.Exec(t.Context(), `UPDATE media_files SET missing_since=clock_timestamp()-interval '1 day' WHERE media_folder_id=$1`, folder.ID); err != nil {
 		t.Fatal(err)
@@ -212,7 +232,7 @@ func TestNilMaintenanceScopeRetainsOriginalNativeTrashBehaviorDB(t *testing.T) {
 }
 
 func TestMaintenanceCandidatesExcludeNativeMissingUnionDB(t *testing.T) {
-	pool, s, folder, location := storageEbookFixture(t)
+	pool, s, folder, location := mixedStorageFixture(t)
 	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("native", "epub", &storagev1.EbookMetadata{Title: "Native"}, "r1"), storageEbookEntry("local", "pdf", &storagev1.EbookMetadata{Title: "Local"}, "r1"))
 	var nativeID, localID int
 	var nativePath, localContent string
@@ -250,7 +270,7 @@ func TestMaintenanceCandidatesExcludeNativeMissingUnionDB(t *testing.T) {
 }
 
 func TestLocalMaintenanceStillReconcilesFilelessItemsDB(t *testing.T) {
-	pool, s, folder, location := storageEbookFixture(t)
+	pool, s, folder, location := mixedStorageFixture(t)
 	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("local", "epub", &storagev1.EbookMetadata{Title: "Local"}, "r1"))
 	var id string
 	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE media_folder_id=$1`, folder.ID).Scan(&id); err != nil {
@@ -270,7 +290,7 @@ func TestLocalMaintenanceStillReconcilesFilelessItemsDB(t *testing.T) {
 }
 
 func TestLocalVideoScansPreserveNativePresentAndExpiredFilesDB(t *testing.T) {
-	pool, s, folder, location := storageEbookFixture(t)
+	pool, s, folder, location := mixedStorageFixture(t)
 	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("present", "epub", &storagev1.EbookMetadata{Title: "Present"}, "r1"), storageEbookEntry("missing", "pdf", &storagev1.EbookMetadata{Title: "Missing"}, "r1"))
 	if _, err := pool.Exec(t.Context(), `UPDATE media_files SET missing_since=clock_timestamp()-interval '1 day' WHERE id IN(SELECT media_file_id FROM bloem_storage_file_refs WHERE location_id=$1 AND entry_id='pdf/missing')`, location.ID); err != nil {
 		t.Fatal(err)
@@ -302,7 +322,7 @@ func TestLocalVideoScansPreserveNativePresentAndExpiredFilesDB(t *testing.T) {
 }
 
 func TestStorageEbookLockedNativeMetadataAndFileIdentityDB(t *testing.T) {
-	pool, s, folder, location := storageEbookFixture(t)
+	pool, s, folder, location := mixedStorageFixture(t)
 	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("native", "epub", &storagev1.EbookMetadata{Title: "Original", Authors: []string{"Original Author"}}, "r1"))
 	var contentID string
 	var fileID int
@@ -324,7 +344,7 @@ func TestStorageEbookLockedNativeMetadataAndFileIdentityDB(t *testing.T) {
 }
 
 func TestStorageMetadataOwnershipRechecksLocalVersionAfterItemWaitDB(t *testing.T) {
-	pool, s, folder, location := storageEbookFixture(t)
+	pool, s, folder, location := mixedStorageFixture(t)
 	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("native", "epub", &storagev1.EbookMetadata{Title: "Native"}, "r1"))
 	var id string
 	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE media_folder_id=$1`, folder.ID).Scan(&id); err != nil {
