@@ -56,8 +56,11 @@ func (b *brokerService) GetInfo(ctx context.Context, _ *managedv1.InfoRequest) (
 		return nil, safeRPC(err)
 	}
 	out := &managedv1.InfoResponse{Capability: Capability, InstanceId: info.InstanceID, EnrollmentScope: info.Scope, CredentialGeneration: info.Generation}
+	if _, ok := b.service.calendarSource().(AvailabilitySource); ok {
+		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.availability.v1")
+	}
 	if b.service.calendarSource() != nil {
-		out.ExtensionCapabilities = []string{"bloem.calendar.v1"}
+		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.calendar.v1")
 	}
 	if _, ok := b.service.calendarSource().(RecommendationsSource); ok {
 		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.recommendations.v1")

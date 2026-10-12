@@ -19,12 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ManagedTrackingHost_GetInfo_FullMethodName          = "/bloem.managedtracking.v1.ManagedTrackingHost/GetInfo"
-	ManagedTrackingHost_ListProfiles_FullMethodName     = "/bloem.managedtracking.v1.ManagedTrackingHost/ListProfiles"
-	ManagedTrackingHost_EnsureConnection_FullMethodName = "/bloem.managedtracking.v1.ManagedTrackingHost/EnsureConnection"
-	ManagedTrackingHost_ReadChanges_FullMethodName      = "/bloem.managedtracking.v1.ManagedTrackingHost/ReadChanges"
-	ManagedTrackingHost_AckChanges_FullMethodName       = "/bloem.managedtracking.v1.ManagedTrackingHost/AckChanges"
-	ManagedTrackingHost_ResolveEvent_FullMethodName     = "/bloem.managedtracking.v1.ManagedTrackingHost/ResolveEvent"
+	ManagedTrackingHost_LookupAvailability_FullMethodName = "/bloem.managedtracking.v1.ManagedTrackingHost/LookupAvailability"
+	ManagedTrackingHost_GetInfo_FullMethodName            = "/bloem.managedtracking.v1.ManagedTrackingHost/GetInfo"
+	ManagedTrackingHost_ListProfiles_FullMethodName       = "/bloem.managedtracking.v1.ManagedTrackingHost/ListProfiles"
+	ManagedTrackingHost_EnsureConnection_FullMethodName   = "/bloem.managedtracking.v1.ManagedTrackingHost/EnsureConnection"
+	ManagedTrackingHost_ReadChanges_FullMethodName        = "/bloem.managedtracking.v1.ManagedTrackingHost/ReadChanges"
+	ManagedTrackingHost_AckChanges_FullMethodName         = "/bloem.managedtracking.v1.ManagedTrackingHost/AckChanges"
+	ManagedTrackingHost_ResolveEvent_FullMethodName       = "/bloem.managedtracking.v1.ManagedTrackingHost/ResolveEvent"
 )
 
 // ManagedTrackingHostClient is the client API for ManagedTrackingHost service.
@@ -34,6 +35,7 @@ const (
 // Registered by the host on the same installation-bound broker as RuntimeHost.
 // Every method checks an explicit installation/provider/tenant enrollment grant.
 type ManagedTrackingHostClient interface {
+	LookupAvailability(ctx context.Context, in *AvailabilityRequest, opts ...grpc.CallOption) (*AvailabilityResponse, error)
 	GetInfo(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error)
 	ListProfiles(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
 	EnsureConnection(ctx context.Context, in *EnrollmentRequest, opts ...grpc.CallOption) (*EnrollmentResponse, error)
@@ -48,6 +50,16 @@ type managedTrackingHostClient struct {
 
 func NewManagedTrackingHostClient(cc grpc.ClientConnInterface) ManagedTrackingHostClient {
 	return &managedTrackingHostClient{cc}
+}
+
+func (c *managedTrackingHostClient) LookupAvailability(ctx context.Context, in *AvailabilityRequest, opts ...grpc.CallOption) (*AvailabilityResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AvailabilityResponse)
+	err := c.cc.Invoke(ctx, ManagedTrackingHost_LookupAvailability_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *managedTrackingHostClient) GetInfo(ctx context.Context, in *InfoRequest, opts ...grpc.CallOption) (*InfoResponse, error) {
@@ -117,6 +129,7 @@ func (c *managedTrackingHostClient) ResolveEvent(ctx context.Context, in *EventR
 // Registered by the host on the same installation-bound broker as RuntimeHost.
 // Every method checks an explicit installation/provider/tenant enrollment grant.
 type ManagedTrackingHostServer interface {
+	LookupAvailability(context.Context, *AvailabilityRequest) (*AvailabilityResponse, error)
 	GetInfo(context.Context, *InfoRequest) (*InfoResponse, error)
 	ListProfiles(context.Context, *ListRequest) (*ListResponse, error)
 	EnsureConnection(context.Context, *EnrollmentRequest) (*EnrollmentResponse, error)
@@ -133,6 +146,9 @@ type ManagedTrackingHostServer interface {
 // pointer dereference when methods are called.
 type UnimplementedManagedTrackingHostServer struct{}
 
+func (UnimplementedManagedTrackingHostServer) LookupAvailability(context.Context, *AvailabilityRequest) (*AvailabilityResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LookupAvailability not implemented")
+}
 func (UnimplementedManagedTrackingHostServer) GetInfo(context.Context, *InfoRequest) (*InfoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetInfo not implemented")
 }
@@ -170,6 +186,24 @@ func RegisterManagedTrackingHostServer(s grpc.ServiceRegistrar, srv ManagedTrack
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ManagedTrackingHost_ServiceDesc, srv)
+}
+
+func _ManagedTrackingHost_LookupAvailability_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AvailabilityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagedTrackingHostServer).LookupAvailability(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ManagedTrackingHost_LookupAvailability_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagedTrackingHostServer).LookupAvailability(ctx, req.(*AvailabilityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ManagedTrackingHost_GetInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -287,6 +321,10 @@ var ManagedTrackingHost_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "bloem.managedtracking.v1.ManagedTrackingHost",
 	HandlerType: (*ManagedTrackingHostServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "LookupAvailability",
+			Handler:    _ManagedTrackingHost_LookupAvailability_Handler,
+		},
 		{
 			MethodName: "GetInfo",
 			Handler:    _ManagedTrackingHost_GetInfo_Handler,

@@ -913,6 +913,278 @@ func (x *EventResponse) GetEventDigest() []byte {
 	return nil
 }
 
+type AvailabilityTarget struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Kind          string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	Namespace     string                 `protobuf:"bytes,3,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	ExternalId    string                 `protobuf:"bytes,4,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AvailabilityTarget) Reset() {
+	*x = AvailabilityTarget{}
+	mi := &file_bloem_managedtracking_v1_managed_tracking_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AvailabilityTarget) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AvailabilityTarget) ProtoMessage() {}
+
+func (x *AvailabilityTarget) ProtoReflect() protoreflect.Message {
+	mi := &file_bloem_managedtracking_v1_managed_tracking_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AvailabilityTarget.ProtoReflect.Descriptor instead.
+func (*AvailabilityTarget) Descriptor() ([]byte, []int) {
+	return file_bloem_managedtracking_v1_managed_tracking_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AvailabilityTarget) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *AvailabilityTarget) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *AvailabilityTarget) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *AvailabilityTarget) GetExternalId() string {
+	if x != nil {
+		return x.ExternalId
+	}
+	return ""
+}
+
+type AvailabilityRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	ProfileId     string                 `protobuf:"bytes,2,opt,name=profile_id,json=profileId,proto3" json:"profile_id,omitempty"`
+	Targets       []*AvailabilityTarget  `protobuf:"bytes,3,rep,name=targets,proto3" json:"targets,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AvailabilityRequest) Reset() {
+	*x = AvailabilityRequest{}
+	mi := &file_bloem_managedtracking_v1_managed_tracking_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AvailabilityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AvailabilityRequest) ProtoMessage() {}
+
+func (x *AvailabilityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_bloem_managedtracking_v1_managed_tracking_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AvailabilityRequest.ProtoReflect.Descriptor instead.
+func (*AvailabilityRequest) Descriptor() ([]byte, []int) {
+	return file_bloem_managedtracking_v1_managed_tracking_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AvailabilityRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *AvailabilityRequest) GetProfileId() string {
+	if x != nil {
+		return x.ProfileId
+	}
+	return ""
+}
+
+func (x *AvailabilityRequest) GetTargets() []*AvailabilityTarget {
+	if x != nil {
+		return x.Targets
+	}
+	return nil
+}
+
+type AvailabilityResult struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Available     bool                   `protobuf:"varint,2,opt,name=available,proto3" json:"available,omitempty"`
+	ContentId     string                 `protobuf:"bytes,3,opt,name=content_id,json=contentId,proto3" json:"content_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AvailabilityResult) Reset() {
+	*x = AvailabilityResult{}
+	mi := &file_bloem_managedtracking_v1_managed_tracking_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AvailabilityResult) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AvailabilityResult) ProtoMessage() {}
+
+func (x *AvailabilityResult) ProtoReflect() protoreflect.Message {
+	mi := &file_bloem_managedtracking_v1_managed_tracking_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AvailabilityResult.ProtoReflect.Descriptor instead.
+func (*AvailabilityResult) Descriptor() ([]byte, []int) {
+	return file_bloem_managedtracking_v1_managed_tracking_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AvailabilityResult) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *AvailabilityResult) GetAvailable() bool {
+	if x != nil {
+		return x.Available
+	}
+	return false
+}
+
+func (x *AvailabilityResult) GetContentId() string {
+	if x != nil {
+		return x.ContentId
+	}
+	return ""
+}
+
+type AvailabilityResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	InstanceId    string                 `protobuf:"bytes,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
+	AccountId     string                 `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	ProfileId     string                 `protobuf:"bytes,3,opt,name=profile_id,json=profileId,proto3" json:"profile_id,omitempty"`
+	Results       []*AvailabilityResult  `protobuf:"bytes,4,rep,name=results,proto3" json:"results,omitempty"`
+	CheckedAtUnix int64                  `protobuf:"varint,5,opt,name=checked_at_unix,json=checkedAtUnix,proto3" json:"checked_at_unix,omitempty"`
+	ExpiresAtUnix int64                  `protobuf:"varint,6,opt,name=expires_at_unix,json=expiresAtUnix,proto3" json:"expires_at_unix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AvailabilityResponse) Reset() {
+	*x = AvailabilityResponse{}
+	mi := &file_bloem_managedtracking_v1_managed_tracking_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AvailabilityResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AvailabilityResponse) ProtoMessage() {}
+
+func (x *AvailabilityResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_bloem_managedtracking_v1_managed_tracking_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AvailabilityResponse.ProtoReflect.Descriptor instead.
+func (*AvailabilityResponse) Descriptor() ([]byte, []int) {
+	return file_bloem_managedtracking_v1_managed_tracking_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AvailabilityResponse) GetInstanceId() string {
+	if x != nil {
+		return x.InstanceId
+	}
+	return ""
+}
+
+func (x *AvailabilityResponse) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *AvailabilityResponse) GetProfileId() string {
+	if x != nil {
+		return x.ProfileId
+	}
+	return ""
+}
+
+func (x *AvailabilityResponse) GetResults() []*AvailabilityResult {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
+func (x *AvailabilityResponse) GetCheckedAtUnix() int64 {
+	if x != nil {
+		return x.CheckedAtUnix
+	}
+	return 0
+}
+
+func (x *AvailabilityResponse) GetExpiresAtUnix() int64 {
+	if x != nil {
+		return x.ExpiresAtUnix
+	}
+	return 0
+}
+
 var File_bloem_managedtracking_v1_managed_tracking_proto protoreflect.FileDescriptor
 
 const file_bloem_managedtracking_v1_managed_tracking_proto_rawDesc = "" +
@@ -1003,8 +1275,38 @@ const file_bloem_managedtracking_v1_managed_tracking_proto_rawDesc = "" +
 	"\tentity_id\x18\x05 \x01(\tR\bentityId\x12\x1a\n" +
 	"\brevision\x18\x06 \x01(\x04R\brevision\x12%\n" +
 	"\x0econsumption_id\x18\a \x01(\tR\rconsumptionId\x12!\n" +
-	"\fevent_digest\x18\b \x01(\fR\veventDigest2\xdd\x04\n" +
-	"\x13ManagedTrackingHost\x12X\n" +
+	"\fevent_digest\x18\b \x01(\fR\veventDigest\"\x86\x01\n" +
+	"\x12AvailabilityTarget\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x12\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x1c\n" +
+	"\tnamespace\x18\x03 \x01(\tR\tnamespace\x12\x1f\n" +
+	"\vexternal_id\x18\x04 \x01(\tR\n" +
+	"externalId\"\x9b\x01\n" +
+	"\x13AvailabilityRequest\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12\x1d\n" +
+	"\n" +
+	"profile_id\x18\x02 \x01(\tR\tprofileId\x12F\n" +
+	"\atargets\x18\x03 \x03(\v2,.bloem.managedtracking.v1.AvailabilityTargetR\atargets\"p\n" +
+	"\x12AvailabilityResult\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x1c\n" +
+	"\tavailable\x18\x02 \x01(\bR\tavailable\x12\x1d\n" +
+	"\n" +
+	"content_id\x18\x03 \x01(\tR\tcontentId\"\x8d\x02\n" +
+	"\x14AvailabilityResponse\x12\x1f\n" +
+	"\vinstance_id\x18\x01 \x01(\tR\n" +
+	"instanceId\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x02 \x01(\tR\taccountId\x12\x1d\n" +
+	"\n" +
+	"profile_id\x18\x03 \x01(\tR\tprofileId\x12F\n" +
+	"\aresults\x18\x04 \x03(\v2,.bloem.managedtracking.v1.AvailabilityResultR\aresults\x12&\n" +
+	"\x0fchecked_at_unix\x18\x05 \x01(\x03R\rcheckedAtUnix\x12&\n" +
+	"\x0fexpires_at_unix\x18\x06 \x01(\x03R\rexpiresAtUnix2\xd2\x05\n" +
+	"\x13ManagedTrackingHost\x12s\n" +
+	"\x12LookupAvailability\x12-.bloem.managedtracking.v1.AvailabilityRequest\x1a..bloem.managedtracking.v1.AvailabilityResponse\x12X\n" +
 	"\aGetInfo\x12%.bloem.managedtracking.v1.InfoRequest\x1a&.bloem.managedtracking.v1.InfoResponse\x12]\n" +
 	"\fListProfiles\x12%.bloem.managedtracking.v1.ListRequest\x1a&.bloem.managedtracking.v1.ListResponse\x12m\n" +
 	"\x10EnsureConnection\x12+.bloem.managedtracking.v1.EnrollmentRequest\x1a,.bloem.managedtracking.v1.EnrollmentResponse\x12b\n" +
@@ -1025,42 +1327,50 @@ func file_bloem_managedtracking_v1_managed_tracking_proto_rawDescGZIP() []byte {
 	return file_bloem_managedtracking_v1_managed_tracking_proto_rawDescData
 }
 
-var file_bloem_managedtracking_v1_managed_tracking_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_bloem_managedtracking_v1_managed_tracking_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_bloem_managedtracking_v1_managed_tracking_proto_goTypes = []any{
-	(*InfoRequest)(nil),        // 0: bloem.managedtracking.v1.InfoRequest
-	(*InfoResponse)(nil),       // 1: bloem.managedtracking.v1.InfoResponse
-	(*Profile)(nil),            // 2: bloem.managedtracking.v1.Profile
-	(*ListRequest)(nil),        // 3: bloem.managedtracking.v1.ListRequest
-	(*ListResponse)(nil),       // 4: bloem.managedtracking.v1.ListResponse
-	(*EnrollmentRequest)(nil),  // 5: bloem.managedtracking.v1.EnrollmentRequest
-	(*EnrollmentResponse)(nil), // 6: bloem.managedtracking.v1.EnrollmentResponse
-	(*ChangesRequest)(nil),     // 7: bloem.managedtracking.v1.ChangesRequest
-	(*ChangesResponse)(nil),    // 8: bloem.managedtracking.v1.ChangesResponse
-	(*AckRequest)(nil),         // 9: bloem.managedtracking.v1.AckRequest
-	(*AckResponse)(nil),        // 10: bloem.managedtracking.v1.AckResponse
-	(*EventRequest)(nil),       // 11: bloem.managedtracking.v1.EventRequest
-	(*EventResponse)(nil),      // 12: bloem.managedtracking.v1.EventResponse
+	(*InfoRequest)(nil),          // 0: bloem.managedtracking.v1.InfoRequest
+	(*InfoResponse)(nil),         // 1: bloem.managedtracking.v1.InfoResponse
+	(*Profile)(nil),              // 2: bloem.managedtracking.v1.Profile
+	(*ListRequest)(nil),          // 3: bloem.managedtracking.v1.ListRequest
+	(*ListResponse)(nil),         // 4: bloem.managedtracking.v1.ListResponse
+	(*EnrollmentRequest)(nil),    // 5: bloem.managedtracking.v1.EnrollmentRequest
+	(*EnrollmentResponse)(nil),   // 6: bloem.managedtracking.v1.EnrollmentResponse
+	(*ChangesRequest)(nil),       // 7: bloem.managedtracking.v1.ChangesRequest
+	(*ChangesResponse)(nil),      // 8: bloem.managedtracking.v1.ChangesResponse
+	(*AckRequest)(nil),           // 9: bloem.managedtracking.v1.AckRequest
+	(*AckResponse)(nil),          // 10: bloem.managedtracking.v1.AckResponse
+	(*EventRequest)(nil),         // 11: bloem.managedtracking.v1.EventRequest
+	(*EventResponse)(nil),        // 12: bloem.managedtracking.v1.EventResponse
+	(*AvailabilityTarget)(nil),   // 13: bloem.managedtracking.v1.AvailabilityTarget
+	(*AvailabilityRequest)(nil),  // 14: bloem.managedtracking.v1.AvailabilityRequest
+	(*AvailabilityResult)(nil),   // 15: bloem.managedtracking.v1.AvailabilityResult
+	(*AvailabilityResponse)(nil), // 16: bloem.managedtracking.v1.AvailabilityResponse
 }
 var file_bloem_managedtracking_v1_managed_tracking_proto_depIdxs = []int32{
 	2,  // 0: bloem.managedtracking.v1.ListResponse.profiles:type_name -> bloem.managedtracking.v1.Profile
 	2,  // 1: bloem.managedtracking.v1.EnrollmentRequest.profile:type_name -> bloem.managedtracking.v1.Profile
-	0,  // 2: bloem.managedtracking.v1.ManagedTrackingHost.GetInfo:input_type -> bloem.managedtracking.v1.InfoRequest
-	3,  // 3: bloem.managedtracking.v1.ManagedTrackingHost.ListProfiles:input_type -> bloem.managedtracking.v1.ListRequest
-	5,  // 4: bloem.managedtracking.v1.ManagedTrackingHost.EnsureConnection:input_type -> bloem.managedtracking.v1.EnrollmentRequest
-	7,  // 5: bloem.managedtracking.v1.ManagedTrackingHost.ReadChanges:input_type -> bloem.managedtracking.v1.ChangesRequest
-	9,  // 6: bloem.managedtracking.v1.ManagedTrackingHost.AckChanges:input_type -> bloem.managedtracking.v1.AckRequest
-	11, // 7: bloem.managedtracking.v1.ManagedTrackingHost.ResolveEvent:input_type -> bloem.managedtracking.v1.EventRequest
-	1,  // 8: bloem.managedtracking.v1.ManagedTrackingHost.GetInfo:output_type -> bloem.managedtracking.v1.InfoResponse
-	4,  // 9: bloem.managedtracking.v1.ManagedTrackingHost.ListProfiles:output_type -> bloem.managedtracking.v1.ListResponse
-	6,  // 10: bloem.managedtracking.v1.ManagedTrackingHost.EnsureConnection:output_type -> bloem.managedtracking.v1.EnrollmentResponse
-	8,  // 11: bloem.managedtracking.v1.ManagedTrackingHost.ReadChanges:output_type -> bloem.managedtracking.v1.ChangesResponse
-	10, // 12: bloem.managedtracking.v1.ManagedTrackingHost.AckChanges:output_type -> bloem.managedtracking.v1.AckResponse
-	12, // 13: bloem.managedtracking.v1.ManagedTrackingHost.ResolveEvent:output_type -> bloem.managedtracking.v1.EventResponse
-	8,  // [8:14] is the sub-list for method output_type
-	2,  // [2:8] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	13, // 2: bloem.managedtracking.v1.AvailabilityRequest.targets:type_name -> bloem.managedtracking.v1.AvailabilityTarget
+	15, // 3: bloem.managedtracking.v1.AvailabilityResponse.results:type_name -> bloem.managedtracking.v1.AvailabilityResult
+	14, // 4: bloem.managedtracking.v1.ManagedTrackingHost.LookupAvailability:input_type -> bloem.managedtracking.v1.AvailabilityRequest
+	0,  // 5: bloem.managedtracking.v1.ManagedTrackingHost.GetInfo:input_type -> bloem.managedtracking.v1.InfoRequest
+	3,  // 6: bloem.managedtracking.v1.ManagedTrackingHost.ListProfiles:input_type -> bloem.managedtracking.v1.ListRequest
+	5,  // 7: bloem.managedtracking.v1.ManagedTrackingHost.EnsureConnection:input_type -> bloem.managedtracking.v1.EnrollmentRequest
+	7,  // 8: bloem.managedtracking.v1.ManagedTrackingHost.ReadChanges:input_type -> bloem.managedtracking.v1.ChangesRequest
+	9,  // 9: bloem.managedtracking.v1.ManagedTrackingHost.AckChanges:input_type -> bloem.managedtracking.v1.AckRequest
+	11, // 10: bloem.managedtracking.v1.ManagedTrackingHost.ResolveEvent:input_type -> bloem.managedtracking.v1.EventRequest
+	16, // 11: bloem.managedtracking.v1.ManagedTrackingHost.LookupAvailability:output_type -> bloem.managedtracking.v1.AvailabilityResponse
+	1,  // 12: bloem.managedtracking.v1.ManagedTrackingHost.GetInfo:output_type -> bloem.managedtracking.v1.InfoResponse
+	4,  // 13: bloem.managedtracking.v1.ManagedTrackingHost.ListProfiles:output_type -> bloem.managedtracking.v1.ListResponse
+	6,  // 14: bloem.managedtracking.v1.ManagedTrackingHost.EnsureConnection:output_type -> bloem.managedtracking.v1.EnrollmentResponse
+	8,  // 15: bloem.managedtracking.v1.ManagedTrackingHost.ReadChanges:output_type -> bloem.managedtracking.v1.ChangesResponse
+	10, // 16: bloem.managedtracking.v1.ManagedTrackingHost.AckChanges:output_type -> bloem.managedtracking.v1.AckResponse
+	12, // 17: bloem.managedtracking.v1.ManagedTrackingHost.ResolveEvent:output_type -> bloem.managedtracking.v1.EventResponse
+	11, // [11:18] is the sub-list for method output_type
+	4,  // [4:11] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_bloem_managedtracking_v1_managed_tracking_proto_init() }
@@ -1074,7 +1384,7 @@ func file_bloem_managedtracking_v1_managed_tracking_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_bloem_managedtracking_v1_managed_tracking_proto_rawDesc), len(file_bloem_managedtracking_v1_managed_tracking_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -5,6 +5,7 @@ option go_package = "github.com/Silo-Server/silo-server/internal/managedtracking
 // Registered by the host on the same installation-bound broker as RuntimeHost.
 // Every method checks an explicit installation/provider/tenant enrollment grant.
 service ManagedTrackingHost {
+ rpc LookupAvailability(AvailabilityRequest) returns (AvailabilityResponse);
  rpc GetInfo(InfoRequest) returns (InfoResponse);
  rpc ListProfiles(ListRequest) returns (ListResponse);
  rpc EnsureConnection(EnrollmentRequest) returns (EnrollmentResponse);
@@ -76,3 +77,8 @@ message EventResponse {
  string consumption_id = 7;
  bytes event_digest = 8;
 }
+
+message AvailabilityTarget {string request_id=1;string kind=2;string namespace=3;string external_id=4;}
+message AvailabilityRequest {string account_id=1;string profile_id=2;repeated AvailabilityTarget targets=3;}
+message AvailabilityResult {string request_id=1;bool available=2;string content_id=3;}
+message AvailabilityResponse {string instance_id=1;string account_id=2;string profile_id=3;repeated AvailabilityResult results=4;int64 checked_at_unix=5;int64 expires_at_unix=6;}
