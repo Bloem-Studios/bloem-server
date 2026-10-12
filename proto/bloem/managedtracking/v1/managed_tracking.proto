@@ -18,6 +18,7 @@ message InfoResponse {
  string instance_id = 2;
  string enrollment_scope = 3;
  uint64 credential_generation = 4; // durable epoch; increment for rotation/renewal
+ repeated string extension_capabilities = 5; // optional installation-bound host services
 }
 message Profile {
  string account_id = 1;

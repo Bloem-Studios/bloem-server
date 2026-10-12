@@ -15,12 +15,13 @@ import (
 	"time"
 
 	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
-	"github.com/Silo-Server/silo-server/internal/pluginhost"
-	"github.com/Silo-Server/silo-server/internal/plugins"
-	"github.com/Silo-Server/silo-server/internal/watchsync"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/Silo-Server/silo-server/internal/pluginhost"
+	"github.com/Silo-Server/silo-server/internal/plugins"
+	"github.com/Silo-Server/silo-server/internal/watchsync"
 )
 
 func TestRealPluginAndPastimeHouseholdAcceptance(t *testing.T) {
@@ -293,7 +294,7 @@ func startPastimeAcceptance(t *testing.T, ctx context.Context, s *Service, id in
 	r := &pastimeAcceptance{t: t, ctx: ctx, id: id, binary: pluginBinary, finished: make(chan error, 1), output: &bytes.Buffer{}}
 	settings := filepath.Join(t.TempDir(), "settings.json")
 	fixture := exec.CommandContext(ctx, fixtureBinary, "-test.run=^TestNativeAcceptanceFixture$", "-test.timeout=110s")
-	fixture.Env = append(append(os.Environ(), "PASTIME_NATIVE_FIXTURE_SETTINGS="+settings, "PASTIME_NATIVE_FIXTURE_INSTANCE="+info.InstanceID, "PASTIME_NATIVE_FIXTURE_SCOPE="+info.Scope), env...)
+	fixture.Env = append(append(os.Environ(), "TMPDIR="+filepath.Dir(settings), "PASTIME_NATIVE_FIXTURE_SETTINGS="+settings, "PASTIME_NATIVE_FIXTURE_INSTANCE="+info.InstanceID, "PASTIME_NATIVE_FIXTURE_SCOPE="+info.Scope), env...)
 	fixture.Stdout = r.output
 	fixture.Stderr = r.output
 	if err = fixture.Start(); err != nil {

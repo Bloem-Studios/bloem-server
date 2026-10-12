@@ -3526,6 +3526,7 @@ func main() {
 	}
 
 	api.ConfigureNativeStorageArtwork(&deps)
+	api.ConfigureManagedCalendar(deps, managedTrackingService)
 	router := api.NewRouter(deps)
 
 	// Step 8: The compatibility gateway the public listener composes is

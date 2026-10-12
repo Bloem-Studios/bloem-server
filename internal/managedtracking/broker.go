@@ -7,10 +7,12 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	managedv1 "github.com/Silo-Server/silo-server/internal/managedtracking/wire"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	calendar "github.com/Silo-Server/silo-server/internal/managedtracking/calendarwire"
+	managedv1 "github.com/Silo-Server/silo-server/internal/managedtracking/wire"
 )
 
 const Capability = "bloem.managed_tracking.v1"
@@ -24,6 +26,7 @@ type brokerService struct {
 func (s *Service) RegisterBroker(server *grpc.Server, plugin string, installation int) {
 	if s != nil && plugin == "bloem.pastime" {
 		managedv1.RegisterManagedTrackingHostServer(server, &brokerService{service: s, installation: installation})
+		calendar.RegisterCalendarHostServer(server, &calendarBroker{service: s, installation: installation})
 	}
 }
 func safeRPC(err error) error {
@@ -50,7 +53,11 @@ func (b *brokerService) GetInfo(ctx context.Context, _ *managedv1.InfoRequest) (
 	if err != nil {
 		return nil, safeRPC(err)
 	}
-	return &managedv1.InfoResponse{Capability: Capability, InstanceId: info.InstanceID, EnrollmentScope: info.Scope, CredentialGeneration: info.Generation}, nil
+	out := &managedv1.InfoResponse{Capability: Capability, InstanceId: info.InstanceID, EnrollmentScope: info.Scope, CredentialGeneration: info.Generation}
+	if b.service.calendarSource() != nil {
+		out.ExtensionCapabilities = []string{"bloem.calendar.v1"}
+	}
+	return out, nil
 }
 func profileWire(p Profile) *managedv1.Profile {
 	return &managedv1.Profile{AccountId: p.AccountID, ProfileId: p.ProfileID, DefaultProfileId: p.DefaultProfileID, AccountName: p.AccountName, Name: p.Name, Email: p.Email, AccountRevision: p.AccountRevision, Revision: p.Revision, AccountActive: p.AccountActive, Active: p.Active, VerifiedIdentityIssuer: p.VerifiedIdentityIssuer, VerifiedIdentitySubject: p.VerifiedIdentitySubject}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync/atomic"
 
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/google/uuid"
@@ -16,8 +17,10 @@ var ErrAuthority = errors.New("managed_tracking_authority_denied")
 var ErrSnapshot = errors.New("managed_tracking_snapshot_invalid")
 
 type Service struct {
-	Pool   *pgxpool.Pool
-	Cipher *secret.Cipher
+	Pool               *pgxpool.Pool
+	Cipher             *secret.Cipher
+	Calendar           CalendarSource
+	calendarConfigured atomic.Pointer[calendarSourceBox]
 }
 type Profile struct {
 	AccountID        string `json:"account_id"`
@@ -141,6 +144,9 @@ func (s *Service) GetInfo(ctx context.Context, installation int) (Info, error) {
 		return out, err
 	}
 	if _, err = tx.Exec(ctx, `DELETE FROM bloem_managed_events WHERE installation_id=$1 AND created_at<clock_timestamp()-interval '30 days'`, installation); err != nil {
+		return out, err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM bloem_managed_calendar_snapshots WHERE installation_id=$1 AND expires_at<clock_timestamp()-interval '15 minutes'`, installation); err != nil {
 		return out, err
 	}
 	return out, tx.Commit(ctx)

@@ -58,13 +58,14 @@ func (*InfoRequest) Descriptor() ([]byte, []int) {
 }
 
 type InfoResponse struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	Capability           string                 `protobuf:"bytes,1,opt,name=capability,proto3" json:"capability,omitempty"` // exactly bloem.managed_tracking.v1
-	InstanceId           string                 `protobuf:"bytes,2,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
-	EnrollmentScope      string                 `protobuf:"bytes,3,opt,name=enrollment_scope,json=enrollmentScope,proto3" json:"enrollment_scope,omitempty"`
-	CredentialGeneration uint64                 `protobuf:"varint,4,opt,name=credential_generation,json=credentialGeneration,proto3" json:"credential_generation,omitempty"` // durable epoch; increment for rotation/renewal
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Capability            string                 `protobuf:"bytes,1,opt,name=capability,proto3" json:"capability,omitempty"` // exactly bloem.managed_tracking.v1
+	InstanceId            string                 `protobuf:"bytes,2,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
+	EnrollmentScope       string                 `protobuf:"bytes,3,opt,name=enrollment_scope,json=enrollmentScope,proto3" json:"enrollment_scope,omitempty"`
+	CredentialGeneration  uint64                 `protobuf:"varint,4,opt,name=credential_generation,json=credentialGeneration,proto3" json:"credential_generation,omitempty"`   // durable epoch; increment for rotation/renewal
+	ExtensionCapabilities []string               `protobuf:"bytes,5,rep,name=extension_capabilities,json=extensionCapabilities,proto3" json:"extension_capabilities,omitempty"` // optional installation-bound host services
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *InfoResponse) Reset() {
@@ -123,6 +124,13 @@ func (x *InfoResponse) GetCredentialGeneration() uint64 {
 		return x.CredentialGeneration
 	}
 	return 0
+}
+
+func (x *InfoResponse) GetExtensionCapabilities() []string {
+	if x != nil {
+		return x.ExtensionCapabilities
+	}
+	return nil
 }
 
 type Profile struct {
@@ -910,7 +918,7 @@ var File_bloem_managedtracking_v1_managed_tracking_proto protoreflect.FileDescri
 const file_bloem_managedtracking_v1_managed_tracking_proto_rawDesc = "" +
 	"\n" +
 	"/bloem/managedtracking/v1/managed_tracking.proto\x12\x18bloem.managedtracking.v1\"\r\n" +
-	"\vInfoRequest\"\xaf\x01\n" +
+	"\vInfoRequest\"\xe6\x01\n" +
 	"\fInfoResponse\x12\x1e\n" +
 	"\n" +
 	"capability\x18\x01 \x01(\tR\n" +
@@ -918,7 +926,8 @@ const file_bloem_managedtracking_v1_managed_tracking_proto_rawDesc = "" +
 	"\vinstance_id\x18\x02 \x01(\tR\n" +
 	"instanceId\x12)\n" +
 	"\x10enrollment_scope\x18\x03 \x01(\tR\x0fenrollmentScope\x123\n" +
-	"\x15credential_generation\x18\x04 \x01(\x04R\x14credentialGeneration\"\xbe\x03\n" +
+	"\x15credential_generation\x18\x04 \x01(\x04R\x14credentialGeneration\x125\n" +
+	"\x16extension_capabilities\x18\x05 \x03(\tR\x15extensionCapabilities\"\xbe\x03\n" +
 	"\aProfile\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12\x1d\n" +
