@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	calendar "github.com/Silo-Server/silo-server/internal/managedtracking/calendarwire"
+	rec "github.com/Silo-Server/silo-server/internal/managedtracking/recommendationswire"
 	managedv1 "github.com/Silo-Server/silo-server/internal/managedtracking/wire"
 )
 
@@ -27,6 +28,7 @@ func (s *Service) RegisterBroker(server *grpc.Server, plugin string, installatio
 	if s != nil && plugin == "bloem.pastime" {
 		managedv1.RegisterManagedTrackingHostServer(server, &brokerService{service: s, installation: installation})
 		calendar.RegisterCalendarHostServer(server, &calendarBroker{service: s, installation: installation})
+		rec.RegisterRecommendationsHostServer(server, &recommendationsBroker{service: s, installation: installation})
 	}
 }
 func safeRPC(err error) error {
@@ -56,6 +58,9 @@ func (b *brokerService) GetInfo(ctx context.Context, _ *managedv1.InfoRequest) (
 	out := &managedv1.InfoResponse{Capability: Capability, InstanceId: info.InstanceID, EnrollmentScope: info.Scope, CredentialGeneration: info.Generation}
 	if b.service.calendarSource() != nil {
 		out.ExtensionCapabilities = []string{"bloem.calendar.v1"}
+	}
+	if _, ok := b.service.calendarSource().(RecommendationsSource); ok {
+		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.recommendations.v1")
 	}
 	return out, nil
 }

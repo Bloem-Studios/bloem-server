@@ -88,3 +88,27 @@ issued continuation tokens. A complete traversal can justify missing-membership
 removals; an incomplete or failed traversal cannot. Implementing these optional
 RPCs does not authorize advertising capabilities or changing connection defaults
 before bidirectional reconciliation and client acceptance pass.
+
+
+## Shared personal AI recommendations
+
+The optional `bloem.recommendations.v1` broker feed reuses the host's cached
+personal recommendation reader. Only personal cluster/model rows are exported;
+collaborative, popularity and other global fallback rows are excluded. Requests
+resolve the current installation grant, organization, account and household
+profile. The same viewer policy as the calendar controls library, maturity and
+PIN access; authority is checked before and after reading. A complete projection
+contains at most 100 distinct movie/series titles, provider IDs and model reasons.
+It contains no remote artwork URLs or saved viewer credentials.
+
+The Pastime plugin delivers projections after profile reconciliation and every
+minute. Pastime accepts only the registered machine provision credential and the
+current profile binding, and rejects older projections. Each projection expires
+after 120 seconds. Failed reads retain the earlier view only until its lease
+expires; they do not masquerade as successful empty recommendations. Pastime
+resolves poster metadata independently from trusted provider IDs. Viewing a
+recommendation never adds a title to a library, favourites or watchlist.
+
+This capability does not enable personal-state return sync. Those capabilities
+remain disabled until the existing sync engine's conflict and removal behavior
+has passed convergence acceptance.

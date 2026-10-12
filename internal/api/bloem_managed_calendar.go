@@ -22,6 +22,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/managedtracking"
 	calendar "github.com/Silo-Server/silo-server/internal/managedtracking/calendarwire"
 	"github.com/Silo-Server/silo-server/internal/policy"
+	"github.com/Silo-Server/silo-server/internal/recommendations"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
@@ -30,11 +31,12 @@ type managedCalendarScopeResolver interface {
 	Resolve(context.Context, access.ResolveInput) (access.Scope, error)
 }
 type managedCalendarSource struct {
-	resolver managedCalendarScopeResolver
-	prepare  func(context.Context, managedtracking.Profile) (context.Context, error)
-	pool     *pgxpool.Pool
-	repo     *catalog.CalendarRepository
-	handler  *handlers.CalendarHandler
+	resolver        managedCalendarScopeResolver
+	prepare         func(context.Context, managedtracking.Profile) (context.Context, error)
+	pool            *pgxpool.Pool
+	repo            *catalog.CalendarRepository
+	handler         *handlers.CalendarHandler
+	recommendations *recommendations.Reader
 }
 
 // ConfigureManagedCalendar composes an immutable adapter once all host policy
@@ -49,6 +51,7 @@ func ConfigureManagedCalendar(deps Dependencies, service *managedtracking.Servic
 	resolver := policy.NewViewerResolver(users, deps.UserStoreProvider, nil, deps.PolicySystem.PDP(), groups).WithUnratedContentPolicy(config.NewUnratedContentPolicy(settings)).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))
 	repo := catalog.NewCalendarRepository(deps.DB)
 	source := &managedCalendarSource{resolver: resolver, pool: deps.DB, repo: repo, handler: handlers.NewCalendarHandler(repo, nil, nil, nil)}
+	source.recommendations = recommendations.NewReader(recommendations.NewRepo(deps.DB), catalog.NewRatingsRepo(deps.DB), deps.RecWorker, deps.UserStoreProvider)
 	source.prepare = func(ctx context.Context, p managedtracking.Profile) (context.Context, error) {
 		account, err := strconv.Atoi(p.AccountID)
 		if err != nil {
