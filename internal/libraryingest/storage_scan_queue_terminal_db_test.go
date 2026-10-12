@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/storagesource"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/libraryingest"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -50,7 +52,7 @@ func (i *task4QueueIngester) IngestFolder(ctx context.Context, folder *models.Me
 			}
 		})
 	}
-	r, err := i.fixture.Scanner.ScanStorageFolder(ctx, folder, i.fixture.Location)
+	r, err := i.fixture.Scanner.ScanStorageFolder(ctx, folder, storagesource.LocationSelection{Location: i.fixture.Location})
 	i.returned <- err
 	return r, err
 }

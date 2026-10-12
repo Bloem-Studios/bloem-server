@@ -104,7 +104,10 @@ func TestStorageScanRevocationDuringListPreventsPublication(t *testing.T) {
 			request, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 			result := make(chan error, 1)
-			go func() { _, err := scan.ScanStorageFolder(request, folder, location); result <- err }()
+			go func() {
+				_, err := scan.ScanStorageFolder(request, folder, storagesource.LocationSelection{Location: location})
+				result <- err
+			}()
 			poll := time.NewTicker(5 * time.Millisecond)
 			defer poll.Stop()
 		waiting:

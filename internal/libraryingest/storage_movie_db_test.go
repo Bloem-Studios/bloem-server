@@ -158,7 +158,7 @@ func newNativeMovieScanFixtureWithProbe(t *testing.T, binary []byte, manifest *p
 func TestNativeMovieStorageDefaultHold(t *testing.T) {
 	binary, manifest := nativeMovieScanArtifact(t)
 	f := newNativeMovieScanFixture(t, binary, manifest, false, "movies")
-	if _, err := (&StorageScanner{}).ScanStorageFolder(t.Context(), f.folder, f.location); err == nil {
+	if _, err := (&StorageScanner{}).ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location}); err == nil {
 		t.Fatal("default movie scan hold lost")
 	}
 	var locations, files int
@@ -175,7 +175,7 @@ func TestNativeMovieStorageDefaultHold(t *testing.T) {
 func TestNativeMovieStorageScanPublishesPinnedBytes(t *testing.T) {
 	binary, manifest := nativeMovieScanArtifact(t)
 	f := newNativeMovieScanFixture(t, binary, manifest, true, "movies")
-	result, err := f.scan.ScanStorageFolder(t.Context(), f.folder, f.location)
+	result, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestNativeMovieStorageScanPublishesPinnedBytes(t *testing.T) {
 	if err != nil || !bytesContainAll(audit, "read 01-movie", "read 02-movie") || strings.Contains(string(audit), "read 03-shortcut") {
 		t.Fatal("scan did not probe only pinned movie bytes", err)
 	}
-	result, err = f.scan.ScanStorageFolder(t.Context(), f.folder, f.location)
+	result, err = f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location})
 	if err != nil || result.ScanResult.Unchanged != 3 {
 		t.Fatalf("rescan %+v %v", result, err)
 	}
@@ -221,7 +221,7 @@ func TestNativeMovieStorageScanPublishesPinnedBytes(t *testing.T) {
 	if _, err := f.registry.ReplaceConfiguration(t.Context(), f.installed.Source.Key, f.installed.Source.OwnerID, map[string]map[string]any{"source": {"mode": "movies", "notify": f.notify, "revision": "version:two"}}); err != nil {
 		t.Fatal(err)
 	}
-	result, err = f.scan.ScanStorageFolder(t.Context(), f.folder, f.location)
+	result, err = f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location})
 	if err != nil || result.ScanResult.Updated != 2 {
 		t.Fatalf("replacement %+v %v", result, err)
 	}
@@ -254,7 +254,7 @@ func TestNativeMovieStorageProbeFailureCommitsNothing(t *testing.T) {
 	for _, mode := range []string{"movies-late", "movies-stat-conflict", "movies-no-pin", "movies-invalid"} {
 		t.Run(mode, func(t *testing.T) {
 			f := newNativeMovieScanFixture(t, binary, manifest, true, mode)
-			if _, err := f.scan.ScanStorageFolder(t.Context(), f.folder, f.location); err == nil {
+			if _, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location}); err == nil {
 				t.Fatal("failed pinned movie probe accepted")
 			}
 			var files, memberships, entries int
@@ -275,14 +275,14 @@ func TestNativeMovieStorageRemovalAndEmptyListing(t *testing.T) {
 	for _, mode := range []string{"movies-empty", "movies-removed"} {
 		t.Run(mode, func(t *testing.T) {
 			f := newNativeMovieScanFixture(t, binary, manifest, true, "movies")
-			if _, err := f.scan.ScanStorageFolder(t.Context(), f.folder, f.location); err != nil {
+			if _, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location}); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := f.registry.ReplaceConfiguration(t.Context(), f.installed.Source.Key, f.installed.Source.OwnerID,
 				map[string]map[string]any{"source": {"mode": mode, "notify": f.notify, "revision": "version:two"}}); err != nil {
 				t.Fatal(err)
 			}
-			result, err := f.scan.ScanStorageFolder(t.Context(), f.folder, f.location)
+			result, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -318,7 +318,10 @@ func TestNativeMovieStorageRevocationDuringRead(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 			defer cancel()
 			finished := make(chan error, 1)
-			go func() { _, err := f.scan.ScanStorageFolder(ctx, f.folder, f.location); finished <- err }()
+			go func() {
+				_, err := f.scan.ScanStorageFolder(ctx, f.folder, storagesource.LocationSelection{Location: f.location})
+				finished <- err
+			}()
 			poll := time.NewTicker(5 * time.Millisecond)
 			defer poll.Stop()
 		waiting:
@@ -363,6 +366,31 @@ func TestNativeMovieStorageRevocationDuringRead(t *testing.T) {
 			}
 			if files != 0 || memberships != 0 || entries != 0 || cursors != 0 {
 				t.Fatalf("revoked movie committed files=%d memberships=%d entries=%d cursors=%d", files, memberships, entries, cursors)
+			}
+		})
+	}
+}
+
+func TestNativeMovieMixedLocationCompletingPagesDB(t *testing.T) {
+	binary, manifest := nativeMovieScanArtifact(t)
+	for _, mode := range []string{"movies", "movies-empty"} {
+		t.Run(mode, func(t *testing.T) {
+			f := newNativeMovieScanFixture(t, binary, manifest, true, mode)
+			root := t.TempDir()
+			f.folder.Paths = []string{root}
+			if _, err := f.pool.Exec(t.Context(), `INSERT INTO media_folder_paths(media_folder_id,path) VALUES($1,$2)`, f.folder.ID, root); err != nil {
+				t.Fatal(err)
+			}
+			result, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := 0
+			if mode == "movies" {
+				want = 2
+			}
+			if result.ScanResult.New != want {
+				t.Fatalf("new=%d want=%d", result.ScanResult.New, want)
 			}
 		})
 	}

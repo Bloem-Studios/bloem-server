@@ -145,6 +145,10 @@ func (r *LibraryItemRepository) reconcileFolderMembershipTx(
 	contentIDs []string,
 	protectedPathPrefixes []string,
 ) (int, int, []string, error) {
+	return r.reconcileFolderMembershipRetainingTx(ctx, tx, folderID, contentIDs, protectedPathPrefixes, nil)
+}
+
+func (r *LibraryItemRepository) reconcileFolderMembershipRetainingTx(ctx context.Context, tx pgx.Tx, folderID int, contentIDs, protectedPathPrefixes, retainedContentIDs []string) (int, int, []string, error) {
 	args := []any{folderID}
 	contentPredicate := ""
 	if len(contentIDs) > 0 {
@@ -207,6 +211,13 @@ func (r *LibraryItemRepository) reconcileFolderMembershipTx(
 		return 0, 0, nil, err
 	}
 	orphanIDs = appendUniqueStrings(orphanIDs, previouslyProtected...)
+	// A maintenance owner may hide stale membership without authorizing
+	// destruction of an item whose retained versions belong to other lanes.
+	retained := make(map[string]bool, len(retainedContentIDs))
+	for _, id := range retainedContentIDs {
+		retained[id] = true
+	}
+	orphanIDs = slices.DeleteFunc(orphanIDs, func(id string) bool { return retained[id] })
 	if len(orphanIDs) > 0 {
 		// Exempt orphans whose files sit under an unreachable root: the files
 		// still exist, the root is just offline. See the doc comment above.
@@ -325,4 +336,14 @@ func collectScopedFolderFileOrphanIDs(ctx context.Context, tx pgx.Tx, folderID i
 		return nil, fmt.Errorf("collecting previously protected folder orphans: %w", err)
 	}
 	return ids, nil
+}
+
+// ReconcileItemsMembershipTx limits cleanup candidates while checking retained
+// file presence across the catalog. Retained IDs permit stale membership removal
+// while preventing an orphan purge. An empty candidate list removes nothing.
+func (r *LibraryItemRepository) ReconcileItemsMembershipTx(ctx context.Context, tx pgx.Tx, folderID int, contentIDs, protectedPathPrefixes, retainedContentIDs []string) (int, int, []string, error) {
+	if len(contentIDs) == 0 {
+		return 0, 0, nil, nil
+	}
+	return r.reconcileFolderMembershipRetainingTx(ctx, tx, folderID, contentIDs, protectedPathPrefixes, retainedContentIDs)
 }

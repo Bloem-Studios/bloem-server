@@ -97,7 +97,7 @@ type StorageMoviePublishResult struct {
 func (s *Scanner) PublishStorageMoviesTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder, location storagesource.Location, configurationRevision int64, movies []StorageMovie) (StorageMoviePublishResult, error) {
 	var result StorageMoviePublishResult
 	if s == nil || s.itemRepo == nil || s.fileRepo == nil || tx == nil || folder == nil ||
-		folder.ID != location.FolderID || !folder.Enabled || !librarykind.IsMovie(folder.Type) || len(folder.Paths) != 0 || configurationRevision <= 0 {
+		folder.ID != location.FolderID || !folder.Enabled || !librarykind.IsMovie(folder.Type) || configurationRevision <= 0 {
 		return result, fmt.Errorf("storage movie publication is not configured")
 	}
 	if len(movies) == 0 {

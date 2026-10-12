@@ -146,7 +146,10 @@ func TestStorageScanDescribeAdmissionBeforeDiscovery(t *testing.T) {
 			request, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			result := make(chan error, 1)
-			go func() { _, err := scan.ScanStorageFolder(request, folder, location); result <- err }()
+			go func() {
+				_, err := scan.ScanStorageFolder(request, folder, storagesource.LocationSelection{Location: location})
+				result <- err
+			}()
 			deadline := time.NewTimer(15 * time.Second)
 			defer deadline.Stop()
 			if gate {

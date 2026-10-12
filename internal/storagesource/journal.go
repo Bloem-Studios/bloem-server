@@ -121,7 +121,7 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 				removed = append(removed, id)
 			}
 		}
-		if len(files) > 0 || len(removed) > 0 {
+		if len(files) > 0 || len(removed) > 0 || page.GetComplete() {
 			if err = publish(ctx, tx, files, removed); err != nil {
 				return err
 			}

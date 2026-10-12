@@ -1,9 +1,9 @@
 # Bloem native storage
 
-Native storage lets an ebook or movie library read its files from a storage source (a
-storage plugin such as Bookwarehouse) instead of filesystem paths. It is
-experimental. The source is the library's **location**: a library has either
-paths or one storage location, never both.
+Native storage lets an ebook or movie library read files from storage plugins,
+such as Bookwarehouse, alongside filesystem paths. A library can retain multiple
+plugin locations, each with independently selected directory roots. It remains
+experimental.
 
 Movie admission is startup-only. The host configures the scan reader and bounded
 probe before starting queues; the API then admits movie attachment only after
@@ -20,10 +20,11 @@ publication hold. This describes code readiness, not production source certifica
   installation, with a retained UUID key, owner, encrypted configuration and a
   configuration revision. A source outlives its installation's removal.
 - **Library storage location.** `library_storage_locations`: binds one source to
-  one library. A library has at most one location, a source backs at most one
-  library. Enabled `ebooks` libraries can have one; enabled `movies` libraries
-  also require the scanner and playback readiness boundary. A storage library
-  never gains paths and cannot change its source.
+  one library. Libraries can combine local paths and multiple source selections;
+  one source can back multiple libraries. Selected opaque roots are retained in
+  `bloem_storage_selected_roots`. Enabled `movies` libraries also require the
+  scanner and playback readiness boundary. A retained location's source identity
+  does not change when its selected roots change.
 - **File reference.** `bloem_storage_file_refs`: a published catalog file's
   location, entry ID, revision and display path, plus the cover the provider
   offers for its book. The file's `file_path` is the catalog location
@@ -164,7 +165,21 @@ reconcile an unknown installation outcome before retrying.
 
 ## Scanning
 
-A storage library scans only as a whole library. `libraryingest.StorageScanner`:
+The executor holds one whole-library claim while it runs the existing
+filesystem workflow, followed by the ordered plugin location selections. A
+failed lane retains its error and counts while independent locations continue;
+parent cancellation stops the remaining work. Aggregate catalog events publish
+once, and the last-scanned timestamp advances only when every lane succeeds.
+File and subtree scans remain local and never enumerate plugin selections.
+
+The optional `MaintenanceFileScope` limits filesystem candidates. With no scope,
+the original candidate SQL and reconciliation behavior remain unchanged. Native
+composition installs a scope excluding every `bloem_storage_file_refs` row,
+including files already missing. It guards marking, outside-root deletion,
+trash, scoped reconciliation, and the shared ebook/audio cleanup. Retained
+native versions anywhere in the catalog also prevent cascading orphan deletion.
+
+For each selection, `libraryingest.StorageScanner`:
 
 1. Checks tenancy (`RequireStorageScan`), loads the approved snapshot, starts
    or reuses the plugin process and obtains a fresh, bounded `Describe`.
@@ -172,7 +187,7 @@ A storage library scans only as a whole library. `libraryingest.StorageScanner`:
    under its retained read policy. After discovery, it reloads the retained source,
    rechecks tenancy and checks the executable generation and checksum again
    before beginning a scan lease.
-2. `BeginAuthorized` begins or resumes discovery in a transaction that checks
+2. `BeginLocationAuthorized` begins or resumes discovery in a transaction that checks
    and retains current installation, source, library, owner and entitlement
    authority before the journal's source and run locks. A prior preflight
    check grants no later journal write. Refused authority leaves the run,
@@ -195,9 +210,9 @@ A storage library scans only as a whole library. `libraryingest.StorageScanner`:
    title-owned extras folders for movies. `.ignore`, `.siloignore` and
    `.nomedia` are not read: honoring them would need a pinned read of each
    ignore file and directory state across listing pages.
-4. Stops lease renewal, then `CompleteAuthorized` checks current resource
+4. Stops lease renewal, then `CompleteLocationAuthorized` checks current resource
    authority before journal source/run locks. Its finalizer runs
-   `SweepStorageLibraryTx` to reconcile memberships and orphans and sweep
+   `SweepStorageLocationTx` to reconcile memberships and orphans and sweep
    expired missing files with the existing grace and empty-trash settings.
    Authority stays locked through the single catalog and journal commit;
    the lease is checked again after cleanup waits. Refused authority, failed
@@ -222,8 +237,9 @@ Publication (`scanner.PublishStorageEbooksTx`) is set-based: a page of up to
 `EbookMetadata` publish without the host reading the file. Entries without it
 are opened and parsed (`ParseNativeEbook`). Files group into items by ISBN, or
 title and authors, as file scans do. Items publish with status `matched`: the
-source is the authority for its books, so enrichment skips them and each scan
-reapplies the provider's metadata over the stored item, keeping artwork.
+source supplies their metadata. Provider metadata and credits are reapplied only
+when the item has no present local version and no locked fields. A native edition
+joining a curated local item preserves its title, credits, sort title and artwork.
 
 ## Movies
 
@@ -269,8 +285,11 @@ names, because the provider's logical path is relative to its root.
 A directory's final page may carry a `change_token`, stored in
 `bloem_storage_change_tokens`. The next scan sends it as `changes_since`, and
 the provider lists only books added or changed since, plus `removed_entry_ids`.
-Removed entries mark their files missing; the post-scan sweep removes them, and
-a book listed again before then is restored. A token the provider refuses
+Removed entries change retained directory edges. Successful location completion
+reconciles that location's root evidence and marks newly absent files missing.
+Its sweep applies the existing removal grace and trash setting only to files
+owned by that location; other locations and local versions remain retained.
+A book listed again before deletion is restored. A token the provider refuses
 (`FailedPrecondition`), from another configuration revision, or older than
 seven days falls back to a full listing, which also reconciles anything a change
 feed missed. Each directory retains its effective full or incremental mode

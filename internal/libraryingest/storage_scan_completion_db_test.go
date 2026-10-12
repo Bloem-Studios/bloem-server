@@ -181,7 +181,7 @@ func testStorageScanCompletionAuthority(t *testing.T, binary []byte, manifest *p
 		}
 		finalPage = true
 	})
-	result, scanErr := scan.ScanStorageFolder(ctx, folder, location)
+	result, scanErr := scan.ScanStorageFolder(ctx, folder, storagesource.LocationSelection{Location: location})
 	if !finalPage {
 		t.Fatal("scan did not reach final committed page")
 	}

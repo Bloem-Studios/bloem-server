@@ -30,8 +30,8 @@ import (
 
 // StorageIngestor scans libraries whose location is a storage source.
 type StorageIngestor interface {
-	FolderLocation(context.Context, int) (storagesource.Location, bool, error)
-	ScanStorageFolder(context.Context, *models.MediaFolder, storagesource.Location) (*Result, error)
+	LocationSelections(context.Context, int) ([]storagesource.LocationSelection, error)
+	ScanStorageFolder(context.Context, *models.MediaFolder, storagesource.LocationSelection) (*Result, error)
 }
 
 // SetStorageIngestor is startup-only, before scans are admitted.
@@ -44,58 +44,106 @@ func (e *Executor) SetStorageIngestor(storage StorageIngestor) {
 // tryStorageIngest scans a library with a storage location and reports whether
 // it did. Libraries without one continue with the filesystem scanner.
 func (e *Executor) tryStorageIngest(ctx context.Context, folder *models.MediaFolder, mode scopeMode) (*Result, bool, error) {
-	if e == nil || folder == nil || e.storageIngestor == nil {
+	if e == nil || folder == nil || e.storageIngestor == nil || mode != scopeModeLibrary {
 		return nil, false, nil
 	}
-	location, ok, err := e.storageIngestor.FolderLocation(ctx, folder.ID)
+	selections, err := e.storageIngestor.LocationSelections(ctx, folder.ID)
 	if err != nil {
 		return nil, true, err
 	}
-	if !ok {
+	if len(selections) == 0 {
 		return nil, false, nil
-	}
-	if mode != scopeModeLibrary {
-		return nil, true, fmt.Errorf("storage libraries scan only as a whole library")
 	}
 	scanCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	result, err := e.storageIngest(scanCtx, cancel, folder, location)
-	return result, true, storageScanOutcome(scanCtx, folder, location, err)
+	result, err := e.storageIngest(scanCtx, cancel, folder, selections)
+	return result, true, storageScanOutcome(scanCtx, folder, selections[0].Location, err)
 }
 
-func (e *Executor) storageIngest(scanCtx context.Context, cancel context.CancelFunc, folder *models.MediaFolder, location storagesource.Location) (*Result, error) {
-	entry, err := e.begin(scanCtx, scopeClaim{folderID: folder.ID, mode: scopeModeLibrary}, cancel)
+func (e *Executor) storageIngest(scanCtx context.Context, cancel context.CancelFunc, folder *models.MediaFolder, selections []storagesource.LocationSelection) (*Result, error) {
+	mode := scopeModeLibrary
+	claim := scopeClaim{folderID: folder.ID, mode: scopeModeLibrary}
+	entry, err := e.begin(scanCtx, claim, cancel)
 	if err != nil {
 		return nil, err
 	}
 	defer e.finish(entry)
-	reportProgress(scanCtx, ProgressUpdate{Phase: "preparing", Message: "Preparing storage scan"})
-	result, err := e.storageIngestor.ScanStorageFolder(scanCtx, folder, location)
-	if err != nil {
-		return result, err
+	result := &Result{ScanResult: &scanner.ScanResult{}}
+	var failures []error
+	if len(folder.Paths) > 0 {
+		if e.scanner == nil || e.matcher == nil {
+			return nil, fmt.Errorf("library ingest executor is not fully configured")
+		}
+		local, localErr := e.executeFilesystem(scanCtx, folder, mode, claim, false)
+		mergeIngestResult(result, local)
+		if localErr != nil && (local == nil || local.ScanResult == nil || local.ScanResult.Errors == 0) {
+			result.ScanResult.Errors++
+		}
+		if localErr != nil {
+			failures = append(failures, localErr)
+		}
 	}
-	if e.folders != nil {
-		if err = e.folders.UpdateLastScanned(scanCtx, folder.ID, e.now().UTC()); err != nil {
-			return result, fmt.Errorf("update storage library last scanned: %w", err)
+	for _, selection := range selections {
+		if scanCtx.Err() != nil {
+			failures = append(failures, scanCtx.Err())
+			break
+		}
+		lane, laneErr := e.storageIngestor.ScanStorageFolder(scanCtx, folder, selection)
+		mergeIngestResult(result, lane)
+		if laneErr != nil && (lane == nil || lane.ScanResult == nil || lane.ScanResult.Errors == 0) {
+			result.ScanResult.Errors++
+		}
+		if laneErr != nil {
+			failures = append(failures, fmt.Errorf("storage location %s: %w", selection.Location.ID, laneErr))
+		}
+	}
+	if len(failures) == 0 && e.folders != nil {
+		if err := e.folders.UpdateLastScanned(scanCtx, folder.ID, e.now().UTC()); err != nil {
+			failures = append(failures, err)
 		}
 	}
 	if shouldPublish(result) && e.events != nil {
-		if err = e.events.Publish(scanCtx, cache.ChannelCatalog, cache.Event{Type: cache.EventScanComplete, Payload: strconv.Itoa(folder.ID)}); err != nil {
-			return result, err
+		if err := e.events.Publish(scanCtx, cache.ChannelCatalog, cache.Event{Type: cache.EventScanComplete, Payload: strconv.Itoa(folder.ID)}); err != nil {
+			failures = append(failures, err)
 		}
 	}
 	if shouldPublish(result) && e.realtime != nil {
-		if err = e.realtime.PublishCatalogLibraryChanged(scanCtx, notifications.LibraryChangeEvent{
-			LibraryID: folder.ID, Reason: "scan",
-			New:     scanResultCount(result.ScanResult, func(v *scanner.ScanResult) int { return v.New }),
-			Updated: scanResultCount(result.ScanResult, func(v *scanner.ScanResult) int { return v.Updated }),
-			Missing: scanResultCount(result.ScanResult, func(v *scanner.ScanResult) int { return v.Missing }),
-		}); err != nil {
-			return result, err
+		if err := e.realtime.PublishCatalogLibraryChanged(scanCtx, notifications.LibraryChangeEvent{LibraryID: folder.ID, Reason: "scan", New: result.ScanResult.New, Updated: result.ScanResult.Updated, Missing: result.ScanResult.Missing, MatchedFiles: result.MatchedFiles, RetriedItems: result.RetriedItems, StillUnmatchedWarnings: result.StillUnmatchedWarnings}); err != nil {
+			failures = append(failures, err)
 		}
 	}
-	reportProgress(scanCtx, ProgressUpdate{Phase: "completed", Message: "Storage scan completed"})
-	return result, nil
+	if len(failures) == 0 {
+		reportProgress(scanCtx, ProgressUpdate{Phase: "completed", Message: "Scan completed", New: result.ScanResult.New, Updated: result.ScanResult.Updated, Unchanged: result.ScanResult.Unchanged, Errors: result.ScanResult.Errors, MatchedFiles: result.MatchedFiles, RetriedItems: result.RetriedItems})
+	}
+	return result, errors.Join(failures...)
+}
+
+func mergeIngestResult(dst, src *Result) {
+	if src == nil {
+		return
+	}
+	dst.MatchedFiles += src.MatchedFiles
+	dst.RetriedItems += src.RetriedItems
+	dst.StillUnmatchedWarnings += src.StillUnmatchedWarnings
+	dst.ScanDuration += src.ScanDuration
+	dst.MatchDuration += src.MatchDuration
+	dst.RetryDuration += src.RetryDuration
+	if v := src.ScanResult; v != nil {
+		d := dst.ScanResult
+		d.New += v.New
+		d.Updated += v.Updated
+		d.Unchanged += v.Unchanged
+		d.Missing += v.Missing
+		d.Errors += v.Errors
+		d.FilesDeleted += v.FilesDeleted
+		d.MembershipsRemoved += v.MembershipsRemoved
+		d.ItemsDeleted += v.ItemsDeleted
+		d.MissingSkippedProtected += v.MissingSkippedProtected
+		d.EmptyRootGuarded = d.EmptyRootGuarded || v.EmptyRootGuarded
+		d.UnreachableRoots = append(d.UnreachableRoots, v.UnreachableRoots...)
+		d.SuspectEmptyRoots = append(d.SuspectEmptyRoots, v.SuspectEmptyRoots...)
+		d.RootObservations = append(d.RootObservations, v.RootObservations...)
+	}
 }
 
 // storageScanOutcome decides how the scan queue reports a storage scan. The
@@ -161,14 +209,16 @@ func NewStorageScanner(host *nativestorage.Host, sources *storagesource.Reposito
 	if host == nil || host.Registry == nil || host.Manager == nil || sources == nil || resources == nil || publisher == nil {
 		return nil, storagesource.ErrSourceUnavailable
 	}
+	publisher.SetMaintenanceFileScope(scanner.NativeMaintenanceFileScope{})
 	return &StorageScanner{host: host, sources: sources, resources: resources, scanner: publisher, leaseTTL: time.Minute}, nil
 }
 
-func (c *StorageScanner) FolderLocation(ctx context.Context, folderID int) (storagesource.Location, bool, error) {
-	return c.sources.FolderLocation(ctx, folderID)
+func (c *StorageScanner) LocationSelections(ctx context.Context, folderID int) ([]storagesource.LocationSelection, error) {
+	return c.sources.LocationSelections(ctx, folderID)
 }
 
-func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.MediaFolder, location storagesource.Location) (result *Result, err error) {
+func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.MediaFolder, selection storagesource.LocationSelection) (result *Result, err error) {
+	location := selection.Location
 	result = &Result{ScanResult: &scanner.ScanResult{}}
 	started := time.Now()
 	defer func() {
@@ -294,11 +344,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			var orphanedImageDirs []string
 			finalize := func(ctx context.Context, tx pgx.Tx) error {
 				var err error
-				// Mixed cleanup/orchestration belongs to the subsequent integration.
-				// This location's journal reconciles only its own publication memberships.
-				if len(pinned.Library.Locations) == 1 && len(folder.Paths) == 0 {
-					trashed, orphanedImageDirs, err = c.scanner.SweepStorageLibraryTx(ctx, tx, folder)
-				}
+				trashed, orphanedImageDirs, err = c.scanner.SweepStorageLocationTx(ctx, tx, folder, location)
 				return err
 			}
 			missing, err := c.sources.CompleteLocationAuthorized(job, lease, authorize, finalize)
@@ -354,10 +400,16 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			}
 			var err error
 			if librarykind.IsMovie(folder.Type) {
+				if len(uniqueMovies) == 0 {
+					return nil
+				}
 				var moviePage scanner.StorageMoviePublishResult
 				moviePage, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueMovies)
 				published, matches = moviePage.StoragePublishResult, moviePage.Matches
 			} else {
+				if len(uniqueBooks) == 0 {
+					return nil
+				}
 				published, err = c.scanner.PublishStorageEbooksTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueBooks)
 			}
 			if err != nil {

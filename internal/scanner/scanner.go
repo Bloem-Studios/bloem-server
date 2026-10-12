@@ -754,7 +754,7 @@ func (s *Scanner) scanPaths(
 
 	// Get existing files in this scan scope from the DB. Full library scans
 	// returned above, so this is always a single subtree.
-	existingFiles, err := s.fileRepo.GetScanStateByFolderAndPathPrefix(ctx, folder.ID, reconcileRoots[0])
+	existingFiles, err := s.fileRepo.maintenanceScanStateByPrefix(ctx, folder.ID, reconcileRoots[0])
 	if err != nil {
 		return nil, fmt.Errorf("getting existing files for folder %d path %q: %w", folder.ID, reconcileRoots[0], err)
 	}
@@ -1677,7 +1677,7 @@ func (s *Scanner) scanScope(
 	reconcileRoots []string,
 ) (*scopedScan, error) {
 	result := &ScanResult{}
-	existingFiles, err := s.fileRepo.GetScanStateByFolderAndPathPrefix(ctx, folder.ID, reconcileRoots[0])
+	existingFiles, err := s.fileRepo.maintenanceScanStateByPrefix(ctx, folder.ID, reconcileRoots[0])
 	if err != nil {
 		return nil, fmt.Errorf("getting existing files for folder %d path %q: %w", folder.ID, reconcileRoots[0], err)
 	}
@@ -2490,7 +2490,7 @@ func (s *Scanner) syncFolderScopedAudioLibraryState(ctx context.Context, folderI
 // folder, so the folder-wide trash sweep that follows cannot delete a file row
 // before its item's orphan check and its episode's membership check have run.
 func (s *Scanner) reconcileScopedLibraryMemberships(ctx context.Context, folderID int, pathPrefix string, previous []*scanStateFile, trashFollows bool, protectedRoots []string) (int, int, []string, error) {
-	contentIDs, episodeIDs, err := s.fileRepo.ListMembershipTargets(ctx, folderID, pathPrefix, trashFollows)
+	contentIDs, episodeIDs, err := s.fileRepo.maintenanceMembershipTargets(ctx, folderID, pathPrefix, trashFollows)
 	if err != nil {
 		return 0, 0, nil, err
 	}
@@ -2506,6 +2506,13 @@ func (s *Scanner) reconcileScopedLibraryMemberships(ctx context.Context, folderI
 		if _, err := s.episodeLibraryRepo.RemoveStaleEpisodeMemberships(ctx, folderID, slices.Compact(episodeIDs)); err != nil {
 			return 0, 0, nil, err
 		}
+	}
+	if s.fileRepo.maintenanceScope != nil {
+		retained, err := s.fileRepo.maintenanceRetainedItems(ctx, contentIDs)
+		if err != nil {
+			return 0, 0, nil, err
+		}
+		return s.reconcileMaintenanceItems(ctx, folderID, slices.Compact(contentIDs), protectedRoots, retained)
 	}
 	return s.libraryRepo.ReconcileItemMemberships(ctx, folderID, slices.Compact(contentIDs), protectedRoots)
 }
@@ -2526,6 +2533,9 @@ func (s *Scanner) reconcileLibraryMemberships(ctx context.Context, folderID int,
 		if _, err := reconcileEpisodes(ctx, folderID); err != nil {
 			return 0, 0, nil, err
 		}
+	}
+	if s.fileRepo.maintenanceScope != nil {
+		return s.reconcileMaintenanceMemberships(ctx, folderID, unreachableRoots)
 	}
 	return s.libraryRepo.ReconcileFolderMembership(ctx, folderID, unreachableRoots)
 }

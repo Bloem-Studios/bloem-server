@@ -152,7 +152,10 @@ func TestStorageScanRevocationBeforeBeginPreservesJournal(t *testing.T) {
 			scan.leaseTTL = time.Hour
 			request := context.WithValue(ctx, scanBeginGateKey{}, gate)
 			result := make(chan error, 1)
-			go func() { _, err := scan.ScanStorageFolder(request, folder, location); result <- err }()
+			go func() {
+				_, err := scan.ScanStorageFolder(request, folder, storagesource.LocationSelection{Location: location})
+				result <- err
+			}()
 			select {
 			case <-gate.entered:
 			case err := <-result:

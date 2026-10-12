@@ -172,13 +172,21 @@ func (e *Executor) ingest(ctx context.Context, folder *models.MediaFolder, mode 
 		mode:     mode,
 		path:     cleanScopePath(rawPath),
 	}
-	matchScopes := scopeMatchPaths(folder, mode, claim.path)
 	entry, err := e.begin(scanCtx, claim, cancel)
 	if err != nil {
 		return nil, err
 	}
 	defer e.finish(entry)
 
+	return e.executeFilesystem(scanCtx, folder, mode, claim, true)
+}
+
+// executeFilesystem is the original filesystem workflow under its caller's claim.
+func (e *Executor) executeFilesystem(scanCtx context.Context, folder *models.MediaFolder, mode scopeMode, claim scopeClaim, publish bool) (*Result, error) {
+	ctx := scanCtx
+	scanCtx, cancel := context.WithCancel(scanCtx)
+	defer cancel()
+	matchScopes := scopeMatchPaths(folder, mode, claim.path)
 	var (
 		concurrentMatched       atomic.Int64
 		concurrentMatchDuration atomic.Int64
@@ -273,6 +281,15 @@ func (e *Executor) ingest(ctx context.Context, folder *models.MediaFolder, mode 
 		case drainerErr := <-drainerErrCh:
 			return nil, drainerErr
 		default:
+		}
+		if !publish {
+			if scanResult == nil {
+				scanResult = &scanner.ScanResult{}
+			}
+			if scanResult.Errors == 0 {
+				scanResult.Errors++
+			}
+			return &Result{ScanResult: scanResult, ScanDuration: time.Since(scanStarted), MatchedFiles: int(concurrentMatched.Load()), MatchDuration: time.Duration(concurrentMatchDuration.Load())}, err
 		}
 		return nil, err
 	}
@@ -369,7 +386,7 @@ func (e *Executor) ingest(ctx context.Context, folder *models.MediaFolder, mode 
 		}
 	}
 
-	if mode == scopeModeLibrary && e.folders != nil {
+	if publish && mode == scopeModeLibrary && e.folders != nil {
 		if err := e.folders.UpdateLastScanned(scanCtx, folder.ID, e.now().UTC()); err != nil {
 			return result, fmt.Errorf("update last scanned: %w", err)
 		}
@@ -395,7 +412,7 @@ func (e *Executor) ingest(ctx context.Context, folder *models.MediaFolder, mode 
 		}
 	}
 
-	if shouldPublish(result) && e.events != nil {
+	if publish && shouldPublish(result) && e.events != nil {
 		if err := e.events.Publish(scanCtx, cache.ChannelCatalog, cache.Event{
 			Type:    cache.EventScanComplete,
 			Payload: strconv.Itoa(folder.ID),
@@ -403,7 +420,7 @@ func (e *Executor) ingest(ctx context.Context, folder *models.MediaFolder, mode 
 			return result, fmt.Errorf("publish scan complete: %w", err)
 		}
 	}
-	if shouldPublish(result) && e.realtime != nil {
+	if publish && shouldPublish(result) && e.realtime != nil {
 		if err := e.realtime.PublishCatalogLibraryChanged(scanCtx, notifications.LibraryChangeEvent{
 			LibraryID:              folder.ID,
 			Reason:                 "scan",
@@ -418,18 +435,19 @@ func (e *Executor) ingest(ctx context.Context, folder *models.MediaFolder, mode 
 		}
 	}
 
-	reportProgress(scanCtx, ProgressUpdate{
-		Phase:        "completed",
-		Message:      "Scan completed",
-		CurrentScope: claim.path,
-		MatchedFiles: result.MatchedFiles,
-		RetriedItems: result.RetriedItems,
-		New:          scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.New }),
-		Updated:      scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.Updated }),
-		Unchanged:    scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.Unchanged }),
-		Errors:       scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.Errors }),
-	})
-
+	if publish {
+		reportProgress(scanCtx, ProgressUpdate{
+			Phase:        "completed",
+			Message:      "Scan completed",
+			CurrentScope: claim.path,
+			MatchedFiles: result.MatchedFiles,
+			RetriedItems: result.RetriedItems,
+			New:          scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.New }),
+			Updated:      scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.Updated }),
+			Unchanged:    scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.Unchanged }),
+			Errors:       scanResultCount(scanResult, func(value *scanner.ScanResult) int { return value.Errors }),
+		})
+	}
 	slog.InfoContext(ctx, "library ingest: completed", "component", "libraryingest",
 		"folder_id", folder.ID,
 		"mode", mode,
@@ -497,7 +515,7 @@ func (e *Executor) scan(ctx context.Context, folder *models.MediaFolder, mode sc
 	case scopeModeLibrary:
 		result, err := e.scanner.ScanFolder(ctx, folder)
 		if err != nil {
-			return nil, nil, fmt.Errorf("scan folder: %w", err)
+			return nil, result, fmt.Errorf("scan folder: %w", err)
 		}
 		return cleanRoots(folder.Paths), result, nil
 	case scopeModeSubtree:

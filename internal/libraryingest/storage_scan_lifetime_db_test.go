@@ -173,7 +173,10 @@ func TestStorageSourceContentionWaitRechecksAuthorityDB(t *testing.T) {
 			request = context.WithValue(request, task4AttemptKey{}, attempts)
 			defer cancel()
 			returned := make(chan error, 1)
-			go func() { _, err := f.Scanner.ScanStorageFolder(request, other, b); returned <- err }()
+			go func() {
+				_, err := f.Scanner.ScanStorageFolder(request, other, storagesource.LocationSelection{Location: b})
+				returned <- err
+			}()
 			select {
 			case <-attempts:
 			case err := <-returned:

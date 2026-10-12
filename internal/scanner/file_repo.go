@@ -32,9 +32,15 @@ var (
 	ErrStaleCopySafetyScan = errors.New("copy-safety verdict superseded by a newer generation of the file")
 )
 
+// MaintenanceFileScope limits filesystem maintenance candidates. The predicate
+// uses the supplied trusted table alias. Nil retains the original SQL.
+// Implementations are installed at startup, before admitting scans.
+type MaintenanceFileScope interface{ Predicate(alias string) string }
+
 // FileRepository provides CRUD operations for the media_files table.
 type FileRepository struct {
-	pool *pgxpool.Pool
+	pool             *pgxpool.Pool
+	maintenanceScope MaintenanceFileScope
 }
 
 type fileQueryer interface {
@@ -3032,7 +3038,7 @@ func claimRepresentativeWindow(limit int) int {
 // MarkMissing sets the missing_since timestamp for the given media file.
 func (r *FileRepository) MarkMissing(ctx context.Context, id int, since time.Time) error {
 	tag, err := r.pool.Exec(ctx,
-		"UPDATE media_files SET missing_since = $1, updated_at = NOW() WHERE id = $2",
+		"UPDATE media_files SET missing_since = $1, updated_at = NOW() WHERE id = $2"+r.maintenancePredicate("media_files"),
 		since, id,
 	)
 	if err != nil {
@@ -3067,11 +3073,12 @@ func (r *FileRepository) DeleteMissingByFolder(ctx context.Context, folderID int
 		WHERE mf.media_folder_id = $1
 		  AND mf.missing_since IS NOT NULL
 		  AND mf.missing_since < $2
-		  AND NOT EXISTS (
+		  AND ` + r.maintenanceTrashGuard(`NOT EXISTS (
 			SELECT 1 FROM media_items mi
 			WHERE mi.content_id = mf.content_id
 			  AND NOT EXISTS (SELECT 1 FROM media_item_libraries mil WHERE mil.content_id = mi.content_id)
-		  )`
+		  )`, "mf")
+	query += r.maintenancePredicate("mf")
 	args := []any{folderID, cutoff}
 	if clauses, clauseArgs := rootCoverageClauses(protectedRoots, len(args)+1); len(clauses) > 0 {
 		query += " AND NOT (" + strings.Join(clauses, " OR ") + ")"
@@ -3192,7 +3199,7 @@ func (r *FileRepository) DeleteByIDs(ctx context.Context, ids []int) (int, error
 	}
 
 	tag, err := r.pool.Exec(ctx,
-		"DELETE FROM media_files WHERE id = ANY($1)",
+		"DELETE FROM media_files WHERE id = ANY($1)"+r.maintenancePredicate("media_files"),
 		ids,
 	)
 	if err != nil {
@@ -3205,7 +3212,7 @@ func (r *FileRepository) DeleteByIDs(ctx context.Context, ids []int) (int, error
 // longer covered by any configured root.
 func (r *FileRepository) ListIDsOutsideRoots(ctx context.Context, folderID int, roots []string) ([]int, error) {
 	if len(roots) == 0 {
-		rows, err := r.pool.Query(ctx, `SELECT id FROM media_files WHERE media_folder_id = $1`, folderID)
+		rows, err := r.pool.Query(ctx, `SELECT id FROM media_files WHERE media_folder_id = $1`+r.maintenancePredicate("media_files"), folderID)
 		if err != nil {
 			return nil, fmt.Errorf("querying file ids outside roots: %w", err)
 		}
@@ -3230,7 +3237,7 @@ func (r *FileRepository) ListIDsOutsideRoots(ctx context.Context, folderID int, 
 	coveredClauses, coveredArgs := rootCoverageClauses(roots, 2)
 	args = append(args, coveredArgs...)
 
-	query := `SELECT id FROM media_files WHERE media_folder_id = $1 AND NOT (` + strings.Join(coveredClauses, " OR ") + `)`
+	query := `SELECT id FROM media_files WHERE media_folder_id = $1 AND NOT (` + strings.Join(coveredClauses, " OR ") + `)` + r.maintenancePredicate("media_files")
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("querying file ids outside roots: %w", err)

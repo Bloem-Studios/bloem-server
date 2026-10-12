@@ -236,6 +236,11 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 			storedByID[item.ContentID] = item
 		}
 	}
+	owned, err := storageMetadataOwnedTx(ctx, tx, order)
+	if err != nil {
+		return result, err
+	}
+	metadataOrder := make([]string, 0, len(order))
 	now := time.Now().UTC()
 	items := make([]*models.MediaItem, 0, len(order))
 	for _, id := range order {
@@ -244,6 +249,10 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 		if item == nil {
 			item = &models.MediaItem{ContentID: id, Year: b.Book.Year}
 		}
+		if item != nil && !owned[id] {
+			continue
+		}
+		metadataOrder = append(metadataOrder, id)
 		applyEbookToMediaItem(item, &b.Book)
 		if strings.TrimSpace(item.Title) == "" {
 			item.Title = ebookTitleFromPath(b.Entry.GetName())
@@ -302,13 +311,13 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 		return result, fmt.Errorf("attach storage files: %w", err)
 	}
 
-	if err := publishStorageEbookAuthors(ctx, tx, order, bookFor); err != nil {
+	if err := publishStorageEbookAuthors(ctx, tx, metadataOrder, bookFor); err != nil {
 		return result, err
 	}
-	if err := publishStorageEbookSeries(ctx, tx, order, bookFor); err != nil {
+	if err := publishStorageEbookSeries(ctx, tx, metadataOrder, bookFor); err != nil {
 		return result, err
 	}
-	if err := publishStorageEbookISBNs(ctx, tx, order, bookFor); err != nil {
+	if err := publishStorageEbookISBNs(ctx, tx, metadataOrder, bookFor); err != nil {
 		return result, err
 	}
 	return result, nil
@@ -513,7 +522,7 @@ func publishStorageEbookISBNs(ctx context.Context, tx pgx.Tx, order []string, bo
 }
 
 // MarkStorageEbooksRemovedTx marks the files of entries the provider reports
-// removed as missing. SweepStorageLibraryTx removes them after the library's
+// removed as missing. SweepStorageLocationTx removes them after the library's
 // grace period, as file scans do; an entry listed again before then clears
 // the mark when its file is republished.
 func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, location storagesource.Location, entryIDs []string) (int, error) {
@@ -529,33 +538,56 @@ func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, loc
 	return int(tag.RowsAffected()), nil
 }
 
-// SweepStorageLibraryTx reconciles a pathless storage library and empties its
+// SweepStorageLocationTx reconciles the completing location and empties its
 // expired trash inside the caller's authorized completion transaction. The
 // library repository retains its orphan, present-file and removal-grace guards.
 // Native ebook and movie publication has no episode memberships or filesystem roots.
 // The returned artwork directories may be removed only after a successful commit.
-func (s *Scanner) SweepStorageLibraryTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder) (int, []string, error) {
+func (s *Scanner) SweepStorageLocationTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder, location storagesource.Location) (int, []string, error) {
 	if s == nil || s.libraryRepo == nil || s.fileRepo == nil || tx == nil || folder == nil ||
-		(!librarykind.IsEbook(folder.Type) && !librarykind.IsMovie(folder.Type)) || len(folder.Paths) != 0 {
+		(!librarykind.IsEbook(folder.Type) && !librarykind.IsMovie(folder.Type) && !librarykind.Of(folder.Type).Audiobook) || folder.ID != location.FolderID {
 		return 0, nil, fmt.Errorf("storage sweep: scanner or library not configured")
 	}
-	_, _, orphanedImageDirs, err := s.libraryRepo.ReconcileFolderMembershipTx(ctx, tx, folder.ID, nil)
+	rows, err := tx.Query(ctx, `SELECT DISTINCT mf.content_id FROM media_files mf JOIN bloem_storage_file_refs r ON r.media_file_id=mf.id WHERE r.location_id=$1 AND mf.media_folder_id=$2 AND mf.content_id IS NOT NULL ORDER BY mf.content_id`, location.ID, folder.ID)
+	if err != nil {
+		return 0, nil, err
+	}
+	candidates, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return 0, nil, err
+	}
+	// Retained rows owned by other lanes protect shared items against a
+	// cascading orphan purge, including versions already marked missing.
+	rows, err = tx.Query(ctx, `SELECT DISTINCT mf.content_id FROM media_files mf WHERE mf.content_id=ANY($1::text[]) AND NOT EXISTS(SELECT 1 FROM bloem_storage_file_refs r WHERE r.media_file_id=mf.id AND r.location_id=$2)`, candidates, location.ID)
+	if err != nil {
+		return 0, nil, err
+	}
+	retained, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return 0, nil, err
+	}
+	_, _, orphanedImageDirs, err := s.libraryRepo.ReconcileItemsMembershipTx(ctx, tx, folder.ID, candidates, nil, retained)
 	if err != nil {
 		return 0, nil, fmt.Errorf("reconciling storage library membership for folder %d: %w", folder.ID, err)
 	}
 	trashed := 0
 	if s.emptyTrashAfterScan {
 		// Match DeleteMissingByFolder's grace cutoff and retained orphan guard.
-		// Storage libraries have no filesystem roots to exempt from cleanup.
+		// Only this location owns these trash candidates.
 		tag, err := tx.Exec(ctx, `DELETE FROM media_files mf
 			WHERE mf.media_folder_id = $1
+              AND EXISTS (SELECT 1 FROM bloem_storage_file_refs native WHERE native.media_file_id=mf.id AND native.location_id=$3)
 			  AND mf.missing_since IS NOT NULL
 			  AND mf.missing_since < $2
-			  AND NOT EXISTS (
+			  AND (NOT EXISTS (
 				SELECT 1 FROM media_items mi
 				WHERE mi.content_id = mf.content_id
 				  AND NOT EXISTS (SELECT 1 FROM media_item_libraries mil WHERE mil.content_id = mi.content_id)
-			  )`, folder.ID, time.Now().UTC().Add(-s.fileRemovalGrace))
+              ) OR EXISTS (
+                SELECT 1 FROM media_files retained
+                WHERE retained.content_id=mf.content_id
+                AND NOT EXISTS (SELECT 1 FROM bloem_storage_file_refs owned WHERE owned.media_file_id=retained.id AND owned.location_id=$3)
+              ))`, folder.ID, time.Now().UTC().Add(-s.fileRemovalGrace), location.ID)
 		if err != nil {
 			return 0, nil, fmt.Errorf("emptying storage trash for folder %d: %w", folder.ID, err)
 		}
@@ -565,7 +597,7 @@ func (s *Scanner) SweepStorageLibraryTx(ctx context.Context, tx pgx.Tx, folder *
 }
 
 // CleanupStorageLibraryArtwork removes artwork no committed catalog row owns.
-// Call it only after SweepStorageLibraryTx's transaction commits successfully.
+// Call it only after SweepStorageLocationTx's transaction commits successfully.
 func (s *Scanner) CleanupStorageLibraryArtwork(ctx context.Context, directories []string) {
 	if s == nil || s.artworkStore == nil {
 		return

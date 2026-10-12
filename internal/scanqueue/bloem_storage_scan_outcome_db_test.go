@@ -22,11 +22,14 @@ type storageOutcomeIngestor struct {
 	scan     func(context.Context) error
 }
 
-func (s storageOutcomeIngestor) FolderLocation(_ context.Context, id int) (storagesource.Location, bool, error) {
-	return storagesource.Location{FolderID: id, SourceKey: uuid.New()}, id == s.folderID, nil
+func (s storageOutcomeIngestor) LocationSelections(_ context.Context, id int) ([]storagesource.LocationSelection, error) {
+	if id != s.folderID {
+		return nil, nil
+	}
+	return []storagesource.LocationSelection{{Location: storagesource.Location{FolderID: id, SourceKey: uuid.New()}}}, nil
 }
 
-func (s storageOutcomeIngestor) ScanStorageFolder(ctx context.Context, _ *models.MediaFolder, _ storagesource.Location) (*libraryingest.Result, error) {
+func (s storageOutcomeIngestor) ScanStorageFolder(ctx context.Context, _ *models.MediaFolder, _ storagesource.LocationSelection) (*libraryingest.Result, error) {
 	return &libraryingest.Result{}, s.scan(ctx)
 }
 
