@@ -76,6 +76,7 @@ type slot struct {
 	session     *Session
 	err         error
 	disabled    bool
+	lifted      bool
 	restartable bool
 	attempts    int
 	nextRestart time.Time
@@ -226,7 +227,8 @@ func (m *Manager) Ensure(ctx context.Context, req Snapshot) (*Session, error) {
 			m.mu.Unlock()
 			return nil, ErrStaleGeneration
 		}
-		if req.Generation == old.snapshot.Generation {
+		// A lifted fence has no process: its generation simply starts again.
+		if req.Generation == old.snapshot.Generation && !old.lifted {
 			if old.disabled {
 				m.mu.Unlock()
 				return nil, ErrDisabled
@@ -433,7 +435,15 @@ func (m *Manager) monitor(s *slot, session *Session) error {
 
 // Disable immediately fences both startup and resident RPCs. Re-enabling the
 // installation requires an authorized snapshot with a higher generation.
-func (m *Manager) Disable(installationID int) {
+func (m *Manager) Disable(installationID int) { m.Fence(installationID) }
+
+// Fence disables like Disable and returns lift, which reopens exactly this
+// fence. Call lift only when the guarded host mutation failed without
+// committing a new generation: the next Ensure at the fenced generation then
+// starts a fresh process once the fenced one is reaped. Lift is a no-op after
+// another Disable, a newer generation or a disabled snapshot replaced the
+// fence, and after Shutdown.
+func (m *Manager) Fence(installationID int) (lift func()) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	generation := uint64(0)
@@ -441,6 +451,14 @@ func (m *Manager) Disable(installationID int) {
 		generation = old.snapshot.Generation
 	}
 	m.disableLocked(installationID, generation)
+	fence := m.slots[installationID]
+	return func() {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		if m.slots[installationID] == fence && !m.closed {
+			fence.lifted = true
+		}
+	}
 }
 
 // Keep a tombstone even with no resident process. A disabled Snapshot supplies

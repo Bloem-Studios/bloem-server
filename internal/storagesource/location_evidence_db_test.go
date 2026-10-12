@@ -133,7 +133,7 @@ func TestLocationFallbackAfterIncrementalPageDB(t *testing.T) {
 	if err := r.pool.QueryRow(t.Context(), `SELECT d.listing_mode,r.state,(SELECT count(*) FROM bloem_storage_scan_cursors WHERE run_id=$1),(SELECT count(*) FROM bloem_storage_scan_directory_entries WHERE run_id=$1),(SELECT count(*) FROM media_files WHERE media_folder_id=$2 AND missing_since IS NOT NULL) FROM bloem_storage_scan_directories d JOIN bloem_storage_scan_runs r ON r.id=d.run_id WHERE d.run_id=$1`, lease.RunID, l.FolderID).Scan(&mode, &state, &pages, &seen, &missing); err != nil {
 		t.Fatal(err)
 	}
-	if !refused || mode != "full" || state != "complete" || pages != 1 || seen != 1 || missing != 1 {
+	if !refused || mode != "full" || state != "complete" || pages != 1 || seen != 1 || missing != 0 {
 		t.Fatalf("fallback failed fresh full traversal: refused=%v mode=%s state=%s pages=%d seen=%d missing=%d", refused, mode, state, pages, seen, missing)
 	}
 }

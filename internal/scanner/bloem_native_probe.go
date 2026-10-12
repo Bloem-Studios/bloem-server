@@ -67,7 +67,17 @@ func ProbeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 	lifetime, cancel := context.WithTimeout(ctx, cfg.Input.Timeout)
 	defer cancel()
 	reader := &nativeProbeFile{File: file, ctx: lifetime, reauthorize: cfg.Input.Reauthorize, maxBytes: cfg.Input.MaxBytes, info: file.Info()}
-	input, err := nativestorage.NewToolInput(lifetime, reader, cfg.Input)
+	inputConfig := cfg.Input
+	if cancelSource := inputConfig.CancelSource; cancelSource != nil {
+		// ToolInput cancels the source only from Close: after the child joined,
+		// or with its lifetime already ended and recorded. A read failing after
+		// this point is the teardown of a range the child abandoned.
+		inputConfig.CancelSource = func() {
+			reader.tearDown()
+			cancelSource()
+		}
+	}
+	input, err := nativestorage.NewToolInput(lifetime, reader, inputConfig)
 	if err != nil {
 		return nil, &nativeProbeFailure{err}
 	}
@@ -186,6 +196,7 @@ type nativeProbeFile struct {
 	mu          sync.Mutex
 	spent       int64
 	sticky      error
+	tearingDown bool
 }
 
 func (f *nativeProbeFile) Info() mediasource.Info { return f.info }
@@ -195,13 +206,25 @@ func (f *nativeProbeFile) failure() error {
 	defer f.mu.Unlock()
 	return f.sticky
 }
+
+// fail records the first failure and returns it. Once ToolInput tears down,
+// a failing read still returns its error, so it delivers no byte, but it is
+// not recorded: it is a consequence of that teardown, as for ToolInput itself.
 func (f *nativeProbeFile) fail(err error) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.sticky == nil {
+	if f.sticky == nil && !f.tearingDown {
 		f.sticky = err
 	}
-	return f.sticky
+	if f.sticky != nil {
+		return f.sticky
+	}
+	return err
+}
+func (f *nativeProbeFile) tearDown() {
+	f.mu.Lock()
+	f.tearingDown = true
+	f.mu.Unlock()
 }
 func (f *nativeProbeFile) ReadAt(p []byte, offset int64) (int, error) {
 	if len(p) == 0 {

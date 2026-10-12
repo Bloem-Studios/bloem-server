@@ -167,3 +167,48 @@ func TestJournalOperationsShareRetainedSourceLockDB(t *testing.T) {
 		t.Fatalf("completion upgraded retained source lock: %v", err)
 	}
 }
+
+// A scan that stops without completing must not keep its claim: a retry within
+// the lease TTL would fail as a stale lease. Release is fenced to its epoch.
+func TestReleaseLetsRetryResumeAtOnce(t *testing.T) {
+	ctx := context.Background()
+	r, s, old, checkpoint := scanFixture(t)
+	if _, err := r.Begin(ctx, s.Key, "worker-two", time.Minute); !errors.Is(err, ErrStaleLease) {
+		t.Fatalf("active lease stolen: %v", err)
+	}
+	if err := r.Release(ctx, old); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Renew(ctx, old, time.Minute); !errors.Is(err, ErrStaleLease) {
+		t.Fatalf("released claim renewed: %v", err)
+	}
+	newer, err := r.Begin(ctx, s.Key, "worker-two", time.Minute)
+	if err != nil || newer.RunID != old.RunID || newer.Epoch != old.Epoch+1 {
+		t.Fatalf("retry did not resume the released run: %+v %v", newer, err)
+	}
+	// A late release by the earlier claim must not end the newer one.
+	if err := r.Release(ctx, old); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Renew(ctx, newer, time.Minute); err != nil {
+		t.Fatalf("stale release ended the newer claim: %v", err)
+	}
+	if err := r.ApplyPage(ctx, newer, checkpoint, &storagev1.ListResponse{Complete: true}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Complete(ctx, newer); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Release(ctx, newer); err != nil {
+		t.Fatal(err)
+	}
+	var state string
+	if err := r.pool.QueryRow(ctx, `SELECT state FROM bloem_storage_scan_runs WHERE id=$1`, newer.RunID).Scan(&state); err != nil || state != "complete" {
+		t.Fatalf("release changed a completed run: state=%s %v", state, err)
+	}
+	invalid := newer
+	invalid.Owner = ""
+	if err := r.Release(ctx, invalid); err == nil {
+		t.Fatal("ownerless release accepted")
+	}
+}

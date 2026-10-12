@@ -286,7 +286,7 @@ func TestLocationIncrementalRemovalKeepsOtherRootDB(t *testing.T) {
 	scopedRun(t, r, l, client, scopedPublisher(t, l, &calls))
 	check(0, 1)
 }
-func TestLocationFullFallbackConfirmsScopedAbsenceDB(t *testing.T) {
+func TestLocationEmptyFullFallbackPreservesScopedInventoryDB(t *testing.T) {
 	r, s, a := scopedFixture(t, "root")
 	fixtureFolder(t, r.pool, 91002)
 	b := fixtureLocation(t, r, s.Key, 91002)
@@ -311,7 +311,7 @@ func TestLocationFullFallbackConfirmsScopedAbsenceDB(t *testing.T) {
 	if err := r.pool.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM media_files WHERE media_folder_id=$1 AND missing_since IS NOT NULL),(SELECT count(*) FROM media_files WHERE media_folder_id=$2 AND missing_since IS NOT NULL),(SELECT listing_mode FROM bloem_storage_scan_directories WHERE run_id=$3)`, a.FolderID, b.FolderID, lease.RunID).Scan(&aMissing, &bMissing, &mode); err != nil {
 		t.Fatal(err)
 	}
-	if aMissing != 1 || bMissing != 0 || mode != "full" {
+	if aMissing != 0 || bMissing != 0 || mode != "full" {
 		t.Fatalf("fallback scoped absence=%d/%d mode=%s", aMissing, bMissing, mode)
 	}
 }
@@ -358,5 +358,92 @@ func TestLocationSourceLockContentionIsBusyDB(t *testing.T) {
 	var runs int
 	if err = r.pool.QueryRow(t.Context(), `SELECT count(*) FROM bloem_storage_scan_runs WHERE source_key=$1`, s.Key).Scan(&runs); err != nil || runs != 0 {
 		t.Fatalf("contention created evidence: %d %v", runs, err)
+	}
+}
+
+// Omitted subtree edges retain access after one full observation, are not
+// traversed while suspect, and cannot retire another selected root's alias.
+func TestLocationOmittedSubtreeNeedsSecondScopedObservationDB(t *testing.T) {
+	r, _, l := scopedFixture(t, "a", "b")
+	phase, childVisits, calls := 0, 0, 0
+	client := providerClient(t, func(_ context.Context, q *storagev1.ListRequest) (*storagev1.ListResponse, error) {
+		page := &storagev1.ListResponse{Complete: true}
+		switch q.DirectoryId {
+		case "a", "b":
+			page.Entries = []*storagev1.Entry{bookEntry("sentinel-" + q.DirectoryId)}
+			if (q.DirectoryId == "a" && phase == 0) || (q.DirectoryId == "b" && phase < 3) {
+				page.Entries = append(page.Entries, dirEntry("child"))
+			}
+		case "child":
+			childVisits++
+			page.Entries = []*storagev1.Entry{bookEntry("book")}
+		default:
+			t.Fatalf("unselected directory %s", q.DirectoryId)
+		}
+		return page, nil
+	})
+	check := func(roots, missing int) {
+		t.Helper()
+		var gotRoots, gotMissing int
+		if err := r.pool.QueryRow(t.Context(), `SELECT
+   (SELECT count(*) FROM bloem_storage_file_roots m JOIN bloem_storage_file_refs f ON f.location_id=m.location_id AND f.media_file_id=m.media_file_id WHERE m.location_id=$1 AND m.enabled AND f.entry_id='book'),
+   (SELECT count(*) FROM media_files m JOIN bloem_storage_file_refs f ON f.media_file_id=m.id WHERE f.location_id=$1 AND f.entry_id='book' AND m.missing_since IS NOT NULL)`, l.ID).Scan(&gotRoots, &gotMissing); err != nil {
+			t.Fatal(err)
+		}
+		if gotRoots != roots || gotMissing != missing {
+			t.Fatalf("phase %d roots/missing=%d/%d want=%d/%d", phase, gotRoots, gotMissing, roots, missing)
+		}
+	}
+	for phase = 0; phase < 5; phase++ {
+		beforeVisits := childVisits
+		scopedRun(t, r, l, client, scopedPublisher(t, l, &calls))
+		switch phase {
+		case 0, 1:
+			check(2, 0)
+		case 2, 3:
+			check(1, 0)
+		case 4:
+			check(0, 1)
+		}
+		if phase == 4 && childVisits != beforeVisits {
+			t.Fatal("confirmed-absent subtree was traversed")
+		}
+	}
+	// Restoring the omitted subtree restores both roots and its published file.
+	phase = 0
+	scopedRun(t, r, l, client, scopedPublisher(t, l, &calls))
+	check(2, 0)
+}
+
+func TestLocationOmissionCannotUseStaleSelectionEvidenceDB(t *testing.T) {
+	r, _, l := scopedFixture(t, "root")
+	omit, calls := false, 0
+	client := providerClient(t, func(_ context.Context, _ *storagev1.ListRequest) (*storagev1.ListResponse, error) {
+		entries := []*storagev1.Entry{bookEntry("sentinel")}
+		if !omit {
+			entries = append(entries, bookEntry("book"))
+		}
+		return &storagev1.ListResponse{Complete: true, Entries: entries}, nil
+	})
+	scopedRun(t, r, l, client, scopedPublisher(t, l, &calls))
+	omit = true
+	scopedRun(t, r, l, client, scopedPublisher(t, l, &calls))
+	// The complete graph's retained selection changed between observations.
+	execSQL(t, r.pool, `UPDATE library_storage_locations SET selection_revision=selection_revision+1 WHERE id=$1`, l.ID)
+	l.SelectionRevision++
+	scopedRun(t, r, l, client, scopedPublisher(t, l, &calls))
+	var missing int
+	if err := r.pool.QueryRow(t.Context(), `SELECT count(*) FROM media_files f JOIN bloem_storage_file_refs r ON r.media_file_id=f.id WHERE r.location_id=$1 AND r.entry_id='book' AND f.missing_since IS NOT NULL`, l.ID).Scan(&missing); err != nil {
+		t.Fatal(err)
+	}
+	if missing != 0 {
+		t.Fatal("prior selection's omission retired a retained file")
+	}
+	scopedRun(t, r, l, client, scopedPublisher(t, l, &calls))
+	if err := r.pool.QueryRow(t.Context(), `SELECT count(*) FROM media_files f JOIN bloem_storage_file_refs r ON r.media_file_id=f.id WHERE r.location_id=$1 AND r.entry_id='book' AND f.missing_since IS NOT NULL`, l.ID).Scan(&missing); err != nil {
+		t.Fatal(err)
+	}
+	if missing != 1 {
+		t.Fatal("two current-selection omissions did not retire the file")
 	}
 }

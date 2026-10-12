@@ -2,6 +2,7 @@ package storagesource
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 
 	"github.com/Silo-Server/silo-server/internal/artworkkey"
@@ -16,6 +17,9 @@ type FileRef struct {
 	MediaFileID int
 	PersistedRef
 	CoverEntryID, CoverRevision string
+	// EntrySHA256 digests the listed entry the file was published from, so a
+	// re-listing of the same entry can skip republication. Nil when unused.
+	EntrySHA256 []byte
 }
 
 // AttachFilesTx records the storage entries behind published catalog files in
@@ -34,27 +38,29 @@ func AttachFilesTx(ctx context.Context, tx pgx.Tx, configurationRevision int64, 
 	paths := make([]string, len(refs))
 	coverEntries := make([]*string, len(refs))
 	coverRevisions := make([]*string, len(refs))
+	digests := make([][]byte, len(refs))
 	for i, ref := range refs {
 		catalogPath, err := CatalogLocation(ref.LocationID, ref.EntryID)
 		if err != nil || ref.MediaFileID <= 0 || !validText(ref.Revision, 4096, true) || !validText(ref.LogicalPath, 65536, false) ||
-			(ref.CoverEntryID == "") != (ref.CoverRevision == "") || !validText(ref.CoverEntryID, 1024, false) || !validText(ref.CoverRevision, 4096, false) {
+			(ref.CoverEntryID == "") != (ref.CoverRevision == "") || !validText(ref.CoverEntryID, 1024, false) || !validText(ref.CoverRevision, 4096, false) ||
+			(ref.EntrySHA256 != nil && len(ref.EntrySHA256) != sha256.Size) {
 			return ErrReferenceConflict
 		}
 		fileIDs[i], locationIDs[i], catalogPaths[i] = ref.MediaFileID, ref.LocationID.String(), catalogPath
-		entries[i], revisions[i], paths[i] = ref.EntryID, ref.Revision, ref.LogicalPath
+		entries[i], revisions[i], paths[i], digests[i] = ref.EntryID, ref.Revision, ref.LogicalPath, ref.EntrySHA256
 		if ref.CoverEntryID != "" {
 			coverEntries[i], coverRevisions[i] = &refs[i].CoverEntryID, &refs[i].CoverRevision
 		}
 	}
-	tag, err := tx.Exec(ctx, `INSERT INTO bloem_storage_file_refs(media_file_id,location_id,entry_id,revision,logical_path,configuration_revision,cover_entry_id,cover_revision)
- SELECT t.f, l.id, t.e, t.r, t.p, $7, t.ce, t.cr
- FROM unnest($1::bigint[],$2::uuid[],$3::text[],$4::text[],$5::text[],$6::text[],$8::text[],$9::text[]) AS t(f,l,c,e,r,p,ce,cr)
+	tag, err := tx.Exec(ctx, `INSERT INTO bloem_storage_file_refs(media_file_id,location_id,entry_id,revision,logical_path,configuration_revision,cover_entry_id,cover_revision,entry_sha256)
+ SELECT t.f, l.id, t.e, t.r, t.p, $7, t.ce, t.cr, t.d
+ FROM unnest($1::bigint[],$2::uuid[],$3::text[],$4::text[],$5::text[],$6::text[],$8::text[],$9::text[],$10::bytea[]) AS t(f,l,c,e,r,p,ce,cr,d)
  JOIN media_files f ON f.id = t.f AND f.file_path = t.c
  JOIN library_storage_locations l ON l.id = t.l AND l.folder_id = f.media_folder_id
  ON CONFLICT(media_file_id) DO UPDATE SET revision=EXCLUDED.revision,logical_path=EXCLUDED.logical_path,configuration_revision=EXCLUDED.configuration_revision,
-  cover_entry_id=EXCLUDED.cover_entry_id,cover_revision=EXCLUDED.cover_revision
+  cover_entry_id=EXCLUDED.cover_entry_id,cover_revision=EXCLUDED.cover_revision,entry_sha256=EXCLUDED.entry_sha256
  WHERE bloem_storage_file_refs.location_id=EXCLUDED.location_id AND bloem_storage_file_refs.entry_id=EXCLUDED.entry_id`,
-		fileIDs, locationIDs, catalogPaths, entries, revisions, paths, configurationRevision, coverEntries, coverRevisions)
+		fileIDs, locationIDs, catalogPaths, entries, revisions, paths, configurationRevision, coverEntries, coverRevisions, digests)
 	if err != nil {
 		return err
 	}

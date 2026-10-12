@@ -67,10 +67,10 @@ func nativeVideoDigest(value any) (string, error) {
 	digest := sha256.Sum256(data)
 	return hex.EncodeToString(digest[:]), nil
 }
+
+// A JSON digest would encode each time's zone offset, so compare instants.
 func nativeVideoSameBinding(a, b NativeVideoBinding) bool {
-	x, err := nativeVideoDigest(a)
-	y, other := nativeVideoDigest(b)
-	return err == nil && other == nil && x == y
+	return sameNativeVideoBinding(a, b)
 }
 func nativeVideoPortableRecipe(recipe playback.RecipeCard) playback.RecipeCard {
 	claims := recipe.ToClaims()

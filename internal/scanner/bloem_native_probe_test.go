@@ -282,6 +282,31 @@ func TestNativeProbeToolProcess(t *testing.T) {
 			os.Exit(95)
 		}
 		fmt.Print(valid)
+	case "abandon":
+		// Like ffprobe at exit: it read what it needed from an open-ended range
+		// and exits while the bridge is still serving the rest of that range.
+		request, err := http.NewRequest("GET", argument, nil)
+		if err != nil {
+			os.Exit(96)
+		}
+		request.Header.Set("Range", "bytes=0-")
+		response, err := (&http.Client{Transport: &http.Transport{Proxy: nil}}).Do(request) //nolint:bodyclose // Exits with this range in flight, as ffprobe does.
+		if err != nil {
+			os.Exit(97)
+		}
+		if _, err := io.ReadFull(response.Body, make([]byte, 16)); err != nil {
+			os.Exit(98)
+		}
+		gate := os.Getenv("NATIVE_PROBE_TEST_GATE")
+		for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(time.Millisecond) {
+			if _, err := os.Stat(gate); err == nil {
+				break
+			}
+			if time.Now().After(deadline) {
+				os.Exit(99)
+			}
+		}
+		fmt.Print(valid)
 	case "read":
 		response, err := http.Get(argument)
 		if err == nil {
@@ -309,6 +334,48 @@ func TestNativeProbeToolProcess(t *testing.T) {
 		fmt.Print(valid)
 	}
 	os.Exit(0)
+}
+
+// nativeProbeHeldFile models a slow remote range: reads from offset onward
+// stay pending until the source is canceled, as an S3 GET does mid-transfer.
+type nativeProbeHeldFile struct {
+	mediasource.File
+	ctx      context.Context
+	from     int64
+	gate     string
+	once     sync.Once
+	canceled atomic.Int32
+}
+
+func (f *nativeProbeHeldFile) ReadAt(p []byte, off int64) (int, error) {
+	if off < f.from {
+		return f.File.ReadAt(p, off)
+	}
+	f.once.Do(func() { _ = os.WriteFile(f.gate, []byte("pending"), 0600) })
+	<-f.ctx.Done()
+	f.canceled.Add(1)
+	clear(p)
+	return 0, errors.Join(f.ctx.Err(), io.ErrUnexpectedEOF)
+}
+
+// Cleanup after a successful child cancels the range it abandoned. That
+// teardown delivered no byte to the child and must not fail the probe; this was
+// how every S3 movie scan ended "cancelled" after ffprobe succeeded.
+func TestNativeProbeAbandonedRangeTeardownKeepsResult(t *testing.T) {
+	_, file, ctx, cfg := nativeProbeFixture(t, bytes.Repeat([]byte("x"), 64<<10))
+	gate := filepath.Join(t.TempDir(), "pending")
+	t.Setenv("NATIVE_PROBE_TEST_GATE", gate)
+	held := &nativeProbeHeldFile{File: file, ctx: ctx, from: int64(cfg.Input.ChunkBytes), gate: gate}
+	got, err := ProbeNative(ctx, nativeProbeTestTool(t, "abandon"), held, cfg)
+	if err != nil || got == nil || got.CodecVideo != "h264" {
+		t.Fatalf("teardown of an abandoned range failed a successful probe: %+v, %v", got, err)
+	}
+	if held.canceled.Load() != 1 {
+		t.Fatal("the abandoned range was not in flight when cleanup canceled the source")
+	}
+	if file.closed.Load() != 1 {
+		t.Fatalf("close count %d", file.closed.Load())
+	}
 }
 
 func TestNativeProbeRejectsOutputAndInfrastructure(t *testing.T) {
