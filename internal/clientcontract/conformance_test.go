@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestDisposableDatabaseNamesAreUniqueAndGuarded(t *testing.T) {
@@ -96,4 +98,28 @@ func TestOfficialSiloPinnedBaseline(t *testing.T) {
 		t.Skip("SILO_CLIENT_CONTRACT_ADMIN_URL is not set")
 	}
 	runOfficialSiloBaseline(t, context.Background(), dsn, contractsRepository(t))
+}
+
+func TestDisposableDatabaseDSNPreservesOnlyOwnedTarget(t *testing.T) {
+	name := "bloem_client_contract_0123456789abcdef"
+	for _, adminURL := range []string{
+		"postgres://fixture@127.0.0.1:65420/postgres?sslmode=disable",
+		"postgres://fixture@127.0.0.1:65420/postgres?sslmode=disable&dbname=postgres",
+		"host=127.0.0.1 port=65420 user=fixture dbname=postgres sslmode=disable",
+	} {
+		dsn, err := disposableDatabaseDSN(adminURL, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := pgxpool.ParseConfig(dsn)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.ConnConfig.Database != name {
+			t.Fatalf("exported DSN targets %q, want owned %q", cfg.ConnConfig.Database, name)
+		}
+		if cfg.ConnConfig.Host != "127.0.0.1" || cfg.ConnConfig.Port != 65420 || cfg.ConnConfig.User != "fixture" {
+			t.Fatal("DSN changed admin connection authority")
+		}
+	}
 }

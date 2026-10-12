@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,12 +27,13 @@ import (
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/database"
 	evt "github.com/Silo-Server/silo-server/internal/events"
-	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/secret"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -87,13 +89,18 @@ func createDisposableDatabase(t *testing.T, ctx context.Context, adminURL string
 		admin.Close()
 		t.Fatalf("create disposable database %q: %v", name, err)
 	}
-	parsed, err := pgxpool.ParseConfig(adminURL)
+	dsn, err := disposableDatabaseDSN(adminURL, name)
+	if err != nil {
+		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
+		admin.Close()
+		t.Fatalf("construct disposable database URL: %v", err)
+	}
+	parsed, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
 		admin.Close()
 		t.Fatalf("parse admin database URL: %v", err)
 	}
-	parsed.ConnConfig.Database = name
 	pool, err := pgxpool.NewWithConfig(ctx, parsed)
 	if err != nil {
 		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
@@ -106,7 +113,7 @@ func createDisposableDatabase(t *testing.T, ctx context.Context, adminURL string
 		admin.Close()
 		t.Fatalf("ping disposable database: %v", err)
 	}
-	return &disposableDatabase{name: name, dsn: parsed.ConnString(), admin: admin, pool: pool}
+	return &disposableDatabase{name: name, dsn: dsn, admin: admin, pool: pool}
 }
 
 func (db *disposableDatabase) cleanup(t *testing.T, ctx context.Context) {
@@ -190,16 +197,20 @@ ON CONFLICT (content_id) DO NOTHING`, fixture.id, fixture.mediaType, fixture.tit
 	if err := os.WriteFile(playbackPath, []byte("invented contract media bytes\n"), 0o600); err != nil {
 		t.Fatalf("create invented playback media: %v", err)
 	}
-	file, err := scanner.NewFileRepository(pool).Upsert(ctx, models.MediaFile{
-		ContentID: "4242", MediaFolderID: 4242, FilePath: playbackPath,
-		FileSize: 1048576, CodecVideo: "h264", CodecAudio: "aac", Resolution: "1080p",
-		AudioChannels: 2, Container: "mp4", Duration: 6480, Bitrate: 8000,
-	})
+	// Use only columns shared with the pinned official schema. This fixture
+	// seeds invented rows, so current scanner repository SQL must not migrate
+	// or interpret an older application's database.
+	var fileID int64
+	err := pool.QueryRow(ctx, `
+INSERT INTO media_files (content_id, media_folder_id, file_path, file_size,
+ codec_video, codec_audio, resolution, audio_channels, container, duration, bitrate)
+VALUES ('4242', 4242, $1, 1048576, 'h264', 'aac', '1080p', 2, 'mp4', 6480, 8000)
+RETURNING id`, playbackPath).Scan(&fileID)
 	if err != nil {
 		t.Fatalf("seed playback media file: %v", err)
 	}
-	if file.ID != 4242001 {
-		t.Fatalf("playback media file id = %d, want 4242001", file.ID)
+	if fileID != 4242001 {
+		t.Fatalf("playback media file id = %d, want 4242001", fileID)
 	}
 }
 
@@ -258,16 +269,19 @@ func startBloemServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	appCtx, cancel := context.WithCancel(context.Background())
 	provider := pgstore.NewPostgresProvider(pool)
 	hub := evt.NewHub("fixture-node", &cache.NoopEventBus{})
+	bootstrap := fixtureTenancyBootstrap{store: tenancy.NewStore(pool)}
 	server := httptest.NewUnstartedServer(api.NewRouter(api.Dependencies{
-		Config:            cfg,
-		AppContext:        appCtx,
-		DB:                pool,
-		SecretCipher:      cipher,
-		UserStoreProvider: provider,
-		FileRepo:          scanner.NewFileRepository(pool),
-		SessionMgr:        playback.NewSessionManager(6, 2),
-		EventsHub:         hub,
-		NodeID:            "fixture-node",
+		OwnershipBootstrapper: bootstrap,
+		MembershipProvisioner: bootstrap,
+		Config:                cfg,
+		AppContext:            appCtx,
+		DB:                    pool,
+		SecretCipher:          cipher,
+		UserStoreProvider:     provider,
+		FileRepo:              scanner.NewFileRepository(pool),
+		SessionMgr:            playback.NewSessionManager(6, 2),
+		EventsHub:             hub,
+		NodeID:                "fixture-node",
 	}))
 	if host, _, err := net.SplitHostPort(server.Listener.Addr().String()); err != nil || host != "127.0.0.1" {
 		cancel()
@@ -281,6 +295,30 @@ func startBloemServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 		_ = provider.Close()
 	})
 	return server
+}
+
+// fixtureTenancyBootstrap composes the same transactional authorities as the
+// Bloem process; setup must create its account and tenant ownership together.
+type fixtureTenancyBootstrap struct{ store *tenancy.Store }
+
+func (b fixtureTenancyBootstrap) ActivateInitialOwnership(ctx context.Context, accountID int) error {
+	_, err := b.store.ActivateInitialOwnership(ctx, accountID)
+	return err
+}
+
+func (b fixtureTenancyBootstrap) ActivateInitialOwnershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int) error {
+	_, err := b.store.ActivateInitialOwnershipInTransaction(ctx, tx, accountID)
+	return err
+}
+
+func (b fixtureTenancyBootstrap) ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) error {
+	_, err := b.store.ProvisionDefaultMembership(ctx, accountID, legacyRole)
+	return err
+}
+
+func (b fixtureTenancyBootstrap) ProvisionDefaultMembershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int, legacyRole string) (uuid.UUID, uuid.UUID, error) {
+	membership, err := b.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, legacyRole)
+	return membership.OrganizationID, membership.ID, err
 }
 
 func setupFixtureAccount(t *testing.T, baseURL string) {
@@ -423,10 +461,6 @@ func runOfficialSiloBaseline(t *testing.T, ctx context.Context, adminURL, contra
 	})
 	migrateOfficialSchema(t, ctx, db.pool, worktree)
 	seedInventedMedia(t, ctx, db.pool)
-	provisioner := startBloemServer(t, db.pool)
-	setupFixtureAccount(t, provisioner.URL)
-	seedAccountScopedFixtures(t, ctx, db.pool)
-	provisioner.Close()
 	for _, pluginID := range []string{"silo.tmdb", "silo.tvdb"} {
 		if _, err := db.pool.Exec(ctx, `
 INSERT INTO plugin_installations (repository_id, plugin_id, version, install_path, enabled, kind, update_policy)
@@ -451,6 +485,9 @@ ON CONFLICT DO NOTHING`, pluginID); err != nil {
 	})
 	baseURL := "http://127.0.0.1:" + portText
 	waitForHealth(t, baseURL, &logs)
+	// Provision through the pinned application, never the current Bloem router.
+	setupFixtureAccount(t, baseURL)
+	seedAccountScopedFixtures(t, ctx, db.pool)
 	report := runContractsReport(t, contractsDir, baseURL)
 	if !report.OfficialBaseline {
 		t.Fatal("pinned official authenticated baseline subset failed")
@@ -489,4 +526,26 @@ func waitForHealth(t *testing.T, baseURL string, logs *bytes.Buffer) {
 		time.Sleep(200 * time.Millisecond)
 	}
 	t.Fatalf("official Silo baseline did not become healthy\n%s", logs.String())
+}
+
+// Construct the target in the connection string itself: pgx ConnString returns
+// its original parse input, even after ConnConfig.Database is changed.
+func disposableDatabaseDSN(adminURL, name string) (string, error) {
+	if err := validateDisposableDatabaseName(name); err != nil {
+		return "", err
+	}
+	if strings.HasPrefix(adminURL, "postgres://") || strings.HasPrefix(adminURL, "postgresql://") {
+		parsed, err := url.Parse(adminURL)
+		if err != nil {
+			return "", err
+		}
+		parsed.Path, parsed.RawPath = "/"+name, ""
+		query := parsed.Query()
+		query.Set("dbname", name)
+		parsed.RawQuery = query.Encode()
+		return parsed.String(), nil
+	}
+	// Names have already been restricted to a safe ASCII namespace. In pgx's
+	// keyword format the last value wins, preserving all other admin options.
+	return adminURL + " dbname=" + name, nil
 }
