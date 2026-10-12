@@ -45,8 +45,10 @@ func nativeMovieScanArtifact(t *testing.T) ([]byte, *publicv1.PluginManifest) {
 	if os.Getenv("SILO_TEST_DATABASE_URL") == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
+	// Keep a real provider executable, without debug sections that every
+	// pinned registry snapshot would otherwise decompress under the race detector.
 	binaryPath := filepath.Join(t.TempDir(), "native-consumer")
-	build := exec.CommandContext(t.Context(), "go", "build", "-o", binaryPath, "./testdata/nativeconsumer")
+	build := exec.CommandContext(t.Context(), "go", "build", "-ldflags=-s -w", "-o", binaryPath, "./testdata/nativeconsumer")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build native consumer: %v\n%s", err, out)
 	}

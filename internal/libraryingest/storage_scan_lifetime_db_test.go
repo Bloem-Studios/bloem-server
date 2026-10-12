@@ -49,7 +49,7 @@ type Task4NativeFixture struct {
 func Task4NativeArtifact(t *testing.T) []byte {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), "nativeconsumer")
-	cmd := exec.CommandContext(t.Context(), "go", "build", "-o", p, "./testdata/nativeconsumer")
+	cmd := exec.CommandContext(t.Context(), "go", "build", "-ldflags=-s -w", "-o", p, "./testdata/nativeconsumer")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("nativeconsumer build: %v\n%s", err, out)

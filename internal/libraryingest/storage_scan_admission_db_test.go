@@ -78,7 +78,7 @@ func TestStorageScanDescribeAdmissionBeforeDiscovery(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancel()
 	binaryPath := filepath.Join(t.TempDir(), "native-consumer")
-	build := exec.CommandContext(ctx, "go", "build", "-race", "-o", binaryPath, "./testdata/nativeconsumer")
+	build := exec.CommandContext(ctx, "go", "build", "-ldflags=-s -w", "-race", "-o", binaryPath, "./testdata/nativeconsumer")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build native consumer: %v\n%s", err, out)
 	}
