@@ -1,0 +1,329 @@
+{
+  "content_id": "7301928374650001",
+  "type": "audiobook",
+  "title": "The Example Book",
+  "year": 2021,
+  "status": "matched",
+  "cast": [],
+  "crew": [],
+  "ratings": [],
+  "subtitles": [],
+  "genres": [],
+  "keywords": [],
+  "versions": [
+    {
+      "file_id": "501",
+      "file_name": "01 - Opening.mp3",
+      "resolution": "",
+      "codec_video": "",
+      "codec_audio": "mp3",
+      "hdr": false,
+      "container": "mp3",
+      "file_size": 1440000,
+      "duration": 90,
+      "bitrate": 128,
+      "added_at": "2026-10-01T10:00:00.000Z",
+      "presentation_kind": "multipart",
+      "presentation_group_key": "7301928374650001",
+      "presentation_part_index": 1,
+      "presentation_part_total": 2,
+      "chapters": [
+        {
+          "index": 0,
+          "title": "01 - Opening",
+          "start_seconds": 0,
+          "end_seconds": 90,
+          "source": ""
+        }
+      ]
+    },
+    {
+      "file_id": "502",
+      "file_name": "02 - Middle.mp3",
+      "resolution": "",
+      "codec_video": "",
+      "codec_audio": "mp3",
+      "hdr": false,
+      "container": "mp3",
+      "file_size": 1920000,
+      "duration": 120,
+      "bitrate": 128,
+      "added_at": "2026-10-01T10:00:00.000Z",
+      "presentation_kind": "multipart",
+      "presentation_group_key": "7301928374650001",
+      "presentation_part_index": 2,
+      "presentation_part_total": 2,
+      "chapters": [
+        {
+          "index": 1,
+          "title": "02 - Middle",
+          "start_seconds": 0,
+          "end_seconds": 120,
+          "source": ""
+        }
+      ]
+    },
+    {
+      "file_id": "601",
+      "file_name": "bloem-storage:ca7662538cff6d03ea1d3f5efa80e90df2f416bd9d2f5ee79d70767e70b14571",
+      "resolution": "",
+      "codec_video": "",
+      "codec_audio": "aac",
+      "hdr": false,
+      "container": "mp4",
+      "file_size": 1126400,
+      "duration": 70,
+      "bitrate": 128,
+      "added_at": "2026-10-11T12:00:00.000Z",
+      "presentation_kind": "multipart",
+      "presentation_group_key": "bloem-storage:audiobook:c3bc04036a1ccc16936c2b53adc7a7ba608b6527d48a8a28231301fddd6d521a",
+      "presentation_part_index": 1,
+      "presentation_part_total": 2,
+      "chapters": [
+        {
+          "index": 0,
+          "title": "Chapter 01",
+          "start_seconds": 0,
+          "end_seconds": 40.25,
+          "source": "embedded"
+        },
+        {
+          "index": 1,
+          "title": "Chapter 02",
+          "start_seconds": 40.25,
+          "end_seconds": 70.4,
+          "source": "embedded"
+        }
+      ]
+    },
+    {
+      "file_id": "602",
+      "file_name": "bloem-storage:733b602cd60ddb1b940192256531462d0c732c9988cc4ec886560028571507a9",
+      "resolution": "",
+      "codec_video": "",
+      "codec_audio": "aac",
+      "hdr": false,
+      "container": "mp4",
+      "file_size": 1294400,
+      "duration": 80,
+      "bitrate": 128,
+      "added_at": "2026-10-11T12:00:00.000Z",
+      "presentation_kind": "multipart",
+      "presentation_group_key": "bloem-storage:audiobook:c3bc04036a1ccc16936c2b53adc7a7ba608b6527d48a8a28231301fddd6d521a",
+      "presentation_part_index": 2,
+      "presentation_part_total": 2,
+      "chapters": [
+        {
+          "index": 0,
+          "title": "Chapter 03",
+          "start_seconds": 0,
+          "end_seconds": 5,
+          "source": "embedded"
+        },
+        {
+          "index": 1,
+          "title": "Chapter 04",
+          "start_seconds": 5,
+          "end_seconds": 80.9,
+          "source": "embedded"
+        }
+      ]
+    }
+  ],
+  "playback_variants": [
+    {
+      "variant_id": "|multipart|7301928374650001",
+      "presentation_kind": "multipart",
+      "presentation_group_key": "7301928374650001",
+      "part_count": 2,
+      "total_duration": 210,
+      "default_file_id": "501",
+      "parts": [
+        {
+          "part_index": 1,
+          "default_file_id": "501",
+          "total_duration": 90,
+          "versions": [
+            {
+              "file_id": "501",
+              "file_name": "01 - Opening.mp3",
+              "resolution": "",
+              "codec_video": "",
+              "codec_audio": "mp3",
+              "hdr": false,
+              "container": "mp3",
+              "file_size": 1440000,
+              "duration": 90,
+              "bitrate": 128,
+              "added_at": "2026-10-01T10:00:00.000Z",
+              "presentation_kind": "multipart",
+              "presentation_group_key": "7301928374650001",
+              "presentation_part_index": 1,
+              "presentation_part_total": 2,
+              "chapters": [
+                {
+                  "index": 0,
+                  "title": "01 - Opening",
+                  "start_seconds": 0,
+                  "end_seconds": 90,
+                  "source": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "part_index": 2,
+          "default_file_id": "502",
+          "total_duration": 120,
+          "versions": [
+            {
+              "file_id": "502",
+              "file_name": "02 - Middle.mp3",
+              "resolution": "",
+              "codec_video": "",
+              "codec_audio": "mp3",
+              "hdr": false,
+              "container": "mp3",
+              "file_size": 1920000,
+              "duration": 120,
+              "bitrate": 128,
+              "added_at": "2026-10-01T10:00:00.000Z",
+              "presentation_kind": "multipart",
+              "presentation_group_key": "7301928374650001",
+              "presentation_part_index": 2,
+              "presentation_part_total": 2,
+              "chapters": [
+                {
+                  "index": 1,
+                  "title": "02 - Middle",
+                  "start_seconds": 0,
+                  "end_seconds": 120,
+                  "source": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "variant_id": "|multipart|bloem-storage:audiobook:c3bc04036a1ccc16936c2b53adc7a7ba608b6527d48a8a28231301fddd6d521a",
+      "presentation_kind": "multipart",
+      "presentation_group_key": "bloem-storage:audiobook:c3bc04036a1ccc16936c2b53adc7a7ba608b6527d48a8a28231301fddd6d521a",
+      "part_count": 2,
+      "total_duration": 150,
+      "default_file_id": "601",
+      "parts": [
+        {
+          "part_index": 1,
+          "default_file_id": "601",
+          "total_duration": 70,
+          "versions": [
+            {
+              "file_id": "601",
+              "file_name": "bloem-storage:ca7662538cff6d03ea1d3f5efa80e90df2f416bd9d2f5ee79d70767e70b14571",
+              "resolution": "",
+              "codec_video": "",
+              "codec_audio": "aac",
+              "hdr": false,
+              "container": "mp4",
+              "file_size": 1126400,
+              "duration": 70,
+              "bitrate": 128,
+              "added_at": "2026-10-11T12:00:00.000Z",
+              "presentation_kind": "multipart",
+              "presentation_group_key": "bloem-storage:audiobook:c3bc04036a1ccc16936c2b53adc7a7ba608b6527d48a8a28231301fddd6d521a",
+              "presentation_part_index": 1,
+              "presentation_part_total": 2,
+              "chapters": [
+                {
+                  "index": 0,
+                  "title": "Chapter 01",
+                  "start_seconds": 0,
+                  "end_seconds": 40.25,
+                  "source": "embedded"
+                },
+                {
+                  "index": 1,
+                  "title": "Chapter 02",
+                  "start_seconds": 40.25,
+                  "end_seconds": 70.4,
+                  "source": "embedded"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "part_index": 2,
+          "default_file_id": "602",
+          "total_duration": 80,
+          "versions": [
+            {
+              "file_id": "602",
+              "file_name": "bloem-storage:733b602cd60ddb1b940192256531462d0c732c9988cc4ec886560028571507a9",
+              "resolution": "",
+              "codec_video": "",
+              "codec_audio": "aac",
+              "hdr": false,
+              "container": "mp4",
+              "file_size": 1294400,
+              "duration": 80,
+              "bitrate": 128,
+              "added_at": "2026-10-11T12:00:00.000Z",
+              "presentation_kind": "multipart",
+              "presentation_group_key": "bloem-storage:audiobook:c3bc04036a1ccc16936c2b53adc7a7ba608b6527d48a8a28231301fddd6d521a",
+              "presentation_part_index": 2,
+              "presentation_part_total": 2,
+              "chapters": [
+                {
+                  "index": 0,
+                  "title": "Chapter 03",
+                  "start_seconds": 0,
+                  "end_seconds": 5,
+                  "source": "embedded"
+                },
+                {
+                  "index": 1,
+                  "title": "Chapter 04",
+                  "start_seconds": 5,
+                  "end_seconds": 80.9,
+                  "source": "embedded"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "audiobook": {
+    "authors": [
+      {
+        "name": "A. Author"
+      }
+    ],
+    "narrators": [
+      {
+        "name": "N. Narrator"
+      }
+    ],
+    "total_duration_seconds": 360,
+    "other_narrations": [],
+    "related": {
+      "also_by_author": [],
+      "similar": []
+    }
+  },
+  "user_data": {
+    "position_seconds": 100,
+    "duration_seconds": 150,
+    "is_in_progress": true,
+    "watched_count": 0,
+    "unplayed_count": 0,
+    "in_progress_count": 1,
+    "played": false,
+    "last_file_id": "602"
+  }
+}

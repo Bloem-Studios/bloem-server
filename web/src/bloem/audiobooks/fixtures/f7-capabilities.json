@@ -1,0 +1,14 @@
+{
+  "api": "bloem/v1",
+  "identity_schema": 1,
+  "features": {
+    "legacy_silo_v1": true,
+    "organization_memberships": true,
+    "tenant_bounded_media_scope": true,
+    "direct_profile_login": false,
+    "shared_device_pairing": false,
+    "delegated_admin_roles": false
+  },
+  "media_types": ["movie", "series", "audiobook", "ebook"],
+  "feature_tokens": ["audiobook_requests_v1", "native_audiobook_presentations_v1"]
+}

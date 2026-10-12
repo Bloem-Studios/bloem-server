@@ -1,0 +1,48 @@
+{
+  "content_id": "m-1",
+  "type": "movie",
+  "title": "Two Cuts",
+  "status": "matched",
+  "cast": [],
+  "crew": [],
+  "ratings": [],
+  "subtitles": [],
+  "genres": [],
+  "keywords": [],
+  "versions": [
+    {
+      "file_id": "11",
+      "file_name": "Two Cuts Part 1.mkv",
+      "container": "mkv",
+      "codec_video": "h264",
+      "codec_audio": "aac",
+      "resolution": "1080p",
+      "hdr": false,
+      "file_size": 1,
+      "duration": 3000,
+      "bitrate": 1,
+      "added_at": "2026-10-01T10:00:00.000Z",
+      "presentation_kind": "multipart",
+      "presentation_group_key": "g",
+      "presentation_part_index": 1,
+      "presentation_part_total": 2
+    },
+    {
+      "file_id": "12",
+      "file_name": "Two Cuts Part 2.mkv",
+      "container": "mkv",
+      "codec_video": "h264",
+      "codec_audio": "aac",
+      "resolution": "1080p",
+      "hdr": false,
+      "file_size": 1,
+      "duration": 3000,
+      "bitrate": 1,
+      "added_at": "2026-10-01T10:00:00.000Z",
+      "presentation_kind": "multipart",
+      "presentation_group_key": "g",
+      "presentation_part_index": 2,
+      "presentation_part_total": 2
+    }
+  ]
+}

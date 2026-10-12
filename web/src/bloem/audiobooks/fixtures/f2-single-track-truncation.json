@@ -1,0 +1,175 @@
+{
+  "content_id": "7301928374650002",
+  "type": "audiobook",
+  "title": "A Short Book",
+  "status": "matched",
+  "cast": [],
+  "crew": [],
+  "ratings": [],
+  "subtitles": [],
+  "genres": [],
+  "keywords": [],
+  "versions": [
+    {
+      "file_id": "701",
+      "file_name": "A Short Book.m4b",
+      "resolution": "",
+      "codec_video": "",
+      "codec_audio": "aac",
+      "hdr": false,
+      "container": "mp4",
+      "file_size": 46000,
+      "duration": 2,
+      "bitrate": 128,
+      "added_at": "2026-10-01T10:00:00.000Z",
+      "chapters": [
+        {
+          "index": 0,
+          "title": "Chapter 01",
+          "start_seconds": 0,
+          "end_seconds": 1.25,
+          "source": "embedded"
+        },
+        {
+          "index": 1,
+          "title": "Chapter 02",
+          "start_seconds": 1.25,
+          "end_seconds": 2,
+          "source": "embedded"
+        }
+      ]
+    },
+    {
+      "file_id": "702",
+      "file_name": "bloem-storage:bf7d38262f15e14eaec3f3dfd368aba897bd119274a387f731af6a9756b3160a",
+      "resolution": "",
+      "codec_video": "",
+      "codec_audio": "aac",
+      "hdr": false,
+      "container": "mp4",
+      "file_size": 46000,
+      "duration": 2,
+      "bitrate": 128,
+      "added_at": "2026-10-11T12:00:00.000Z",
+      "presentation_group_key": "bloem-storage:audiobook:67c5f235449e64bf8430aa608ecffb23f3f1c11df58bc38a4842d27a4e4a7c37",
+      "chapters": [
+        {
+          "index": 0,
+          "title": "Chapter 01",
+          "start_seconds": 0,
+          "end_seconds": 1.25,
+          "source": "embedded"
+        },
+        {
+          "index": 1,
+          "title": "Chapter 02",
+          "start_seconds": 1.25,
+          "end_seconds": 2.75,
+          "source": "embedded"
+        }
+      ]
+    }
+  ],
+  "playback_variants": [
+    {
+      "variant_id": "default",
+      "part_count": 1,
+      "total_duration": 2,
+      "default_file_id": "701",
+      "parts": [
+        {
+          "part_index": 1,
+          "default_file_id": "701",
+          "total_duration": 2,
+          "versions": [
+            {
+              "file_id": "701",
+              "file_name": "A Short Book.m4b",
+              "resolution": "",
+              "codec_video": "",
+              "codec_audio": "aac",
+              "hdr": false,
+              "container": "mp4",
+              "file_size": 46000,
+              "duration": 2,
+              "bitrate": 128,
+              "added_at": "2026-10-01T10:00:00.000Z",
+              "chapters": [
+                {
+                  "index": 0,
+                  "title": "Chapter 01",
+                  "start_seconds": 0,
+                  "end_seconds": 1.25,
+                  "source": "embedded"
+                },
+                {
+                  "index": 1,
+                  "title": "Chapter 02",
+                  "start_seconds": 1.25,
+                  "end_seconds": 2,
+                  "source": "embedded"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "variant_id": "||bloem-storage:audiobook:67c5f235449e64bf8430aa608ecffb23f3f1c11df58bc38a4842d27a4e4a7c37",
+      "presentation_group_key": "bloem-storage:audiobook:67c5f235449e64bf8430aa608ecffb23f3f1c11df58bc38a4842d27a4e4a7c37",
+      "part_count": 1,
+      "total_duration": 2,
+      "default_file_id": "702",
+      "parts": [
+        {
+          "part_index": 1,
+          "default_file_id": "702",
+          "total_duration": 2,
+          "versions": [
+            {
+              "file_id": "702",
+              "file_name": "bloem-storage:bf7d38262f15e14eaec3f3dfd368aba897bd119274a387f731af6a9756b3160a",
+              "resolution": "",
+              "codec_video": "",
+              "codec_audio": "aac",
+              "hdr": false,
+              "container": "mp4",
+              "file_size": 46000,
+              "duration": 2,
+              "bitrate": 128,
+              "added_at": "2026-10-11T12:00:00.000Z",
+              "presentation_group_key": "bloem-storage:audiobook:67c5f235449e64bf8430aa608ecffb23f3f1c11df58bc38a4842d27a4e4a7c37",
+              "chapters": [
+                {
+                  "index": 0,
+                  "title": "Chapter 01",
+                  "start_seconds": 0,
+                  "end_seconds": 1.25,
+                  "source": "embedded"
+                },
+                {
+                  "index": 1,
+                  "title": "Chapter 02",
+                  "start_seconds": 1.25,
+                  "end_seconds": 2.75,
+                  "source": "embedded"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "audiobook": {
+    "authors": [],
+    "narrators": [],
+    "total_duration_seconds": 4,
+    "other_narrations": [],
+    "related": {
+      "also_by_author": [],
+      "similar": []
+    }
+  }
+}

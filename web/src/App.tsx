@@ -76,6 +76,7 @@ import {
   withDirectProfileCredentials,
   withItemCampaigns,
 } from "@/bloem/routes";
+import { audiobookItemRoute, audiobookLibraryRoute } from "@/bloem/audiobooks/routes";
 import { prefetchRouteChunks, type RouteChunkImport } from "@/lib/routeChunkPrefetch";
 import { importCatalog } from "@/pages/catalogRoute";
 
@@ -652,11 +653,14 @@ function AppRoutes() {
                           <Route
                             path="/library/:libraryId"
                             caseSensitive
-                            element={<LibraryPage />}
+                            element={audiobookLibraryRoute(<LibraryPage />)}
                           />
                           <Route path="/search" caseSensitive element={<LegacySearchRedirect />} />
                           <Route path="/browse" element={<LegacyBrowseRedirect />} />
-                          <Route path="/item/:id" element={withItemCampaigns(<ItemDetail />)} />
+                          <Route
+                            path="/item/:id"
+                            element={withItemCampaigns(audiobookItemRoute(<ItemDetail />))}
+                          />
                           <Route path="/person/:id" element={<PersonDetail />} />
                           <Route path="/rooms" element={<WatchPartyHub />} />
                           <Route path="/rooms/:roomId" element={<WatchTogetherRoomPage />} />
