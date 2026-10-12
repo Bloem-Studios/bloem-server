@@ -128,11 +128,24 @@ func (s *managedCalendarSource) Authority(ctx context.Context, p managedtracking
 			return "", err
 		}
 	}
+	var personal [][]string
+	if s.repo != nil {
+		for _, read := range []func(context.Context, int, string) ([]string, error){s.repo.ListFollowedItemIDs, s.repo.ListFavoriteItemIDs, s.repo.ListWatchlistItemIDs} {
+			ids, readErr := read(ctx, scope.UserID, scope.ProfileID)
+			if readErr != nil {
+				return "", readErr
+			}
+			sort.Strings(ids)
+			personal = append(personal, ids)
+		}
+	}
 	raw, err := json.Marshal(struct {
 		Scope                            access.Scope
+		Personal                         [][]string
+		Preset                           string
 		Libraries                        json.RawMessage
 		AccountRevision, ProfileRevision uint64
-	}{scope, libraries, p.AccountRevision, p.Revision})
+	}{scope, personal, "following", libraries, p.AccountRevision, p.Revision})
 	if err != nil {
 		return "", err
 	}
@@ -177,7 +190,7 @@ func (s *managedCalendarSource) Events(ctx context.Context, p managedtracking.Pr
 		return nil, managedtracking.ErrAuthority
 	}
 	filter := catalog.AccessFilter{UserID: scope.UserID, ProfileID: scope.ProfileID, AllowedLibraryIDs: scope.AllowedLibraryIDs, DisabledLibraryIDs: scope.DisabledLibraryIDs, MaturityLimits: scope.MaturityLimits, MaxPlaybackQuality: scope.MaxPlaybackQuality}
-	view, err := s.handler.Calendar(ctx, handlers.CalendarQuery{Start: start, End: end, Filter: "all", Location: time.UTC}, filter)
+	view, err := s.handler.Calendar(ctx, handlers.CalendarQuery{Start: start, End: end, Filter: "following", Location: time.UTC}, filter)
 	if err != nil {
 		return nil, err
 	}
