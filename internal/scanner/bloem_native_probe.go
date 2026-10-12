@@ -31,6 +31,10 @@ type NativeProbeDemuxer uint8
 const (
 	NativeProbeMOV NativeProbeDemuxer = iota + 1
 	NativeProbeMatroska
+	NativeProbeMP3
+	NativeProbeFLAC
+	NativeProbeOgg
+	NativeProbeWAV
 )
 
 // NativeProbeConfig comes from the trusted scan consumer. Every bound is
@@ -52,8 +56,15 @@ type NativeProbeConfig struct {
 // the child and HTTP reads, closes the file and releases its host admission.
 // This prerequisite reports failures without classifying ingestion rejections.
 func ProbeNative(ctx context.Context, ffprobePath string, file mediasource.File, cfg NativeProbeConfig) (*ProbeData, error) {
+	probe, _, err := probeNative(ctx, ffprobePath, file, cfg)
+	return probe, err
+}
+
+// probeNative retains bounded raw metadata for owned native consumers that
+// require exact timing. ProbeNative keeps Silo's integer-second projection.
+func probeNative(ctx context.Context, ffprobePath string, file mediasource.File, cfg NativeProbeConfig) (*ProbeData, *ffprobeOutput, error) {
 	if ctx == nil || file == nil || strings.TrimSpace(ffprobePath) == "" || cfg.MaxJSONBytes <= 0 || cfg.MaxStderrBytes <= 0 {
-		return nil, ErrNativeProbeInvalid
+		return nil, nil, ErrNativeProbeInvalid
 	}
 	var demuxer, formats string
 	switch cfg.Demuxer {
@@ -61,8 +72,16 @@ func ProbeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 		demuxer, formats = "mov", "mov"
 	case NativeProbeMatroska:
 		demuxer, formats = "matroska", "matroska,webm"
+	case NativeProbeMP3:
+		demuxer, formats = "mp3", "mp3"
+	case NativeProbeFLAC:
+		demuxer, formats = "flac", "flac"
+	case NativeProbeOgg:
+		demuxer, formats = "ogg", "ogg"
+	case NativeProbeWAV:
+		demuxer, formats = "wav", "wav"
 	default:
-		return nil, ErrNativeProbeInvalid
+		return nil, nil, ErrNativeProbeInvalid
 	}
 	lifetime, cancel := context.WithTimeout(ctx, cfg.Input.Timeout)
 	defer cancel()
@@ -79,7 +98,7 @@ func ProbeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 	}
 	input, err := nativestorage.NewToolInput(lifetime, reader, inputConfig)
 	if err != nil {
-		return nil, &nativeProbeFailure{err}
+		return nil, nil, &nativeProbeFailure{err}
 	}
 	var output []byte
 	var grant string
@@ -122,15 +141,15 @@ func ProbeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 		return nil
 	})
 	if err = errors.Join(err, reader.failure()); err != nil {
-		return nil, &nativeProbeFailure{err}
+		return nil, nil, &nativeProbeFailure{err}
 	}
 	var raw ffprobeOutput
 	// Unmarshal rejects a trailing document and any non-whitespace tail.
 	if err := json.Unmarshal(output, &raw); err != nil {
-		return nil, &nativeProbeFailure{err}
+		return nil, nil, &nativeProbeFailure{err}
 	}
 	if raw.Format.FormatName == "" || len(raw.Streams) == 0 {
-		return nil, ErrNativeProbeInvalid
+		return nil, nil, ErrNativeProbeInvalid
 	}
 	// Filename is only an extension hint for containerForFile. Never pass
 	// this name to an OS path wrapper or keep the ephemeral HTTP argument.
@@ -139,7 +158,7 @@ func ProbeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 	probe := convertProbeData(&raw)
 	if probe.Container == containerMKV && subtitleTracksMissingContainerID(probe.SubtitleTracks) {
 		if tracksErr != nil {
-			return nil, &nativeProbeFailure{tracksErr}
+			return nil, nil, &nativeProbeFailure{tracksErr}
 		}
 		subtitles := make([]matroskaSubtitleStream, len(probe.SubtitleTracks))
 		for i, track := range probe.SubtitleTracks {
@@ -147,7 +166,7 @@ func ProbeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 		}
 		ids, err := matroskaSubtitleTrackIDs(tracks, len(probe.VideoTracks), len(probe.AudioTracks), subtitles)
 		if err != nil {
-			return nil, &nativeProbeFailure{err}
+			return nil, nil, &nativeProbeFailure{err}
 		}
 		for i := range probe.SubtitleTracks {
 			if probe.SubtitleTracks[i].ContainerTrackID == "" {
@@ -157,11 +176,14 @@ func ProbeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 	}
 	// The trusted binary must not echo its private argument into persistable
 	// metadata. Ordinary media tags containing unrelated URLs stay intact.
-	encoded, err := json.Marshal(probe)
+	encoded, err := json.Marshal(struct {
+		Probe *ProbeData
+		Raw   *ffprobeOutput
+	}{probe, &raw})
 	if err != nil || bytes.Contains(encoded, []byte(grant)) {
-		return nil, ErrNativeProbeInvalid
+		return nil, nil, ErrNativeProbeInvalid
 	}
-	return probe, nil
+	return probe, &raw, nil
 }
 
 // Keep the installed binary's ordinary runtime/library environment. Only
