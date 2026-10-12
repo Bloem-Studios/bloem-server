@@ -20,12 +20,13 @@ import (
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	sdkruntime "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginsdk/runtime"
-	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+
+	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 )
 
 type object struct {
@@ -35,11 +36,12 @@ type object struct {
 type server struct {
 	publicv1.UnimplementedRuntimeServer
 	storagev1.UnimplementedStorageProviderServer
-	manifest      *publicv1.PluginManifest
-	objects       []object
-	mode, notify  string
-	pinned        bool
-	describeCalls atomic.Uint32
+	manifest             *publicv1.PluginManifest
+	objects              []object
+	mode, notify         string
+	pinned               bool
+	describeCalls        atomic.Uint32
+	audioRevisionChanged atomic.Bool
 }
 
 func (s *server) GetManifest(context.Context, *publicv1.GetManifestRequest) (*publicv1.GetManifestResponse, error) {
@@ -86,6 +88,17 @@ func (s *server) Configure(_ context.Context, r *publicv1.ConfigureRequest) (*pu
 			s.objects = nil
 		}
 	}
+	if strings.HasPrefix(s.mode, "audio") {
+		extension := "mp3"
+		if s.mode == "audio-m4b" {
+			extension = "m4b"
+		}
+		data, err := os.ReadFile(s.notify + "." + extension)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "audio fixture unavailable")
+		}
+		s.objects = []object{{entry: &storagev1.Entry{Id: "track", Name: "1." + extension, LogicalPath: "Book/1." + extension, Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Size: int64(len(data)), Revision: revision, AudioFile: &storagev1.AudioFileMetadata{DiscNumber: 1, TrackNumber: 1}}, data: data}}
+	}
 	if s.mode == "list-metadata-gate" {
 		for _, o := range s.objects {
 			o.entry.Ebook = &storagev1.EbookMetadata{Title: "Provider Book", Authors: []string{"Fixture Writer"}}
@@ -127,6 +140,12 @@ func (s *server) Describe(ctx context.Context, _ *storagev1.DescribeRequest) (*s
 		}
 	}
 	d := &storagev1.DescribeResponse{Revision: 1, Sources: []*storagev1.Source{{Id: "books", RootEntryId: "root", RevisionPinnedReads: s.pinned}}}
+	if strings.HasPrefix(s.mode, "audio") {
+		d.Sources[0].DirectoryOnlyListing = s.mode != "audio-no-directory"
+		if s.mode != "audio-no-kind" {
+			d.Sources[0].MediaKinds = []string{"audiobooks"}
+		}
+	}
 	switch s.mode {
 	case "describe-source":
 		d.Sources[0].Id = "other"
@@ -199,6 +218,12 @@ func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1
 	}
 	end := min(offset+2, len(objects))
 	page := &storagev1.ListResponse{Complete: end == len(objects)}
+	if s.mode == "audio-token" {
+		page.ChangeToken = "must-not-persist"
+		if r.ChangesSince != "" {
+			return nil, status.Error(codes.InvalidArgument, "audio requested delta")
+		}
+	}
 	if s.mode == "movies-removed" {
 		page.RemovedEntryIds = []string{"01-movie", "02-movie"}
 	}
@@ -211,6 +236,9 @@ func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1
 	return page, nil
 }
 func (s *server) find(source, id, rev string) (object, error) {
+	if s.mode == "audio-read-revision-change" && s.audioRevisionChanged.Load() {
+		return object{}, status.Error(codes.FailedPrecondition, "revision changed")
+	}
 	if source != "books" {
 		return object{}, status.Error(codes.PermissionDenied, "wrong source")
 	}
@@ -230,7 +258,7 @@ func (s *server) Stat(_ context.Context, r *storagev1.StatRequest) (*storagev1.S
 	if err != nil {
 		return nil, err
 	}
-	if s.mode == "movies-stat-conflict" {
+	if s.mode == "movies-stat-conflict" || s.mode == "audio-stat-conflict" {
 		copy := proto.CloneOf(o.entry)
 		copy.Revision = "unlisted-version"
 		return &storagev1.StatResponse{Entry: copy}, nil
@@ -279,6 +307,14 @@ func (s *server) Read(r *storagev1.ReadRequest, out grpc.ServerStreamingServer[s
 	}
 	if r.Offset < 0 || r.Length <= 0 || r.Offset+r.Length > int64(len(o.data)) {
 		return status.Error(codes.OutOfRange, "range")
+	}
+	if s.mode == "audio-read-revision-change" {
+		// The retained version disappears after admission and the first bytes.
+		s.audioRevisionChanged.Store(true)
+		if err := out.Send(&storagev1.ReadChunk{Offset: r.Offset, Data: o.data[r.Offset:min(r.Offset+16, r.Offset+r.Length)]}); err != nil {
+			return err
+		}
+		return status.Error(codes.FailedPrecondition, "revision changed during read")
 	}
 	end := r.Offset + r.Length
 	if s.mode == "late" || s.mode == "movies-late" {

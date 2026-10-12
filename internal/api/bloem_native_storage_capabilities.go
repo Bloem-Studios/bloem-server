@@ -16,6 +16,7 @@ type nativeStorageCapabilities struct {
 	video       bool
 	movies      bool
 	remoteVideo bool
+	audio       bool
 }
 
 func (c *nativeStorageCapabilities) NativeStorageReady(ctx context.Context) bool {
@@ -64,6 +65,7 @@ func attachNativeVideoReadiness(deps Dependencies, h *handlers.PlaybackHandler, 
 		c.movies = movies
 		c.remoteVideo = h.NativeVideo.WorkerGrants.Enabled() && h.NodeRecipeStore != nil && h.NodeRecipeStore.Enabled()
 	}
+	attachNativeAudioReadiness(deps, h, stream, libraries)
 }
 
 func (c *nativeStorageCapabilities) LibraryLocationBrowsingReady(ctx context.Context) bool {
@@ -79,4 +81,6 @@ func (c *nativeStorageCapabilities) LibraryLocationMixingReady(ctx context.Conte
 }
 
 // Audio requires full Task9 scanner/catalog/playback composition.
-func (c *nativeStorageCapabilities) NativeAudioReady(context.Context) bool { return false }
+func (c *nativeStorageCapabilities) NativeAudioReady(ctx context.Context) bool {
+	return c.NativeVideoReady(ctx) && c.audio
+}

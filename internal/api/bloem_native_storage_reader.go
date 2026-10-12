@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/catalog"
@@ -12,9 +16,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func nativeStorageReader(deps Dependencies, local *handlers.EbookReaderHandler) *handlers.NativeEbookFileService {
@@ -44,7 +45,7 @@ func nativeStorageReader(deps Dependencies, local *handlers.EbookReaderHandler) 
 		}
 		return authorizeNativeStorageSource(fresh, file, source, resolver, resources)
 	}
-	coordinator.AuthorizeCover = resources.RequireStorageScan
+	coordinator.AuthorizeCover = nativeStorageCoverAuthority(deps)
 
 	return handlers.NewNativeEbookFileService(local, coordinator)
 }
@@ -89,4 +90,14 @@ func authorizeNativeStorageSource(ctx context.Context, file *models.MediaFile, s
 		return status.Error(codes.PermissionDenied, "source owner changed")
 	}
 	return nil
+}
+
+// Cover authority follows the same fully composed audio gate as scan admission.
+// Use a request-local resource store so startup publication never races a store mutation.
+func nativeStorageCoverAuthority(deps Dependencies) func(context.Context, storagesource.Location, storagesource.SourceConfig) error {
+	return func(ctx context.Context, location storagesource.Location, source storagesource.SourceConfig) error {
+		resources := resourcetenancy.NewStore(deps.DB)
+		resources.SetNativeAudioReady(deps.NativeAudioScannerReady && deps.NativeAudioGate != nil && deps.NativeAudioGate.Load())
+		return resources.RequireStorageScan(ctx, location, source)
+	}
 }

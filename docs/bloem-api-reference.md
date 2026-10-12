@@ -3135,3 +3135,23 @@ Other errors include `401 unauthorized`, `403 viewer_required`,
 `403 insufficient_organization_authority`, `429 request_quota_exceeded`, and
 `503 unavailable` when profile authority cannot be resolved. Rate-limit
 middleware may also return 429.
+
+## Native audiobook presentations
+
+`GET /api/bloem/v1/capabilities` advertises
+`native_audiobook_presentations_v1` only when native audiobook scanning, whole
+presentation authority and direct-play delivery are composed. Storage capability
+fields `native_audio_libraries` and `native_audio_playback` follow that same
+composition; ready S3 and Bookwarehouse combinations include `audiobooks`.
+
+Native audiobook recording keys reserve `bloem-storage:audiobook:` followed by a
+location/directory digest. Single files retain empty presentation kind and zero
+part fields; multipart files have contiguous indices and a complete total.
+Clients select a track and send an explicit track-local `start_position` on
+playback-v3 start. The server persists fixed-file semantics for native starts.
+Only `original_http` is supported; adaptation returns a nonretryable
+`route_capability_unavailable` terminal decision. Stream response MIME is the
+authoritative audio type; the opaque path can leave plan MIME as
+`application/octet-stream`. Recovery starts a fresh attempt for the same track.
+
+See [publication and playback invariants](architecture/bloem-native-audio-playback.md).

@@ -7,6 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -22,8 +25,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/streamtoken"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
-	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
 type nativeVideoRequestKey struct{}
@@ -116,7 +117,7 @@ func nativeVideoPlayback(deps Dependencies, coordinator *nativestorage.Coordinat
 	}, getSession: deps.SessionMgr.GetSession, denied: nativeVideoSessionDenied(deps.RedisClient, h.StreamDeny), resolveFile: h.ResolveNativeVideoFile, authorizeSource: func(ctx context.Context, file *models.MediaFile, source storagesource.SourceConfig) error {
 		return authorizeNativeStorageSource(ctx, file, source, tenantResolver, resources)
 	}}
-	service := &handlers.NativeVideoService{Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: h.StreamDeny}
+	service := &handlers.NativeVideoService{Presentation: nativeAudioPresentation(deps), Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: h.StreamDeny}
 	service.Open = func(ctx context.Context, file *models.MediaFile) (handlers.NativeVideoFile, error) {
 		if file == nil {
 			return nil, catalog.ErrItemNotFound
@@ -242,7 +243,7 @@ func (s *nativeVideoSubject) resolve(ctx context.Context) (*models.MediaFile, er
 	}
 	// The owning handler also enforces item/library and supported-container
 	// policy. Missing video metadata cannot accidentally admit ebooks or audio.
-	if actual == nil || actual.ID != s.fileID || !handlers.NativeVideoSupported(actual) || (actual.CodecVideo == "" && len(actual.VideoTracks) == 0) {
+	if actual == nil || actual.ID != s.fileID || !handlers.NativeVideoSupported(actual) || (!handlers.NativeAudioSupported(actual) && actual.CodecVideo == "" && len(actual.VideoTracks) == 0) {
 		return nil, catalog.ErrItemNotFound
 	}
 	return actual, nil
@@ -473,7 +474,7 @@ func NewNativeVideoDelegateService(deps Dependencies, coordinator *nativestorage
 	p := nativeVideoPolicy{viewer: viewer, tenants: tenancy.NewSubjectResolver(tenantResolver, tenants), getSession: getSession, denied: nativeVideoSessionDenied(deps.RedisClient, deny), resolveFile: h.ResolveNativeVideoFile, authorizeSource: func(ctx context.Context, file *models.MediaFile, source storagesource.SourceConfig) error {
 		return authorizeNativeStorageSource(ctx, file, source, tenantResolver, resources)
 	}}
-	service := &handlers.NativeVideoService{Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: deny}
+	service := &handlers.NativeVideoService{Presentation: nativeAudioPresentation(deps), Files: deps.FileRepo, Bindings: handlers.NewNativeVideoBindingStore(deps.RedisClient), WorkerGrants: handlers.NewNativeVideoWorkerGrantStore(deps.RedisClient), Sessions: deps.SessionMgr, Deny: deny}
 	h.NativeVideo = service
 	configureNativeVideoDelegates(deps, coordinator, service, p)
 	return service, nil

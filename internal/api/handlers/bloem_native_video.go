@@ -72,6 +72,8 @@ type NativeVideoBindings interface {
 // NativeVideoService is installed only with real viewer authorizers. Files is
 // the unguarded catalog; unrelated path-only handlers keep their guards.
 type NativeVideoService struct {
+	AudioReady    bool
+	Presentation  func(context.Context, *models.MediaFile) error
 	Files         FilePathResolver
 	Open          func(context.Context, *models.MediaFile) (NativeVideoFile, error)
 	Delegation    func(context.Context) (NativeVideoAuthority, error)
@@ -92,6 +94,10 @@ func nativeVideoUnavailable() error {
 // NativeVideoSupported describes the container admission boundary. The normal
 // planner still decides codecs, quality, and client decoding support.
 func NativeVideoSupported(file *models.MediaFile) bool {
+	return nativeVideoFileSupported(file) || NativeAudioSupported(file)
+}
+
+func nativeVideoFileSupported(file *models.MediaFile) bool {
 	if file == nil || !storagesource.IsNativeLocation(file.FilePath) || file.IsAudioOnly() || file.BaseType == "ebook" || (file.CodecVideo == "" && len(file.VideoTracks) == 0) {
 		return false
 	}
@@ -118,8 +124,9 @@ func nativeVideoFormat(container string) string {
 
 type nativeVideoRequestKey struct{}
 type nativeVideoRequestSnapshots struct {
-	mu    sync.Mutex
-	files map[int]NativeVideoBinding
+	mu       sync.Mutex
+	files    map[int]NativeVideoBinding
+	audioPin int
 }
 
 func withNativeVideoSnapshots(ctx context.Context) context.Context {
@@ -160,7 +167,7 @@ func (s *NativeVideoService) open(ctx context.Context, file *models.MediaFile) (
 	return s.openWith(ctx, file, s.Open)
 }
 func (s *NativeVideoService) openWith(ctx context.Context, file *models.MediaFile, open func(context.Context, *models.MediaFile) (NativeVideoFile, error)) (NativeVideoFile, NativeVideoBinding, error) {
-	if open == nil || !NativeVideoSupported(file) || file.MissingSince != nil {
+	if open == nil || !NativeVideoSupported(file) || file.MissingSince != nil || NativeAudioSupported(file) && !s.AudioReady {
 		return nil, NativeVideoBinding{}, catalog.ErrItemNotFound
 	}
 	opened, err := open(ctx, file)
@@ -173,7 +180,11 @@ func (s *NativeVideoService) openWith(ctx context.Context, file *models.MediaFil
 	if opened == nil {
 		return nil, NativeVideoBinding{}, nativeVideoUnavailable()
 	}
-	value := normalizeNativeVideoBinding(NativeVideoBinding{Identity: opened.Identity(), Info: opened.Info(), Format: nativeVideoFormat(file.Container)})
+	format := nativeVideoFormat(file.Container)
+	if NativeAudioSupported(file) {
+		format = "audio/" + file.Container
+	}
+	value := normalizeNativeVideoBinding(NativeVideoBinding{Identity: opened.Identity(), Info: opened.Info(), Format: format})
 	if value.Identity.FileID != file.ID || value.Identity.FilePath != file.FilePath || value.Identity.MediaFolderID != file.MediaFolderID || value.Identity.ContentID != file.ContentID || value.Info.Size < 0 || value.Info.Revision == "" || value.Info.Revision != value.Identity.Reference.Revision {
 		_ = opened.Close()
 		return nil, NativeVideoBinding{}, storagesource.ErrReferenceConflict
@@ -325,7 +336,13 @@ func (s *NativeVideoService) Serve(w http.ResponseWriter, r *http.Request, sessi
 	digest := sha256.Sum256([]byte(fmt.Sprintf("%d:%d:%s", file.ID, binding.Info.Size, binding.Info.Revision)))
 	w.Header().Set("ETag", fmt.Sprintf("\"%x\"", digest))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Content-Type", nativeVideoContentType(file.Container))
+	contentType := nativeVideoContentType(file.Container)
+	name := "video." + file.Container
+	if NativeAudioSupported(file) {
+		contentType = nativeAudioContentType(file.Container)
+		name = "audio." + file.Container
+	}
+	w.Header().Set("Content-Type", contentType)
 	reader, err := nativestorage.NewReadAhead(ctx, opened, nativeVideoDirectReadAhead)
 	if err != nil {
 		return err
@@ -339,7 +356,7 @@ func (s *NativeVideoService) Serve(w http.ResponseWriter, r *http.Request, sessi
 		reader.SetRangeEnd(nativestorage.RangeEnd(r.Header.Get("Range"), binding.Info.Size))
 	}
 	stream := &nativeEbookStream{File: reader}
-	http.ServeContent(httpstream.NewRollingDeadlineWriter(w), r.WithContext(ctx), "video."+file.Container, binding.Info.ModifiedAt, stream)
+	http.ServeContent(httpstream.NewRollingDeadlineWriter(w), r.WithContext(ctx), name, binding.Info.ModifiedAt, stream)
 	if stream.failure != nil || reader.Err() != nil || opened.Err() != nil || ctx.Err() != nil {
 		panic(http.ErrAbortHandler)
 	}
@@ -385,6 +402,9 @@ func nativeVideoContentType(container string) string {
 // InputSource reopens the frozen binding for every execution and restart.
 // Only the opaque catalog identity remains in TranscodeOpts and RecipeCard.
 func (s *NativeVideoService) InputSource(ctx context.Context, session *playback.Session, file *models.MediaFile) (*playback.TranscodeInputSource, string, error) {
+	if NativeAudioSupported(file) {
+		return nil, "", &APIError{Status: 415, Code: "unsupported", Message: "Remote audiobook tracks play only as original files"}
+	}
 	if s == nil || s.Bindings == nil || session == nil || file == nil {
 		return nil, "", nativeVideoUnavailable()
 	}
@@ -478,9 +498,28 @@ func (h *PlaybackHandler) ResolveNativeVideoFile(ctx context.Context, id int) (*
 	if err == nil && !NativeVideoSupported(file) {
 		return nil, catalog.ErrItemNotFound
 	}
+	if err == nil && NativeAudioSupported(file) {
+		if !h.NativeVideo.AudioReady || h.NativeVideo.Presentation == nil {
+			return nil, catalog.ErrItemNotFound
+		}
+		if err := h.NativeVideo.Presentation(ctx, file); err != nil {
+			return nil, err
+		}
+	}
 	return file, err
 }
 func (h *PlaybackHandler) nativeVideoPreflight(r *http.Request, file *models.MediaFile) error {
+	if err := pinNativeAudioRequest(r.Context(), file); err != nil {
+		return err
+	}
+	if NativeAudioSupported(file) {
+		if h.NativeVideo == nil || !h.NativeVideo.AudioReady || h.NativeVideo.Presentation == nil {
+			return &playbackFilePreflightError{notFound: true}
+		}
+		if err := h.NativeVideo.Presentation(r.Context(), file); err != nil {
+			return &playbackFilePreflightError{notFound: errors.Is(err, storagesource.ErrReferenceConflict) || errors.Is(err, catalog.ErrItemNotFound), err: err}
+		}
+	}
 	if file != nil && storagesource.IsNativeLocation(file.FilePath) {
 		if h.NativeVideo == nil {
 			return catalog.ErrItemNotFound

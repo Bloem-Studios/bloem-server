@@ -90,6 +90,9 @@ func (s *ABSMediaStore) GetAudiobookByID(ctx context.Context, contentID string, 
 	if err != nil {
 		return nil, fmt.Errorf("abs_media_store: get audiobook %q: %w", contentID, err)
 	}
+	if items, err = s.bloemCompatibleAudiobookItems(ctx, items, access); err != nil {
+		return nil, err
+	}
 	if len(items) == 0 {
 		return nil, nil
 	}
@@ -122,6 +125,9 @@ func (s *ABSMediaStore) GetAudiobooksByIDs(ctx context.Context, contentIDs []str
 	items, err := s.Items.GetByIDsWithAccess(ctx, contentIDs, access)
 	if err != nil {
 		return nil, fmt.Errorf("abs_media_store: get audiobooks: %w", err)
+	}
+	if items, err = s.bloemCompatibleAudiobookItems(ctx, items, access); err != nil {
+		return nil, err
 	}
 	books := make([]*models.MediaItem, 0, len(items))
 	for _, item := range items {
@@ -289,7 +295,7 @@ func (s *ABSMediaStore) hydrateAudiobookRuntime(ctx context.Context, items []*mo
 			       COALESCE(presentation_group_key, '') AS presentation_key,
 			       SUM(COALESCE(duration, 0)) AS duration_seconds
 			FROM media_files
-			WHERE content_id = ANY($1) AND missing_since IS NULL
+			WHERE content_id = ANY($1) AND missing_since IS NULL AND `+bloemCompatibleFileSQL+`
 			  AND ($2::bigint[] IS NULL OR media_folder_id = ANY($2))
 			  AND (COALESCE(cardinality($3::bigint[]), 0) = 0 OR NOT (media_folder_id = ANY($3)))
 			GROUP BY content_id, media_folder_id, COALESCE(presentation_group_key, '')
@@ -365,6 +371,7 @@ func appendAudiobookFilterConditions(filter abs.Filter, conditions *[]string, ar
 }
 
 func appendAudiobookAccessConditions(alias string, filter catalog.AccessFilter, conditions *[]string, args *[]any, argIdx *int) {
+	*conditions = append(*conditions, bloemCompatibleItemCondition(alias, filter, args, argIdx))
 	if filter.AllowedLibraryIDs != nil {
 		if len(filter.AllowedLibraryIDs) == 0 {
 			*conditions = append(*conditions, "1 = 0")
@@ -521,7 +528,7 @@ func (s *ABSMediaStore) GetMediaFiles(ctx context.Context, contentID string, acc
 	if err != nil {
 		return nil, fmt.Errorf("abs_media_store: get media files for %q: %w", contentID, err)
 	}
-	return catalog.FilterMediaFilesByAccess(files, access), nil
+	return bloemCompatibleAudioFiles(catalog.FilterMediaFilesByAccess(files, access)), nil
 }
 
 // GetMediaFileByID fetches a single media_file by its integer PK.
@@ -529,6 +536,9 @@ func (s *ABSMediaStore) GetMediaFileByID(ctx context.Context, fileID int) (*mode
 	file, err := s.Files.GetByID(ctx, fileID)
 	if err != nil {
 		return nil, fmt.Errorf("abs_media_store: get media file %d: %w", fileID, err)
+	}
+	if !bloemCompatibleAudioFile(file) {
+		return nil, scanner.ErrFileNotFound
 	}
 	return file, nil
 }

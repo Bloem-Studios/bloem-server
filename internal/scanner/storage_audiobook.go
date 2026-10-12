@@ -9,11 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
-	"google.golang.org/protobuf/proto"
 )
 
 type StorageAudioTrackStatus string

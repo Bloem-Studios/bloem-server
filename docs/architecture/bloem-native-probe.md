@@ -42,3 +42,11 @@ This prerequisite supplies no scanner wiring, library-kind admission,
 ingestion-rejection classification, production budget defaults or playback
 change. Immutable versions or verified snapshots remain required for native
 content reads. Synthetic pinned fixtures do not certify a live backend.
+
+## Native audio
+
+`ProbeNativeAudio` uses an explicit reviewed audio demuxer and the same pinned
+reader, byte budget and cleanup boundary. Its exact positive finite duration
+and validated chapter endpoints are retained separately from integer catalog
+durations. A book-level rejection prevents partial publication; source and I/O
+failures abort the scan. See [native audiobook presentations](bloem-native-audio-playback.md).

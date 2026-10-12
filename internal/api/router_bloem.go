@@ -1,8 +1,11 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
@@ -16,7 +19,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/go-chi/chi/v5"
 )
 
 // mountBloem mounts the native Bloem API independently from the Silo-compatible
@@ -123,6 +125,11 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 		compatibilityHandler = handlers.NewBloemAdminCompatibilityHandler(deps.CompatApplications, deps.PublicURL)
 	}
 	system := handlers.NewBloemSystemHandler(store)
+	if deps.NativeStorageManagement != nil {
+		if audio, ok := deps.NativeStorageManagement.Capabilities.(interface{ NativeAudioReady(context.Context) bool }); ok {
+			system.SetNativeAudioReadiness(audio.NativeAudioReady)
+		}
+	}
 	if deps.DB != nil {
 		system.SetLifecycleIdempotencyPhase(lifecycleidempotency.NewPostgresStore(deps.DB).CurrentPhase)
 	}

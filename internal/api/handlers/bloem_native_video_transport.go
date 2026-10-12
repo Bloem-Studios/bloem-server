@@ -146,6 +146,9 @@ func (h *PlaybackHandler) revokeRequiredNativeVideoAuthority(ctx context.Context
 }
 
 func (h *PlaybackHandler) prepareNativeVideoTransportV3(r *http.Request, session *playback.Session, file *models.MediaFile, result playback.PlannerResultV3, mode mediaAuthModeV3, policy config.PlaybackRoutingPolicy) (preparedTransportV3, *transportErrorV3) {
+	if err := nativeAudioPlanRefusal(file, result); err != nil {
+		return preparedTransportV3{}, err
+	}
 	if result.Plan == nil {
 		return preparedTransportV3{}, &transportErrorV3{reason: "internal_error", message: "Native video plan is missing."}
 	}
@@ -243,6 +246,9 @@ func (h *PlaybackHandler) prepareNativeVideoTransportV3(r *http.Request, session
 	}}, nil
 }
 func (h *PlaybackHandler) nativeVideoTimelineV3(ctx context.Context, session *playback.Session, file *models.MediaFile, result playback.PlannerResultV3) (preparedTimelineV3, *transportErrorV3) {
+	if err := nativeAudioPlanRefusal(file, result); err != nil {
+		return preparedTimelineV3{}, err
+	}
 	if result.Plan.Delivery != playback.DeliveryRemuxProgressiveV3 && result.Plan.Delivery != playback.DeliveryRemuxHLSV3 {
 		return h.prepareTransportTimelineV3(ctx, session, file, result)
 	}

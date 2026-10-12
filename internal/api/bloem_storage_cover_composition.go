@@ -57,9 +57,18 @@ func ConfigureNativeStorageArtwork(deps *Dependencies) {
 	if deps == nil || deps.NativeStorage == nil || deps.DB == nil {
 		return
 	}
-	authorizer := &handlers.MediaFileAuthorizer{FileResolver: deps.FileRepo, ItemAccess: catalog.NewItemRepository(deps.DB), EpisodeLookup: catalog.NewEpisodeRepository(deps.DB), ExtraLookup: catalog.NewExtraRepository(deps.DB)}
 	s := &nativeStorageArtwork{next: deps.ArtworkResolver, signer: deps.ArtworkSigner, cipher: deps.SecretCipher, actors: nativeStorageActorPolicy(*deps), references: storagesource.NewRepository(deps.DB), registry: deps.NativeStorage.Registry}
-	s.authorizeFile = func(ctx context.Context, ref storagesource.CoverReference) error {
+	s.authorizeFile = nativeStorageCoverFileAuthority(*deps)
+	deps.ArtworkResolver = s
+	deps.NativeStorage.SetCoverRequestAuthorizer(s.authorizeRequest)
+	deps.NativeStorage.SetCoverURLResolver(s)
+}
+
+// Native audiobook covers require the complete recording on every recipe check,
+// including cache hits and conditional responses.
+func nativeStorageCoverFileAuthority(deps Dependencies) func(context.Context, storagesource.CoverReference) error {
+	authorizer := &handlers.MediaFileAuthorizer{FileResolver: deps.FileRepo, ItemAccess: catalog.NewItemRepository(deps.DB), EpisodeLookup: catalog.NewEpisodeRepository(deps.DB), ExtraLookup: catalog.NewExtraRepository(deps.DB)}
+	return func(ctx context.Context, ref storagesource.CoverReference) error {
 		file, err := authorizer.AuthorizeContext(ctx, ref.MediaFileID, handlers.AccessFilterFromContext(ctx, ""))
 		if err != nil {
 			return err
@@ -67,9 +76,9 @@ func ConfigureNativeStorageArtwork(deps *Dependencies) {
 		if file == nil || file.ID != ref.MediaFileID || file.ContentID != ref.ContentID || file.MediaFolderID != ref.FolderID || file.FilePath != ref.FilePath {
 			return storagesource.ErrReferenceConflict
 		}
+		if handlers.NativeAudioSupported(file) {
+			return nativeAudioPresentation(deps)(ctx, file)
+		}
 		return nil
 	}
-	deps.ArtworkResolver = s
-	deps.NativeStorage.SetCoverRequestAuthorizer(s.authorizeRequest)
-	deps.NativeStorage.SetCoverURLResolver(s)
 }

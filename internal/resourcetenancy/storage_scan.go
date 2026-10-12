@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Silo-Server/silo-server/internal/librarykind"
-	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Silo-Server/silo-server/internal/librarykind"
+	"github.com/Silo-Server/silo-server/internal/storagesource"
 )
 
 // SetNativeMovieReady is startup-only, before this Store handles requests or
@@ -103,7 +104,7 @@ func (s *Store) retainStorageScanTx(ctx context.Context, tx pgx.Tx, binding stor
 	if err != nil {
 		return out, err
 	}
-	if !librarykind.SupportsNativeStorage(out.LibraryKind, s.nativeMovieReady) {
+	if !librarykind.SupportsNativeStorageKinds(out.LibraryKind, s.nativeMovieReady, s.nativeAudioReady) {
 		return out, ErrResourceHidden
 	}
 	for _, location := range out.Locations {
@@ -176,7 +177,7 @@ func (s *Store) requireLegacyStorageAttachmentTx(ctx context.Context, tx pgx.Tx,
 	if err != nil {
 		return storageScanError(err)
 	}
-	if !librarykind.SupportsNativeStorage(kind, s.nativeMovieReady) || !enabled {
+	if !librarykind.SupportsNativeStorageKinds(kind, s.nativeMovieReady, s.nativeAudioReady) || !enabled {
 		return ErrResourceHidden
 	}
 	var actualBinding storagesource.Location
@@ -280,4 +281,11 @@ func storageScanError(err error) error {
 		return ErrResourceHidden
 	}
 	return fmt.Errorf("%w: storage scan authority: %w", ErrResourceUnavailable, err)
+}
+
+// SetNativeAudioReady is startup-only, before authority checks or scans.
+func (s *Store) SetNativeAudioReady(ready bool) {
+	if s != nil {
+		s.nativeAudioReady = ready
+	}
 }

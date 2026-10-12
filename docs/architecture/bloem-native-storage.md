@@ -1,6 +1,6 @@
 # Bloem native storage
 
-Native storage lets an ebook or movie library read files from storage plugins,
+Native storage lets ebook, movie and audiobook libraries read files from storage plugins,
 such as Bookwarehouse, alongside filesystem paths. A library can retain multiple
 plugin locations, each with independently selected directory roots. It remains
 experimental.
@@ -9,6 +9,10 @@ Movie admission is startup-only. The host configures the scan reader and bounded
 probe before starting queues; the API then admits movie attachment only after
 composing the native playback service. An incomplete composition retains the
 publication hold. This describes code readiness, not production source certification.
+
+Audiobook scanning also requires the composed direct-play service through a shared
+startup latch. See [native audiobook presentations](bloem-native-audio-playback.md)
+for publication, retained authority and fixed-file delivery.
 
 ## Model
 

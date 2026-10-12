@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/api"
@@ -19,6 +20,8 @@ func newNativeMovieStorageScanner(deps *api.Dependencies) (*libraryingest.Storag
 		return nil, storagesource.ErrSourceUnavailable
 	}
 	deps.NativeMovieScannerReady = false
+	deps.NativeAudioScannerReady = false
+	deps.NativeAudioGate = new(atomic.Bool)
 	if deps.DB == nil || deps.NativeStorage == nil || deps.FileRepo == nil || !deps.Scanner.NativeMovieScanConfigured() {
 		return nil, storagesource.ErrSourceUnavailable
 	}
@@ -35,6 +38,12 @@ func newNativeMovieStorageScanner(deps *api.Dependencies) (*libraryingest.Storag
 	cfg := scanner.NativeProbeConfig{Input: nativestorage.ToolInputConfig{MaxBytes: 128 << 20, ChunkBytes: 128 << 10, MaxConcurrentReads: 2, Timeout: 60 * time.Second}, MaxJSONBytes: 4 << 20, MaxStderrBytes: 64 << 10}
 	if err := storage.ConfigureNativeMovies(true, reader, cfg); err != nil {
 		return nil, err
+	}
+	if deps.Scanner.NativeAudioScanConfigured() {
+		if err := storage.ConfigureNativeAudio(true, reader, cfg, deps.NativeAudioGate); err != nil {
+			return nil, err
+		}
+		deps.NativeAudioScannerReady = true
 	}
 	// Native movies match through the same metadata Process the admin
 	// match/apply endpoint uses, never through the path-based match queues.

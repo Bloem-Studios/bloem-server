@@ -41,6 +41,12 @@ func playbackRequestDeviceIDV3(r *http.Request) string {
 // to the canonical tokens this server knows.
 func (h *PlaybackHandler) bloemNegotiateClientFeaturesV3(ctx context.Context, req *playback.StartRequestV3) {
 	req.ClientFeatures = playback.NegotiateClientFeaturesV3(req.ClientFeatures, serverFeaturesForRequestV3(ctx)...)
+	if h != nil && h.NativeVideo != nil && h.NativeVideo.Files != nil {
+		if file, err := h.NativeVideo.Files.GetByID(ctx, req.FileID); err == nil && NativeAudioSupported(file) {
+			allow := false
+			req.AllowAlternateVersions = &allow
+		}
+	}
 }
 
 // bloemCheckStartTranscodingAllowedV3 enforces the per-profile transcoding

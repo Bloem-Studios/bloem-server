@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
-	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
+	"github.com/Silo-Server/silo-server/internal/storagesource"
 )
 
 var (
@@ -92,6 +93,7 @@ func (l *LibraryLocations) AttachTx(ctx context.Context, tx pgx.Tx, sourceKey uu
 func (l *LibraryLocations) SetNativeAudioReady(ready bool) {
 	if l != nil {
 		l.nativeAudioReady = ready
+		l.resources.SetNativeAudioReady(ready)
 	}
 }
 

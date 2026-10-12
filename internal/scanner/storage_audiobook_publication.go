@@ -11,14 +11,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
+
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/idgen"
 	"github.com/Silo-Server/silo-server/internal/librarykind"
 	"github.com/Silo-Server/silo-server/internal/models"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/titleutil"
-	"github.com/jackc/pgx/v5"
-	"google.golang.org/protobuf/proto"
 )
 
 const nativeAudioStagingLimit = 64 << 20
@@ -293,6 +295,18 @@ func (s *Scanner) publishNativeAudioBookTx(ctx context.Context, tx pgx.Tx, page 
 	}
 	owned, err := storageMetadataOwnedTx(ctx, tx, []string{item.ContentID})
 	if err != nil {
+		return result, err
+	}
+	// Ownership may have waited for enrichment to commit. Read the item again
+	// under that lock so initial metadata uses its current status and values.
+	current, err := s.itemRepo.GetByIDTx(ctx, tx, item.ContentID)
+	if err == nil {
+		item = current
+		if item.Type != "audiobook" {
+			result.BooksRejected = 1
+			return result, nil
+		}
+	} else if !errors.Is(err, catalog.ErrItemNotFound) {
 		return result, err
 	}
 	var foreign bool

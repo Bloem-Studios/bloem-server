@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 )
 
 type BloemOrganizationStore interface {
@@ -28,6 +29,7 @@ type BloemSystemHandler struct {
 	seasonalViewer              bool
 	bookRequests                bool
 	ebookRequests               bool
+	nativeAudioReadiness        func(context.Context) bool
 	lifecyclePhase              func(context.Context) (lifecycleidempotency.Phase, error)
 }
 
@@ -163,6 +165,9 @@ type bloemCapabilityFeatures struct {
 // advertisement.
 func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *http.Request) {
 	featureTokens := slices.Clone(bloemCapabilityTokens)
+	if h.nativeAudioReadiness != nil && h.nativeAudioReadiness(request.Context()) {
+		featureTokens = append(featureTokens, "native_audiobook_presentations_v1")
+	}
 	if h.profileCredentialManagement {
 		featureTokens = append(featureTokens, "profile_credential_management_v1")
 	}
@@ -256,4 +261,9 @@ func (h *BloemSystemHandler) HandleOrganizations(w http.ResponseWriter, r *http.
 	}
 
 	writeJSON(w, http.StatusOK, bloemOrganizationListResponse{Organizations: result})
+}
+
+// SetNativeAudioReadiness advertises only the composed native audio service.
+func (h *BloemSystemHandler) SetNativeAudioReadiness(ready func(context.Context) bool) {
+	h.nativeAudioReadiness = ready
 }

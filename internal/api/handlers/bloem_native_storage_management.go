@@ -15,15 +15,16 @@ import (
 	"unicode/utf8"
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
+
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/plugins"
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -685,7 +686,11 @@ func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx cont
 	}
 	combinations := []nativeStorageSourceMedia{{SourceKind: "filesystem", MediaKinds: []string{"movies", "series", "ebooks", "audiobooks", "podcasts"}}}
 	if editing {
-		combinations = append(combinations, nativeStorageSourceMedia{SourceKind: "s3", MediaKinds: kinds}, nativeStorageSourceMedia{SourceKind: "bookwarehouse", MediaKinds: []string{"ebooks"}})
+		bookwarehouse := []string{"ebooks"}
+		if audio {
+			bookwarehouse = append(bookwarehouse, "audiobooks")
+		}
+		combinations = append(combinations, nativeStorageSourceMedia{SourceKind: "s3", MediaKinds: kinds}, nativeStorageSourceMedia{SourceKind: "bookwarehouse", MediaKinds: bookwarehouse})
 	}
 	return map[string]any{"schema": 2, "library_location_browsing": browsing, "library_location_atomic_editing": editing, "library_location_mixing": mixing, "supported_source_media": combinations, "native_audio_libraries": audio, "native_audio_playback": audio, "source_management": ready, "approved_artifact_install": ready,
 		"configuration_replace_unbound": ready, "disable": ready, "uninstall": ready, "upgrade": ready,

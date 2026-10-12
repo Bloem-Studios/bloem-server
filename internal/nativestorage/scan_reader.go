@@ -9,17 +9,18 @@ import (
 	"time"
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 )
 
 // ScanReader opens pinned entries for a host scan. It grants no viewer access
@@ -30,6 +31,7 @@ type ScanReader struct {
 	host             *Host
 	runtime          Runtime
 	nativeMovieReady bool
+	nativeAudioReady bool
 }
 
 // ScanPage seals the validated provider page, its current pending checkpoint
@@ -100,6 +102,7 @@ func (r *ScanReader) AdmitScanPage(ctx context.Context, location storagesource.L
 	frozen.Config = proto.CloneOf(&publicv1.ConfigureRequest{Config: snapshot.Config}).Config
 	resources := resourcetenancy.NewStore(r.pool)
 	resources.SetNativeMovieReady(r.nativeMovieReady)
+	resources.SetNativeAudioReady(r.nativeAudioReady)
 	pinned, err := resources.StorageScanResources(ctx, location, source)
 	if err != nil {
 		return nil, err
@@ -150,6 +153,7 @@ func (r *ScanReader) authorize(ctx context.Context, p *ScanPage) (scanOwnerEvide
 	}
 	resources := resourcetenancy.NewStore(r.pool)
 	resources.SetNativeMovieReady(r.nativeMovieReady)
+	resources.SetNativeAudioReady(r.nativeAudioReady)
 	if err = resources.RequireStorageScanTx(ctx, tx, p.location, p.source, p.resources); err != nil {
 		return owners, err
 	}
@@ -434,4 +438,11 @@ func (s *scanEntrySource) ReadRange(ctx context.Context, ref mediasource.Ref, of
 	err := s.raw.ReadRange(ctx, ref, offset, length, w)
 	after := s.state.check(ctx)
 	return s.state.fail(errors.Join(err, after))
+}
+
+// SetNativeAudioReady is startup-only, before page admission or provider reads.
+func (r *ScanReader) SetNativeAudioReady(ready bool) {
+	if r != nil {
+		r.nativeAudioReady = ready
+	}
 }

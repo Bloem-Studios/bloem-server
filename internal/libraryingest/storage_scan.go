@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -209,6 +210,10 @@ type StorageScanner struct {
 	scanner          *scanner.Scanner
 	leaseTTL         time.Duration
 	nativeMovieReady bool
+	nativeAudioReady bool
+	audioGate        *atomic.Bool
+	audioReader      *nativestorage.ScanReader
+	audioProbeConfig scanner.NativeProbeConfig
 	movieReader      *nativestorage.ScanReader
 	movieProbeConfig scanner.NativeProbeConfig
 	movieMetadata    NativeMovieMetadata
@@ -241,7 +246,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	if folder == nil || folder.ID != location.FolderID {
 		return result, storagesource.ErrReferenceConflict
 	}
-	if !librarykind.SupportsNativeStorage(folder.Type, c.nativeMovieReady) || !folder.Enabled {
+	if !librarykind.SupportsNativeStorageKinds(folder.Type, c.nativeMovieReady, c.nativeAudioReady && c.audioGate != nil && c.audioGate.Load()) || !folder.Enabled {
 		return result, fmt.Errorf("storage library kind is not ready")
 	}
 	// Runtime admission covers every provider call and renewal worker; Shutdown
@@ -289,6 +294,9 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	}
 	if err = describedSource(description, source, snapshot); err != nil {
 		return result, err
+	}
+	if librarykind.IsAudiobook(folder.Type) && !declaresNativeAudio(description, source.ProviderSourceID) {
+		return result, storagesource.ErrSourceUnavailable
 	}
 	// Describe/startup may outlive a remote configuration or authorization
 	// change. Recheck before claiming a lease, publishing, or sweeping files.
@@ -352,9 +360,17 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			// Stop renewing first so a renewal cannot race completion.
 			stopRenew()
 			var swept scanner.ScanResult
+			var audioFinal scanner.StorageAudioResult
+			var audioHidden int
 			var orphanedImageDirs []string
 			finalize := func(ctx context.Context, tx pgx.Tx) error {
 				var err error
+				if librarykind.IsAudiobook(folder.Type) {
+					audioFinal, audioHidden, err = c.scanner.FinalizeStorageAudioLocationTx(ctx, tx, folder, location, lease)
+					if err != nil {
+						return err
+					}
+				}
 				swept, orphanedImageDirs, err = c.scanner.SweepStorageLocationCountsTx(ctx, tx, folder, location)
 				return err
 			}
@@ -362,7 +378,11 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			if err != nil {
 				return result, err
 			}
-			result.ScanResult.Missing += missing
+			result.ScanResult.Missing += missing + audioHidden
+			result.ScanResult.New += audioFinal.New
+			result.ScanResult.Updated += audioFinal.Updated
+			result.ScanResult.Unchanged += audioFinal.Unchanged
+			result.ScanResult.Errors += audioFinal.BooksRejected
 			result.ScanResult.FilesDeleted += swept.FilesDeleted
 			result.ScanResult.MembershipsRemoved += swept.MembershipsRemoved
 			result.ScanResult.ItemsDeleted += swept.ItemsDeleted
@@ -379,10 +399,14 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		}
 		var books []scanner.StorageEbook
 		var movies []scanner.StorageMovie
+		var audio []scanner.StorageAudioTrack
 		var skipped int
 		var excluded []string
 		if librarykind.IsMovie(folder.Type) {
 			movies, skipped, excluded, err = c.prepareMovies(job, location, source, lease, checkpoint, page)
+		} else if librarykind.IsAudiobook(folder.Type) {
+			audio, skipped, err = c.prepareAudio(job, location, source, lease, checkpoint, page)
+			page.ChangeToken = ""
 		} else {
 			books, skipped, err = c.prepare(job, media, source, page.GetEntries())
 		}
@@ -393,6 +417,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		// identity; publish against settled catalog rows.
 		matching.Wait()
 		var published scanner.StoragePublishResult
+		var audioRejected int
 		var matches []scanner.StorageMovieMatch
 		publish := func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry, _ []string) error {
 			allowed := make(map[string]bool, len(files))
@@ -418,6 +443,16 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 					moviePage, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueMovies)
 					published, matches = moviePage.StoragePublishResult, moviePage.Matches
 				}
+			} else if librarykind.IsAudiobook(folder.Type) {
+				var allowedTracks []scanner.StorageAudioTrack
+				for _, track := range audio {
+					if allowed[track.Entry.Id] {
+						allowedTracks = append(allowedTracks, track)
+					}
+				}
+				var audioPage scanner.StorageAudioResult
+				audioPage, err = c.scanner.PublishStorageAudioPageTx(ctx, tx, scanner.StorageAudioPage{Folder: folder, Location: location, Lease: lease, ConfigurationRevision: source.ConfigurationRevision, DirectoryID: checkpoint.DirectoryID, Complete: page.GetComplete(), Tracks: allowedTracks})
+				published, audioRejected = audioPage.StoragePublishResult, audioPage.BooksRejected
 			} else {
 				if len(uniqueBooks) == 0 {
 					return nil
@@ -452,6 +487,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 				c.matchMovies(job, folder.ID, matches, matchStats)
 			}()
 		}
+		result.ScanResult.Errors += audioRejected
 		result.ScanResult.New += published.New
 		result.ScanResult.Updated += published.Updated
 		result.ScanResult.Unchanged += published.Unchanged + skipped

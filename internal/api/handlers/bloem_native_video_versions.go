@@ -47,7 +47,7 @@ func nativeVideoVersionCandidates(files []*models.MediaFile) []*models.MediaFile
 	}
 	result := make([]*models.MediaFile, 0, len(files))
 	for _, file := range files {
-		if file != nil && (!storagesource.IsNativeLocation(file.FilePath) || NativeVideoSupported(file)) {
+		if file != nil && (!storagesource.IsNativeLocation(file.FilePath) || nativeVideoFileSupported(file)) {
 			result = append(result, file)
 		}
 	}

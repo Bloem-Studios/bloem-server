@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"log/slog"
+	"sync/atomic"
 
 	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 
@@ -27,6 +28,8 @@ type BloemDependencies struct {
 	// trusted probe and publication coordinator. It is not backend health proof
 	// or viewer playback authority, and no request/config setting may change it.
 	NativeMovieScannerReady bool
+	NativeAudioScannerReady bool
+	NativeAudioGate         *atomic.Bool
 	Ambience                *ambience.Service   // S-3 seasonal ambience packs (nil when DB unavailable)
 	Promotions              *promotions.Service // S-2 promotion cards (nil when DB unavailable)
 	HostStatsSource         handlers.HostStatsSource

@@ -7,14 +7,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/google/uuid"
+
+	"github.com/Silo-Server/silo-server/internal/bookrequests"
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func nativeAudioFixture(t *testing.T) (*pgxpool.Pool, *Scanner, *models.MediaFolder, storagesource.Location, *storagesource.Repository) {
@@ -124,6 +132,103 @@ func TestNativeAudioPublishesOrderedPresentationDB(t *testing.T) {
 		t.Fatalf("parts=%d", part)
 	}
 	audioComplete(t, r, s, f, l, lease)
+	var staged int
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM bloem_storage_audio_staged_tracks WHERE location_id=$1`, l.ID).Scan(&staged); err != nil || staged != 0 {
+		t.Fatalf("staging=%d err=%v", staged, err)
+	}
+	for _, track := range tracks {
+		var chapters []byte
+		if err := pool.QueryRow(t.Context(), `SELECT f.chapters FROM media_files f JOIN bloem_storage_file_refs x ON x.media_file_id=f.id WHERE x.location_id=$1 AND x.entry_id=$2`, l.ID, track.Entry.Id).Scan(&chapters); err != nil {
+			t.Fatal(err)
+		}
+		var decoded []models.MediaChapter
+		if err := json.Unmarshal(chapters, &decoded); err != nil || len(decoded) != 1 || decoded[0].StartSeconds != 0 || decoded[0].EndSeconds != 2.75 {
+			t.Fatalf("chapters=%s err=%v", chapters, err)
+		}
+	}
+}
+
+func TestNativeAudioInitialMetadataPreservesEnrichmentDuringLockWaitDB(t *testing.T) {
+	pool, s, folder, location, journal := nativeAudioFixture(t)
+	track := audioTestTrack("1", 1, 1)
+	track.Probe.Tags["album"] = "Initial tagged title"
+	lease := audioBegin(t, journal, location)
+	audioApply(t, journal, s, folder, location, lease, true, "", track)
+	audioComplete(t, journal, s, folder, location, lease)
+	var contentID string
+	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE media_folder_id=$1`, folder.ID).Scan(&contentID); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	enrichment, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = enrichment.Rollback(context.Background()) }()
+	title, overview := "Enriched title", "Enriched description"
+	if err := s.itemRepo.UpdateMetadataTx(ctx, enrichment, contentID, &catalog.MetadataUpdate{Title: &title, Overview: &overview}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := enrichment.Exec(ctx, `UPDATE media_items SET status='matched',last_refreshed=clock_timestamp(),matched_at=clock_timestamp() WHERE content_id=$1`, contentID); err != nil {
+		t.Fatal(err)
+	}
+	var enrichmentPID int
+	if err := enrichment.QueryRow(ctx, `SELECT pg_backend_pid()`).Scan(&enrichmentPID); err != nil {
+		t.Fatal(err)
+	}
+	lease = audioBegin(t, journal, location)
+	cp, more, err := journal.NextDirectory(ctx, lease)
+	if err != nil || !more {
+		t.Fatalf("checkpoint=%+v more=%v err=%v", cp, more, err)
+	}
+	done := make(chan error, 1)
+	go func() {
+		done <- journal.ApplyPage(ctx, lease, cp, &storagev1.ListResponse{Entries: []*storagev1.Entry{track.Entry}, Complete: true}, func(ctx context.Context, tx pgx.Tx, _ []*storagev1.Entry, _ []string) error {
+			_, err := s.PublishStorageAudioPageTx(ctx, tx, StorageAudioPage{Folder: folder, Location: location, Lease: lease, ConfigurationRevision: lease.ConfigurationRevision, DirectoryID: cp.DirectoryID, Complete: true, Tracks: []StorageAudioTrack{track}})
+			return err
+		})
+	}()
+	// Observe the real row-lock wait before enrichment commits. At this point
+	// the publisher has read the old pending item under READ COMMITTED.
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		var waiting bool
+		if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid)) AND query LIKE '%media_items%FOR UPDATE%')`, enrichmentPID).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+		select {
+		case err := <-done:
+			t.Fatalf("publisher completed before lock wait: %v", err)
+		case <-ctx.Done():
+			t.Fatal(ctx.Err())
+		case <-ticker.C:
+		}
+	}
+	if err := enrichment.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	var gotTitle, gotOverview, status string
+	if err := pool.QueryRow(ctx, `SELECT title,overview,status FROM media_items WHERE content_id=$1`, contentID).Scan(&gotTitle, &gotOverview, &status); err != nil {
+		t.Fatal(err)
+	}
+	if gotTitle != title || gotOverview != overview || status != "matched" {
+		t.Fatalf("enrichment overwritten: title=%q overview=%q status=%q", gotTitle, gotOverview, status)
+	}
+	audioComplete(t, journal, s, folder, location, lease)
 }
 
 func TestNativeAudioCompletesBookOnEmptyFinalPageDB(t *testing.T) {
@@ -321,23 +426,23 @@ func TestNativeAudioJoinsLocalItemWithoutOverwritingCuratedMetadataDB(t *testing
 	original := audioTestTrack("local", 1, 1)
 	original.Entry.Audiobook = &storagev1.AudiobookMetadata{Title: "Curated book", Authors: []string{"Curated author"}, Narrators: []string{"Curated narrator"}, Isbn: fmt.Sprintf("curated-%d", f.ID), Series: "Curated series", SeriesIndex: "2"}
 	lease := audioBegin(t, r, l)
-	audioApply(t, r, s, f, l, lease, true, "", original)
+	audioApply(t, r, s, f, l, lease, true, "", original, audioTestTrack("local2", 1, 2))
 	audioComplete(t, r, s, f, l, lease)
 	var id string
-	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE media_folder_id=$1`, f.ID).Scan(&id); err != nil {
+	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE media_folder_id=$1 LIMIT 1`, f.ID).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(t.Context(), `DELETE FROM bloem_storage_file_refs WHERE location_id=$1`, l.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(t.Context(), `UPDATE media_files SET file_path=$2,presentation_group_key='local-fixture' WHERE content_id=$1`, id, fmt.Sprintf("/fixture/%d/local.mp3", f.ID)); err != nil {
+	if _, err := pool.Exec(t.Context(), `UPDATE media_files SET file_path=$2||'/'||id||'.mp3',presentation_group_key='local-fixture' WHERE content_id=$1`, id, fmt.Sprintf("/fixture/%d/local.mp3", f.ID)); err != nil {
 		t.Fatal(err)
 	}
 	before := audioItemSnapshot(t, pool, id)
 	incoming := audioTestTrack("native", 1, 1)
 	incoming.Entry.Audiobook = &storagev1.AudiobookMetadata{Title: "Incoming title", Authors: []string{"Incoming author"}, Isbn: original.Entry.Audiobook.Isbn, Series: "Incoming series"}
 	lease = audioBegin(t, r, l)
-	audioApply(t, r, s, f, l, lease, true, "", incoming)
+	audioApply(t, r, s, f, l, lease, true, "", incoming, audioTestTrack("native2", 1, 2))
 	audioComplete(t, r, s, f, l, lease)
 	if after := audioItemSnapshot(t, pool, id); after != before {
 		t.Fatalf("curated metadata changed\nbefore=%s\nafter=%s", before, after)
@@ -346,6 +451,17 @@ func TestNativeAudioJoinsLocalItemWithoutOverwritingCuratedMetadataDB(t *testing
 	if err := pool.QueryRow(t.Context(), `SELECT count(DISTINCT content_id),count(DISTINCT presentation_group_key) FROM media_files WHERE media_folder_id=$1 AND missing_since IS NULL`, f.ID).Scan(&items, &groups); err != nil || items != 1 || groups != 2 {
 		t.Fatalf("items=%d groups=%d err=%v", items, groups, err)
 	}
+	detailService := catalog.NewDetailService(catalog.NewItemRepository(pool), catalog.NewEpisodeRepository(pool), catalog.NewSeasonRepository(pool), catalog.NewPersonRepository(pool), s.fileRepo)
+	detail, err := detailService.GetItemDetail(t.Context(), id, catalog.AccessFilter{})
+	if err != nil || len(detail.PlaybackVariants) != 2 {
+		t.Fatalf("detail variants=%+v err=%v", detail, err)
+	}
+	for _, variant := range detail.PlaybackVariants {
+		if len(variant.Parts) != 2 {
+			t.Fatalf("multipart variant=%+v", variant)
+		}
+	}
+
 }
 
 func TestNativeAudioForeignItemMetadataNotOverwrittenDB(t *testing.T) {
@@ -435,6 +551,32 @@ func TestNativeAudioRecordsAudiobookProviderIDsDB(t *testing.T) {
 	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM media_item_provider_ids WHERE provider='asin' AND provider_id=$1 AND item_type='audiobook'`, fmt.Sprintf("AB-C-%d", f.ID)).Scan(&count); err != nil || count != 1 {
 		t.Fatalf("ASIN rows=%d err=%v", count, err)
 	}
+	// Exercise the owning request reconciler instead of duplicating its identity SQL.
+	var uid int
+	if err := pool.QueryRow(t.Context(), `INSERT INTO users(username,email,password_hash,role,enabled) VALUES($1,$2,'x','user',true) RETURNING id`, fmt.Sprintf("audio-request-%d", f.ID), fmt.Sprintf("audio-request-%d@example.test", f.ID)).Scan(&uid); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=$1`, uid) })
+	requestID := uuid.New()
+	if _, err := pool.Exec(t.Context(), `INSERT INTO bloem_book_requests(id,organization_id,identity_key,title,isbn,asin,status,requested_by_user_id,requested_by_profile_id,client_key,request_digest)
+ SELECT $1::uuid,id,$2,'Native audio request',$3,$4,'approved',$5,'fixture-profile',($1::uuid)::text,'fixture-digest' FROM organizations WHERE is_default`, requestID, "isbn:"+normalized, normalized, fmt.Sprintf("AB-C-%d", f.ID), uid); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bookrequests.NewService(pool, nil).Reconcile(t.Context(), 100); err != nil {
+		t.Fatal(err)
+	}
+	var status, matched string
+	if err := pool.QueryRow(t.Context(), `SELECT status,library_content_id FROM bloem_book_requests WHERE id=$1`, requestID).Scan(&status, &matched); err != nil {
+		t.Fatal(err)
+	}
+	var nativeID string
+	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE media_folder_id=$1 LIMIT 1`, f.ID).Scan(&nativeID); err != nil {
+		t.Fatal(err)
+	}
+	if status != "completed" || matched != nativeID || matched == ebook {
+		t.Fatalf("request status=%s match=%s native=%s", status, matched, nativeID)
+	}
+
 }
 
 func TestNativeAudioStagingOverflowRemainsRejectedOnReplayDB(t *testing.T) {
@@ -488,5 +630,61 @@ func TestNativeAudioRetiresRemovedTrackAndHidesIncompletePresentationDB(t *testi
 	audioComplete(t, r, s, f, l, lease)
 	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM media_files WHERE media_folder_id=$1 AND missing_since IS NULL`, f.ID).Scan(&present); err != nil || present != 2 {
 		t.Fatalf("restoration present=%d err=%v", present, err)
+	}
+}
+
+func TestLocalAudiobookScanPreservesPublishedNativeAudioDB(t *testing.T) {
+	pool, s, folder, location, r := nativeAudioFixture(t)
+	lease := audioBegin(t, r, location)
+	audioApply(t, r, s, folder, location, lease, true, "", audioTestTrack("native", 1, 1))
+	audioComplete(t, r, s, folder, location, lease)
+	var nativeID int
+	if err := pool.QueryRow(t.Context(), `SELECT id FROM media_files WHERE media_folder_id=$1`, folder.ID).Scan(&nativeID); err != nil {
+		t.Fatal(err)
+	}
+	before, err := s.fileRepo.GetByID(t.Context(), nativeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	book := filepath.Join(root, "Local Book")
+	if err := os.Mkdir(book, 0700); err != nil {
+		t.Fatal(err)
+	}
+	local := filepath.Join(book, "local.mp3")
+	if out, err := exec.CommandContext(t.Context(), "ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "sine=duration=2.75", "-c:a", "libmp3lame", "-y", local).CombinedOutput(); err != nil {
+		t.Fatalf("fixture: %v %s", err, out)
+	}
+	folder.Paths = []string{root}
+	s.emptyTrashAfterScan = true
+	s.SetMaintenanceFileScope(NativeMaintenanceFileScope{})
+	if _, err := pool.Exec(t.Context(), `INSERT INTO media_folder_paths(media_folder_id,path) VALUES($1,$2)`, folder.ID, root); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ScanAudiobookFolder(t.Context(), folder, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(local); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ScanAudiobookFolder(t.Context(), folder, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.fileRepo.DeleteMissingByFolder(t.Context(), folder.ID, 0, nil); err != nil {
+		t.Fatal(err)
+	}
+	after, err := s.fileRepo.GetByID(t.Context(), nativeID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.MissingSince != nil || after.ContentID != before.ContentID || after.PresentationGroupKey != before.PresentationGroupKey {
+		t.Fatalf("native changed: %+v", after)
+	}
+	var refs, roots, members int
+	if err := pool.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM bloem_storage_file_refs WHERE media_file_id=$1),(SELECT count(*) FROM bloem_storage_file_roots WHERE media_file_id=$1 AND enabled),(SELECT count(*) FROM media_item_libraries WHERE content_id=$2 AND media_folder_id=$3)`, nativeID, before.ContentID, folder.ID).Scan(&refs, &roots, &members); err != nil {
+		t.Fatal(err)
+	}
+	if refs != 1 || roots != 1 || members != 1 {
+		t.Fatalf("refs=%d roots=%d membership=%d", refs, roots, members)
 	}
 }

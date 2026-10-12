@@ -304,3 +304,11 @@ route boundary, tenant identity and viewer policy still run after extraction.
 Removing URL authentication without replacing every media loader caused subtitle
 and attached-font requests to fail with 401. Follow upstream here rather than
 adding a second subtitle transport.
+
+## Audiobookshelf native audiobook filtering
+
+Six calls in `internal/audiobooks/media_store.go` delegate to the owned
+`bloem_native_audio_filter.go`: item get/batch, item access predicates, file
+get/list and presentation runtime. Native-only items and native files remain
+absent from ABS; mixed items retain local files and local runtime. The unchanged
+materialized author-count path can include native-only books.
