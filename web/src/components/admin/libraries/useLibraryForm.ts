@@ -370,9 +370,13 @@ export function useLibraryForm({
           } else if (library) onClose?.();
           else finishCreate(saved.library!);
         };
-        if (library) {
+        const savedLibrary = library ?? locations.createdLibrary;
+        if (savedLibrary) {
           const { paths: _paths, storage_source: _source, ...options } = body;
-          updateMutation.mutate({ id: library.id, body: options }, { onSuccess: afterOptions });
+          updateMutation.mutate(
+            { id: savedLibrary.id, body: options },
+            { onSuccess: afterOptions },
+          );
         } else afterOptions();
       });
       return { ok: true, errors: {} };

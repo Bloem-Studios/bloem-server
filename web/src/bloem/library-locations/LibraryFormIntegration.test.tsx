@@ -44,6 +44,66 @@ beforeEach(() => {
   state.active = { key: "platform", scope: "platform" };
   activateAdminV2Context("fixture", "platform");
 });
+it.each([false, true])(
+  "retries a failed provider chain without another POST (reload: %s)",
+  async (reload) => {
+    let creates = 0;
+    const created = { id: 7, name: "Books", type: "ebooks", paths: ["/saved"] } as Library;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit) => {
+        if (init.method === "POST") {
+          creates++;
+          return response({ library: created, locations: snapshot });
+        }
+        return response(
+          url.includes("capabilities")
+            ? caps
+            : url.includes("sources")
+              ? { sources: [], next_after: null }
+              : snapshot,
+        );
+      }),
+    );
+    const close = vi.fn();
+    const { result } = renderHook(() => useLibraryForm({ library: null, onClose: close }));
+    await waitFor(() => expect(result.current.locations.ready).toBe(true));
+    act(() => {
+      result.current.setName("Books");
+      result.current.updatePath(0, "/saved");
+      result.current.reorderLevel("ebook", [
+        {
+          plugin_installation_id: 1,
+          capability_id: "metadata",
+          provider_slug: "fixture",
+          enabled: true,
+        },
+      ]);
+    });
+    act(() => expect(result.current.submit().ok).toBe(true));
+    await waitFor(() => expect(state.chain).toHaveBeenCalledTimes(1));
+    expect(state.chain.mock.calls[0]![0].id).toBe(7);
+    // The failed external mutation never invokes its success callback.
+    expect(close).not.toHaveBeenCalled();
+    if (reload) {
+      await act(async () => result.current.locations.reload());
+      await waitFor(() => expect(result.current.locations.ready).toBe(true));
+    }
+    act(() => expect(result.current.submit().ok).toBe(true));
+    await waitFor(() => {
+      expect(state.mutate.mock.calls.length + state.chain.mock.calls.length).toBeGreaterThan(1);
+    });
+    expect(creates).toBe(1);
+    if (state.mutate.mock.calls.length) {
+      expect(state.mutate.mock.calls[0]![0].id).toBe(7);
+      act(() => state.mutate.mock.calls[0]![1].onSuccess());
+    }
+    await waitFor(() => expect(state.chain).toHaveBeenCalledTimes(2));
+    expect(state.chain.mock.calls[1]![0].id).toBe(7);
+    act(() => state.chain.mock.calls[1]![1].onSuccess());
+    expect(close).toHaveBeenCalledTimes(1);
+  },
+);
 it("saves locations atomically and preserves normal processing settings and metadata chain", async () => {
   let replacement!: { paths: string[] };
   vi.stubGlobal(

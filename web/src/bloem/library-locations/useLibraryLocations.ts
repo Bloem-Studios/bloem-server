@@ -41,6 +41,9 @@ export function useLibraryLocations(
   const [caps, setCaps] = useState<LocationCapabilities | null>(null);
   const [sources, setSources] = useState<StorageSource[]>([]);
   const [original, setOriginal] = useState<MixedLibraryLocations | null>(null);
+  const [createdLibrary, setCreatedLibrary] = useState<Library | null>(null);
+  const createdContext = useRef<typeof context>(null);
+  const createdLibraryID = useRef<number | null>(null);
   const [selections, setSelections] = useState<RootSelection[]>([]);
   const [error, setError] = useState("");
   const [uncertainCreate, setUncertainCreate] = useState(false);
@@ -64,6 +67,8 @@ export function useLibraryLocations(
     setPending(false);
     busy.current = false;
     loadedContext.current = null;
+    const savedID = id ?? (createdContext.current === context ? createdLibraryID.current : null);
+    if (createdContext.current !== context) setCreatedLibrary(null);
     if (api)
       void (async () => {
         try {
@@ -86,7 +91,7 @@ export function useLibraryLocations(
             .catch((e) => {
               if (request === epoch.current && !abort.signal.aborted) setError(e.message);
             });
-          const value = id ? await api.read(id, abort.signal) : null;
+          const value = savedID ? await api.read(savedID, abort.signal) : null;
           if (request !== epoch.current || abort.signal.aborted) return;
           setOriginal(value);
           if (value) onPaths?.(value.paths);
@@ -159,13 +164,16 @@ export function useLibraryLocations(
     setPending(true);
     setError("");
     const request = epoch.current;
+    // Creation may succeed before a later options/provider-chain write fails.
+    // Preserve that known identity so retrying the form cannot create again.
+    const savedID = id ?? createdLibrary?.id;
     let writeStarted = false;
     try {
       const invalid = shapeError(body.paths);
       if (invalid) throw new Error(invalid);
       let fresh: MixedLibraryLocations | null = null;
-      if (id && original) {
-        fresh = await api.read(id);
+      if (savedID && original) {
+        fresh = await api.read(savedID);
         if (
           fresh.revision !== original.revision ||
           JSON.stringify(fresh.paths) !== JSON.stringify(original.paths) ||
@@ -207,11 +215,19 @@ export function useLibraryLocations(
       if (!isCurrent() || request !== epoch.current) return null;
       writeStarted = true;
       const value =
-        id && original
-          ? { locations: await api.replace(id, body.paths, refreshed, original) }
+        savedID && original
+          ? {
+              library: createdLibrary ?? undefined,
+              locations: await api.replace(savedID, body.paths, refreshed, original),
+            }
           : await api.create(body, refreshed);
       if (!isCurrent() || request !== epoch.current) return null;
       setOriginal(value.locations);
+      if (!id && value.library) {
+        createdContext.current = context;
+        createdLibraryID.current = value.library.id;
+        setCreatedLibrary(value.library);
+      }
       onPaths?.(value.locations.paths);
       setSelections(value.locations.selections);
       void queryClient?.invalidateQueries({ queryKey: adminKeys.libraries() });
@@ -221,7 +237,7 @@ export function useLibraryLocations(
       if (isCurrent() && request === epoch.current) {
         setError(e instanceof Error ? e.message : "Save failed.");
         if (
-          !id &&
+          !savedID &&
           writeStarted &&
           (!(e instanceof AdminV2ClientError) || e.code === "mutation_outcome_unknown")
         ) {
@@ -254,6 +270,7 @@ export function useLibraryLocations(
     sources,
     selections,
     original,
+    createdLibrary,
     api,
     context,
     isCurrent,
@@ -264,6 +281,8 @@ export function useLibraryLocations(
     blocked: !!active && loaded && !caps,
     reset: () => {
       setOriginal(null);
+      setCreatedLibrary(null);
+      createdLibraryID.current = null;
       setSelections([]);
     },
     reload: async () => {
