@@ -74,7 +74,7 @@ func NewToolInput(ctx context.Context, file mediasource.File, config ToolInputCo
 		config.ChunkBytes <= 0 || config.ChunkBytes > 8<<20 || config.MaxConcurrentReads <= 0 || config.MaxConcurrentReads > 8 || config.Timeout <= 0 {
 		return nil, ErrToolInputInvalid
 	}
-	if err := ctx.Err(); err != nil {
+	if err := context.Cause(ctx); err != nil {
 		return nil, &toolInputFailure{err}
 	}
 	info := file.Info()
@@ -127,7 +127,7 @@ func (t *ToolInput) Run(run func(context.Context, string) error) (result error) 
 	t.mu.Unlock()
 	defer func() {
 		t.mu.Lock()
-		if err := t.ctx.Err(); err != nil && t.sticky == nil {
+		if err := context.Cause(t.ctx); err != nil && t.sticky == nil {
 			t.sticky = &toolInputFailure{err}
 		}
 		t.joined = true
@@ -212,7 +212,9 @@ func (t *ToolInput) Close() error {
 	t.closeOnce.Do(func() {
 		t.mu.Lock()
 		t.closing = true
-		if err := t.ctx.Err(); err != nil && t.sticky == nil {
+		// A source can cancel its lifetime before the HTTP handler records
+		// its terminal error. Retain that cause when cleanup wins the race.
+		if err := context.Cause(t.ctx); err != nil && t.sticky == nil {
 			t.sticky = &toolInputFailure{err}
 		}
 		joined, stop := t.toolJoined, t.stopLifetime

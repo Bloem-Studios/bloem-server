@@ -3,6 +3,7 @@ package nativestorage
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -340,6 +341,40 @@ func TestToolInputClosedSourceCannotProduceAcceptedOutput(t *testing.T) {
 	})
 	if !errors.Is(err, os.ErrClosed) {
 		t.Fatalf("closed source failure lost: %v", err)
+	}
+}
+
+func TestToolInputParentCancellationRetainsTerminalCause(t *testing.T) {
+	for _, running := range []bool{false, true} {
+		t.Run(fmt.Sprint(running), func(t *testing.T) {
+			ctx, cancel := context.WithCancelCause(t.Context())
+			defer cancel(nil)
+			file, err := mediasource.Open(ctx, &toolFixtureSource{data: "0123"}, mediasource.Ref{SourceID: "source", EntryID: "entry", Revision: "immutable-fixture"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			input, err := NewToolInput(ctx, file, ToolInputConfig{
+				CancelSource: func() { cancel(nil) }, Reauthorize: func(context.Context) error { return nil },
+				MaxBytes: 4, ChunkBytes: 4, MaxConcurrentReads: 1, Timeout: 5 * time.Second,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer input.Close()
+			terminal := errors.New("private source terminal failure")
+			if running {
+				err = input.Run(func(context.Context, string) error { cancel(terminal); return nil })
+			} else {
+				cancel(terminal)
+				err = input.Close()
+			}
+			if !errors.Is(err, terminal) || !errors.Is(input.Err(), terminal) {
+				t.Fatalf("parent terminal cause lost: result=%v sticky=%v", err, input.Err())
+			}
+			if strings.Contains(err.Error(), terminal.Error()) {
+				t.Fatal("private terminal cause exposed in tool error")
+			}
+		})
 	}
 }
 

@@ -1,6 +1,7 @@
 package nativestorage
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
@@ -64,7 +65,7 @@ func (t *ToolInput) serveToolRange(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "tool input unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	if err := t.ctx.Err(); err != nil {
+	if err := context.Cause(t.ctx); err != nil {
 		t.failServing(err)
 		http.Error(w, "tool input unavailable", http.StatusServiceUnavailable)
 		return
@@ -125,7 +126,7 @@ func (t *ToolInput) serveToolRange(w http.ResponseWriter, r *http.Request) {
 // readToolChunk buffers a complete bounded read before HTTP sees any byte.
 // Even n==len(buffer) accompanied by an error must invalidate all tool output.
 func (t *ToolInput) readToolChunk(buffer []byte, offset int64) error {
-	if err := t.ctx.Err(); err != nil {
+	if err := context.Cause(t.ctx); err != nil {
 		return err
 	}
 	if err := t.config.Reauthorize(t.ctx); err != nil {
@@ -147,7 +148,7 @@ func (t *ToolInput) readToolChunk(buffer []byte, offset int64) error {
 		clear(buffer)
 		return io.ErrUnexpectedEOF
 	}
-	if err := t.ctx.Err(); err != nil {
+	if err := context.Cause(t.ctx); err != nil {
 		clear(buffer)
 		return err
 	}
@@ -155,7 +156,7 @@ func (t *ToolInput) readToolChunk(buffer []byte, offset int64) error {
 		clear(buffer)
 		return err
 	}
-	if err := t.ctx.Err(); err != nil {
+	if err := context.Cause(t.ctx); err != nil {
 		clear(buffer)
 		return err
 	}
