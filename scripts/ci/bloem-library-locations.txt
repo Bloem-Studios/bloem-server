@@ -1,0 +1,51 @@
+# Mixed library locations: required database regressions.
+# The dbpins runner fails on missing, skipped or failing tests and subtests.
+# Add each implementation milestone's regression pins as the tests are created.
+
+# Retained identities, independent inventories and actual deletion worker.
+./internal/storagesource TestMixedLocationsPreservePublishedIdentityDB
+./internal/storagesource TestSharedSourceHasIndependentInventoriesDB
+./internal/storagesource TestLibraryMayRetainSeveralSourcesDB
+./internal/storagesource TestCrossLocationRootsCannotPublishFileDB
+./internal/storagesource TestRunningScansRequireCurrentLocationBindingDB
+./internal/storagesource TestLegacyBeginDoesNotWaitForDeletingLocationDB
+./internal/storagesource TestDeletingSharedSourceLibraryRetainsHistoryDB
+
+# Upgrade, atomic downgrade refusal, legacy round trip and indexed ownership.
+./migrations TestMixedLocationsMigrationPreservesPublishedIdentitiesPostgres
+./migrations TestMixedLocationsDowngradeRefusesAtomicallyPostgres
+./migrations TestMixedLocationsDowngradePreservesLegacyRepresentationPostgres
+./migrations TestMixedLocationsUpgradeRetainsUnattachedHistoryPostgres
+./migrations TestMixedLocationForeignKeysAreIndexedPostgres
+
+# Authorized browse references, preparation, cursor and provider wait revocation.
+./internal/nativestorage TestSourceBrowserDirectoriesAndPreparedSelectionsDB
+./internal/nativestorage TestSourceBrowserRejectsInvalidPagesDB
+./internal/nativestorage TestSourceBrowserReferenceIsolationDB
+./internal/nativestorage TestSourceBrowserRechecksHeldProviderIODB
+./internal/nativestorage TestSourceBrowserSharedEntitlementRevocationDB
+./internal/nativestorage TestSourceBrowserPreparationLimitsDB
+./internal/nativestorage TestSourceBrowserFiltersLegacyFilesAndBoundsHostPagesDB
+./internal/nativestorage TestSourceBrowserAudioRequiresExplicitDirectoryListingDB
+./internal/nativestorage TestSourceBrowserRejectsDuplicateAcrossProviderPagesDB
+./internal/nativestorage TestPreparedSelectionsCannotBeCopiedOrReusedAfterRevocationDB
+./internal/nativestorage TestSourceBrowserReferencesRejectOtherAuthorizedSourceDB
+./internal/nativestorage TestSourceBrowserCompactCursorRejectsChangedOrMissingStateDB
+./internal/nativestorage TestSourceBrowserWithoutCursorStoreKeepsTerminalBrowseDB
+./internal/nativestorage TestSourceBrowserRechecksHeldCursorStateDB
+./internal/nativestorage TestSourceBrowserReferencesRejectOtherAuthorizedOrganizationDB
+./internal/nativestorage TestSourceBrowserRedisPaginationBeyondActorQuotaDB
+
+# Aggregate installed/source/library lock ordering and removal-only authority.
+./internal/resourcetenancy TestNativeAggregateRetainsMixedLibraryDB
+./internal/resourcetenancy TestNativeAggregateRejectsChangesAfterInstallationWaitDB
+./internal/resourcetenancy TestNativeAggregateLocksEveryInstallationBeforeOwnersDB
+./internal/resourcetenancy TestNativeAggregateAllowsRemovalOfUnavailableExistingSourceDB
+
+# Real Redis Lua retention, byte limits and expiry; requires disposable SILO_TEST_REDIS_URL.
+./internal/nativestorage TestRedisBrowseCursorStoreRetentionBounds
+./internal/nativestorage TestRedisBrowseCursorStoreBytesAndExpiry
+./internal/nativestorage TestRedisBrowseCursorStoreReplacementRequiresLiveActorState
+./internal/nativestorage TestRedisBrowseCursorStoreConsumeRequiresLiveActorState
+./internal/nativestorage TestSourceBrowserTerminalCursorRequiresLiveRedisStateDB
+./internal/nativestorage TestSourceBrowserConcurrentTerminalCursorHasOneWinnerDB

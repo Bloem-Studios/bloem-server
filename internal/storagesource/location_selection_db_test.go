@@ -78,6 +78,14 @@ func TestMixedLocationsPreservePublishedIdentityDB(t *testing.T) {
 	if !retained {
 		t.Fatal("disabled root identity lost")
 	}
+	if _, _, err := repo.FileReference(t.Context(), 91001, 91001); !errors.Is(err, ErrReferenceConflict) {
+		t.Fatalf("disabled selected root authorized a read: %v", err)
+	}
+	// Restore root authority before testing source availability independently.
+	execSQL(t, repo.pool, `UPDATE bloem_storage_selected_roots SET enabled=true WHERE id=$1`, rootID)
+	if _, got, err := repo.FileReference(t.Context(), 91001, 91001); err != nil || got != ref {
+		t.Fatalf("restored root lost published identity: %+v %v", got, err)
+	}
 	// Root persistence grants no source/installation availability by itself.
 	execSQL(t, repo.pool, `UPDATE bloem_storage_sources SET enabled=false WHERE key=$1`, source.Key)
 	if _, got, err := repo.FileReference(t.Context(), 91001, 91001); !errors.Is(err, ErrSourceUnavailable) || got != ref {
