@@ -500,7 +500,7 @@ func TestNativeStorageRegistryAtomicInstallSnapshot(t *testing.T) {
 	}
 }
 func TestNativeStorageRegistryConcurrentConfigurationFence(t *testing.T) {
-	r, s, _ := nativeRegistryFixture(t)
+	r, s := nativeRegistryScanFixture(t)
 	repo := storagesource.NewRepository(r.pool)
 	lease, err := repo.Begin(t.Context(), s.Source.Key, "worker", time.Minute)
 	if err != nil {
@@ -538,7 +538,7 @@ func TestNativeStorageRegistryConcurrentConfigurationFence(t *testing.T) {
 func TestNativeStorageRegistryDisableUninstallRetainsSource(t *testing.T) {
 	for _, uninstall := range []bool{false, true} {
 		t.Run(map[bool]string{false: "disable", true: "uninstall"}[uninstall], func(t *testing.T) {
-			r, s, _ := nativeRegistryFixture(t)
+			r, s := nativeRegistryScanFixture(t)
 			repo := storagesource.NewRepository(r.pool)
 			lease, err := repo.Begin(t.Context(), s.Source.Key, "worker", time.Minute)
 			if err != nil {
@@ -564,6 +564,23 @@ func TestNativeStorageRegistryDisableUninstallRetainsSource(t *testing.T) {
 			}
 		})
 	}
+}
+
+func nativeRegistryScanFixture(t *testing.T) (*NativeStorageRegistry, *NativeStorageSnapshot) {
+	t.Helper()
+	r, s, _ := nativeRegistryFixture(t)
+	// A scan lease belongs to one retained library location with a selected root.
+	if _, err := r.pool.Exec(t.Context(), `INSERT INTO media_folders(id,type,name) VALUES(91921,'ebooks','synthetic scan fixture')`); err != nil {
+		t.Fatal(err)
+	}
+	location := uuid.New()
+	if _, err := r.pool.Exec(t.Context(), `INSERT INTO library_storage_locations(id,source_key,folder_id) VALUES($1,$2,91921)`, location, s.Source.Key); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.pool.Exec(t.Context(), `INSERT INTO bloem_storage_selected_roots(id,location_id,directory_id,name,logical_path) VALUES($1,$2,$3,'synthetic scan root','')`, uuid.New(), location, s.Source.RootEntryID); err != nil {
+		t.Fatal(err)
+	}
+	return r, s
 }
 
 func TestNativeStorageRegistryReinstallRetainsResource(t *testing.T) {
