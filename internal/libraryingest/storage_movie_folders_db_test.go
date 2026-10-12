@@ -170,3 +170,62 @@ func TestNativeMovieStorageTitleFoldersPublishAndMatch(t *testing.T) {
 		t.Fatalf("settled library searched again %+v", requests)
 	}
 }
+
+// An older scan's published files must stop being library items when their
+// next complete page contains only entries now identified as samples/extras.
+func TestNativeMovieStorageExcludedOnlyPageRemovesPriorPublication(t *testing.T) {
+	binary, manifest := nativeMovieScanArtifact(t)
+	f := newNativeMovieScanFixture(t, binary, manifest, true, "movies-folders-filtered")
+	selection := storagesource.LocationSelection{Location: f.location}
+	if _, err := f.scan.ScanStorageFolder(t.Context(), f.folder, selection); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := f.pool.Query(t.Context(), `SELECT f.content_id FROM media_files f JOIN bloem_storage_file_refs r ON r.media_file_id=f.id WHERE r.location_id=$1 AND r.entry_id=ANY($2::text[]) ORDER BY r.entry_id`, f.location.ID, []string{"02-three-am", "05-eerie"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var previous []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		previous = append(previous, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(previous) != 2 {
+		t.Fatalf("previously published items=%v", previous)
+	}
+	beforeAudit, err := os.ReadFile(f.notify + ".io")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(f.notify+".excluded", nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.scan.ScanStorageFolder(t.Context(), f.folder, selection); err != nil {
+		t.Fatal(err)
+	}
+	var edges, memberships int
+	if err := f.pool.QueryRow(t.Context(), `SELECT
+  (SELECT count(*) FROM bloem_storage_location_edges WHERE location_id=$1 AND entry_id=ANY($2::text[])),
+  (SELECT count(*) FROM media_item_libraries WHERE media_folder_id=$3 AND content_id=ANY($4::text[]))`, f.location.ID, []string{"02-three-am", "05-eerie"}, f.folder.ID, previous).Scan(&edges, &memberships); err != nil {
+		t.Fatal(err)
+	}
+	if edges != 0 || memberships != 0 {
+		t.Fatalf("excluded-only page retained publication edges=%d memberships=%d", edges, memberships)
+	}
+	audit, err := os.ReadFile(f.notify + ".io")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The former movies were opened only by the original ordinary scan.
+	for _, id := range []string{"02-three-am", "05-eerie"} {
+		if strings.Count(string(audit), "read "+id) != strings.Count(string(beforeAudit), "read "+id) {
+			t.Fatalf("excluded movie was probed again: %s", id)
+		}
+	}
+}

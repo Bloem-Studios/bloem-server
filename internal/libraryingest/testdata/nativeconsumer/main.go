@@ -63,7 +63,7 @@ func (s *server) Configure(_ context.Context, r *publicv1.ConfigureRequest) (*pu
 	s.objects = fixtures(revision)
 	if strings.HasPrefix(s.mode, "movies") {
 		var err error
-		if s.mode == "movies-folders" {
+		if strings.HasPrefix(s.mode, "movies-folders") {
 			s.objects, err = movieFolderFixtures(s.notify, revision)
 		} else {
 			s.objects, err = movieFixtures(s.notify, revision)
@@ -185,20 +185,24 @@ func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1
 			}
 		}
 	}
+	objects := s.objects
+	if s.mode == "movies-folders-filtered" {
+		objects = s.filteredMovieFolderListing()
+	}
 	offset := 0
 	if r.Cursor != "" {
 		var err error
 		offset, err = strconv.Atoi(r.Cursor)
-		if err != nil || offset < 0 || offset >= len(s.objects) {
+		if err != nil || offset < 0 || offset >= len(objects) {
 			return nil, status.Error(codes.InvalidArgument, "cursor")
 		}
 	}
-	end := min(offset+2, len(s.objects))
-	page := &storagev1.ListResponse{Complete: end == len(s.objects)}
+	end := min(offset+2, len(objects))
+	page := &storagev1.ListResponse{Complete: end == len(objects)}
 	if s.mode == "movies-removed" {
 		page.RemovedEntryIds = []string{"01-movie", "02-movie"}
 	}
-	for _, o := range s.objects[offset:end] {
+	for _, o := range objects[offset:end] {
 		page.Entries = append(page.Entries, o.entry)
 	}
 	if !page.Complete {

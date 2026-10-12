@@ -400,12 +400,11 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			}
 			var err error
 			if librarykind.IsMovie(folder.Type) {
-				if len(uniqueMovies) == 0 {
-					return nil
+				if len(uniqueMovies) > 0 {
+					var moviePage scanner.StorageMoviePublishResult
+					moviePage, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueMovies)
+					published, matches = moviePage.StoragePublishResult, moviePage.Matches
 				}
-				var moviePage scanner.StorageMoviePublishResult
-				moviePage, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueMovies)
-				published, matches = moviePage.StoragePublishResult, moviePage.Matches
 			} else {
 				if len(uniqueBooks) == 0 {
 					return nil

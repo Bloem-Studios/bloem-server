@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 
+	"google.golang.org/protobuf/proto"
+
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 )
 
@@ -69,4 +71,29 @@ func movieFolderFixtures(prefix, revision string) ([]object, error) {
 		result = append(result, object{entry, f.data})
 	}
 	return result, nil
+}
+
+// The marker changes a previously ordinary movie listing into one complete
+// page of the same entry IDs under directories the scanner excludes.
+func (s *server) filteredMovieFolderListing() []object {
+	if _, err := os.Stat(s.notify + ".excluded"); err != nil {
+		return s.objects
+	}
+	var files []object
+	for _, file := range s.objects {
+		var directory string
+		switch file.entry.GetId() {
+		case "02-three-am":
+			directory = "Sample"
+		case "05-eerie":
+			directory = "Trailers"
+		default:
+			continue
+		}
+		entry := proto.CloneOf(file.entry)
+		slash := strings.LastIndex(entry.LogicalPath, "/")
+		entry.LogicalPath = entry.LogicalPath[:slash+1] + directory + "/" + entry.Name
+		files = append(files, object{entry: entry, data: file.data})
+	}
+	return files
 }
