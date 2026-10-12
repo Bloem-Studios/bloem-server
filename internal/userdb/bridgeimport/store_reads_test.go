@@ -14,6 +14,10 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
 
+// Fork tests can supply expected metadata for fields absent from schema22.
+// The source profile and the whole target profile are still compared below.
+var completeExpectedImportedProfile = func(*testing.T, *pgxpool.Pool, importFixture, *userstore.Profile) {}
+
 func assertImportedStoreReads(t *testing.T, pool *pgxpool.Pool, fixture importFixture) {
 	t.Helper()
 	uri := url.URL{Scheme: sourceFileScheme, Path: fixture.path, RawQuery: sourceReadOnlyQuery}
@@ -29,6 +33,7 @@ func assertImportedStoreReads(t *testing.T, pool *pgxpool.Pool, fixture importFi
 	}
 	for _, id := range []string{"parent", "child"} {
 		a := readSchema22Profile(t, source, id)
+		completeExpectedImportedProfile(t, pool, fixture, a)
 		b, err := pg.GetProfile(t.Context(), id)
 		if err != nil {
 			t.Fatal(err)
