@@ -174,26 +174,6 @@
   ],
   "types": [
     {
-      "type": "internal/nativestorage.BrowseDirectory",
-      "reason": "Internal source-browser result; this foundation release does not mount the browse route, so no client receives this shape. Register it when the management route is composed."
-    },
-    {
-      "type": "internal/nativestorage.BrowsePage",
-      "reason": "Internal source-browser result; this foundation release does not mount the browse route, so no client receives this shape. Register it when the management route is composed."
-    },
-    {
-      "type": "internal/nativestorage.BrowseRequest",
-      "reason": "Internal source-browser input; this foundation release does not mount the browse route, so no client submits this shape. Register its client projection when the management route is composed."
-    },
-    {
-      "type": "internal/nativestorage.LibrarySelection",
-      "reason": "Retained location selection used by internal storage authority; this foundation release has no mixed-location management route. Register its client projection when that route is composed."
-    },
-    {
-      "type": "internal/nativestorage.RootSelection",
-      "reason": "Retained selected-root evidence used by internal storage authority; this foundation release has no mixed-location management route. Register its client projection when that route is composed."
-    },
-    {
       "type": "internal/ambience.EvaluationResponse",
       "reason": "Internal ambience-worker-to-host RPC containing selected occurrences validated by the host; clients receive the registered Wire projection."
     },
@@ -2144,6 +2124,14 @@
     {
       "type": "internal/apiv2.BloemOrganizationLibraryLocationsCreate",
       "reason": "OpenAPI-only organization create shape, which rejects platform organization_id. Runtime clients use the registered BloemLibraryLocationsCreateRequest with scoped handler validation."
+    },
+    {
+      "type": "internal/bookrequests.AudiobookIntegration",
+      "reason": "Internal frozen acquisition identity serialized into the durable dispatch descriptor, never returned by HTTP. Admin responses expose AudiobookIntegrationSummary and selected acquisition fields instead."
+    },
+    {
+      "type": "internal/bookrequests.AudiobookReceipt",
+      "reason": "Internal abr1 provider receipt envelope decoded and validated by the host, never returned by HTTP. Admin acquisition responses expose sanitized status and validated acquisition decisions instead."
     }
   ]
 }

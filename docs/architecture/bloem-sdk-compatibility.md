@@ -112,9 +112,17 @@ additions. These are descriptions of the existing wire contract, not authorizati
 changes or new runtime routes. Native storage remains capability-gated and
 `backend_verified` remains false.
 
-The generated source revision for this refresh is
-`9a427dc19ce7f25fe03ae97bbdcebe792d0784e2`, with normalized graph digest
-`sha256:c3a4e8a065ab55958a5e46e0a383abbeae431fed6a57ab0a00be1b81a7055d7d`.
+The October 12 refresh includes source browsing and atomic library selections,
+plus audiobook acquisition setup, admin status, candidate approval and validated
+decisions. The audiobook roots use the Bloem dialect and `audiobook_requests_v1`
+gate. That capability advertises the mounted request lane; it does not promise
+that an acquisition provider is configured or ready. Provider receipts and frozen
+dispatch identities remain internal and are explained in the coverage allowlist.
+Browse and selection roots retain their native-storage capability gates.
+
+The latest generated source revision is
+`17ca70d9bf73433f9a438076ece17602529ddf1f`, with normalized graph digest
+`sha256:bb06207832400d99643e622f82537bca965766ef39046dbe1833e66a823957f6`.
 Each client records the committed artifact revision separately from that source
 stamp. Its checked-in bundle manifest and server pin are the authority for the
 adopted bytes; a later documentation-only server commit does not change the graph.

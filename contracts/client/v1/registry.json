@@ -785,6 +785,18 @@
           "direction": "response",
           "gate": "native_storage.library_location_atomic_editing",
           "dialect": "bloem"
+        },
+        {
+          "type": "AudiobookRequestSetup",
+          "direction": "response",
+          "dialect": "bloem",
+          "gate": "audiobook_requests_v1"
+        },
+        {
+          "type": "AudiobookRequestConnectionInput",
+          "direction": "request",
+          "dialect": "bloem",
+          "gate": "audiobook_requests_v1"
         }
       ]
     },
@@ -2700,6 +2712,18 @@
         {
           "type": "ListResponse",
           "direction": "response"
+        },
+        {
+          "type": "AudiobookAcquisition",
+          "direction": "response"
+        },
+        {
+          "type": "AudiobookAcquisitionList",
+          "direction": "response"
+        },
+        {
+          "type": "AudiobookCandidateApproval",
+          "direction": "request"
         }
       ]
     }
