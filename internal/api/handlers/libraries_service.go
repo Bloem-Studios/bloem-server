@@ -274,8 +274,11 @@ func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req 
 			}
 			req.Paths = nil
 		}
-		if req.Type != nil && !librarykind.IsEbook(*req.Type) {
-			return LibraryView{}, fieldError("type", "Storage sources support ebook libraries only")
+		if req.Type != nil {
+			currentKind := librarykind.Of(oldFolder.Type)
+			if !(currentKind.Ebook || currentKind.Movie || currentKind.Audiobook) || librarykind.Of(*req.Type) != currentKind {
+				return LibraryView{}, fieldError("type", "A storage-source library keeps its media type")
+			}
 		}
 	}
 
