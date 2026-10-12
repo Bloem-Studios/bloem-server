@@ -11,6 +11,8 @@ import {
 import { useStorageSources } from "@/hooks/queries/admin/storageSources";
 import { PROVIDER_TRAILER_KINDS } from "@/lib/extraKinds";
 
+import { useLibraryLocations } from "@/bloem/library-locations/useLibraryLocations";
+
 import { librarySettingSupport } from "./libraryTypes";
 
 export type LevelChainItem = {
@@ -143,6 +145,11 @@ export function useLibraryForm({
   const [paths, setPaths] = useState<string[]>(library?.paths?.length ? library.paths : [""]);
   const [type, setType] = useState(library?.type ?? "movies");
   const settingSupport = librarySettingSupport(type);
+  const locations = useLibraryLocations(library?.id ?? null, type, setPaths);
+  const [intentContext] = useState(locations.context);
+  const staleContext =
+    intentContext?.key !== locations.context?.key ||
+    intentContext?.generation !== locations.context?.generation;
   // A library's location kind is fixed once created.
   const [locationKind, setLocationKind] = useState<LibraryLocationKind>(
     library?.storage_source ? "storage" : "paths",
@@ -188,7 +195,10 @@ export function useLibraryForm({
   const { data: providerDefaults, isLoading: defaultsLoading } = useLibraryProviderDefaults(type);
 
   const isPending =
-    createMutation.isPending || updateMutation.isPending || setChainMutation.isPending;
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    setChainMutation.isPending ||
+    locations.pending;
 
   const defaultLevelChains = useMemo(
     () => levelChainsFromResponse(providerDefaults),
@@ -213,13 +223,22 @@ export function useLibraryForm({
   const allErrors = useMemo<LibraryFormErrors>(() => {
     const next: LibraryFormErrors = {};
     if (!name.trim()) next.name = "Give this library a name.";
-    if (usesStorage) {
+    if (locations.enabled) {
+      if (
+        (!library || !locations.original?.locations.length) &&
+        !paths.some((p) => p.trim()) &&
+        !locations.selections.length
+      )
+        next.paths = "Add at least one folder to scan.";
+      const locationError = locations.shapeError(paths);
+      if (locationError) next.paths = locationError;
+    } else if (usesStorage) {
       if (!library && !storageSource) next.storageSource = "Choose a storage source.";
     } else if (!paths.some((p) => p.trim())) {
       next.paths = "Add at least one folder to scan.";
     }
     return next;
-  }, [library, name, paths, storageSource, usesStorage]);
+  }, [library, name, paths, storageSource, usesStorage, locations]);
   const errors: LibraryFormErrors = submitAttempted ? allErrors : {};
 
   function updatePath(index: number, value: string) {
@@ -277,8 +296,10 @@ export function useLibraryForm({
   }
 
   function finishCreate(created: Library) {
+    if (!locations.contextCurrent()) return;
     onSaved?.(created);
     if (resetAfterCreate) {
+      locations.reset();
       setName("");
       setPaths([""]);
       setSubmitAttempted(false);
@@ -289,14 +310,27 @@ export function useLibraryForm({
 
   function submit(): { ok: boolean; errors: LibraryFormErrors } {
     setSubmitAttempted(true);
+    if (
+      staleContext ||
+      !locations.contextCurrent() ||
+      locations.loading ||
+      locations.blocked ||
+      (locations.enabled && !locations.ready) ||
+      isPending
+    ) {
+      return {
+        ok: false,
+        errors: { paths: "Reload this form in the current administrative context before saving." },
+      };
+    }
     if (allErrors.name || allErrors.paths || allErrors.storageSource) {
       return { ok: false, errors: allErrors };
     }
 
     const body: CreateLibraryRequest = {
       name: name.trim(),
-      paths: usesStorage ? [] : paths.filter((p) => p.trim()),
-      ...(usesStorage && !library ? { storage_source: storageSource } : {}),
+      paths: !locations.enabled && usesStorage ? [] : paths.filter((p) => p.trim()),
+      ...(!locations.enabled && usesStorage && !library ? { storage_source: storageSource } : {}),
       type,
       enabled,
       metadata_language: metadataLanguage,
@@ -313,6 +347,37 @@ export function useLibraryForm({
       body.trickplay_enabled = trickplay;
     }
 
+    if (locations.enabled) {
+      void locations.save(body).then((saved) => {
+        if (!saved || !locations.isCurrent()) return;
+        const afterOptions = () => {
+          if (!locations.isCurrent()) return;
+          if (chainDirty) {
+            setChainMutation.mutate(
+              {
+                id: library?.id ?? saved.library!.id,
+                body: buildProviderChainBody(activeLevelChains),
+              },
+              {
+                onSuccess: () => {
+                  if (locations.isCurrent()) {
+                    if (library) onClose?.();
+                    else finishCreate(saved.library!);
+                  }
+                },
+              },
+            );
+          } else if (library) onClose?.();
+          else finishCreate(saved.library!);
+        };
+        if (library) {
+          const { paths: _paths, storage_source: _source, ...options } = body;
+          updateMutation.mutate({ id: library.id, body: options }, { onSuccess: afterOptions });
+        } else afterOptions();
+      });
+      return { ok: true, errors: {} };
+    }
+
     if (library) {
       // A storage library has no paths to update, and its source is fixed.
       const { storage_source: _source, ...update } = body;
@@ -321,13 +386,18 @@ export function useLibraryForm({
         { id: library.id, body: patch },
         {
           onSuccess: () => {
+            if (!locations.contextCurrent()) return;
             if (chainDirty) {
               setChainMutation.mutate(
                 {
                   id: library.id,
                   body: buildProviderChainBody(activeLevelChains),
                 },
-                { onSuccess: () => onClose?.() },
+                {
+                  onSuccess: () => {
+                    if (locations.contextCurrent()) onClose?.();
+                  },
+                },
               );
             } else {
               onClose?.();
@@ -340,6 +410,7 @@ export function useLibraryForm({
 
     createMutation.mutate(body, {
       onSuccess: (created) => {
+        if (!locations.contextCurrent()) return;
         if (chainDirty) {
           setChainMutation.mutate(
             {
@@ -358,6 +429,8 @@ export function useLibraryForm({
 
   return {
     library,
+    locations,
+    staleContext,
     settingSupport,
     name,
     setName,

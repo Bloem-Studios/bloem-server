@@ -1,3 +1,4 @@
+import { LibraryLocationsEditor } from "@/bloem/library-locations/LibraryLocationsEditor";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -186,6 +187,25 @@ function StorageSourceFields({ form }: { form: LibraryFormController }) {
 
 export function FolderFields({ form }: { form: LibraryFormController }) {
   const [browserOpen, setBrowserOpen] = useState(false);
+
+  if (form.staleContext)
+    return (
+      <p role="alert" className="text-destructive text-sm">
+        Administrative context changed. Close and reopen this form before saving.
+      </p>
+    );
+  if (form.locations.enabled) return <LibraryLocationsEditor form={form} />;
+  if (form.locations.loading || form.locations.blocked)
+    return (
+      <div className="space-y-2">
+        <p role="status" className="text-muted-foreground text-sm">
+          {form.locations.error || "Checking location capabilities…"}
+        </p>
+        <Button type="button" variant="outline" onClick={() => void form.locations.reload()}>
+          Reload locations
+        </Button>
+      </div>
+    );
 
   if (form.usesStorage && form.library) {
     return <StorageSourceFields form={form} />;
