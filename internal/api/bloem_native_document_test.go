@@ -108,8 +108,8 @@ func mountedBookRequestOperations(t *testing.T) map[string]struct{} {
 
 func TestBookRequestDocumentMatchesMountedOperations(t *testing.T) {
 	mounted := mountedBookRequestOperations(t)
-	if len(mounted) != 9 {
-		t.Fatalf("book request operations=%d, want 9", len(mounted))
+	if len(mounted) != 17 {
+		t.Fatalf("book request operations=%d, want 17", len(mounted))
 	}
 	raw, err := apiv2.GenerateBloemOpenAPI()
 	if err != nil {
@@ -123,7 +123,7 @@ func TestBookRequestDocumentMatchesMountedOperations(t *testing.T) {
 	}
 	documented := map[string]struct{}{}
 	for path, item := range doc.Paths {
-		if !strings.Contains(path, "/book-requests") {
+		if !strings.Contains(path, "/book-requests") && !strings.Contains(path, "/audiobook-request-integrations") {
 			continue
 		}
 		for method := range item {

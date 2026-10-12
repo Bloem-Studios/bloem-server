@@ -47,6 +47,7 @@ type BloemBookRequestCapabilityOutput struct {
 
 func registerBloemBookRequestsDocument(reg *Registry) {
 	registerBloemEbookRequestsDocument(reg)
+	registerBloemAudiobookAcquisitionDocument(reg)
 	//nolint:misspell // awaiting_fulfilment is the established wire enum.
 	const description = "Bloem-owned audiobook requests use a separate table and independent quota counters. Approval and quota values inherit current profile-group, membership/account and global request policy. A verified profile and current organization membership are required; hosted organizations may file requests. Ordinary callers can see or cancel only their own profile's requests in this organization. Approved requests stay approved/awaiting_fulfilment while the backend is unconfigured. Library completion requires every supplied ISBN/ASIN to match one audiobook with a media-file row in an organization-accessible audiobook library; title-only matches and ebooks never fulfill an audiobook request. Catalog presence does not preflight filesystem or storage-provider liveness. Ebook request routes are not enabled by this capability."
 	errors := map[int]string{400: "invalid_request: invalid input, JSON, identity, Idempotency-Key or expected_revision.", 404: "not_found: request absent or outside this profile/organization.", 409: "already_requested or request_state_changed: a duplicate active identity, changed key payload, stale revision or invalid transition.", 429: "request_quota_exceeded: the independent audiobook quota is exhausted, or rate_limit_exceeded."}
