@@ -65,6 +65,22 @@ failed output is discarded. Text burn-in extracts execution-only ASS and font
 files while retaining the catalog subtitle ordinal in the durable recipe.
 Software HDR-to-SDR uses the same fresh source and shared tone-map checks.
 
+Direct play and the input bridge read through `nativestorage.ReadAhead`, never
+one provider range per consumer read. It fetches 1 MiB blocks on aligned
+boundaries, three ahead of a sequential reader, in at most five (direct) or
+six (bridge) retained blocks. Every block fetch passes the source's own
+per-read authority and pinned-revision checks. Cached bytes are copied out
+only while the latest successful fresh authority check began less than one
+second ago; a stopped or failed source stops delivery at the next read. So a
+revocation that only a fresh check can observe stops delivery within one
+second. Direct play hints a single closed request range so fetches stop at its
+end. The bridge copies 1 MiB chunks and admits four concurrent ranges.
+
+Session bindings compare their source snapshot and delegation by instant.
+Stores normalize their times to UTC without a monotonic reading, because a
+Redis JSON copy never keeps the location or monotonic reading of the value it
+was made from.
+
 The source admission remains owned until ffmpeg and its input handlers have
 joined. Request cancellation, playback stop, source failure and worker grant
 expiry cancel that owner. A cleanup goroutine cannot release the provider

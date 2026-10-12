@@ -36,6 +36,11 @@ func newNativeMovieStorageScanner(deps *api.Dependencies) (*libraryingest.Storag
 	if err := storage.ConfigureNativeMovies(true, reader, cfg); err != nil {
 		return nil, err
 	}
+	// Native movies match through the same metadata Process the admin
+	// match/apply endpoint uses, never through the path-based match queues.
+	if deps.MetadataService != nil {
+		storage.ConfigureNativeMovieMatching(deps.MetadataService)
+	}
 	deps.NativeMovieScannerReady = true
 	return storage, nil
 }

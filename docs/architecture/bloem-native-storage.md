@@ -66,6 +66,12 @@ plugin in one transaction and bumps its runtime generation, so the running
 process is replaced; the source, its encrypted configuration and its library
 stay as they are. Ordinary plugin handlers hide native installations.
 
+Configuration replacement, upgrade and removal fence the installation's runtime
+while they run. A refused or failed action that commits nothing lifts its fence:
+the unchanged generation restarts on the next read or scan. After a commit, or a
+COMMIT whose outcome is unknown, the previous generation stays fenced and only
+a committed higher generation runs.
+
 ## S3 process state
 
 The manually approved `bloem.storage.s3` provider needs a durable private
@@ -182,7 +188,13 @@ A storage library scans only as a whole library. `libraryingest.StorageScanner`:
    Replay also requires current authority. Provider I/O stays outside this
    transaction. Refused authority or failed publication rolls the page back,
    so a retry lists it again. The unfenced `ApplyPage` entry point remains
-   available for standalone journal discovery.
+   available for standalone journal discovery. A directory the filesystem
+   scanner would never walk is recorded but not queued for listing
+   (`scanner.StorageDirectorySkipped`): Silo's ignored names (`.recyclebin`,
+   `@eaDir`, `.downloads`, ...) for every kind, plus sample, subtitle and
+   title-owned extras folders for movies. `.ignore`, `.siloignore` and
+   `.nomedia` are not read: honoring them would need a pinned read of each
+   ignore file and directory state across listing pages.
 4. Stops lease renewal, then `CompleteAuthorized` checks current resource
    authority before journal source/run locks. Its finalizer runs
    `SweepStorageLibraryTx` to reconcile memberships and orphans and sweep
@@ -192,6 +204,18 @@ A storage library scans only as a whole library. `libraryingest.StorageScanner`:
    cleanup or an expired lease rolls back both cleanup and completion.
    Orphaned artwork is removed after commit. Standalone discovery may still
    use `Complete` without catalog finalization.
+5. A scan that stops without completing, failed or cancelled, stops renewal
+   and `Release`s its own owner and epoch. The run and its journal stay, so a
+   retry resumes at once instead of failing as a stale lease until the claim
+   expires.
+
+The scan queue reports any error containing `context.Canceled` as an operator
+cancellation, with no message. Provider streams, the tool bridge and the
+scan's job context report their own teardown that way too, so the executor
+reports a storage scan as cancelled only when the scan's own context was
+cancelled. Any other failure is reported as failed and logged, with a message
+that names the movie entry and a reason chosen from typed causes; provider
+details and tool output stay out of it.
 
 Publication (`scanner.PublishStorageEbooksTx`) is set-based: a page of up to
 512 entries costs a fixed number of statements. Entries carrying provider
@@ -200,6 +224,45 @@ are opened and parsed (`ParseNativeEbook`). Files group into items by ISBN, or
 title and authors, as file scans do. Items publish with status `matched`: the
 source is the authority for its books, so enrichment skips them and each scan
 reapplies the provider's metadata over the stored item, keeping artwork.
+
+## Movies
+
+Movie publication (`scanner.PublishStorageMoviesTx`) reads identity from the
+entry's logical path, not only its file name. The path is placed below a
+parse-only root (never persisted or opened) and run through Silo's own naming
+rules: root inference, content-group identity and edition hints. So
+`13 Eerie (2013)/xyz.mkv` is "13 Eerie" (2013), and a folder such as
+`3 A.M. (2001) {imdb-tt0248661} {tmdb-77084}` supplies its title, year and
+provider IDs. A source rooted at a single title folder exposes only file
+names, because the provider's logical path is relative to its root.
+
+- Files are probed and published only when Silo's walk would collect them:
+  sidecars (`.srt`, `.nfo`, images) are never opened, and samples, files in
+  sample/subtitle folders and local extras (convention folders owned by a
+  title folder, or `-trailer`-style suffixes) are skipped without a read. A
+  file an older scan published that is now skipped is marked missing.
+  Extras are not published; a native listing cannot prove that a title folder
+  holds media, so an extras folder counts as title-owned when its owner is
+  named like a title (`Title (Year)` or provider tags).
+- A new file joins the movie item of its content group in the library
+  (`media_files.content_group_key`): other editions and copies of the title
+  become versions of one item. Edition keys and page-local multipart totals
+  are recorded. A new group gets a `pending` item, or `ambiguous` when
+  folder and file titles conflict without provider tags.
+- After each page commits, the scan matches its pending items through the
+  metadata pipeline (`MetadataService.Process`), behind the next page's
+  listing and probing and joined before the next publication and before
+  completion. A folder or file TMDB tag (else IMDb) applies as
+  `POST /api/v2/admin/items/{id}/match/apply` does (`ModeIdentify`). Other
+  items search with their parsed title, year and Silo's alternate identities
+  (`ModeInitialMatch`); no result marks them `unmatched`. A failed request
+  leaves the item `pending` for the next scan, and an `unmatched` item with
+  provider tags is retried. Each item is attempted at most once per scan.
+- Native files are never enqueued in the path-based movie match queue,
+  whose matcher derives identity from `media_files.file_path`. The existing
+  startup queue seeding still selects `pending` and `unmatched` native files
+  in movie libraries; it can mark them `unmatched`, which the next scan
+  repairs for tagged items.
 
 ## Incremental listing
 
@@ -210,7 +273,35 @@ Removed entries mark their files missing; the post-scan sweep removes them, and
 a book listed again before then is restored. A token the provider refuses
 (`FailedPrecondition`), from another configuration revision, or older than
 seven days falls back to a full listing, which also reconciles anything a change
-feed missed. Without a change feed, a listing never proves absence.
+feed missed. Each directory retains its effective full or incremental mode
+before provider I/O, including token-refusal fallback and resumed cursors.
+
+`complete` certifies traversal termination, not a point-in-time inventory.
+Bookwarehouse fixes an upper bound when a listing starts and can defer a
+present book updated before the cursor reaches it. Implicit absence therefore
+takes two completed runs. A nonempty full listing suspects each retained
+location/parent-directory edge it omits. A later completed full or incremental
+listing of that parent confirms the omission, unless an empty full listing
+makes the result suspect. Positive observations clear edge suspicion; failed
+and partial runs never raise or confirm it. A changed configuration or selection
+invalidates prior negative evidence. Explicit removed IDs delete their
+parent edge immediately, and successful authorized completion updates missing
+flags using the resulting selected-root graph.
+
+A suspect directory remains available through its retained subtree without
+being traversed again unless positively listed. Other selected roots and other
+locations retain independent edges and memberships. Implicit deletion needs
+one extra scan; explicit deletion has no extra delay. No current protocol field
+lets the host safely distinguish a snapshot inventory from a traversal, so this
+rule applies uniformly rather than relying on a plugin-ID exception.
+
+A listed book whose entry is unchanged is not republished. Its file reference
+records a digest of the entry it was published from (`entry_sha256`: revision,
+provider metadata and cover), and a present file whose entry is listed again
+with the same digest, configuration revision and library membership writes
+only its journal entry. A forced full listing of an unchanged library rewrites
+`bloem_storage_entries`, not its catalog rows. A metadata-only change counts as
+updated and republishes that book.
 
 ## Covers
 
@@ -263,8 +354,11 @@ then reloads the reference, authorization and executable snapshot. Cover reads
 use the same admission checks. A canceled request or runtime lease cannot
 start content I/O. File lifetime is tied to request and runtime
 cancellation. GET/HEAD, ranges and conditional requests behave as for local
-files; ETags hash the opaque revision. Downloads, conversion and offline
-delivery of storage files are not supported.
+files; ETags hash the opaque revision. A provider failure at open or before
+the first byte is sent is an ordinary HTTP error, such as 404 for a missing book
+or 503 for an unavailable provider; after bytes were sent the response is
+aborted without an error document. Downloads, conversion and offline delivery
+of storage files are not supported.
 
 ## Protocol
 

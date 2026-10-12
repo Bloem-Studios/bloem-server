@@ -110,14 +110,62 @@ func (h *NativeEbookFileService) ServeReaderFile(w http.ResponseWriter, r *http.
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	attachTransfer(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), file.ID)
 	stream := &nativeEbookStream{File: opened}
-	http.ServeContent(httpstream.NewRollingDeadlineWriter(w), r, name, info.ModifiedAt, stream)
+	response := &nativeEbookResponse{ResponseWriter: w}
+	http.ServeContent(httpstream.NewRollingDeadlineWriter(response), r, name, info.ModifiedAt, stream)
 	if stream.failure != nil {
-		// Response framing may already be committed. Abort the stream: neither v1
-		// nor v2 may append an error document to a partial binary response.
+		if !response.committed {
+			// No byte reached the client: report the provider failure (a book
+			// missing in the backend, an unavailable backend) as an HTTP error.
+			for _, header := range nativeEbookFileHeaders {
+				w.Header().Del(header)
+			}
+			return nativeReaderError(stream.failure)
+		}
+		// Response framing is committed. Abort the stream: neither v1 nor v2
+		// may append an error document to a partial binary response.
 		panic(http.ErrAbortHandler)
 	}
+	response.commit()
 	return nil
 }
+
+// nativeEbookFileHeaders describe the file; an error response must not keep them.
+var nativeEbookFileHeaders = []string{"Accept-Ranges", "Content-Disposition", "Content-Length", "Content-Range", "Content-Type", "ETag", "Last-Modified"}
+
+// nativeEbookResponse holds the status line back until the first body byte,
+// so a provider read that fails before any byte can still become an error.
+type nativeEbookResponse struct {
+	http.ResponseWriter
+	status    int
+	committed bool
+}
+
+func (w *nativeEbookResponse) WriteHeader(code int) {
+	if w.committed {
+		w.ResponseWriter.WriteHeader(code)
+		return
+	}
+	if w.status == 0 {
+		w.status = code
+	}
+}
+func (w *nativeEbookResponse) Write(p []byte) (int, error) {
+	w.commit()
+	return w.ResponseWriter.Write(p)
+}
+func (w *nativeEbookResponse) commit() {
+	if w.committed {
+		return
+	}
+	w.committed = true
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	w.ResponseWriter.WriteHeader(w.status)
+}
+
+// Unwrap lets http.ResponseController reach the connection's write deadline.
+func (w *nativeEbookResponse) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 type nativeEbookStream struct {
 	mediasource.File

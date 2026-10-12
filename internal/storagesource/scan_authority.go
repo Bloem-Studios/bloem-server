@@ -19,7 +19,8 @@ func ValidatePendingPageTx(ctx context.Context, tx pgx.Tx, lease Lease, checkpoi
 	if err != nil {
 		return err
 	}
-	if !pending || current != checkpoint {
+	// The pending directory position must still match its retained journal state.
+	if !pending || current.DirectoryID != checkpoint.DirectoryID || current.Cursor != checkpoint.Cursor {
 		return ErrCheckpointConflict
 	}
 	return nil

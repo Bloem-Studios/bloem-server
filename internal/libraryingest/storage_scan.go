@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -57,24 +59,29 @@ func (e *Executor) tryStorageIngest(ctx context.Context, folder *models.MediaFol
 	}
 	scanCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	result, err := e.storageIngest(scanCtx, cancel, folder, location)
+	return result, true, storageScanOutcome(scanCtx, folder, location, err)
+}
+
+func (e *Executor) storageIngest(scanCtx context.Context, cancel context.CancelFunc, folder *models.MediaFolder, location storagesource.Location) (*Result, error) {
 	entry, err := e.begin(scanCtx, scopeClaim{folderID: folder.ID, mode: scopeModeLibrary}, cancel)
 	if err != nil {
-		return nil, true, err
+		return nil, err
 	}
 	defer e.finish(entry)
 	reportProgress(scanCtx, ProgressUpdate{Phase: "preparing", Message: "Preparing storage scan"})
 	result, err := e.storageIngestor.ScanStorageFolder(scanCtx, folder, location)
 	if err != nil {
-		return result, true, err
+		return result, err
 	}
 	if e.folders != nil {
 		if err = e.folders.UpdateLastScanned(scanCtx, folder.ID, e.now().UTC()); err != nil {
-			return result, true, fmt.Errorf("update storage library last scanned: %w", err)
+			return result, fmt.Errorf("update storage library last scanned: %w", err)
 		}
 	}
 	if shouldPublish(result) && e.events != nil {
 		if err = e.events.Publish(scanCtx, cache.ChannelCatalog, cache.Event{Type: cache.EventScanComplete, Payload: strconv.Itoa(folder.ID)}); err != nil {
-			return result, true, err
+			return result, err
 		}
 	}
 	if shouldPublish(result) && e.realtime != nil {
@@ -84,12 +91,53 @@ func (e *Executor) tryStorageIngest(ctx context.Context, folder *models.MediaFol
 			Updated: scanResultCount(result.ScanResult, func(v *scanner.ScanResult) int { return v.Updated }),
 			Missing: scanResultCount(result.ScanResult, func(v *scanner.ScanResult) int { return v.Missing }),
 		}); err != nil {
-			return result, true, err
+			return result, err
 		}
 	}
 	reportProgress(scanCtx, ProgressUpdate{Phase: "completed", Message: "Storage scan completed"})
-	return result, true, nil
+	return result, nil
 }
+
+// storageScanOutcome decides how the scan queue reports a storage scan. The
+// queue reports any error tree containing context.Canceled as an operator
+// cancellation, without a message. Provider streams, tool bridges and the
+// scan's own job context report their teardown that way too, so only the
+// cancellation of scanCtx itself (an operator cancel, a superseding claim or
+// shutdown) is reported as cancelled. Every other failure is reported failed,
+// with its message and a log line.
+func storageScanOutcome(scanCtx context.Context, folder *models.MediaFolder, location storagesource.Location, err error) error {
+	if err == nil {
+		return nil
+	}
+	if canceled := scanCtx.Err(); canceled != nil {
+		slog.InfoContext(scanCtx, "storage scan canceled", "component", "libraryingest", "library_id", folder.ID, "storage_source", location.SourceKey)
+		if errors.Is(canceled, context.Canceled) && !errors.Is(err, context.Canceled) {
+			// A provider may report the cancellation as its own status error.
+			err = errors.Join(err, canceled)
+		}
+		return err
+	}
+	failure := &storageScanFailure{cause: err}
+	slog.ErrorContext(scanCtx, "storage scan failed", "component", "libraryingest", "library_id", folder.ID, "storage_source", location.SourceKey, "error", failure.Error())
+	return failure
+}
+
+// storageScanFailure is a storage scan failure while the scan was not
+// canceled. It hides context.Canceled leaves from classification, because they
+// come from internal teardown, and keeps every other cause available to
+// errors.Is and errors.As.
+type storageScanFailure struct{ cause error }
+
+func (e *storageScanFailure) Error() string {
+	return "storage scan failed: " + strings.ReplaceAll(e.cause.Error(), "\n", "; ")
+}
+
+func (e *storageScanFailure) Is(target error) bool {
+	// Hide exactly the sentinel the scan queue treats as an operator cancel.
+	return target != context.Canceled && errors.Is(e.cause, target) //nolint:errorlint // Identity with the sentinel is the intended check.
+}
+
+func (e *storageScanFailure) As(target any) bool { return errors.As(e.cause, target) }
 
 // StorageScanner lists a storage source and publishes each listed page to its
 // library's catalog in the page's own transaction. Books with provider
@@ -104,6 +152,7 @@ type StorageScanner struct {
 	nativeMovieReady bool
 	movieReader      *nativestorage.ScanReader
 	movieProbeConfig scanner.NativeProbeConfig
+	movieMetadata    NativeMovieMetadata
 }
 
 var _ StorageIngestor = (*StorageScanner)(nil)
@@ -157,6 +206,14 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	if err != nil {
 		return result, err
 	}
+	// Movie matching runs behind the listing. Registered before the job's
+	// cancel, so an early return cancels in-flight matches before joining them.
+	var matching sync.WaitGroup
+	defer matching.Wait()
+	matchStats := &nativeMovieMatchStats{}
+	// One attempt per item per scan: a later page's copy of a title whose
+	// match just failed waits for the next scan.
+	matchAttempted := make(map[string]bool)
 	job, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
 	stopSession := context.AfterFunc(session.Context(), func() { cancel(storageplugin.ErrUnavailable) })
@@ -199,15 +256,26 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	if err != nil {
 		return result, err
 	}
+	stopRenew := func() {}
+	defer func() {
+		// A scan that stops without completing releases its claim, so a retry
+		// resumes the journal at once instead of failing as a stale lease
+		// until the claim expires. Renewal and every lease user have joined.
+		if err != nil {
+			stopRenew()
+			c.releaseLease(ctx, lease)
+		}
+	}()
 	if lease.ConfigurationRevision != source.ConfigurationRevision {
 		return result, storagesource.ErrStaleLease
 	}
-	stopRenew := startStorageRenewal(job, cancel, c.leaseTTL/3, func(ctx context.Context) error {
+	stopRenew = startStorageRenewal(job, cancel, c.leaseTTL/3, func(ctx context.Context) error {
 		return c.sources.RenewAuthorized(ctx, lease, c.leaseTTL, authorize)
 	})
 	defer stopRenew()
 
 	media := mediasource.NewPluginSource(provider)
+	skipDirectory := func(entry *storagev1.Entry) bool { return scanner.StorageDirectorySkipped(folder.Type, entry) }
 	listed := 0
 	for {
 		if err = nativeScanCause(ctx, job); err != nil {
@@ -218,6 +286,8 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			return result, err
 		}
 		if !more {
+			// Matches commit catalog changes; finish them before the sweep.
+			matching.Wait()
 			// Stop renewing first so a renewal cannot race completion.
 			stopRenew()
 			var trashed int
@@ -238,6 +308,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			result.ScanResult.Missing += missing
 			result.ScanResult.FilesDeleted += trashed
 			c.scanner.CleanupStorageLibraryArtwork(job, orphanedImageDirs)
+			matchStats.log(job, folder.ID)
 			return result, nil
 		}
 		page, err := c.sources.FetchPage(job, lease, checkpoint, provider)
@@ -250,15 +321,20 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		var books []scanner.StorageEbook
 		var movies []scanner.StorageMovie
 		var skipped int
+		var excluded []string
 		if librarykind.IsMovie(folder.Type) {
-			movies, skipped, err = c.prepareMovies(job, location, source, lease, checkpoint, page)
+			movies, skipped, excluded, err = c.prepareMovies(job, location, source, lease, checkpoint, page)
 		} else {
 			books, skipped, err = c.prepare(job, media, source, page.GetEntries())
 		}
 		if err != nil {
 			return result, err
 		}
+		// The previous page's matches may move items to their provider
+		// identity; publish against settled catalog rows.
+		matching.Wait()
 		var published scanner.StoragePublishResult
+		var matches []scanner.StorageMovieMatch
 		publish := func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry, _ []string) error {
 			allowed := make(map[string]bool, len(files))
 			for _, file := range files {
@@ -278,19 +354,39 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			}
 			var err error
 			if librarykind.IsMovie(folder.Type) {
-				published, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueMovies)
+				var moviePage scanner.StorageMoviePublishResult
+				moviePage, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueMovies)
+				published, matches = moviePage.StoragePublishResult, moviePage.Matches
 			} else {
 				published, err = c.scanner.PublishStorageEbooksTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueBooks)
 			}
 			if err != nil {
 				return err
 			}
+			// Deterministically excluded movie entries cannot retain publication edges.
+			if len(excluded) > 0 {
+				if _, err := tx.Exec(ctx, `DELETE FROM bloem_storage_location_edges WHERE location_id=$1 AND entry_id=ANY($2::text[])`, location.ID, excluded); err != nil {
+					return err
+				}
+			}
 			// Explicit removals change retained directory edges in this page.
 			// Missing flags are committed only by successful location completion.
 			return nil
 		}
-		if err = c.sources.ApplyPageAuthorized(job, lease, checkpoint, page, authorize, publish); err != nil {
+		if err = c.sources.ApplyPageAuthorizedSkipping(job, lease, checkpoint, page, skipDirectory, authorize, publish); err != nil {
 			return result, err
+		}
+		matches = slices.DeleteFunc(matches, func(m scanner.StorageMovieMatch) bool {
+			attempted := matchAttempted[m.ContentID]
+			matchAttempted[m.ContentID] = true
+			return attempted
+		})
+		if len(matches) > 0 && c.movieMetadata != nil {
+			matching.Add(1)
+			go func() {
+				defer matching.Done()
+				c.matchMovies(job, folder.ID, matches, matchStats)
+			}()
 		}
 		result.ScanResult.New += published.New
 		result.ScanResult.Updated += published.Updated
@@ -298,6 +394,17 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		listed += len(page.GetEntries())
 		reportProgress(job, ProgressUpdate{Phase: "processing", Message: "Listing storage source",
 			FilesDiscovered: listed, FilesProcessed: listed, New: result.ScanResult.New, Updated: result.ScanResult.Updated})
+	}
+}
+
+// releaseLease runs after the scan has stopped, possibly because ctx was
+// canceled, so it uses a bounded context of its own. A failed release only
+// delays a retry until the claim expires.
+func (c *StorageScanner) releaseLease(ctx context.Context, lease storagesource.Lease) {
+	releaseCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	if err := c.sources.Release(releaseCtx, lease); err != nil {
+		slog.WarnContext(ctx, "storage scan: release lease", "component", "libraryingest", "storage_source", lease.SourceKey, "run_id", lease.RunID, "error", err)
 	}
 }
 

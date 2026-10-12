@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
@@ -45,6 +46,7 @@ func nativeVideoBindingKey(session string, file int) (string, error) {
 	return "bloem:native-video:" + session + ":" + strconv.Itoa(file), nil
 }
 func (s *nativeVideoBindingStore) Put(ctx context.Context, session string, value NativeVideoBinding) error {
+	value = normalizeNativeVideoBinding(value)
 	key, err := nativeVideoBindingKey(session, value.Identity.FileID)
 	if err != nil {
 		return err
@@ -80,7 +82,7 @@ func (s *nativeVideoBindingStore) Put(ctx context.Context, session string, value
 		if err != nil {
 			return err
 		}
-		if prior != value {
+		if !sameNativeVideoBinding(prior, value) {
 			return storagesource.ErrReferenceConflict
 		}
 		return nil
@@ -94,7 +96,7 @@ func (s *nativeVideoBindingStore) Put(ctx context.Context, session string, value
 		}
 	}
 	if prior, ok := s.values[key]; ok {
-		if prior.Value != value {
+		if !sameNativeVideoBinding(prior.Value, value) {
 			return storagesource.ErrReferenceConflict
 		}
 		return nil
@@ -125,7 +127,7 @@ func (s *nativeVideoBindingStore) Get(ctx context.Context, session string, file 
 		if value.Identity.FileID != file || value.Identity.Reference.Revision != value.Info.Revision {
 			return NativeVideoBinding{}, storagesource.ErrReferenceConflict
 		}
-		return value, nil
+		return normalizeNativeVideoBinding(value), nil
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -134,7 +136,7 @@ func (s *nativeVideoBindingStore) Get(ctx context.Context, session string, file 
 		delete(s.values, key)
 		return NativeVideoBinding{}, storagesource.ErrReferenceConflict
 	}
-	return value.Value, nil
+	return normalizeNativeVideoBinding(value.Value), nil
 }
 
 // HasSession checks host-owned binding history without trusting the current
@@ -187,4 +189,34 @@ func (s *nativeVideoBindingStore) RevokeSession(ctx context.Context, session str
 		}
 	}
 	return nil
+}
+
+// normalizeNativeVideoBinding gives every time in a binding the form a Redis
+// JSON round trip produces: UTC and no monotonic clock reading. Providers
+// report modification times in time.Local (or another zone) and delegations
+// carry time.Now readings, so a stored copy never equals a fresh value under
+// ==. Stores normalize on Put and Get; comparisons use sameNativeVideoBinding.
+func normalizeNativeVideoBinding(v NativeVideoBinding) NativeVideoBinding {
+	v.Info.ModifiedAt = v.Info.ModifiedAt.UTC()
+	v.Authority.ExpiresAt = v.Authority.ExpiresAt.UTC()
+	return v
+}
+
+// sameNativeVideoInfo compares a source snapshot; times compare by instant.
+func sameNativeVideoInfo(a, b mediasource.Info) bool {
+	return a.Name == b.Name && a.LogicalPath == b.LogicalPath && a.Revision == b.Revision && a.Size == b.Size && a.ModifiedAt.Equal(b.ModifiedAt)
+}
+
+// sameNativeVideoAuthority compares sealed delegations; times compare by instant.
+func sameNativeVideoAuthority(a, b NativeVideoAuthority) bool {
+	expiresA, expiresB := a.ExpiresAt, b.ExpiresAt
+	a.ExpiresAt, b.ExpiresAt = time.Time{}, time.Time{}
+	return a == b && expiresA.Equal(expiresB)
+}
+
+// sameNativeVideoBinding compares a whole sealed binding. Never compare
+// bindings, Info or authorities with ==: a stored copy has lost the
+// location and monotonic reading of the value it was made from.
+func sameNativeVideoBinding(a, b NativeVideoBinding) bool {
+	return a.SessionID == b.SessionID && a.UserID == b.UserID && a.ProfileID == b.ProfileID && sameNativeVideoAuthority(a.Authority, b.Authority) && sameNativeVideo(a, b)
 }

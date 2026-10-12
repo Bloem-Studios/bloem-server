@@ -36,10 +36,15 @@ type PagePublisher func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry
 // ApplyPage records one listed page and advances its directory checkpoint.
 // publish, when set, runs in the same transaction for the page's file entries.
 func (r *Repository) ApplyPage(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse, publish PagePublisher) error {
-	return r.applyPage(ctx, lease, checkpoint, page, nil, publish)
+	return r.applyPage(ctx, lease, checkpoint, page, nil, nil, publish)
 }
 
-func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse, authorize PageAuthorizer, publish PagePublisher) error {
+// DirectorySkipper reports a listed directory its library never lists, as
+// the filesystem scanner never walks into ignored folders. The directory's
+// entry is still recorded; no scan directory is queued for it.
+type DirectorySkipper func(*storagev1.Entry) bool
+
+func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Checkpoint, page *storagev1.ListResponse, skip DirectorySkipper, authorize PageAuthorizer, publish PagePublisher) error {
 	if checkpoint.Complete || !validText(checkpoint.DirectoryID, 1024, true) {
 		return ErrCheckpointConflict
 	}
@@ -100,7 +105,7 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 			return err
 		}
 	}
-	files, err := applyLocationEntries(ctx, tx, lease, checkpoint, page)
+	files, err := applyLocationEntries(ctx, tx, lease, checkpoint, page, skip)
 	if err != nil {
 		return err
 	}
@@ -136,7 +141,10 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 	if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_scan_cursors(run_id,directory_id,cursor_sha256,cursor,page_sha256) VALUES($1,$2,$3,$4,$5)`, lease.RunID, checkpoint.DirectoryID, cursorHash[:], checkpoint.Cursor, digest[:]); err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_scan_directories SET current_cursor=$3,complete=$4,processed_count=processed_count+$5 WHERE run_id=$1 AND directory_id=$2`, lease.RunID, checkpoint.DirectoryID, page.GetNextCursor(), page.GetComplete(), len(page.GetEntries())); err != nil {
+	// The first page decides whether this run lists the directory in full.
+	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_scan_directories SET current_cursor=$3,complete=$4,processed_count=processed_count+$5,
+ full_listing=(listing_mode='full') WHERE run_id=$1 AND directory_id=$2`,
+		lease.RunID, checkpoint.DirectoryID, page.GetNextCursor(), page.GetComplete(), len(page.GetEntries())); err != nil {
 		return err
 	}
 	if page.GetComplete() {

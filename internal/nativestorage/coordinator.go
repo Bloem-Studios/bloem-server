@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/plugins"
@@ -47,6 +48,15 @@ func (r ManagedRuntime) Borrow(ctx context.Context, snapshot storageplugin.Snaps
 	return Lease{Context: s.Context(), Provider: s.Provider(), Source: mediasource.NewPluginSource(s.Provider()), Description: description}, nil
 }
 func (r ManagedRuntime) Disable(id int) { r.Manager.Disable(id) }
+
+// Fence disables id and returns a function that lifts exactly that fence.
+func (r ManagedRuntime) Fence(id int) func() { return r.Manager.Fence(id) }
+
+// liftableRuntime is implemented by a Runtime that can lift the fence of a
+// mutation which committed nothing; any other Runtime stays fenced.
+type liftableRuntime interface {
+	Fence(int) (lift func())
+}
 
 // Coordinator requires real host authorizers. Registry owner equality alone is
 // never authority. Keep one coordinator per manager to serialize local mutation.
@@ -208,6 +218,10 @@ func (c *Coordinator) recheckCover(ctx context.Context, contentID, revision stri
 // FenceMutation is only for future independently authorized host lifecycle calls,
 // never request dispatch. Disable before AND after the commit attempt, including
 // ambiguous failures: availability requires a fresh higher durable generation.
+// A mutation must report an attempted COMMIT of unknown outcome as
+// *catalog.MutationOutcomeUnknown; any other error means nothing committed, so
+// the installation keeps its generation and the fence is lifted instead of
+// leaving its libraries unreadable until restart.
 // Keep the registry alive until runtime Shutdown has reaped disabled processes.
 func (c *Coordinator) FenceMutation(ctx context.Context, id int, mutation func(context.Context) error) error {
 	if c == nil || c.Runtime == nil || id <= 0 || mutation == nil {
@@ -215,7 +229,17 @@ func (c *Coordinator) FenceMutation(ctx context.Context, id int, mutation func(c
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	lift := func() {}
+	if runtime, ok := c.Runtime.(liftableRuntime); ok {
+		lift = runtime.Fence(id)
+	} else {
+		c.Runtime.Disable(id)
+	}
+	err := mutation(ctx)
+	if _, unknown := errors.AsType[*catalog.MutationOutcomeUnknown](err); err != nil && !unknown {
+		lift()
+		return err
+	}
 	c.Runtime.Disable(id)
-	defer c.Runtime.Disable(id)
-	return mutation(ctx)
+	return err
 }

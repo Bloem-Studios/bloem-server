@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
@@ -121,32 +122,25 @@ func TestToolInputCancellationJoinsReadsAndToolBeforeHostRelease(t *testing.T) {
 	}
 }
 
-func TestToolInputConcurrentReadLimitInvalidatesResult(t *testing.T) {
-	entered := make(chan struct{})
+func TestToolInputConcurrentReadWaitHonorsRequestCancellation(t *testing.T) {
 	source := &toolFixtureSource{data: "0123456789abcdef"}
-	source.read = func(ctx context.Context, _, _ int64, _ io.Writer) error {
-		close(entered)
-		<-ctx.Done()
-		return ctx.Err()
-	}
 	input := toolFixtureInput(t, source, func(config *ToolInputConfig) { config.MaxConcurrentReads = 1 })
-	client := toolHTTP(t)
-	err := input.Run(func(_ context.Context, argument string) error {
-		joined := make(chan struct{})
-		go func() {
-			_, _, _ = toolResponse(t, client, "GET", argument, "bytes=0-3")
-			close(joined)
-		}()
-		toolWait(t, entered)
-		_, body, _ := toolResponse(t, client, "GET", argument, "bytes=4-7")
-		if body == "4567" {
-			t.Fatal("concurrent read limit admitted another range")
-		}
-		<-joined
-		return nil
-	})
-	if !errors.Is(err, ErrToolInputBusy) || source.reads.Load() != 1 {
-		t.Fatalf("concurrent IO limit lost: %v", err)
+	input.slots <- struct{}{}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	request := httptest.NewRequest(http.MethodGet, input.argument, nil).WithContext(ctx)
+	recorder := httptest.NewRecorder()
+	input.serveToolRange(recorder, request)
+	<-input.slots
+	input.mu.Lock()
+	sticky := input.sticky
+	input.mu.Unlock()
+	if sticky != nil || source.reads.Load() != 0 {
+		t.Fatalf("abandoned queued range invalidated input: sticky=%v reads=%d", sticky, source.reads.Load())
+	}
+	response, body, err := toolResponse(t, toolHTTP(t), http.MethodGet, input.argument, "bytes=4-7")
+	if err != nil || response.StatusCode != http.StatusPartialContent || body != "4567" {
+		t.Fatalf("input unavailable after abandoned queue: response=%v body=%q err=%v", response, body, err)
 	}
 }
 
@@ -189,11 +183,110 @@ func TestToolInputCleanupCancelsAndJoinsUnreturnedRange(t *testing.T) {
 	close(readCanReturn)
 	select {
 	case err := <-result:
-		if err == nil || !released.Load() {
-			t.Fatalf("active canceled read was not joined and retained: %v", err)
+		// The callback succeeded before cleanup canceled its unreturned range;
+		// that teardown cancellation is joined but does not fail the result.
+		if err != nil || !released.Load() {
+			t.Fatalf("active canceled read was not joined, or its teardown failed the result: %v", err)
 		}
 	case <-t.Context().Done():
 		t.Fatal("active read cleanup did not finish")
+	}
+}
+
+// toolAbandonRange reads the first chunk of an open-ended range, waits until
+// the bridge is serving the next chunk from a slow source, then abandons the
+// response without reading it, as ffprobe does when it exits after reading
+// what it needs.
+func toolAbandonRange(t *testing.T, client *http.Client, argument string, pending <-chan struct{}) error {
+	t.Helper()
+	request, err := http.NewRequest("GET", argument, nil)
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Range", "bytes=0-")
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	first := make([]byte, 4)
+	if _, err := io.ReadFull(response.Body, first); err != nil || string(first) != "0123" {
+		_ = response.Body.Close()
+		return errors.Join(err, errors.New("first chunk was not served"))
+	}
+	toolWait(t, pending)
+	return response.Body.Close()
+}
+
+// A slow remote range can still be in flight when the tool exits successfully.
+// Close cancels that abandoned read; its failure is a consequence of teardown,
+// delivered no byte to the tool, and must not invalidate the tool's result.
+func TestToolInputTeardownOfAbandonedRangeKeepsSuccessfulResult(t *testing.T) {
+	pending := make(chan struct{})
+	var canceled atomic.Bool
+	source := &toolFixtureSource{data: "0123456789abcdef"}
+	source.read = func(ctx context.Context, offset, length int64, w io.Writer) error {
+		if offset == 0 {
+			_, err := io.WriteString(w, source.data[offset:offset+length])
+			return err
+		}
+		close(pending)
+		<-ctx.Done()
+		canceled.Store(true)
+		// A canceled provider stream surfaces as cancellation and a short read.
+		return errors.Join(ctx.Err(), io.ErrUnexpectedEOF)
+	}
+	released := make(chan struct{})
+	input := toolFixtureInput(t, source, func(config *ToolInputConfig) { config.ReleaseHost = func() { close(released) } })
+	client := toolHTTP(t)
+	err := input.Run(func(_ context.Context, argument string) error {
+		return toolAbandonRange(t, client, argument, pending)
+	})
+	if err != nil || input.Err() != nil {
+		t.Fatalf("teardown of an abandoned range failed a successful tool: %v, %v", err, input.Err())
+	}
+	if !canceled.Load() {
+		t.Fatal("the abandoned range was not in flight when cleanup canceled the source")
+	}
+	toolWait(t, released)
+}
+
+// Only teardown is excused. A provider failure on an abandoned range that is
+// observed before Close begins remains sticky and invalidates exit zero.
+func TestToolInputAbandonedRangeFailureBeforeTeardownStillFails(t *testing.T) {
+	failure := errors.New("private provider failure")
+	pending, fail := make(chan struct{}), make(chan struct{})
+	source := &toolFixtureSource{data: "0123456789abcdef"}
+	source.read = func(ctx context.Context, offset, length int64, w io.Writer) error {
+		if offset == 0 {
+			_, err := io.WriteString(w, source.data[offset:offset+length])
+			return err
+		}
+		close(pending)
+		select {
+		case <-fail:
+			return failure
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	input := toolFixtureInput(t, source, nil)
+	client := toolHTTP(t)
+	err := input.Run(func(_ context.Context, argument string) error {
+		if err := toolAbandonRange(t, client, argument, pending); err != nil {
+			return err
+		}
+		close(fail)
+		for input.Err() == nil {
+			select {
+			case <-t.Context().Done():
+				t.Fatal("abandoned range failure was never recorded")
+			case <-time.After(time.Millisecond):
+			}
+		}
+		return nil
+	})
+	if !errors.Is(err, failure) || strings.Contains(err.Error(), "private provider") {
+		t.Fatalf("provider failure on an abandoned range was lost or exposed: %v", err)
 	}
 }
 

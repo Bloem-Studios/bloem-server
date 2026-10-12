@@ -23,7 +23,7 @@ const maxChangeTokenAge = 7 * 24 * time.Hour
 // source's provider. A directory's first page asks for only the changes since
 // its last complete listing, when the source issued a change token; a
 // provider that cannot honor the token gets a full listing instead. The caller
-// applies the page with ApplyPage.
+// applies the page with ApplyPage, passing the checkpoint FetchPage marked.
 func (r *Repository) FetchPage(ctx context.Context, lease Lease, checkpoint Checkpoint, client storagev1.StorageProviderClient) (*storagev1.ListResponse, error) {
 	var sourceID string
 	err := r.pool.QueryRow(ctx, `SELECT provider_source_id FROM bloem_storage_sources WHERE key=$1 AND configuration_revision=$2 AND enabled`, lease.SourceKey, lease.ConfigurationRevision).Scan(&sourceID)

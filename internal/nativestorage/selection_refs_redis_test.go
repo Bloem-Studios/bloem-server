@@ -216,7 +216,7 @@ func TestRedisBrowseCursorStoreConsumeRequiresLiveActorState(t *testing.T) {
 		t.Fatal("consumed state remains", err)
 	}
 	for _, index := range []string{browseStatePrefix + "all", browseStatePrefix + "actor:" + actor} {
-		if err := client.ZScore(t.Context(), index, key).Err(); err != redis.Nil {
+		if err := client.ZScore(t.Context(), index, key).Err(); !errors.Is(err, redis.Nil) {
 			t.Fatal("consumed index membership remains", err)
 		}
 	}
