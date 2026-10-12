@@ -8,6 +8,14 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
+	"github.com/Silo-Server/silo-server/internal/scanner"
+	"github.com/Silo-Server/silo-server/internal/storagesource"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -16,11 +24,10 @@ import (
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
-	"github.com/go-chi/chi/v5"
 )
 
 func TestLibraryLocationsHTTPAdminRoutes(t *testing.T) {
@@ -69,11 +76,26 @@ func TestLibraryLocationsStartupCompositionReadiness(t *testing.T) {
 	}()
 	host := &nativestorage.Host{Registry: &plugins.NativeStorageRegistry{}, Manager: storageplugin.NewManager(storageplugin.Config{})}
 	db := &pgxpool.Pool{}
-	for _, mode := range []string{"complete", "no-redis", "no-cipher", "no-manager"} {
+	for _, mode := range []string{"complete", "mixed", "mixed-no-publisher", "mixed-no-matcher", "no-redis", "no-cipher", "no-manager"} {
 		t.Run(mode, func(t *testing.T) {
 			localHost := &nativestorage.Host{Registry: host.Registry, Manager: host.Manager}
 			deps := Dependencies{DB: db, RedisClient: client, SecretCipher: cipher, LibraryIngester: &libraryingest.Executor{}, NativeStorage: localHost}
 			switch mode {
+			case "mixed", "mixed-no-publisher", "mixed-no-matcher":
+				publisher := scanner.NewScanner(scanner.NewFileRepository(db), "", nil, 1, false, 0)
+				if mode == "mixed-no-publisher" {
+					publisher = &scanner.Scanner{}
+				}
+				storage, err := libraryingest.NewStorageScanner(localHost, storagesource.NewRepository(db), resourcetenancy.NewStore(db), publisher)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var matcher libraryingest.Matcher = mixedLocationMatcher{}
+				if mode == "mixed-no-matcher" {
+					matcher = nil
+				}
+				deps.LibraryIngester = libraryingest.NewExecutor(publisher, matcher, nil, nil, nil, nil)
+				deps.LibraryIngester.SetStorageIngestor(storage)
 			case "no-redis":
 				deps.RedisClient = nil
 			case "no-cipher":
@@ -88,13 +110,13 @@ func TestLibraryLocationsStartupCompositionReadiness(t *testing.T) {
 			locations := nativestorage.NewLibraryLocations(db)
 			h.StorageLocations = locations
 			attachNativeLibraryLocations(deps, h)
-			ready := mode == "complete"
+			ready := mode == "complete" || strings.HasPrefix(mode, "mixed")
 			if c.LibraryLocationBrowsingReady(t.Context()) != ready || c.LibraryLocationEditingReady(t.Context()) != ready {
 				t.Fatalf("%s readiness differs", mode)
 			}
 			// Mixing stays off until mixed ingestion flips the domain's one switch.
-			if c.LibraryLocationMixingReady(t.Context()) {
-				t.Fatal("mixing advertised before mixed ingestion")
+			if c.LibraryLocationMixingReady(t.Context()) != (mode == "mixed") || locations.MixedLocationsReady() != (mode == "mixed") {
+				t.Fatal("mixing readiness differs from composed ingestion")
 			}
 			locations.SetMixedLocationsReady(true)
 			if c.LibraryLocationMixingReady(t.Context()) != ready {
@@ -122,4 +144,16 @@ func (h noRedisDial) DialHook(redis.DialHook) redis.DialHook {
 func (noRedisDial) ProcessHook(next redis.ProcessHook) redis.ProcessHook { return next }
 func (noRedisDial) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
 	return next
+}
+
+type mixedLocationMatcher struct{}
+
+func (mixedLocationMatcher) ProcessBatchByFolderAndPathPrefix(context.Context, int, string, time.Time) (int, error) {
+	return 0, nil
+}
+func (mixedLocationMatcher) ProcessAllByFolderAndPathPrefix(context.Context, int, string, time.Time) (int, error) {
+	return 0, nil
+}
+func (mixedLocationMatcher) RetryUnmatchedItemsByFolderAndPathPrefix(context.Context, int, string) (int, int, error) {
+	return 0, 0, nil
 }

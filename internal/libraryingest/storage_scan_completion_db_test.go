@@ -17,6 +17,9 @@ import (
 	"time"
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/plugins"
@@ -26,8 +29,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 // A committed last page does not authorize later completion or catalog cleanup:
@@ -196,14 +197,14 @@ func testStorageScanCompletionAuthority(t *testing.T, binary []byte, manifest *p
 		oldFile, oldItem, folder.ID, installed.Source.Key).Scan(&oldFiles, &oldMemberships, &oldItems, &runState); err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("completion authority=%s: err=%v run=%s old_files=%d old_memberships=%d old_items=%d files_deleted=%d",
-		mode, scanErr, runState, oldFiles, oldMemberships, oldItems, result.ScanResult.FilesDeleted)
+	t.Logf("completion authority=%s: err=%v run=%s old_files=%d old_memberships=%d old_items=%d files_deleted=%d memberships_removed=%d items_deleted=%d",
+		mode, scanErr, runState, oldFiles, oldMemberships, oldItems, result.ScanResult.FilesDeleted, result.ScanResult.MembershipsRemoved, result.ScanResult.ItemsDeleted)
 	if mode == "authorized" || mode == "trash-disabled" || mode == "grace" {
 		wantFiles, wantDeleted := 0, 1
 		if mode != "authorized" {
 			wantFiles, wantDeleted = 1, 0
 		}
-		if scanErr != nil || runState != "complete" || oldFiles != wantFiles || oldMemberships != 0 || oldItems != 0 || result.ScanResult.FilesDeleted != wantDeleted {
+		if scanErr != nil || runState != "complete" || oldFiles != wantFiles || oldMemberships != 0 || oldItems != 0 || result.ScanResult.FilesDeleted != wantDeleted || result.ScanResult.MembershipsRemoved != 1 || result.ScanResult.ItemsDeleted != 1 {
 			t.Errorf("authorized completion did not sweep expired native ebook: err=%v run=%s files=%d memberships=%d items=%d deleted=%d",
 				scanErr, runState, oldFiles, oldMemberships, oldItems, result.ScanResult.FilesDeleted)
 		}
@@ -215,6 +216,9 @@ func testStorageScanCompletionAuthority(t *testing.T, binary []byte, manifest *p
 		}
 	} else if !errors.Is(scanErr, resourcetenancy.ErrResourceHidden) {
 		t.Errorf("revoked finalization must fail resource authority: %v", scanErr)
+	}
+	if result.ScanResult.MembershipsRemoved != 0 || result.ScanResult.ItemsDeleted != 0 {
+		t.Error("uncommitted sweep counters escaped failed completion")
 	}
 	if runState == "complete" {
 		t.Error("revoked scan committed successful completion")

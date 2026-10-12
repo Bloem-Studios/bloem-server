@@ -12,6 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
 	"github.com/Silo-Server/silo-server/internal/cache"
 	"github.com/Silo-Server/silo-server/internal/librarykind"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
@@ -24,8 +27,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/storageplugin"
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 // StorageIngestor scans libraries whose location is a storage source.
@@ -39,6 +40,16 @@ func (e *Executor) SetStorageIngestor(storage StorageIngestor) {
 	if e != nil {
 		e.storageIngestor = storage
 	}
+}
+
+// MixedLocationIngestionReady witnesses the composed filesystem and native
+// lanes at startup. Media-specific playback admission remains a separate gate.
+func (e *Executor) MixedLocationIngestionReady() bool {
+	if e == nil || e.scanner == nil || e.matcher == nil {
+		return false
+	}
+	storage, ok := e.storageIngestor.(*StorageScanner)
+	return ok && storage != nil && storage.host != nil && storage.host.Registry != nil && storage.host.Manager != nil && storage.sources != nil && storage.resources != nil && storage.scanner.NativeStorageScanConfigured()
 }
 
 // tryStorageIngest scans a library with a storage location and reports whether
@@ -340,11 +351,11 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			matching.Wait()
 			// Stop renewing first so a renewal cannot race completion.
 			stopRenew()
-			var trashed int
+			var swept scanner.ScanResult
 			var orphanedImageDirs []string
 			finalize := func(ctx context.Context, tx pgx.Tx) error {
 				var err error
-				trashed, orphanedImageDirs, err = c.scanner.SweepStorageLocationTx(ctx, tx, folder, location)
+				swept, orphanedImageDirs, err = c.scanner.SweepStorageLocationCountsTx(ctx, tx, folder, location)
 				return err
 			}
 			missing, err := c.sources.CompleteLocationAuthorized(job, lease, authorize, finalize)
@@ -352,7 +363,9 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 				return result, err
 			}
 			result.ScanResult.Missing += missing
-			result.ScanResult.FilesDeleted += trashed
+			result.ScanResult.FilesDeleted += swept.FilesDeleted
+			result.ScanResult.MembershipsRemoved += swept.MembershipsRemoved
+			result.ScanResult.ItemsDeleted += swept.ItemsDeleted
 			c.scanner.CleanupStorageLibraryArtwork(job, orphanedImageDirs)
 			matchStats.log(job, folder.ID)
 			return result, nil

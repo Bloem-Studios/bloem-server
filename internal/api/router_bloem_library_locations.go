@@ -3,10 +3,11 @@ package api
 import (
 	"context"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
-	"github.com/go-chi/chi/v5"
 )
 
 // Called inside the existing signed administrative-context subtree.
@@ -33,6 +34,7 @@ func attachNativeLibraryLocations(deps Dependencies, libraries *handlers.Library
 		return
 	}
 	locations.SetSourceBrowser(h.Browser)
+	locations.SetMixedLocationsReady(deps.LibraryIngester.MixedLocationIngestionReady())
 	capabilities, ok := h.Capabilities.(interface{ LibraryLocationEditingReady(context.Context) bool })
 	if !ok {
 		return

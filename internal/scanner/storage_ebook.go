@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/Silo-Server/silo-server/internal/artworkkey"
 	"github.com/Silo-Server/silo-server/internal/idgen"
 	"github.com/Silo-Server/silo-server/internal/librarykind"
@@ -18,8 +21,6 @@ import (
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/titleutil"
-	"github.com/jackc/pgx/v5"
-	"google.golang.org/protobuf/proto"
 )
 
 // StorageEbook is one listed storage file, with the metadata to publish it.
@@ -544,31 +545,38 @@ func (s *Scanner) MarkStorageEbooksRemovedTx(ctx context.Context, tx pgx.Tx, loc
 // Native ebook and movie publication has no episode memberships or filesystem roots.
 // The returned artwork directories may be removed only after a successful commit.
 func (s *Scanner) SweepStorageLocationTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder, location storagesource.Location) (int, []string, error) {
+	result, directories, err := s.SweepStorageLocationCountsTx(ctx, tx, folder, location)
+	return result.FilesDeleted, directories, err
+}
+
+// SweepStorageLocationCountsTx also reports catalog membership and item changes.
+// Apply its counters only after the authorized completion transaction commits.
+func (s *Scanner) SweepStorageLocationCountsTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder, location storagesource.Location) (ScanResult, []string, error) {
 	if s == nil || s.libraryRepo == nil || s.fileRepo == nil || tx == nil || folder == nil ||
 		(!librarykind.IsEbook(folder.Type) && !librarykind.IsMovie(folder.Type) && !librarykind.Of(folder.Type).Audiobook) || folder.ID != location.FolderID {
-		return 0, nil, fmt.Errorf("storage sweep: scanner or library not configured")
+		return ScanResult{}, nil, fmt.Errorf("storage sweep: scanner or library not configured")
 	}
 	rows, err := tx.Query(ctx, `SELECT DISTINCT mf.content_id FROM media_files mf JOIN bloem_storage_file_refs r ON r.media_file_id=mf.id WHERE r.location_id=$1 AND mf.media_folder_id=$2 AND mf.content_id IS NOT NULL ORDER BY mf.content_id`, location.ID, folder.ID)
 	if err != nil {
-		return 0, nil, err
+		return ScanResult{}, nil, err
 	}
 	candidates, err := pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil {
-		return 0, nil, err
+		return ScanResult{}, nil, err
 	}
 	// Retained rows owned by other lanes protect shared items against a
 	// cascading orphan purge, including versions already marked missing.
 	rows, err = tx.Query(ctx, `SELECT DISTINCT mf.content_id FROM media_files mf WHERE mf.content_id=ANY($1::text[]) AND NOT EXISTS(SELECT 1 FROM bloem_storage_file_refs r WHERE r.media_file_id=mf.id AND r.location_id=$2)`, candidates, location.ID)
 	if err != nil {
-		return 0, nil, err
+		return ScanResult{}, nil, err
 	}
 	retained, err := pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil {
-		return 0, nil, err
+		return ScanResult{}, nil, err
 	}
-	_, _, orphanedImageDirs, err := s.libraryRepo.ReconcileItemsMembershipTx(ctx, tx, folder.ID, candidates, nil, retained)
+	membershipsRemoved, itemsDeleted, orphanedImageDirs, err := s.libraryRepo.ReconcileItemsMembershipTx(ctx, tx, folder.ID, candidates, nil, retained)
 	if err != nil {
-		return 0, nil, fmt.Errorf("reconciling storage library membership for folder %d: %w", folder.ID, err)
+		return ScanResult{}, nil, fmt.Errorf("reconciling storage library membership for folder %d: %w", folder.ID, err)
 	}
 	trashed := 0
 	if s.emptyTrashAfterScan {
@@ -589,11 +597,11 @@ func (s *Scanner) SweepStorageLocationTx(ctx context.Context, tx pgx.Tx, folder 
                 AND NOT EXISTS (SELECT 1 FROM bloem_storage_file_refs owned WHERE owned.media_file_id=retained.id AND owned.location_id=$3)
               ))`, folder.ID, time.Now().UTC().Add(-s.fileRemovalGrace), location.ID)
 		if err != nil {
-			return 0, nil, fmt.Errorf("emptying storage trash for folder %d: %w", folder.ID, err)
+			return ScanResult{}, nil, fmt.Errorf("emptying storage trash for folder %d: %w", folder.ID, err)
 		}
 		trashed = int(tag.RowsAffected())
 	}
-	return trashed, orphanedImageDirs, nil
+	return ScanResult{FilesDeleted: trashed, MembershipsRemoved: membershipsRemoved, ItemsDeleted: itemsDeleted}, orphanedImageDirs, nil
 }
 
 // CleanupStorageLibraryArtwork removes artwork no committed catalog row owns.

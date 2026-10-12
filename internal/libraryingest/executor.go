@@ -182,7 +182,7 @@ func (e *Executor) ingest(ctx context.Context, folder *models.MediaFolder, mode 
 }
 
 // executeFilesystem is the original filesystem workflow under its caller's claim.
-func (e *Executor) executeFilesystem(scanCtx context.Context, folder *models.MediaFolder, mode scopeMode, claim scopeClaim, publish bool) (*Result, error) {
+func (e *Executor) executeFilesystem(scanCtx context.Context, folder *models.MediaFolder, mode scopeMode, claim scopeClaim, publish bool) (result *Result, err error) {
 	ctx := scanCtx
 	scanCtx, cancel := context.WithCancel(scanCtx)
 	defer cancel()
@@ -265,6 +265,7 @@ func (e *Executor) executeFilesystem(scanCtx context.Context, folder *models.Med
 	})
 	scanStarted := time.Now()
 	scanMatchScopes, scanResult, err := e.scan(scanProgressCtx, folder, mode, claim.path)
+	defer retainMixedFilesystemFailure(&result, &err, publish, scanResult, scanStarted, &concurrentMatched, &concurrentMatchDuration, &drainerWG, cancel, stopDrainers)
 	if err != nil {
 		cancel()
 		stopDrainers()
@@ -334,7 +335,7 @@ func (e *Executor) executeFilesystem(scanCtx context.Context, folder *models.Med
 		return nil, err
 	}
 
-	result := &Result{
+	result = &Result{
 		ScanResult:    scanResult,
 		ScanDuration:  time.Since(scanStarted),
 		MatchedFiles:  int(concurrentMatched.Load()),

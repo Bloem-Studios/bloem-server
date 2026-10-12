@@ -171,6 +171,15 @@ failed lane retains its error and counts while independent locations continue;
 parent cancellation stops the remaining work. Aggregate catalog events publish
 once, and the last-scanned timestamp advances only when every lane succeeds.
 File and subtree scans remain local and never enumerate plugin selections.
+Early filesystem failures join their match drainers before returning committed
+scan and match counts to the aggregate. Native completion reports membership
+and item removals after its transaction commits, even when no file becomes
+newly missing and trash removes no file.
+
+Startup enables the location domain's mixed-location save guard and capability
+only when the executor has both filesystem dependencies and its configured
+native storage scanner. This witness does not replace movie playback admission
+or enable native audio.
 
 The optional `MaintenanceFileScope` limits filesystem candidates. With no scope,
 the original candidate SQL and reconciliation behavior remain unchanged. Native
