@@ -250,6 +250,135 @@ func (x *RecommendationsFeed) GetItems() []*Recommendation {
 	return nil
 }
 
+// Revisions are monotonic per source-bound profile/content choice.
+type RecommendationFeedback struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	ProfileId     string                 `protobuf:"bytes,2,opt,name=profile_id,json=profileId,proto3" json:"profile_id,omitempty"`
+	ContentId     string                 `protobuf:"bytes,3,opt,name=content_id,json=contentId,proto3" json:"content_id,omitempty"`
+	Revision      uint64                 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
+	Dismissed     bool                   `protobuf:"varint,5,opt,name=dismissed,proto3" json:"dismissed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecommendationFeedback) Reset() {
+	*x = RecommendationFeedback{}
+	mi := &file_bloem_recommendations_v1_recommendations_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecommendationFeedback) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecommendationFeedback) ProtoMessage() {}
+
+func (x *RecommendationFeedback) ProtoReflect() protoreflect.Message {
+	mi := &file_bloem_recommendations_v1_recommendations_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecommendationFeedback.ProtoReflect.Descriptor instead.
+func (*RecommendationFeedback) Descriptor() ([]byte, []int) {
+	return file_bloem_recommendations_v1_recommendations_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RecommendationFeedback) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *RecommendationFeedback) GetProfileId() string {
+	if x != nil {
+		return x.ProfileId
+	}
+	return ""
+}
+
+func (x *RecommendationFeedback) GetContentId() string {
+	if x != nil {
+		return x.ContentId
+	}
+	return ""
+}
+
+func (x *RecommendationFeedback) GetRevision() uint64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
+func (x *RecommendationFeedback) GetDismissed() bool {
+	if x != nil {
+		return x.Dismissed
+	}
+	return false
+}
+
+type RecommendationFeedbackReceipt struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Revision      uint64                 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
+	Dismissed     bool                   `protobuf:"varint,2,opt,name=dismissed,proto3" json:"dismissed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecommendationFeedbackReceipt) Reset() {
+	*x = RecommendationFeedbackReceipt{}
+	mi := &file_bloem_recommendations_v1_recommendations_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecommendationFeedbackReceipt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecommendationFeedbackReceipt) ProtoMessage() {}
+
+func (x *RecommendationFeedbackReceipt) ProtoReflect() protoreflect.Message {
+	mi := &file_bloem_recommendations_v1_recommendations_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecommendationFeedbackReceipt.ProtoReflect.Descriptor instead.
+func (*RecommendationFeedbackReceipt) Descriptor() ([]byte, []int) {
+	return file_bloem_recommendations_v1_recommendations_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RecommendationFeedbackReceipt) GetRevision() uint64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
+func (x *RecommendationFeedbackReceipt) GetDismissed() bool {
+	if x != nil {
+		return x.Dismissed
+	}
+	return false
+}
+
 var File_bloem_recommendations_v1_recommendations_proto protoreflect.FileDescriptor
 
 const file_bloem_recommendations_v1_recommendations_proto_rawDesc = "" +
@@ -282,9 +411,22 @@ const file_bloem_recommendations_v1_recommendations_proto_rawDesc = "" +
 	"\fgenerated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\x129\n" +
 	"\n" +
 	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12>\n" +
-	"\x05items\x18\x06 \x03(\v2(.bloem.recommendations.v1.RecommendationR\x05items2~\n" +
+	"\x05items\x18\x06 \x03(\v2(.bloem.recommendations.v1.RecommendationR\x05items\"\xaf\x01\n" +
+	"\x16RecommendationFeedback\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12\x1d\n" +
+	"\n" +
+	"profile_id\x18\x02 \x01(\tR\tprofileId\x12\x1d\n" +
+	"\n" +
+	"content_id\x18\x03 \x01(\tR\tcontentId\x12\x1a\n" +
+	"\brevision\x18\x04 \x01(\x04R\brevision\x12\x1c\n" +
+	"\tdismissed\x18\x05 \x01(\bR\tdismissed\"Y\n" +
+	"\x1dRecommendationFeedbackReceipt\x12\x1a\n" +
+	"\brevision\x18\x01 \x01(\x04R\brevision\x12\x1c\n" +
+	"\tdismissed\x18\x02 \x01(\bR\tdismissed2\xf5\x01\n" +
 	"\x13RecommendationsHost\x12g\n" +
-	"\x04Read\x120.bloem.recommendations.v1.RecommendationsRequest\x1a-.bloem.recommendations.v1.RecommendationsFeedBeZcgithub.com/Silo-Server/silo-server/internal/managedtracking/recommendationswire;recommendationswireb\x06proto3"
+	"\x04Read\x120.bloem.recommendations.v1.RecommendationsRequest\x1a-.bloem.recommendations.v1.RecommendationsFeed\x12u\n" +
+	"\bFeedback\x120.bloem.recommendations.v1.RecommendationFeedback\x1a7.bloem.recommendations.v1.RecommendationFeedbackReceiptBeZcgithub.com/Silo-Server/silo-server/internal/managedtracking/recommendationswire;recommendationswireb\x06proto3"
 
 var (
 	file_bloem_recommendations_v1_recommendations_proto_rawDescOnce sync.Once
@@ -298,23 +440,27 @@ func file_bloem_recommendations_v1_recommendations_proto_rawDescGZIP() []byte {
 	return file_bloem_recommendations_v1_recommendations_proto_rawDescData
 }
 
-var file_bloem_recommendations_v1_recommendations_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_bloem_recommendations_v1_recommendations_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_bloem_recommendations_v1_recommendations_proto_goTypes = []any{
-	(*RecommendationsRequest)(nil), // 0: bloem.recommendations.v1.RecommendationsRequest
-	(*Recommendation)(nil),         // 1: bloem.recommendations.v1.Recommendation
-	(*RecommendationsFeed)(nil),    // 2: bloem.recommendations.v1.RecommendationsFeed
-	nil,                            // 3: bloem.recommendations.v1.Recommendation.ExternalIdsEntry
-	(*timestamppb.Timestamp)(nil),  // 4: google.protobuf.Timestamp
+	(*RecommendationsRequest)(nil),        // 0: bloem.recommendations.v1.RecommendationsRequest
+	(*Recommendation)(nil),                // 1: bloem.recommendations.v1.Recommendation
+	(*RecommendationsFeed)(nil),           // 2: bloem.recommendations.v1.RecommendationsFeed
+	(*RecommendationFeedback)(nil),        // 3: bloem.recommendations.v1.RecommendationFeedback
+	(*RecommendationFeedbackReceipt)(nil), // 4: bloem.recommendations.v1.RecommendationFeedbackReceipt
+	nil,                                   // 5: bloem.recommendations.v1.Recommendation.ExternalIdsEntry
+	(*timestamppb.Timestamp)(nil),         // 6: google.protobuf.Timestamp
 }
 var file_bloem_recommendations_v1_recommendations_proto_depIdxs = []int32{
-	3, // 0: bloem.recommendations.v1.Recommendation.external_ids:type_name -> bloem.recommendations.v1.Recommendation.ExternalIdsEntry
-	4, // 1: bloem.recommendations.v1.RecommendationsFeed.generated_at:type_name -> google.protobuf.Timestamp
-	4, // 2: bloem.recommendations.v1.RecommendationsFeed.expires_at:type_name -> google.protobuf.Timestamp
+	5, // 0: bloem.recommendations.v1.Recommendation.external_ids:type_name -> bloem.recommendations.v1.Recommendation.ExternalIdsEntry
+	6, // 1: bloem.recommendations.v1.RecommendationsFeed.generated_at:type_name -> google.protobuf.Timestamp
+	6, // 2: bloem.recommendations.v1.RecommendationsFeed.expires_at:type_name -> google.protobuf.Timestamp
 	1, // 3: bloem.recommendations.v1.RecommendationsFeed.items:type_name -> bloem.recommendations.v1.Recommendation
 	0, // 4: bloem.recommendations.v1.RecommendationsHost.Read:input_type -> bloem.recommendations.v1.RecommendationsRequest
-	2, // 5: bloem.recommendations.v1.RecommendationsHost.Read:output_type -> bloem.recommendations.v1.RecommendationsFeed
-	5, // [5:6] is the sub-list for method output_type
-	4, // [4:5] is the sub-list for method input_type
+	3, // 5: bloem.recommendations.v1.RecommendationsHost.Feedback:input_type -> bloem.recommendations.v1.RecommendationFeedback
+	2, // 6: bloem.recommendations.v1.RecommendationsHost.Read:output_type -> bloem.recommendations.v1.RecommendationsFeed
+	4, // 7: bloem.recommendations.v1.RecommendationsHost.Feedback:output_type -> bloem.recommendations.v1.RecommendationFeedbackReceipt
+	6, // [6:8] is the sub-list for method output_type
+	4, // [4:6] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
 	4, // [4:4] is the sub-list for extension extendee
 	0, // [0:4] is the sub-list for field type_name
@@ -331,7 +477,7 @@ func file_bloem_recommendations_v1_recommendations_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_bloem_recommendations_v1_recommendations_proto_rawDesc), len(file_bloem_recommendations_v1_recommendations_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

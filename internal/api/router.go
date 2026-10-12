@@ -1974,7 +1974,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if deps.DB != nil {
 			sectionFetcher.RecommendationRepo = recommendations.NewRepo(deps.DB)
 			if ratingsRepo != nil {
-				sectionFetcher.RecommendationReader = recommendations.NewReader(sectionFetcher.RecommendationRepo, ratingsRepo, deps.RecWorker, deps.UserStoreProvider)
+				sectionFetcher.RecommendationReader = wrapManagedRecommendationReader(recommendations.NewReader(sectionFetcher.RecommendationRepo, ratingsRepo, deps.RecWorker, deps.UserStoreProvider), deps.DB)
 			}
 		}
 		sections.InstallRecipeDelegate(sectionFetcher)
@@ -2182,7 +2182,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			recsRepo = recommendations.NewRepo(deps.DB)
 			recsReader = recommendations.NewReader(recsRepo, ratingsRepo, deps.RecWorker, deps.UserStoreProvider)
 		}
-		recsHandler = handlers.NewRecommendationsHandler(deps.Recommender, recsReader, deps.UserStoreProvider, ratingsRepo, recsRepo, deps.Recommender != nil)
+		recsHandler = handlers.NewRecommendationsHandler(deps.Recommender, wrapManagedRecommendationReader(recsReader, deps.DB), deps.UserStoreProvider, ratingsRepo, recsRepo, deps.Recommender != nil)
 		if deps.DB != nil {
 			recsFetcher := sections.NewFetcher(deps.DB)
 			recsFetcher.StoreProvider = deps.UserStoreProvider

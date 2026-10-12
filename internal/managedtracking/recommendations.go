@@ -2,6 +2,7 @@ package managedtracking
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -62,6 +63,32 @@ func (s *Service) ReadRecommendations(ctx context.Context, installation int, r *
 		}
 		seen[item.ContentId] = true
 	}
+	userID, _ := strconv.Atoi(p.AccountID)
+	hidden, err := tx.Query(ctx, `SELECT content_id FROM bloem_managed_recommendation_feedback WHERE installation_id=$1 AND user_id=$2 AND profile_id=$3 AND dismissed`, installation, userID, p.ProfileID)
+	if err != nil {
+		return nil, err
+	}
+	dismissed := map[string]bool{}
+	for hidden.Next() {
+		var content string
+		if err = hidden.Scan(&content); err != nil {
+			hidden.Close()
+			return nil, err
+		}
+		dismissed[content] = true
+	}
+	err = hidden.Err()
+	hidden.Close()
+	if err != nil {
+		return nil, err
+	}
+	visible := make([]*rec.Recommendation, 0, len(items))
+	for _, item := range items {
+		if !dismissed[item.ContentId] {
+			visible = append(visible, item)
+		}
+	}
+	items = visible
 	after, err := source.Authority(ctx, p)
 	if err != nil {
 		return nil, err

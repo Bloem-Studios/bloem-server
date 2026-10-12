@@ -63,7 +63,7 @@ func (b *brokerService) GetInfo(ctx context.Context, _ *managedv1.InfoRequest) (
 		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.calendar.v1")
 	}
 	if _, ok := b.service.calendarSource().(RecommendationsSource); ok {
-		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.recommendations.v1")
+		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.recommendations.v1", "bloem.recommendations.feedback.v1")
 	}
 	return out, nil
 }

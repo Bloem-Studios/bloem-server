@@ -3,7 +3,7 @@ package bloem.recommendations.v1;
 option go_package = "github.com/Silo-Server/silo-server/internal/managedtracking/recommendationswire;recommendationswire";
 import "google/protobuf/timestamp.proto";
 // Installation-bound cached personal recommendations, never social suggestions.
-service RecommendationsHost { rpc Read(RecommendationsRequest) returns (RecommendationsFeed); }
+service RecommendationsHost { rpc Read(RecommendationsRequest) returns (RecommendationsFeed); rpc Feedback(RecommendationFeedback) returns (RecommendationFeedbackReceipt); }
 message RecommendationsRequest { string account_id = 1; string profile_id = 2; }
 message Recommendation {
  string content_id = 1; string kind = 2; string title = 3;
@@ -16,3 +16,10 @@ message RecommendationsFeed {
  google.protobuf.Timestamp expires_at = 5;
  repeated Recommendation items = 6; // Complete bounded projection, at most 100.
 }
+
+// Revisions are monotonic per source-bound profile/content choice.
+message RecommendationFeedback {
+ string account_id = 1; string profile_id = 2; string content_id = 3;
+ uint64 revision = 4; bool dismissed = 5;
+}
+message RecommendationFeedbackReceipt { uint64 revision = 1; bool dismissed = 2; }

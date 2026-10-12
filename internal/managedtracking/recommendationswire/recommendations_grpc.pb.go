@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RecommendationsHost_Read_FullMethodName = "/bloem.recommendations.v1.RecommendationsHost/Read"
+	RecommendationsHost_Read_FullMethodName     = "/bloem.recommendations.v1.RecommendationsHost/Read"
+	RecommendationsHost_Feedback_FullMethodName = "/bloem.recommendations.v1.RecommendationsHost/Feedback"
 )
 
 // RecommendationsHostClient is the client API for RecommendationsHost service.
@@ -29,6 +30,7 @@ const (
 // Installation-bound cached personal recommendations, never social suggestions.
 type RecommendationsHostClient interface {
 	Read(ctx context.Context, in *RecommendationsRequest, opts ...grpc.CallOption) (*RecommendationsFeed, error)
+	Feedback(ctx context.Context, in *RecommendationFeedback, opts ...grpc.CallOption) (*RecommendationFeedbackReceipt, error)
 }
 
 type recommendationsHostClient struct {
@@ -49,6 +51,16 @@ func (c *recommendationsHostClient) Read(ctx context.Context, in *Recommendation
 	return out, nil
 }
 
+func (c *recommendationsHostClient) Feedback(ctx context.Context, in *RecommendationFeedback, opts ...grpc.CallOption) (*RecommendationFeedbackReceipt, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RecommendationFeedbackReceipt)
+	err := c.cc.Invoke(ctx, RecommendationsHost_Feedback_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RecommendationsHostServer is the server API for RecommendationsHost service.
 // All implementations must embed UnimplementedRecommendationsHostServer
 // for forward compatibility.
@@ -56,6 +68,7 @@ func (c *recommendationsHostClient) Read(ctx context.Context, in *Recommendation
 // Installation-bound cached personal recommendations, never social suggestions.
 type RecommendationsHostServer interface {
 	Read(context.Context, *RecommendationsRequest) (*RecommendationsFeed, error)
+	Feedback(context.Context, *RecommendationFeedback) (*RecommendationFeedbackReceipt, error)
 	mustEmbedUnimplementedRecommendationsHostServer()
 }
 
@@ -68,6 +81,9 @@ type UnimplementedRecommendationsHostServer struct{}
 
 func (UnimplementedRecommendationsHostServer) Read(context.Context, *RecommendationsRequest) (*RecommendationsFeed, error) {
 	return nil, status.Error(codes.Unimplemented, "method Read not implemented")
+}
+func (UnimplementedRecommendationsHostServer) Feedback(context.Context, *RecommendationFeedback) (*RecommendationFeedbackReceipt, error) {
+	return nil, status.Error(codes.Unimplemented, "method Feedback not implemented")
 }
 func (UnimplementedRecommendationsHostServer) mustEmbedUnimplementedRecommendationsHostServer() {}
 func (UnimplementedRecommendationsHostServer) testEmbeddedByValue()                             {}
@@ -108,6 +124,24 @@ func _RecommendationsHost_Read_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RecommendationsHost_Feedback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecommendationFeedback)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecommendationsHostServer).Feedback(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RecommendationsHost_Feedback_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecommendationsHostServer).Feedback(ctx, req.(*RecommendationFeedback))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RecommendationsHost_ServiceDesc is the grpc.ServiceDesc for RecommendationsHost service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -118,6 +152,10 @@ var RecommendationsHost_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Read",
 			Handler:    _RecommendationsHost_Read_Handler,
+		},
+		{
+			MethodName: "Feedback",
+			Handler:    _RecommendationsHost_Feedback_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
