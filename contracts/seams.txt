@@ -115,6 +115,7 @@ internal/api/router.go  # Bloem route/service integration; fallback Live TV serv
 internal/api/router_v2_plugin_browser_test.go
 internal/api/testdata/media_routes.txt
 internal/apibench/bench_test.go  # reviewed test-only exception: synchronize concurrently served benchmark fixture counters and bodies
+internal/apiv2/admin_subtitle_metadata_test.go  # reviewed test-only exception: canonical API language projection preserves raw legacy row
 internal/apiv2/admin_system_test.go  # assert actual platform capability while retaining authorization and cache checks
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
 internal/apiv2/auth_sessions.go
@@ -321,6 +322,7 @@ internal/scenariocatalog/executor/executor_test.go  # verify tenant reseeding an
 internal/scenariocatalog/executor/run.go  # row-scoped prerequisites/lifecycle readiness; avoid duplicate FreshState reseeds; apply explicit SHA-pinned Bloem adjudications while retaining frozen Silo catalogs
 internal/sections/fetcher.go
 internal/sections/types.go
+internal/subtitles/provider_language_test.go  # reviewed test-only exception: repository reads preserve upstream raw legacy language
 internal/transcodenode/server_test.go
 internal/userstore/pgstore/profile_advisory_age_test.go  # Assert advisory-age invalidation on authoritative profile membership revision
 internal/userstore/pgstore/profile_libraries.go
