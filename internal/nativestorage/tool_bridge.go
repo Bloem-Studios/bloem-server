@@ -53,9 +53,10 @@ func (t *ToolInput) serveToolRange(w http.ResponseWriter, r *http.Request) {
 	select {
 	case t.slots <- struct{}{}:
 		defer func() { <-t.slots }()
-	default:
-		t.failServing(ErrToolInputBusy)
-		http.Error(w, "tool input unavailable", http.StatusTooManyRequests)
+	case <-r.Context().Done():
+		return
+	case <-t.ctx.Done():
+		http.Error(w, "tool input unavailable", http.StatusServiceUnavailable)
 		return
 	}
 	if err := t.config.Reauthorize(t.ctx); err != nil {

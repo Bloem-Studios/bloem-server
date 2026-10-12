@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
@@ -121,32 +122,25 @@ func TestToolInputCancellationJoinsReadsAndToolBeforeHostRelease(t *testing.T) {
 	}
 }
 
-func TestToolInputConcurrentReadLimitInvalidatesResult(t *testing.T) {
-	entered := make(chan struct{})
+func TestToolInputConcurrentReadWaitHonorsRequestCancellation(t *testing.T) {
 	source := &toolFixtureSource{data: "0123456789abcdef"}
-	source.read = func(ctx context.Context, _, _ int64, _ io.Writer) error {
-		close(entered)
-		<-ctx.Done()
-		return ctx.Err()
-	}
 	input := toolFixtureInput(t, source, func(config *ToolInputConfig) { config.MaxConcurrentReads = 1 })
-	client := toolHTTP(t)
-	err := input.Run(func(_ context.Context, argument string) error {
-		joined := make(chan struct{})
-		go func() {
-			_, _, _ = toolResponse(t, client, "GET", argument, "bytes=0-3")
-			close(joined)
-		}()
-		toolWait(t, entered)
-		_, body, _ := toolResponse(t, client, "GET", argument, "bytes=4-7")
-		if body == "4567" {
-			t.Fatal("concurrent read limit admitted another range")
-		}
-		<-joined
-		return nil
-	})
-	if !errors.Is(err, ErrToolInputBusy) || source.reads.Load() != 1 {
-		t.Fatalf("concurrent IO limit lost: %v", err)
+	input.slots <- struct{}{}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	request := httptest.NewRequest(http.MethodGet, input.argument, nil).WithContext(ctx)
+	recorder := httptest.NewRecorder()
+	input.serveToolRange(recorder, request)
+	<-input.slots
+	input.mu.Lock()
+	sticky := input.sticky
+	input.mu.Unlock()
+	if sticky != nil || source.reads.Load() != 0 {
+		t.Fatalf("abandoned queued range invalidated input: sticky=%v reads=%d", sticky, source.reads.Load())
+	}
+	response, body, err := toolResponse(t, toolHTTP(t), http.MethodGet, input.argument, "bytes=4-7")
+	if err != nil || response.StatusCode != http.StatusPartialContent || body != "4567" {
+		t.Fatalf("input unavailable after abandoned queue: response=%v body=%q err=%v", response, body, err)
 	}
 }
 

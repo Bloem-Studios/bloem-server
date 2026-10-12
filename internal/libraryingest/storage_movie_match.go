@@ -101,15 +101,13 @@ func nativeMovieMatchRequest(folderID int, target scanner.StorageMovieMatch) met
 	switch {
 	case target.TmdbID != "":
 		request.Mode, request.ProviderIDs = metadata.ModeIdentify, map[string]string{"tmdb": target.TmdbID}
-	case target.ImdbID != "":
-		request.Mode, request.ProviderIDs = metadata.ModeIdentify, map[string]string{"imdb": target.ImdbID}
 	default:
 		alternates := make([]metadata.MatchIdentityHint, 0, len(target.Alternates))
 		for _, alternate := range target.Alternates {
 			alternates = append(alternates, metadata.MatchIdentityHint{Title: alternate.Title, Year: alternate.Year, Source: alternate.Source})
 		}
 		request.Mode = metadata.ModeInitialMatch
-		request.Hints = &metadata.MatchHints{Title: target.Title, Year: target.Year, Type: "movie", HintSource: "scanner", AlternateIdentities: alternates}
+		request.Hints = &metadata.MatchHints{ImdbID: target.ImdbID, Title: target.Title, Year: target.Year, Type: "movie", HintSource: "scanner", AlternateIdentities: alternates}
 	}
 	return request
 }
