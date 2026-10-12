@@ -22,5 +22,19 @@ func (r *Repository) CompleteAuthorized(ctx context.Context, lease Lease, author
 	if authorize == nil {
 		return fmt.Errorf("storage completion authority required")
 	}
-	return r.complete(ctx, lease, authorize, finalize)
+	return r.complete(ctx, lease, authorize, finalize, nil)
+}
+
+// CompleteLocationAuthorized returns newly missing files only after the
+// location graph and the caller's finalizer have committed together.
+func (r *Repository) CompleteLocationAuthorized(ctx context.Context, lease Lease, authorize CompletionAuthorizer, finalize CompletionFinalizer) (int, error) {
+	if authorize == nil {
+		return 0, fmt.Errorf("storage completion authority required")
+	}
+	var missing int
+	err := r.complete(ctx, lease, authorize, finalize, &missing)
+	if err != nil {
+		return 0, err
+	}
+	return missing, nil
 }

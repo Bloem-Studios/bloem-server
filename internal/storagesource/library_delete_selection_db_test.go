@@ -87,13 +87,13 @@ func TestDeletingSharedSourceLibraryRetainsHistoryDB(t *testing.T) {
 		if err := attachFile(t, repo, 1, location.FolderID, storagesource.PersistedRef{LocationID: location.ID, EntryID: "retained", Revision: "v1"}); err != nil {
 			t.Fatal(err)
 		}
-		execSQL(t, pool, `INSERT INTO bloem_storage_location_directories(location_id,directory_id,configuration_revision,selection_revision) VALUES($1,'root',1,1)`, location.ID)
+		execSQL(t, pool, `INSERT INTO bloem_storage_location_directories(location_id,directory_id,configuration_revision,selection_revision) VALUES($1,'root',1,1) ON CONFLICT DO NOTHING`, location.ID)
 		execSQL(t, pool, `INSERT INTO bloem_storage_location_entries(location_id,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,selection_revision,last_seen_run)
-	 SELECT $1,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,1,last_seen_run FROM bloem_storage_entries WHERE source_key=$2`, location.ID, source.Key)
-		execSQL(t, pool, `INSERT INTO bloem_storage_location_edges(location_id,parent_directory_id,entry_id) VALUES($1,'root','retained')`, location.ID)
+	 SELECT $1,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,1,last_seen_run FROM bloem_storage_entries WHERE source_key=$2 ON CONFLICT DO NOTHING`, location.ID, source.Key)
+		execSQL(t, pool, `INSERT INTO bloem_storage_location_edges(location_id,parent_directory_id,entry_id) VALUES($1,'root','retained') ON CONFLICT DO NOTHING`, location.ID)
 	}
 	execSQL(t, pool, `INSERT INTO bloem_storage_scan_directory_roots(run_id,directory_id,location_id,root_id)
-	 SELECT $1,'root',$2,id FROM bloem_storage_selected_roots WHERE location_id=$2`, lease.RunID, first.ID)
+	 SELECT $1,'root',$2,id FROM bloem_storage_selected_roots WHERE location_id=$2 ON CONFLICT DO NOTHING`, lease.RunID, first.ID)
 	var secondBefore string
 	if err := pool.QueryRow(t.Context(), `SELECT jsonb_build_array(
 	 (SELECT jsonb_agg(to_jsonb(r)) FROM bloem_storage_scan_runs r WHERE location_id=$1),

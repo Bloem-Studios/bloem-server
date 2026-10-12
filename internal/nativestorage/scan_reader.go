@@ -45,6 +45,7 @@ type ScanPage struct {
 	page       *storagev1.ListResponse
 	snapshot   *plugins.NativeStorageSnapshot
 	owners     scanOwnerEvidence
+	resources  resourcetenancy.NativeResourceSet
 }
 type scanOwnerEvidence struct {
 	folderOwner                    uuid.UUID
@@ -71,7 +72,7 @@ func (r *ScanReader) SetNativeMovieReady(ready bool) {
 // cannot redirect an open or alter the metadata accepted from pinned Stat.
 func (r *ScanReader) AdmitScanPage(ctx context.Context, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse) (*ScanPage, error) {
 	if ctx == nil || r == nil || r.pool == nil || r.host == nil || r.host.Registry == nil || r.runtime == nil ||
-		lease.RunID == uuid.Nil || lease.SourceKey != source.Key || lease.ConfigurationRevision != source.ConfigurationRevision || lease.Epoch <= 0 || lease.Owner == "" || checkpoint.Complete {
+		lease.RunID == uuid.Nil || lease.LocationID != location.ID || lease.SelectionRevision != location.SelectionRevision || lease.SourceKey != source.Key || lease.ConfigurationRevision != source.ConfigurationRevision || lease.Epoch <= 0 || lease.Owner == "" || checkpoint.Complete {
 		return nil, storagesource.ErrSourceUnavailable
 	}
 	copyPage := proto.CloneOf(page)
@@ -97,7 +98,16 @@ func (r *ScanReader) AdmitScanPage(ctx context.Context, location storagesource.L
 	frozen.Source = source
 	frozen.Manifest = proto.CloneOf(snapshot.Manifest)
 	frozen.Config = proto.CloneOf(&publicv1.ConfigureRequest{Config: snapshot.Config}).Config
-	p := &ScanPage{reader: r, location: location, source: source, lease: lease, checkpoint: checkpoint, page: copyPage, snapshot: &frozen}
+	resources := resourcetenancy.NewStore(r.pool)
+	resources.SetNativeMovieReady(r.nativeMovieReady)
+	pinned, err := resources.StorageScanResources(ctx, location, source)
+	if err != nil {
+		return nil, err
+	}
+	if pinned.Sources[0].Generation != snapshot.Generation {
+		return nil, storagesource.ErrSourceUnavailable
+	}
+	p := &ScanPage{resources: pinned, reader: r, location: location, source: source, lease: lease, checkpoint: checkpoint, page: copyPage, snapshot: &frozen}
 	p.identity = p
 	p.owners, err = r.authorize(ctx, p)
 	if err != nil {
@@ -140,7 +150,7 @@ func (r *ScanReader) authorize(ctx context.Context, p *ScanPage) (scanOwnerEvide
 	}
 	resources := resourcetenancy.NewStore(r.pool)
 	resources.SetNativeMovieReady(r.nativeMovieReady)
-	if err = resources.RequireStorageScanTx(ctx, tx, p.location, p.source); err != nil {
+	if err = resources.RequireStorageScanTx(ctx, tx, p.location, p.source, p.resources); err != nil {
 		return owners, err
 	}
 	// A snapshot read before acquiring authority locks cannot fence a generation

@@ -16,7 +16,7 @@ func aggregateFixture(t *testing.T, mode string) (*nativeScanFixture, NativeReso
 	t.Helper()
 	x := newNativeScanFixture(t, mode)
 	nativeScanSQL(t, x.pool, `UPDATE plugin_installations SET runtime_generation=1 WHERE id=$1`, x.source.InstallationID)
-	nativeScanSQL(t, x.pool, `INSERT INTO bloem_storage_selected_roots(id,location_id,directory_id,name,logical_path) VALUES($1,$2,'root','root','')`, uuid.New(), x.binding.ID)
+	nativeScanSQL(t, x.pool, `INSERT INTO bloem_storage_selected_roots(id,location_id,directory_id,name,logical_path) VALUES($1,$2,'root','root','') ON CONFLICT(location_id,directory_id) DO NOTHING`, uuid.New(), x.binding.ID)
 	selections, err := x.repo.LocationSelections(t.Context(), x.binding.FolderID)
 	if err != nil {
 		t.Fatal(err)

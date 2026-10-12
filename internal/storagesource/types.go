@@ -13,6 +13,8 @@ import (
 )
 
 var (
+	ErrCheckpointRestart  = errors.New("storage directory restarted in full")
+	ErrSourceBusy         = errors.New("storage source has an active scan")
 	ErrStaleLease         = errors.New("storage scan lease is stale")
 	ErrSourceUnavailable  = errors.New("storage source unavailable")
 	ErrReferenceConflict  = errors.New("storage catalog reference conflicts")

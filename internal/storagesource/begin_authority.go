@@ -22,3 +22,12 @@ func (r *Repository) BeginAuthorized(ctx context.Context, sourceKey uuid.UUID, o
 	}
 	return r.begin(ctx, sourceKey, owner, ttl, authorize)
 }
+
+// BeginLocationAuthorized binds discovery to one exact retained selection.
+// Its authorizer must retain the complete library aggregate before journal locks.
+func (r *Repository) BeginLocationAuthorized(ctx context.Context, location Location, owner string, ttl time.Duration, authorize BeginAuthorizer) (Lease, error) {
+	if authorize == nil || location.ID == uuid.Nil || location.SourceKey == uuid.Nil || location.FolderID <= 0 || location.SelectionRevision <= 0 {
+		return Lease{}, fmt.Errorf("storage location begin authority required")
+	}
+	return r.beginLocation(ctx, location.SourceKey, owner, ttl, authorize, &location)
+}

@@ -33,23 +33,22 @@ func (r *Repository) FetchPage(ctx context.Context, lease Lease, checkpoint Chec
 	if err != nil {
 		return nil, err
 	}
-	if checkpoint.Cursor != "" {
-		return fetchPage(ctx, client, sourceID, checkpoint, "")
-	}
-	var token string
-	err = r.pool.QueryRow(ctx, `SELECT token FROM bloem_storage_change_tokens
-		WHERE source_key=$1 AND directory_id=$2 AND configuration_revision=$3 AND issued_at > now() - ($4::bigint * interval '1 second') AND location_id=$5 AND selection_revision=$6`,
-		lease.SourceKey, checkpoint.DirectoryID, lease.ConfigurationRevision, int64(maxChangeTokenAge/time.Second), lease.LocationID, lease.SelectionRevision).Scan(&token)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+
+	mode, token, err := r.directoryListing(ctx, lease, checkpoint)
+	if err != nil {
 		return nil, err
 	}
 	page, err := fetchPage(ctx, client, sourceID, checkpoint, token)
-	if token != "" && status.Code(err) == codes.FailedPrecondition {
-		if _, err := r.pool.Exec(ctx, `DELETE FROM bloem_storage_change_tokens WHERE location_id=$1 AND directory_id=$2 AND configuration_revision=$3 AND selection_revision=$4 AND token=$5`, lease.LocationID, checkpoint.DirectoryID, lease.ConfigurationRevision, lease.SelectionRevision, token); err != nil {
+	if mode == "incremental" && status.Code(err) == codes.FailedPrecondition {
+		if err = r.resetDirectoryFull(ctx, lease, checkpoint); err != nil {
 			return nil, err
+		}
+		if checkpoint.Cursor != "" {
+			return nil, ErrCheckpointRestart
 		}
 		return fetchPage(ctx, client, sourceID, checkpoint, "")
 	}
+
 	return page, err
 }
 
@@ -67,4 +66,69 @@ func fetchPage(ctx context.Context, client storagev1.StorageProviderClient, sour
 		return nil, err
 	}
 	return page, nil
+}
+
+// The input token and effective mode are retained before provider I/O, so a
+// resumed cursor never guesses whether omission means absence.
+func (r *Repository) directoryListing(ctx context.Context, lease Lease, cp Checkpoint) (string, string, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	if err = verifyLease(ctx, tx, lease); err != nil {
+		return "", "", err
+	}
+	var mode, token, cursor string
+	var complete bool
+	err = tx.QueryRow(ctx, `SELECT listing_mode,changes_since,current_cursor,complete FROM bloem_storage_scan_directories WHERE run_id=$1 AND directory_id=$2 FOR UPDATE`, lease.RunID, cp.DirectoryID).Scan(&mode, &token, &cursor, &complete)
+	if err != nil {
+		return "", "", err
+	}
+	if complete || cursor != cp.Cursor {
+		return "", "", ErrCheckpointConflict
+	}
+	if mode == "pending" {
+		err = tx.QueryRow(ctx, `SELECT t.token FROM bloem_storage_change_tokens t JOIN bloem_storage_location_directories d ON d.location_id=t.location_id AND d.directory_id=t.directory_id
+   WHERE t.source_key=$1 AND t.location_id=$2 AND t.directory_id=$3 AND t.configuration_revision=$4 AND t.selection_revision=$5 AND t.issued_at>now()-($6::bigint*interval '1 second')
+   AND d.configuration_revision=$4 AND d.selection_revision=$5 AND d.last_listing_mode IS NOT NULL`, lease.SourceKey, lease.LocationID, cp.DirectoryID, lease.ConfigurationRevision, lease.SelectionRevision, int64(maxChangeTokenAge/time.Second)).Scan(&token)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return "", "", err
+		}
+		mode = "full"
+		if token != "" {
+			mode = "incremental"
+		}
+		if _, err = tx.Exec(ctx, `UPDATE bloem_storage_scan_directories SET listing_mode=$3,changes_since=$4 WHERE run_id=$1 AND directory_id=$2`, lease.RunID, cp.DirectoryID, mode, token); err != nil {
+			return "", "", err
+		}
+	}
+	return mode, token, tx.Commit(ctx)
+}
+func (r *Repository) resetDirectoryFull(ctx context.Context, lease Lease, cp Checkpoint) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	if err = verifyLease(ctx, tx, lease); err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx, `UPDATE bloem_storage_scan_directories SET listing_mode='full',changes_since='',current_cursor='',complete=false,processed_count=0 WHERE run_id=$1 AND directory_id=$2 AND current_cursor=$3 AND NOT complete`, lease.RunID, cp.DirectoryID, cp.Cursor)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrCheckpointConflict
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM bloem_storage_scan_cursors WHERE run_id=$1 AND directory_id=$2`, lease.RunID, cp.DirectoryID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM bloem_storage_scan_directory_entries WHERE run_id=$1 AND directory_id=$2`, lease.RunID, cp.DirectoryID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `DELETE FROM bloem_storage_change_tokens WHERE location_id=$1 AND directory_id=$2 AND configuration_revision=$3 AND selection_revision=$4`, lease.LocationID, cp.DirectoryID, lease.ConfigurationRevision, lease.SelectionRevision); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }

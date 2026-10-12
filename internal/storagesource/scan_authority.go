@@ -30,7 +30,7 @@ func pendingDirectoryTx(ctx context.Context, tx pgx.Tx, lease Lease) (Checkpoint
 	if err := verifyLease(ctx, tx, lease); err != nil {
 		return checkpoint, false, err
 	}
-	err := tx.QueryRow(ctx, `SELECT directory_id,current_cursor,complete FROM bloem_storage_scan_directories WHERE run_id=$1 AND NOT complete ORDER BY directory_id LIMIT 1`, lease.RunID).Scan(&checkpoint.DirectoryID, &checkpoint.Cursor, &checkpoint.Complete)
+	err := tx.QueryRow(ctx, `SELECT directory_id,current_cursor,complete FROM bloem_storage_scan_directories WHERE run_id=$1 AND NOT complete AND EXISTS(SELECT 1 FROM bloem_storage_scan_directory_roots dr WHERE dr.run_id=bloem_storage_scan_directories.run_id AND dr.directory_id=bloem_storage_scan_directories.directory_id) ORDER BY directory_id LIMIT 1`, lease.RunID).Scan(&checkpoint.DirectoryID, &checkpoint.Cursor, &checkpoint.Complete)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return checkpoint, false, nil
 	}

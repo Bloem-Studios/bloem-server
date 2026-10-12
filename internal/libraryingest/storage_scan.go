@@ -145,7 +145,8 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	if err != nil {
 		return result, err
 	}
-	if err = c.resources.RequireStorageScan(ctx, location, source); err != nil {
+	pinned, err := c.resources.StorageScanResources(ctx, location, source)
+	if err != nil {
 		return result, err
 	}
 	snapshot, err := c.snapshot(ctx, source)
@@ -161,9 +162,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	stopSession := context.AfterFunc(session.Context(), func() { cancel(storageplugin.ErrUnavailable) })
 	defer stopSession()
 	defer func() {
-		if cause := context.Cause(job); cause != nil && !errors.Is(cause, context.Canceled) {
-			err = errors.Join(err, cause)
-		}
+		err = normalizeNativeScanError(ctx, job, err)
 	}()
 	provider := session.Provider()
 	description, err := storageplugin.Describe(job, provider)
@@ -194,9 +193,9 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	}
 
 	authorize := func(ctx context.Context, tx pgx.Tx) error {
-		return c.resources.RequireStorageScanTx(ctx, tx, location, source)
+		return c.resources.RequireStorageScanTx(ctx, tx, location, source, pinned)
 	}
-	lease, err := c.sources.BeginAuthorized(job, source.Key, "storage-scan:"+uuid.NewString(), c.leaseTTL, authorize)
+	lease, err := c.beginLocation(job, location, "storage-scan:"+uuid.NewString(), authorize)
 	if err != nil {
 		return result, err
 	}
@@ -204,17 +203,14 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		return result, storagesource.ErrStaleLease
 	}
 	stopRenew := startStorageRenewal(job, cancel, c.leaseTTL/3, func(ctx context.Context) error {
-		if err := c.resources.RequireStorageScan(ctx, location, source); err != nil {
-			return err
-		}
-		return c.sources.Renew(ctx, lease, c.leaseTTL)
+		return c.sources.RenewAuthorized(ctx, lease, c.leaseTTL, authorize)
 	})
 	defer stopRenew()
 
 	media := mediasource.NewPluginSource(provider)
 	listed := 0
 	for {
-		if err = job.Err(); err != nil {
+		if err = nativeScanCause(ctx, job); err != nil {
 			return result, err
 		}
 		checkpoint, more, err := c.sources.NextDirectory(job, lease)
@@ -228,17 +224,26 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			var orphanedImageDirs []string
 			finalize := func(ctx context.Context, tx pgx.Tx) error {
 				var err error
-				trashed, orphanedImageDirs, err = c.scanner.SweepStorageLibraryTx(ctx, tx, folder)
+				// Mixed cleanup/orchestration belongs to the subsequent integration.
+				// This location's journal reconciles only its own publication memberships.
+				if len(pinned.Library.Locations) == 1 && len(folder.Paths) == 0 {
+					trashed, orphanedImageDirs, err = c.scanner.SweepStorageLibraryTx(ctx, tx, folder)
+				}
 				return err
 			}
-			if err = c.sources.CompleteAuthorized(job, lease, authorize, finalize); err != nil {
+			missing, err := c.sources.CompleteLocationAuthorized(job, lease, authorize, finalize)
+			if err != nil {
 				return result, err
 			}
+			result.ScanResult.Missing += missing
 			result.ScanResult.FilesDeleted += trashed
 			c.scanner.CleanupStorageLibraryArtwork(job, orphanedImageDirs)
 			return result, nil
 		}
 		page, err := c.sources.FetchPage(job, lease, checkpoint, provider)
+		if errors.Is(err, storagesource.ErrCheckpointRestart) {
+			continue
+		}
 		if err != nil {
 			return result, err
 		}
@@ -254,19 +259,35 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			return result, err
 		}
 		var published scanner.StoragePublishResult
-		var removedFiles int
-		publish := func(ctx context.Context, tx pgx.Tx, _ []*storagev1.Entry, removed []string) error {
+		publish := func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry, _ []string) error {
+			allowed := make(map[string]bool, len(files))
+			for _, file := range files {
+				allowed[file.Id] = true
+			}
+			uniqueBooks := make([]scanner.StorageEbook, 0, len(books))
+			for _, book := range books {
+				if allowed[book.Entry.Id] {
+					uniqueBooks = append(uniqueBooks, book)
+				}
+			}
+			uniqueMovies := make([]scanner.StorageMovie, 0, len(movies))
+			for _, movie := range movies {
+				if allowed[movie.Entry.Id] {
+					uniqueMovies = append(uniqueMovies, movie)
+				}
+			}
 			var err error
 			if librarykind.IsMovie(folder.Type) {
-				published, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, movies)
+				published, err = c.scanner.PublishStorageMoviesTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueMovies)
 			} else {
-				published, err = c.scanner.PublishStorageEbooksTx(ctx, tx, folder, location, source.ConfigurationRevision, books)
+				published, err = c.scanner.PublishStorageEbooksTx(ctx, tx, folder, location, source.ConfigurationRevision, uniqueBooks)
 			}
 			if err != nil {
 				return err
 			}
-			removedFiles, err = c.scanner.MarkStorageEbooksRemovedTx(ctx, tx, location, removed)
-			return err
+			// Explicit removals change retained directory edges in this page.
+			// Missing flags are committed only by successful location completion.
+			return nil
 		}
 		if err = c.sources.ApplyPageAuthorized(job, lease, checkpoint, page, authorize, publish); err != nil {
 			return result, err
@@ -274,7 +295,6 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		result.ScanResult.New += published.New
 		result.ScanResult.Updated += published.Updated
 		result.ScanResult.Unchanged += published.Unchanged + skipped
-		result.ScanResult.Missing += removedFiles
 		listed += len(page.GetEntries())
 		reportProgress(job, ProgressUpdate{Phase: "processing", Message: "Listing storage source",
 			FilesDiscovered: listed, FilesProcessed: listed, New: result.ScanResult.New, Updated: result.ScanResult.Updated})
@@ -397,4 +417,74 @@ func startStorageRenewal(ctx context.Context, cancel context.CancelCauseFunc, in
 	}()
 	var once sync.Once
 	return func() { once.Do(func() { stop(errStorageRenewalStopped); <-done }) }
+}
+
+// A child stopped after an internal fence/process failure carries that failure,
+// while actual parent cancellation keeps the queue's cancellation semantics.
+func nativeScanCause(parent, job context.Context) error {
+	if err := parent.Err(); err != nil {
+		return err
+	}
+	if cause := context.Cause(job); cause != nil {
+		return cause
+	}
+	return job.Err()
+}
+func normalizeNativeScanError(parent, job context.Context, err error) error {
+	cause := nativeScanCause(parent, job)
+	if cause == nil {
+		return err
+	}
+	if parent.Err() != nil {
+		return errors.Join(err, cause)
+	}
+	if storageRenewalOnlyCanceled(cause) {
+		return errors.Join(err, cause)
+	}
+	return errors.Join(withoutNativeCancellation(err), withoutNativeCancellation(cause))
+}
+func withoutNativeCancellation(err error) error {
+	if err == nil || storageRenewalOnlyCanceled(err) {
+		return nil
+	}
+	if !errors.Is(err, context.Canceled) {
+		return err
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		out := make([]error, 0, len(joined.Unwrap()))
+		for _, child := range joined.Unwrap() {
+			if keep := withoutNativeCancellation(child); keep != nil {
+				out = append(out, keep)
+			}
+		}
+		return errors.Join(out...)
+	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok {
+		return withoutNativeCancellation(wrapped.Unwrap())
+	}
+	return err
+}
+
+// Contention uses the existing scan's context and renews authority on every
+// attempt. The fixed bound prevents an active foreign source from monopolizing
+// a scan worker indefinitely; it is never absence evidence.
+func (c *StorageScanner) beginLocation(ctx context.Context, location storagesource.Location, owner string, authorize storagesource.BeginAuthorizer) (storagesource.Lease, error) {
+	wait, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	for {
+		lease, err := c.sources.BeginLocationAuthorized(wait, location, owner, c.leaseTTL, authorize)
+		if !errors.Is(err, storagesource.ErrSourceBusy) {
+			return lease, err
+		}
+		timer := time.NewTimer(100 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return lease, ctx.Err()
+		case <-wait.Done():
+			timer.Stop()
+			return lease, storagesource.ErrSourceBusy
+		case <-timer.C:
+		}
+	}
 }

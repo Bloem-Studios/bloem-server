@@ -67,7 +67,9 @@ func AttachFilesTx(ctx context.Context, tx pgx.Tx, configurationRevision int64, 
 	 JOIN library_storage_locations l ON l.id=x.location_id
 	 JOIN bloem_storage_sources s ON s.key=l.source_key
 	 JOIN bloem_storage_selected_roots r ON r.location_id=l.id AND r.directory_id=s.root_entry_id AND r.enabled
-	 WHERE x.media_file_id=ANY($1) ON CONFLICT(location_id,media_file_id,root_id) DO NOTHING`, fileIDs)
+	 WHERE x.media_file_id=ANY($1)
+  AND NOT EXISTS(SELECT 1 FROM bloem_storage_scan_runs run WHERE run.location_id=x.location_id AND run.state='running' AND run.selection_revision=l.selection_revision)
+  ON CONFLICT(location_id,media_file_id,root_id) DO NOTHING`, fileIDs)
 	if err != nil {
 		return err
 	}

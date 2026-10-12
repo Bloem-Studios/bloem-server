@@ -34,17 +34,93 @@ func (s *Store) RequireStorageScan(ctx context.Context, binding storagesource.Lo
 		return storageScanError(err)
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	if err = s.RequireStorageScanTx(ctx, tx, binding, expected); err != nil {
+	if _, err = s.retainStorageScanTx(ctx, tx, binding, expected); err != nil {
 		return err
 	}
 	return storageScanError(tx.Commit(ctx))
 }
 
-// RequireStorageScanTx is RequireStorageScan inside the caller's transaction;
-// it keeps its locks through the caller's commit. Call it before acquiring
-// source or run locks: registry mutations lock installation -> source -> runs.
-// It also applies when a library gains its storage location.
-func (s *Store) RequireStorageScanTx(ctx context.Context, tx pgx.Tx, binding storagesource.Location, expected storagesource.SourceConfig) error {
+// RequireStorageScanTx retains a pinned scan aggregate inside the caller's
+// transaction, before source or run locks. Without a pin it preserves legacy
+// attachment admission, which does not require a running provider generation.
+// Background scans use RequireStorageScan or StorageScanResources instead.
+func (s *Store) RequireStorageScanTx(ctx context.Context, tx pgx.Tx, binding storagesource.Location, expected storagesource.SourceConfig, pinned ...NativeResourceSet) error {
+	if len(pinned) == 0 {
+		return s.requireLegacyStorageAttachmentTx(ctx, tx, binding, expected)
+	}
+	_, err := s.retainStorageScanTx(ctx, tx, binding, expected, pinned...)
+	return err
+}
+
+// StorageScanResources pins the complete current location/root graph before
+// provider I/O. Subsequent page, renewal and completion transactions retain
+// this same aggregate once, before acquiring any journal locks.
+func (s *Store) StorageScanResources(ctx context.Context, binding storagesource.Location, expected storagesource.SourceConfig) (NativeResourceSet, error) {
+	var set NativeResourceSet
+	if s == nil || s.pool == nil {
+		return set, ErrResourceUnavailable
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return set, storageScanError(err)
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	retained, err := s.retainStorageScanTx(ctx, tx, binding, expected)
+	if err != nil {
+		return set, err
+	}
+	var generation uint64
+	for _, source := range retained.Sources {
+		if source.Source.Key == expected.Key {
+			generation = source.Generation
+		}
+	}
+	set = NativeResourceSet{Sources: []NativeSourceExpectation{{Source: expected, Generation: generation}}, Library: &NativeLibraryExpectation{FolderID: binding.FolderID, OwnerID: retained.LibraryOwner.ID, Locations: retained.Locations}}
+	return set, storageScanError(tx.Commit(ctx))
+}
+func (s *Store) retainStorageScanTx(ctx context.Context, tx pgx.Tx, binding storagesource.Location, expected storagesource.SourceConfig, pinned ...NativeResourceSet) (NativeRetainedResources, error) {
+	var out NativeRetainedResources
+	if s == nil || s.pool == nil || tx == nil {
+		return out, ErrResourceUnavailable
+	}
+	if binding.ID == uuid.Nil || binding.SourceKey == uuid.Nil || binding.FolderID <= 0 || binding.SelectionRevision <= 0 || expected.Key != binding.SourceKey || expected.OwnerID == uuid.Nil || expected.InstallationID == nil || *expected.InstallationID <= 0 || !expected.Enabled || expected.ConfigurationRevision <= 0 || len(pinned) > 1 {
+		return out, ErrResourceHidden
+	}
+	var set NativeResourceSet
+	if len(pinned) == 1 {
+		set = pinned[0]
+		if set.Library == nil || set.Library.FolderID != binding.FolderID || set.Library.Locations == nil || len(set.Sources) != 1 || !nativeManagementSourceEqual(set.Sources[0].Source, expected) {
+			return out, ErrResourceHidden
+		}
+	} else {
+		var generation uint64
+		if err := tx.QueryRow(ctx, `SELECT runtime_generation FROM plugin_installations WHERE id=$1`, *expected.InstallationID).Scan(&generation); err != nil {
+			return out, storageScanError(err)
+		}
+		set = NativeResourceSet{Sources: []NativeSourceExpectation{{Source: expected, Generation: generation}}, Library: &NativeLibraryExpectation{FolderID: binding.FolderID}}
+	}
+	out, err := s.RetainNativeResourcesTx(ctx, tx, nil, set)
+	if err != nil {
+		return out, err
+	}
+	if !librarykind.SupportsNativeStorage(out.LibraryKind, s.nativeMovieReady) {
+		return out, ErrResourceHidden
+	}
+	for _, location := range out.Locations {
+		if location.Location == binding {
+			for _, root := range location.Roots {
+				if root.Enabled {
+					return out, nil
+				}
+			}
+			return out, ErrResourceHidden
+		}
+	}
+	return out, ErrResourceHidden
+}
+
+// Keep legacy create admission independent of provider process lifetime.
+func (s *Store) requireLegacyStorageAttachmentTx(ctx context.Context, tx pgx.Tx, binding storagesource.Location, expected storagesource.SourceConfig) error {
 	if s == nil || s.pool == nil || tx == nil {
 		return ErrResourceUnavailable
 	}

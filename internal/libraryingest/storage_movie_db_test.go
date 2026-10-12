@@ -261,8 +261,8 @@ func TestNativeMovieStorageProbeFailureCommitsNothing(t *testing.T) {
 	}
 }
 
-// Empty listings do not prove absence. Only explicit removals make movie
-// files missing, and the successful authorized completion sweeps them.
+// A successful full listing and explicit incremental removals both establish
+// scoped absence, which the authorized completion commits and sweeps.
 func TestNativeMovieStorageRemovalAndEmptyListing(t *testing.T) {
 	binary, manifest := nativeMovieScanArtifact(t)
 	for _, mode := range []string{"movies-empty", "movies-removed"} {
@@ -289,10 +289,7 @@ func TestNativeMovieStorageRemovalAndEmptyListing(t *testing.T) {
 				f.folder.ID, f.installed.Source.Key).Scan(&files, &memberships, &items, &state); err != nil {
 				t.Fatal(err)
 			}
-			wantRemaining, wantDeleted, wantMissing := 2, 0, 0
-			if mode == "movies-removed" {
-				wantRemaining, wantDeleted, wantMissing = 0, 2, 2
-			}
+			wantRemaining, wantDeleted, wantMissing := 0, 2, 2
 			if state != "complete" || files != wantRemaining || memberships != wantRemaining || items != wantRemaining ||
 				result.ScanResult.FilesDeleted != wantDeleted || result.ScanResult.Missing != wantMissing {
 				t.Fatalf("%s: state=%s files=%d memberships=%d items=%d deleted=%d missing=%d", mode, state,

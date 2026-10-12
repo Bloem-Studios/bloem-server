@@ -100,21 +100,30 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 			return err
 		}
 	}
-	if err = applyEntries(ctx, tx, lease, page.GetEntries()); err != nil {
+	files, err := applyLocationEntries(ctx, tx, lease, checkpoint, page)
+	if err != nil {
 		return err
 	}
 	if publish != nil {
-		files := make([]*storagev1.Entry, 0, len(page.GetEntries()))
-		for _, entry := range page.GetEntries() {
-			if entry.GetKind() == storagev1.EntryKind_ENTRY_KIND_FILE {
-				files = append(files, entry)
+
+		removed := make([]string, 0, len(page.RemovedEntryIds))
+		for _, id := range page.RemovedEntryIds {
+			var retained bool
+			if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM bloem_storage_location_edges WHERE location_id=$1 AND entry_id=$2)`, lease.LocationID, id).Scan(&retained); err != nil {
+				return err
+			}
+			if !retained {
+				removed = append(removed, id)
 			}
 		}
-		if len(files) > 0 || len(page.GetRemovedEntryIds()) > 0 {
-			if err = publish(ctx, tx, files, page.GetRemovedEntryIds()); err != nil {
+		if len(files) > 0 || len(removed) > 0 {
+			if err = publish(ctx, tx, files, removed); err != nil {
 				return err
 			}
 		}
+	}
+	if err = propagateLocationRootsTx(ctx, tx, lease); err != nil {
+		return err
 	}
 	if page.GetComplete() && page.GetChangeToken() != "" {
 		if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_change_tokens(source_key,directory_id,token,configuration_revision,issued_at,location_id,selection_revision)
@@ -130,42 +139,16 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 	if _, err = tx.Exec(ctx, `UPDATE bloem_storage_scan_directories SET current_cursor=$3,complete=$4,processed_count=processed_count+$5 WHERE run_id=$1 AND directory_id=$2`, lease.RunID, checkpoint.DirectoryID, page.GetNextCursor(), page.GetComplete(), len(page.GetEntries())); err != nil {
 		return err
 	}
+	if page.GetComplete() {
+		if _, err = tx.Exec(ctx, `UPDATE bloem_storage_location_directories SET last_complete_run=$3,last_listing_mode=(SELECT listing_mode FROM bloem_storage_scan_directories WHERE run_id=$3 AND directory_id=$2) WHERE location_id=$1 AND directory_id=$2`, lease.LocationID, checkpoint.DirectoryID, lease.RunID); err != nil {
+			return err
+		}
+	}
+	if err = propagateLocationRootsTx(ctx, tx, lease); err != nil {
+		return err
+	}
 	if err = verifyLease(ctx, tx, lease); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
-}
-
-func applyEntries(ctx context.Context, tx pgx.Tx, lease Lease, entries []*storagev1.Entry) error {
-	// This batch is bounded by the validated 512-entry page, not library size.
-	batch := &pgx.Batch{}
-	for _, entry := range entries {
-		batch.Queue(`INSERT INTO bloem_storage_entries(source_key,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,last_seen_run)
-  VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-  ON CONFLICT(source_key,entry_id) DO UPDATE SET name=EXCLUDED.name,logical_path=EXCLUDED.logical_path,kind=EXCLUDED.kind,size=EXCLUDED.size,modified_unix_nano=EXCLUDED.modified_unix_nano,revision=EXCLUDED.revision,configuration_revision=EXCLUDED.configuration_revision,last_seen_run=EXCLUDED.last_seen_run,absence_confirmed_at=NULL
-  WHERE bloem_storage_entries.last_seen_run<>EXCLUDED.last_seen_run`, lease.SourceKey, entry.GetId(), entry.GetName(), entry.GetLogicalPath(), int32(entry.GetKind()), entry.GetSize(), entry.GetModifiedUnixNano(), entry.GetRevision(), lease.ConfigurationRevision, lease.RunID)
-	}
-	results := tx.SendBatch(ctx, batch)
-	for range entries {
-		tag, err := results.Exec()
-		if err != nil {
-			_ = results.Close()
-			return err
-		}
-		if tag.RowsAffected() != 1 {
-			_ = results.Close()
-			return fmt.Errorf("storage entry identity repeated within generation")
-		}
-	}
-	if err := results.Close(); err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		if entry.GetKind() == storagev1.EntryKind_ENTRY_KIND_DIRECTORY {
-			if _, err := tx.Exec(ctx, `INSERT INTO bloem_storage_scan_directories(run_id,directory_id) VALUES($1,$2)`, lease.RunID, entry.GetId()); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
