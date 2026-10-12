@@ -53,7 +53,9 @@ func configurationTestPool(t *testing.T) *pgxpool.Pool {
  active_jobs integer NOT NULL DEFAULT 0, node_group text, max_jobs integer, max_bandwidth_kbps integer,
  egress_kbps integer NOT NULL DEFAULT 0, last_health_check timestamptz, created_at timestamptz NOT NULL DEFAULT now(),
  capabilities jsonb, capabilities_hash text, capabilities_refreshed_at timestamptz, last_stats jsonb,
- hw_accel_override text, hw_device_override text, capability_drift text, capability_drift_baseline jsonb)`)
+ hw_accel_override text, hw_device_override text, capability_drift text, capability_drift_baseline jsonb,
+ network_access jsonb NOT NULL DEFAULT '{}'::jsonb, download_artifact_dir_override text,
+ download_artifact_max_bytes_override bigint CHECK (download_artifact_max_bytes_override >= 0))`)
 	if err != nil {
 		t.Fatal(err)
 	}

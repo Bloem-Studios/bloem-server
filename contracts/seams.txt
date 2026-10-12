@@ -252,6 +252,7 @@ internal/notifications/webhook_payload_discord.go
 internal/notifications/webhook_payload_generic.go
 internal/notifications/webpush_sender.go
 internal/notifications/ws_ticket.go
+internal/nodepool/admin_configuration_test.go  # reviewed test-only exception: synthetic node table includes current upstream network and download columns
 internal/opslog/cleanup.go
 internal/playback/contract/contract_test.go
 internal/playback/gpudetect.go
