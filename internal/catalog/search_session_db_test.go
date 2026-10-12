@@ -107,7 +107,7 @@ func TestMeilisearchRankingSessionDB(t *testing.T) {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM media_items WHERE content_id LIKE $1`, prefix+"%")
 		_, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id=$1`, library)
 	}()
-	if _, err := pool.Exec(ctx, `INSERT INTO media_items(content_id,type,title,content_rating,status) SELECT $1||n,'movie','Ranking fixture '||lpad(n::text,4,'0'),'PG','matched' FROM generate_series(1,1100)n`, prefix); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO media_items(content_id,type,title,content_rating,content_rating_age,status) SELECT $1||n,'movie','Ranking fixture '||lpad(n::text,4,'0'),'PG',8,'matched' FROM generate_series(1,1100)n`, prefix); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO media_item_libraries(content_id,media_folder_id) SELECT content_id,$2 FROM media_items WHERE content_id LIKE $1`, prefix+"%", library); err != nil {
@@ -176,7 +176,7 @@ func TestMeilisearchRankingSessionDB(t *testing.T) {
 	if _, err := pool.Exec(ctx, `DELETE FROM media_items WHERE content_id=$1`, session.IDs[3]); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `UPDATE media_items SET content_rating='R' WHERE content_id=$1`, session.IDs[4]); err != nil {
+	if _, err := pool.Exec(ctx, `UPDATE media_items SET content_rating='R',content_rating_age=17 WHERE content_id=$1`, session.IDs[4]); err != nil {
 		t.Fatal(err)
 	}
 	second, err := p2.Search(ctx, req)

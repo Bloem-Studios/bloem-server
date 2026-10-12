@@ -175,6 +175,7 @@ internal/catalog/episode_repo.go
 internal/catalog/filesplit/filesplit.go  # native selected-target authorization boundary
 internal/catalog/folder_repo.go
 internal/catalog/library_repo.go
+internal/catalog/search_session_db_test.go  # reviewed test-only exception: seed normalized PG/R ages required by the upstream access filter
 internal/catalogseed/service.go
 internal/config/admin_settings.go
 internal/config/bootstrap.go
