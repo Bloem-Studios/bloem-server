@@ -155,7 +155,7 @@ func TestBloemHomeSectionsWithWithdrawnLibraryGrant(t *testing.T) {
 				}
 			}
 			layout, err := h.HomeLayout(WithHomePromotions(viewerCtx, true))
-			if err != nil || len(layout.Sections) != 5 {
+			if err != nil || len(layout.Sections) != len(resolved)+1 {
 				t.Fatalf("layout: sections=%d error=%v", len(layout.Sections), err)
 			}
 			for _, section := range layout.Sections {

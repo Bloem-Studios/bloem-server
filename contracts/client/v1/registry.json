@@ -2634,6 +2634,30 @@
         {
           "type": "LoginSessionCapabilities",
           "direction": "response"
+        },
+        {
+          "type": "HomeLayout",
+          "direction": "response"
+        },
+        {
+          "type": "HomeCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "AdminAICapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "ChatGPTStatus",
+          "direction": "response"
+        },
+        {
+          "type": "ChatGPTLogin",
+          "direction": "response"
+        },
+        {
+          "type": "ChatGPTModel",
+          "direction": "response"
         }
       ]
     },

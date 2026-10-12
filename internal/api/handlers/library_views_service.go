@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strings"
 
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/imagesize"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -76,13 +75,8 @@ type LibraryCollectionTabUngroupedView = libraryTabUngrouped
 // HomeLayout answers the home page's section layout for the profile on the
 // context.
 func (h *SectionHandler) HomeLayout(ctx context.Context) (SectionLayoutView, error) {
-	resolved, _, _, _, err := h.loadResolvedHomeSections(ctx)
-	if err != nil {
-		return SectionLayoutView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to load sections")
-	}
-	resolved = h.maybeInjectNextUp(ctx, resolved, apimw.GetUserID(ctx))
-	resolved = h.transformHomeSections(ctx, resolved, sectionOptions(ctx))
-	return sectionLayoutOf(resolved), nil
+	view, err := h.HomeLayoutWithItems(ctx, SectionViewer{}, 0)
+	return view.Layout, err
 }
 
 // requireViewableLibrary is the gate every profile-scoped section read

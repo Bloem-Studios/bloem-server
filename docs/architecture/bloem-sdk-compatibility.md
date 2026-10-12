@@ -121,15 +121,15 @@ dispatch identities remain internal and are explained in the coverage allowlist.
 Browse and selection roots retain their native-storage capability gates.
 
 The latest generated source revision is
-`17ca70d9bf73433f9a438076ece17602529ddf1f`, with normalized graph digest
-`sha256:bb06207832400d99643e622f82537bca965766ef39046dbe1833e66a823957f6`.
+`888a54b2a2803d37c88baa57a2cb32aa4aa52faa`, with normalized graph digest
+`sha256:11d8a85cdac9be866e4db5a3566d1253b134e5179c6be09e7ee68d457efafd42`.
 Each client records the committed artifact revision separately from that source
 stamp. Its checked-in bundle manifest and server pin are the authority for the
 adopted bytes; a later documentation-only server commit does not change the graph.
 
 ### Reproduce and verify
 
-Use the Go toolchain declared by the server (`1.26.8` for this integration).
+Use the Go toolchain declared by the server (`1.26.9` for this integration).
 Go `1.27.1` changes standard-library JSON alias representation and is not the
 validated generation environment. Commands assume the server repository root:
 
