@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 )
@@ -17,6 +18,7 @@ import (
 // the JSON report. It does not measure Silo; that needs a running server
 // (see cmd/apibench).
 func TestRunnerAgainstStub(t *testing.T) {
+	var mu sync.Mutex
 	var starts int
 	var startBodies []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -25,9 +27,11 @@ func TestRunnerAgainstStub(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"items":[1,2,3]}`))
 		case r.URL.Path == "/api/v1/playback/start" && r.Method == http.MethodPost:
+			mu.Lock()
 			starts++
 			body, _ := io.ReadAll(r.Body)
 			startBodies = append(startBodies, string(body))
+			mu.Unlock()
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"session_id":"fixture-session"}`))
 		case r.URL.Path == "/api/v1/playback/fixture-session/replan":
@@ -65,6 +69,8 @@ func TestRunnerAgainstStub(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	mu.Lock()
+	defer mu.Unlock()
 	if len(report.Paths) != 4 {
 		t.Fatalf("paths = %d, want 4", len(report.Paths))
 	}

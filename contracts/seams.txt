@@ -114,6 +114,7 @@ internal/api/middleware/viewer_access.go
 internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher
 internal/api/router_v2_plugin_browser_test.go
 internal/api/testdata/media_routes.txt
+internal/apibench/bench_test.go  # reviewed test-only exception: synchronize concurrently served benchmark fixture counters and bodies
 internal/apiv2/admin_system_test.go  # assert actual platform capability while retaining authorization and cache checks
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
 internal/apiv2/auth_sessions.go
