@@ -93,8 +93,9 @@ func (s *Service) RecordEvents(ctx context.Context, id int, a *pluginv1.WatchSyn
 		return nil, err
 	}
 	var encrypted string
+	var permissions eventPermissions
 	key := watchsync.PluginProviderKey(id, "bloem.pastime", "pastime", false)
-	err = tx.QueryRow(ctx, `SELECT access_token FROM watch_provider_connections WHERE provider=$1 AND user_id=$2 AND profile_id=$3 AND scrobble_enabled`, key, account, profile).Scan(&encrypted)
+	err = tx.QueryRow(ctx, `SELECT access_token,scrobble_enabled,export_favorites_enabled,export_watchlist_enabled,export_ratings_enabled,sync_favorite_removals_enabled,sync_watchlist_removals_enabled FROM watch_provider_connections WHERE provider=$1 AND user_id=$2 AND profile_id=$3`, key, account, profile).Scan(&encrypted, &permissions.scrobble, &permissions.favorites, &permissions.watchlist, &permissions.ratings, &permissions.favoriteRemovals, &permissions.watchlistRemovals)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrAuthority
 	}
@@ -111,6 +112,9 @@ func (s *Service) RecordEvents(ctx context.Context, id int, a *pluginv1.WatchSyn
 	}
 	out := make([]*pluginv1.WatchSyncEvent, len(events))
 	for i, event := range events {
+		if !permissions.allows(event) {
+			continue
+		}
 		wire, err := s.recordEvent(ctx, tx, id, user, account, profile, event)
 		if errors.Is(err, errEventRejected) {
 			continue
@@ -132,6 +136,9 @@ func validEvent(e *pluginv1.WatchSyncEvent) bool {
 // recordEvent vouches for one event and returns the event to forward, or
 // errEventRejected.
 func (s *Service) recordEvent(ctx context.Context, tx pgx.Tx, id, user int, account, profile string, event *pluginv1.WatchSyncEvent) (*pluginv1.WatchSyncEvent, error) {
+	if personalLane(event) != "" {
+		return s.recordPersonalEvent(ctx, tx, id, user, account, profile, event)
+	}
 	if !validEvent(event) {
 		return nil, errEventRejected
 	}

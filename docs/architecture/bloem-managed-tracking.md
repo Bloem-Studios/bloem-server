@@ -58,3 +58,33 @@ Mirrored Silo switching: `internal/tenancy/bloem_managed_tracking_switching_test
 `TestRealPluginAndPastimeHouseholdAcceptance` uses separately compiled real plugin and real Pastime HTTP fixture processes, isolated PostgreSQL schemas and synthetic metadata. It covers three independent profiles, later additions/rename/deletion, completion/history overlap, stale history, the native watch-sync path (start, pause, resume and a completed non-confirmed stop), cancellation/reactivation, plugin restart and grant revocation. `TestRealPluginAndPastimeIdentityAcceptance` runs the same processes with the fixture registered under a synthetic identity issuer and a declared `user_uuid` sign-in issuer served by a synthetic provider. Identities from an empty or an explicit `issuer` column reach Pastime verbatim; accounts without a link, with two subjects, or sharing one key send none and stay unclaimable. A matching sign-in claims the managed account holding the exported history, a later link attaches its identity to the enrolled account, a disabled account refuses the claim instead of creating one, and an unlink clears the identity while the claim stays. Explicit fixture binary paths and test database URLs are required; absent fixtures skip both tests, and a fixture that predates identity claims skips the identity test. Fresh migrations and the pinned Silo mirrored-database switching check passed. The switching image was a local acceptance image, not a production release artifact.
 
 See Pastime's `docs/managed-tracking-rollout.md` for coordinated release and rollback. Automatic enrollment remains inactive until an explicitly approved household pilot. This host sends the verified sign-in identity described above; claiming a managed account at login is Pastime's side of the contract. Email never merges accounts. User-managed exclusion remains separate product work. Until exclusion exists, a user who deletes or disables a managed connection sees it restored at the next reconcile, because the profile stays enrolled.
+
+## Personal-state transport
+
+List and rating events use the existing WatchSyncProvider contract. The managed
+bridge checks the operation's own connection setting: scrobbling cannot authorize
+favorites, watchlists or ratings, and list removals require their removal setting.
+A Bloem-owned journal observes committed upstream favorite, watchlist and rating
+writes, including deletions and key moves. Each profile, item and state family has
+its own revision. Rollbacks produce no evidence. The observer ignores legacy rows
+whose profile is missing and adds no profile constraint to upstream writes.
+
+The host binds each outgoing receipt to that committed revision and derives a
+separate entity for each state family. Removing then adding the same membership
+creates a later receipt. Caller event IDs and playback durations do not establish
+personal-state authority. Plugin resolution remains installation, account,
+profile and digest bound; it cannot mint receipts.
+
+Bloem's five-star ratings map exactly to provider values 2, 4, 6, 8 and 10.
+Pastime-native zero or odd ratings have no exact Bloem equivalent. They must remain
+unchanged and report `rating_precision`, rather than being rounded by the adapter.
+The shared watch-sync reconciliation and conflict policy remain unchanged.
+
+The host rechecks current enrollment, credential and import settings both before
+and after each remote-state RPC, discarding pages whose authority changed in flight.
+
+Pastime remote reads use profile and credential-bound immutable snapshots with
+issued continuation tokens. A complete traversal can justify missing-membership
+removals; an incomplete or failed traversal cannot. Implementing these optional
+RPCs does not authorize advertising capabilities or changing connection defaults
+before bidirectional reconciliation and client acceptance pass.
