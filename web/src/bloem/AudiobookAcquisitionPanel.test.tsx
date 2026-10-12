@@ -266,3 +266,83 @@ it("blocks an unknown action until a successful reload and uses the refreshed re
     ),
   );
 });
+it("recovers binding after an unknown creation reload without permitting duplicate creation", async () => {
+  const created = {
+    id: "connection-recovered",
+    name: "Recovered connection",
+    installation_id: 4,
+    capability_id: "audiobooks",
+    library_id: 0,
+    download_roots: [],
+    binding_revision: 1,
+    ready: false,
+  };
+  mocks.createIntegration.mockRejectedValue(new TypeError("Unknown outcome"));
+  mocks.setLibrary.mockResolvedValue({ ...created, library_id: 3 });
+  open();
+  fireEvent.change(await screen.findByLabelText("Connection name"), {
+    target: { value: "Recovered connection" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Add audiobook connection" }));
+  expect(await screen.findByText(/Connection outcome is unknown/)).toBeInTheDocument();
+  mocks.setup.mockResolvedValue({ ...setup, integrations: [created] });
+  fireEvent.click(screen.getByRole("button", { name: "Reload connections" }));
+  const library = await screen.findByLabelText("Audiobook library");
+  expect(library).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Add audiobook connection" })).toBeDisabled();
+  fireEvent.change(library, { target: { value: "3" } });
+  fireEvent.change(screen.getByLabelText(/Download roots \(one per line\)/), {
+    target: { value: "/synthetic/audio/recovered" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save audiobook library and roots" }));
+  await waitFor(() =>
+    expect(mocks.setLibrary).toHaveBeenCalledWith(
+      "connection-recovered",
+      3,
+      ["/synthetic/audio/recovered"],
+      expect.objectContaining({ key: "organization:a" }),
+    ),
+  );
+  expect(mocks.createIntegration).toHaveBeenCalledTimes(1);
+});
+it("clears unsaved binding drafts when creation selects a different connection", async () => {
+  const previous = {
+    id: "connection-old",
+    name: "Existing connection",
+    installation_id: 4,
+    capability_id: "audiobooks",
+    library_id: 3,
+    download_roots: ["/synthetic/audio/existing"],
+    binding_revision: 1,
+    ready: true,
+  };
+  const created = {
+    ...previous,
+    id: "connection-new",
+    name: "New connection",
+    library_id: 0,
+    download_roots: [],
+    ready: false,
+  };
+  mocks.setup.mockResolvedValue({ ...setup, integrations: [previous] });
+  mocks.createIntegration.mockImplementation(async () => {
+    mocks.setup.mockResolvedValue({ ...setup, integrations: [previous, created] });
+    return created;
+  });
+  open();
+  fireEvent.change(await screen.findByLabelText("Audiobook library"), { target: { value: "3" } });
+  fireEvent.change(screen.getByLabelText(/Download roots \(one per line\)/), {
+    target: { value: "/synthetic/audio/unsaved" },
+  });
+  fireEvent.change(screen.getByLabelText("Connection name"), {
+    target: { value: "New connection" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Add audiobook connection" }));
+  await waitFor(() =>
+    expect(screen.getByLabelText("Audiobook connection")).toHaveValue("connection-new"),
+  );
+  expect(screen.getByLabelText("Audiobook library")).toHaveValue("");
+  expect(screen.getByLabelText(/Download roots \(one per line\)/)).toHaveValue("");
+  expect(screen.getByRole("button", { name: "Save audiobook library and roots" })).toBeDisabled();
+  expect(mocks.setLibrary).not.toHaveBeenCalled();
+});

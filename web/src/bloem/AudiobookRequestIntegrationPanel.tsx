@@ -66,7 +66,7 @@ export function AudiobookRequestIntegrationPanel() {
     retry: false,
     gcTime: 0,
     mutationFn: () => {
-      if (!scope.editing || !scope.current() || !plugin || blocked)
+      if (!scope.editing || !scope.current() || !plugin || blocked || unknownCreate)
         throw new Error("Reload this administrative context before creating a connection.");
       return audiobookAcquisitionsApi.createIntegration(
         {
@@ -82,6 +82,8 @@ export function AudiobookRequestIntegrationPanel() {
     onSuccess: (created) => {
       if (!scope.current()) return;
       setSelected(created.id);
+      setLibraryDraft(null);
+      setRootsDraft(null);
       setName("");
       setValues(audiobookConfigDefaults());
       setMessage("Audiobook connection added. Select its library and explicit download roots.");
@@ -117,11 +119,12 @@ export function AudiobookRequestIntegrationPanel() {
     onError: (error) => onError(error),
   });
   const busy = create.isPending || binding.isPending || scope.switching || list.isError || blocked;
+  const createBusy = busy || unknownCreate;
   const refresh = async () => {
     setCredentials({});
     const result = await list.refetch();
     if (!scope.current() || result.isError) return;
-    setBlocked(unknownCreate);
+    setBlocked(false);
     setLibraryDraft(null);
     setRootsDraft(null);
     if (!unknownCreate) setMessage("");
@@ -258,7 +261,7 @@ export function AudiobookRequestIntegrationPanel() {
             className="space-y-4 border-t pt-4"
             onSubmit={(event) => {
               event.preventDefault();
-              if (!busy) create.mutate();
+              if (!createBusy) create.mutate();
             }}
           >
             <h3 className="font-semibold">Add audiobook connection</h3>
@@ -268,7 +271,7 @@ export function AudiobookRequestIntegrationPanel() {
                 <select
                   className="border-input h-9 min-w-0 rounded-md border bg-transparent px-3"
                   value={`${plugin.id}:${plugin.capability_id}`}
-                  disabled={busy}
+                  disabled={createBusy}
                   onChange={(event) => setInstallation(event.target.value)}
                 >
                   {list.data.installations.map((row) => (
@@ -287,12 +290,16 @@ export function AudiobookRequestIntegrationPanel() {
                   value={name}
                   required
                   maxLength={255}
-                  disabled={busy}
+                  disabled={createBusy}
                   onChange={(event) => setName(event.target.value)}
                 />
               </label>
             </div>
-            <AudiobookRequestConfigForm values={values} setValues={setValues} disabled={busy} />
+            <AudiobookRequestConfigForm
+              values={values}
+              setValues={setValues}
+              disabled={createBusy}
+            />
             <fieldset className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
               <legend className="px-2 font-medium">Credentials</legend>
               {credentialFields.map(([key, label]) => (
@@ -303,7 +310,7 @@ export function AudiobookRequestIntegrationPanel() {
                     autoComplete="off"
                     value={credentials[key] ?? ""}
                     maxLength={1024}
-                    disabled={busy}
+                    disabled={createBusy}
                     onChange={(event) =>
                       setCredentials({ ...credentials, [key]: event.target.value })
                     }
@@ -315,7 +322,7 @@ export function AudiobookRequestIntegrationPanel() {
                 empty.
               </p>
             </fieldset>
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={createBusy}>
               {create.isPending ? "Adding connection…" : "Add audiobook connection"}
             </Button>
           </form>
