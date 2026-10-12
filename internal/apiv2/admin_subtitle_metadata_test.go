@@ -58,6 +58,17 @@ func (f *fakeAdminSubtitleMetadata) UpdateAdminSubtitleMetadata(_ context.Contex
 	row := f.row
 	return &row, nil
 }
+func TestAdminSubtitleMetadataProjectionPreservesLegacyRow(t *testing.T) {
+	row := subtitles.DownloadedSubtitle{ID: 9, MediaFileID: 42, Provider: "subdl", Language: "English", Format: subtitles.FormatSRT, Revision: 4}
+	projected := adminSubtitleMetadataProjection(&row)
+	if projected.Language != "en" {
+		t.Fatalf("projected language = %q", projected.Language)
+	}
+	if row.Language != "English" || row.Revision != 4 {
+		t.Fatalf("projection changed legacy row: %+v", row)
+	}
+}
+
 func TestAdminSubtitleMetadataGuardedContract(t *testing.T) {
 	fake := fixtureAdminSubtitleMetadata()
 	deps := requestDeps(fixtureRequests())

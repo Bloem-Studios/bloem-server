@@ -52,20 +52,22 @@ func TestStoredSubDLLanguageReadDoesNotRewriteRow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if one.Language != "en" {
+	if one.Language != "English" {
 		t.Fatalf("single language = %q", one.Language)
 	}
 	rows, err := repo.ListDownloadedSubtitles(t.Context(), 7)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 1 || rows[0].Language != "en" {
+	if len(rows) != 1 || rows[0].Language != "English" {
 		t.Fatalf("list: %+v", rows)
 	}
 	matched, err := repo.GetDownloadedSubtitleByContent(t.Context(), &DownloadedSubtitle{MediaFileID: 7, Provider: "subdl", Language: "en", Format: "srt", ContentSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"})
-	if err != nil || matched == nil || matched.ID != id || matched.Language != "en" {
+	if err != nil || matched == nil || matched.ID != id || matched.Language != "English" {
 		t.Fatalf("canonical content lookup: %+v, %v", matched, err)
 	}
+	// Repository reads preserve the legacy bridge value. Native API
+	// projections canonicalize it separately.
 	var stored string
 	var revision int64
 	if err := pool.QueryRow(t.Context(), `SELECT language,revision FROM downloaded_subtitles WHERE id=$1`, id).Scan(&stored, &revision); err != nil {
