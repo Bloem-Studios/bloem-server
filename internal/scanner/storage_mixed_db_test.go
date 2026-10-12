@@ -389,3 +389,114 @@ func TestStorageMetadataOwnershipRechecksLocalVersionAfterItemWaitDB(t *testing.
 		t.Fatal("publisher did not resume after curator commit")
 	}
 }
+
+func TestMaintenanceScopeFilelessCandidatesStayFolderWideDB(t *testing.T) {
+	pool, s, folder, location := storageEbookFixture(t)
+	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("orphan", "epub", &storagev1.EbookMetadata{Title: uuid.NewString()}, "r1"))
+	var contentID string
+	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE media_folder_id=$1`, folder.ID).Scan(&contentID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(t.Context(), `DELETE FROM media_files WHERE content_id=$1`, contentID); err != nil {
+		t.Fatal(err)
+	}
+	s.SetMaintenanceFileScope(NativeMaintenanceFileScope{})
+	items, episodes, err := s.fileRepo.maintenanceMembershipTargets(t.Context(), folder.ID, "/unrelated", true)
+	if err != nil || len(items) != 0 || len(episodes) != 0 {
+		t.Fatalf("scoped candidates=%v/%v err=%v", items, episodes, err)
+	}
+	items, _, err = s.fileRepo.maintenanceMembershipTargets(t.Context(), folder.ID, "", true)
+	if err != nil || len(items) != 1 || items[0] != contentID {
+		t.Fatalf("whole-folder candidates=%v err=%v", items, err)
+	}
+}
+
+func TestMaintenanceScopePreservesCrossFolderMissingNativeReferenceDB(t *testing.T) {
+	pool, s, folder, location := storageEbookFixture(t)
+	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("native", "epub", &storagev1.EbookMetadata{Title: uuid.NewString()}, "r1"))
+	var contentID string
+	var otherFolder int
+	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE media_folder_id=$1`, folder.ID).Scan(&contentID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), `INSERT INTO media_folders(type,name) VALUES('ebooks','Other maintenance folder') RETURNING id`).Scan(&otherFolder); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM media_items WHERE content_id=$1`, contentID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM media_folders WHERE id=$1`, otherFolder)
+	})
+	if _, err := pool.Exec(t.Context(), `UPDATE media_files SET media_folder_id=$1,missing_since=clock_timestamp()-interval '1 day' WHERE content_id=$2`, otherFolder, contentID); err != nil {
+		t.Fatal(err)
+	}
+	s.SetMaintenanceFileScope(NativeMaintenanceFileScope{})
+	removed, deleted, _, err := s.reconcileLibraryMemberships(t.Context(), folder.ID, true, nil)
+	if err != nil || removed != 1 || deleted != 0 {
+		t.Fatalf("removed=%d deleted=%d err=%v", removed, deleted, err)
+	}
+	var count int
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM bloem_storage_file_refs WHERE location_id=$1`, location.ID).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("native references=%d err=%v", count, err)
+	}
+}
+
+func TestMaintenanceScopeRestoresOnlyLocalEpisodeMembershipsDB(t *testing.T) {
+	pool, s, folder, location := storageEbookFixture(t)
+	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("native", "epub", &storagev1.EbookMetadata{Title: uuid.NewString()}, "r1"))
+	var seriesID string
+	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE media_folder_id=$1`, folder.ID).Scan(&seriesID); err != nil {
+		t.Fatal(err)
+	}
+	localEpisode, nativeEpisode, orphanEpisode := uuid.NewString(), uuid.NewString(), uuid.NewString()
+	if _, err := pool.Exec(t.Context(), `UPDATE media_items SET type='series' WHERE content_id=$1`, seriesID); err != nil {
+		t.Fatal(err)
+	}
+	for i, id := range []string{localEpisode, nativeEpisode, orphanEpisode} {
+		if _, err := pool.Exec(t.Context(), `INSERT INTO episodes(content_id,series_id,season_number,episode_number,title) VALUES($1,$2,1,$3,'Maintenance episode')`, id, seriesID, i+1); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := pool.Exec(t.Context(), `UPDATE media_files SET episode_id=$1 WHERE media_folder_id=$2`, nativeEpisode, folder.ID); err != nil {
+		t.Fatal(err)
+	}
+	firstSeen := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	if _, err := pool.Exec(t.Context(), `INSERT INTO media_files(content_id,episode_id,media_folder_id,file_path,created_at) VALUES($1,$2,$3,'/local/episode.mkv',$4)`, seriesID, localEpisode, folder.ID, firstSeen); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(t.Context(), `INSERT INTO episode_libraries(episode_id,media_folder_id) VALUES($1,$2)`, orphanEpisode, folder.ID); err != nil {
+		t.Fatal(err)
+	}
+	s.SetMaintenanceFileScope(NativeMaintenanceFileScope{})
+	if _, _, _, err := s.reconcileLibraryMemberships(t.Context(), folder.ID, false, nil); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM episode_libraries WHERE episode_id=$1`, localEpisode).Scan(&count); err != nil || count != 0 {
+		t.Fatalf("restore=false local count=%d err=%v", count, err)
+	}
+	if _, _, _, err := s.reconcileLibraryMemberships(t.Context(), folder.ID, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	if err := pool.QueryRow(t.Context(), `SELECT COALESCE(array_agg(episode_id),ARRAY[]::text[]) FROM episode_libraries WHERE media_folder_id=$1`, folder.ID).Scan(&ids); err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) != 1 || ids[0] != localEpisode {
+		t.Fatalf("restored episodes=%v want only %s", ids, localEpisode)
+	}
+	var episodeFirstSeen, latestAdded time.Time
+	if err := pool.QueryRow(t.Context(), `SELECT el.first_seen_at,mi.latest_episode_added_at FROM episode_libraries el JOIN episodes e ON e.content_id=el.episode_id JOIN media_items mi ON mi.content_id=e.series_id WHERE el.episode_id=$1 AND el.media_folder_id=$2`, localEpisode, folder.ID).Scan(&episodeFirstSeen, &latestAdded); err != nil {
+		t.Fatal(err)
+	}
+	if !episodeFirstSeen.Equal(firstSeen) || !latestAdded.Equal(firstSeen) {
+		t.Fatalf("first seen=%s latest added=%s want %s", episodeFirstSeen, latestAdded, firstSeen)
+	}
+	// Removing the extension retains upstream's folder-wide restoration.
+	s.SetMaintenanceFileScope(nil)
+	if _, _, _, err := s.reconcileLibraryMemberships(t.Context(), folder.ID, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM episode_libraries WHERE episode_id=$1 AND media_folder_id=$2`, nativeEpisode, folder.ID).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("nil scope native count=%d err=%v", count, err)
+	}
+}

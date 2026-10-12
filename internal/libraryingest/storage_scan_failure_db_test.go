@@ -83,7 +83,7 @@ func TestNativeMovieStorageAbandonedRangeTeardownPublishes(t *testing.T) {
 	binary, manifest := nativeMovieScanArtifact(t)
 	f := newNativeMovieScanFixtureWithProbe(t, binary, manifest, true, "movies-abandon", storageMovieProbeTool(t))
 	t.Setenv("STORAGE_MOVIE_PROBE_GATE", f.notify)
-	result, err := f.scan.ScanStorageFolder(t.Context(), f.folder, f.location)
+	result, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location})
 	if err != nil {
 		t.Fatalf("teardown of an abandoned range failed the scan (canceled=%v): %v", errors.Is(err, context.Canceled), err)
 	}
@@ -104,7 +104,7 @@ func TestNativeMovieStorageAbandonedRangeTeardownPublishes(t *testing.T) {
 func TestNativeMovieStorageFailureReleasesLeaseForRetry(t *testing.T) {
 	binary, manifest := nativeMovieScanArtifact(t)
 	f := newNativeMovieScanFixture(t, binary, manifest, true, "movies-late")
-	_, err := f.scan.ScanStorageFolder(t.Context(), f.folder, f.location)
+	_, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location})
 	if err == nil || !strings.Contains(err.Error(), `probe storage movie "Native.Movie.2024.mp4"`) {
 		t.Fatalf("probe failure does not name its entry: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestNativeMovieStorageFailureReleasesLeaseForRetry(t *testing.T) {
 	if state != "running" || !released {
 		t.Fatalf("failed scan kept its claim: state=%s released=%v", state, released)
 	}
-	_, err = f.scan.ScanStorageFolder(t.Context(), f.folder, f.location)
+	_, err = f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location})
 	if err == nil || errors.Is(err, storagesource.ErrStaleLease) {
 		t.Fatalf("immediate retry did not resume the journal: %v", err)
 	}

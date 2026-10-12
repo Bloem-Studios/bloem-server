@@ -62,7 +62,7 @@ func TestStorageScanOutcomeReachesScanRun(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got.Status != StatusFailed || got.ErrorMessage != "storage scan failed: native media probe failed; context canceled" {
+		if got.Status != StatusFailed || got.ErrorMessage != "storage scan failed: storage location 00000000-0000-0000-0000-000000000000: native media probe failed; context canceled" {
 			t.Fatalf("internal failure ended %s with message %q", got.Status, got.ErrorMessage)
 		}
 	})

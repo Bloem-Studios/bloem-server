@@ -48,9 +48,14 @@ func (r *FileRepository) maintenanceMembershipTargets(ctx context.Context, folde
 	}
 	query := `SELECT DISTINCT COALESCE(mf.content_id,''),COALESCE(mf.episode_id,'') FROM media_files mf WHERE mf.media_folder_id=$1` + scope + r.maintenancePredicate("mf")
 	if prefix == "" {
-		// Fileless memberships remain ordinary filesystem cleanup candidates.
-		// Native-only items with retained file rows are excluded by the scope.
-		query += ` UNION SELECT mil.content_id,'' FROM media_item_libraries mil WHERE mil.media_folder_id=$1 AND NOT EXISTS(SELECT 1 FROM media_files mf WHERE mf.media_folder_id=mil.media_folder_id AND mf.content_id=mil.content_id)`
+		// Whole-folder cleanup must still find memberships after the last file
+		// disappears. A prefix has no evidence tying such a membership to it.
+		query += ` UNION SELECT mil.content_id,'' FROM media_item_libraries mil
+            WHERE mil.media_folder_id=$1 AND NOT EXISTS (
+                SELECT 1 FROM media_files mf WHERE mf.media_folder_id=mil.media_folder_id AND mf.content_id=mil.content_id)
+            UNION SELECT '',el.episode_id FROM episode_libraries el
+            WHERE el.media_folder_id=$1 AND NOT EXISTS (
+                SELECT 1 FROM media_files mf WHERE mf.media_folder_id=el.media_folder_id AND mf.episode_id=el.episode_id)`
 	}
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
@@ -72,10 +77,20 @@ func (r *FileRepository) maintenanceMembershipTargets(ctx context.Context, folde
 	}
 	return items, episodes, rows.Err()
 }
-func (s *Scanner) reconcileMaintenanceMemberships(ctx context.Context, folderID int, protected []string) (int, int, []string, error) {
-	items, _, err := s.fileRepo.maintenanceMembershipTargets(ctx, folderID, "", true)
+func (s *Scanner) reconcileMaintenanceMemberships(ctx context.Context, folderID int, restoreEpisodes bool, protected []string) (int, int, []string, error) {
+	items, episodes, err := s.fileRepo.maintenanceMembershipTargets(ctx, folderID, "", true)
 	if err != nil {
 		return 0, 0, nil, err
+	}
+	if s.episodeLibraryRepo != nil {
+		if restoreEpisodes {
+			if err = s.episodeLibraryRepo.RestoreMaintenanceEpisodes(ctx, folderID, s.fileRepo.maintenanceScope.Predicate("mf")); err != nil {
+				return 0, 0, nil, err
+			}
+		}
+		if _, err = s.episodeLibraryRepo.RemoveStaleEpisodeMemberships(ctx, folderID, episodes); err != nil {
+			return 0, 0, nil, err
+		}
 	}
 	retained, err := s.fileRepo.maintenanceRetainedItems(ctx, items)
 	if err != nil {

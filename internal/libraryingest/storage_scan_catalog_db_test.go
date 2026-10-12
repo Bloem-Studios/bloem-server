@@ -152,7 +152,7 @@ func (c *catalogScan) run() (*scanner.ScanResult, error) {
 	c.t.Helper()
 	ctx, cancel := context.WithTimeout(c.t.Context(), time.Minute)
 	defer cancel()
-	result, err := c.scan.ScanStorageFolder(ctx, c.folder, c.location)
+	result, err := c.scan.ScanStorageFolder(ctx, c.folder, storagesource.LocationSelection{Location: c.location})
 	if result == nil || result.ScanResult == nil {
 		c.t.Fatalf("scan returned no result: %v", err)
 	}

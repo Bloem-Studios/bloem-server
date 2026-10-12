@@ -2525,6 +2525,9 @@ func (s *Scanner) reconcileScopedLibraryMemberships(ctx context.Context, folderI
 // unreachable library root from the orphan purge (membership removal still
 // happens so the items stay hidden); pass nil when every root is reachable.
 func (s *Scanner) reconcileLibraryMemberships(ctx context.Context, folderID int, restoreEpisodes bool, unreachableRoots []string) (int, int, []string, error) {
+	if s.fileRepo.maintenanceScope != nil {
+		return s.reconcileMaintenanceMemberships(ctx, folderID, restoreEpisodes, unreachableRoots)
+	}
 	if s.episodeLibraryRepo != nil {
 		reconcileEpisodes := s.episodeLibraryRepo.RemoveStaleFolderMemberships
 		if restoreEpisodes {
@@ -2533,9 +2536,6 @@ func (s *Scanner) reconcileLibraryMemberships(ctx context.Context, folderID int,
 		if _, err := reconcileEpisodes(ctx, folderID); err != nil {
 			return 0, 0, nil, err
 		}
-	}
-	if s.fileRepo.maintenanceScope != nil {
-		return s.reconcileMaintenanceMemberships(ctx, folderID, unreachableRoots)
 	}
 	return s.libraryRepo.ReconcileFolderMembership(ctx, folderID, unreachableRoots)
 }

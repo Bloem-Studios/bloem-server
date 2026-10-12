@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/metadata"
+	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -101,7 +102,7 @@ func TestNativeMovieStorageTitleFoldersPublishAndMatch(t *testing.T) {
 	meta := &fakeNativeMovieMetadata{pool: f.pool, failOnce: map[string]bool{"949": true}}
 	f.scan.ConfigureNativeMovieMatching(meta)
 
-	result, err := f.scan.ScanStorageFolder(t.Context(), f.folder, f.location)
+	result, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +142,7 @@ func TestNativeMovieStorageTitleFoldersPublishAndMatch(t *testing.T) {
 
 	// The failed match stays pending and is retried; matched and unmatched
 	// untagged items are not searched again.
-	if _, err = f.scan.ScanStorageFolder(t.Context(), f.folder, f.location); err != nil {
+	if _, err = f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location}); err != nil {
 		t.Fatal(err)
 	}
 	if requests = meta.take(); len(requests) != 1 || requests[0].ProviderIDs["tmdb"] != "949" {
@@ -156,13 +157,13 @@ func TestNativeMovieStorageTitleFoldersPublishAndMatch(t *testing.T) {
 	if _, err = f.pool.Exec(t.Context(), `UPDATE media_items SET status='unmatched' WHERE content_id=$1`, items["3 A.M.#id"].title); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = f.scan.ScanStorageFolder(t.Context(), f.folder, f.location); err != nil {
+	if _, err = f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location}); err != nil {
 		t.Fatal(err)
 	}
 	if requests = meta.take(); len(requests) != 1 || requests[0].ProviderIDs["tmdb"] != "77084" {
 		t.Fatalf("tagged unmatched requests %+v", requests)
 	}
-	if _, err = f.scan.ScanStorageFolder(t.Context(), f.folder, f.location); err != nil {
+	if _, err = f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location}); err != nil {
 		t.Fatal(err)
 	}
 	if requests = meta.take(); len(requests) != 0 {
