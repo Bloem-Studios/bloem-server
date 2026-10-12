@@ -170,7 +170,7 @@ func TestSourceBrowserDirectoriesAndPreparedSelectionsDB(t *testing.T) {
 		t.Fatal("duplicate selection accepted")
 	}
 	var scans int
-	if err := b.pool.QueryRow(t.Context(), `SELECT count(*) FROM bloem_storage_scan_runs`).Scan(&scans); err != nil {
+	if err := b.pool.QueryRow(t.Context(), `SELECT count(*) FROM bloem_storage_scan_runs WHERE source_key=$1`, s.Key).Scan(&scans); err != nil {
 		t.Fatal(err)
 	}
 	if scans != 0 {
