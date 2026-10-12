@@ -28,10 +28,7 @@ func assertImportedStoreReads(t *testing.T, pool *pgxpool.Pool, fixture importFi
 		t.Fatal(err)
 	}
 	for _, id := range []string{"parent", "child"} {
-		a, err := sqlite.GetProfile(t.Context(), id)
-		if err != nil {
-			t.Fatal(err)
-		}
+		a := readSchema22Profile(t, source, id)
 		b, err := pg.GetProfile(t.Context(), id)
 		if err != nil {
 			t.Fatal(err)
@@ -77,4 +74,41 @@ func pgstoreForTest(t *testing.T, pool *pgxpool.Pool, accountID int) userstore.U
 		t.Fatal(err)
 	}
 	return store
+}
+
+// Compare historical source semantics without querying columns introduced
+// after schema22. New target fields remain zero in the expected profile.
+func readSchema22Profile(t *testing.T, source *sql.DB, id string) *userstore.Profile {
+	t.Helper()
+	var p userstore.Profile
+	if err := source.QueryRowContext(t.Context(), `
+ SELECT id, name, avatar, pin_hash, is_child, is_primary, max_content_rating,
+  quality_preference, language, subtitle_language, subtitle_mode,
+  auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview,
+  show_forced_subtitles, library_restrictions_enabled, max_playback_quality,
+  created_at, updated_at FROM profiles WHERE id = ?`, id).Scan(
+		&p.ID, &p.Name, &p.Avatar, &p.PINHash, &p.IsChild, &p.IsPrimary, &p.MaxContentRating,
+		&p.QualityPreference, &p.Language, &p.SubtitleLanguage, &p.SubtitleMode,
+		&p.AutoSkipIntro, &p.AutoSkipCredits, &p.AutoSkipRecap, &p.AutoPlayNextPreview,
+		&p.ShowForcedSubtitles, &p.LibraryRestrictionsEnabled, &p.MaxPlaybackQuality,
+		&p.CreatedAt, &p.UpdatedAt,
+	); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := source.QueryContext(t.Context(), `SELECT library_id FROM profile_allowed_libraries WHERE profile_id = ? ORDER BY library_id`, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var libraryID int
+		if err := rows.Scan(&libraryID); err != nil {
+			t.Fatal(err)
+		}
+		p.AllowedLibraryIDs = append(p.AllowedLibraryIDs, libraryID)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return &p
 }

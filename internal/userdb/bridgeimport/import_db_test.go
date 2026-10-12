@@ -19,7 +19,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/progresssync"
-	"github.com/Silo-Server/silo-server/internal/userdb"
 	"github.com/Silo-Server/silo-server/internal/userdb/bridgeimport/testdata"
 	"github.com/Silo-Server/silo-server/migrations"
 )
@@ -89,8 +88,17 @@ func newImportFixture(t *testing.T, pool *pgxpool.Pool) importFixture {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = source.Close() })
-	for _, id := range []string{"parent", "child"} {
-		if err := userdb.CreateProfile(source.DB, userdb.Profile{ID: id, Name: id, CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:00:00Z"}); err != nil {
+	// The source is intentionally frozen at schema22. Current profile writers
+	// require newer columns and cannot seed a historical backup.
+	for i, id := range []string{"parent", "child"} {
+		if _, err := source.DB.Exec(`INSERT INTO profiles (
+   id, name, avatar, pin_hash, is_child, is_primary, max_content_rating,
+   quality_preference, language, subtitle_language, subtitle_mode,
+   auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview,
+   show_forced_subtitles, library_restrictions_enabled, max_playback_quality,
+   created_at, updated_at)
+  VALUES (?, ?, '', '', false, ?, '', '', '', '', '', false, false, false,
+   false, true, false, '', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`, id, id, i == 0); err != nil {
 			t.Fatal(err)
 		}
 	}
