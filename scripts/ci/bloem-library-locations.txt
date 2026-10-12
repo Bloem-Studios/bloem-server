@@ -66,3 +66,6 @@
 ./internal/scanner TestMaintenanceScopePreservesCrossFolderMissingNativeReferenceDB
 ./internal/scanner TestMaintenanceScopeRestoresOnlyLocalEpisodeMembershipsDB
 ./internal/storagesource TestApplyPageInvokesPublisherOnCompletingEmptyPageDB
+
+# A page containing only newly excluded movies still releases prior publication.
+./internal/libraryingest TestNativeMovieStorageExcludedOnlyPageRemovesPriorPublication
