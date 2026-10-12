@@ -61,7 +61,12 @@ loss, recovery and status calls only read provider state. They never blindly
 repeat the acquisition POST. Retained receipts bind the canonical ISBN, format
 and original submission identity. Canceling and refiling the same ISBN retains
 that submission identity and recovers previous work before any new submission.
-Unresolved state remains visible for admin review and retry.
+Unresolved state remains visible for admin review and retry. A host failure
+before RPC entry, or the plugin's `FailedPrecondition`/`InvalidArgument` rejection
+before submission, proves that nothing was sent and clears only a new,
+receipt-free started claim. Generic transport errors remain uncertain and
+recover only through reads. The library loader carries the storage location's
+selection revision into its authority check.
 
 Cancellation affects Bloem only. Bookwarehouse may continue work already
 started. Disabling acquisition blocks new provider work; it does not promise
@@ -71,7 +76,8 @@ and raw backend responses.
 ## Completion and notifications
 
 Provider completion means awaiting a library scan. Fulfillment requires an
-ISBN-matching ebook in the retained linked library with a current native file
+ISBN-matching `media_items.type=ebook` item with an `ebook` ISBN provider ID
+in the retained linked library, a `probe_source=storage` EPUB/PDF file
 reference, canonical catalog location and the retained storage-source identity.
 A filesystem replacement, missing file, foreign library, audiobook or title
 match cannot complete the request. Manual ebook fulfillment is unavailable.

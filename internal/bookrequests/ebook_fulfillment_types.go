@@ -2,12 +2,17 @@ package bookrequests
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 )
 
 // Fulfillment is supplied by the host. Recover and CheckStatus must only read
 // backend state; an ambiguous Fulfill is never issued a second time.
+// ErrProviderNotCalled proves that Fulfill made no provider side effect.
+// Transport failures after RPC entry must never use this signal.
+var ErrProviderNotCalled = errors.New("book request provider call not started")
+
 type Fulfillment interface {
 	Fulfill(context.Context, DispatchInput) (Receipt, error)
 	Recover(context.Context, DispatchInput) (Receipt, error)

@@ -9,12 +9,13 @@ import (
 	"github.com/Silo-Server/silo-server/internal/bookrequests"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/requests"
-	"github.com/Silo-Server/silo-server/internal/taskmanager/tasks"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 )
 
-func newBloemBookRequests(deps Dependencies) *handlers.BloemBookRequestsHandler {
+// BuildBloemBookRequestsService composes request backends before scheduled tasks start.
+// Router construction may compose another stateless service over the same durable DB.
+func BuildBloemBookRequestsService(deps Dependencies) *bookrequests.Service {
 	if deps.DB == nil {
 		return nil
 	}
@@ -23,11 +24,24 @@ func newBloemBookRequests(deps Dependencies) *handlers.BloemBookRequestsHandler 
 		notifier = n
 	}
 	service := bookrequests.NewService(deps.DB, notifier)
-	var setup handlers.BloemEbookRequestSetup
 	if deps.PluginService != nil && deps.SecretCipher != nil {
 		repository := requests.NewRepository(deps.DB, deps.SecretCipher)
 		resolver := PluginRequestRouterAdapter{Svc: deps.PluginService}
 		service.SetEbookFulfillment(bloemEbookRouter{integrations: repository, resolver: resolver, validator: service})
+		service.SetAudiobookFulfillment(bloemAudiobookRouter{integrations: repository, resolver: resolver, validator: service})
+	}
+	return service
+}
+
+func newBloemBookRequests(deps Dependencies) *handlers.BloemBookRequestsHandler {
+	if deps.DB == nil {
+		return nil
+	}
+	service := BuildBloemBookRequestsService(deps)
+	var setup handlers.BloemEbookRequestSetup
+	var audiobookSetup handlers.BloemAudiobookRequestSetup
+	if deps.PluginService != nil && deps.SecretCipher != nil {
+		repository := requests.NewRepository(deps.DB, deps.SecretCipher)
 		connections := requests.NewService(repository, nil, nil)
 		connections.SetTenantScopeResolver(tenancy.NewStore(deps.DB))
 		AttachRequestRouter(connections, deps.PluginService)
@@ -36,12 +50,12 @@ func newBloemBookRequests(deps Dependencies) *handlers.BloemBookRequestsHandler 
 			platform = auth.NewPlatformAdminAuthorizer(auth.NewUserRepository(deps.DB))
 		}
 		setup = bloemEbookSetup{pool: deps.DB, books: service, requests: connections, platform: platform}
-	}
-	if deps.TaskManager != nil {
-		deps.TaskManager.Register(tasks.NewBookRequestsTask(service))
+		audiobookSetup = bloemAudiobookSetup{pool: deps.DB, books: service, requests: connections, platform: platform}
 	}
 	h := handlers.NewBloemBookRequestsHandler(service, tenancy.NewStore(deps.DB))
 	h.SetEbookRequests(service)
+	h.SetAudiobookAcquisition(service)
+	h.SetAudiobookRequestSetup(audiobookSetup)
 	h.SetEbookRequestSetup(setup)
 	return h
 }
@@ -81,6 +95,18 @@ func mountBloemAdminBookRequests(r chi.Router, h *handlers.BloemBookRequestsHand
 		return
 	}
 	r.Get("/organization/book-requests", h.HandleAdminList)
+	r.Get("/organization/book-requests/acquisitions", h.HandleAudiobookAcquisitionList)
+	r.Get("/organization/book-requests/{id}/acquisition", h.HandleAudiobookAcquisition)
+	r.Post("/organization/book-requests/{id}/approve-candidate", h.HandleAudiobookCandidateApproval)
+	r.Post("/organization/book-requests/{id}/accept-download", h.HandleAudiobookDownloadAcceptance)
+	r.Post("/organization/book-requests/{id}/retry", func(w http.ResponseWriter, r *http.Request) {
+		chi.RouteContext(r.Context()).URLParams.Add("action", "retry")
+		h.HandleAdminAction(w, r)
+	})
+	r.Get("/organization/audiobook-request-integrations", h.HandleAudiobookIntegrationList)
+	r.Post("/organization/audiobook-request-integrations", h.HandleAudiobookIntegrationCreate)
+	r.Put("/organization/audiobook-request-integrations/{id}/library", h.HandleAudiobookIntegrationLibrary)
+
 	// Each route stays literal for contract and authority inventories.
 	r.Post("/organization/book-requests/{id}/approve", func(w http.ResponseWriter, r *http.Request) {
 		chi.RouteContext(r.Context()).URLParams.Add("action", "approve")

@@ -53,13 +53,13 @@ func (s *Service) loadEbookLibrary(ctx context.Context, tx pgx.Tx, org uuid.UUID
 	var location storagesource.Location
 	var source storagesource.SourceConfig
 	err := tx.QueryRow(ctx, `
- SELECT f.name,l.id,l.source_key,l.folder_id,s.key,s.owner_id,s.installation_id,s.plugin_id,s.provider_source_id,s.root_entry_id,s.configuration_revision,s.enabled
+ SELECT f.name,l.id,l.source_key,l.folder_id,l.selection_revision,s.key,s.owner_id,s.installation_id,s.plugin_id,s.provider_source_id,s.root_entry_id,s.configuration_revision,s.enabled
  FROM media_folders f JOIN library_storage_locations l ON l.folder_id=f.id
  JOIN bloem_storage_sources s ON s.key=l.source_key AND s.enabled AND s.plugin_id='bloem.storage.bookwarehouse'
  JOIN resource_owners ro ON ro.id=f.owner_id
  WHERE f.id=$2 AND f.enabled AND lower(btrim(f.type)) IN ('book','books','ebook','ebooks')
  AND ((ro.kind='organization' AND ro.organization_id=$1)
- OR (ro.kind='platform' AND EXISTS(SELECT 1 FROM organization_entitlements e WHERE e.organization_id=$1 AND e.media_folder_id=f.id AND e.root_owner_id=ro.id AND e.status='active' FOR SHARE)))`, org, id).Scan(&library.Name, &location.ID, &location.SourceKey, &location.FolderID, &source.Key, &source.OwnerID, &source.InstallationID, &source.PluginID, &source.ProviderSourceID, &source.RootEntryID, &source.ConfigurationRevision, &source.Enabled)
+ OR (ro.kind='platform' AND EXISTS(SELECT 1 FROM organization_entitlements e WHERE e.organization_id=$1 AND e.media_folder_id=f.id AND e.root_owner_id=ro.id AND e.status='active' FOR SHARE)))`, org, id).Scan(&library.Name, &location.ID, &location.SourceKey, &location.FolderID, &location.SelectionRevision, &source.Key, &source.OwnerID, &source.InstallationID, &source.PluginID, &source.ProviderSourceID, &source.RootEntryID, &source.ConfigurationRevision, &source.Enabled)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return library, source, ErrInvalid
 	}

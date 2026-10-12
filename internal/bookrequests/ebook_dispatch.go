@@ -128,6 +128,8 @@ func (s *Service) ReconcileEbooks(ctx context.Context, limit int) (int, error) {
 			callErr = s.validateEbookWork(callCtx, work)
 			if callErr == nil {
 				receipt, callErr = s.ebookFulfillment.Fulfill(callCtx, work.input)
+			} else {
+				callErr = errors.Join(ErrProviderNotCalled, callErr)
 			}
 		}
 		cancel()
@@ -403,6 +405,13 @@ func (s *Service) finishEbook(ctx context.Context, work *ebookWork, status Provi
 	if token == nil || *token != work.token || until == nil || !until.After(time.Now()) {
 		return false, nil
 	}
+	// Reset only a new, receipt-free claim whose adapter proved no submission.
+	// An adopted or recovered acquisition always retains its started fence.
+	if errors.Is(callErr, ErrProviderNotCalled) && !work.started && work.receipt.ExternalID == "" {
+		if _, err = tx.Exec(ctx, `UPDATE bloem_ebook_request_dispatches SET started=false WHERE request_id=$1 AND lease_token=$2 AND external_id=''`, r.ID, work.token); err != nil {
+			return false, err
+		}
+	}
 	if err = s.checkEbookWorkTx(ctx, tx, work); err != nil {
 		if !errors.Is(err, ErrConflict) && !errors.Is(err, ErrDisabled) && !errors.Is(err, ErrForbidden) && !errors.Is(err, ErrInvalid) {
 			return false, err
@@ -466,13 +475,13 @@ func updateEbookState(ctx context.Context, tx pgx.Tx, r Request, status, fulfilm
 func findEbookLibraryMatch(ctx context.Context, tx pgx.Tx, r Request, in EbookIntegration) (string, error) {
 	rows, err := tx.Query(ctx, `
  SELECT i.content_id,mf.file_path,l.id,ref.entry_id FROM media_items i
- JOIN media_files mf ON mf.content_id=i.content_id AND mf.media_folder_id=$2 AND mf.missing_since IS NULL AND mf.container IN ('epub','pdf') AND mf.probe_source='native'
+ JOIN media_files mf ON mf.content_id=i.content_id AND mf.media_folder_id=$2 AND mf.missing_since IS NULL AND mf.container IN ('epub','pdf') AND mf.probe_source='storage'
  JOIN bloem_storage_file_refs ref ON ref.media_file_id=mf.id
  JOIN library_storage_locations l ON l.id=ref.location_id AND l.folder_id=mf.media_folder_id AND l.source_key=$3
  JOIN bloem_storage_sources s ON s.key=l.source_key AND s.enabled AND s.configuration_revision=$4
  JOIN bloem_storage_entries e ON e.source_key=s.key AND e.entry_id=ref.entry_id AND e.kind=1 AND e.absence_confirmed_at IS NULL
   AND e.revision=ref.revision AND e.logical_path=ref.logical_path AND e.configuration_revision=s.configuration_revision AND ref.configuration_revision=s.configuration_revision
- WHERE i.type='book' AND EXISTS(SELECT 1 FROM media_item_provider_ids ids WHERE ids.content_id=i.content_id AND ids.item_type='book' AND lower(ids.provider)='isbn' AND upper(regexp_replace(ids.provider_id,'[-[:space:]]','','g'))=ANY($1) FOR SHARE)
+ WHERE i.type='ebook' AND EXISTS(SELECT 1 FROM media_item_provider_ids ids WHERE ids.content_id=i.content_id AND ids.item_type='ebook' AND lower(ids.provider)='isbn' AND upper(regexp_replace(ids.provider_id,'[-[:space:]]','','g'))=ANY($1) FOR SHARE)
 	ORDER BY i.content_id,mf.id LIMIT 100 FOR SHARE OF i,mf,ref,l,s,e`, isbnVariants(r.ISBN), in.LibraryID, in.StorageSourceKey, in.StorageConfigurationRevision)
 	if err != nil {
 		return "", err

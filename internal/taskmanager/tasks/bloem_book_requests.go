@@ -12,6 +12,7 @@ import (
 type bookRequestsReconciler interface {
 	Reconcile(context.Context, int) (int, error)
 	ReconcileEbooks(context.Context, int) (int, error)
+	ReconcileAudiobooks(context.Context, int) (int, error)
 }
 type BookRequestsTask struct{ service bookRequestsReconciler }
 
@@ -31,10 +32,11 @@ func (*BookRequestsTask) DefaultTriggers() []taskmanager.TriggerConfig {
 func (t *BookRequestsTask) Execute(ctx context.Context, p taskmanager.ProgressReporter) error {
 	p.Report(0, "Checking book requests")
 	n, audioErr := t.service.Reconcile(ctx, 100)
+	acquisitions, acquisitionErr := t.service.ReconcileAudiobooks(ctx, 100)
 	ebooks, ebookErr := t.service.ReconcileEbooks(ctx, 100)
-	if err := errors.Join(audioErr, ebookErr); err != nil {
+	if err := errors.Join(audioErr, acquisitionErr, ebookErr); err != nil {
 		return err
 	}
-	p.Report(100, fmt.Sprintf("Completed %d audiobook and %d ebook requests", n, ebooks))
+	p.Report(100, fmt.Sprintf("Completed %d audiobook and %d ebook requests", n+acquisitions, ebooks))
 	return nil
 }

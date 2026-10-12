@@ -27,11 +27,13 @@ type BloemBookRequestsService interface {
 }
 
 type BloemBookRequestsHandler struct {
-	service    BloemBookRequestsService
-	profiles   BloemSeasonalViewerProfiles
-	kind       string
-	ebooks     *BloemBookRequestsHandler
-	ebookSetup BloemEbookRequestSetup
+	service        BloemBookRequestsService
+	profiles       BloemSeasonalViewerProfiles
+	kind           string
+	ebooks         *BloemBookRequestsHandler
+	ebookSetup     BloemEbookRequestSetup
+	acquisition    BloemAudiobookAcquisitionService
+	audiobookSetup BloemAudiobookRequestSetup
 }
 
 func NewBloemBookRequestsHandler(s BloemBookRequestsService, p BloemSeasonalViewerProfiles) *BloemBookRequestsHandler {

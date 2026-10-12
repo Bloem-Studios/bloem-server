@@ -10,7 +10,10 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
+	"github.com/Silo-Server/silo-server/internal/scanner"
+	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -95,21 +98,25 @@ func publishEbookCatalogFixture(t *testing.T, pool *pgxpool.Pool, source storage
 	run := uuid.New()
 	bookSQL(t, pool, `INSERT INTO bloem_storage_scan_runs(id,source_key,configuration_revision,state,lease_epoch,owner,lease_until) VALUES($1,$2,1,'complete',1,'fixture',now())`, run, source.Key)
 	bookSQL(t, pool, `INSERT INTO bloem_storage_entries(source_key,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,last_seen_run) VALUES($1,$2,'Edition.epub',$2,1,10,0,'fixture-version',1,$3)`, source.Key, entry, run)
-	bookSQL(t, pool, `INSERT INTO media_items(content_id,type,title) VALUES($1,'book','Edition')`, content)
-	bookSQL(t, pool, `INSERT INTO media_item_provider_ids(content_id,item_type,provider,provider_id) VALUES($1,'book','isbn',$2)`, content, isbn)
-	var file int
-	if err := pool.QueryRow(t.Context(), `INSERT INTO media_files(media_folder_id,file_path,content_id,container,probe_source) VALUES($1,$2,$3,'epub','native') RETURNING id`, folderID, path, content).Scan(&file); err != nil {
-		t.Fatal(err)
-	}
 	tx, err := pool.Begin(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(t.Context())
-	if err = storagesource.AttachFilesTx(t.Context(), tx, 1, []storagesource.FileRef{{MediaFileID: file, PersistedRef: storagesource.PersistedRef{LocationID: location, EntryID: entry, Revision: "fixture-version", LogicalPath: entry}}}); err != nil {
+	e := &storagev1.Entry{Id: entry, Name: "Edition.epub", LogicalPath: entry, Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Size: 10, Revision: "fixture-version", Ebook: &storagev1.EbookMetadata{Title: "Edition", Isbn: isbn}}
+	book, ok := scanner.StorageEbookFromEntry(e)
+	if !ok {
+		t.Fatal("metadata not accepted")
+	}
+	publisher := scanner.NewScanner(scanner.NewFileRepository(pool), "", nil, 1, false, 0)
+	if _, err = publisher.PublishStorageEbooksTx(t.Context(), tx, &models.MediaFolder{ID: folderID, Type: "ebooks", Name: "Bookwarehouse", Enabled: true}, storagesource.Location{ID: location, SourceKey: source.Key, FolderID: folderID, SelectionRevision: 1}, 1, []scanner.StorageEbook{book}); err != nil {
 		t.Fatal(err)
 	}
 	if err = tx.Commit(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	var file int
+	if err = pool.QueryRow(t.Context(), `SELECT id FROM media_files WHERE media_folder_id=$1 AND file_path=$2`, folderID, path).Scan(&file); err != nil {
 		t.Fatal(err)
 	}
 	return file, path
@@ -144,6 +151,10 @@ func TestEbookCompletionRequiresExactLinkedNativeFileDatabase(t *testing.T) {
 		t.Fatalf("other library completed request: %d %v", n, err)
 	}
 	file, path := publishEbookCatalogFixture(t, pool, source, folder, "linked-edition", "0306406152", "linked-edition")
+	var linkedID string
+	if err := pool.QueryRow(t.Context(), `SELECT content_id FROM media_files WHERE id=$1`, file).Scan(&linkedID); err != nil {
+		t.Fatal(err)
+	}
 	bookSQL(t, pool, `UPDATE media_files SET file_path='/fixture/replaced.epub' WHERE id=$1`, file)
 	dueEbook(t, pool, r.ID)
 	if n, err := s.ReconcileEbooks(t.Context(), 100); err != nil || n != 0 {
@@ -160,7 +171,7 @@ func TestEbookCompletionRequiresExactLinkedNativeFileDatabase(t *testing.T) {
 		t.Fatalf("exact linked native file did not complete: %d %v", n, err)
 	}
 	got, err := s.GetEbook(t.Context(), v, r.ID)
-	if err != nil || got.Status != "completed" || got.Fulfilment != "library" || got.LibraryContentID != "linked-edition" || got.CompletedAt == nil || submits.Load() != 1 {
+	if err != nil || got.Status != "completed" || got.Fulfilment != "library" || got.LibraryContentID != linkedID || got.CompletedAt == nil || submits.Load() != 1 {
 		t.Fatalf("incorrect completion: %+v submits=%d %v", got, submits.Load(), err)
 	}
 }
@@ -577,5 +588,68 @@ func TestEbookCancelledRefilingAdoptsInflightSubmissionDatabase(t *testing.T) {
 	}
 	if submissions.Load() != 1 {
 		t.Fatal("refile later resubmitted")
+	}
+}
+
+func TestEbookPreRPCFailureDoesNotPoisonSubmissionDatabase(t *testing.T) {
+	s, v, pool := databaseFixture(t)
+	setEbookOptIn(t, pool, "true")
+	integration, folder, _ := ebookIntegrationFixture(t, pool)
+	admin := v
+	admin.Admin = true
+	if _, err := s.SetEbookIntegrationLibrary(t.Context(), admin, integration, folder); err != nil {
+		t.Fatal(err)
+	}
+	r := approveEbook(t, s, v, "9780306406157")
+	calls, recoveries := 0, 0
+	s.SetEbookFulfillment(ebookRouterFixture{fulfill: func(context.Context, DispatchInput) (Receipt, error) {
+		calls++
+		if calls == 1 {
+			return Receipt{}, errors.Join(ErrProviderNotCalled, errors.New("plugin not running"))
+		}
+		return Receipt{ExternalID: "submitted", Status: "queued"}, nil
+	}, recover: func(context.Context, DispatchInput) (Receipt, error) {
+		recoveries++
+		return Receipt{}, errors.New("must not recover an unsent request")
+	}})
+	if _, err := s.ReconcileEbooks(t.Context(), 100); err != nil {
+		t.Fatal(err)
+	}
+	var started bool
+	if err := pool.QueryRow(t.Context(), `SELECT started FROM bloem_ebook_request_dispatches WHERE request_id=$1`, r.ID).Scan(&started); err != nil || started {
+		t.Fatalf("unsent submission left started=%v err=%v", started, err)
+	}
+	dueEbook(t, pool, r.ID)
+	if _, err := s.ReconcileEbooks(t.Context(), 100); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 || recoveries != 0 {
+		t.Fatalf("calls=%d recoveries=%d", calls, recoveries)
+	}
+	got, err := s.GetEbook(t.Context(), v, r.ID)
+	if err != nil || got.Fulfilment != "queued" {
+		t.Fatalf("request %+v %v", got, err)
+	}
+}
+
+func TestBookRequestDefaultInitializingAuthorityDatabase(t *testing.T) {
+	s, v, pool := databaseFixture(t)
+	bookSQL(t, pool, `UPDATE organizations SET status='initializing' WHERE id=$1 AND is_default`, v.OrganizationID)
+	setEbookOptIn(t, pool, "true")
+	integration, folder, _ := ebookIntegrationFixture(t, pool)
+	admin := v
+	admin.Admin = true
+	libraries, err := s.EbookLibraries(t.Context(), admin)
+	if err != nil || len(libraries) != 1 || libraries[0].ID != folder {
+		t.Fatalf("default initializing library admission: %+v %v", libraries, err)
+	}
+	if _, err = s.SetEbookIntegrationLibrary(t.Context(), admin, integration, folder); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = s.CreateEbook(t.Context(), v, EbookCreateInput{Title: "Synthetic Edition", ISBN: "9780306406157"}, uuid.NewString()); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err = s.Create(t.Context(), v, CreateInput{Title: "Synthetic Saga", ASIN: "B012345678"}, uuid.NewString()); err != nil {
+		t.Fatal(err)
 	}
 }

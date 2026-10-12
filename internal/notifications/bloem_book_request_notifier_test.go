@@ -152,3 +152,16 @@ func TestBookRequestNoticesCurrentTenantRecipientsDedupeAndManualCopyDatabase(t 
 		t.Fatalf("revoked membership got notice: count=%d err=%v", count, err)
 	}
 }
+
+func TestAudiobookAttentionUsesCurrentOrganizationAdmins(t *testing.T) {
+	backend := &bookNoticeBackendStub{recipients: []requests.Follower{{UserID: 2, ProfileID: "admin"}}}
+	n := &BookRequestNotifier{backend: backend}
+	n.Attention(t.Context(), bookrequests.Request{MediaType: "audiobook", Title: "Synthetic Saga"}, 3)
+	if !backend.admins || len(backend.events) != 1 || backend.events[0] != "attention:3" {
+		t.Fatalf("attention routing %+v", backend)
+	}
+	alert, err := bookRequestAlert(bookrequests.Request{MediaType: "audiobook", Title: "Synthetic Saga"}, "attention:3")
+	if err != nil || alert.Deeplink != "/admin/requests?kind=audiobook" || !strings.Contains(alert.Title, "needs attention") {
+		t.Fatalf("alert %+v %v", alert, err)
+	}
+}

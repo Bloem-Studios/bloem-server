@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/bookrequests"
@@ -43,6 +44,17 @@ func (n *BookRequestNotifier) Lifecycle(ctx context.Context, r bookrequests.Requ
 		}
 	}()
 }
+
+// Attention is an attempt-scoped organization-admin notice. It contains no
+// release details, download paths, backend configuration or requester identity.
+func (n *BookRequestNotifier) Attention(ctx context.Context, r bookrequests.Request, attempt int) {
+	if attempt < 1 {
+		return
+	}
+	if err := n.notify(ctx, r, fmt.Sprintf("attention:%d", attempt)); err != nil {
+		slog.WarnContext(ctx, "audiobook attention notice failed", "request_id", r.ID, "attempt", attempt, "error", err)
+	}
+}
 func (n *BookRequestNotifier) Fulfilled(ctx context.Context, r bookrequests.Request) error {
 	return n.notify(ctx, r, "fulfilled")
 }
@@ -50,7 +62,7 @@ func (n *BookRequestNotifier) notify(ctx context.Context, r bookrequests.Request
 	if n == nil || n.backend == nil {
 		return nil
 	}
-	recipients, err := n.backend.bookRequestRecipients(ctx, r, event == "submitted")
+	recipients, err := n.backend.bookRequestRecipients(ctx, r, event == "submitted" || strings.HasPrefix(event, "attention:"))
 	if err != nil {
 		return err
 	}
@@ -122,6 +134,15 @@ func bookRequestAlert(r bookrequests.Request, event string) (AlertBody, error) {
 		label, titleLabel, kind = "ebook", "Ebook", "ebook"
 	}
 	body := AlertBody{Title: titleLabel + " request fulfilled", Body: fmt.Sprintf("An administrator marked your request for %s fulfilled.", r.Title), Deeplink: "/requests?kind=" + kind, Severity: SeverityInfo, Dismissible: true}
+	if strings.HasPrefix(event, "attention:") {
+		if r.MediaType != "audiobook" {
+			return AlertBody{}, errors.New("unsupported acquisition notice")
+		}
+		body.Title = "Audiobook request needs attention"
+		body.Body = fmt.Sprintf("The request for %s needs an administrator's review.", r.Title)
+		body.Deeplink = "/admin/requests?kind=audiobook"
+		return body, nil
+	}
 	switch event {
 	case "submitted":
 		body.Title = "New " + label + " request"

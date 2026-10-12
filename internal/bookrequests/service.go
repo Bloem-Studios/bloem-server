@@ -21,9 +21,12 @@ type Notifier interface {
 }
 
 type Service struct {
-	pool             *pgxpool.Pool
-	notifier         Notifier
-	ebookFulfillment Fulfillment
+	pool                 *pgxpool.Pool
+	notifier             Notifier
+	ebookFulfillment     Fulfillment
+	audiobookFulfillment AudiobookFulfillment
+	// audiobookNow overrides the run-budget clock in tests.
+	audiobookNow func() time.Time
 }
 
 func NewService(pool *pgxpool.Pool, notifier Notifier) *Service {
@@ -116,6 +119,13 @@ func maxInt(a, b int) int {
 }
 func (s *Service) Capability(ctx context.Context, v Viewer) (Capability, error) {
 	p, e := readPolicy(ctx, s.pool, v)
+	if e != nil || s.audiobookFulfillment == nil {
+		return p.Capability, e
+	}
+	available, e := AudiobookAcquisitionAvailable(ctx, s.pool, v.OrganizationID)
+	if available {
+		p.FulfilmentBackend = "audiobook_acquisition"
+	}
 	return p.Capability, e
 }
 
@@ -285,6 +295,7 @@ func (s *Service) act(ctx context.Context, v Viewer, id, action string, in Actio
 	if r.Outcome != "active" || r.Status == "completed" {
 		return Request{}, ErrConflict
 	}
+	var audiobookReason string
 	switch action {
 	case "approve":
 		if r.Status != "pending" {
@@ -304,7 +315,17 @@ func (s *Service) act(ctx context.Context, v Viewer, id, action string, in Actio
 			}
 		}
 	case "retry":
-		if mediaType != "book" || r.Status != "approved" || r.Fulfilment != "failed" && r.Fulfilment != "retrying" {
+		if r.Status != "approved" {
+			return Request{}, ErrConflict
+		}
+		if mediaType == "audiobook" {
+			// Every audiobook action leaves the dispatch lease untouched.
+			if r.Fulfilment, audiobookReason, err = s.retryAudiobookTx(ctx, tx, r); err != nil {
+				return Request{}, err
+			}
+			break
+		}
+		if mediaType != "book" || r.Fulfilment != "failed" && r.Fulfilment != "retrying" {
 			return Request{}, ErrConflict
 		}
 		if err = s.retryEbookTx(ctx, tx, r); err != nil {
@@ -320,6 +341,9 @@ func (s *Service) act(ctx context.Context, v Viewer, id, action string, in Actio
 	reason := strings.TrimSpace(in.Reason)
 	if mediaType == "book" && action == "retry" {
 		reason = "Checking the existing submission without submitting again."
+	}
+	if mediaType == "audiobook" && action == "retry" {
+		reason = audiobookReason
 	}
 	r, err = scan(tx.QueryRow(ctx, `UPDATE bloem_book_requests SET status=$2,outcome=$3,outcome_reason=$4,fulfilment=$5,completed_at=CASE WHEN $2='completed' THEN now() ELSE NULL END,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING `+selectColumns, id, r.Status, r.Outcome, reason, r.Fulfilment))
 	if err != nil {

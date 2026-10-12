@@ -65,7 +65,7 @@ func TestEbookRouterPassesCanonicalIdentityAndChecksReceipt(t *testing.T) {
 	}
 	client.input = nil
 	adapter.validator = ebookValidatorFixture{errors.New("changed")}
-	if _, err = adapter.Fulfill(t.Context(), input); err == nil || client.input != nil {
+	if _, err = adapter.Fulfill(t.Context(), input); !errors.Is(err, bookrequests.ErrProviderNotCalled) || client.input != nil {
 		t.Fatal("changed integration reached provider")
 	}
 }

@@ -11,6 +11,8 @@ import (
 	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/bookrequests"
 	"github.com/Silo-Server/silo-server/internal/requests"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -117,17 +119,20 @@ func ebookProviderStatus(status, external string) (string, error) {
 func (a bloemEbookRouter) Fulfill(ctx context.Context, in bookrequests.DispatchInput) (bookrequests.Receipt, error) {
 	connection, format, err := a.connection(ctx, in)
 	if err != nil {
-		return bookrequests.Receipt{}, err
+		return bookrequests.Receipt{}, errors.Join(bookrequests.ErrProviderNotCalled, err)
 	}
 	client, err := a.resolver.RequestRouterClient(ctx, in.Integration.InstallationID, in.Integration.CapabilityID)
 	if err != nil {
-		return bookrequests.Receipt{}, errors.New("ebook fulfillment plugin unavailable")
+		return bookrequests.Receipt{}, errors.Join(bookrequests.ErrProviderNotCalled, errors.New("ebook fulfillment plugin unavailable"))
 	}
 	if err = a.validator.ValidateEbookIntegration(ctx, in.Integration); err != nil {
-		return bookrequests.Receipt{}, err
+		return bookrequests.Receipt{}, errors.Join(bookrequests.ErrProviderNotCalled, err)
 	}
 	response, err := client.Fulfill(ctx, &pluginv1.FulfillRequest{CapabilityId: in.Integration.CapabilityID, Request: ebookRequestDescriptor(in), Connections: []*pluginv1.RouterConnection{connection}, Qualities: []*pluginv1.RequestedQuality{{Id: format}}})
 	if err != nil {
+		if status.Code(err) == codes.FailedPrecondition || status.Code(err) == codes.InvalidArgument {
+			return bookrequests.Receipt{}, errors.Join(bookrequests.ErrProviderNotCalled, errors.New("ebook fulfillment configuration rejected"))
+		}
 		return bookrequests.Receipt{}, errors.New("ebook fulfillment submission outcome is uncertain")
 	}
 	if response == nil || len(response.Targets) != 1 {

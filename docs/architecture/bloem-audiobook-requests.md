@@ -6,12 +6,11 @@ existing behavior. The web application wraps those pages at the existing
 `/requests` and `/admin/requests` entry points and selects the audiobook lane
 with `kind=audiobook`.
 
-This lane records requests and approval. It has no fulfilment integration.
-An approved request stays `approved` with `fulfilment=awaiting_fulfilment` until
-the catalog supplies a matching audiobook or an organization administrator
-marks it fulfilled. There is no downloader, remote-source shortcut, or
-Bookwarehouse connection behind approval. Ebook requests are not enabled by
-this lane or its capability.
+Approved requests may use the opt-in `bloem.requests.audiobooks` acquisition
+backend. An enabled audiobook-only request integration and a valid library
+binding with dedicated download roots make acquisition available. Without that
+binding, existing catalog matching and manual fulfilment retain their behavior.
+Ebook requests stay in their separate Bookwarehouse lane.
 
 ## Authority and policy
 
@@ -95,6 +94,54 @@ Lifecycle notices are best effort on a bounded detached context. Completion
 notices retry durably until the delivery succeeds, is deduplicated, or the
 recipient is no longer eligible.
 
+## Acquisition and review
+
+The host registers `bloem_reconcile_book_requests` before starting the task
+manager. Each pass independently reconciles ordinary library completion,
+audiobook acquisition and ebook acquisition, so one lane's failure does not
+starve the others. Audiobook acquisition checks at most 100 requests and starts
+at most five searches within a three-minute run budget.
+
+A dispatch freezes the integration ID, installation, capability and owner as
+its identity. Renaming, credential/configuration edits, plugin version changes
+and library/root rebinding do not replace an in-flight acquisition. The original
+library, roots and language remain frozen for completion. Removing/replacing the
+backend identity fails the acquisition; verified provider completion can still
+match the retained library roots.
+
+PostgreSQL leases serialize provider calls. A started marker commits before
+Fulfill; ambiguous outcomes use a durable unknown receipt and read-only
+CheckStatus, never a second submission. Definite host pre-RPC failures retain no
+started marker. Cancel/refile chains share their original submission ID and
+attempt, including across ISBN/ASIN identifier variants. Cancellation does not
+cancel the external download. Retry keeps any in-flight lease: late receipts
+and decisions cannot affect a newer attempt.
+
+`request_router.v1` carries requester-free descriptors, an `abr1.` receipt and
+an `abd1.` decision envelope. Both envelopes are strict, bounded and validated.
+Secrets travel only in the ordinary encrypted request-integration API key field
+as an `abk1.` composite, bound to normalized destination URL fingerprints. They
+never enter the dispatch descriptor, receipt, decision log or requester view.
+The plugin owns release search, AI selection/verification and downloader calls;
+the host owns policy, identity, attempts and catalog completion.
+
+No-match searches wait six hours and stop after seven days; unavailable sources
+wait thirty minutes. Uncertain checks back off and stop after five failures.
+Selections or downloads needing review wait for an administrator. An approved
+candidate starts a fresh attempt; accepting a download permits catalog matching
+without marking the request fulfilled. Manual fulfilment remains available.
+Review/failure notices go only to current organization administrators and use
+stable attempt-scoped delivery identities. The admin view retains the newest
+50 validated decisions; requesters receive only safe progress and reason text.
+
+Provider verification moves a request to `awaiting_library`. Completion still
+requires a catalog item: either all supplied stable IDs match, or exactly one
+nonmissing audiobook item exists below the retained dedicated download roots in
+an attempt-marker folder. Two matching items require review. The path lookup
+first materializes the library/path index range; it does not search the entire
+catalog. A completed download does not create a scanner schedule or guarantee
+filesystem liveness.
+
 ## Native client follow-up
 
 The server advertises `audiobook_requests_v1` only when the viewer routes and
@@ -111,4 +158,6 @@ Both integrations must retain a filing key across transport retries, bind work
 to the originating account/profile/organization, send `expected_revision` for
 withdrawal, distinguish approval from fulfilment, handle the audiobook request
 notification link, and clear rows/forms/pagination when authority changes.
-They must not expose ebook fulfilment through this audiobook capability.
+They must not expose ebook fulfilment through this audiobook capability. Native
+acquisition setup and review surfaces remain follow-up work for both clients;
+the server exposes those operations through the Bloem admin API.

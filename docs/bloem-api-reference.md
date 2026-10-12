@@ -3028,8 +3028,8 @@ already-started provider work may continue.
 The existing notification channels use ebook labels and links. Library
 completion rechecks the recipient's current catalog access. See
 [the implementation invariants](architecture/bloem-ebook-request-foundation.md).
-Apple/Android ebook request adoption and automatic audiobook acquisition remain
-deferred. Jellyfin and Audiobookshelf have no request-route parity requirement.
+Apple/Android ebook request adoption remains deferred. Audiobook acquisition
+is opt-in through its dedicated integration and binding. Jellyfin and Audiobookshelf have no request-route parity requirement.
 
 ## Audiobook requests
 
@@ -3056,6 +3056,15 @@ carry `Cache-Control: private, no-store`.
 | `POST` | `/admin/organization/book-requests/{id}/approve` | Approve a pending request. |
 | `POST` | `/admin/organization/book-requests/{id}/decline` | Decline a pending request and refund its quota slot. |
 | `POST` | `/admin/organization/book-requests/{id}/fulfil` | Manually fulfil a pending or approved request. |
+| `POST` | `/admin/organization/book-requests/{id}/retry` | Recheck uncertain work or start a fresh attempt for a failed, review or stuck acquisition. |
+| `GET` | `/admin/organization/book-requests/acquisitions` | Admin acquisition list with `state`, `cursor` and `limit` (1–100). |
+| `GET` | `/admin/organization/book-requests/{id}/acquisition` | Admin progress, attempt, stuck reason, frozen binding and validated decision history. |
+| `POST` | `/admin/organization/book-requests/{id}/approve-candidate` | Start a fresh attempt with `expected_revision` and `candidate_ref` from selection review. |
+| `POST` | `/admin/organization/book-requests/{id}/accept-download` | Accept verification review with `expected_revision`; still await catalog presence. |
+| `GET` | `/admin/organization/audiobook-request-integrations` | Read `{available, integrations, libraries, installations}` without credentials. |
+| `POST` | `/admin/organization/audiobook-request-integrations` | Platform-authorized connection creation with name, installation, capability, `plugin_config` and `credentials`. |
+| `PUT` | `/admin/organization/audiobook-request-integrations/{id}/library` | Platform-authorized binding with `library_id` and one to four `download_roots`; zero unbinds. |
+
 
 Lists return `{"requests": [...]}` and accept `limit` (1–100, default 100) and
 `offset` (nonnegative, default 0). Pagination follows organization/profile
@@ -3063,7 +3072,8 @@ filtering. Requests outside that boundary return 404 on individual operations.
 
 The capability includes `available`, `enabled`, `can_request`,
 `media_types: ["audiobook"]`, `auto_approve`, `unlimited`, `limit`, `used`,
-`remaining`, `window_days`, `fulfilment_backend: "unconfigured"`, and
+`remaining`, `window_days`, `fulfilment_backend` (`unconfigured` or
+`audiobook_acquisition`), and
 `manual_fulfilment: true`. It inherits existing membership/profile-group,
 account and global request policy values. Book counters do not consume
 movie/series request quota. Withdrawal retains book quota usage.
@@ -3100,7 +3110,18 @@ The revision must match the current row; reason is optional and limited to
 `409 request_state_changed`. Request status is `pending`, `approved` or
 `completed`; outcome is `active`, `declined` or `cancelled`.
 
-Approval keeps `fulfilment=awaiting_fulfilment`. Automatic catalog completion
+Approval keeps `fulfilment=awaiting_fulfilment` until reconciliation. An opted-in
+backend can then use `queued`, `searching`, `downloading`, `retrying`, `review`,
+`failed` or `awaiting_library`. The acquisition list accepts `state=all`,
+`active`, `review`, `failed` or `stuck`, and returns
+`{acquisitions, next_cursor?}` with organization filtering before pagination.
+Connection credential keys are `qbittorrent_password`, `nzbget_password`,
+`abook_email`, `abook_password` and `ai_api_key`. The host binds these to their
+configured URL, encodes the plugin composite and encrypts it at rest; setup
+responses contain no credentials or configuration. Configuration and binding
+changes never cancel an external download.
+
+Automatic catalog completion
 requires every supplied ISBN/ASIN to match one audiobook with a media-file row
 in an enabled organization-accessible audiobook library. Title-only or ebook
 matches never qualify. Library completion records `fulfilment=library` and
