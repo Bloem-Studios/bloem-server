@@ -33,7 +33,7 @@ func scanAll(t *testing.T, r *Repository, s SourceConfig, client storagev1.Stora
 			}
 			return removed
 		}
-		page, err := r.FetchPage(ctx, lease, checkpoint, client)
+		page, err := r.FetchPage(ctx, lease, &checkpoint, client)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,10 +67,20 @@ func TestChangeFeedListsOnlyChangesAfterACompleteListing(t *testing.T) {
 		}
 	})
 
-	if removed := scanAll(t, r, s, client); len(removed) != 0 {
+	// Each run records whether it listed the directory in full.
+	fullListing := func() bool {
+		t.Helper()
+		var full bool
+		if err := pool.QueryRow(t.Context(), `SELECT d.full_listing FROM bloem_storage_scan_directories d JOIN bloem_storage_scan_runs r ON r.id=d.run_id
+			WHERE r.source_key=$1 AND d.directory_id='root' ORDER BY r.created_at DESC LIMIT 1`, s.Key).Scan(&full); err != nil {
+			t.Fatal(err)
+		}
+		return full
+	}
+	if removed := scanAll(t, r, s, client); len(removed) != 0 || !fullListing() {
 		t.Fatalf("full listing removed %v", removed)
 	}
-	if removed := scanAll(t, r, s, client); len(removed) != 1 || removed[0] != "b" {
+	if removed := scanAll(t, r, s, client); len(removed) != 1 || removed[0] != "b" || fullListing() {
 		t.Fatalf("incremental listing removed %v", removed)
 	}
 	var token string
@@ -78,7 +88,7 @@ func TestChangeFeedListsOnlyChangesAfterACompleteListing(t *testing.T) {
 		t.Fatalf("token = %q %v", token, err)
 	}
 	// "t2" is refused: the scan falls back to a full listing and starts over.
-	if removed := scanAll(t, r, s, client); len(removed) != 0 {
+	if removed := scanAll(t, r, s, client); len(removed) != 0 || !fullListing() {
 		t.Fatalf("fallback listing removed %v", removed)
 	}
 	if err := pool.QueryRow(t.Context(), `SELECT token FROM bloem_storage_change_tokens WHERE source_key=$1 AND directory_id='root'`, s.Key).Scan(&token); err != nil || token != "t1" {

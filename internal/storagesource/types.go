@@ -52,6 +52,10 @@ type Lease struct {
 type Checkpoint struct {
 	DirectoryID, Cursor string
 	Complete            bool
+	// FullListing is set by FetchPage when it requests a directory's first
+	// page without a change token. ApplyPage records it with that page; only
+	// a complete full listing makes an entry suspect (see FullListings).
+	FullListing bool
 }
 type Repository struct{ pool *pgxpool.Pool }
 

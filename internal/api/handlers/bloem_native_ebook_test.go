@@ -17,6 +17,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type nativeReaderTestFile struct {
@@ -172,22 +174,47 @@ func TestNativeEbookReaderUnavailableAndUnsupportedNeverFallBack(t *testing.T) {
 		t.Fatalf("unsupported status %d opens %d", w.Code, opener.calls)
 	}
 }
-func TestNativeEbookReaderLateFailureAbortsWithoutJSON(t *testing.T) {
-	h, opener, _ := nativeReaderTestSetup(t)
-	opener.file.failure = errors.New("late provider failure")
-	w := httptest.NewRecorder()
-	defer func() {
-		if got := recover(); got != http.ErrAbortHandler { //nolint:errorlint // net/http abort handling requires this exact panic sentinel.
-			t.Fatalf("panic %v, want ErrAbortHandler", got)
-		}
-		if strings.Contains(w.Body.String(), "error") {
-			t.Fatalf("JSON/text appended: %s", w.Body.String())
-		}
-		if !opener.file.closed {
-			t.Fatal("file not closed")
-		}
-	}()
-	h.HandleReadFile(w, nativeReadRequest("GET"))
+
+// A provider failure at open or before the first byte (for example a book
+// whose file is missing in the backend) is still an ordinary HTTP error: no
+// binary framing has reached the client yet, so it must not be an empty reply.
+func TestNativeEbookReaderFirstReadFailureIsAnHTTPError(t *testing.T) {
+	for _, tc := range []struct {
+		name, rangeValue string
+		open             bool
+		failure          error
+		status           int
+	}{
+		{"open missing", "", true, status.Error(codes.NotFound, "book absent"), 404},
+		{"unavailable", "", false, errors.New("provider failure before any byte"), 503},
+		{"missing", "", false, status.Error(codes.NotFound, "book file absent"), 404},
+		{"missing range", "bytes=2-5", false, status.Error(codes.NotFound, "book file absent"), 404},
+		{"unavailable range", "bytes=2-5", false, status.Error(codes.Unavailable, "backend down"), 503},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h, opener, _ := nativeReaderTestSetup(t)
+			if tc.open {
+				opener.err = tc.failure
+			} else {
+				opener.file.failure = tc.failure
+			}
+			r := nativeReadRequest("GET")
+			r.Header.Set("Range", tc.rangeValue)
+			w := httptest.NewRecorder()
+			h.HandleReadFile(w, r)
+			if w.Code != tc.status || !strings.Contains(w.Header().Get("Content-Type"), "json") {
+				t.Fatalf("status %d type %q body %s", w.Code, w.Header().Get("Content-Type"), w.Body.String())
+			}
+			for _, header := range []string{"Accept-Ranges", "Content-Disposition", "Content-Length", "Content-Range", "ETag", "Last-Modified"} {
+				if value := w.Header().Get(header); value != "" {
+					t.Fatalf("error response kept the file's %s: %q", header, value)
+				}
+			}
+			if (opener.file.reads == 0) != tc.open || !opener.file.closed {
+				t.Fatalf("reads %d closed %v", opener.file.reads, opener.file.closed)
+			}
+		})
+	}
 }
 func TestNativeEbookReaderLocalUnchanged(t *testing.T) {
 	h, opener, file := nativeReaderTestSetup(t)
@@ -289,5 +316,43 @@ func TestNativeEbookReaderDisconnectCancelsSource(t *testing.T) {
 	case <-done:
 	case <-time.After(5 * time.Second):
 		t.Fatal("client did not stop")
+	}
+}
+
+// Over a real connection the deferred status line must still frame both a
+// complete book and an error answered before the first byte.
+func TestNativeEbookReaderFirstReadFailureOverHTTP(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		failure error
+		status  int
+		body    string
+	}{
+		{"complete", nil, 200, "0123456789"},
+		{"missing", status.Error(codes.NotFound, "book file absent"), 404, `"not_found"`},
+		{"unavailable", errors.New("backend down"), 503, `"unavailable"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h, opener, _ := nativeReaderTestSetup(t)
+			opener.file.failure = tc.failure
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				ctx := apimw.SetClaims(r.Context(), &auth.Claims{UserID: 1, Role: "user", TokenType: auth.TokenTypeAccess})
+				ctx = apimw.SetProfileID(ctx, "profile-1")
+				h.HandleReadFile(w, withEbookReaderRouteParams(r.WithContext(ctx), "ebook-1", "42"))
+			}))
+			defer server.Close()
+			response, err := server.Client().Get(server.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer response.Body.Close()
+			body, err := io.ReadAll(response.Body)
+			if err != nil {
+				t.Fatal("response framing", err)
+			}
+			if response.StatusCode != tc.status || !strings.Contains(string(body), tc.body) {
+				t.Fatalf("status %d body %q", response.StatusCode, body)
+			}
+		})
 	}
 }

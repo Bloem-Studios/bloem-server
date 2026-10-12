@@ -19,7 +19,8 @@ func ValidatePendingPageTx(ctx context.Context, tx pgx.Tx, lease Lease, checkpoi
 	if err != nil {
 		return err
 	}
-	if !pending || current != checkpoint {
+	// Compare positions: FetchPage's FullListing mark is not journal state yet.
+	if !pending || current.DirectoryID != checkpoint.DirectoryID || current.Cursor != checkpoint.Cursor {
 		return ErrCheckpointConflict
 	}
 	return nil

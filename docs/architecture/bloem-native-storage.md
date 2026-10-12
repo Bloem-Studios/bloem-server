@@ -66,6 +66,12 @@ plugin in one transaction and bumps its runtime generation, so the running
 process is replaced; the source, its encrypted configuration and its library
 stay as they are. Ordinary plugin handlers hide native installations.
 
+Configuration replacement, upgrade and removal fence the installation's runtime
+while they run. A refused or failed action that commits nothing lifts its fence:
+the unchanged generation restarts on the next read or scan. After a commit, or a
+COMMIT whose outcome is unknown, the previous generation stays fenced and only
+a committed higher generation runs.
+
 ## S3 process state
 
 The manually approved `bloem.storage.s3` provider needs a durable private
@@ -267,7 +273,36 @@ Removed entries mark their files missing; the post-scan sweep removes them, and
 a book listed again before then is restored. A token the provider refuses
 (`FailedPrecondition`), from another configuration revision, or older than
 seven days falls back to a full listing, which also reconciles anything a change
-feed missed. Without a change feed, a listing never proves absence.
+feed missed: each run records whether it requested a directory's first page
+without a token (`bloem_storage_scan_directories.full_listing`) and which
+directory last listed each journal entry (`bloem_storage_entries.directory_id`).
+A full listing is not a point-in-time snapshot. The Bookwarehouse provider
+fixes an upper bound when a directory listing starts and leaves books updated
+after it to the next listing, so a present book the cursor had not yet reached
+can be missing from a full listing; the change token that listing issues lists
+it next time. Absence therefore takes two completed runs, both decided in the
+completion transaction (`MarkUnlistedStorageFilesTx`). A run's full listings
+make an entry suspect (`bloem_storage_entries.absence_suspected_at`) when a
+directory the run listed in full no longer lists it, or, when the run listed
+every directory in full, when the run did not list it at all (entries of a
+directory no longer listed, or journaled before directories were recorded).
+Listing an entry clears the suspicion. A later completed run that has not
+listed a suspect entry marks its file missing. A full listing that returned no
+entries is suspect itself, as an empty filesystem root is: it raises no
+suspicion, and a run with one confirms only entries of the directories it
+listed with entries. Incremental, partial, cancelled and failed listings never
+raise a suspicion. A book updated during both a full
+listing and the following listing, each time before the listing reached it,
+can still be marked missing; the listing after that restores it. Marked files
+follow the removal grace period and sweep.
+
+A listed book whose entry is unchanged is not republished. Its file reference
+records a digest of the entry it was published from (`entry_sha256`: revision,
+provider metadata and cover), and a present file whose entry is listed again
+with the same digest, configuration revision and library membership writes
+only its journal entry. A forced full listing of an unchanged library rewrites
+`bloem_storage_entries`, not its catalog rows. A metadata-only change counts as
+updated and republishes that book.
 
 ## Covers
 
@@ -320,8 +355,11 @@ then reloads the reference, authorization and executable snapshot. Cover reads
 use the same admission checks. A canceled request or runtime lease cannot
 start content I/O. File lifetime is tied to request and runtime
 cancellation. GET/HEAD, ranges and conditional requests behave as for local
-files; ETags hash the opaque revision. Downloads, conversion and offline
-delivery of storage files are not supported.
+files; ETags hash the opaque revision. A provider failure at open or before
+the first byte is sent is an ordinary HTTP error, such as 404 for a missing book
+or 503 for an unavailable provider; after bytes were sent the response is
+aborted without an error document. Downloads, conversion and offline delivery
+of storage files are not supported.
 
 ## Protocol
 
