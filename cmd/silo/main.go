@@ -4592,7 +4592,13 @@ func replaceWatchSyncPluginProviders(
 				)
 				continue
 			}
-			providers = append(providers, provider)
+			var registered watchsync.Provider = provider
+			if extension, ok := service.(interface {
+				WrapWatchSyncProvider(int, string, *watchsync.PluginProvider) watchsync.Provider
+			}); ok {
+				registered = extension.WrapWatchSyncProvider(installation.ID, installation.PluginID, provider)
+			}
+			providers = append(providers, registered)
 			if _, ok := watchsync.FirstPartyPluginID(providerKey); ok {
 				claimedLegacyKeys[providerKey] = true
 				firstParty = append(firstParty, firstPartyInstallation{installationID: installation.ID, providerKey: providerKey})

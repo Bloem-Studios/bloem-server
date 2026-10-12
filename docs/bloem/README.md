@@ -141,3 +141,5 @@ Silo's `v1-scope.md` no longer carries that fork-only row.
 - `docs/design/schemas/playback-v3/v3/**` — playback schema and fixtures validated by `make verify-playback-fixtures`.
 
 - [Native Pastime managed tracking](../architecture/bloem-managed-tracking.md)
+
+- [Managed Pastime personal synchronization](../architecture/bloem-pastime-personal-sync.md) — authority, conflicts and retry boundaries.

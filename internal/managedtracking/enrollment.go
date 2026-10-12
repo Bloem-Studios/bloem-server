@@ -78,6 +78,11 @@ func (s *Service) EnsureConnection(ctx context.Context, id int, e Enrollment) er
 		return err
 	}
 	key := watchsync.PluginProviderKey(id, "bloem.pastime", "pastime", false)
+	var personal bool
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_capabilities WHERE plugin_installation_id=$1 AND capability_type='watch_sync_provider.v1' AND capability_id='pastime' AND metadata @> '{"managed_personal_state":true}'::jsonb)`, id).Scan(&personal); err != nil {
+		return err
+	}
+	personal = personal && e.Active
 	account, _ := strconv.Atoi(p.AccountID)
 	if beforeID == e.ID {
 		if !bytes.Equal(before, digest[:]) {
@@ -85,7 +90,7 @@ func (s *Service) EnsureConnection(ctx context.Context, id int, e Enrollment) er
 		}
 		// Replay converges only when the connection still holds exactly this
 		// enrollment; a removed or overwritten connection is rewritten below.
-		converged, err := s.connectionConverged(ctx, tx, key, account, info.InstanceID, p, e)
+		converged, err := s.connectionConverged(ctx, tx, key, account, info.InstanceID, p, e, personal)
 		if err != nil {
 			return err
 		}
@@ -112,8 +117,9 @@ func (s *Service) EnsureConnection(ctx context.Context, id int, e Enrollment) er
 	}
 	// Archived source profiles have already cascaded their watch connections.
 	if p.Active {
-		_, err = tx.Exec(ctx, `INSERT INTO watch_provider_connections(provider,user_id,profile_id,provider_account_id,provider_username,access_token,plugin_credentials,import_watched_enabled,import_progress_enabled,export_watched_enabled,scrobble_enabled,import_favorites_enabled,export_favorites_enabled,import_watchlist_enabled,export_watchlist_enabled) VALUES($1,$2,$3,$4,$5,$6,$7,false,false,$8,$8,false,false,false,false)
- ON CONFLICT(provider,user_id,profile_id) DO UPDATE SET provider_account_id=EXCLUDED.provider_account_id,provider_username=EXCLUDED.provider_username,access_token=EXCLUDED.access_token,plugin_credentials=EXCLUDED.plugin_credentials,refresh_token='',token_expires_at=NULL,import_watched_enabled=false,import_progress_enabled=false,export_watched_enabled=EXCLUDED.export_watched_enabled,export_unwatched_enabled=false,scrobble_enabled=EXCLUDED.scrobble_enabled,import_favorites_enabled=false,export_favorites_enabled=false,sync_favorite_removals_enabled=false,import_watchlist_enabled=false,export_watchlist_enabled=false,sync_watchlist_removals_enabled=false,sync_watchlist_order_enabled=false,import_ratings_enabled=false,export_ratings_enabled=false,sync_dropped_enabled=false,updated_at=clock_timestamp()`, key, account, p.ProfileID, e.DestinationProfileID, p.Name, token, bundle, e.Active)
+		_, err = tx.Exec(ctx, `INSERT INTO watch_provider_connections(provider,user_id,profile_id,provider_account_id,provider_username,access_token,plugin_credentials,import_watched_enabled,import_progress_enabled,export_watched_enabled,scrobble_enabled,export_unwatched_enabled,import_favorites_enabled,export_favorites_enabled,sync_favorite_removals_enabled,import_watchlist_enabled,export_watchlist_enabled,sync_watchlist_removals_enabled,sync_watchlist_order_enabled,import_ratings_enabled,export_ratings_enabled,sync_dropped_enabled)
+ VALUES($1,$2,$3,$4,$5,$6,$7,false,false,$8,$8,false,$9,$9,$9,$9,$9,$9,false,$9,$9,false)
+ ON CONFLICT(provider,user_id,profile_id) DO UPDATE SET provider_account_id=EXCLUDED.provider_account_id,provider_username=EXCLUDED.provider_username,access_token=EXCLUDED.access_token,plugin_credentials=EXCLUDED.plugin_credentials,refresh_token='',token_expires_at=NULL,import_watched_enabled=false,import_progress_enabled=false,export_watched_enabled=EXCLUDED.export_watched_enabled,export_unwatched_enabled=false,scrobble_enabled=EXCLUDED.scrobble_enabled,import_favorites_enabled=EXCLUDED.import_favorites_enabled,export_favorites_enabled=EXCLUDED.export_favorites_enabled,sync_favorite_removals_enabled=EXCLUDED.sync_favorite_removals_enabled,import_watchlist_enabled=EXCLUDED.import_watchlist_enabled,export_watchlist_enabled=EXCLUDED.export_watchlist_enabled,sync_watchlist_removals_enabled=EXCLUDED.sync_watchlist_removals_enabled,sync_watchlist_order_enabled=false,import_ratings_enabled=EXCLUDED.import_ratings_enabled,export_ratings_enabled=EXCLUDED.export_ratings_enabled,sync_dropped_enabled=false,updated_at=clock_timestamp()`, key, account, p.ProfileID, e.DestinationProfileID, p.Name, token, bundle, e.Active, personal)
 	} else {
 		_, err = tx.Exec(ctx, `DELETE FROM watch_provider_connections WHERE provider=$1 AND user_id=$2 AND profile_id=$3`, key, account, p.ProfileID)
 	}
@@ -137,15 +143,20 @@ func managedWriter(ctx context.Context, tx pgx.Tx) error {
 // connectionConverged reports whether the stored connection is exactly what
 // enrollment e writes: for an active enrollment, enabled with e's credential
 // and attributes; otherwise, holding no credential and nothing enabled.
-func (s *Service) connectionConverged(ctx context.Context, tx pgx.Tx, key string, account int, instance string, p Profile, e Enrollment) (bool, error) {
+func (s *Service) connectionConverged(ctx context.Context, tx pgx.Tx, key string, account int, instance string, p Profile, e Enrollment, personal bool) (bool, error) {
 	var token, bundle string
-	var scrobble, export bool
-	err := tx.QueryRow(ctx, `SELECT access_token,plugin_credentials,scrobble_enabled,export_watched_enabled FROM watch_provider_connections WHERE provider=$1 AND user_id=$2 AND profile_id=$3`, key, account, p.ProfileID).Scan(&token, &bundle, &scrobble, &export)
+	var scrobble, export, settingsMatch bool
+	err := tx.QueryRow(ctx, `SELECT access_token,plugin_credentials,scrobble_enabled,export_watched_enabled,
+ import_favorites_enabled=$4 AND export_favorites_enabled=$4 AND sync_favorite_removals_enabled=$4 AND import_watchlist_enabled=$4 AND export_watchlist_enabled=$4 AND sync_watchlist_removals_enabled=$4 AND import_ratings_enabled=$4 AND export_ratings_enabled=$4 AND NOT import_watched_enabled AND NOT import_progress_enabled AND NOT export_unwatched_enabled AND NOT sync_watchlist_order_enabled AND NOT sync_dropped_enabled
+ FROM watch_provider_connections WHERE provider=$1 AND user_id=$2 AND profile_id=$3`, key, account, p.ProfileID, personal).Scan(&token, &bundle, &scrobble, &export, &settingsMatch)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return !e.Active, nil
 	}
 	if err != nil {
 		return false, err
+	}
+	if !settingsMatch {
+		return false, nil
 	}
 	if !e.Active {
 		// A suspended account keeps its active profile's row, emptied.
@@ -188,7 +199,7 @@ func disableConnections(ctx context.Context, tx pgx.Tx, id int) error {
 	if err := managedWriter(ctx, tx); err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, `UPDATE watch_provider_connections SET access_token='',refresh_token='',plugin_credentials='',scrobble_enabled=false,export_watched_enabled=false,updated_at=clock_timestamp() WHERE provider=$1`, watchsync.PluginProviderKey(id, "bloem.pastime", "pastime", false))
+	_, err := tx.Exec(ctx, `UPDATE watch_provider_connections SET access_token='',refresh_token='',plugin_credentials='',scrobble_enabled=false,export_watched_enabled=false,import_favorites_enabled=false,export_favorites_enabled=false,sync_favorite_removals_enabled=false,import_watchlist_enabled=false,export_watchlist_enabled=false,sync_watchlist_removals_enabled=false,import_ratings_enabled=false,export_ratings_enabled=false,updated_at=clock_timestamp() WHERE provider=$1`, watchsync.PluginProviderKey(id, "bloem.pastime", "pastime", false))
 	return err
 }
 func (s *Service) Revoke(ctx context.Context, id int) error {

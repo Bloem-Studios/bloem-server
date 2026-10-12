@@ -89,7 +89,7 @@ func TestRealPluginPersonalStateUsesCommittedSourcesAndExactRatings(t *testing.T
 	}
 	exec(`DELETE FROM user_ratings WHERE user_id=$1 AND profile_id=$2`, account, p.ProfileID)
 	apply(pluginv1.WatchSyncOperation_WATCH_SYNC_OPERATION_REMOVE_RATING, 0)
-	if ratings := read(pluginv1.WatchSyncRemoteStateKind_WATCH_SYNC_REMOTE_STATE_KIND_RATING); len(ratings.Items) != 0 {
+	if ratings := read(pluginv1.WatchSyncRemoteStateKind_WATCH_SYNC_REMOTE_STATE_KIND_RATING); len(ratings.Items) != 1 || !ratings.Items[0].GetRating().GetRemoved() {
 		t.Fatal("rating clear absent", ratings)
 	}
 }
