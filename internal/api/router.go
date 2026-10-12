@@ -2319,6 +2319,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// probes (/ping, /healthcheck, /status, etc.) don't collide with the
 	// SPA fallback. Same pattern as the Jellyfin compat listener on 8096.
 	tenantMiddleware := newBloemTenantMiddleware(deps)
+	attachNativeLibraryLocations(deps, libraryHandler)
 	wireBloemRouter(r, deps, tenantMiddleware, bloemLifecycleTargets{
 		auth: authHandler, requests: requestHandler, profiles: profileHandler,
 		settingValues: settingValuesHandler, admin: adminHandler, tenants: adminTenantsHandler, members: adminTenantMembersHandler,

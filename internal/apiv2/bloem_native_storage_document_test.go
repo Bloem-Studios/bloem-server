@@ -17,6 +17,7 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 	routes := []struct{ method, path, status string }{
 		{"get", "/capabilities", "200"}, {"get", "/artifacts", "200"},
 		{"get", "/sources", "200"}, {"get", "/sources/{source_key}", "200"},
+		{"get", "/sources/{source_key}/browse", "200"},
 		{"post", "/installations", "201"}, {"post", "/installations/discover", "201"}, {"put", "/sources/{source_key}/configuration", "200"},
 		{"post", "/installations/{installation_id}/disable", "200"}, {"delete", "/installations/{installation_id}", "200"},
 		{"post", "/installations/{installation_id}/upgrade", "200"},
@@ -28,8 +29,8 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 			count += len(value.(map[string]any))
 		}
 	}
-	if count != 24 {
-		t.Errorf("native operations = %d, want 24 mounted methods", count)
+	if count != 2*len(routes) {
+		t.Errorf("native operations = %d, want %d mounted methods", count, 2*len(routes))
 	}
 	for _, scope := range []string{"platform", "organization"} {
 		security := "bloemPlatformContext"

@@ -12,6 +12,7 @@ import (
 type nativeStorageCapabilities struct {
 	deps        Dependencies
 	reader      bool
+	locations   bool
 	video       bool
 	movies      bool
 	remoteVideo bool
@@ -64,3 +65,18 @@ func attachNativeVideoReadiness(deps Dependencies, h *handlers.PlaybackHandler, 
 		c.remoteVideo = h.NativeVideo.WorkerGrants.Enabled() && h.NodeRecipeStore != nil && h.NodeRecipeStore.Enabled()
 	}
 }
+
+func (c *nativeStorageCapabilities) LibraryLocationBrowsingReady(ctx context.Context) bool {
+	return c.NativeStorageReady(ctx) && c.deps.NativeStorageManagement.Browser != nil && c.deps.RedisClient != nil
+}
+func (c *nativeStorageCapabilities) LibraryLocationEditingReady(ctx context.Context) bool {
+	return c.LibraryLocationBrowsingReady(ctx) && c.locations && c.deps.NativeStorageManagement.Locations != nil
+}
+
+// Mixing reads the domain's single save-guard switch, set by mixed ingestion.
+func (c *nativeStorageCapabilities) LibraryLocationMixingReady(ctx context.Context) bool {
+	return c.LibraryLocationEditingReady(ctx) && c.deps.NativeStorageManagement.Locations.Locations.MixedLocationsReady()
+}
+
+// Audio requires full Task9 scanner/catalog/playback composition.
+func (c *nativeStorageCapabilities) NativeAudioReady(context.Context) bool { return false }

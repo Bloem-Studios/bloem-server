@@ -19,6 +19,8 @@ import org.bloemserver.bloem.contract.downloads.SkippedDownload
 import org.bloemserver.bloem.contract.events.EventChannel
 import org.bloemserver.bloem.contract.jellycompat.ConnectInfo
 import org.bloemserver.bloem.contract.models.OverlaySummary
+import org.bloemserver.bloem.contract.nativestorage.LibrarySelection
+import org.bloemserver.bloem.contract.nativestorage.RootSelection
 import org.bloemserver.bloem.contract.nativestorage.SourceView
 import org.bloemserver.bloem.contract.notifications.DeliveryRowPayload
 import org.bloemserver.bloem.contract.playback.ClientCapabilities
@@ -42,6 +44,49 @@ import org.bloemserver.bloem.contract.watchtogether.RoomPlaybackState
 import org.bloemserver.bloem.contract.watchtogether.RoomSelectionMode
 import org.bloemserver.bloem.contract.watchtogether.Snapshot
 import org.bloemserver.bloem.contract.watchtogether.Suggestion
+
+/** Wire type `internal/api/handlers.BloemLibraryCreateOptions`. Direction: request. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. */
+@Serializable
+public data class BloemLibraryCreateOptions(
+    @SerialName("paths")
+    public val paths: List<String>,
+    @SerialName("type")
+    public val type: String,
+    @SerialName("name")
+    public val name: String,
+    @SerialName("metadata_language")
+    public val metadataLanguage: String = "",
+    @SerialName("chapter_thumbnails_enabled")
+    public val chapterThumbnailsEnabled: Boolean = false,
+    @SerialName("intro_detection_enabled")
+    public val introDetectionEnabled: Boolean = false,
+    @SerialName("trailer_kinds")
+    public val trailerKinds: List<String> = emptyList(),
+    @SerialName("realtime_monitoring")
+    public val realtimeMonitoring: Boolean? = null,
+    @SerialName("trickplay_enabled")
+    public val trickplayEnabled: Boolean = false,
+)
+
+/** Wire type `internal/api/handlers.BloemLibraryLocationsCreateRequest`. Direction: request. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. Registered root. */
+@Serializable
+public data class BloemLibraryLocationsCreateRequest(
+    @SerialName("library")
+    public val library: BloemLibraryCreateOptions,
+    @SerialName("selections")
+    public val selections: List<RootSelection>,
+    @SerialName("organization_id")
+    public val organizationId: String? = null,
+)
+
+/** Wire type `internal/api/handlers.BloemLibraryLocationsCreated`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. Registered root. */
+@Serializable
+public data class BloemLibraryLocationsCreated(
+    @SerialName("library")
+    public val library: libraryResponse = libraryResponse(),
+    @SerialName("locations")
+    public val locations: LibrarySelection = LibrarySelection(),
+)
 
 /** Wire type `internal/api/handlers.CompatConnectAccountInfo`. Direction: response. Dialect: upstream-compat. Registered root. */
 @Serializable
@@ -1325,6 +1370,45 @@ public data class joinWatchTogetherRoomRequest(
     public val joinToken: String,
 )
 
+/** Wire type `internal/api/handlers.libraryResponse`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. */
+@Serializable
+public data class libraryResponse(
+    @SerialName("id")
+    public val id: Int = 0,
+    @SerialName("paths")
+    public val paths: List<String> = emptyList(),
+    @SerialName("type")
+    public val type: String = "",
+    @SerialName("name")
+    public val name: String = "",
+    @SerialName("enabled")
+    public val enabled: Boolean = false,
+    @SerialName("metadata_language")
+    public val metadataLanguage: String = "",
+    @SerialName("auto_translate_metadata")
+    public val autoTranslateMetadata: Boolean = false,
+    @SerialName("chapter_thumbnails_enabled")
+    public val chapterThumbnailsEnabled: Boolean = false,
+    @SerialName("chapter_thumbnails_supported")
+    public val chapterThumbnailsSupported: Boolean = false,
+    @SerialName("intro_detection_enabled")
+    public val introDetectionEnabled: Boolean = false,
+    @SerialName("trailer_kinds")
+    public val trailerKinds: List<String> = emptyList(),
+    @SerialName("sort_order")
+    public val sortOrder: Int = 0,
+    @SerialName("poster_url")
+    public val posterUrl: String = "",
+    @SerialName("last_scanned_at")
+    public val lastScannedAt: String? = null,
+    @SerialName("scan_warning_code")
+    public val scanWarningCode: String? = null,
+    @SerialName("scan_warning_message")
+    public val scanWarningMessage: String? = null,
+    @SerialName("scan_warning_at")
+    public val scanWarningAt: String? = null,
+)
+
 /** Wire type `internal/api/handlers.loginRequest`. Direction: request. Dialect: upstream-compat. Registered root. */
 @Serializable
 public data class loginRequest(
@@ -1359,6 +1443,18 @@ public data class nativeStorageArtifactsResponse(
 /** Wire type `internal/api/handlers.nativeStorageCapabilitiesResponse`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. Registered root. */
 @Serializable
 public data class nativeStorageCapabilitiesResponse(
+    @SerialName("library_location_browsing")
+    public val libraryLocationBrowsing: Boolean = false,
+    @SerialName("library_location_atomic_editing")
+    public val libraryLocationAtomicEditing: Boolean = false,
+    @SerialName("library_location_mixing")
+    public val libraryLocationMixing: Boolean = false,
+    @SerialName("supported_source_media")
+    public val supportedSourceMedia: List<nativeStorageSourceMedia> = emptyList(),
+    @SerialName("native_audio_libraries")
+    public val nativeAudioLibraries: Boolean = false,
+    @SerialName("native_audio_playback")
+    public val nativeAudioPlayback: Boolean = false,
     @SerialName("schema")
     public val schema: Int = 0,
     @SerialName("source_management")
@@ -1422,6 +1518,10 @@ public data class nativeStorageErrorResponse(
     public val message: String = "",
     @SerialName("current_revision")
     public val currentRevision: Long? = null,
+    @SerialName("current_library_revision")
+    public val currentLibraryRevision: Long? = null,
+    @SerialName("library_id")
+    public val libraryId: Int? = null,
     @SerialName("current_source_revision")
     public val currentSourceRevision: Long? = null,
     @SerialName("operation_id")
@@ -1469,6 +1569,15 @@ public data class nativeStorageRemoveResponse(
     public val state: String = "",
     @SerialName("retained")
     public val retained: Boolean = false,
+)
+
+/** Wire type `internal/api/handlers.nativeStorageSourceMedia`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. */
+@Serializable
+public data class nativeStorageSourceMedia(
+    @SerialName("source_kind")
+    public val sourceKind: String = "",
+    @SerialName("media_kinds")
+    public val mediaKinds: List<String> = emptyList(),
 )
 
 /** Wire type `internal/api/handlers.nativeStorageSourceResponse`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. Registered root. */

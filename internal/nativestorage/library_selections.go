@@ -17,19 +17,21 @@ const MaxLibrarySources = 16
 
 type RootSelection struct {
 	SourceKey             uuid.UUID `json:"source_key"`
-	ConfigurationRevision int64     `json:"configuration_revision"`
-	SelectionRef          string    `json:"selection_ref"`
+	ConfigurationRevision int64     `json:"configuration_revision" minimum:"1"`
+	SelectionRef          string    `json:"selection_ref" maxLength:"4096"`
 }
 type LibrarySelection struct {
-	Revision  int64                             `json:"revision"`
-	EditToken string                            `json:"edit_token"`
-	Paths     []string                          `json:"paths"`
-	Locations []storagesource.LocationSelection `json:"locations"`
+	Revision   int64                 `json:"revision"`
+	EditToken  string                `json:"edit_token"`
+	Selections []SavedRootSelection  `json:"selections" nullable:"false"`
+	Paths      []string              `json:"paths" nullable:"false"`
+	Locations  []LibraryLocationView `json:"locations" nullable:"false"`
 }
 type preparedRoot struct {
 	source                         storagesource.SourceConfig
 	directoryID, name, logicalPath string
 	generation                     uint64
+	mediaKinds                     []string
 }
 
 // PreparedSelections can only be produced by PrepareSelections. Its evidence
@@ -109,7 +111,13 @@ func (l *LibraryLocations) PrepareSelections(ctx context.Context, a auth.AdminCo
 		if err != nil {
 			return nil, nativeDomainMap(err)
 		}
-		p.roots = append(p.roots, preparedRoot{source: snapshot.Source, directoryID: current.Id, name: current.Name, logicalPath: current.LogicalPath, generation: snapshot.Generation})
+		var mediaKinds []string
+		for _, source := range lease.Description.GetSources() {
+			if source.GetId() == snapshot.Source.ProviderSourceID {
+				mediaKinds = append(mediaKinds, source.GetMediaKinds()...)
+			}
+		}
+		p.roots = append(p.roots, preparedRoot{mediaKinds: mediaKinds, source: snapshot.Source, directoryID: current.Id, name: current.Name, logicalPath: current.LogicalPath, generation: snapshot.Generation})
 		if time.Unix(ref.ExpiresAt, 0).Before(p.expiresAt) {
 			p.expiresAt = time.Unix(ref.ExpiresAt, 0)
 		}

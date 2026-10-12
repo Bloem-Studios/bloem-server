@@ -91,7 +91,7 @@ func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateReq
 	if req.Type == "" || req.Name == "" {
 		return LibraryView{}, apiError(http.StatusBadRequest, "bad_request", "Paths, type, and name are required")
 	}
-	var attachStorage func(context.Context, pgx.Tx, int) error
+	var attachStorage LibraryCreateAttachment
 	if req.StorageSource != nil {
 		// A library reads either filesystem paths or one storage source.
 		if len(req.Paths) != 0 {
@@ -112,6 +112,32 @@ func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateReq
 		if len(req.Paths) == 0 {
 			return LibraryView{}, fieldError("paths", "Paths, type, and name are required")
 		}
+	}
+	return h.createLibrary(ctx, req, attachStorage, false)
+}
+
+// LibraryCreateAttachment extends the ordinary creation transaction.
+type LibraryCreateAttachment func(context.Context, pgx.Tx, int) error
+
+// CreateLibraryWithAttachment shares Silo's validation, defaults and follow-up
+// work. The explicit attachment owns any non-filesystem locations.
+func (h *LibraryHandler) CreateLibraryWithAttachment(ctx context.Context, req LibraryCreateRequest, attach LibraryCreateAttachment) (LibraryView, error) {
+	if req.StorageSource != nil {
+		return LibraryView{}, fieldError("storage_source", "An explicit attachment cannot use legacy storage_source")
+	}
+	if attach == nil {
+		return LibraryView{}, fieldError("paths", "An explicit library attachment is required")
+	}
+	return h.createLibrary(ctx, req, attach, true)
+}
+
+// explicit marks CreateLibraryWithAttachment, whose caller receives the typed
+// attachment errors; legacy creation keeps its logged internal error.
+func (h *LibraryHandler) createLibrary(ctx context.Context, req LibraryCreateRequest, attachStorage LibraryCreateAttachment, explicit bool) (LibraryView, error) {
+	if req.Type == "" || req.Name == "" {
+		return LibraryView{}, apiError(http.StatusBadRequest, "bad_request", "Paths, type, and name are required")
+	}
+	if len(req.Paths) != 0 {
 		paths, err := normalizeLibraryPaths(req.Paths)
 		if err != nil {
 			return LibraryView{}, err
@@ -149,6 +175,9 @@ func (h *LibraryHandler) CreateLibrary(ctx context.Context, req LibraryCreateReq
 		}
 		if errors.Is(err, nativestorage.ErrLocationSourceUnavailable) {
 			return LibraryView{}, fieldError("storage_source", "Storage source not found, disabled, or unavailable to this library")
+		}
+		if explicit && explicitAttachmentError(ctx, err) {
+			return LibraryView{}, err
 		}
 		slog.ErrorContext(ctx, "creating library", "component", "api", "error", err)
 		return LibraryView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to create library")
@@ -231,12 +260,20 @@ func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req 
 		slog.ErrorContext(ctx, "fetching library for update", "component", "api", "error", err)
 		return LibraryView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to fetch library")
 	}
-	if oldFolder.StorageSourceKey != nil {
-		// A storage library keeps its source; it never gains filesystem paths.
-		if req.Paths != nil && len(*req.Paths) != 0 {
-			return LibraryView{}, fieldError("paths", "A storage-source library has no paths")
+	storage, err := h.libraryHasStorageLocations(ctx, oldFolder)
+	if err != nil {
+		slog.ErrorContext(ctx, "fetching library storage locations for update", "component", "api", "error", err)
+		return LibraryView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to fetch library")
+	}
+	if storage {
+		// A storage library keeps its sources. Without filesystem paths it never
+		// gains them here; a mixed library's paths stay ordinary paths.
+		if len(oldFolder.Paths) == 0 {
+			if req.Paths != nil && len(*req.Paths) != 0 {
+				return LibraryView{}, fieldError("paths", "A storage-source library has no paths")
+			}
+			req.Paths = nil
 		}
-		req.Paths = nil
 		if req.Type != nil && !librarykind.IsEbook(*req.Type) {
 			return LibraryView{}, fieldError("type", "Storage sources support ebook libraries only")
 		}
@@ -309,22 +346,27 @@ func (h *LibraryHandler) UpdateLibrary(ctx context.Context, id, userID int, req 
 
 	// Rescan when paths have changed (folders added or removed).
 	if req.Paths != nil && !slices.Equal(oldFolder.Paths, *req.Paths) {
-		if h.ScanQueue != nil {
-			if _, err := h.ScanQueue.EnqueueLibraryScan(ctx, folder.ID, "library_paths_changed"); err != nil {
-				slog.WarnContext(ctx, "queue library path-change scan failed", "component", "api", "library_id", folder.ID, "error", err)
-			}
-		} else {
-			updateScanID := ulid.Make().String()
-			h.recordAcceptedScan(updateScanID, &scantrigger.Target{
-				Folder:  folder,
-				Mode:    scantrigger.ModeLibrary,
-				Trigger: "library_paths_changed",
-			})
-			h.runFolderScanAsync(updateScanID, folder, "library_paths_changed")
-		}
+		h.queuePathChangeScan(ctx, folder)
 	}
 
 	return h.toLibraryResponseWithPoster(ctx, folder), nil
+}
+
+// queuePathChangeScan starts the follow-up scan for a committed path change.
+func (h *LibraryHandler) queuePathChangeScan(ctx context.Context, folder *models.MediaFolder) {
+	if h.ScanQueue != nil {
+		if _, err := h.ScanQueue.EnqueueLibraryScan(ctx, folder.ID, "library_paths_changed"); err != nil {
+			slog.WarnContext(ctx, "queue library path-change scan failed", "component", "api", "library_id", folder.ID, "error", err)
+		}
+	} else {
+		updateScanID := ulid.Make().String()
+		h.recordAcceptedScan(updateScanID, &scantrigger.Target{
+			Folder:  folder,
+			Mode:    scantrigger.ModeLibrary,
+			Trigger: "library_paths_changed",
+		})
+		h.runFolderScanAsync(updateScanID, folder, "library_paths_changed")
+	}
 }
 
 // DeleteLibrary disables the library, queues its deletion job and cancels

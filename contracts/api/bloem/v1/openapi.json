@@ -579,6 +579,89 @@
         ],
         "type": "object"
       },
+      "BloemLibraryCreateOptions": {
+        "additionalProperties": false,
+        "properties": {
+          "chapter_thumbnails_enabled": {
+            "type": "boolean"
+          },
+          "intro_detection_enabled": {
+            "type": "boolean"
+          },
+          "metadata_language": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "realtime_monitoring": {
+            "type": "boolean"
+          },
+          "trailer_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "trickplay_enabled": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "paths",
+          "type",
+          "name"
+        ],
+        "type": "object"
+      },
+      "BloemLibraryLocationsCreateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "library": {
+            "$ref": "#/components/schemas/BloemLibraryCreateOptions"
+          },
+          "organization_id": {
+            "type": "string"
+          },
+          "selections": {
+            "items": {
+              "$ref": "#/components/schemas/RootSelection"
+            },
+            "maxItems": 128,
+            "type": "array"
+          }
+        },
+        "required": [
+          "library",
+          "selections"
+        ],
+        "type": "object"
+      },
+      "BloemLibraryLocationsCreated": {
+        "additionalProperties": false,
+        "properties": {
+          "library": {
+            "$ref": "#/components/schemas/LibraryResponse"
+          },
+          "locations": {
+            "$ref": "#/components/schemas/LibrarySelection"
+          }
+        },
+        "required": [
+          "library",
+          "locations"
+        ],
+        "type": "object"
+      },
       "BloemNativeError": {
         "additionalProperties": false,
         "properties": {
@@ -680,6 +763,26 @@
             ],
             "type": "boolean"
           },
+          "library_location_atomic_editing": {
+            "description": "Scoped library-locations operations are composed with the ordinary library creator. Replacement requires revision and actor-bound path edit token.",
+            "type": "boolean"
+          },
+          "library_location_browsing": {
+            "description": "The retained host browser and shared pagination store are composed. Individual source authority and media declarations are checked separately.",
+            "type": "boolean"
+          },
+          "library_location_mixing": {
+            "description": "One library may combine filesystem paths with plugin sources or use several plugin sources. While false, a library keeps filesystem paths or one plugin source over its lifetime, and other shapes return location_mixing_unavailable.",
+            "type": "boolean"
+          },
+          "native_audio_libraries": {
+            "description": "Requires the complete native audio scanner, catalog and playback composition.",
+            "type": "boolean"
+          },
+          "native_audio_playback": {
+            "description": "False until full native audio playback composition is verified.",
+            "type": "boolean"
+          },
           "native_movie_libraries": {
             "description": "Movie attachment and scanning are composed with native video playback; individual sources still require admission under their retained read policy.",
             "type": "boolean"
@@ -727,6 +830,13 @@
           "source_management": {
             "type": "boolean"
           },
+          "supported_source_media": {
+            "description": "Host-supported source/media combinations; this does not prove that a provider instance supports or is available for a kind.",
+            "items": {
+              "$ref": "#/components/schemas/BloemNativeStorageSourceMedia"
+            },
+            "type": "array"
+          },
           "uninstall": {
             "type": "boolean"
           },
@@ -735,6 +845,12 @@
           }
         },
         "required": [
+          "library_location_browsing",
+          "library_location_atomic_editing",
+          "library_location_mixing",
+          "supported_source_media",
+          "native_audio_libraries",
+          "native_audio_playback",
           "schema",
           "source_management",
           "approved_artifact_install",
@@ -835,6 +951,10 @@
       "BloemNativeStorageError": {
         "additionalProperties": false,
         "properties": {
+          "current_library_revision": {
+            "format": "int64",
+            "type": "integer"
+          },
           "current_revision": {
             "format": "int64",
             "type": "integer"
@@ -846,15 +966,22 @@
           "error": {
             "type": "string"
           },
+          "library_id": {
+            "format": "int64",
+            "type": "integer"
+          },
           "message": {
             "type": "string"
           },
           "operation": {
             "enum": [
               "install",
+              "upgrade",
               "configuration",
               "disable",
-              "uninstall"
+              "uninstall",
+              "create_library",
+              "replace_library_locations"
             ],
             "type": "string"
           },
@@ -1088,6 +1215,30 @@
         },
         "required": [
           "source"
+        ],
+        "type": "object"
+      },
+      "BloemNativeStorageSourceMedia": {
+        "additionalProperties": false,
+        "properties": {
+          "media_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "source_kind": {
+            "enum": [
+              "filesystem",
+              "s3",
+              "bookwarehouse"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_kind",
+          "media_kinds"
         ],
         "type": "object"
       },
@@ -1376,6 +1527,26 @@
         },
         "required": [
           "expected_revision"
+        ],
+        "type": "object"
+      },
+      "BloemOrganizationLibraryLocationsCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "library": {
+            "$ref": "#/components/schemas/BloemLibraryCreateOptions"
+          },
+          "selections": {
+            "items": {
+              "$ref": "#/components/schemas/RootSelection"
+            },
+            "maxItems": 128,
+            "type": "array"
+          }
+        },
+        "required": [
+          "library",
+          "selections"
         ],
         "type": "object"
       },
@@ -1890,6 +2061,56 @@
           "url",
           "username",
           "password"
+        ],
+        "type": "object"
+      },
+      "BrowseDirectory": {
+        "additionalProperties": false,
+        "properties": {
+          "logical_path": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "selection_ref": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "selection_ref",
+          "name",
+          "logical_path"
+        ],
+        "type": "object"
+      },
+      "BrowsePage": {
+        "additionalProperties": false,
+        "properties": {
+          "breadcrumbs": {
+            "items": {
+              "$ref": "#/components/schemas/BrowseDirectory"
+            },
+            "type": "array"
+          },
+          "current": {
+            "$ref": "#/components/schemas/BrowseDirectory"
+          },
+          "directories": {
+            "items": {
+              "$ref": "#/components/schemas/BrowseDirectory"
+            },
+            "type": "array"
+          },
+          "next_cursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "current",
+          "breadcrumbs",
+          "directories",
+          "next_cursor"
         ],
         "type": "object"
       },
@@ -2699,6 +2920,190 @@
         ],
         "type": "object"
       },
+      "LibraryLocationView": {
+        "additionalProperties": false,
+        "properties": {
+          "configuration_revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "roots": {
+            "items": {
+              "$ref": "#/components/schemas/LibraryRootView"
+            },
+            "type": "array"
+          },
+          "selection_revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "source_key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source_key",
+          "configuration_revision",
+          "selection_revision",
+          "enabled",
+          "roots"
+        ],
+        "type": "object"
+      },
+      "LibraryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "auto_translate_metadata": {
+            "type": "boolean"
+          },
+          "chapter_thumbnails_enabled": {
+            "type": "boolean"
+          },
+          "chapter_thumbnails_supported": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "intro_detection_enabled": {
+            "type": "boolean"
+          },
+          "last_scanned_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "metadata_language": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "poster_url": {
+            "type": "string"
+          },
+          "scan_warning_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "scan_warning_code": {
+            "type": "string"
+          },
+          "scan_warning_message": {
+            "type": "string"
+          },
+          "sort_order": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "trailer_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "paths",
+          "type",
+          "name",
+          "enabled",
+          "metadata_language",
+          "auto_translate_metadata",
+          "chapter_thumbnails_enabled",
+          "chapter_thumbnails_supported",
+          "intro_detection_enabled",
+          "trailer_kinds",
+          "sort_order"
+        ],
+        "type": "object"
+      },
+      "LibraryRootView": {
+        "additionalProperties": false,
+        "properties": {
+          "directory_id": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "logical_path": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "directory_id",
+          "name",
+          "logical_path",
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "LibrarySelection": {
+        "additionalProperties": false,
+        "properties": {
+          "edit_token": {
+            "type": "string"
+          },
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/LibraryLocationView"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "selections": {
+            "items": {
+              "$ref": "#/components/schemas/SavedRootSelection"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "revision",
+          "edit_token",
+          "selections",
+          "paths",
+          "locations"
+        ],
+        "type": "object"
+      },
       "ListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -3186,6 +3591,41 @@
         ],
         "type": "object"
       },
+      "ReplaceLocationsRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_edit_token": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "expected_revision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "selections": {
+            "items": {
+              "$ref": "#/components/schemas/RootSelection"
+            },
+            "maxItems": 128,
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths",
+          "selections",
+          "expected_revision",
+          "expected_edit_token"
+        ],
+        "type": "object"
+      },
       "Request": {
         "additionalProperties": false,
         "properties": {
@@ -3266,6 +3706,60 @@
           "revision",
           "created_at",
           "updated_at"
+        ],
+        "type": "object"
+      },
+      "RootSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "configuration_revision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "selection_ref": {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "source_key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_key",
+          "configuration_revision",
+          "selection_ref"
+        ],
+        "type": "object"
+      },
+      "SavedRootSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "configuration_revision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "logical_path": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "selection_ref": {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "source_key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "logical_path",
+          "source_key",
+          "configuration_revision",
+          "selection_ref"
         ],
         "type": "object"
       },
@@ -5417,6 +5911,699 @@
         "summary": "Rotate an unaccepted, unrevoked user invitation and return its new claim token once.",
         "tags": [
           "tenancy"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/library-locations": {
+      "post": {
+        "description": "Requires matching signed administrative context and current actor/library/source authority. Inspect native-storage library_location_atomic_editing first. POST reuses ordinary library validation/defaults and atomically saves paths and initial selections. Library options reject legacy storage_source. At least one filesystem path or selection is required. PUT replaces paths and selections only; both arrays must be present and nonnull, with at most 128 roots from 16 plugin sources. GET returns every retained location/root plus active selections, revision and an expiring edit_token. Disabled or unavailable roots remain visible for removal and may have no selection_ref. PUT requires expected_revision and expected_edit_token from GET. Tokens bind actor, library, owned revision and path row identities/xmin, so a legacy path write that leaves path rows (including A-to-B-to-A) requires reload. A path set that is empty when read and empty again when saved has no row evidence; that save replaces exactly the empty set that was read. A conflict returns current_library_revision. A successful replacement that changes filesystem paths queues the ordinary library_paths_changed scan. Until native-storage library_location_mixing is true, a library keeps filesystem paths or one plugin source over its lifetime, counting retained locations; other shapes return location_mixing_unavailable. Removal retains root/location/catalog identities and disables publication memberships without deleting provider files. Provider I/O occurs before write transactions. These mutations are outside shared lifecycle idempotency: mutation_outcome_unknown requires reconciliation using the returned library_id, never automatic replay. Native audio remains unavailable until full scanner/catalog/playback composition.",
+        "operationId": "createBloemOrganizationLibraryLocations",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemOrganizationLibraryLocationsCreate"
+              }
+            }
+          },
+          "description": "Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemLibraryLocationsCreated"
+                }
+              }
+            },
+            "description": "Created",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request, duplicate_selection or ordinary library bad_request: invalid, unknown, duplicate or missing fields.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: absent or hidden resource retains precedence.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_library_revision and requires reloading; invalid_selection_reference or browse_restart_required requires browsing again. Ordinary duplicate paths return conflict.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON body exceeds 1 MiB.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; browse_limit_exceeded: bounded query/pagination limit exceeded; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_provider_page: invalid bounded directory response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable or mutation_outcome_unknown; reconcile authorized recovery identifiers, never assume rollback or retry.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Read or atomically save filesystem paths and selected plugin directories.",
+        "tags": [
+          "library-locations"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/library-locations/{library_id}": {
+      "get": {
+        "description": "Requires matching signed administrative context and current actor/library/source authority. Inspect native-storage library_location_atomic_editing first. POST reuses ordinary library validation/defaults and atomically saves paths and initial selections. Library options reject legacy storage_source. At least one filesystem path or selection is required. PUT replaces paths and selections only; both arrays must be present and nonnull, with at most 128 roots from 16 plugin sources. GET returns every retained location/root plus active selections, revision and an expiring edit_token. Disabled or unavailable roots remain visible for removal and may have no selection_ref. PUT requires expected_revision and expected_edit_token from GET. Tokens bind actor, library, owned revision and path row identities/xmin, so a legacy path write that leaves path rows (including A-to-B-to-A) requires reload. A path set that is empty when read and empty again when saved has no row evidence; that save replaces exactly the empty set that was read. A conflict returns current_library_revision. A successful replacement that changes filesystem paths queues the ordinary library_paths_changed scan. Until native-storage library_location_mixing is true, a library keeps filesystem paths or one plugin source over its lifetime, counting retained locations; other shapes return location_mixing_unavailable. Removal retains root/location/catalog identities and disables publication memberships without deleting provider files. Provider I/O occurs before write transactions. These mutations are outside shared lifecycle idempotency: mutation_outcome_unknown requires reconciliation using the returned library_id, never automatic replay. Native audio remains unavailable until full scanner/catalog/playback composition.",
+        "operationId": "getBloemOrganizationLibraryLocations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibrarySelection"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request, duplicate_selection or ordinary library bad_request: invalid, unknown, duplicate or missing fields.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: absent or hidden resource retains precedence.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_library_revision and requires reloading; invalid_selection_reference or browse_restart_required requires browsing again. Ordinary duplicate paths return conflict.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON body exceeds 1 MiB.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; browse_limit_exceeded: bounded query/pagination limit exceeded; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_provider_page: invalid bounded directory response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable or mutation_outcome_unknown; reconcile authorized recovery identifiers, never assume rollback or retry.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Read or atomically save filesystem paths and selected plugin directories.",
+        "tags": [
+          "library-locations"
+        ]
+      },
+      "put": {
+        "description": "Requires matching signed administrative context and current actor/library/source authority. Inspect native-storage library_location_atomic_editing first. POST reuses ordinary library validation/defaults and atomically saves paths and initial selections. Library options reject legacy storage_source. At least one filesystem path or selection is required. PUT replaces paths and selections only; both arrays must be present and nonnull, with at most 128 roots from 16 plugin sources. GET returns every retained location/root plus active selections, revision and an expiring edit_token. Disabled or unavailable roots remain visible for removal and may have no selection_ref. PUT requires expected_revision and expected_edit_token from GET. Tokens bind actor, library, owned revision and path row identities/xmin, so a legacy path write that leaves path rows (including A-to-B-to-A) requires reload. A path set that is empty when read and empty again when saved has no row evidence; that save replaces exactly the empty set that was read. A conflict returns current_library_revision. A successful replacement that changes filesystem paths queues the ordinary library_paths_changed scan. Until native-storage library_location_mixing is true, a library keeps filesystem paths or one plugin source over its lifetime, counting retained locations; other shapes return location_mixing_unavailable. Removal retains root/location/catalog identities and disables publication memberships without deleting provider files. Provider I/O occurs before write transactions. These mutations are outside shared lifecycle idempotency: mutation_outcome_unknown requires reconciliation using the returned library_id, never automatic replay. Native audio remains unavailable until full scanner/catalog/playback composition.",
+        "operationId": "replaceBloemOrganizationLibraryLocations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceLocationsRequest"
+              }
+            }
+          },
+          "description": "Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibrarySelection"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request, duplicate_selection or ordinary library bad_request: invalid, unknown, duplicate or missing fields.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: absent or hidden resource retains precedence.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_library_revision and requires reloading; invalid_selection_reference or browse_restart_required requires browsing again. Ordinary duplicate paths return conflict.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON body exceeds 1 MiB.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; browse_limit_exceeded: bounded query/pagination limit exceeded; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_provider_page: invalid bounded directory response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable or mutation_outcome_unknown; reconcile authorized recovery identifiers, never assume rollback or retry.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Read or atomically save filesystem paths and selected plugin directories.",
+        "tags": [
+          "library-locations"
         ]
       }
     },
@@ -7596,6 +8783,269 @@
         ]
       }
     },
+    "/api/bloem/v1/admin/organization/native-storage/sources/{source_key}/browse": {
+      "get": {
+        "description": "Starts at the retained configured source root. Directory references and cursors are opaque host evidence bound to source/configuration/generation, actor, scope and expiry. Requests have no body; repeated, empty and unknown query fields are rejected. Combined encoded query is limited to 6144 bytes. At most 100 directories per response. Audio providers must explicitly support directory-only listing; browsing does not establish audio readiness.",
+        "operationId": "browseBloemOrganizationNativeStorage",
+        "parameters": [
+          {
+            "description": "Retained authorized storage source UUID.",
+            "in": "path",
+            "name": "source_key",
+            "required": true,
+            "schema": {
+              "description": "Retained authorized storage source UUID.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque host directory reference. Omit to start at the retained configured root. Never a filesystem path or provider URL.",
+            "explode": false,
+            "in": "query",
+            "name": "directory_ref",
+            "schema": {
+              "description": "Opaque host directory reference. Omit to start at the retained configured root. Never a filesystem path or provider URL.",
+              "maxLength": 4096,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque host cursor, used with the same directory_ref and limit. Combined encoded query is at most 6144 bytes. Expired, evicted or changed pages require restarting browsing.",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "description": "Opaque host cursor, used with the same directory_ref and limit. Combined encoded query is at most 6144 bytes. Expired, evicted or changed pages require restarting browsing.",
+              "maxLength": 4096,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowsePage"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request, duplicate_selection or ordinary library bad_request: invalid, unknown, duplicate or missing fields.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: absent or hidden resource retains precedence.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_library_revision and requires reloading; invalid_selection_reference or browse_restart_required requires browsing again. Ordinary duplicate paths return conflict.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON body exceeds 1 MiB.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; browse_limit_exceeded: bounded query/pagination limit exceeded; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_provider_page: invalid bounded directory response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable or mutation_outcome_unknown; reconcile authorized recovery identifiers, never assume rollback or retry.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Browse authorized directories without starting discovery or opening files.",
+        "tags": [
+          "native-storage"
+        ]
+      }
+    },
     "/api/bloem/v1/admin/organization/native-storage/sources/{source_key}/configuration": {
       "put": {
         "description": "Experimental native EPUB/PDF storage sources. A library uses a source as its storage location through the ordinary library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Native-storage mutations are outside shared lifecycle idempotency; reconcile unknown outcomes instead of automatically replaying.",
@@ -8402,6 +9852,699 @@
         "summary": "Upload artwork and attach it to an ambience pack.",
         "tags": [
           "engagement"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/library-locations": {
+      "post": {
+        "description": "Requires matching signed administrative context and current actor/library/source authority. Inspect native-storage library_location_atomic_editing first. POST reuses ordinary library validation/defaults and atomically saves paths and initial selections. Library options reject legacy storage_source. At least one filesystem path or selection is required. PUT replaces paths and selections only; both arrays must be present and nonnull, with at most 128 roots from 16 plugin sources. GET returns every retained location/root plus active selections, revision and an expiring edit_token. Disabled or unavailable roots remain visible for removal and may have no selection_ref. PUT requires expected_revision and expected_edit_token from GET. Tokens bind actor, library, owned revision and path row identities/xmin, so a legacy path write that leaves path rows (including A-to-B-to-A) requires reload. A path set that is empty when read and empty again when saved has no row evidence; that save replaces exactly the empty set that was read. A conflict returns current_library_revision. A successful replacement that changes filesystem paths queues the ordinary library_paths_changed scan. Until native-storage library_location_mixing is true, a library keeps filesystem paths or one plugin source over its lifetime, counting retained locations; other shapes return location_mixing_unavailable. Removal retains root/location/catalog identities and disables publication memberships without deleting provider files. Provider I/O occurs before write transactions. These mutations are outside shared lifecycle idempotency: mutation_outcome_unknown requires reconciliation using the returned library_id, never automatic replay. Native audio remains unavailable until full scanner/catalog/playback composition.",
+        "operationId": "createBloemPlatformLibraryLocations",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemLibraryLocationsCreateRequest"
+              }
+            }
+          },
+          "description": "Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemLibraryLocationsCreated"
+                }
+              }
+            },
+            "description": "Created",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request, duplicate_selection or ordinary library bad_request: invalid, unknown, duplicate or missing fields.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: absent or hidden resource retains precedence.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_library_revision and requires reloading; invalid_selection_reference or browse_restart_required requires browsing again. Ordinary duplicate paths return conflict.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON body exceeds 1 MiB.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; browse_limit_exceeded: bounded query/pagination limit exceeded; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_provider_page: invalid bounded directory response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable or mutation_outcome_unknown; reconcile authorized recovery identifiers, never assume rollback or retry.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Read or atomically save filesystem paths and selected plugin directories.",
+        "tags": [
+          "library-locations"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/library-locations/{library_id}": {
+      "get": {
+        "description": "Requires matching signed administrative context and current actor/library/source authority. Inspect native-storage library_location_atomic_editing first. POST reuses ordinary library validation/defaults and atomically saves paths and initial selections. Library options reject legacy storage_source. At least one filesystem path or selection is required. PUT replaces paths and selections only; both arrays must be present and nonnull, with at most 128 roots from 16 plugin sources. GET returns every retained location/root plus active selections, revision and an expiring edit_token. Disabled or unavailable roots remain visible for removal and may have no selection_ref. PUT requires expected_revision and expected_edit_token from GET. Tokens bind actor, library, owned revision and path row identities/xmin, so a legacy path write that leaves path rows (including A-to-B-to-A) requires reload. A path set that is empty when read and empty again when saved has no row evidence; that save replaces exactly the empty set that was read. A conflict returns current_library_revision. A successful replacement that changes filesystem paths queues the ordinary library_paths_changed scan. Until native-storage library_location_mixing is true, a library keeps filesystem paths or one plugin source over its lifetime, counting retained locations; other shapes return location_mixing_unavailable. Removal retains root/location/catalog identities and disables publication memberships without deleting provider files. Provider I/O occurs before write transactions. These mutations are outside shared lifecycle idempotency: mutation_outcome_unknown requires reconciliation using the returned library_id, never automatic replay. Native audio remains unavailable until full scanner/catalog/playback composition.",
+        "operationId": "getBloemPlatformLibraryLocations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibrarySelection"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request, duplicate_selection or ordinary library bad_request: invalid, unknown, duplicate or missing fields.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: absent or hidden resource retains precedence.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_library_revision and requires reloading; invalid_selection_reference or browse_restart_required requires browsing again. Ordinary duplicate paths return conflict.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON body exceeds 1 MiB.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; browse_limit_exceeded: bounded query/pagination limit exceeded; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_provider_page: invalid bounded directory response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable or mutation_outcome_unknown; reconcile authorized recovery identifiers, never assume rollback or retry.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Read or atomically save filesystem paths and selected plugin directories.",
+        "tags": [
+          "library-locations"
+        ]
+      },
+      "put": {
+        "description": "Requires matching signed administrative context and current actor/library/source authority. Inspect native-storage library_location_atomic_editing first. POST reuses ordinary library validation/defaults and atomically saves paths and initial selections. Library options reject legacy storage_source. At least one filesystem path or selection is required. PUT replaces paths and selections only; both arrays must be present and nonnull, with at most 128 roots from 16 plugin sources. GET returns every retained location/root plus active selections, revision and an expiring edit_token. Disabled or unavailable roots remain visible for removal and may have no selection_ref. PUT requires expected_revision and expected_edit_token from GET. Tokens bind actor, library, owned revision and path row identities/xmin, so a legacy path write that leaves path rows (including A-to-B-to-A) requires reload. A path set that is empty when read and empty again when saved has no row evidence; that save replaces exactly the empty set that was read. A conflict returns current_library_revision. A successful replacement that changes filesystem paths queues the ordinary library_paths_changed scan. Until native-storage library_location_mixing is true, a library keeps filesystem paths or one plugin source over its lifetime, counting retained locations; other shapes return location_mixing_unavailable. Removal retains root/location/catalog identities and disables publication memberships without deleting provider files. Provider I/O occurs before write transactions. These mutations are outside shared lifecycle idempotency: mutation_outcome_unknown requires reconciliation using the returned library_id, never automatic replay. Native audio remains unavailable until full scanner/catalog/playback composition.",
+        "operationId": "replaceBloemPlatformLibraryLocations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceLocationsRequest"
+              }
+            }
+          },
+          "description": "Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibrarySelection"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request, duplicate_selection or ordinary library bad_request: invalid, unknown, duplicate or missing fields.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: absent or hidden resource retains precedence.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_library_revision and requires reloading; invalid_selection_reference or browse_restart_required requires browsing again. Ordinary duplicate paths return conflict.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON body exceeds 1 MiB.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; browse_limit_exceeded: bounded query/pagination limit exceeded; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_provider_page: invalid bounded directory response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable or mutation_outcome_unknown; reconcile authorized recovery identifiers, never assume rollback or retry.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Read or atomically save filesystem paths and selected plugin directories.",
+        "tags": [
+          "library-locations"
         ]
       }
     },
@@ -10576,6 +12719,269 @@
           }
         ],
         "summary": "Read a visible source without configuration secrets.",
+        "tags": [
+          "native-storage"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse": {
+      "get": {
+        "description": "Starts at the retained configured source root. Directory references and cursors are opaque host evidence bound to source/configuration/generation, actor, scope and expiry. Requests have no body; repeated, empty and unknown query fields are rejected. Combined encoded query is limited to 6144 bytes. At most 100 directories per response. Audio providers must explicitly support directory-only listing; browsing does not establish audio readiness.",
+        "operationId": "browseBloemPlatformNativeStorage",
+        "parameters": [
+          {
+            "description": "Retained authorized storage source UUID.",
+            "in": "path",
+            "name": "source_key",
+            "required": true,
+            "schema": {
+              "description": "Retained authorized storage source UUID.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque host directory reference. Omit to start at the retained configured root. Never a filesystem path or provider URL.",
+            "explode": false,
+            "in": "query",
+            "name": "directory_ref",
+            "schema": {
+              "description": "Opaque host directory reference. Omit to start at the retained configured root. Never a filesystem path or provider URL.",
+              "maxLength": 4096,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque host cursor, used with the same directory_ref and limit. Combined encoded query is at most 6144 bytes. Expired, evicted or changed pages require restarting browsing.",
+            "explode": false,
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "description": "Opaque host cursor, used with the same directory_ref and limit. Combined encoded query is at most 6144 bytes. Expired, evicted or changed pages require restarting browsing.",
+              "maxLength": 4096,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowsePage"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request, duplicate_selection or ordinary library bad_request: invalid, unknown, duplicate or missing fields.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: absent or hidden resource retains precedence.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_library_revision and requires reloading; invalid_selection_reference or browse_restart_required requires browsing again. Ordinary duplicate paths return conflict.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON body exceeds 1 MiB.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; browse_limit_exceeded: bounded query/pagination limit exceeded; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_provider_page: invalid bounded directory response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable or mutation_outcome_unknown; reconcile authorized recovery identifiers, never assume rollback or retry.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Browse authorized directories without starting discovery or opening files.",
         "tags": [
           "native-storage"
         ]

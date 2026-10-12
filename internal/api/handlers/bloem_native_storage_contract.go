@@ -39,7 +39,19 @@ type nativeStorageRemoveResponse struct {
 
 // nativeStorageCapabilitiesResponse describes the bounded projection emitted by
 // nativeStorageCapabilities; its complete shape is checked against that producer.
+type nativeStorageSourceMedia struct {
+	SourceKind string   `json:"source_kind"`
+	MediaKinds []string `json:"media_kinds"`
+}
+
 type nativeStorageCapabilitiesResponse struct {
+	LibraryLocationBrowsing      bool                       `json:"library_location_browsing"`
+	LibraryLocationAtomicEditing bool                       `json:"library_location_atomic_editing"`
+	LibraryLocationMixing        bool                       `json:"library_location_mixing"`
+	SupportedSourceMedia         []nativeStorageSourceMedia `json:"supported_source_media"`
+	NativeAudioLibraries         bool                       `json:"native_audio_libraries"`
+	NativeAudioPlayback          bool                       `json:"native_audio_playback"`
+
 	Schema                      int  `json:"schema"`
 	SourceManagement            bool `json:"source_management"`
 	ApprovedArtifactInstall     bool `json:"approved_artifact_install"`
@@ -62,13 +74,15 @@ type nativeStorageCapabilitiesResponse struct {
 // nativeStorageErrorResponse describes the fixed public fields selected by
 // writeNativeStorageError. Conditional reconciliation fields remain optional.
 type nativeStorageErrorResponse struct {
-	Error                 string     `json:"error"`
-	Message               string     `json:"message"`
-	CurrentRevision       *int64     `json:"current_revision,omitempty"`
-	CurrentSourceRevision *int64     `json:"current_source_revision,omitempty"`
-	OperationID           *uuid.UUID `json:"operation_id,omitempty"`
-	Operation             *string    `json:"operation,omitempty"`
-	SourceKey             *uuid.UUID `json:"source_key,omitempty"`
+	Error                  string     `json:"error"`
+	Message                string     `json:"message"`
+	CurrentRevision        *int64     `json:"current_revision,omitempty"`
+	CurrentLibraryRevision *int64     `json:"current_library_revision,omitempty"`
+	LibraryID              *int       `json:"library_id,omitempty"`
+	CurrentSourceRevision  *int64     `json:"current_source_revision,omitempty"`
+	OperationID            *uuid.UUID `json:"operation_id,omitempty"`
+	Operation              *string    `json:"operation,omitempty"`
+	SourceKey              *uuid.UUID `json:"source_key,omitempty"`
 }
 
 // Request projections describe accepted wire input before the handler applies

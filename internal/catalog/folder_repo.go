@@ -312,7 +312,9 @@ func (r *FolderRepository) loadPaths(ctx context.Context, folders []*models.Medi
 	rows.Close()
 
 	locations, err := r.pool.Query(ctx,
-		`SELECT folder_id, source_key FROM library_storage_locations WHERE folder_id = ANY($1)`,
+		`SELECT folder_id, (array_agg(source_key ORDER BY source_key))[1]
+         FROM library_storage_locations WHERE folder_id = ANY($1)
+         GROUP BY folder_id HAVING count(*) = 1`,
 		ids,
 	)
 	if err != nil {
@@ -325,7 +327,7 @@ func (r *FolderRepository) loadPaths(ctx context.Context, folders []*models.Medi
 		if err := locations.Scan(&folderID, &source); err != nil {
 			return fmt.Errorf("scanning folder storage location row: %w", err)
 		}
-		if f, ok := folderByID[folderID]; ok {
+		if f, ok := folderByID[folderID]; ok && len(f.Paths) == 0 {
 			f.StorageSourceKey = &source
 		}
 	}
@@ -400,6 +402,9 @@ func (r *FolderRepository) Create(ctx context.Context, input CreateFolderInput) 
 	}
 
 	if err := tx.Commit(ctx); err != nil {
+		if input.AttachStorage != nil {
+			return nil, &MutationOutcomeUnknown{OperationID: uuid.New(), LibraryID: folder.ID, Operation: "create_library", Cause: err}
+		}
 		return nil, fmt.Errorf("committing create transaction: %w", err)
 	}
 
@@ -409,7 +414,7 @@ func (r *FolderRepository) Create(ctx context.Context, input CreateFolderInput) 
 	}
 	if input.AttachStorage != nil {
 		if err := r.loadPaths(ctx, []*models.MediaFolder{folder}); err != nil {
-			return nil, err
+			return nil, &MutationOutcomeUnknown{OperationID: uuid.New(), LibraryID: folder.ID, Operation: "create_library", Cause: err}
 		}
 	}
 	return folder, nil
@@ -519,6 +524,17 @@ func (r *FolderRepository) Update(ctx context.Context, id int, input UpdateFolde
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	if err := r.UpdateTx(ctx, tx, id, input); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("committing update transaction: %w", err)
+	}
+	return nil
+}
+
+// UpdateTx applies the same update inside a caller-owned transaction.
+func (r *FolderRepository) UpdateTx(ctx context.Context, tx pgx.Tx, id int, input UpdateFolderInput) error {
 	setClauses := []string{}
 	args := []any{}
 	argIndex := 1
@@ -630,9 +646,6 @@ func (r *FolderRepository) Update(ctx context.Context, id int, input UpdateFolde
 		}
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("committing update transaction: %w", err)
-	}
 	return nil
 }
 

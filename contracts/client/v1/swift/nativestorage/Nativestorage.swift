@@ -9,6 +9,123 @@
 
 /// Wire types of the Go package `internal/nativestorage`.
 public enum Nativestorage {
+    /// Wire type `internal/nativestorage.BrowseDirectory`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_browsing.
+    public struct BrowseDirectory: Codable, Hashable, Sendable {
+        public let selectionRef: String
+        public let name: String
+        public let logicalPath: String
+
+        public enum CodingKeys: String, CodingKey {
+            case selectionRef = "selection_ref"
+            case name = "name"
+            case logicalPath = "logical_path"
+        }
+
+        public init(
+            selectionRef: String = "",
+            name: String = "",
+            logicalPath: String = ""
+        ) {
+            self.selectionRef = selectionRef
+            self.name = name
+            self.logicalPath = logicalPath
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.selectionRef = try container.decodeIfPresent(String.self, forKey: .selectionRef) ?? ""
+            self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+            self.logicalPath = try container.decodeIfPresent(String.self, forKey: .logicalPath) ?? ""
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.selectionRef, forKey: .selectionRef)
+            try container.encode(self.name, forKey: .name)
+            try container.encode(self.logicalPath, forKey: .logicalPath)
+        }
+    }
+
+    /// Wire type `internal/nativestorage.BrowsePage`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_browsing. Registered root.
+    public struct BrowsePage: Codable, Hashable, Sendable {
+        public let current: BrowseDirectory
+        public let breadcrumbs: [BrowseDirectory]
+        public let directories: [BrowseDirectory]
+        public let nextCursor: String
+
+        public enum CodingKeys: String, CodingKey {
+            case current = "current"
+            case breadcrumbs = "breadcrumbs"
+            case directories = "directories"
+            case nextCursor = "next_cursor"
+        }
+
+        public init(
+            current: BrowseDirectory = BrowseDirectory(),
+            breadcrumbs: [BrowseDirectory] = [],
+            directories: [BrowseDirectory] = [],
+            nextCursor: String = ""
+        ) {
+            self.current = current
+            self.breadcrumbs = breadcrumbs
+            self.directories = directories
+            self.nextCursor = nextCursor
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.current = try container.decodeIfPresent(BrowseDirectory.self, forKey: .current) ?? BrowseDirectory()
+            self.breadcrumbs = try container.decodeIfPresent([BrowseDirectory].self, forKey: .breadcrumbs) ?? []
+            self.directories = try container.decodeIfPresent([BrowseDirectory].self, forKey: .directories) ?? []
+            self.nextCursor = try container.decodeIfPresent(String.self, forKey: .nextCursor) ?? ""
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.current, forKey: .current)
+            try container.encode(self.breadcrumbs, forKey: .breadcrumbs)
+            try container.encode(self.directories, forKey: .directories)
+            try container.encode(self.nextCursor, forKey: .nextCursor)
+        }
+    }
+
+    /// Wire type `internal/nativestorage.BrowseRequest`. Direction: request. Dialect: bloem. Gate: native_storage.library_location_browsing. Registered root.
+    public struct BrowseRequest: Codable, Hashable, Sendable {
+        public let directoryRef: String
+        public let cursor: String
+        public let limit: Int
+
+        public enum CodingKeys: String, CodingKey {
+            case directoryRef = "directory_ref"
+            case cursor = "cursor"
+            case limit = "limit"
+        }
+
+        public init(
+            directoryRef: String,
+            cursor: String,
+            limit: Int
+        ) {
+            self.directoryRef = directoryRef
+            self.cursor = cursor
+            self.limit = limit
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.directoryRef = try container.decode(String.self, forKey: .directoryRef)
+            self.cursor = try container.decode(String.self, forKey: .cursor)
+            self.limit = try container.decode(Int.self, forKey: .limit)
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.directoryRef, forKey: .directoryRef)
+            try container.encode(self.cursor, forKey: .cursor)
+            try container.encode(self.limit, forKey: .limit)
+        }
+    }
+
     /// Wire type `internal/nativestorage.DiscoverInstallCommand`. Direction: request. Dialect: bloem. Gate: native_storage.s3_initial_root_discovery. Registered root.
     public struct DiscoverInstallCommand: Codable, Hashable, Sendable {
         public let artifactKey: String
@@ -122,6 +239,288 @@ public enum Nativestorage {
             try container.encodeIfPresent(self.organizationId, forKey: .organizationId)
             try container.encodeIfPresent(self.expectedRevision, forKey: .expectedRevision)
             try container.encode(self.config, forKey: .config)
+        }
+    }
+
+    /// Wire type `internal/nativestorage.LibraryLocationView`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing.
+    public struct LibraryLocationView: Codable, Hashable, Sendable {
+        public let id: String
+        public let sourceKey: String
+        public let configurationRevision: Int64
+        public let selectionRevision: Int64
+        public let enabled: Bool
+        public let roots: [LibraryRootView]
+
+        public enum CodingKeys: String, CodingKey {
+            case id = "id"
+            case sourceKey = "source_key"
+            case configurationRevision = "configuration_revision"
+            case selectionRevision = "selection_revision"
+            case enabled = "enabled"
+            case roots = "roots"
+        }
+
+        public init(
+            id: String = "",
+            sourceKey: String = "",
+            configurationRevision: Int64 = 0,
+            selectionRevision: Int64 = 0,
+            enabled: Bool = false,
+            roots: [LibraryRootView] = []
+        ) {
+            self.id = id
+            self.sourceKey = sourceKey
+            self.configurationRevision = configurationRevision
+            self.selectionRevision = selectionRevision
+            self.enabled = enabled
+            self.roots = roots
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+            self.sourceKey = try container.decodeIfPresent(String.self, forKey: .sourceKey) ?? ""
+            self.configurationRevision = try container.decodeIfPresent(Int64.self, forKey: .configurationRevision) ?? 0
+            self.selectionRevision = try container.decodeIfPresent(Int64.self, forKey: .selectionRevision) ?? 0
+            self.enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+            self.roots = try container.decodeIfPresent([LibraryRootView].self, forKey: .roots) ?? []
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.id, forKey: .id)
+            try container.encode(self.sourceKey, forKey: .sourceKey)
+            try container.encode(self.configurationRevision, forKey: .configurationRevision)
+            try container.encode(self.selectionRevision, forKey: .selectionRevision)
+            try container.encode(self.enabled, forKey: .enabled)
+            try container.encode(self.roots, forKey: .roots)
+        }
+    }
+
+    /// Wire type `internal/nativestorage.LibraryRootView`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing.
+    public struct LibraryRootView: Codable, Hashable, Sendable {
+        public let id: String
+        public let directoryId: String
+        public let name: String
+        public let logicalPath: String
+        public let enabled: Bool
+
+        public enum CodingKeys: String, CodingKey {
+            case id = "id"
+            case directoryId = "directory_id"
+            case name = "name"
+            case logicalPath = "logical_path"
+            case enabled = "enabled"
+        }
+
+        public init(
+            id: String = "",
+            directoryId: String = "",
+            name: String = "",
+            logicalPath: String = "",
+            enabled: Bool = false
+        ) {
+            self.id = id
+            self.directoryId = directoryId
+            self.name = name
+            self.logicalPath = logicalPath
+            self.enabled = enabled
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+            self.directoryId = try container.decodeIfPresent(String.self, forKey: .directoryId) ?? ""
+            self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+            self.logicalPath = try container.decodeIfPresent(String.self, forKey: .logicalPath) ?? ""
+            self.enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.id, forKey: .id)
+            try container.encode(self.directoryId, forKey: .directoryId)
+            try container.encode(self.name, forKey: .name)
+            try container.encode(self.logicalPath, forKey: .logicalPath)
+            try container.encode(self.enabled, forKey: .enabled)
+        }
+    }
+
+    /// Wire type `internal/nativestorage.LibrarySelection`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. Registered root.
+    public struct LibrarySelection: Codable, Hashable, Sendable {
+        public let revision: Int64
+        public let editToken: String
+        public let selections: [SavedRootSelection]
+        public let paths: [String]
+        public let locations: [LibraryLocationView]
+
+        public enum CodingKeys: String, CodingKey {
+            case revision = "revision"
+            case editToken = "edit_token"
+            case selections = "selections"
+            case paths = "paths"
+            case locations = "locations"
+        }
+
+        public init(
+            revision: Int64 = 0,
+            editToken: String = "",
+            selections: [SavedRootSelection] = [],
+            paths: [String] = [],
+            locations: [LibraryLocationView] = []
+        ) {
+            self.revision = revision
+            self.editToken = editToken
+            self.selections = selections
+            self.paths = paths
+            self.locations = locations
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.revision = try container.decodeIfPresent(Int64.self, forKey: .revision) ?? 0
+            self.editToken = try container.decodeIfPresent(String.self, forKey: .editToken) ?? ""
+            self.selections = try container.decodeIfPresent([SavedRootSelection].self, forKey: .selections) ?? []
+            self.paths = try container.decodeIfPresent([String].self, forKey: .paths) ?? []
+            self.locations = try container.decodeIfPresent([LibraryLocationView].self, forKey: .locations) ?? []
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.revision, forKey: .revision)
+            try container.encode(self.editToken, forKey: .editToken)
+            try container.encode(self.selections, forKey: .selections)
+            try container.encode(self.paths, forKey: .paths)
+            try container.encode(self.locations, forKey: .locations)
+        }
+    }
+
+    /// Wire type `internal/nativestorage.ReplaceLocationsRequest`. Direction: request. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. Registered root.
+    public struct ReplaceLocationsRequest: Codable, Hashable, Sendable {
+        public let paths: [String]
+        public let selections: [RootSelection]
+        public let expectedRevision: Int64
+        public let expectedEditToken: String
+
+        public enum CodingKeys: String, CodingKey {
+            case paths = "paths"
+            case selections = "selections"
+            case expectedRevision = "expected_revision"
+            case expectedEditToken = "expected_edit_token"
+        }
+
+        public init(
+            paths: [String],
+            selections: [RootSelection],
+            expectedRevision: Int64,
+            expectedEditToken: String
+        ) {
+            self.paths = paths
+            self.selections = selections
+            self.expectedRevision = expectedRevision
+            self.expectedEditToken = expectedEditToken
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.paths = try container.decode([String].self, forKey: .paths)
+            self.selections = try container.decode([RootSelection].self, forKey: .selections)
+            self.expectedRevision = try container.decode(Int64.self, forKey: .expectedRevision)
+            self.expectedEditToken = try container.decode(String.self, forKey: .expectedEditToken)
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.paths, forKey: .paths)
+            try container.encode(self.selections, forKey: .selections)
+            try container.encode(self.expectedRevision, forKey: .expectedRevision)
+            try container.encode(self.expectedEditToken, forKey: .expectedEditToken)
+        }
+    }
+
+    /// Wire type `internal/nativestorage.RootSelection`. Direction: request. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. Registered root.
+    public struct RootSelection: Codable, Hashable, Sendable {
+        public let sourceKey: String
+        public let configurationRevision: Int64
+        public let selectionRef: String
+
+        public enum CodingKeys: String, CodingKey {
+            case sourceKey = "source_key"
+            case configurationRevision = "configuration_revision"
+            case selectionRef = "selection_ref"
+        }
+
+        public init(
+            sourceKey: String,
+            configurationRevision: Int64,
+            selectionRef: String
+        ) {
+            self.sourceKey = sourceKey
+            self.configurationRevision = configurationRevision
+            self.selectionRef = selectionRef
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.sourceKey = try container.decode(String.self, forKey: .sourceKey)
+            self.configurationRevision = try container.decode(Int64.self, forKey: .configurationRevision)
+            self.selectionRef = try container.decode(String.self, forKey: .selectionRef)
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.sourceKey, forKey: .sourceKey)
+            try container.encode(self.configurationRevision, forKey: .configurationRevision)
+            try container.encode(self.selectionRef, forKey: .selectionRef)
+        }
+    }
+
+    /// Wire type `internal/nativestorage.SavedRootSelection`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing.
+    public struct SavedRootSelection: Codable, Hashable, Sendable {
+        public let sourceKey: String
+        public let configurationRevision: Int64
+        public let selectionRef: String
+        public let name: String
+        public let logicalPath: String
+
+        public enum CodingKeys: String, CodingKey {
+            case sourceKey = "source_key"
+            case configurationRevision = "configuration_revision"
+            case selectionRef = "selection_ref"
+            case name = "name"
+            case logicalPath = "logical_path"
+        }
+
+        public init(
+            sourceKey: String = "",
+            configurationRevision: Int64 = 0,
+            selectionRef: String = "",
+            name: String = "",
+            logicalPath: String = ""
+        ) {
+            self.sourceKey = sourceKey
+            self.configurationRevision = configurationRevision
+            self.selectionRef = selectionRef
+            self.name = name
+            self.logicalPath = logicalPath
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.sourceKey = try container.decodeIfPresent(String.self, forKey: .sourceKey) ?? ""
+            self.configurationRevision = try container.decodeIfPresent(Int64.self, forKey: .configurationRevision) ?? 0
+            self.selectionRef = try container.decodeIfPresent(String.self, forKey: .selectionRef) ?? ""
+            self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+            self.logicalPath = try container.decodeIfPresent(String.self, forKey: .logicalPath) ?? ""
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.sourceKey, forKey: .sourceKey)
+            try container.encode(self.configurationRevision, forKey: .configurationRevision)
+            try container.encode(self.selectionRef, forKey: .selectionRef)
+            try container.encode(self.name, forKey: .name)
+            try container.encode(self.logicalPath, forKey: .logicalPath)
         }
     }
 

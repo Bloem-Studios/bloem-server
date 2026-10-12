@@ -9,6 +9,147 @@
 
 /// Wire types of the Go package `internal/api/handlers`.
 public enum Handlers {
+    /// Wire type `internal/api/handlers.BloemLibraryCreateOptions`. Direction: request. Dialect: bloem. Gate: native_storage.library_location_atomic_editing.
+    public struct BloemLibraryCreateOptions: Codable, Hashable, Sendable {
+        public let paths: [String]
+        public let type: String
+        public let name: String
+        public let metadataLanguage: String
+        public let chapterThumbnailsEnabled: Bool
+        public let introDetectionEnabled: Bool
+        public let trailerKinds: [String]
+        public let realtimeMonitoring: Bool?
+        public let trickplayEnabled: Bool
+
+        public enum CodingKeys: String, CodingKey {
+            case paths = "paths"
+            case type = "type"
+            case name = "name"
+            case metadataLanguage = "metadata_language"
+            case chapterThumbnailsEnabled = "chapter_thumbnails_enabled"
+            case introDetectionEnabled = "intro_detection_enabled"
+            case trailerKinds = "trailer_kinds"
+            case realtimeMonitoring = "realtime_monitoring"
+            case trickplayEnabled = "trickplay_enabled"
+        }
+
+        public init(
+            paths: [String],
+            type: String,
+            name: String,
+            metadataLanguage: String = "",
+            chapterThumbnailsEnabled: Bool = false,
+            introDetectionEnabled: Bool = false,
+            trailerKinds: [String] = [],
+            realtimeMonitoring: Bool? = nil,
+            trickplayEnabled: Bool = false
+        ) {
+            self.paths = paths
+            self.type = type
+            self.name = name
+            self.metadataLanguage = metadataLanguage
+            self.chapterThumbnailsEnabled = chapterThumbnailsEnabled
+            self.introDetectionEnabled = introDetectionEnabled
+            self.trailerKinds = trailerKinds
+            self.realtimeMonitoring = realtimeMonitoring
+            self.trickplayEnabled = trickplayEnabled
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.paths = try container.decode([String].self, forKey: .paths)
+            self.type = try container.decode(String.self, forKey: .type)
+            self.name = try container.decode(String.self, forKey: .name)
+            self.metadataLanguage = try container.decodeIfPresent(String.self, forKey: .metadataLanguage) ?? ""
+            self.chapterThumbnailsEnabled = try container.decodeIfPresent(Bool.self, forKey: .chapterThumbnailsEnabled) ?? false
+            self.introDetectionEnabled = try container.decodeIfPresent(Bool.self, forKey: .introDetectionEnabled) ?? false
+            self.trailerKinds = try container.decodeIfPresent([String].self, forKey: .trailerKinds) ?? []
+            self.realtimeMonitoring = try container.decodeIfPresent(Bool.self, forKey: .realtimeMonitoring)
+            self.trickplayEnabled = try container.decodeIfPresent(Bool.self, forKey: .trickplayEnabled) ?? false
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.paths, forKey: .paths)
+            try container.encode(self.type, forKey: .type)
+            try container.encode(self.name, forKey: .name)
+            try container.encode(self.metadataLanguage, forKey: .metadataLanguage)
+            try container.encode(self.chapterThumbnailsEnabled, forKey: .chapterThumbnailsEnabled)
+            try container.encode(self.introDetectionEnabled, forKey: .introDetectionEnabled)
+            try container.encode(self.trailerKinds, forKey: .trailerKinds)
+            try container.encodeIfPresent(self.realtimeMonitoring, forKey: .realtimeMonitoring)
+            try container.encode(self.trickplayEnabled, forKey: .trickplayEnabled)
+        }
+    }
+
+    /// Wire type `internal/api/handlers.BloemLibraryLocationsCreateRequest`. Direction: request. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. Registered root.
+    public struct BloemLibraryLocationsCreateRequest: Codable, Hashable, Sendable {
+        public let library: BloemLibraryCreateOptions
+        public let selections: [Nativestorage.RootSelection]
+        public let organizationId: String?
+
+        public enum CodingKeys: String, CodingKey {
+            case library = "library"
+            case selections = "selections"
+            case organizationId = "organization_id"
+        }
+
+        public init(
+            library: BloemLibraryCreateOptions,
+            selections: [Nativestorage.RootSelection],
+            organizationId: String? = nil
+        ) {
+            self.library = library
+            self.selections = selections
+            self.organizationId = organizationId
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.library = try container.decode(BloemLibraryCreateOptions.self, forKey: .library)
+            self.selections = try container.decode([Nativestorage.RootSelection].self, forKey: .selections)
+            self.organizationId = try container.decodeIfPresent(String.self, forKey: .organizationId)
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.library, forKey: .library)
+            try container.encode(self.selections, forKey: .selections)
+            try container.encodeIfPresent(self.organizationId, forKey: .organizationId)
+        }
+    }
+
+    /// Wire type `internal/api/handlers.BloemLibraryLocationsCreated`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. Registered root.
+    public struct BloemLibraryLocationsCreated: Codable, Hashable, Sendable {
+        public let library: libraryResponse
+        public let locations: Nativestorage.LibrarySelection
+
+        public enum CodingKeys: String, CodingKey {
+            case library = "library"
+            case locations = "locations"
+        }
+
+        public init(
+            library: libraryResponse = libraryResponse(),
+            locations: Nativestorage.LibrarySelection = Nativestorage.LibrarySelection()
+        ) {
+            self.library = library
+            self.locations = locations
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.library = try container.decodeIfPresent(libraryResponse.self, forKey: .library) ?? libraryResponse()
+            self.locations = try container.decodeIfPresent(Nativestorage.LibrarySelection.self, forKey: .locations) ?? Nativestorage.LibrarySelection()
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.library, forKey: .library)
+            try container.encode(self.locations, forKey: .locations)
+        }
+    }
+
     /// Wire type `internal/api/handlers.CompatConnectAccountInfo`. Direction: response. Dialect: upstream-compat. Registered root.
     public struct CompatConnectAccountInfo: Codable, Hashable, Sendable {
         public let passwordLoginAvailable: Bool
@@ -4147,6 +4288,127 @@ public enum Handlers {
         }
     }
 
+    /// Wire type `internal/api/handlers.libraryResponse`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing.
+    public struct libraryResponse: Codable, Hashable, Sendable {
+        public let id: Int
+        public let paths: [String]
+        public let type: String
+        public let name: String
+        public let enabled: Bool
+        public let metadataLanguage: String
+        public let autoTranslateMetadata: Bool
+        public let chapterThumbnailsEnabled: Bool
+        public let chapterThumbnailsSupported: Bool
+        public let introDetectionEnabled: Bool
+        public let trailerKinds: [String]
+        public let sortOrder: Int
+        public let posterUrl: String
+        public let lastScannedAt: String?
+        public let scanWarningCode: String?
+        public let scanWarningMessage: String?
+        public let scanWarningAt: String?
+
+        public enum CodingKeys: String, CodingKey {
+            case id = "id"
+            case paths = "paths"
+            case type = "type"
+            case name = "name"
+            case enabled = "enabled"
+            case metadataLanguage = "metadata_language"
+            case autoTranslateMetadata = "auto_translate_metadata"
+            case chapterThumbnailsEnabled = "chapter_thumbnails_enabled"
+            case chapterThumbnailsSupported = "chapter_thumbnails_supported"
+            case introDetectionEnabled = "intro_detection_enabled"
+            case trailerKinds = "trailer_kinds"
+            case sortOrder = "sort_order"
+            case posterUrl = "poster_url"
+            case lastScannedAt = "last_scanned_at"
+            case scanWarningCode = "scan_warning_code"
+            case scanWarningMessage = "scan_warning_message"
+            case scanWarningAt = "scan_warning_at"
+        }
+
+        public init(
+            id: Int = 0,
+            paths: [String] = [],
+            type: String = "",
+            name: String = "",
+            enabled: Bool = false,
+            metadataLanguage: String = "",
+            autoTranslateMetadata: Bool = false,
+            chapterThumbnailsEnabled: Bool = false,
+            chapterThumbnailsSupported: Bool = false,
+            introDetectionEnabled: Bool = false,
+            trailerKinds: [String] = [],
+            sortOrder: Int = 0,
+            posterUrl: String = "",
+            lastScannedAt: String? = nil,
+            scanWarningCode: String? = nil,
+            scanWarningMessage: String? = nil,
+            scanWarningAt: String? = nil
+        ) {
+            self.id = id
+            self.paths = paths
+            self.type = type
+            self.name = name
+            self.enabled = enabled
+            self.metadataLanguage = metadataLanguage
+            self.autoTranslateMetadata = autoTranslateMetadata
+            self.chapterThumbnailsEnabled = chapterThumbnailsEnabled
+            self.chapterThumbnailsSupported = chapterThumbnailsSupported
+            self.introDetectionEnabled = introDetectionEnabled
+            self.trailerKinds = trailerKinds
+            self.sortOrder = sortOrder
+            self.posterUrl = posterUrl
+            self.lastScannedAt = lastScannedAt
+            self.scanWarningCode = scanWarningCode
+            self.scanWarningMessage = scanWarningMessage
+            self.scanWarningAt = scanWarningAt
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.id = try container.decodeIfPresent(Int.self, forKey: .id) ?? 0
+            self.paths = try container.decodeIfPresent([String].self, forKey: .paths) ?? []
+            self.type = try container.decodeIfPresent(String.self, forKey: .type) ?? ""
+            self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+            self.enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+            self.metadataLanguage = try container.decodeIfPresent(String.self, forKey: .metadataLanguage) ?? ""
+            self.autoTranslateMetadata = try container.decodeIfPresent(Bool.self, forKey: .autoTranslateMetadata) ?? false
+            self.chapterThumbnailsEnabled = try container.decodeIfPresent(Bool.self, forKey: .chapterThumbnailsEnabled) ?? false
+            self.chapterThumbnailsSupported = try container.decodeIfPresent(Bool.self, forKey: .chapterThumbnailsSupported) ?? false
+            self.introDetectionEnabled = try container.decodeIfPresent(Bool.self, forKey: .introDetectionEnabled) ?? false
+            self.trailerKinds = try container.decodeIfPresent([String].self, forKey: .trailerKinds) ?? []
+            self.sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
+            self.posterUrl = try container.decodeIfPresent(String.self, forKey: .posterUrl) ?? ""
+            self.lastScannedAt = try container.decodeIfPresent(String.self, forKey: .lastScannedAt)
+            self.scanWarningCode = try container.decodeIfPresent(String.self, forKey: .scanWarningCode)
+            self.scanWarningMessage = try container.decodeIfPresent(String.self, forKey: .scanWarningMessage)
+            self.scanWarningAt = try container.decodeIfPresent(String.self, forKey: .scanWarningAt)
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.id, forKey: .id)
+            try container.encode(self.paths, forKey: .paths)
+            try container.encode(self.type, forKey: .type)
+            try container.encode(self.name, forKey: .name)
+            try container.encode(self.enabled, forKey: .enabled)
+            try container.encode(self.metadataLanguage, forKey: .metadataLanguage)
+            try container.encode(self.autoTranslateMetadata, forKey: .autoTranslateMetadata)
+            try container.encode(self.chapterThumbnailsEnabled, forKey: .chapterThumbnailsEnabled)
+            try container.encode(self.chapterThumbnailsSupported, forKey: .chapterThumbnailsSupported)
+            try container.encode(self.introDetectionEnabled, forKey: .introDetectionEnabled)
+            try container.encode(self.trailerKinds, forKey: .trailerKinds)
+            try container.encode(self.sortOrder, forKey: .sortOrder)
+            try container.encode(self.posterUrl, forKey: .posterUrl)
+            try container.encodeIfPresent(self.lastScannedAt, forKey: .lastScannedAt)
+            try container.encodeIfPresent(self.scanWarningCode, forKey: .scanWarningCode)
+            try container.encodeIfPresent(self.scanWarningMessage, forKey: .scanWarningMessage)
+            try container.encodeIfPresent(self.scanWarningAt, forKey: .scanWarningAt)
+        }
+    }
+
     /// Wire type `internal/api/handlers.loginRequest`. Direction: request. Dialect: upstream-compat. Registered root.
     public struct loginRequest: Codable, Hashable, Sendable {
         public let username: String
@@ -4254,6 +4516,12 @@ public enum Handlers {
 
     /// Wire type `internal/api/handlers.nativeStorageCapabilitiesResponse`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. Registered root.
     public struct nativeStorageCapabilitiesResponse: Codable, Hashable, Sendable {
+        public let libraryLocationBrowsing: Bool
+        public let libraryLocationAtomicEditing: Bool
+        public let libraryLocationMixing: Bool
+        public let supportedSourceMedia: [nativeStorageSourceMedia]
+        public let nativeAudioLibraries: Bool
+        public let nativeAudioPlayback: Bool
         public let schema: Int
         public let sourceManagement: Bool
         public let approvedArtifactInstall: Bool
@@ -4273,6 +4541,12 @@ public enum Handlers {
         public let backendVerified: Bool
 
         public enum CodingKeys: String, CodingKey {
+            case libraryLocationBrowsing = "library_location_browsing"
+            case libraryLocationAtomicEditing = "library_location_atomic_editing"
+            case libraryLocationMixing = "library_location_mixing"
+            case supportedSourceMedia = "supported_source_media"
+            case nativeAudioLibraries = "native_audio_libraries"
+            case nativeAudioPlayback = "native_audio_playback"
             case schema = "schema"
             case sourceManagement = "source_management"
             case approvedArtifactInstall = "approved_artifact_install"
@@ -4293,6 +4567,12 @@ public enum Handlers {
         }
 
         public init(
+            libraryLocationBrowsing: Bool = false,
+            libraryLocationAtomicEditing: Bool = false,
+            libraryLocationMixing: Bool = false,
+            supportedSourceMedia: [nativeStorageSourceMedia] = [],
+            nativeAudioLibraries: Bool = false,
+            nativeAudioPlayback: Bool = false,
             schema: Int = 0,
             sourceManagement: Bool = false,
             approvedArtifactInstall: Bool = false,
@@ -4311,6 +4591,12 @@ public enum Handlers {
             enable: Bool = false,
             backendVerified: Bool = false
         ) {
+            self.libraryLocationBrowsing = libraryLocationBrowsing
+            self.libraryLocationAtomicEditing = libraryLocationAtomicEditing
+            self.libraryLocationMixing = libraryLocationMixing
+            self.supportedSourceMedia = supportedSourceMedia
+            self.nativeAudioLibraries = nativeAudioLibraries
+            self.nativeAudioPlayback = nativeAudioPlayback
             self.schema = schema
             self.sourceManagement = sourceManagement
             self.approvedArtifactInstall = approvedArtifactInstall
@@ -4332,6 +4618,12 @@ public enum Handlers {
 
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.libraryLocationBrowsing = try container.decodeIfPresent(Bool.self, forKey: .libraryLocationBrowsing) ?? false
+            self.libraryLocationAtomicEditing = try container.decodeIfPresent(Bool.self, forKey: .libraryLocationAtomicEditing) ?? false
+            self.libraryLocationMixing = try container.decodeIfPresent(Bool.self, forKey: .libraryLocationMixing) ?? false
+            self.supportedSourceMedia = try container.decodeIfPresent([nativeStorageSourceMedia].self, forKey: .supportedSourceMedia) ?? []
+            self.nativeAudioLibraries = try container.decodeIfPresent(Bool.self, forKey: .nativeAudioLibraries) ?? false
+            self.nativeAudioPlayback = try container.decodeIfPresent(Bool.self, forKey: .nativeAudioPlayback) ?? false
             self.schema = try container.decodeIfPresent(Int.self, forKey: .schema) ?? 0
             self.sourceManagement = try container.decodeIfPresent(Bool.self, forKey: .sourceManagement) ?? false
             self.approvedArtifactInstall = try container.decodeIfPresent(Bool.self, forKey: .approvedArtifactInstall) ?? false
@@ -4353,6 +4645,12 @@ public enum Handlers {
 
         public func encode(to encoder: any Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.libraryLocationBrowsing, forKey: .libraryLocationBrowsing)
+            try container.encode(self.libraryLocationAtomicEditing, forKey: .libraryLocationAtomicEditing)
+            try container.encode(self.libraryLocationMixing, forKey: .libraryLocationMixing)
+            try container.encode(self.supportedSourceMedia, forKey: .supportedSourceMedia)
+            try container.encode(self.nativeAudioLibraries, forKey: .nativeAudioLibraries)
+            try container.encode(self.nativeAudioPlayback, forKey: .nativeAudioPlayback)
             try container.encode(self.schema, forKey: .schema)
             try container.encode(self.sourceManagement, forKey: .sourceManagement)
             try container.encode(self.approvedArtifactInstall, forKey: .approvedArtifactInstall)
@@ -4440,6 +4738,8 @@ public enum Handlers {
         public let error: String
         public let message: String
         public let currentRevision: Int64?
+        public let currentLibraryRevision: Int64?
+        public let libraryId: Int?
         public let currentSourceRevision: Int64?
         public let operationId: String?
         public let operation: String?
@@ -4449,6 +4749,8 @@ public enum Handlers {
             case error = "error"
             case message = "message"
             case currentRevision = "current_revision"
+            case currentLibraryRevision = "current_library_revision"
+            case libraryId = "library_id"
             case currentSourceRevision = "current_source_revision"
             case operationId = "operation_id"
             case operation = "operation"
@@ -4459,6 +4761,8 @@ public enum Handlers {
             error: String = "",
             message: String = "",
             currentRevision: Int64? = nil,
+            currentLibraryRevision: Int64? = nil,
+            libraryId: Int? = nil,
             currentSourceRevision: Int64? = nil,
             operationId: String? = nil,
             operation: String? = nil,
@@ -4467,6 +4771,8 @@ public enum Handlers {
             self.error = error
             self.message = message
             self.currentRevision = currentRevision
+            self.currentLibraryRevision = currentLibraryRevision
+            self.libraryId = libraryId
             self.currentSourceRevision = currentSourceRevision
             self.operationId = operationId
             self.operation = operation
@@ -4478,6 +4784,8 @@ public enum Handlers {
             self.error = try container.decodeIfPresent(String.self, forKey: .error) ?? ""
             self.message = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
             self.currentRevision = try container.decodeIfPresent(Int64.self, forKey: .currentRevision)
+            self.currentLibraryRevision = try container.decodeIfPresent(Int64.self, forKey: .currentLibraryRevision)
+            self.libraryId = try container.decodeIfPresent(Int.self, forKey: .libraryId)
             self.currentSourceRevision = try container.decodeIfPresent(Int64.self, forKey: .currentSourceRevision)
             self.operationId = try container.decodeIfPresent(String.self, forKey: .operationId)
             self.operation = try container.decodeIfPresent(String.self, forKey: .operation)
@@ -4489,6 +4797,8 @@ public enum Handlers {
             try container.encode(self.error, forKey: .error)
             try container.encode(self.message, forKey: .message)
             try container.encodeIfPresent(self.currentRevision, forKey: .currentRevision)
+            try container.encodeIfPresent(self.currentLibraryRevision, forKey: .currentLibraryRevision)
+            try container.encodeIfPresent(self.libraryId, forKey: .libraryId)
             try container.encodeIfPresent(self.currentSourceRevision, forKey: .currentSourceRevision)
             try container.encodeIfPresent(self.operationId, forKey: .operationId)
             try container.encodeIfPresent(self.operation, forKey: .operation)
@@ -4622,6 +4932,37 @@ public enum Handlers {
             try container.encode(self.installationId, forKey: .installationId)
             try container.encode(self.state, forKey: .state)
             try container.encode(self.retained, forKey: .retained)
+        }
+    }
+
+    /// Wire type `internal/api/handlers.nativeStorageSourceMedia`. Direction: response. Dialect: bloem. Gate: native_storage.source_management.
+    public struct nativeStorageSourceMedia: Codable, Hashable, Sendable {
+        public let sourceKind: String
+        public let mediaKinds: [String]
+
+        public enum CodingKeys: String, CodingKey {
+            case sourceKind = "source_kind"
+            case mediaKinds = "media_kinds"
+        }
+
+        public init(
+            sourceKind: String = "",
+            mediaKinds: [String] = []
+        ) {
+            self.sourceKind = sourceKind
+            self.mediaKinds = mediaKinds
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.sourceKind = try container.decodeIfPresent(String.self, forKey: .sourceKind) ?? ""
+            self.mediaKinds = try container.decodeIfPresent([String].self, forKey: .mediaKinds) ?? []
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.sourceKind, forKey: .sourceKind)
+            try container.encode(self.mediaKinds, forKey: .mediaKinds)
         }
     }
 

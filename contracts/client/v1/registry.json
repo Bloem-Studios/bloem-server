@@ -773,6 +773,18 @@
           "direction": "request",
           "dialect": "bloem",
           "gate": "ebook_requests_v1"
+        },
+        {
+          "type": "BloemLibraryLocationsCreateRequest",
+          "direction": "request",
+          "gate": "native_storage.library_location_atomic_editing",
+          "dialect": "bloem"
+        },
+        {
+          "type": "BloemLibraryLocationsCreated",
+          "direction": "response",
+          "gate": "native_storage.library_location_atomic_editing",
+          "dialect": "bloem"
         }
       ]
     },
@@ -2636,6 +2648,31 @@
           "type": "UpgradeCommand",
           "direction": "request",
           "gate": "native_storage.source_management"
+        },
+        {
+          "type": "BrowsePage",
+          "direction": "response",
+          "gate": "native_storage.library_location_browsing"
+        },
+        {
+          "type": "RootSelection",
+          "direction": "request",
+          "gate": "native_storage.library_location_atomic_editing"
+        },
+        {
+          "type": "LibrarySelection",
+          "direction": "response",
+          "gate": "native_storage.library_location_atomic_editing"
+        },
+        {
+          "type": "ReplaceLocationsRequest",
+          "direction": "request",
+          "gate": "native_storage.library_location_atomic_editing"
+        },
+        {
+          "type": "BrowseRequest",
+          "direction": "request",
+          "gate": "native_storage.library_location_browsing"
         }
       ]
     },

@@ -15,6 +15,11 @@ import (
 // /api/bloem/v1/admin subtree AFTER AdminContextMiddleware.Require. It does not
 // mount a second auth/session stack or attach production dependencies.
 func mountBloemNativeStorageManagement(r chi.Router, h *handlers.BloemNativeStorageManagementHandler) {
+	var locations *handlers.BloemLibraryLocationsHandler
+	if h != nil {
+		locations = h.Locations
+	}
+	mountBloemLibraryLocations(r, locations)
 	// Each scope is mounted with a literal prefix so the route inventory
 	// generator can follow it.
 	r.Route("/platform/native-storage", func(r chi.Router) {
@@ -36,6 +41,7 @@ func mountNativeStorageScopeRoutes(r chi.Router, handler *handlers.BloemNativeSt
 	r.Get("/artifacts", handler.HandleArtifacts)
 	r.Get("/sources", handler.HandleListSources)
 	r.Get("/sources/{source_key}", handler.HandleGetSource)
+	r.Get("/sources/{source_key}/browse", handler.HandleBrowseSource)
 	r.Post("/installations", handler.HandleInstall)
 	r.Post("/installations/discover", handler.HandleDiscoverInstall)
 	r.Post("/catalog/installations", handler.HandleCatalogInstall)
@@ -83,6 +89,13 @@ func nativeStorageDependencies(deps Dependencies) Dependencies {
 	} else {
 		h := *deps.NativeStorageManagement
 		deps.NativeStorageManagement = &h
+	}
+	if deps.DB != nil && deps.NativeStorage != nil && deps.SecretCipher != nil && deps.RedisClient != nil {
+		browser, err := nativestorage.NewSourceBrowser(deps.DB, deps.NativeStorage, deps.SecretCipher)
+		if err == nil {
+			browser.SetCursorStore(nativestorage.NewRedisBrowseCursorStore(deps.RedisClient))
+			deps.NativeStorageManagement.Browser = browser
+		}
 	}
 	deps.NativeStorageManagement.Sources.SetInstallDiscoveryHost(deps.NativeStorage)
 	deps.NativeStorageManagement.Capabilities = &nativeStorageCapabilities{deps: deps}

@@ -12,6 +12,41 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import org.bloemserver.bloem.contract.resourcetenancy.OwnerKind
 
+/** Wire type `internal/nativestorage.BrowseDirectory`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_browsing. */
+@Serializable
+public data class BrowseDirectory(
+    @SerialName("selection_ref")
+    public val selectionRef: String = "",
+    @SerialName("name")
+    public val name: String = "",
+    @SerialName("logical_path")
+    public val logicalPath: String = "",
+)
+
+/** Wire type `internal/nativestorage.BrowsePage`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_browsing. Registered root. */
+@Serializable
+public data class BrowsePage(
+    @SerialName("current")
+    public val current: BrowseDirectory = BrowseDirectory(),
+    @SerialName("breadcrumbs")
+    public val breadcrumbs: List<BrowseDirectory> = emptyList(),
+    @SerialName("directories")
+    public val directories: List<BrowseDirectory> = emptyList(),
+    @SerialName("next_cursor")
+    public val nextCursor: String = "",
+)
+
+/** Wire type `internal/nativestorage.BrowseRequest`. Direction: request. Dialect: bloem. Gate: native_storage.library_location_browsing. Registered root. */
+@Serializable
+public data class BrowseRequest(
+    @SerialName("directory_ref")
+    public val directoryRef: String,
+    @SerialName("cursor")
+    public val cursor: String,
+    @SerialName("limit")
+    public val limit: Int,
+)
+
 /** Wire type `internal/nativestorage.DiscoverInstallCommand`. Direction: request. Dialect: bloem. Gate: native_storage.s3_initial_root_discovery. Registered root. */
 @Serializable
 public data class DiscoverInstallCommand(
@@ -46,6 +81,92 @@ public data class InstallCommand(
     public val expectedRevision: Long? = null,
     @SerialName("config")
     public val config: Map<String, Map<String, JsonElement>>,
+)
+
+/** Wire type `internal/nativestorage.LibraryLocationView`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. */
+@Serializable
+public data class LibraryLocationView(
+    @SerialName("id")
+    public val id: String = "",
+    @SerialName("source_key")
+    public val sourceKey: String = "",
+    @SerialName("configuration_revision")
+    public val configurationRevision: Long = 0L,
+    @SerialName("selection_revision")
+    public val selectionRevision: Long = 0L,
+    @SerialName("enabled")
+    public val enabled: Boolean = false,
+    @SerialName("roots")
+    public val roots: List<LibraryRootView> = emptyList(),
+)
+
+/** Wire type `internal/nativestorage.LibraryRootView`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. */
+@Serializable
+public data class LibraryRootView(
+    @SerialName("id")
+    public val id: String = "",
+    @SerialName("directory_id")
+    public val directoryId: String = "",
+    @SerialName("name")
+    public val name: String = "",
+    @SerialName("logical_path")
+    public val logicalPath: String = "",
+    @SerialName("enabled")
+    public val enabled: Boolean = false,
+)
+
+/** Wire type `internal/nativestorage.LibrarySelection`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. Registered root. */
+@Serializable
+public data class LibrarySelection(
+    @SerialName("revision")
+    public val revision: Long = 0L,
+    @SerialName("edit_token")
+    public val editToken: String = "",
+    @SerialName("selections")
+    public val selections: List<SavedRootSelection> = emptyList(),
+    @SerialName("paths")
+    public val paths: List<String> = emptyList(),
+    @SerialName("locations")
+    public val locations: List<LibraryLocationView> = emptyList(),
+)
+
+/** Wire type `internal/nativestorage.ReplaceLocationsRequest`. Direction: request. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. Registered root. */
+@Serializable
+public data class ReplaceLocationsRequest(
+    @SerialName("paths")
+    public val paths: List<String>,
+    @SerialName("selections")
+    public val selections: List<RootSelection>,
+    @SerialName("expected_revision")
+    public val expectedRevision: Long,
+    @SerialName("expected_edit_token")
+    public val expectedEditToken: String,
+)
+
+/** Wire type `internal/nativestorage.RootSelection`. Direction: request. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. Registered root. */
+@Serializable
+public data class RootSelection(
+    @SerialName("source_key")
+    public val sourceKey: String,
+    @SerialName("configuration_revision")
+    public val configurationRevision: Long,
+    @SerialName("selection_ref")
+    public val selectionRef: String,
+)
+
+/** Wire type `internal/nativestorage.SavedRootSelection`. Direction: response. Dialect: bloem. Gate: native_storage.library_location_atomic_editing. */
+@Serializable
+public data class SavedRootSelection(
+    @SerialName("source_key")
+    public val sourceKey: String = "",
+    @SerialName("configuration_revision")
+    public val configurationRevision: Long = 0L,
+    @SerialName("selection_ref")
+    public val selectionRef: String = "",
+    @SerialName("name")
+    public val name: String = "",
+    @SerialName("logical_path")
+    public val logicalPath: String = "",
 )
 
 /** Wire type `internal/nativestorage.SourcePage`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. Registered root. */

@@ -2116,6 +2116,14 @@
     {
       "type": "internal/apiv2.AdminAutoscanScanResult",
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageSourceMedia",
+      "reason": "OpenAPI-only source/media capability shape. Runtime clients use the registered handler capability projection with wire-equivalence tests."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationLibraryLocationsCreate",
+      "reason": "OpenAPI-only organization create shape, which rejects platform organization_id. Runtime clients use the registered BloemLibraryLocationsCreateRequest with scoped handler validation."
     }
   ]
 }

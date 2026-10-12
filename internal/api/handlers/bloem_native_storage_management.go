@@ -38,8 +38,9 @@ const (
 // BloemNativeStorageManagementHandler uses the retained domain authority and
 // lifecycle transactions. It does not create queues, coordinators or grants.
 type BloemNativeStorageManagementHandler struct {
-	Sources *nativestorage.SourceManagement
-	Browser *nativestorage.SourceBrowser
+	Sources   *nativestorage.SourceManagement
+	Browser   *nativestorage.SourceBrowser
+	Locations *BloemLibraryLocationsHandler
 	// Registry is the same startup registry used by Sources; only its sanitized
 	// immutable artifact projection is used here.
 	Registry *plugins.NativeStorageRegistry
@@ -119,6 +120,7 @@ func NativeStorageAPIError(err error) *APIError {
 		"invalid_selection_reference":        {409, "Directory selection changed or expired; browse again"},
 		"duplicate_selection":                {400, "Directory selection is duplicated"},
 		"selection_limit_exceeded":           {422, "A library supports at most 128 selected roots and 16 plugin sources"},
+		"location_mixing_unavailable":        {422, "A library cannot yet combine filesystem paths with plugin sources or use several plugin sources"},
 		"browse_limit_exceeded":              {422, "Directory browse exceeds its bounded query or pagination limits"},
 		"browse_restart_required":            {409, "Directory pagination changed or expired; restart browsing"},
 		"invalid_provider_page":              {502, "Storage provider returned an invalid directory page"},
@@ -165,6 +167,9 @@ func writeNativeStorageError(w http.ResponseWriter, err error, sourceOnly bool) 
 			body[field] = *typed.CurrentSourceRevision
 		}
 	}
+	if apiErr.Code == "revision_conflict" && typed != nil && typed.CurrentLibraryRevision != nil && *typed.CurrentLibraryRevision > 0 {
+		body["current_library_revision"] = *typed.CurrentLibraryRevision
+	}
 	var unknown *catalog.MutationOutcomeUnknown
 	if apiErr.Code == "mutation_outcome_unknown" && errors.As(err, &unknown) && unknown != nil {
 		// These identifiers are allocated by the domain only after target authority.
@@ -172,8 +177,11 @@ func writeNativeStorageError(w http.ResponseWriter, err error, sourceOnly bool) 
 			body["operation_id"] = unknown.OperationID
 		}
 		switch unknown.Operation {
-		case "install", "upgrade", "configuration", "disable", "uninstall":
+		case "install", "upgrade", "configuration", "disable", "uninstall", "create_library", "replace_library_locations":
 			body["operation"] = unknown.Operation
+		}
+		if unknown.LibraryID > 0 {
+			body["library_id"] = unknown.LibraryID
 		}
 		if unknown.SourceKey != nil && *unknown.SourceKey != uuid.Nil {
 			body["source_key"] = *unknown.SourceKey
@@ -652,7 +660,34 @@ func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx cont
 			movies, video, remoteVideo = v.NativeMovieLibrariesReady(ctx), v.NativeVideoReady(ctx), v.NativeRemoteVideoReady(ctx)
 		}
 	}
-	return map[string]any{"schema": 2, "source_management": ready, "approved_artifact_install": ready,
+	browsing, editing, audio := false, false, false
+	if c, ok := h.Capabilities.(interface {
+		LibraryLocationBrowsingReady(context.Context) bool
+		LibraryLocationEditingReady(context.Context) bool
+		NativeAudioReady(context.Context) bool
+	}); ok {
+		browsing = c.LibraryLocationBrowsingReady(ctx)
+		editing = c.LibraryLocationEditingReady(ctx)
+		audio = c.NativeAudioReady(ctx)
+	}
+	mixing := false
+	if c, ok := h.Capabilities.(interface {
+		LibraryLocationMixingReady(context.Context) bool
+	}); ok {
+		mixing = editing && c.LibraryLocationMixingReady(ctx)
+	}
+	kinds := []string{"ebooks"}
+	if movies {
+		kinds = append(kinds, "movies")
+	}
+	if audio {
+		kinds = append(kinds, "audiobooks")
+	}
+	combinations := []nativeStorageSourceMedia{{SourceKind: "filesystem", MediaKinds: []string{"movies", "series", "ebooks", "audiobooks", "podcasts"}}}
+	if editing {
+		combinations = append(combinations, nativeStorageSourceMedia{SourceKind: "s3", MediaKinds: kinds}, nativeStorageSourceMedia{SourceKind: "bookwarehouse", MediaKinds: []string{"ebooks"}})
+	}
+	return map[string]any{"schema": 2, "library_location_browsing": browsing, "library_location_atomic_editing": editing, "library_location_mixing": mixing, "supported_source_media": combinations, "native_audio_libraries": audio, "native_audio_playback": audio, "source_management": ready, "approved_artifact_install": ready,
 		"configuration_replace_unbound": ready, "disable": ready, "uninstall": ready, "upgrade": ready,
 		"s3_initial_root_discovery": discoveryReady,
 		"s3_checked_etag_reads":     ready,

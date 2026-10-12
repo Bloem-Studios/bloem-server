@@ -19,7 +19,18 @@ const (
 // This is a document of the existing chi contract, never a runtime registrar.
 // Responses reuse domain types where the handlers serialize them directly.
 // Request types keep handler defaults and scope-specific field rejection.
+type BloemNativeStorageSourceMedia struct {
+	SourceKind string   `json:"source_kind" enum:"filesystem,s3,bookwarehouse"`
+	MediaKinds []string `json:"media_kinds" nullable:"false"`
+}
 type BloemNativeStorageCapabilities struct {
+	LibraryLocationBrowsing      bool                            `json:"library_location_browsing" doc:"The retained host browser and shared pagination store are composed. Individual source authority and media declarations are checked separately."`
+	LibraryLocationAtomicEditing bool                            `json:"library_location_atomic_editing" doc:"Scoped library-locations operations are composed with the ordinary library creator. Replacement requires revision and actor-bound path edit token."`
+	LibraryLocationMixing        bool                            `json:"library_location_mixing" doc:"One library may combine filesystem paths with plugin sources or use several plugin sources. While false, a library keeps filesystem paths or one plugin source over its lifetime, and other shapes return location_mixing_unavailable."`
+	SupportedSourceMedia         []BloemNativeStorageSourceMedia `json:"supported_source_media" nullable:"false" doc:"Host-supported source/media combinations; this does not prove that a provider instance supports or is available for a kind."`
+	NativeAudioLibraries         bool                            `json:"native_audio_libraries" doc:"Requires the complete native audio scanner, catalog and playback composition."`
+	NativeAudioPlayback          bool                            `json:"native_audio_playback" doc:"False until full native audio playback composition is verified."`
+
 	Schema                      int  `json:"schema" enum:"2"`
 	SourceManagement            bool `json:"source_management"`
 	ApprovedArtifactInstall     bool `json:"approved_artifact_install"`
@@ -104,13 +115,15 @@ type BloemNativeStorageRemoval struct {
 // Recovery fields are conditional and omitted, never null. Their presence is
 // restricted to identifiers established after current resource authorization.
 type BloemNativeStorageError struct {
-	Error                 string     `json:"error"`
-	Message               string     `json:"message"`
-	CurrentRevision       *int64     `json:"current_revision,omitempty" nullable:"false"`
-	CurrentSourceRevision *int64     `json:"current_source_revision,omitempty" nullable:"false"`
-	OperationID           *uuid.UUID `json:"operation_id,omitempty" nullable:"false"`
-	Operation             *string    `json:"operation,omitempty" nullable:"false" enum:"install,configuration,disable,uninstall"`
-	SourceKey             *uuid.UUID `json:"source_key,omitempty" nullable:"false"`
+	Error                  string     `json:"error"`
+	Message                string     `json:"message"`
+	CurrentRevision        *int64     `json:"current_revision,omitempty" nullable:"false"`
+	CurrentLibraryRevision *int64     `json:"current_library_revision,omitempty" nullable:"false"`
+	LibraryID              *int       `json:"library_id,omitempty" nullable:"false"`
+	CurrentSourceRevision  *int64     `json:"current_source_revision,omitempty" nullable:"false"`
+	OperationID            *uuid.UUID `json:"operation_id,omitempty" nullable:"false"`
+	Operation              *string    `json:"operation,omitempty" nullable:"false" enum:"install,upgrade,configuration,disable,uninstall,create_library,replace_library_locations"`
+	SourceKey              *uuid.UUID `json:"source_key,omitempty" nullable:"false"`
 }
 
 type bloemNativeStorageOutput[T any] struct{ Body T }

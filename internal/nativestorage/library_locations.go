@@ -21,19 +21,24 @@ var (
 
 // LibraryLocations gives new libraries their storage location.
 type LibraryLocations struct {
-	browser   *SourceBrowser
-	sources   *storagesource.Repository
-	resources *resourcetenancy.Store
+	pool                *pgxpool.Pool
+	nativeMovieReady    bool
+	nativeAudioReady    bool
+	mixedLocationsReady bool
+	browser             *SourceBrowser
+	sources             *storagesource.Repository
+	resources           *resourcetenancy.Store
 }
 
 func NewLibraryLocations(pool *pgxpool.Pool) *LibraryLocations {
-	return &LibraryLocations{sources: storagesource.NewRepository(pool), resources: resourcetenancy.NewStore(pool)}
+	return &LibraryLocations{pool: pool, sources: storagesource.NewRepository(pool), resources: resourcetenancy.NewStore(pool)}
 }
 
 // SetNativeMovieReady is startup-only, before library attachment is admitted.
 // It preserves the resource authority check and changes only its kind hold.
 func (l *LibraryLocations) SetNativeMovieReady(ready bool) {
 	if l != nil {
+		l.nativeMovieReady = ready
 		l.resources.SetNativeMovieReady(ready)
 	}
 }
@@ -81,4 +86,26 @@ func (l *LibraryLocations) AttachTx(ctx context.Context, tx pgx.Tx, sourceKey uu
 		return err
 	}
 	return nil
+}
+
+// SetNativeAudioReady must be called only after full audio composition.
+func (l *LibraryLocations) SetNativeAudioReady(ready bool) {
+	if l != nil {
+		l.nativeAudioReady = ready
+	}
+}
+
+// SetMixedLocationsReady is startup-only. Call it only once scanning handles
+// filesystem paths and several plugin sources in one library (mixed ingestion).
+// It is the single switch for the save guard and the reported capability.
+func (l *LibraryLocations) SetMixedLocationsReady(ready bool) {
+	if l != nil {
+		l.mixedLocationsReady = ready
+	}
+}
+
+// MixedLocationsReady reports whether one library may combine filesystem paths
+// and plugin sources, or use more than one plugin source.
+func (l *LibraryLocations) MixedLocationsReady() bool {
+	return l != nil && l.mixedLocationsReady
 }

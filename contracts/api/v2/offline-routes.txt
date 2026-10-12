@@ -92,10 +92,12 @@ GET /api/bloem/v1/admin/organization/groups/
 GET /api/bloem/v1/admin/organization/groups/{id}
 GET /api/bloem/v1/admin/organization/invitations
 GET /api/bloem/v1/admin/organization/libraries
+GET /api/bloem/v1/admin/organization/library-locations/{library_id}
 GET /api/bloem/v1/admin/organization/native-storage/artifacts
 GET /api/bloem/v1/admin/organization/native-storage/capabilities
 GET /api/bloem/v1/admin/organization/native-storage/sources
 GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}
+GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/browse
 GET /api/bloem/v1/admin/organization/overview
 GET /api/bloem/v1/admin/organization/people/
 GET /api/bloem/v1/admin/organization/people/bulk-jobs/{job_id}
@@ -114,10 +116,12 @@ GET /api/bloem/v1/admin/platform/entitlement-templates
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/history
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions
+GET /api/bloem/v1/admin/platform/library-locations/{library_id}
 GET /api/bloem/v1/admin/platform/native-storage/artifacts
 GET /api/bloem/v1/admin/platform/native-storage/capabilities
 GET /api/bloem/v1/admin/platform/native-storage/sources
 GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}
+GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse
 GET /api/bloem/v1/admin/platform/organizations/
 GET /api/bloem/v1/admin/platform/organizations/{id}/
 GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement
@@ -379,6 +383,7 @@ POST /api/bloem/v1/admin/organization/ebook-requests/{id}/retry
 POST /api/bloem/v1/admin/organization/groups/
 POST /api/bloem/v1/admin/organization/invitations
 POST /api/bloem/v1/admin/organization/invitations/{id}/resend
+POST /api/bloem/v1/admin/organization/library-locations
 POST /api/bloem/v1/admin/organization/native-storage/catalog/installations
 POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade
 POST /api/bloem/v1/admin/organization/native-storage/installations
@@ -405,6 +410,7 @@ POST /api/bloem/v1/admin/platform/entitlement-templates
 POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/archive
 POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/clone
 POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions
+POST /api/bloem/v1/admin/platform/library-locations
 POST /api/bloem/v1/admin/platform/native-storage/catalog/installations
 POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade
 POST /api/bloem/v1/admin/platform/native-storage/installations
@@ -533,6 +539,7 @@ PUT /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/library
 PUT /api/bloem/v1/admin/organization/ebook-request-policy
 PUT /api/bloem/v1/admin/organization/entitlements/{folder_id}
 PUT /api/bloem/v1/admin/organization/groups/{id}
+PUT /api/bloem/v1/admin/organization/library-locations/{library_id}
 PUT /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/configuration
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}
@@ -541,6 +548,7 @@ PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-snapshots
 PUT /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
 PUT /api/bloem/v1/admin/platform/ambience/{id}
+PUT /api/bloem/v1/admin/platform/library-locations/{library_id}
 PUT /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs
