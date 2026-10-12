@@ -83,7 +83,10 @@ DELETE /api/v1/profile/sections/reset
 DELETE /api/v2/*
 GET /api/bloem/v1/admin/*
 GET /api/bloem/v1/admin/organization/activity
+GET /api/bloem/v1/admin/organization/audiobook-request-integrations
 GET /api/bloem/v1/admin/organization/book-requests
+GET /api/bloem/v1/admin/organization/book-requests/acquisitions
+GET /api/bloem/v1/admin/organization/book-requests/{id}/acquisition
 GET /api/bloem/v1/admin/organization/ebook-request-integrations
 GET /api/bloem/v1/admin/organization/ebook-requests
 GET /api/bloem/v1/admin/organization/entitlement-cohorts
@@ -373,9 +376,13 @@ PATCH /api/v1/downloads/subscriptions/{id}
 PATCH /api/v1/downloads/{id}
 PATCH /api/v2/*
 POST /api/bloem/v1/admin/*
+POST /api/bloem/v1/admin/organization/audiobook-request-integrations
+POST /api/bloem/v1/admin/organization/book-requests/{id}/accept-download
 POST /api/bloem/v1/admin/organization/book-requests/{id}/approve
+POST /api/bloem/v1/admin/organization/book-requests/{id}/approve-candidate
 POST /api/bloem/v1/admin/organization/book-requests/{id}/decline
 POST /api/bloem/v1/admin/organization/book-requests/{id}/fulfil
+POST /api/bloem/v1/admin/organization/book-requests/{id}/retry
 POST /api/bloem/v1/admin/organization/ebook-request-integrations
 POST /api/bloem/v1/admin/organization/ebook-requests/{id}/approve
 POST /api/bloem/v1/admin/organization/ebook-requests/{id}/decline
@@ -535,6 +542,7 @@ POST /api/v1/requests/{id}/cancel
 POST /api/v1/theme/catalog/refresh
 POST /api/v2/*
 PUT /api/bloem/v1/admin/*
+PUT /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/library
 PUT /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/library
 PUT /api/bloem/v1/admin/organization/ebook-request-policy
 PUT /api/bloem/v1/admin/organization/entitlements/{folder_id}
