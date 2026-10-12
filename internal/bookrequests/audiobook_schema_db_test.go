@@ -18,7 +18,7 @@ const audiobookAcquisitionMigration = "bloem_audiobook_request_acquisition"
 
 // audiobookAcquisitionVersions returns the acquisition migration version and
 // the version immediately below it, so the rollback test never depends on a
-// hard-coded neighbour.
+// hard-coded neighbor.
 func audiobookAcquisitionVersions(t *testing.T) (int64, int64) {
 	t.Helper()
 	entries, err := fs.ReadDir(migrations.FS, "sql")

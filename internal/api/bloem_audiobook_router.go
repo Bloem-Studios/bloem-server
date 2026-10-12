@@ -8,11 +8,12 @@ import (
 	"strings"
 
 	pluginv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
-	"github.com/Silo-Server/silo-server/internal/bookrequests"
-	"github.com/Silo-Server/silo-server/internal/requests"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"github.com/Silo-Server/silo-server/internal/bookrequests"
+	"github.com/Silo-Server/silo-server/internal/requests"
 )
 
 type audiobookIntegrationValidator interface {

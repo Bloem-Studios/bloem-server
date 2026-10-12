@@ -11,11 +11,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/bookrequests"
 	"github.com/Silo-Server/silo-server/internal/requests"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type bloemAudiobookSetup struct {

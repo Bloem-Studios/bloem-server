@@ -150,7 +150,7 @@ func TestJournalOperationsShareRetainedSourceLockDB(t *testing.T) {
 		_, err = writer.Exec(ctx, `SELECT key FROM bloem_storage_sources WHERE key=$1 FOR NO KEY UPDATE NOWAIT`, s.Key)
 		var pgErr *pgconn.PgError
 		if !errors.As(err, &pgErr) || pgErr.Code != "55P03" {
-			return fmt.Errorf("configuration writer not fenced by page: %v", err)
+			return fmt.Errorf("configuration writer not fenced by page: %w", err)
 		}
 		fenced = true
 		return nil
@@ -160,7 +160,7 @@ func TestJournalOperationsShareRetainedSourceLockDB(t *testing.T) {
 		t.Fatalf("fenced page: fenced=%v err=%v", fenced, err)
 	}
 
-	holder = retain()
+	retain()
 	op, stop = bounded()
 	defer stop()
 	if err = r.Complete(op, lease); err != nil {

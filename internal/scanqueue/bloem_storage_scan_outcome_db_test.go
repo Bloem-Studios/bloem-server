@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/libraryingest"
-	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/Silo-Server/silo-server/internal/libraryingest"
+	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/storagesource"
 )
 
 // storageOutcomeIngestor makes the test's library a storage library whose

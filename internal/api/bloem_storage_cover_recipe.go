@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -24,7 +26,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 )
 
 const coverRecipePurpose = "bloem/storage-cover-viewer/v1"

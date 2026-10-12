@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -317,8 +318,10 @@ func (f *nativeAudioAPIFixture) stream(t *testing.T, h *handlers.StreamHandler, 
 	w := httptest.NewRecorder()
 	func() {
 		defer func() {
-			if value := recover(); value != nil && value != http.ErrAbortHandler {
-				panic(value)
+			if value := recover(); value != nil {
+				if err, ok := value.(error); !ok || !errors.Is(err, http.ErrAbortHandler) {
+					panic(value)
+				}
 			}
 		}()
 		h.HandleStream(w, r)
@@ -497,14 +500,15 @@ func TestNativeAudioHiddenPresentationServesNoCoverDB(t *testing.T) {
 				t.Fatalf("conditional=%d", hit.Code)
 			}
 			var sql string
-			if mutation == "sibling-membership" {
+			switch mutation {
+			case "sibling-membership":
 				_, err = f.pool.Exec(t.Context(), `UPDATE bloem_storage_file_roots SET enabled=false WHERE media_file_id=$1`, f.files[1].ID)
-			} else if mutation == "sibling-reference" {
+			case "sibling-reference":
 				_, err = f.pool.Exec(t.Context(), `DELETE FROM bloem_storage_file_refs WHERE media_file_id=$1`, f.files[1].ID)
-			} else if mutation == "hidden" {
+			case "hidden":
 				sql = `UPDATE media_files SET missing_since=clock_timestamp() WHERE presentation_group_key=$1`
 				_, err = f.pool.Exec(t.Context(), sql, f.files[0].PresentationGroupKey)
-			} else {
+			default:
 				sql = `UPDATE bloem_storage_selected_roots SET enabled=false WHERE location_id=$1`
 				_, err = f.pool.Exec(t.Context(), sql, f.location.ID)
 			}
