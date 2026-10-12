@@ -26,6 +26,10 @@ func (s *storageCoverStub) ReadCover(_ context.Context, contentID, revision stri
 	return s.data, s.err
 }
 
+func (*storageCoverStub) AuthorizeCoverRequest(context.Context, *http.Request, string, string) error {
+	return nil
+}
+
 // A JPEG signature is enough for content sniffing.
 var jpegCover = append([]byte{0xFF, 0xD8, 0xFF, 0xE0}, bytes.Repeat([]byte("cover"), 100)...)
 
@@ -57,7 +61,7 @@ func TestArtworkServesStorageCoversThroughTheirSource(t *testing.T) {
 	if etag := got.Header().Get("ETag"); etag != `"`+revision+`"` {
 		t.Fatalf("etag = %q", etag)
 	}
-	// A revalidation is answered from the key alone, without the plugin.
+	// An authorized revalidation does not read the plugin's cover bytes.
 	cached := do(t, h, http.MethodGet, u, "", map[string]string{"If-None-Match": got.Header().Get("ETag")})
 	if cached.Code != 304 || len(covers.reads) != 1 {
 		t.Fatalf("conditional: %d, reads = %d", cached.Code, len(covers.reads))

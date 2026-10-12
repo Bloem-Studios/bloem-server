@@ -24,16 +24,25 @@ func nativeStorageReader(deps Dependencies, local *handlers.EbookReaderHandler) 
 	resources := resourcetenancy.NewStore(deps.DB)
 	resolver := tenancy.NewResolver(tenancy.NewStore(deps.DB))
 	coordinator := &nativestorage.Coordinator{AcquireOpen: deps.NativeStorage.AcquireOpen, References: storagesource.NewRepository(deps.DB), Registry: deps.NativeStorage.Registry, Runtime: nativestorage.ManagedRuntime{Manager: deps.NativeStorage.Manager}}
+	actors := nativeStorageActorPolicy(deps)
 	coordinator.AuthorizeFile = func(ctx context.Context, file *models.MediaFile) (*models.MediaFile, error) {
 		// Require gates to have supplied profile/PIN/library scope; an absent scope
 		// must not degrade to an unrestricted empty catalog filter.
 		if _, ok := access.GetScope(ctx); !ok {
 			return nil, catalog.ErrItemNotFound
 		}
-		return local.ResolveReaderFile(ctx, file.ContentID, file.ID, handlers.AccessFilterFromContext(ctx, ""))
+		fresh, err := freshNativeStorageViewer(ctx, actors)
+		if err != nil {
+			return nil, err
+		}
+		return local.ResolveReaderFile(fresh, file.ContentID, file.ID, handlers.AccessFilterFromContext(fresh, ""))
 	}
 	coordinator.AuthorizeSource = func(ctx context.Context, file *models.MediaFile, source storagesource.SourceConfig) error {
-		return authorizeNativeStorageSource(ctx, file, source, resolver, resources)
+		fresh, err := freshNativeStorageViewer(ctx, actors)
+		if err != nil {
+			return err
+		}
+		return authorizeNativeStorageSource(fresh, file, source, resolver, resources)
 	}
 	coordinator.AuthorizeCover = resources.RequireStorageScan
 

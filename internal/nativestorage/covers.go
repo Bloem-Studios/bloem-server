@@ -2,13 +2,18 @@ package nativestorage
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"sync/atomic"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/artworkurl"
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
@@ -20,8 +25,8 @@ const (
 	maxConcurrentCovers = 16
 	// MaxCoverBytes bounds one cover read through a storage plugin.
 	MaxCoverBytes = 16 << 20
-	// coverReadTimeout bounds a shared read: callers waiting on it keep their
-	// own deadlines, but the read itself must not outlive a cancelled leader.
+	// coverReadTimeout bounds a shared read independently of waiter deadlines.
+	// Each waiter rechecks its own current authority before receiving bytes.
 	coverReadTimeout = 30 * time.Second
 )
 
@@ -39,11 +44,56 @@ type coverReader struct {
 	// fence and checks as ebook reads.
 	coordinator atomic.Pointer[Coordinator]
 	cache       atomic.Pointer[CoverCache]
+	authorizer  atomic.Pointer[CoverRequestAuthorizer]
+	resolver    atomic.Pointer[artworkurl.Resolver]
 	// slots bounds concurrent reads from sources, so a page of covers cannot
 	// flood a provider (nil means unbounded); flights share one read among
 	// concurrent requests.
 	slots   chan struct{}
 	flights singleflight.Group
+}
+
+// SetCoverURLResolver publishes the viewer recipe issuer after startup policy
+// composition. Metadata sources registered earlier fail closed until then.
+func (h *Host) SetCoverURLResolver(resolver artworkurl.Resolver) {
+	if h != nil && resolver != nil {
+		h.covers.resolver.Store(&resolver)
+	}
+}
+func (h *Host) ResolveURLs(ctx context.Context, keys []string) map[string]catalog.ResolvedImageURL {
+	if h != nil {
+		if resolver := h.covers.resolver.Load(); resolver != nil {
+			return (*resolver).ResolveURLs(ctx, keys)
+		}
+	}
+	return map[string]catalog.ResolvedImageURL{}
+}
+
+// SetCoverRequestAuthorizer installs the common recipe boundary for every
+// listener that uses this host. Missing composition fails closed.
+func (h *Host) SetCoverRequestAuthorizer(authorize CoverRequestAuthorizer) {
+	if h != nil && authorize != nil {
+		h.covers.authorizer.Store(&authorize)
+	}
+}
+
+func (h *Host) AuthorizeCoverRequest(ctx context.Context, r *http.Request, contentID, revision string) error {
+	if h == nil || r == nil {
+		return storagesource.ErrReferenceConflict
+	}
+	authorize := h.covers.authorizer.Load()
+	if authorize == nil {
+		return storagesource.ErrReferenceConflict
+	}
+	fresh, err := (*authorize)(ctx, r, contentID, revision)
+	if err != nil {
+		return err
+	}
+	if fresh == nil {
+		return storagesource.ErrReferenceConflict
+	}
+	*r = *r.WithContext(fresh)
+	return nil
 }
 
 // SetCoverReader publishes the coordinator that opens storage covers.
@@ -60,20 +110,40 @@ func (h *Host) SetCoverCache(cache CoverCache) {
 	}
 }
 
-// ReadCover returns a book's storage cover at revision, from the cover cache
-// or through its source. A cached cover was authorized when it was read; the
-// signed URL that names it is the request's authority, as for stored artwork.
+// ReadCover caches bytes, never access. Every caller, including every shared
+// read waiter, must present a pinned viewer recipe and reauthorize after waits.
 func (h *Host) ReadCover(ctx context.Context, contentID, revision string) ([]byte, error) {
 	if h == nil || h.covers.coordinator.Load() == nil {
 		return nil, storagesource.ErrSourceUnavailable
 	}
+	if _, ok := ctx.Value(coverAuthorityKey{}).(coverReadAuthority); !ok {
+		return nil, storagesource.ErrReferenceConflict
+	}
 	r := &h.covers
-	key := "bloem:storage-cover:" + contentID + ":" + revision
+	ref, snapshot, err := r.coordinator.Load().resolveCover(ctx, contentID, revision)
+	if err != nil {
+		return nil, err
+	}
+	// Every caller, including each shared-read waiter and cache hit, rechecks
+	// after its waits: registry first, then library, publication and viewer.
+	check := func() error {
+		return r.coordinator.Load().recheckCover(ctx, contentID, revision, ref, snapshot)
+	}
+	identity, _ := json.Marshal(struct {
+		Source          storagesource.SourceConfig
+		Generation      uint64
+		Checksum        string
+		Entry, Revision string
+	}{ref.Source, snapshot.Generation, snapshot.ArtifactChecksum, ref.Cover.EntryID, ref.Cover.Revision})
+	key := fmt.Sprintf("bloem:storage-cover:%x", sha256.Sum256(identity))
 	cache := r.cacheOrNil()
 	if cache != nil {
 		if data, err := cache.Get(ctx, key); err != nil {
 			slog.DebugContext(ctx, "storage cover cache read failed", "component", "nativestorage", "error", err)
 		} else if data != nil {
+			if err := check(); err != nil {
+				return nil, err
+			}
 			return data, nil
 		}
 	}
@@ -92,6 +162,9 @@ func (h *Host) ReadCover(ctx context.Context, contentID, revision string) ([]byt
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case res := <-result:
+		if err := check(); err != nil {
+			return nil, err
+		}
 		if res.Err != nil {
 			return nil, res.Err
 		}

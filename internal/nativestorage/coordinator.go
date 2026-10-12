@@ -57,44 +57,10 @@ type Coordinator struct {
 	AcquireOpen     func() (func(), error)
 	AuthorizeFile   func(context.Context, *models.MediaFile) (*models.MediaFile, error)
 	AuthorizeSource func(context.Context, *models.MediaFile, storagesource.SourceConfig) error
-	// AuthorizeCover checks that a library may still be served from its
-	// source. A cover request carries no viewer: its signed URL authorizes it.
+	// AuthorizeCover checks the library's current source authority in addition
+	// to the viewer-bound publication checks carried by the request context.
 	AuthorizeCover func(context.Context, storagesource.Location, storagesource.SourceConfig) error
 	mu             sync.RWMutex
-}
-
-func (c *Coordinator) resolve(ctx context.Context, file *models.MediaFile) (storagesource.SourceConfig, storagesource.PersistedRef, *plugins.NativeStorageSnapshot, error) {
-	var source storagesource.SourceConfig
-	var ref storagesource.PersistedRef
-	actual, err := c.AuthorizeFile(ctx, file)
-	if err != nil {
-		return source, ref, nil, err
-	}
-	if actual == nil || actual.ID != file.ID || actual.ContentID != file.ContentID || actual.MediaFolderID != file.MediaFolderID || actual.FilePath != file.FilePath {
-		return source, ref, nil, storagesource.ErrReferenceConflict
-	}
-	source, ref, err = c.References.FileReference(ctx, actual.ID, actual.MediaFolderID)
-	if err != nil {
-		return source, ref, nil, err
-	}
-	location, err := storagesource.CatalogLocation(ref.LocationID, ref.EntryID)
-	if err != nil || location != actual.FilePath {
-		return source, ref, nil, storagesource.ErrReferenceConflict
-	}
-	if !source.Enabled || source.InstallationID == nil {
-		return source, ref, nil, storagesource.ErrSourceUnavailable
-	}
-	if err = c.AuthorizeSource(ctx, actual, source); err != nil {
-		return source, ref, nil, err
-	}
-	snapshot, err := c.Registry.Snapshot(ctx, source.Key, source.OwnerID)
-	if err != nil {
-		return source, ref, nil, err
-	}
-	if snapshot == nil || snapshot.Installation == nil || !SameSource(source, snapshot.Source) || int64(snapshot.Installation.ID) != *source.InstallationID || !snapshot.Installation.Enabled {
-		return source, ref, nil, storagesource.ErrSourceUnavailable
-	}
-	return source, ref, snapshot, nil
 }
 
 // SameSource compares retained identity and configuration, without granting
@@ -103,78 +69,29 @@ func SameSource(a, b storagesource.SourceConfig) bool {
 	return a.Key == b.Key && a.OwnerID == b.OwnerID && a.InstallationID != nil && b.InstallationID != nil && *a.InstallationID == *b.InstallationID && a.PluginID == b.PluginID && a.ProviderSourceID == b.ProviderSourceID && a.RootEntryID == b.RootEntryID && a.ConfigurationRevision == b.ConfigurationRevision && a.Enabled == b.Enabled
 }
 func (c *Coordinator) OpenAuthorizedEbook(ctx context.Context, file *models.MediaFile) (mediasource.File, error) {
-	if c == nil || file == nil || c.References == nil || c.Registry == nil || c.Runtime == nil || c.AuthorizeFile == nil || c.AuthorizeSource == nil {
+	if c == nil {
 		return nil, storagesource.ErrSourceUnavailable
 	}
-	release := func() {}
-	if c.AcquireOpen != nil {
-		var err error
-		release, err = c.AcquireOpen()
-		if err != nil {
-			return nil, err
+	opened, err := c.OpenAuthorizedPlayback(ctx, file, PlaybackAuthority{AuthorizeFile: func(ctx context.Context, file *models.MediaFile) (*models.MediaFile, error) {
+		if c.AuthorizeFile == nil {
+			return nil, storagesource.ErrSourceUnavailable
 		}
-	}
-	handedOff := false
-	defer func() {
-		if !handedOff {
-			release()
+		return c.AuthorizeFile(ctx, file)
+	}, AuthorizeSource: func(ctx context.Context, file *models.MediaFile, source storagesource.SourceConfig) error {
+		if c.AuthorizeSource == nil {
+			return storagesource.ErrSourceUnavailable
 		}
-	}()
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	source, ref, snapshot, err := c.resolve(ctx, file)
+		return c.AuthorizeSource(ctx, file, source)
+	}})
 	if err != nil {
 		return nil, err
 	}
-	lease, err := c.Runtime.Borrow(ctx, storageplugin.Snapshot{InstallationID: snapshot.Installation.ID, Generation: snapshot.Generation, BinaryPath: snapshot.Installation.InstallPath, ExpectedChecksum: snapshot.ArtifactChecksum, Manifest: snapshot.Manifest, Config: snapshot.Config, Enabled: true, NativeOnly: true})
-	if err != nil {
-		return nil, err
-	}
-	if err = ValidateReadDescription(lease.Description, source.ProviderSourceID, source.RootEntryID, snapshot); err != nil {
-		return nil, storagesource.ErrSourceUnavailable
-	}
-	// Startup can be slow. Never open using a view read before a remote mutation.
-	fresh, freshRef, freshSnapshot, err := c.resolve(ctx, file)
-	if err != nil {
-		return nil, err
-	}
-	if !SameSource(source, fresh) || ref != freshRef || freshSnapshot.Generation != snapshot.Generation || freshSnapshot.ArtifactChecksum != snapshot.ArtifactChecksum {
-		return nil, storagesource.ErrSourceUnavailable
-	}
-	if lease.Context == nil || lease.Source == nil {
-		return nil, storagesource.ErrSourceUnavailable
-	}
-	if err = ctx.Err(); err != nil {
-		return nil, err
-	}
-	if err = lease.Context.Err(); err != nil {
-		return nil, err
-	}
-	readCtx, cancel := context.WithCancel(ctx)
-	stop := context.AfterFunc(lease.Context, cancel)
-	if lease.Context.Err() != nil {
-		cancel()
-	}
-	opened, err := mediasource.Open(readCtx, lease.Source, mediasource.Ref{SourceID: source.ProviderSourceID, EntryID: ref.EntryID, Revision: ref.Revision})
-	if err != nil {
-		stop()
-		cancel()
-		return nil, err
-	}
-	if opened.Info().LogicalPath != ref.LogicalPath {
-		opened.Close()
-		stop()
-		cancel()
-		return nil, storagesource.ErrReferenceConflict
-	}
-	handedOff = true
-	return &lifetimeFile{File: opened, cancel: cancel, stop: stop, release: release}, nil
+	return opened, nil
 }
 
 // OpenCover opens the cover a book's storage source offers, pinned to the
-// revision its artwork URL names. Like any artwork the signed URL is the
-// request's authority; the source must still be enabled and allowed to serve
-// the library, checked again after the plugin starts, as for a read.
+// revision its artwork URL names. Host reads carry a viewer-bound publication
+// authorizer; both viewer and source authority are checked around provider I/O.
 func (c *Coordinator) OpenCover(ctx context.Context, contentID, revision string) (mediasource.File, error) {
 	if c == nil || c.References == nil || c.Registry == nil || c.Runtime == nil || c.AuthorizeCover == nil {
 		return nil, storagesource.ErrSourceUnavailable
@@ -206,12 +123,8 @@ func (c *Coordinator) OpenCover(ctx context.Context, contentID, revision string)
 	if err = ValidateReadDescription(lease.Description, ref.Source.ProviderSourceID, ref.Source.RootEntryID, snapshot); err != nil {
 		return nil, storagesource.ErrSourceUnavailable
 	}
-	fresh, freshSnapshot, err := c.resolveCover(ctx, contentID, revision)
-	if err != nil {
+	if err = c.recheckCover(ctx, contentID, revision, ref, snapshot); err != nil {
 		return nil, err
-	}
-	if !SameSource(ref.Source, fresh.Source) || ref.Cover != fresh.Cover || freshSnapshot.Generation != snapshot.Generation || freshSnapshot.ArtifactChecksum != snapshot.ArtifactChecksum {
-		return nil, storagesource.ErrSourceUnavailable
 	}
 	if lease.Context == nil || lease.Source == nil {
 		return nil, storagesource.ErrSourceUnavailable
@@ -222,23 +135,32 @@ func (c *Coordinator) OpenCover(ctx context.Context, contentID, revision string)
 	if err = lease.Context.Err(); err != nil {
 		return nil, err
 	}
-	readCtx, cancel := context.WithCancel(ctx)
-	stop := context.AfterFunc(lease.Context, cancel)
-	if lease.Context.Err() != nil {
-		cancel()
+	readCtx, cancel := context.WithCancelCause(ctx)
+	state := &playbackFileState{ctx: readCtx, cancel: cancel, coordinator: c, source: clonePlaybackSource(ref.Source), ref: ref.Cover, snapshot: clonePlaybackSnapshot(snapshot), runtime: lease.Context, release: release, cover: true}
+	state.checkAuthority = func(ctx context.Context) error {
+		return c.recheckCover(ctx, contentID, revision, ref, state.snapshot)
 	}
-	opened, err := mediasource.Open(readCtx, lease.Source, mediasource.Ref{SourceID: ref.Source.ProviderSourceID, EntryID: ref.Cover.EntryID, Revision: ref.Cover.Revision})
+	state.stop = context.AfterFunc(lease.Context, func() { _ = state.fail(storageplugin.ErrUnavailable) })
+	defer func() {
+		if !handedOff {
+			state.stop()
+			cancel(context.Canceled)
+		}
+	}()
+	if err = state.checkLocked(readCtx); err != nil {
+		return nil, err
+	}
+	providerRef := mediasource.Ref{SourceID: ref.Source.ProviderSourceID, EntryID: ref.Cover.EntryID, Revision: ref.Cover.Revision}
+	opened, err := mediasource.Open(readCtx, &playbackSource{raw: lease.Source, state: state, ref: providerRef}, providerRef)
 	if err != nil {
-		stop()
-		cancel()
 		return nil, err
 	}
 	handedOff = true
-	return &lifetimeFile{File: opened, cancel: cancel, stop: stop, release: release}, nil
+	return &PlaybackFile{file: opened, state: state}, nil
 }
 
 func (c *Coordinator) resolveCover(ctx context.Context, contentID, revision string) (storagesource.CoverReference, *plugins.NativeStorageSnapshot, error) {
-	ref, err := c.References.CoverReference(ctx, contentID, revision)
+	ref, err := resolveCoverRead(ctx, c.References, contentID, revision)
 	if err != nil {
 		return ref, nil, err
 	}
@@ -255,28 +177,32 @@ func (c *Coordinator) resolveCover(ctx context.Context, contentID, revision stri
 	if snapshot == nil || snapshot.Installation == nil || !SameSource(ref.Source, snapshot.Source) || int64(snapshot.Installation.ID) != *ref.Source.InstallationID || !snapshot.Installation.Enabled {
 		return ref, nil, storagesource.ErrSourceUnavailable
 	}
-	return ref, snapshot, nil
+	return ref, clonePlaybackSnapshot(snapshot), nil
 }
 
-type lifetimeFile struct {
-	mediasource.File
-	cancel  context.CancelFunc
-	release func()
-	stop    func() bool
-	once    sync.Once
-	err     error
-}
-
-func (f *lifetimeFile) Close() error {
-	f.once.Do(func() {
-		f.stop()
-		f.cancel()
-		f.err = f.File.Close()
-		if f.release != nil {
-			f.release()
-		}
-	})
-	return f.err
+// recheckCover revalidates a pinned cover publication. It finishes the pinned
+// source's registry/configuration wait before repeating library-source,
+// publication and viewer authority, so a revocation committed during that
+// lookup is seen before bytes are delivered or cached bytes are returned.
+func (c *Coordinator) recheckCover(ctx context.Context, contentID, revision string, pinned storagesource.CoverReference, snapshot *plugins.NativeStorageSnapshot) error {
+	current, err := c.Registry.Snapshot(ctx, pinned.Source.Key, pinned.Source.OwnerID)
+	if err != nil {
+		return err
+	}
+	if !sameScanSnapshot(snapshot, current) {
+		return storagesource.ErrSourceUnavailable
+	}
+	if err = c.AuthorizeCover(ctx, pinned.Location, clonePlaybackSource(pinned.Source)); err != nil {
+		return err
+	}
+	fresh, err := resolveCoverRead(ctx, c.References, contentID, revision)
+	if err != nil {
+		return err
+	}
+	if !SameCoverReference(pinned, fresh) {
+		return storagesource.ErrReferenceConflict
+	}
+	return ctx.Err()
 }
 
 // FenceMutation is only for future independently authorized host lifecycle calls,

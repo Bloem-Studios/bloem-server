@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/artworkkey"
 	"github.com/Silo-Server/silo-server/internal/mediasource"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/plugins"
@@ -26,7 +27,7 @@ type refsStub struct {
 }
 
 func (s *refsStub) CoverReference(_ context.Context, contentID, revision string) (storagesource.CoverReference, error) {
-	if contentID != "book" || revision != "cover-rev" {
+	if contentID != "book" || revision != artworkkey.StorageCoverRevision("cover/book", "cover:1") {
 		return storagesource.CoverReference{}, storagesource.ErrReferenceConflict
 	}
 	return s.cover, s.coverErr
@@ -142,7 +143,7 @@ func TestOpenDescribeAdmissionBeforeStat(t *testing.T) {
 				if surface == "ebook" {
 					opened, err = c.OpenAuthorizedEbook(t.Context(), f)
 				} else {
-					opened, err = c.OpenCover(t.Context(), "book", "cover-rev")
+					opened, err = c.OpenCover(t.Context(), "book", artworkkey.StorageCoverRevision("cover/book", "cover:1"))
 				}
 				if opened != nil {
 					opened.Close()
@@ -201,7 +202,7 @@ func TestOpenRechecksAuthorityAfterDescribe(t *testing.T) {
 				if surface == "ebook" {
 					opened, err = c.OpenAuthorizedEbook(ctx, file)
 				} else {
-					opened, err = c.OpenCover(ctx, "book", "cover-rev")
+					opened, err = c.OpenCover(ctx, "book", artworkkey.StorageCoverRevision("cover/book", "cover:1"))
 				}
 				if opened != nil {
 					opened.Close()
@@ -320,7 +321,7 @@ func TestCoordinatorRetainsHostUntilCloseAndReleasesFailedOpen(t *testing.T) {
 
 func TestOpenCoverReadsTheSourcesCoverAtItsRevision(t *testing.T) {
 	c, r, reg, run, _ := fixture(t)
-	opened, err := c.OpenCover(context.Background(), "book", "cover-rev")
+	opened, err := c.OpenCover(context.Background(), "book", artworkkey.StorageCoverRevision("cover/book", "cover:1"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +338,7 @@ func TestOpenCoverRejectsUnavailableAndUnauthorized(t *testing.T) {
 	for _, kind := range []string{"stale", "unavailable", "policy", "disabled", "moved", "snapshot", "during-start"} {
 		t.Run(kind, func(t *testing.T) {
 			c, r, reg, run, _ := fixture(t)
-			revision := "cover-rev"
+			revision := artworkkey.StorageCoverRevision("cover/book", "cover:1")
 			switch kind {
 			case "stale":
 				revision = "older-rev"
@@ -387,16 +388,19 @@ func (c *coverCacheStub) Set(_ context.Context, key string, data []byte) error {
 }
 
 func TestHostReadsCoversThroughTheCache(t *testing.T) {
-	c, _, _, run, _ := fixture(t)
+	c, refs, _, run, _ := fixture(t)
 	h := &Host{}
-	if _, err := h.ReadCover(context.Background(), "book", "cover-rev"); !errors.Is(err, storagesource.ErrSourceUnavailable) {
+	if _, err := h.ReadCover(context.Background(), "book", artworkkey.StorageCoverRevision("cover/book", "cover:1")); !errors.Is(err, storagesource.ErrSourceUnavailable) {
 		t.Fatalf("cover served before the router published its reader: %v", err)
 	}
 	h.SetCoverReader(c)
+	ctx := WithCoverReadAuthority(context.Background(), refs.cover, func(ctx context.Context) (storagesource.CoverReference, error) {
+		return refs.CoverReference(ctx, "book", artworkkey.StorageCoverRevision("cover/book", "cover:1"))
+	})
 	cache := &coverCacheStub{data: map[string][]byte{}}
 	h.SetCoverCache(cache)
 	for range 2 {
-		data, err := h.ReadCover(context.Background(), "book", "cover-rev")
+		data, err := h.ReadCover(ctx, "book", artworkkey.StorageCoverRevision("cover/book", "cover:1"))
 		if err != nil || string(data) != "book" {
 			t.Fatalf("cover = %q %v", data, err)
 		}
@@ -406,27 +410,31 @@ func TestHostReadsCoversThroughTheCache(t *testing.T) {
 		t.Fatalf("source reads = %d, cache gets = %d, cached = %d", run.calls, cache.gets, len(cache.data))
 	}
 	// A stale revision is refused and nothing is cached for it.
-	if _, err := h.ReadCover(context.Background(), "book", "older-rev"); err == nil || len(cache.data) != 1 {
+	if _, err := h.ReadCover(ctx, "book", "older-rev"); err == nil || len(cache.data) != 1 {
 		t.Fatalf("stale cover: %v, cached = %d", err, len(cache.data))
 	}
 }
 
 func TestHostBoundsConcurrentCoverReads(t *testing.T) {
-	c, _, _, run, _ := fixture(t)
+	c, refs, registry, run, _ := fixture(t)
+	c.Registry = coverWaitRegistry{registry.snapshot}
 	h := &Host{}
 	h.covers.slots = make(chan struct{}, 1)
 	h.SetCoverReader(c)
+	ctx := WithCoverReadAuthority(context.Background(), refs.cover, func(ctx context.Context) (storagesource.CoverReference, error) {
+		return refs.CoverReference(ctx, "book", artworkkey.StorageCoverRevision("cover/book", "cover:1"))
+	})
 	// With the only slot taken, a read waits until its caller gives up.
 	h.covers.slots <- struct{}{}
-	waiting, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	waiting, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
 	defer cancel()
-	if _, err := h.ReadCover(waiting, "book", "cover-rev"); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := h.ReadCover(waiting, "book", artworkkey.StorageCoverRevision("cover/book", "cover:1")); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("read did not wait for a slot: %v", err)
 	}
 	<-h.covers.slots
 	// Reads return their slot, including failed ones.
-	for _, revision := range []string{"older-rev", "cover-rev", "cover-rev"} {
-		_, _ = h.ReadCover(context.Background(), "book", revision)
+	for _, revision := range []string{"older-rev", artworkkey.StorageCoverRevision("cover/book", "cover:1"), artworkkey.StorageCoverRevision("cover/book", "cover:1")} {
+		_, _ = h.ReadCover(ctx, "book", revision)
 	}
 	if len(h.covers.slots) != 0 || run.calls < 1 {
 		t.Fatalf("slots held = %d, source reads = %d", len(h.covers.slots), run.calls)

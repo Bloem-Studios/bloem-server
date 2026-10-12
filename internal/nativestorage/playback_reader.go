@@ -57,45 +57,70 @@ func clonePlaybackSnapshot(snapshot *plugins.NativeStorageSnapshot) *plugins.Nat
 	return &frozen
 }
 
-// resolvePlayback never substitutes or changes the ebook authorizer fields.
-func (c *Coordinator) resolvePlayback(ctx context.Context, file models.MediaFile, authority PlaybackAuthority) (storagesource.SourceConfig, storagesource.PersistedRef, *plugins.NativeStorageSnapshot, error) {
+// authorizePlayback repeats viewer, file, publication membership and source
+// authority for one retained catalog file. It never substitutes or changes the
+// ebook authorizer fields and performs no registry lookup.
+func (c *Coordinator) authorizePlayback(ctx context.Context, file models.MediaFile, authority PlaybackAuthority) (storagesource.SourceConfig, storagesource.PersistedRef, error) {
 	var source storagesource.SourceConfig
 	var ref storagesource.PersistedRef
 	argument := file
 	actual, err := authority.AuthorizeFile(ctx, &argument)
 	if err != nil {
-		return source, ref, nil, err
+		return source, ref, err
 	}
 	if actual == nil || actual.ID != file.ID || actual.ContentID != file.ContentID || actual.EpisodeID != file.EpisodeID || actual.ExtraID != file.ExtraID || actual.MediaFolderID != file.MediaFolderID || actual.FilePath != file.FilePath {
-		return source, ref, nil, storagesource.ErrReferenceConflict
+		return source, ref, storagesource.ErrReferenceConflict
 	}
 	actualFile := *actual
 	source, ref, err = c.References.FileReference(ctx, actualFile.ID, actualFile.MediaFolderID)
 	if err != nil {
-		return source, ref, nil, err
+		return source, ref, err
 	}
 	source = clonePlaybackSource(source)
 	location, err := storagesource.CatalogLocation(ref.LocationID, ref.EntryID)
 	if err != nil || location != actualFile.FilePath {
-		return source, ref, nil, storagesource.ErrReferenceConflict
+		return source, ref, storagesource.ErrReferenceConflict
 	}
 	if !source.Enabled || source.InstallationID == nil {
-		return source, ref, nil, storagesource.ErrSourceUnavailable
+		return source, ref, storagesource.ErrSourceUnavailable
 	}
 	if err = authority.AuthorizeSource(ctx, &actualFile, clonePlaybackSource(source)); err != nil {
-		return source, ref, nil, err
+		return source, ref, err
+	}
+	return source, ref, ctx.Err()
+}
+
+// playbackSnapshot reads the approved runtime snapshot for an exact source.
+func (c *Coordinator) playbackSnapshot(ctx context.Context, source storagesource.SourceConfig) (*plugins.NativeStorageSnapshot, error) {
+	if source.InstallationID == nil {
+		return nil, storagesource.ErrSourceUnavailable
 	}
 	snapshot, err := c.Registry.Snapshot(ctx, source.Key, source.OwnerID)
 	if err != nil {
-		return source, ref, nil, err
+		return nil, err
 	}
 	if snapshot == nil || snapshot.Installation == nil || !SameSource(source, snapshot.Source) || int64(snapshot.Installation.ID) != *source.InstallationID || !snapshot.Installation.Enabled {
-		return source, ref, nil, storagesource.ErrSourceUnavailable
+		return nil, storagesource.ErrSourceUnavailable
+	}
+	return clonePlaybackSnapshot(snapshot), nil
+}
+
+// resolvePlayback admits a file before any runtime exists: authority first
+// names the source, then its registry snapshot. Later checks in checkLocked
+// reverse that order for the retained source.
+func (c *Coordinator) resolvePlayback(ctx context.Context, file models.MediaFile, authority PlaybackAuthority) (storagesource.SourceConfig, storagesource.PersistedRef, *plugins.NativeStorageSnapshot, error) {
+	source, ref, err := c.authorizePlayback(ctx, file, authority)
+	if err != nil {
+		return source, ref, nil, err
+	}
+	snapshot, err := c.playbackSnapshot(ctx, source)
+	if err != nil {
+		return source, ref, nil, err
 	}
 	if err = ctx.Err(); err != nil {
 		return source, ref, nil, err
 	}
-	return source, ref, clonePlaybackSnapshot(snapshot), nil
+	return source, ref, snapshot, nil
 }
 
 // OpenAuthorizedPlayback admits only an already selected host catalog file.
@@ -174,21 +199,23 @@ type PlaybackFile struct {
 var _ mediasource.File = (*PlaybackFile)(nil)
 
 type playbackFileState struct {
-	ctx         context.Context
-	cancel      context.CancelCauseFunc
-	coordinator *Coordinator
-	authority   PlaybackAuthority
-	file        models.MediaFile
-	source      storagesource.SourceConfig
-	ref         storagesource.PersistedRef
-	snapshot    *plugins.NativeStorageSnapshot
-	runtime     context.Context
-	stop        func() bool
-	release     func()
-	mu          sync.Mutex
-	closed      bool
-	sticky      error
-	active      sync.WaitGroup
+	ctx            context.Context
+	cancel         context.CancelCauseFunc
+	coordinator    *Coordinator
+	authority      PlaybackAuthority
+	file           models.MediaFile
+	source         storagesource.SourceConfig
+	ref            storagesource.PersistedRef
+	snapshot       *plugins.NativeStorageSnapshot
+	runtime        context.Context
+	cover          bool
+	checkAuthority func(context.Context) error
+	stop           func() bool
+	release        func()
+	mu             sync.Mutex
+	closed         bool
+	sticky         error
+	active         sync.WaitGroup
 }
 
 func (s *playbackFileState) fail(err error) error {
@@ -243,11 +270,29 @@ func (s *playbackFileState) checkLocked(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return s.fail(context.Cause(ctx))
 	}
-	source, ref, snapshot, err := s.coordinator.resolvePlayback(ctx, s.file, s.authority)
+	if s.checkAuthority != nil {
+		if err := s.checkAuthority(ctx); err != nil {
+			return s.fail(err)
+		}
+		return s.err()
+	}
+	// Finish the retained source's registry/configuration wait first, then
+	// repeat file, membership, viewer and source authority. A revocation that
+	// commits during the registry lookup is therefore seen before delivery; the
+	// runtime itself stays pinned by the lease and the mutation fence held here.
 	// The scan reader's pure snapshot equality also compares cloned config,
 	// manifest, installation version/path and enabled state, not just generation.
-	if err == nil && (!SameSource(source, s.source) || ref != s.ref || !sameScanSnapshot(s.snapshot, snapshot)) {
+	snapshot, err := s.coordinator.playbackSnapshot(ctx, s.source)
+	if err == nil && !sameScanSnapshot(s.snapshot, snapshot) {
 		err = storagesource.ErrSourceUnavailable
+	}
+	if err == nil {
+		var source storagesource.SourceConfig
+		var ref storagesource.PersistedRef
+		source, ref, err = s.coordinator.authorizePlayback(ctx, s.file, s.authority)
+		if err == nil && (!SameSource(source, s.source) || ref != s.ref) {
+			err = storagesource.ErrSourceUnavailable
+		}
 	}
 	if err != nil {
 		return s.fail(err)
@@ -306,7 +351,7 @@ func (f *PlaybackFile) Read(data []byte) (int, error) {
 	return f.finishRead(data, n, err)
 }
 func (f *PlaybackFile) finishRead(data []byte, n int, err error) (int, error) {
-	if sticky := f.Err(); sticky != nil {
+	if sticky := f.state.check(f.state.ctx); sticky != nil {
 		clear(data)
 		return 0, sticky
 	}
@@ -361,7 +406,7 @@ func (s *playbackSource) Stat(ctx context.Context, ref mediasource.Ref) (mediaso
 	if err = errors.Join(err, after); err != nil {
 		return mediasource.Info{}, s.state.fail(err)
 	}
-	if info.LogicalPath != s.state.ref.LogicalPath || info.Revision != s.ref.Revision {
+	if (!s.state.cover && info.LogicalPath != s.state.ref.LogicalPath) || info.Revision != s.ref.Revision {
 		return mediasource.Info{}, s.state.fail(storagesource.ErrReferenceConflict)
 	}
 	return info, nil

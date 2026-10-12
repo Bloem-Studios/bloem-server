@@ -3520,6 +3520,7 @@ func main() {
 		}
 	}
 
+	api.ConfigureNativeStorageArtwork(&deps)
 	router := api.NewRouter(deps)
 
 	// Step 8: The compatibility gateway the public listener composes is

@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/Silo-Server/silo-server/internal/artworkkey"
+	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -95,8 +96,12 @@ func (r *Repository) FileReference(ctx context.Context, fileID, authorizedFolder
  JOIN bloem_storage_file_refs x ON x.media_file_id=f.id
  JOIN library_storage_locations l ON l.id=x.location_id AND l.folder_id=f.media_folder_id
  JOIN bloem_storage_sources s ON s.key=l.source_key
+ JOIN media_folders folder ON folder.id=l.folder_id AND folder.enabled
  LEFT JOIN plugin_installations i ON i.id=s.installation_id
- WHERE f.id=$1 AND f.media_folder_id=$2`, fileID, authorizedFolderID).Scan(&source.Key, &source.OwnerID, &source.InstallationID, &source.PluginID, &source.ProviderSourceID, &source.RootEntryID, &source.ConfigurationRevision, &source.Enabled, &ref.LocationID, &ref.EntryID, &ref.Revision, &ref.LogicalPath, &location, &available)
+ WHERE f.id=$1 AND f.media_folder_id=$2 AND x.configuration_revision=s.configuration_revision
+ AND EXISTS(SELECT 1 FROM bloem_storage_file_roots m
+ JOIN bloem_storage_selected_roots root ON root.location_id=m.location_id AND root.id=m.root_id AND root.enabled
+ WHERE m.location_id=l.id AND m.media_file_id=f.id AND m.enabled)`, fileID, authorizedFolderID).Scan(&source.Key, &source.OwnerID, &source.InstallationID, &source.PluginID, &source.ProviderSourceID, &source.RootEntryID, &source.ConfigurationRevision, &source.Enabled, &ref.LocationID, &ref.EntryID, &ref.Revision, &ref.LogicalPath, &location, &available)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return source, ref, ErrReferenceConflict
 	}
@@ -122,25 +127,95 @@ type CoverReference struct {
 	Source                SourceConfig
 	// Cover is the provider's cover entry, pinned to its revision.
 	Cover PersistedRef
+	// File and RootID pin the publication that authorized this cover. They are
+	// addressing evidence, not viewer authority.
+	File   PersistedRef
+	RootID uuid.UUID
 }
 
 // CoverReference finds a file of book contentID whose cover has revision, as
 // artworkkey.StorageCoverRevision names it. A cover that changed since its URL
 // was issued is not found.
 func (r *Repository) CoverReference(ctx context.Context, contentID, revision string) (CoverReference, error) {
+	return r.coverReference(ctx, contentID, revision, 0, uuid.Nil)
+}
+
+// CoverReferences lists every current publication of book contentID whose
+// cover has revision, in file/root order. A publication with a malformed
+// catalog address or an unavailable source is left out rather than hiding the
+// others. Issuers choose one the viewer may read and pin it with
+// CoverReferenceForFile; this grants no viewer authority.
+func (r *Repository) CoverReferences(ctx context.Context, contentID, revision string) ([]CoverReference, error) {
+	var out []CoverReference
+	var first error
+	err := r.coverPublications(ctx, contentID, revision, 0, uuid.Nil, func(c CoverReference, err error) bool {
+		if err == nil {
+			out = append(out, c)
+		} else if first == nil {
+			first = err
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(out) == 0 {
+		if first == nil {
+			first = ErrReferenceConflict
+		}
+		return nil, first
+	}
+	return out, nil
+}
+
+// CoverReferenceForFile redeems an exact published file/root, without switching
+// to another file when that publication has been revoked.
+func (r *Repository) CoverReferenceForFile(ctx context.Context, contentID, revision string, fileID int, rootID uuid.UUID) (CoverReference, error) {
+	if fileID <= 0 || rootID == uuid.Nil {
+		return CoverReference{}, ErrReferenceConflict
+	}
+	return r.coverReference(ctx, contentID, revision, fileID, rootID)
+}
+
+func (r *Repository) coverReference(ctx context.Context, contentID, revision string, fileID int, rootID uuid.UUID) (CoverReference, error) {
+	found := false
+	var result CoverReference
+	var resultErr error
+	err := r.coverPublications(ctx, contentID, revision, fileID, rootID, func(c CoverReference, err error) bool {
+		found, result, resultErr = true, c, err
+		return false
+	})
+	if err != nil {
+		return CoverReference{}, err
+	}
+	if !found {
+		return CoverReference{}, ErrReferenceConflict
+	}
+	return result, resultErr
+}
+
+// coverPublications visits current publications of contentID whose cover has
+// revision, in file/root order, until visit returns false. A candidate whose
+// catalog address is malformed or whose source is unavailable is visited as a
+// zero reference with its error.
+func (r *Repository) coverPublications(ctx context.Context, contentID, revision string, fileID int, rootID uuid.UUID, visit func(CoverReference, error) bool) error {
 	rows, err := r.pool.Query(ctx, `SELECT f.id,f.media_folder_id,f.content_id,f.file_path,l.id,l.source_key,l.folder_id,l.selection_revision,
  s.key,s.owner_id,s.installation_id,s.plugin_id,s.provider_source_id,s.root_entry_id,s.configuration_revision,s.enabled,
- x.location_id,x.cover_entry_id,x.cover_revision,
+ x.location_id,x.cover_entry_id,x.cover_revision,x.location_id,x.entry_id,x.revision,x.logical_path,m.root_id,
  COALESCE(s.enabled AND i.enabled AND i.plugin_id=s.plugin_id AND i.owner_id=s.owner_id,false)
  FROM media_files f
  JOIN bloem_storage_file_refs x ON x.media_file_id=f.id
  JOIN library_storage_locations l ON l.id=x.location_id AND l.folder_id=f.media_folder_id
  JOIN bloem_storage_sources s ON s.key=l.source_key
+ JOIN media_folders folder ON folder.id=l.folder_id AND folder.enabled
+ JOIN bloem_storage_file_roots m ON m.location_id=l.id AND m.media_file_id=f.id AND m.enabled
+ JOIN bloem_storage_selected_roots root ON root.location_id=m.location_id AND root.id=m.root_id AND root.enabled
  LEFT JOIN plugin_installations i ON i.id=s.installation_id
- WHERE f.content_id=$1 AND x.cover_entry_id IS NOT NULL
- ORDER BY f.id`, contentID)
+ WHERE f.content_id=$1 AND x.cover_entry_id IS NOT NULL AND x.configuration_revision=s.configuration_revision
+ AND ($2::bigint=0 OR f.id=$2) AND ($3::uuid='00000000-0000-0000-0000-000000000000' OR m.root_id=$3)
+ ORDER BY f.id,m.root_id`, contentID, fileID, rootID)
 	if err != nil {
-		return CoverReference{}, err
+		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -148,19 +223,21 @@ func (r *Repository) CoverReference(ctx context.Context, contentID, revision str
 		var available bool
 		if err := rows.Scan(&c.MediaFileID, &c.FolderID, &c.ContentID, &c.FilePath, &c.Location.ID, &c.Location.SourceKey, &c.Location.FolderID, &c.Location.SelectionRevision,
 			&c.Source.Key, &c.Source.OwnerID, &c.Source.InstallationID, &c.Source.PluginID, &c.Source.ProviderSourceID, &c.Source.RootEntryID, &c.Source.ConfigurationRevision, &c.Source.Enabled,
-			&c.Cover.LocationID, &c.Cover.EntryID, &c.Cover.Revision, &available); err != nil {
-			return CoverReference{}, err
+			&c.Cover.LocationID, &c.Cover.EntryID, &c.Cover.Revision, &c.File.LocationID, &c.File.EntryID, &c.File.Revision, &c.File.LogicalPath, &c.RootID, &available); err != nil {
+			return err
 		}
 		if artworkkey.StorageCoverRevision(c.Cover.EntryID, c.Cover.Revision) != revision {
 			continue
 		}
-		if !available {
-			return CoverReference{}, ErrSourceUnavailable
+		var candidateErr error
+		if expected, err := CatalogLocation(c.File.LocationID, c.File.EntryID); err != nil || expected != c.FilePath {
+			c, candidateErr = CoverReference{}, ErrReferenceConflict
+		} else if !available {
+			c, candidateErr = CoverReference{}, ErrSourceUnavailable
 		}
-		return c, nil
+		if !visit(c, candidateErr) {
+			return nil
+		}
 	}
-	if err := rows.Err(); err != nil {
-		return CoverReference{}, err
-	}
-	return CoverReference{}, ErrReferenceConflict
+	return rows.Err()
 }

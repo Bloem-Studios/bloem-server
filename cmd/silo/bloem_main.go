@@ -21,7 +21,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
-	"github.com/Silo-Server/silo-server/internal/artworkurl"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/branding"
@@ -683,15 +682,10 @@ func configureStorageCoverCache(ctx context.Context, host *nativestorage.Host, u
 // for the server artwork route.
 var bloemImageResolverSources []metadata.PluginImageResolverSourceRegistration
 
-// storageCoverURLWindow keeps a storage cover's URL the same for a week: the
-// URL names immutable bytes, so clients keep the cover instead of fetching it
-// again under a new URL every day.
-const storageCoverURLWindow = 7 * 24 * time.Hour
-
 func bloemImageSources(deps api.Dependencies) []metadata.PluginImageResolverSourceRegistration {
 	if deps.Blobs.Assets == nil || deps.ArtworkSigner == nil {
 		return nil
 	}
-	source := metadata.NewStorageCoverSource(artworkurl.NewWindowResolver(deps.ArtworkSigner, storageCoverURLWindow))
+	source := metadata.NewStorageCoverSource(deps.NativeStorage)
 	return []metadata.PluginImageResolverSourceRegistration{metadata.StorageCoverRegistration(source)}
 }
