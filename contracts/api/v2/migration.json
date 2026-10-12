@@ -10,7 +10,7 @@
   "consumer_method": "Client call sites were extracted by scripts/apiv2-ledger/extract_consumers.py from web/src (this repo) and the origin/main trees of silo-apple and silo-android at the commits pinned in source_trees (re-resolve a sibling site with git show <sha>:<file> in that repo, never against a moving branch): path literals and templates passed to HTTP/WebSocket calls, plus paths built by helper functions that return a template, templates rooted at the API base URL, Kotlin buildString/const val builders, and Swift let/static let path bindings, with interpolations normalized to a wildcard and matched against inventory paths by method (scripts/apiv2-ledger/match_consumers.py). scripts/apiv2-ledger/sweep_uncredited.py then greps the last two static segments of every inventory path across all three trees and every hit not within four lines of a credited site was resolved by hand. Server-internal and compat consumers are Go URL builders and callers in this repo. Sites marked match=manual were resolved by hand where the path is assembled from variables the scripts cannot follow. Call-site files are repository-root-relative for their repo (web: src/... under web/; apple: iosApp/...; android: shared/, android-shared/, androidApp/, androidTvApp/; server: this repository root). Absence of a first-party consumer is not proof of disuse.",
   "field_reference": "internal/contractledger validates this file against migration.schema.json and reconciles it against the route inventory: listener, namespace, method, path, registration_index, handler, handler_kind, source_file, route_group, middleware_chain, auth_class, auth_traits, conditional, conditions, delegates_to (inventory empty string is null here), request_kind, response_media_kind, streams, and upgrades_websocket are copied from the inventory row and must match it, except that dynamic_plugin_proxy rows record both media kinds as dynamic_proxy; profile_required and admin_required are derived from auth_traits. Every other field is curated by hand and preserved when scripts/apiv2-ledger/build_ledger.py merges a regenerated inventory into this file.",
   "totals": {
-    "entries": 1210
+    "entries": 1218
   },
   "entries": [
     {
@@ -1629,6 +1629,171 @@
       "listener": "api",
       "namespace": "legacy_unversioned",
       "method": "GET",
+      "path": "/api/bloem/v1/admin/organization/audiobook-request-integrations",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookIntegrationList",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": false,
+      "conditions": [],
+      "delegates_to": null,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 101,
+          "types": [
+            "AudiobookSetup"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-admin-organization",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/audiobook-request-integrations",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookIntegrationCreate",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": false,
+      "conditions": [],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 107,
+          "types": [
+            "AudiobookIntegration"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-admin-organization",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
+      "path": "/api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/library",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookIntegrationLibrary",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": false,
+      "conditions": [],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 115,
+          "types": [
+            "AudiobookIntegration"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-admin-organization",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
       "path": "/api/bloem/v1/admin/organization/book-requests",
       "registration_index": 0,
       "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAdminList",
@@ -1679,6 +1844,171 @@
         "operation_id": null
       },
       "notes": "Bloem-owned audiobook request lane at /api/bloem/v1, documented in docs/architecture/bloem-audiobook-requests.md. Native Apple and Android adoption is pending; this row does not assert native runtime acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/admin/organization/book-requests/acquisitions",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookAcquisitionList",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": false,
+      "conditions": [],
+      "delegates_to": null,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 127,
+          "types": [
+            "AudiobookAcquisition"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/book-requests/{id}/accept-download",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookDownloadAcceptance",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": false,
+      "conditions": [],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 146,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/admin/organization/book-requests/{id}/acquisition",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookAcquisition",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": false,
+      "conditions": [],
+      "delegates_to": null,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 133,
+          "types": [
+            "AudiobookAcquisition"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1."
     },
     {
       "listener": "api",
@@ -1734,6 +2064,61 @@
         "operation_id": null
       },
       "notes": "Bloem-owned audiobook request lane at /api/bloem/v1, documented in docs/architecture/bloem-audiobook-requests.md. Native Apple and Android adoption is pending; this row does not assert native runtime acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/book-requests/{id}/approve-candidate",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookCandidateApproval",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": false,
+      "conditions": [],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 141,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1."
     },
     {
       "listener": "api",
@@ -1844,6 +2229,61 @@
         "operation_id": null
       },
       "notes": "Bloem-owned audiobook request lane at /api/bloem/v1, documented in docs/architecture/bloem-audiobook-requests.md. Native Apple and Android adoption is pending; this row does not assert native runtime acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/book-requests/{id}/retry",
+      "registration_index": 0,
+      "handler": "literal:api:/api/bloem/v1/admin/organization/book-requests/{id}/retry",
+      "handler_kind": "literal",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": false,
+      "conditions": [],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 148,
+          "types": [
+            "BookRequest"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1."
     },
     {
       "listener": "api",
