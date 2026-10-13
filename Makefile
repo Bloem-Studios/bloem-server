@@ -78,7 +78,7 @@ test: test-go test-web
 
 # The Go suite minus the scenario executor, which has its own target (and CI
 # job) below. When SILO_TEST_DATABASE_URL is set the shared test database is
-# prepared first (see test-db-prepare).
+# prepared first. GO_TEST_PACKAGES and test-db-prepare live in Makefile.bloem.
 test-go: embed-stub
 	@if [ -n "$$SILO_TEST_DATABASE_URL" ]; then $(MAKE) --no-print-directory test-db-prepare || exit 1; fi
 	go test -timeout=20m $(GO_TEST_PACKAGES)
