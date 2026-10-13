@@ -32,7 +32,6 @@ ENV GONOSUMDB=github.com/Silo-Server/*
 RUN apt-get update && apt-get install -y --no-install-recommends libvips-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY go.mod go.sum ./
-COPY internal/compat/zishang520-webtransport-go/ internal/compat/zishang520-webtransport-go/
 RUN go mod download
 COPY internal/ internal/
 COPY migrations/ migrations/
