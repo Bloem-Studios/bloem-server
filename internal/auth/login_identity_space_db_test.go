@@ -212,6 +212,10 @@ func TestLoginIdentitySpaceDB(t *testing.T) {
 
 	t.Run("a repeatable-read writer sees a claim committed after its snapshot", func(t *testing.T) {
 		identifier := prefix + "-heidi@example.invalid"
+		// Bloem: a new account publishes through the managed-tracking clock and
+		// fences this snapshot first (bloem_login_identity_fence_db_test.go); an
+		// email change publishes nothing, so the claim still meets the index.
+		owner := mustCreate(t, prefix+"-owner7", prefix+"-owner7@example.invalid")
 		tx, err := pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
 		if err != nil {
 			t.Fatal(err)
@@ -220,7 +224,9 @@ func TestLoginIdentitySpaceDB(t *testing.T) {
 		if _, err := tx.Exec(ctx, "SELECT count(*) FROM users"); err != nil {
 			t.Fatal(err)
 		}
-		mustCreate(t, prefix+"-owner7", identifier)
+		if err := users.Update(ctx, owner.ID, models.UpdateUserInput{Email: &identifier}); err != nil {
+			t.Fatal(err)
+		}
 		_, err = createUser(ctx, tx, input(identifier, prefix+"-other7@example.invalid"))
 		requireDuplicate(t, err)
 	})

@@ -561,6 +561,8 @@ func (h *AdminHandler) handleLifecycleDeleteUserDevice(w http.ResponseWriter, r 
 			TargetSource: targetSource,
 		},
 		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+			// A serialization rerun resolves again; start from no profiles.
+			profileIDs = nil
 			targets, err := resolveBase(ctx, tx)
 			if err != nil {
 				return nil, err
@@ -613,6 +615,7 @@ func (h *AdminHandler) handleLifecycleDeleteUserDevice(w http.ResponseWriter, r 
 	}
 	var changed []userstore.SettingIdentity
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		changed = nil
 		store, err := h.lifecycleProfileStore(ctx, tx, userID)
 		if err != nil {
 			return lifecycleidempotency.Result{}, err

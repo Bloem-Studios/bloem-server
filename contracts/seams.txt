@@ -155,6 +155,7 @@ internal/auth/external_sign_in_db_test.go # Identity fixtures use the canonical 
 internal/auth/identity_service.go  # actor and target locks use the membership-aware account projection
 internal/auth/initial_setup_atomic_test.go  # real Bloem setup seams, lifecycle admission and cross-transport first-account concurrency proof
 internal/auth/jwt.go
+internal/auth/login_identity_space_db_test.go  # managed-tracking publication fences a repeatable-read writer before its claim; the after-snapshot claim is an email change, which publishes nothing
 internal/auth/login_session_device_db_test.go  # auth_sessions.device_id is NOT NULL DEFAULT '' in Bloem, so no device is '' rather than NULL
 internal/auth/login_sessions_db_test.go  # directly inserted accounts get the default-organization membership Bloem profiles require
 internal/auth/oauth_completion_authority_db_test.go  # membership policy projection and entitlement-aware plugin cleanup in upstream OAuth authority tests

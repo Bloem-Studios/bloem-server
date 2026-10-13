@@ -898,6 +898,8 @@ func (h *AdminHandler) handleLifecycleRevokeUserSessions(w http.ResponseWriter, 
 			TargetSource: lifecycleidempotency.TargetPathAccount,
 		},
 		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
+			// A serialization rerun resolves the session and profiles again.
+			sessionExists, scopedProfileIDs = false, nil
 			targets, err := lifecycleidempotency.ResolveAccountTargets(ctx, tx, userID)
 			if err != nil {
 				return nil, err
@@ -982,6 +984,7 @@ func (h *AdminHandler) handleLifecycleRevokeUserSessions(w http.ResponseWriter, 
 	mutated := all
 	accountWide := false
 	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
+		mutated, accountWide = all, false
 		if all {
 			query := `UPDATE auth_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL`
 			args := []any{userID}
