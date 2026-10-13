@@ -85,7 +85,7 @@ func TestManagedEbookStateKeepsExactLocatorAndRejectsWrongEdition(t *testing.T) 
 	}
 }
 
-func TestManagedAudiobookRejectsNonFiniteDuration(t *testing.T) {
+func TestManagedAudiobookRejectsInvalidDurationAndStaleResetReplay(t *testing.T) {
 	pool := coverRecipeDatabase(t)
 	ctx := t.Context()
 	id := uuid.NewString()
@@ -112,7 +112,7 @@ func TestManagedAudiobookRejectsNonFiniteDuration(t *testing.T) {
 	if err != nil || len(data.BookStates) != 1 {
 		t.Fatal(data, err)
 	}
-	for _, duration := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
+	for _, duration := range []float64{math.NaN(), math.Inf(1), math.Inf(-1), 7200, 1800} {
 		state := proto.Clone(data.BookStates[0]).(*library.BookState)
 		state.ChangedAt = timestamppb.Now()
 		state.AudiobookSeconds = 10
@@ -124,7 +124,154 @@ func TestManagedAudiobookRejectsNonFiniteDuration(t *testing.T) {
 		_, err = source.MutateLibrary(ctx, p, tx, &library.LibraryMutation{EventId: "invalid-duration", Operation: "book.progress", TargetId: id, ExpectedRevision: state.Revision, BookState: state})
 		tx.Rollback(ctx)
 		if !errors.Is(err, managedtracking.ErrSnapshot) {
-			t.Fatalf("nonfinite duration accepted: %v, %v", duration, err)
+			t.Fatalf("invalid duration accepted: %v, %v", duration, err)
 		}
 	}
+	// A reset removes the native progress row, but its clock still fences delayed
+	// progress even when the companion has refreshed to the reset revision.
+	state := proto.Clone(data.BookStates[0]).(*library.BookState)
+	oldEvent := time.Now().Add(-time.Minute)
+	state.ChangedAt = timestamppb.Now()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = source.MutateLibrary(ctx, p, tx, &library.LibraryMutation{EventId: "reset-empty", Operation: "book.reset", TargetId: id, ExpectedRevision: state.Revision, BookState: state})
+	if err != nil {
+		tx.Rollback(ctx)
+		t.Fatal(err)
+	}
+	if err = tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	data, err = source.ReadLibrary(ctx, p, managedtracking.LibraryQuery{View: "book_states", ParentID: id, Limit: 20})
+	if err != nil || len(data.BookStates) != 1 {
+		t.Fatal(data, err)
+	}
+	state = proto.Clone(data.BookStates[0]).(*library.BookState)
+	state.ChangedAt = timestamppb.New(oldEvent)
+	state.AudiobookSeconds = 20
+	tx, err = pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	receipt, err := source.MutateLibrary(ctx, p, tx, &library.LibraryMutation{EventId: "late-progress", Operation: "book.progress", TargetId: id, ExpectedRevision: state.Revision, BookState: state})
+	if err != nil || receipt.Status != "no_change" {
+		t.Fatalf("delayed progress resurrected reset: %v, %v", receipt, err)
+	}
+
+	if err = tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	// Native activity newer than an imported event must survive both completion
+	// and reset, even after the companion refreshed the current revision.
+	if _, err = pool.Exec(ctx, `INSERT INTO user_watch_progress(user_id,profile_id,media_item_id,position_seconds,duration_seconds,completed,updated_at) VALUES($1,'listener',$2,120,3600,false,clock_timestamp())`, user, id); err != nil {
+		t.Fatal(err)
+	}
+	data, err = source.ReadLibrary(ctx, p, managedtracking.LibraryQuery{View: "book_states", ParentID: id, Limit: 20})
+	if err != nil || len(data.BookStates) != 1 {
+		t.Fatal(data, err)
+	}
+	for _, operation := range []string{"book.completed", "book.reset"} {
+		state = proto.Clone(data.BookStates[0]).(*library.BookState)
+		state.ChangedAt = timestamppb.New(oldEvent)
+		tx, err = pool.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		receipt, err = source.MutateLibrary(ctx, p, tx, &library.LibraryMutation{EventId: operation, Operation: operation, TargetId: id, ExpectedRevision: state.Revision, BookState: state})
+		tx.Rollback(ctx)
+		if err != nil || receipt.Status != "no_change" {
+			t.Fatalf("newer native activity overwritten: %v, %v", receipt, err)
+		}
+	}
+	for _, operation := range []string{"book.completed", "book.reset"} {
+		data, err = source.ReadLibrary(ctx, p, managedtracking.LibraryQuery{View: "book_states", ParentID: id, Limit: 20})
+		if err != nil || len(data.BookStates) != 1 {
+			t.Fatal(data, err)
+		}
+		state = proto.Clone(data.BookStates[0]).(*library.BookState)
+		state.ChangedAt = timestamppb.Now()
+		tx, err = pool.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = source.MutateLibrary(ctx, p, tx, &library.LibraryMutation{EventId: "current-" + operation, Operation: operation, TargetId: id, ExpectedRevision: state.Revision, BookState: state})
+		if err != nil {
+			tx.Rollback(ctx)
+			t.Fatal(err)
+		}
+		if err = tx.Commit(ctx); err != nil {
+			t.Fatal(err)
+		}
+		after, e := source.ReadLibrary(ctx, p, managedtracking.LibraryQuery{View: "book_states", ParentID: id, Limit: 20})
+		if e != nil || len(after.BookStates) != 1 {
+			t.Fatal(after, e)
+		}
+		got := after.BookStates[0]
+		if got.AudiobookDurationSeconds != 3600 || got.AudiobookSeconds != 0 || got.Completed != (operation == "book.completed") || got.Reset_ != (operation == "book.reset") {
+			t.Fatalf("wrong explicit state after %s: %v", operation, got)
+		}
+	}
+
+	// Two companion events with the same revision cannot both create the missing
+	// row. Wait for the database lock, then commit the first event.
+	data, err = source.ReadLibrary(ctx, p, managedtracking.LibraryQuery{View: "book_states", ParentID: id, Limit: 20})
+	if err != nil || len(data.BookStates) != 1 {
+		t.Fatal(data, err)
+	}
+	first := proto.Clone(data.BookStates[0]).(*library.BookState)
+	first.ChangedAt = timestamppb.Now()
+	first.AudiobookSeconds = 10
+	tx1, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx1.Rollback(ctx)
+	if _, err = source.MutateLibrary(ctx, p, tx1, &library.LibraryMutation{EventId: "first-progress", Operation: "book.progress", TargetId: id, ExpectedRevision: first.Revision, BookState: first}); err != nil {
+		t.Fatal(err)
+	}
+	tx2, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx2.Rollback(ctx)
+	second := proto.Clone(first).(*library.BookState)
+	second.ChangedAt = timestamppb.Now()
+	second.AudiobookSeconds = 30
+	done := make(chan error, 1)
+	go func() {
+		_, e := source.MutateLibrary(ctx, p, tx2, &library.LibraryMutation{EventId: "second-progress", Operation: "book.progress", TargetId: id, ExpectedRevision: second.Revision, BookState: second})
+		done <- e
+	}()
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	tick := time.NewTicker(10 * time.Millisecond)
+	defer tick.Stop()
+	waiting := false
+	for !waiting {
+		select {
+		case e := <-done:
+			t.Fatalf("second mutation did not wait for the first: %v", e)
+		case <-deadline.C:
+			t.Fatal("second mutation never reached its database lock")
+		case <-tick.C:
+			if err = pool.QueryRow(ctx, `SELECT coalesce(wait_event_type='Lock',false) FROM pg_stat_activity WHERE pid=$1`, tx2.Conn().PgConn().PID()).Scan(&waiting); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err = tx1.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err = <-done:
+		if !errors.Is(err, managedtracking.ErrConflict) {
+			t.Fatalf("concurrent stale revision applied: %v", err)
+		}
+	case <-deadline.C:
+		t.Fatal("second mutation did not finish")
+	}
+
 }

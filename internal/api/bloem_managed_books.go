@@ -140,19 +140,20 @@ func (s *managedCalendarSource) managedBookState(ctx context.Context, scope acce
 		return nil, managedtracking.ErrSnapshot
 	}
 	sort.Slice(selected, func(i, j int) bool { return selected[i].ID < selected[j].ID })
+	if item.Type == "audiobook" {
+		selected, state.AudiobookDurationSeconds, err = managedAudiobookEdition(selected)
+		if err != nil {
+			return nil, err
+		}
+	}
 	signatures := []any{}
 	for _, f := range selected {
-		signatures = append(signatures, []any{f.ID, f.FileSize, f.FileHash, f.FileModifiedAt, f.EditionKey, f.Duration})
+		signatures = append(signatures, []any{f.ID, f.FileSize, f.FileHash, f.FileModifiedAt, f.EditionKey, f.Duration, f.MediaFolderID, f.PresentationGroupKey, f.PresentationPartIndex, f.PresentationPartTotal})
 	}
 	raw, _ := json.Marshal(signatures)
 	digest := sha256.Sum256(raw)
 	state.EditionId = hex.EncodeToString(digest[:])
 	state.FileId = int64(selected[0].ID)
-	if item.Type == "audiobook" && state.AudiobookDurationSeconds == 0 {
-		for _, f := range selected {
-			state.AudiobookDurationSeconds += float64(f.Duration)
-		}
-	}
 	identity := []*library.LibraryItem{libraryItem(item)}
 	if err = s.addManagedLibraryIdentities(ctx, identity); err != nil {
 		return nil, err
@@ -161,10 +162,46 @@ func (s *managedCalendarSource) managedBookState(ctx context.Context, scope acce
 	state.Isbn = state.ExternalIds["isbn"]
 	return state, nil
 }
+
+// The companion cannot choose between alternate recordings. Accept a single
+// file or one complete native multipart timeline, using the host's part order.
+func managedAudiobookEdition(files []*models.MediaFile) ([]*models.MediaFile, float64, error) {
+	if len(files) == 0 {
+		return nil, 0, managedtracking.ErrSnapshot
+	}
+	parts := append([]*models.MediaFile(nil), files...)
+	for _, f := range parts {
+		if f == nil || f.Duration <= 0 {
+			return nil, 0, managedtracking.ErrSnapshot
+		}
+	}
+	first := parts[0]
+	if len(parts) > 1 || first.PresentationPartTotal > 1 {
+		if first.PresentationKind != "multipart" || first.PresentationGroupKey == "" || first.PresentationPartTotal != len(parts) {
+			return nil, 0, managedtracking.ErrSnapshot
+		}
+		sort.Slice(parts, func(i, j int) bool { return parts[i].PresentationPartIndex < parts[j].PresentationPartIndex })
+		for i, f := range parts {
+			if f.PresentationKind != "multipart" || f.PresentationGroupKey != first.PresentationGroupKey || f.MediaFolderID != first.MediaFolderID || f.EditionKey != first.EditionKey || f.PresentationPartTotal != len(parts) || f.PresentationPartIndex != i+1 {
+				return nil, 0, managedtracking.ErrSnapshot
+			}
+		}
+	}
+	var duration float64
+	for _, f := range parts {
+		duration += float64(f.Duration)
+	}
+	return parts, duration, nil
+}
 func (s *managedCalendarSource) mutateManagedBook(ctx context.Context, tx pgx.Tx, in *library.LibraryMutation, scope access.Scope) (*library.LibraryMutationReceipt, error) {
 	state := in.BookState
 	if state == nil || state.ContentId != in.TargetId || state.ChangedAt == nil || state.ChangedAt.CheckValid() != nil || state.ChangedAt.AsTime().After(time.Now()) || in.Copy != nil || len(in.Items) != 0 {
 		return nil, managedtracking.ErrSnapshot
+	}
+	// Different event IDs may target the same missing progress row. Serialize
+	// companion writers without changing the native progress/clock lock order.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, "bloem.book:"+scope.ProfileID+":"+in.TargetId); err != nil {
+		return nil, err
 	}
 	items, err := catalog.NewItemRepository(s.pool).GetByIDsWithAccess(ctx, []string{in.TargetId}, managedLibraryFilter(scope))
 	if err != nil {
@@ -201,12 +238,16 @@ func (s *managedCalendarSource) mutateManagedBook(ctx context.Context, tx pgx.Tx
 	// Recheck the native revision after locking the actual progress row. Native
 	// writers acquire progress before the clock trigger, so lock order is preserved.
 	var revision uint64
-	err = tx.QueryRow(ctx, `SELECT revision FROM bloem_companion_book_clock WHERE user_id=$1 AND profile_id=$2 AND content_id=$3`, scope.UserID, scope.ProfileID, in.TargetId).Scan(&revision)
+	var clockAt time.Time
+	err = tx.QueryRow(ctx, `SELECT revision,changed_at FROM bloem_companion_book_clock WHERE user_id=$1 AND profile_id=$2 AND content_id=$3`, scope.UserID, scope.ProfileID, in.TargetId).Scan(&revision, &clockAt)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
 	if revision != in.ExpectedRevision {
 		return nil, managedtracking.ErrConflict
+	}
+	if !clockAt.IsZero() && !state.ChangedAt.AsTime().After(clockAt) {
+		return &library.LibraryMutationReceipt{EventId: in.EventId, TargetId: in.TargetId, Revision: revision, Status: "no_change"}, nil
 	}
 	if state.Kind == "ebook" {
 		store := &managedEbookProgressTx{tx: tx, eventAt: state.ChangedAt.AsTime()}
@@ -226,6 +267,9 @@ func (s *managedCalendarSource) mutateManagedBook(ctx context.Context, tx pgx.Tx
 			return nil, managedtracking.ErrSnapshot
 		}
 	} else {
+		if state.AudiobookDurationSeconds != current.AudiobookDurationSeconds || state.EbookLocation != "" || state.EbookFraction != 0 {
+			return nil, managedtracking.ErrSnapshot
+		}
 		if math.IsNaN(state.AudiobookSeconds) || math.IsInf(state.AudiobookSeconds, 0) || state.AudiobookSeconds < 0 || math.IsNaN(state.AudiobookDurationSeconds) || math.IsInf(state.AudiobookDurationSeconds, 0) || state.AudiobookDurationSeconds <= 0 || state.AudiobookSeconds > state.AudiobookDurationSeconds {
 			return nil, managedtracking.ErrSnapshot
 		}
