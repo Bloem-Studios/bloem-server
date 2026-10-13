@@ -13,6 +13,7 @@ import (
 
 	calendar "github.com/Silo-Server/silo-server/internal/managedtracking/calendarwire"
 	library "github.com/Silo-Server/silo-server/internal/managedtracking/librarywire"
+	lists "github.com/Silo-Server/silo-server/internal/managedtracking/listwire"
 	rec "github.com/Silo-Server/silo-server/internal/managedtracking/recommendationswire"
 	managedv1 "github.com/Silo-Server/silo-server/internal/managedtracking/wire"
 )
@@ -28,6 +29,7 @@ type brokerService struct {
 func (s *Service) RegisterBroker(server *grpc.Server, plugin string, installation int) {
 	if s != nil && plugin == "bloem.pastime" {
 		managedv1.RegisterManagedTrackingHostServer(server, &brokerService{service: s, installation: installation})
+		lists.RegisterListHostServer(server, &listBroker{service: s, installation: installation})
 		calendar.RegisterCalendarHostServer(server, &calendarBroker{service: s, installation: installation})
 		rec.RegisterRecommendationsHostServer(server, &recommendationsBroker{service: s, installation: installation})
 		library.RegisterLibraryHostServer(server, &libraryBroker{service: s, installation: installation})
@@ -58,6 +60,9 @@ func (b *brokerService) GetInfo(ctx context.Context, _ *managedv1.InfoRequest) (
 		return nil, safeRPC(err)
 	}
 	out := &managedv1.InfoResponse{Capability: Capability, InstanceId: info.InstanceID, EnrollmentScope: info.Scope, CredentialGeneration: info.Generation}
+	if b.service.listBackend() != nil {
+		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.list_sync.v1")
+	}
 	if _, ok := b.service.calendarSource().(AvailabilitySource); ok {
 		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.availability.v1")
 	}

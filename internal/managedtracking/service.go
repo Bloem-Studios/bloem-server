@@ -21,6 +21,7 @@ type Service struct {
 	Cipher             *secret.Cipher
 	Calendar           CalendarSource
 	calendarConfigured atomic.Pointer[calendarSourceBox]
+	listConfigured     atomic.Pointer[listBackendBox]
 }
 type Profile struct {
 	AccountID        string `json:"account_id"`
