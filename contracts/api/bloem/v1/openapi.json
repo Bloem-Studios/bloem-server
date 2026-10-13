@@ -1058,6 +1058,180 @@
         ],
         "type": "object"
       },
+      "BloemListBindingStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "failure": {
+            "type": "string"
+          },
+          "generation": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "last_success": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "matched": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "requests": {
+            "$ref": "#/components/schemas/RequestCounts"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "unmatched": {
+            "items": {
+              "$ref": "#/components/schemas/Unmatched"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "source_id",
+          "target_id",
+          "scope",
+          "status",
+          "generation",
+          "last_success",
+          "matched",
+          "unmatched",
+          "failure",
+          "requests"
+        ],
+        "type": "object"
+      },
+      "BloemListCapability": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "connections": {
+            "items": {
+              "$ref": "#/components/schemas/BloemListConnection"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "available",
+          "connections"
+        ],
+        "type": "object"
+      },
+      "BloemListConnection": {
+        "additionalProperties": false,
+        "properties": {
+          "can_create_server": {
+            "type": "boolean"
+          },
+          "installation_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "origin": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "installation_id",
+          "origin",
+          "can_create_server"
+        ],
+        "type": "object"
+      },
+      "BloemListCreateCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "is_shared": {
+            "type": "boolean"
+          },
+          "library_ids": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "preview_id": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "preview_id",
+          "scope",
+          "name",
+          "is_shared"
+        ],
+        "type": "object"
+      },
+      "BloemListDisconnect": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "BloemListJob": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "BloemListPreviewCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "installation_id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "installation_id",
+          "url"
+        ],
+        "type": "object"
+      },
       "BloemNativeError": {
         "additionalProperties": false,
         "properties": {
@@ -3372,6 +3546,40 @@
         ],
         "type": "object"
       },
+      "Entry": {
+        "additionalProperties": false,
+        "properties": {
+          "external_ids": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "source_entry_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "unsupported_reason": {
+            "type": "string"
+          },
+          "year": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "year",
+          "external_ids"
+        ],
+        "type": "object"
+      },
       "FormFile": {
         "additionalProperties": false,
         "properties": {
@@ -3796,6 +4004,44 @@
         },
         "type": "object"
       },
+      "PreviewStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "failure": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "name",
+          "kind",
+          "count",
+          "expires_at",
+          "failure"
+        ],
+        "type": "object"
+      },
       "Problem": {
         "additionalProperties": false,
         "properties": {
@@ -4211,6 +4457,39 @@
         ],
         "type": "object"
       },
+      "RequestCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "blocked": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "cancelled": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "delivered": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "pending": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "quota": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pending",
+          "blocked",
+          "delivered",
+          "cancelled",
+          "quota"
+        ],
+        "type": "object"
+      },
       "RootSelection": {
         "additionalProperties": false,
         "properties": {
@@ -4543,6 +4822,27 @@
           "channel_count",
           "last_error",
           "transcode_codecs"
+        ],
+        "type": "object"
+      },
+      "Unmatched": {
+        "additionalProperties": false,
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/Entry"
+          },
+          "position": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "position",
+          "entry",
+          "reason"
         ],
         "type": "object"
       },
@@ -16766,6 +17066,791 @@
         "summary": "Withdraw a pending or approved ebook request locally.",
         "tags": [
           "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/list-collections/bindings": {
+      "post": {
+        "description": "Membership follows the source order. Missing titles use native request policy and quota with the creating profile as requester. Availability does not imply ownership. Refresh failures retain the last successful membership.",
+        "operationId": "createBloemListCollection",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemListCreateCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemListBindingStatus"
+                }
+              }
+            },
+            "description": "Accepted",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_list_source: malformed input or an unconfigured source origin."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_denied: source or collection unavailable to this profile."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_conflict or preview_expired: changed or expired source preview."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_unavailable: list synchronization unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create a personal, shared personal or administrator server collection from a live preview.",
+        "tags": [
+          "collections"
+        ]
+      }
+    },
+    "/api/bloem/v1/list-collections/bindings/{id}": {
+      "get": {
+        "operationId": "getBloemListCollectionBinding",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemListBindingStatus"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_list_source: malformed input or an unconfigured source origin."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_denied: source or collection unavailable to this profile."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_conflict or preview_expired: changed or expired source preview."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_unavailable: list synchronization unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read membership refresh status and separate native request outcomes.",
+        "tags": [
+          "collections"
+        ]
+      }
+    },
+    "/api/bloem/v1/list-collections/bindings/{id}/disconnect": {
+      "post": {
+        "operationId": "disconnectBloemListCollection",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemListDisconnect"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_list_source: malformed input or an unconfigured source origin."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_denied: source or collection unavailable to this profile."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_conflict or preview_expired: changed or expired source preview."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_unavailable: list synchronization unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Restore manual editing and cancel unsent requests while retaining membership and issued requests.",
+        "tags": [
+          "collections"
+        ]
+      }
+    },
+    "/api/bloem/v1/list-collections/bindings/{id}/refresh": {
+      "post": {
+        "operationId": "refreshBloemListCollection",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemListJob"
+                }
+              }
+            },
+            "description": "Accepted",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_list_source: malformed input or an unconfigured source origin."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_denied: source or collection unavailable to this profile."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_conflict or preview_expired: changed or expired source preview."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_unavailable: list synchronization unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Queue a refresh, coalescing an existing active job.",
+        "tags": [
+          "collections"
+        ]
+      }
+    },
+    "/api/bloem/v1/list-collections/capabilities": {
+      "get": {
+        "operationId": "getBloemListCollectionCapabilities",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemListCapability"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_list_source: malformed input or an unconfigured source origin."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_denied: source or collection unavailable to this profile."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_conflict or preview_expired: changed or expired source preview."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_unavailable: list synchronization unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List this profile's configured Pastime list connections.",
+        "tags": [
+          "collections"
+        ]
+      }
+    },
+    "/api/bloem/v1/list-collections/previews": {
+      "post": {
+        "operationId": "previewBloemListCollection",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemListPreviewCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemListJob"
+                }
+              }
+            },
+            "description": "Accepted",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_list_source: malformed input or an unconfigured source origin."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_denied: source or collection unavailable to this profile."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_conflict or preview_expired: changed or expired source preview."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_unavailable: list synchronization unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Resolve a configured Pastime list URL to a short-lived authorized preview.",
+        "tags": [
+          "collections"
+        ]
+      }
+    },
+    "/api/bloem/v1/list-collections/previews/{id}": {
+      "get": {
+        "operationId": "getBloemListCollectionPreview",
+        "parameters": [
+          {
+            "description": "Verified profile in the authenticated account's current organization.",
+            "in": "header",
+            "name": "X-Profile-Id",
+            "required": true,
+            "schema": {
+              "description": "Verified profile in the authenticated account's current organization.",
+              "type": "string"
+            }
+          },
+          {
+            "description": "PIN verification when required.",
+            "in": "header",
+            "name": "X-Profile-Token",
+            "schema": {
+              "description": "PIN verification when required.",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewStatus"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_list_source: malformed input or an unconfigured source origin."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_denied: source or collection unavailable to this profile."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_conflict or preview_expired: changed or expired source preview."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "list_unavailable: list synchronization unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read this profile's list preview without revealing source credentials.",
+        "tags": [
+          "collections"
         ]
       }
     },

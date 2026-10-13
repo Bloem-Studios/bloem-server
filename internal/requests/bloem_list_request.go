@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type listRequestWitnessKey struct{}
@@ -90,4 +92,42 @@ func bloemListRequestID(ctx context.Context, ordinary string, viewer Viewer, in 
 		return witness.id
 	}
 	return ordinary
+}
+
+// LookupExistingListRequest uses a scoped native identity index rather than a
+// bounded display page. It never returns another household profile's request.
+func (s *Service) LookupExistingListRequest(ctx context.Context, v Viewer, in CreateRequestInput) (*Request, error) {
+	normalized, err := normalizeCreateInput(in)
+	if err != nil {
+		return nil, err
+	}
+	if err = validateViewer(v); err != nil {
+		return nil, err
+	}
+	lookup, ok := s.store.(interface {
+		FindListRequest(context.Context, Viewer, CreateRequestInput) (string, error)
+	})
+	if !ok {
+		return nil, ErrNotFound
+	}
+	id, err := lookup.FindListRequest(ctx, v, normalized)
+	if err != nil {
+		return nil, err
+	}
+	r, err := s.GetRequest(ctx, v, id)
+	if err != nil {
+		return nil, err
+	}
+	if r.RequestedByUserID != v.UserID || r.RequestedByProfileID != v.ProfileID || r.MediaType != normalized.MediaType || r.TMDBID != normalized.TMDBID {
+		return nil, ErrForbidden
+	}
+	return r, nil
+}
+func (r *Repository) FindListRequest(ctx context.Context, v Viewer, in CreateRequestInput) (string, error) {
+	var id string
+	err := r.pool.QueryRow(ctx, `SELECT id FROM media_requests WHERE requested_by_user_id=$1 AND requested_by_profile_id=$2 AND media_type=$3 AND tmdb_id=$4 ORDER BY created_at DESC,id DESC LIMIT 1`, v.UserID, v.ProfileID, in.MediaType, in.TMDBID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return id, err
 }

@@ -46,6 +46,9 @@ func listNativeDomainFixtureRole(t *testing.T, role string) (*listCollectionDoma
 	if err = tx.QueryRow(ctx, `INSERT INTO plugin_installations(plugin_id,version,install_path,enabled) VALUES('bloem.pastime','fixture','synthetic',true) RETURNING id`).Scan(&installation); err != nil {
 		t.Fatal(err)
 	}
+	if _, err = tx.Exec(ctx, `INSERT INTO plugin_capabilities(plugin_installation_id,capability_type,capability_id,metadata) VALUES($1,'watch_sync_provider.v1','pastime','{"metadata":{"managed_list_collections":true,"managed_personal_state":true}}'::jsonb)`, installation); err != nil {
+		t.Fatal(err)
+	}
 	if err = tx.QueryRow(ctx, `INSERT INTO media_folders(type,name,enabled) VALUES('movies','Synthetic linked library',true) RETURNING id`).Scan(&folder); err != nil {
 		t.Fatal(err)
 	}
@@ -171,5 +174,21 @@ func TestListFollowNativePublicationRechecksCurrentCatalogPolicy(t *testing.T) {
 	d.source.resolver = resolver
 	if _, err = d.ReplaceTx(ctx, tx, s, b, []string{id}); !errors.Is(err, listcollections.ErrAuthority) {
 		t.Fatalf("publication ignored changed library policy: %v", err)
+	}
+}
+
+func TestListFollowServerCreateRequiresNativePrimaryProfile(t *testing.T) {
+	d, subject, folder := listNativeDomainFixture(t)
+	if _, err := d.source.pool.Exec(t.Context(), `UPDATE user_profiles SET is_primary=false WHERE id=$1`, subject.ProfileID); err != nil {
+		t.Fatal(err)
+	}
+	tx, err := d.source.pool.Begin(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(t.Context())
+	_, _, err = d.CreateTx(t.Context(), tx, subject, listcollections.CreateInput{Scope: "server", Name: "Non-primary refusal", LibraryIDs: []int{folder}}, uuid.NewString())
+	if !errors.Is(err, listcollections.ErrAuthority) {
+		t.Fatalf("server creation bypassed native primary-profile authority: %v", err)
 	}
 }

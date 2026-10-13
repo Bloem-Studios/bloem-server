@@ -68,6 +68,13 @@ func (b *listBroker) transaction(ctx context.Context, fn func(pgx.Tx, Info, List
 		return err
 	}
 	defer tx.Rollback(ctx)
+	if lane, ok := backend.(interface {
+		ListLane(context.Context, pgx.Tx, int) error
+	}); ok {
+		if err = lane.ListLane(ctx, tx, b.installation); err != nil {
+			return err
+		}
+	}
 	info, err := authority(ctx, tx, b.installation, grantShare)
 	if err != nil {
 		return err

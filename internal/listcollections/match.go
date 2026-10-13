@@ -10,9 +10,9 @@ type Candidate struct {
 	ExternalIDs map[string]string
 }
 type Unmatched struct {
-	Position int
-	Entry    Entry
-	Reason   string
+	Position int    `json:"position"`
+	Entry    Entry  `json:"entry"`
+	Reason   string `json:"reason"`
 }
 type Matches struct {
 	ContentIDs []string

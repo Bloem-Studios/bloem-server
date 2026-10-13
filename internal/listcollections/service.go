@@ -62,9 +62,10 @@ type CollectionDomain interface {
 	DisconnectTx(context.Context, pgx.Tx, Subject, Binding) error
 }
 type Service struct {
-	Pool   *pgxpool.Pool
-	Cipher *secret.Cipher
-	Domain CollectionDomain
+	Pool     *pgxpool.Pool
+	Cipher   *secret.Cipher
+	Domain   CollectionDomain
+	Requests RequestDomain
 }
 
 func (s *Service) authorize(ctx context.Context, tx pgx.Tx, subject Subject) error {
@@ -85,6 +86,9 @@ func (s *Service) transactionAuthorized(ctx context.Context, subject Subject, au
 		return err
 	}
 	defer tx.Rollback(ctx)
+	if err = LaneTx(ctx, tx, subject.InstallationID); err != nil {
+		return err
+	}
 	if err = authorize(ctx, tx, subject); err != nil {
 		return err
 	}

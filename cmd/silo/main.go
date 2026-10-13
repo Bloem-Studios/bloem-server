@@ -3526,8 +3526,10 @@ func main() {
 	}
 
 	api.ConfigureNativeStorageArtwork(&deps)
-	api.ConfigureManagedCalendar(deps, managedTrackingService)
+	deps.PastimeListOrigin = os.Getenv("BLOEM_PASTIME_LIST_ORIGIN")
+	deps.ListCollections = api.ConfigureManagedCalendar(deps, managedTrackingService)
 	router := api.NewRouter(deps)
+	defer api.StartListCollectionMaintenance(ctx, deps, needsWorkers)()
 
 	// Step 8: The compatibility gateway the public listener composes is
 	// constructed in Step 10 below, once the in-process Jellyfin- and

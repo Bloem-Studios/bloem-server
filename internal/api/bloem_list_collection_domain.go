@@ -49,6 +49,13 @@ func (d *listCollectionDomain) AuthorizeTx(ctx context.Context, tx pgx.Tx, s lis
 	if d == nil || d.managed == nil {
 		return listcollections.ErrAuthority
 	}
+	var capable bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_capabilities WHERE plugin_installation_id=$1 AND capability_type='watch_sync_provider.v1' AND capability_id='pastime' AND metadata->'metadata' @> '{"managed_list_collections":true}'::jsonb)`, s.InstallationID).Scan(&capable); err != nil {
+		return err
+	}
+	if !capable {
+		return listcollections.ErrAuthority
+	}
 	if _, err := d.managed.AuthorizeListTx(ctx, tx, s.InstallationID, s.InstanceID, strconv.Itoa(s.UserID), s.ProfileID); err != nil {
 		if errors.Is(err, managedtracking.ErrAuthority) {
 			return listcollections.ErrAuthority
@@ -64,6 +71,23 @@ func (d *listCollectionDomain) AuthorizeTx(ctx context.Context, tx pgx.Tx, s lis
 func (d *listCollectionDomain) AuthorizeDetachTx(ctx context.Context, tx pgx.Tx, s listcollections.Subject) error {
 	_, err := d.nativeScopeTx(ctx, tx, s)
 	return err
+}
+
+// Silo's acting administrator gate requires the account's primary profile.
+// Keep this owned adapter on that same rule for server collection mutations.
+func (d *listCollectionDomain) serverAuthorityTx(ctx context.Context, tx pgx.Tx, s listcollections.Subject) error {
+	if !s.IsAdmin {
+		return listcollections.ErrAuthority
+	}
+	var allowed bool
+	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users u JOIN user_profiles p ON p.user_id=u.id WHERE u.id=$1 AND p.id=$2 AND u.enabled AND u.role='admin' AND p.is_primary)`, s.UserID, s.ProfileID).Scan(&allowed)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return listcollections.ErrAuthority
+	}
+	return nil
 }
 
 func listSelectedLibraries(ctx context.Context, tx pgx.Tx, scope access.Scope, libraries []int) error {
@@ -110,6 +134,9 @@ func (d *listCollectionDomain) CreateTx(ctx context.Context, tx pgx.Tx, s listco
 		err = tx.QueryRow(ctx, `SELECT revision FROM user_collection_revisions WHERE user_id=$1 AND collection_id=$2`, s.UserID, view.ID).Scan(&revision)
 		return view.ID, revision, err
 	case "server":
+		if err = d.serverAuthorityTx(ctx, tx, s); err != nil {
+			return "", 0, err
+		}
 		if !s.IsAdmin || in.IsShared {
 			return "", 0, listcollections.ErrAuthority
 		}
@@ -128,6 +155,9 @@ func (d *listCollectionDomain) CandidatesTx(ctx context.Context, tx pgx.Tx, s li
 		return nil, err
 	}
 	if b.Scope == "server" {
+		if err = d.serverAuthorityTx(ctx, tx, s); err != nil {
+			return nil, err
+		}
 		if !s.IsAdmin {
 			return nil, listcollections.ErrAuthority
 		}
@@ -150,6 +180,9 @@ func (d *listCollectionDomain) ReplaceTx(ctx context.Context, tx pgx.Tx, s listc
 		return 0, listcollections.ErrAuthority
 	}
 	if b.Scope == "server" {
+		if err = d.serverAuthorityTx(ctx, tx, s); err != nil {
+			return 0, err
+		}
 		if err = listSelectedLibraries(ctx, tx, scope, b.LibraryIDs); err != nil {
 			return 0, err
 		}
@@ -180,6 +213,9 @@ func (d *listCollectionDomain) DisconnectTx(ctx context.Context, tx pgx.Tx, s li
 	}
 	if b.Scope != "server" || !s.IsAdmin {
 		return listcollections.ErrAuthority
+	}
+	if err := d.serverAuthorityTx(ctx, tx, s); err != nil {
+		return err
 	}
 	result, err := tx.Exec(ctx, `UPDATE library_collections SET source_config=source_config-'bloem_list_binding' WHERE id=$1 AND collection_type='manual' AND source_config->>'bloem_list_binding'=$2`, b.TargetID, b.ID)
 	if err != nil {

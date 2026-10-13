@@ -43,9 +43,9 @@ type managedCalendarSource struct {
 
 // ConfigureManagedCalendar composes an immutable adapter once all host policy
 // dependencies exist. Earlier plugin calls fail closed until the atomic publish.
-func ConfigureManagedCalendar(deps Dependencies, service *managedtracking.Service) {
+func ConfigureManagedCalendar(deps Dependencies, service *managedtracking.Service) *ListCollectionRuntime {
 	if service == nil || deps.DB == nil || deps.UserStoreProvider == nil || deps.PolicySystem == nil {
-		return
+		return nil
 	}
 	users := auth.NewUserRepository(deps.DB)
 	groups := access.NewTenantGroupStore(deps.DB)
@@ -88,6 +88,7 @@ func ConfigureManagedCalendar(deps Dependencies, service *managedtracking.Servic
 		return tenancy.WithContext(ctx, tenant), nil
 	}
 	service.SetCalendarSource(source)
+	return newListCollectionRuntime(deps, service, source)
 }
 func (s *managedCalendarSource) scope(ctx context.Context, p managedtracking.Profile) (access.Scope, error) {
 	if s == nil || s.resolver == nil || !p.AccountActive || !p.Active {

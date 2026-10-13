@@ -93,3 +93,7 @@ func (b *listCollectionBackend) RejectList(ctx context.Context, tx pgx.Tx, insta
 	}
 	return listBackendError(b.service.RejectTx(ctx, tx, installation, r.JobId, r.LeaseToken, r.Generation, r.Reason))
 }
+
+func (b *listCollectionBackend) ListLane(ctx context.Context, tx pgx.Tx, installation int) error {
+	return listcollections.LaneTx(ctx, tx, installation)
+}

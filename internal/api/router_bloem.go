@@ -155,9 +155,10 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			Entitlement: entitlementHandler, AccountPolicy: accountPolicyHandler,
 			Promotions: handlers.NewAdminPromotionsHandler(deps.Promotions), Ambience: handlers.NewAmbienceHandler(deps.Ambience),
 			ProfileCredentials: credentialHandler, ProfileCredentialLimit: credentialLimit,
-			SeasonalViewer: handlers.NewBloemSeasonalViewerHandler(deps.Ambience, tenants),
-			NativeStorage:  deps.NativeStorageManagement,
-			BookRequests:   newBloemBookRequests(deps),
+			SeasonalViewer:  handlers.NewBloemSeasonalViewerHandler(deps.Ambience, tenants),
+			NativeStorage:   deps.NativeStorageManagement,
+			BookRequests:    newBloemBookRequests(deps),
+			ListCollections: newBloemListCollections(deps),
 		})
 }
 
@@ -166,6 +167,7 @@ const NativeAPIPrefix = handlers.NativeAPIPrefix
 
 // bloemRouteSurfaces lists optional route groups; nil handlers leave their routes unmounted.
 type bloemRouteSurfaces struct {
+	ListCollections        *handlers.BloemListCollectionsHandler
 	BookRequests           *handlers.BloemBookRequestsHandler
 	Client                 bloemClientSurface
 	Platform               *handlers.BloemAdminPlatformHandler
@@ -198,6 +200,9 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 		client.mount(r)
 		mountBloemSeasonalViewer(r, surfaces.SeasonalViewer, client, system)
 		mountBloemBookRequests(r, surfaces.BookRequests, client, system)
+		if surfaces.ListCollections != nil {
+			mountBloemListCollections(r, surfaces.ListCollections, client)
+		}
 		if authMW != nil && surfaces.ProfileCredentials != nil {
 			r.Group(func(r chi.Router) {
 				r.Use(authMW.RequireAuth)

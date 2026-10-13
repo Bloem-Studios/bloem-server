@@ -2132,6 +2132,30 @@
     {
       "type": "internal/bookrequests.AudiobookReceipt",
       "reason": "Internal abr1 provider receipt envelope decoded and validated by the host, never returned by HTTP. Admin acquisition responses expose sanitized status and validated acquisition decisions instead."
+    },
+    {
+      "type": "internal/listcollections.Binding",
+      "reason": "Internal list journal or plugin transport envelope, never returned by the viewer HTTP API. Client responses use registered PreviewStatus, BloemListBindingStatus and BloemListJob shapes; source proofs and authority remain private."
+    },
+    {
+      "type": "internal/listcollections.Completion",
+      "reason": "Internal list journal or plugin transport envelope, never returned by the viewer HTTP API. Client responses use registered PreviewStatus, BloemListBindingStatus and BloemListJob shapes; source proofs and authority remain private."
+    },
+    {
+      "type": "internal/listcollections.Job",
+      "reason": "Internal list journal or plugin transport envelope, never returned by the viewer HTTP API. Client responses use registered PreviewStatus, BloemListBindingStatus and BloemListJob shapes; source proofs and authority remain private."
+    },
+    {
+      "type": "internal/listcollections.Page",
+      "reason": "Internal list journal or plugin transport envelope, never returned by the viewer HTTP API. Client responses use registered PreviewStatus, BloemListBindingStatus and BloemListJob shapes; source proofs and authority remain private."
+    },
+    {
+      "type": "internal/listcollections.Receipt",
+      "reason": "Internal list journal or plugin transport envelope, never returned by the viewer HTTP API. Client responses use registered PreviewStatus, BloemListBindingStatus and BloemListJob shapes; source proofs and authority remain private."
+    },
+    {
+      "type": "internal/listcollections.SourceProof",
+      "reason": "Internal list journal or plugin transport envelope, never returned by the viewer HTTP API. Client responses use registered PreviewStatus, BloemListBindingStatus and BloemListJob shapes; source proofs and authority remain private."
     }
   ]
 }

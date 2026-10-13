@@ -85,7 +85,7 @@ import { importCatalog } from "@/pages/catalogRoute";
 const importLibraryPage = () => import("@/pages/LibraryPage");
 const importItemDetail = () => import("@/pages/ItemDetail/index");
 const importPersonDetail = () => import("@/pages/PersonDetail");
-const importCollections = () => import("@/pages/Collections");
+const importCollections = () => import("@/bloem/list-collections/BloemCollections");
 const importRecommendations = () => import("@/pages/Recommendations");
 
 const AdminLayout = lazy(() => import("@/components/AdminLayout"));
@@ -105,7 +105,9 @@ const ItemDetail = lazy(importItemDetail);
 const EbookReader = lazy(() => import("@/pages/EbookReader"));
 const PersonDetail = lazy(importPersonDetail);
 const Collections = lazy(importCollections);
-const CollectionEditorPage = lazy(() => import("@/pages/CollectionEditorPage"));
+const CollectionEditorPage = lazy(
+  () => import("@/bloem/list-collections/BloemCollectionEditorPage"),
+);
 const Notifications = lazy(() => import("@/pages/Notifications"));
 const DeviceSettings = lazy(() => import("@/pages/settings/DeviceSettings"));
 const PlaybackSettings = lazy(() => import("@/pages/settings/PlaybackSettings"));
@@ -127,7 +129,11 @@ const AdminSettingsLayout = lazy(() => import("@/pages/admin-settings/AdminSetti
 const AdminNodes = lazy(() => import("@/pages/AdminNodes"));
 const AdminDownloads = lazy(() => import("@/pages/AdminDownloads"));
 const AdminHomeRows = lazy(() => import("@/pages/AdminHomeRows"));
-const AdminCollections = lazy(() => import("@/pages/AdminCollections"));
+const AdminCollections = lazy(() =>
+  import("@/bloem/list-collections/BloemCollections").then((module) => ({
+    default: module.BloemAdminCollections,
+  })),
+);
 const AdminPlaybackHistory = lazy(() => import("@/pages/AdminPlaybackHistory"));
 const AdminMarkerHistory = lazy(() => import("@/pages/AdminMarkerHistory"));
 const AdminMaintenance = lazy(() => import("@/pages/AdminMaintenance"));

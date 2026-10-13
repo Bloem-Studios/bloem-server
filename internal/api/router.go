@@ -1016,6 +1016,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if lifecycle := notifications.NewRequestLifecycleNotifier(deps.Notifications); lifecycle != nil {
 			requestSvc.SetLifecycleNotifier(lifecycle)
 		}
+		configureListCollectionRequests(deps, requestSvc)
 		requestHandler = handlers.NewRequestsHandler(requestSvc)
 
 		// Onboarding tour manifest: gates consult live state at request time
