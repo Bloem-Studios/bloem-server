@@ -844,7 +844,8 @@ func opaCompatibilityBaselineFS(t *testing.T) fs.FS {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || strings.HasSuffix(path, "_remove_bloem_compatibility.sql") {
+		if d.IsDir() || strings.HasSuffix(path, "_remove_bloem_compatibility.sql") ||
+			strings.HasSuffix(path, "_remove_pastime_managed_tracking.sql") {
 			return nil
 		}
 		data, err := migrations.FS.ReadFile(path)

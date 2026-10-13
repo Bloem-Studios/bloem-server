@@ -7,6 +7,7 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 ## Start here
 
 - [Protocol compatibility removal](../architecture/bloem-compatibility-removal.md) — native-only runtime, persistence cleanup and upstream merge invariant.
+- [Pastime managed-tracking removal](../architecture/bloem-pastime-removal.md) — forward-only cleanup migration and the rule that Pastime returns only as an ordinary plugin.
 
 - [October 7 native storage deployment](../operations/2026-10-07-native-storage-deployment.md) — exact deployed revision, all 27 imported Silo commits, checks and limits.
 - [Silo backend switching](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the mirrored phase, its invariants, and `make silo-switch-check`.
