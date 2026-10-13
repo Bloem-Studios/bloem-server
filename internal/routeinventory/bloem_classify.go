@@ -96,6 +96,10 @@ var bloemInfrastructureMiddleware = []string{
 	// The capture only adds request context and always delegates; the later
 	// credential, viewer and native source gates supply actual authority.
 	"captureNativeVideoRequest",
+	// Refuses writes to a collection published from a linked external list.
+	// It runs after the route's own auth gates and only ever subtracts, so it
+	// adds no authority to classify.
+	"bloemListMutationMiddleware",
 }
 
 func init() {
