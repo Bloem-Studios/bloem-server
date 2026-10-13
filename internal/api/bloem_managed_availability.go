@@ -90,9 +90,7 @@ func (s *managedCalendarSource) contentAvailable(ctx context.Context, scope acce
 		return false, nil
 	}
 	// Metadata-only and missing files never establish playback availability.
-	files, err := s.pool.Query(ctx, `SELECT f.id,f.media_folder_id,f.file_path FROM media_files f JOIN media_folders l ON l.id=f.media_folder_id AND l.enabled
-   WHERE f.missing_since IS NULL AND (f.content_id=$1 OR f.episode_id IN(SELECT content_id FROM episodes WHERE series_id=$1))
-   AND ($2::integer[] IS NULL OR f.media_folder_id=ANY($2)) AND NOT(f.media_folder_id=ANY($3::integer[])) ORDER BY f.id LIMIT 101`, contentID, scope.AllowedLibraryIDs, nonNilLibraryIDs(scope.DisabledLibraryIDs))
+	files, err := s.pool.Query(ctx, managedAvailabilityFilesSQL, contentID, scope.AllowedLibraryIDs, nonNilLibraryIDs(scope.DisabledLibraryIDs))
 	if err != nil {
 		return false, err
 	}
@@ -131,3 +129,15 @@ func (s *managedCalendarSource) contentAvailable(ctx context.Context, scope acce
 	}
 	return false, nil
 }
+
+// Keep direct files and episode files as separately indexed lookups. An OR with
+// an episode subquery can scan the entire file catalog for every inventory title.
+const managedAvailabilityFilesSQL = `SELECT f.id,f.media_folder_id,f.file_path FROM (
+ SELECT id,media_folder_id,file_path,missing_since FROM media_files WHERE content_id=$1
+ UNION
+ SELECT f.id,f.media_folder_id,f.file_path,f.missing_since FROM episodes e
+ JOIN media_files f ON f.episode_id=e.content_id WHERE e.series_id=$1
+ ) f JOIN media_folders l ON l.id=f.media_folder_id AND l.enabled
+ WHERE f.missing_since IS NULL
+ AND ($2::integer[] IS NULL OR f.media_folder_id=ANY($2))
+ AND NOT(f.media_folder_id=ANY($3::integer[])) ORDER BY f.id LIMIT 101`
