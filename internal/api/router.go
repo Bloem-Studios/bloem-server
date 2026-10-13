@@ -2516,12 +2516,17 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		v2deps.Invitations = invitationHandler
 	}
+	contentViewer := viewerResolver
+	if viewerResolver != nil && deps.DB != nil {
+		tenantStore := tenancy.NewStore(deps.DB)
+		contentViewer = bloemContentViewer{inner: bloemOrgRevocationAwareViewer(viewerResolver, deps.DB), tenants: tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore)}
+	}
 	if deps.DB != nil && deps.Config != nil && viewerResolver != nil {
-		v2deps.ThemeSongs = &handlers.ThemeSongsHandler{
-			Service: themesongs.NewService(themesongs.NewRepository(deps.DB), deps.Config.Auth.JWTSecret), Sessions: sessionRepo, Users: userRepo, Resolver: viewerResolver,
+		v2deps.ThemeSongs = &handlers.BloemThemeSongsHandler{ThemeSongsHandler: &handlers.ThemeSongsHandler{
+			Service: themesongs.NewService(themesongs.NewRepository(deps.DB), deps.Config.Auth.JWTSecret), Sessions: sessionRepo, Users: userRepo, Resolver: contentViewer,
 			Router:     deps.themeRouter(playbackHandler),
 			FFmpegPath: func() string { return deps.CurrentConfig().Playback.FFmpegPath },
-		}
+		}}
 	}
 	v2deps.ObserveThemeAudio = func(method string, handler http.Handler) http.Handler {
 		return observeNative(deps.StreamTelemetry, method, "/api/v2/catalog/items/{id}/themes/{theme_id}/audio", handler.ServeHTTP)
@@ -3045,13 +3050,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.PluginHTTPProxy != nil {
 		v2deps.AuthProviderIconPublic = deps.PluginHTTPProxy.PublicGETRoute
 	}
-	v2deps.PluginContent = plugins.NewContentHandler(deps.PluginHTTPProxy, func(r *http.Request) plugins.ContentAccess {
-		authenticated, admin, userID, profileID, profileBound := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, apiKeyRepo, userRepo)
-		return plugins.ContentAccess{Authenticated: authenticated, Admin: admin, UserID: userID, ProfileID: profileID, ProfileBound: profileBound}
-	}, func(r *http.Request) plugins.ContentAccess {
-		authenticated, admin, _, _, profileBound := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, apiKeyRepo, userRepo)
-		return plugins.ContentAccess{Authenticated: authenticated, Admin: admin, ProfileBound: profileBound}
-	})
+	pluginContentAccess := func(r *http.Request) plugins.ContentAccess {
+		return resolveBloemPluginContentAccess(r, jwtService, sessionRepo, apiKeyRepo, userRepo, contentViewer)
+	}
+	v2deps.PluginContent = plugins.NewContentHandler(deps.PluginHTTPProxy, pluginContentAccess, pluginContentAccess)
 	if deps.BrandingService != nil {
 		v2deps.AdminBrandingAssets = handlers.NewBrandingHandler(deps.BrandingService)
 	}
@@ -3108,7 +3110,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 					http.Error(w, "invalid installation id", http.StatusBadRequest)
 					return
 				}
-				authenticated, admin, userID, profileID, profileBound := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, apiKeyRepo, userRepo)
+				contentAccess := pluginContentAccess(r)
+				if contentAccess.PlaybackDenied {
+					http.Error(w, "Plugin content access has not been granted", http.StatusForbidden)
+					return
+				}
+				authenticated, admin, userID, profileID, profileBound := contentAccess.Authenticated, contentAccess.Admin, contentAccess.UserID, contentAccess.ProfileID, contentAccess.ProfileBound
 				if profileBound {
 					// The plugin proxy authenticates on its own and so never
 					// passes RequireAuth, which is where direct-profile
@@ -3134,7 +3141,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 					http.NotFound(w, r)
 					return
 				}
-				authenticated, admin, _, _, profileBound := resolveOptionalPluginAccessUser(r, jwtService, sessionRepo, apiKeyRepo, userRepo)
+				contentAccess := pluginContentAccess(r)
+				if contentAccess.PlaybackDenied {
+					http.Error(w, "Plugin content access has not been granted", http.StatusForbidden)
+					return
+				}
+				authenticated, admin, profileBound := contentAccess.Authenticated, contentAccess.Admin, contentAccess.ProfileBound
 				if profileBound {
 					// Same boundary as the route proxy above: an asset
 					// descriptor may be marked authenticated, and this entry
@@ -4977,21 +4989,7 @@ func resolveOptionalPluginAccessUser(
 		return false, false, 0, "", false
 	}
 
-	token := ""
-	if header := r.Header.Get("Authorization"); header != "" {
-		parts := strings.SplitN(header, " ", 2)
-		if len(parts) == 2 && strings.EqualFold(parts[0], "bearer") {
-			token = strings.TrimSpace(parts[1])
-		}
-	}
-	if token == "" {
-		token = strings.TrimSpace(r.URL.Query().Get("token"))
-	}
-	if token == "" {
-		if cookie, err := r.Cookie(auth.PluginAccessCookieName); err == nil {
-			token = strings.TrimSpace(cookie.Value)
-		}
-	}
+	token := optionalPluginAccessToken(r)
 	if token == "" {
 		return false, false, 0, "", false
 	}

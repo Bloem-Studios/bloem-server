@@ -13,11 +13,14 @@ const ContentPrefix = "/api/v2/plugin-content"
 const contentPages = "plugins"
 
 type ContentAccess struct {
-	ProfileBound  bool
-	Authenticated bool
-	Admin         bool
-	UserID        int
-	ProfileID     string
+	// PlaybackDenied prevents an authenticated browse-only viewer from spending
+	// their identity on arbitrary plugin byte access, including public descriptors.
+	PlaybackDenied bool
+	ProfileBound   bool
+	Authenticated  bool
+	Admin          bool
+	UserID         int
+	ProfileID      string
 }
 
 type ContentAccessResolver func(*http.Request) ContentAccess
@@ -72,6 +75,10 @@ func (h *ContentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if h.routeAccess != nil {
 			access = h.routeAccess(r)
 		}
+		if access.PlaybackDenied {
+			http.Error(w, "Plugin content access has not been granted", http.StatusForbidden)
+			return
+		}
 		if access.ProfileBound {
 			http.Error(w, "Direct profile sessions cannot use plugin routes", http.StatusForbidden)
 			return
@@ -92,6 +99,10 @@ func (h *ContentHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.assetAccess != nil {
 		access = h.assetAccess(r)
+	}
+	if access.PlaybackDenied {
+		http.Error(w, "Plugin content access has not been granted", http.StatusForbidden)
+		return
 	}
 	if access.ProfileBound {
 		http.Error(w, "Direct profile sessions cannot use plugin routes", http.StatusForbidden)

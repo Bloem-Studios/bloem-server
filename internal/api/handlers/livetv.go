@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/access"
+
 	"github.com/go-chi/chi/v5"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -393,6 +395,10 @@ func (h *LiveTVHandler) HandleGetProgram(w http.ResponseWriter, r *http.Request)
 func (h *LiveTVHandler) HandleStartChannelSession(w http.ResponseWriter, r *http.Request) {
 	if h.native && h.JWTSecret == "" {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Live TV delivery signing is unavailable")
+		return
+	}
+	if scope, ok := access.GetScope(r.Context()); !ok || !scope.PlaybackAllowed {
+		writeError(w, http.StatusForbidden, "playback_forbidden", "Playback has not been granted")
 		return
 	}
 	userID := apimw.GetUserID(r.Context())

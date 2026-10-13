@@ -497,7 +497,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.ObserveRoutes != nil {
 		api = huma.NewAPI(humaConfig(), &routeSnapshotAdapter{Adapter: api.Adapter(), routes: &routeSnapshot})
 	}
-	api.UseMiddleware(bufferStructuredResponse, observeOperation, defaultHeaders, deprecationHeaders, classGate(deps), observeIdentity, normalizeAccept, encodingGuard, mediaTypeGuard, queryGuard)
+	api.UseMiddleware(bufferStructuredResponse, observeOperation, defaultHeaders, deprecationHeaders, classGate(deps), bloemContentGate, observeIdentity, normalizeAccept, encodingGuard, mediaTypeGuard, queryGuard)
 
 	reg := &Registry{api: api, deps: deps}
 	registerAll(reg)

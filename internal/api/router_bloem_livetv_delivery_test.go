@@ -158,6 +158,14 @@ while true; do sleep 1; done
 	if segmentPath == "" {
 		t.Fatal("playlist did not contain a segment")
 	}
+	// An unexpired delivery ticket cannot outlive current playback policy.
+	exec(`UPDATE access_groups SET playback_allowed=false WHERE id=1`)
+	request(http.MethodGet, "/api/bloem/v1/livetv/channels", bearer, http.StatusOK)
+	request(http.MethodPost, "/api/bloem/v1/livetv/channels/channel/session", bearer, http.StatusForbidden)
+	request(http.MethodGet, session.HLSURL, "", http.StatusForbidden)
+	request(http.MethodGet, segmentPath, "", http.StatusForbidden)
+	exec(`UPDATE access_groups SET playback_allowed=true WHERE id=1`)
+	request(http.MethodGet, session.HLSURL, "", http.StatusOK)
 	claims, err := streamtoken.Verify(u.Query().Get("st"), secret)
 	if err != nil {
 		t.Fatal(err)

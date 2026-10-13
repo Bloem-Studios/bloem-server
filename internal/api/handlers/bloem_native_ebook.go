@@ -41,6 +41,10 @@ func NewNativeEbookFileService(local *EbookReaderHandler, native NativeEbookOpen
 	return &NativeEbookFileService{Local: local, Native: native}
 }
 func (h *NativeEbookFileService) ResolveReaderFile(ctx context.Context, contentID string, fileID int, filter catalog.AccessFilter) (*models.MediaFile, error) {
+	filter = BloemContentAccessFilter(ctx, filter)
+	if filter.PlaybackDenied {
+		return nil, &APIError{Status: http.StatusForbidden, Code: "playback_forbidden", Message: "Reading content has not been granted"}
+	}
 	if h == nil {
 		return nil, nativeReaderUnavailable()
 	}

@@ -28,8 +28,9 @@ func TestRequireLiveTVStreamAccessChecksTokenScope(t *testing.T) {
 		scope *access.Scope
 		want  int
 	}{
-		{name: "revoked", scope: &access.Scope{UserID: 7, LiveTVAllowed: false}, want: http.StatusForbidden},
-		{name: "granted", scope: &access.Scope{UserID: 7, LiveTVAllowed: true}, want: http.StatusNoContent},
+		{name: "revoked", scope: &access.Scope{UserID: 7, LiveTVAllowed: false, PlaybackAllowed: true}, want: http.StatusForbidden},
+		{name: "granted", scope: &access.Scope{UserID: 7, LiveTVAllowed: true, PlaybackAllowed: true}, want: http.StatusNoContent},
+		{name: "playback revoked", scope: &access.Scope{UserID: 7, LiveTVAllowed: true}, want: http.StatusForbidden},
 		{name: "unresolved", want: http.StatusForbidden},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

@@ -66,19 +66,19 @@ type fakeResolver struct{}
 func (fakeResolver) Resolve(_ context.Context, in access.ResolveInput) (access.Scope, error) {
 	switch in.ProfileID {
 	case "":
-		return access.Scope{UserID: in.UserID, ProfileVerified: true}, nil
+		return access.Scope{UserID: in.UserID, ProfileVerified: true, PlaybackAllowed: true, DownloadAllowed: true}, nil
 	case "p-owner", "p-primary", "p-kid":
-		return access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true}, nil
+		return access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true, PlaybackAllowed: true, DownloadAllowed: true}, nil
 	case "p-locked", "p-primary-locked":
 		// An API-key credential is exempt from the PIN at the gate, and the
 		// scope records that the verification was skipped rather than proved.
 		if in.SkipPINVerification {
-			return access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true, PINVerificationSkipped: true}, nil
+			return access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true, PlaybackAllowed: true, DownloadAllowed: true, PINVerificationSkipped: true}, nil
 		}
 		if in.ProfileToken == "" {
 			return access.Scope{}, access.ErrProfileUnverified
 		}
-		return access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true}, nil
+		return access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true, PlaybackAllowed: true, DownloadAllowed: true}, nil
 	}
 	return access.Scope{}, access.ErrProfileNotFound
 }
