@@ -3437,7 +3437,6 @@ func (h *ItemsHandler) rememberCompatEpisodeImages(dto baseItemDTO, stillURL str
 	if dto.SeriesID != "" {
 		h.images.RememberSized(dto.SeriesID, "Primary", series.PosterURL, compatCardImageSize)
 		h.images.RememberSized(dto.SeriesID, "Backdrop", series.BackdropURL, compatCardImageSize)
-		h.images.RememberSized(dto.SeriesID, "Thumb", series.BackdropURL, compatCardImageSize)
 	}
 }
 
@@ -3783,9 +3782,6 @@ func (h *ItemsHandler) enrichEpisodeSeriesImages(ctx context.Context, session *S
 		cache[seriesContentID] = imgs
 	}
 	h.mapper.applySeriesImages(dto, imgs)
-	if imgs.BackdropURL != "" && h.images != nil {
-		h.images.RememberSized(dto.SeriesID, "Thumb", imgs.BackdropURL, compatCardImageSize)
-	}
 }
 
 func max(value, fallback int) int {

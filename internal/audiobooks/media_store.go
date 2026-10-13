@@ -515,13 +515,15 @@ func (s *ABSMediaStore) hydrateAudiobookSeries(ctx context.Context, items []*mod
 }
 
 // GetMediaFiles returns all media_files for the given content_id, ordered by
-// file_path so ABS clients receive a stable chapter ordering.
+// file_path so ABS clients receive a stable chapter ordering. Like
+// GetAudiobookByID it serves audiobooks only: any other item, such as a movie
+// the profile can see, has no files here, so the file routes cannot stream it.
 func (s *ABSMediaStore) GetMediaFiles(ctx context.Context, contentID string, access catalog.AccessFilter) ([]*models.MediaFile, error) {
 	items, err := s.Items.GetByIDsWithAccess(ctx, []string{contentID}, access)
 	if err != nil {
 		return nil, fmt.Errorf("abs_media_store: check media file access for %q: %w", contentID, err)
 	}
-	if len(items) == 0 {
+	if len(items) == 0 || items[0] == nil || items[0].Type != "audiobook" {
 		return []*models.MediaFile{}, nil
 	}
 	files, err := s.Files.GetByContentIDPresentation(ctx, contentID)
@@ -531,6 +533,7 @@ func (s *ABSMediaStore) GetMediaFiles(ctx context.Context, contentID string, acc
 	return bloemCompatibleAudioFiles(catalog.FilterMediaFilesByAccess(files, access)), nil
 }
 
+<<<<<<< HEAD
 // GetMediaFileByID fetches a single media_file by its integer PK.
 func (s *ABSMediaStore) GetMediaFileByID(ctx context.Context, fileID int) (*models.MediaFile, error) {
 	file, err := s.Files.GetByID(ctx, fileID)
@@ -543,6 +546,8 @@ func (s *ABSMediaStore) GetMediaFileByID(ctx context.Context, fileID int) (*mode
 	return file, nil
 }
 
+=======
+>>>>>>> upstream/main
 // ListAudiobookLibraries returns media_folder rows where type='audiobooks'
 // (the canonical silo type for the audiobooks sub-plan).
 func (s *ABSMediaStore) ListAudiobookLibraries(ctx context.Context, access catalog.AccessFilter) ([]abs.AudiobookLibrary, error) {

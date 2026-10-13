@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -73,8 +72,7 @@ func (h *InvitationHandler) HandleAcceptInvitation(w http.ResponseWriter, r *htt
 		return
 	}
 	var req acceptInvitationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	if !decodeAuthRequestBody(w, r, &req, false) {
 		return
 	}
 	if len(req.Password) < 8 {

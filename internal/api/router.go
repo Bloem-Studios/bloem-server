@@ -127,6 +127,10 @@ type Dependencies struct {
 	// LiveConfig returns the current hot-reloaded config. May be nil (tests,
 	// worker modes); read through CurrentConfig(), which falls back to Config.
 	LiveConfig func() *config.Config
+	// ShuttingDown reports whether this process has begun shutting down.
+	// /api/v1/ready fails once it does, while the server still answers
+	// requests. May be nil.
+	ShuttingDown func() bool
 	// OnConfigChange registers a callback fired after a live config reload
 	// actually changes the config. May be nil when hot reload is not wired.
 	OnConfigChange               func(fn func(old, updated *config.Config))
@@ -197,7 +201,11 @@ type Dependencies struct {
 	// shared with the Jellyfin login so both count against one budget.
 	// Nil gets a process-local limiter.
 	ProfilePINAttempts *ratelimit.AttemptLimiter
-	ClientIPResolver   *clientip.Resolver
+	// QuickConnectCodeAttempts bounds the six-digit Jellyfin Quick Connect
+	// codes each account tries, shared with the Jellyfin-compatible API's
+	// Authorize route. Nil gets a process-local limiter.
+	QuickConnectCodeAttempts *ratelimit.AttemptLimiter
+	ClientIPResolver         *clientip.Resolver
 	// NetworkAccess is the ingress-token registry and provider status cache
 	// for network access provider plugins on this host. The token middleware
 	// runs on every native request and connected overlay origins are accepted
@@ -434,6 +442,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	}
 
 	readyHandler := handlers.NewReadyHandler(pgPinger, s3Checker, deps.Blobs.Assets)
+	readyHandler.SetShuttingDown(deps.ShuttingDown)
 
 	// Resolves whether a declared profile belongs to the user and is the
 	// household primary profile. Nil (no user store) disables the
@@ -488,13 +497,17 @@ func newChiRouter(deps Dependencies) chi.Router {
 
 	// Admin authorization for routes: admin role, exercised through the
 	// account's primary household profile.
-	var requireActingAdmin func(http.Handler) http.Handler
+	var actingAdmin apimw.ActingAdminDecider
 	if deps.PolicySystem != nil {
-		requireActingAdmin = apimw.NewPolicyActingAdminMiddleware(permissionPDP, checkPrimaryProfile, householdRequiresProfile)
+		actingAdmin = apimw.NewPolicyActingAdminDecider(permissionPDP, checkPrimaryProfile, householdRequiresProfile)
 	} else {
 		// Legacy gate: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
-		requireActingAdmin = apimw.RequireActingAdmin(checkPrimaryProfile, householdRequiresProfile)
+		actingAdmin = apimw.NewActingAdminDecider(checkPrimaryProfile, householdRequiresProfile)
 	}
+	requireActingAdmin := apimw.RequireActingAdminWith(actingAdmin)
+	// Routes outside the admin groups that widen what an admin sees or may do
+	// ask apimw.ActingAdmin, which answers with this same decision.
+	r.Use(apimw.ProvideActingAdmin(actingAdmin))
 
 	// Health handler advertises the server's identity so multi-server
 	// clients can display a friendly name. Falls back to empty strings
@@ -646,6 +659,13 @@ func newChiRouter(deps Dependencies) chi.Router {
 			deps.UserStoreProvider,
 			profileTokenService,
 		)
+		if deviceLoginService != nil {
+			quickConnectAttempts := deps.QuickConnectCodeAttempts
+			if quickConnectAttempts == nil {
+				quickConnectAttempts = ratelimit.NewMemoryAttemptLimiter(ratelimit.QuickConnectCodePolicy)
+			}
+			deviceLoginService.WithQuickConnectAttempts(quickConnectAttempts)
+		}
 		authHandler = handlers.NewAuthHandler(authService, jwtService, deviceLoginService)
 		// Same api-key/user sources AuthMiddleware.RequireAuth uses below —
 		// an "sa_" key must authenticate identically whether a request goes
@@ -2438,8 +2458,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 		settingsRepo,
 		compatUsers,
 	)
+<<<<<<< HEAD
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, requireActingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
 	wireBloemV2(&v2deps, deps, tenantMiddleware, authMiddleware)
+=======
+	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, actingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
+>>>>>>> upstream/main
 	v2deps.CompatConnectInfo = compatConnectInfoHandler
 	// Server identity is public discovery data, so it reads through the raw
 	// settings repo: a SECRET_KEY rotation must not change who the server is.
@@ -2853,6 +2877,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		nodeHandler = handlers.NewNodeHandler(deps.NodeRepo, deps.ProxyPool, deps.TranscodePool, deps.NodeRepo, deps.EventBus, deps.RedisClient, jwtSecret)
 		v2deps.AdminNodesRead = nodeHandler
 		v2deps.AdminNodeCommands = nodeHandler
+		v2deps.AdminNodeDrain = nodeHandler
 		v2deps.AdminNodeReload = nodeHandler
 		// Network access admin operations fan out to every enabled proxy node
 		// over its bearer routes, the same way force-reload does.
@@ -5053,6 +5078,7 @@ func resolveOptionalPluginAccessUser(
 	if claims.PasswordChangeRequired {
 		return false, false, 0, "", false
 	}
+<<<<<<< HEAD
 	role, valid, err := sessionRepo.ActiveSessionRole(r.Context(), claims.SessionID)
 	if err != nil || !valid {
 		return false, false, 0, "", false
@@ -5065,6 +5091,18 @@ func resolveOptionalPluginAccessUser(
 		return false, false, 0, "", false
 	}
 	return true, role == adminRole, claims.UserID, claims.ProfileID, profileBound
+=======
+	// Plugin launch tokens copy the role of the access token they were minted
+	// from, and a role change keeps the session, so admin access follows the
+	// account's current role rather than the token's.
+	// A remote-playback handoff only plays on its device; plugins are not
+	// part of that.
+	authority, active, err := sessionRepo.ActiveSession(r.Context(), claims.SessionID)
+	if err != nil || !active || authority.IsRemotePlayback() {
+		return false, false, 0, ""
+	}
+	return true, authority.Role == "admin", claims.UserID, claims.ProfileID
+>>>>>>> upstream/main
 }
 
 // NewTMDBCollectionFetcher creates a TMDBCollectionFetcher from an API key.
@@ -5415,7 +5453,7 @@ func v2Dependencies(
 	deps Dependencies,
 	auth *apimw.AuthMiddleware,
 	viewer *apimw.ViewerAccessMiddleware,
-	actingAdmin func(http.Handler) http.Handler,
+	actingAdmin apimw.ActingAdminDecider,
 	metadataCuration func(http.Handler) http.Handler,
 	markerEdit func(http.Handler) http.Handler,
 	settings catalog.SettingsStore,
