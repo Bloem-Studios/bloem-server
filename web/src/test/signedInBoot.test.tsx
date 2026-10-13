@@ -150,8 +150,11 @@ describe("app boot request budget", () => {
 
   // Login is a lazy route. Loading its module first keeps the suspended
   // route from outlasting settle(), which waits on requests, not imports.
+  // Bloem: the seasonal layer is lazy too; preloading it keeps its render, and
+  // so the settings batches around it, independent of import timing.
   beforeAll(async () => {
     await import("@/pages/Login");
+    await import("@/components/seasonal/SeasonalLayer");
   });
 
   beforeEach(() => {
