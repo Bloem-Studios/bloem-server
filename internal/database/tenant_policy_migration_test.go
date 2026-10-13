@@ -242,7 +242,7 @@ INSERT INTO public.organization_memberships (organization_id,account_id,status,l
 VALUES ($1,$2,'active','user')`, organizationID, accountID); err != nil {
 			t.Fatalf("seed ungrouped membership: %v", err)
 		}
-		err := RunMigrations(ctx, pool, migrations.FS, "sql")
+		err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql")
 		if err == nil || !strings.Contains(err.Error(), "active non-platform membership without organization access group") {
 			t.Fatalf("migration error = %v", err)
 		}
@@ -544,7 +544,7 @@ func TestMembershipPolicyMigrationDownRestoresRepresentableLegacyState(t *testin
 	if !found {
 		t.Fatal("membership policy migration missing")
 	}
-	if err := MigrateDownTo(context.Background(), fixture.pool, migrations.FS, "sql", predecessor); err != nil {
+	if err := MigrateDownTo(context.Background(), fixture.pool, compatibilityBaselineFS(t), "sql", predecessor); err != nil {
 		t.Fatalf("migrate down: %v", err)
 	}
 	var username string
@@ -570,7 +570,7 @@ func TestMembershipPolicyMigrationDownRestoresRepresentableFinalizedState(t *tes
 	if !found {
 		t.Fatal("membership policy migration missing")
 	}
-	if err := MigrateDownTo(ctx, fixture.pool, migrations.FS, "sql", predecessor); err != nil {
+	if err := MigrateDownTo(ctx, fixture.pool, compatibilityBaselineFS(t), "sql", predecessor); err != nil {
 		t.Fatalf("migrate finalized state down: %v", err)
 	}
 	var maxStreams int
@@ -608,7 +608,7 @@ WHERE organization_id=$1 AND account_id=$2`, fixture.defaultOrgID, fixture.accou
 	if !found {
 		t.Fatal("membership policy migration missing")
 	}
-	if err := MigrateDownTo(ctx, fixture.pool, migrations.FS, "sql", predecessor); err != nil {
+	if err := MigrateDownTo(ctx, fixture.pool, compatibilityBaselineFS(t), "sql", predecessor); err != nil {
 		t.Fatalf("collapse representable state: %v", err)
 	}
 	var maxStreams int
@@ -642,7 +642,7 @@ WHERE organization_id=$1 AND account_id=$2`, fixture.defaultOrgID, fixture.accou
 	if !found {
 		t.Fatal("membership policy migration missing")
 	}
-	err := MigrateDownTo(ctx, fixture.pool, migrations.FS, "sql", predecessor)
+	err := MigrateDownTo(ctx, fixture.pool, compatibilityBaselineFS(t), "sql", predecessor)
 	if err == nil || !strings.Contains(err.Error(), "cannot represent changed membership state") {
 		t.Fatalf("divergent Down error = %v", err)
 	}
@@ -684,7 +684,7 @@ WHERE user_id=$1 AND id='primary-down'`, fixture.accountID); err != nil {
 	if !found {
 		t.Fatal("membership policy migration missing")
 	}
-	err := MigrateDownTo(ctx, fixture.pool, migrations.FS, "sql", predecessor)
+	err := MigrateDownTo(ctx, fixture.pool, compatibilityBaselineFS(t), "sql", predecessor)
 	if err == nil || !strings.Contains(err.Error(), "cannot represent changed profile primary state") {
 		t.Fatalf("divergent primary Down error = %v", err)
 	}
@@ -712,7 +712,7 @@ ALTER TABLE public.users RENAME COLUMN max_streams TO rollback_membership_max_st
 	if !found {
 		t.Fatal("membership policy migration missing")
 	}
-	err := MigrateDownTo(ctx, fixture.pool, migrations.FS, "sql", predecessor)
+	err := MigrateDownTo(ctx, fixture.pool, compatibilityBaselineFS(t), "sql", predecessor)
 	if err == nil || !strings.Contains(err.Error(), "half-renamed compatibility projection") {
 		t.Fatalf("half-renamed Down error = %v", err)
 	}
@@ -785,11 +785,11 @@ func newMembershipPolicyLegacyPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate latest: %v", err)
 	}
 	if _, predecessor, found := membershipPolicyMigrationVersions(t); found {
-		if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", predecessor); err != nil {
+		if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", predecessor); err != nil {
 			t.Fatalf("migrate to membership-policy predecessor: %v", err)
 		}
 	}
@@ -898,7 +898,7 @@ func pgxIdentifier(value string) string {
 
 func migrateMembershipPolicyUp(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
-	if err := RunMigrations(context.Background(), pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(context.Background(), pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate membership policy: %v", err)
 	}
 }

@@ -40,7 +40,7 @@ func TestBloemRouteInventoryMatchesRootListener(t *testing.T) {
 	// bloemRootHandler seals the mux; the test walks it through the
 	// unexported constructor, which is the same mux with the same
 	// registrations bloemRootHandler hands out.
-	observed, err := routeinventory.ObservedServeMux(bloemRootMux(apiStub, apiStub, nil))
+	observed, err := routeinventory.ObservedServeMux(bloemRootMux(apiStub, apiStub))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestBloemRootListenerDoesNotServeMetrics(t *testing.T) {
 	apiStub := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) })
 	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
 	rec := httptest.NewRecorder()
-	bloemRootHandler(apiStub, apiStub, nil).ServeHTTP(rec, req)
+	bloemRootHandler(apiStub, apiStub).ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
 	}

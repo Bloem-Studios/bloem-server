@@ -11,7 +11,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/ambience"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/compatapi"
 	"github.com/Silo-Server/silo-server/internal/livetv"
 	"github.com/Silo-Server/silo-server/internal/promotions"
 )
@@ -37,15 +36,10 @@ type BloemDependencies struct {
 	HostStatsSource         handlers.HostStatsSource
 	LiveTV                  *livetv.Service // shared Live TV / OTA / DVR service (may be nil)
 
-	// OnUserProfileSessionsRevoked drops compatibility sessions bound to the
+	// OnUserProfileSessionsRevoked invalidates sessions bound to the
 	// named profiles of one account.
 	OnUserProfileSessionsRevoked func(ctx context.Context, userID int, profileIDs []string) error
 
-	// CompatAPIV1 is the private Compatibility Service API v1 handler
-	// (internal/compatapi), consumed exclusively by enrolled compatibility
-	// applications. May be nil; no compat routes are registered in that
-	// case, so the surface fails closed until the trust stack is wired.
-	CompatAPIV1 *compatapi.Handler
 	// AdminContextTokens signs the short-lived administrative context JWTs.
 	// It is separate from normal account-session token validation.
 	AdminContextTokens      auth.AdminContextTokenService
@@ -56,22 +50,6 @@ type BloemDependencies struct {
 	// NativeStorageManagement shares retained domain services and the reader
 	// coordinator. Construction does not witness complete mutation readiness.
 	NativeStorageManagement *handlers.BloemNativeStorageManagementHandler
-
-	// CompatApplications is the application lifecycle service behind the
-	// Compatibility Applications admin surface (may be nil; the surface is
-	// not mounted). Handlers call this service to list, enroll, enable,
-	// disable, rotate, and revoke; they never write application state
-	// themselves.
-	CompatApplications handlers.CompatibilityApplicationService
-
-	// The compatibility edge gateway is deliberately absent from this
-	// router. The public listener hands only /api/** here, so the gateway's
-	// families (/System/**, /emby/**, /audiobookshelf/**, /web/**, …) are
-	// claimed one layer up, in cmd/silo's publicMux, ahead of the SPA
-	// fallback. Mounting it here as well would be dead code that only tests
-	// could reach. What this router still owes the gateway is the negative
-	// guarantee: no native route may fall inside an owned family, which
-	// TestCompatGatewayRoutesDoNotOverlapNativeRoutes pins.
 }
 
 // Upstream notification hooks have no error result. Keep Bloem's detached
@@ -82,7 +60,7 @@ func bloemSessionRevocationNotification(revoke func(context.Context, int) error)
 	}
 	return func(ctx context.Context, userID int) {
 		if err := sessioninvalidation.Run(ctx, func(callCtx context.Context) error { return revoke(callCtx, userID) }); err != nil {
-			slog.ErrorContext(ctx, "compatibility session invalidation failed", "user_id", userID, "error", err)
+			slog.ErrorContext(ctx, "session invalidation failed", "user_id", userID, "error", err)
 		}
 	}
 }

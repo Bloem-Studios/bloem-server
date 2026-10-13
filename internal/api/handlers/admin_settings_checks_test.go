@@ -1576,7 +1576,6 @@ func TestAdminUpdateSettingReportsRestartRequired(t *testing.T) {
 		// Infrastructure settings are captured at startup.
 		{key: "database.max_connections", value: "40", restartRequired: true},
 		{key: "s3.public_bucket", value: "assets", restartRequired: true},
-		{key: "jellyfin_compat.enabled", value: "false", restartRequired: true},
 		// Branding is read live from the settings repo per request.
 		{key: "branding.server_name", value: "Casa", restartRequired: false},
 		{key: "policy.editor_enabled", value: "true", restartRequired: false},

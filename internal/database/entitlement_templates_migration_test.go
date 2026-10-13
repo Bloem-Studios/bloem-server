@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -15,10 +14,10 @@ const entitlementPolicyCohortsPreviousMigration int64 = 20260821210000
 func TestEntitlementTemplatesMigrationRunsDownAndUp(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("initial up: %v", err)
 	}
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", 20260820120000); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", 20260820120000); err != nil {
 		t.Fatalf("entitlements down: %v", err)
 	}
 	var exists bool
@@ -28,7 +27,7 @@ func TestEntitlementTemplatesMigrationRunsDownAndUp(t *testing.T) {
 	if exists {
 		t.Fatal("entitlement_templates still exists after down migration")
 	}
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("entitlements re-up: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.entitlement_apply_receipts') IS NOT NULL`).Scan(&exists); err != nil {
@@ -42,10 +41,10 @@ func TestEntitlementTemplatesMigrationRunsDownAndUp(t *testing.T) {
 func TestBuiltInEntitlementTemplatesAreEnabledAfterMigration(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", 20260821175101); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", 20260821175101); err != nil {
 		t.Fatalf("roll back built-in enablement migration: %v", err)
 	}
 	if _, err := pool.Exec(ctx, `
@@ -59,7 +58,7 @@ func TestBuiltInEntitlementTemplatesAreEnabledAfterMigration(t *testing.T) {
 		VALUES ('custom-disabled', 'Custom disabled', 1, false, false)`); err != nil {
 		t.Fatal(err)
 	}
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("reapply built-in enablement migration: %v", err)
 	}
 
@@ -102,10 +101,10 @@ func TestBuiltInEntitlementTemplatesAreEnabledAfterMigration(t *testing.T) {
 func TestEntitlementPolicyCohortsMigrationRunsDownAndUp(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("initial up: %v", err)
 	}
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", entitlementPolicyCohortsPreviousMigration); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", entitlementPolicyCohortsPreviousMigration); err != nil {
 		t.Fatalf("cohorts down: %v", err)
 	}
 	var exists bool
@@ -115,7 +114,7 @@ func TestEntitlementPolicyCohortsMigrationRunsDownAndUp(t *testing.T) {
 	if exists {
 		t.Fatal("entitlement_policy_cohorts still exists after down migration")
 	}
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("cohorts re-up: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.entitlement_policy_cohort_revisions') IS NOT NULL`).Scan(&exists); err != nil {
@@ -129,7 +128,7 @@ func TestEntitlementPolicyCohortsMigrationRunsDownAndUp(t *testing.T) {
 func TestEntitlementPolicyCohortsMigrationDownRefusesDerivedCohort(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("initial up: %v", err)
 	}
 	var organizationID uuid.UUID
@@ -220,7 +219,7 @@ func TestEntitlementPolicyCohortsMigrationDownRefusesDerivedCohort(t *testing.T)
 		t.Fatal(err)
 	}
 
-	err = MigrateDownTo(ctx, pool, migrations.FS, "sql", entitlementPolicyCohortsPreviousMigration)
+	err = MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", entitlementPolicyCohortsPreviousMigration)
 	if err == nil || !strings.Contains(err.Error(), "derived entitlement policy cohorts exist") {
 		t.Fatalf("cohorts down error = %v, want derived-cohort refusal", err)
 	}
@@ -280,7 +279,7 @@ func seedCohortMarkerFixture(t *testing.T) (context.Context, *pgxpool.Pool, uuid
 	t.Helper()
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 

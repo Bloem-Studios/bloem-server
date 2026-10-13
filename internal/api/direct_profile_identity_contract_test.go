@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/compatcontract"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/testutil/identitycontract"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
 
@@ -80,11 +80,11 @@ func TestDirectProfileIdentityContractAgainstRealRouter(t *testing.T) {
 		"direct_profile_id":  readerProfileID,
 		"sibling_profile_id": primaryProfileID,
 	}
-	target := compatcontract.Target{BaseURL: server.URL, Client: server.Client(), Bindings: bindings}
-	suite := compatcontract.DirectProfileIdentity()
+	target := identitycontract.Target{BaseURL: server.URL, Client: server.Client(), Bindings: bindings}
+	suite := identitycontract.DirectProfileIdentity()
 
 	// Phase 1: the login chain and every privilege bound, over real HTTP.
-	report, err := compatcontract.Run(ctx, target, suite.Pick(
+	report, err := identitycontract.Run(ctx, target, suite.Pick(
 		"direct profile login binds exactly one profile",
 		"a wrong profile password is refused",
 		"the profile directory is refused",
@@ -125,7 +125,7 @@ func TestDirectProfileIdentityContractAgainstRealRouter(t *testing.T) {
 	}
 	runRevocation := func(name string) {
 		t.Helper()
-		report, err := compatcontract.Run(ctx, target, suite.Pick(name))
+		report, err := identitycontract.Run(ctx, target, suite.Pick(name))
 		if err != nil {
 			t.Fatalf("%s: %v; report=%s", name, err, report.JSON())
 		}

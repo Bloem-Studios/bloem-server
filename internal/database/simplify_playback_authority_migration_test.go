@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/Silo-Server/silo-server/migrations"
 )
 
 func simplifyColumns(ctx context.Context, t *testing.T, pool *pgxpool.Pool, table string) map[string]bool {
@@ -54,7 +52,7 @@ func simplifyTables(ctx context.Context, t *testing.T, pool *pgxpool.Pool) map[s
 func TestSimplifyPlaybackAuthorityMigrationRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("up: %v", err)
 	}
 	dropped := []string{"playback_automatic_admission_intents", "playback_auxiliary_transfer_permits", "playback_first_admissions", "playback_output_transfer_permits", "playback_progress_sinks", "playback_source_markers", "playback_source_registrations"}
@@ -99,7 +97,7 @@ func TestSimplifyPlaybackAuthorityMigrationRoundTrip(t *testing.T) {
 	}
 
 	// Down to the migration just before ours, then verify the restored shape.
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", 20260908133802); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", 20260908133802); err != nil {
 		t.Fatalf("down: %v", err)
 	}
 	tables = simplifyTables(ctx, t, pool)
@@ -135,7 +133,7 @@ func TestSimplifyPlaybackAuthorityMigrationRoundTrip(t *testing.T) {
 		t.Errorf("down: %d/4 authority indexes restored", n)
 	}
 	// And back up again so the database is left on the new schema.
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("re-up: %v", err)
 	}
 	cols = simplifyColumns(ctx, t, pool, "playback_v3_attempts")

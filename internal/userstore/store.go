@@ -241,8 +241,6 @@ type UserStore interface {
 	// the contract neither validates nor resolves them — so they live in the
 	// dedicated jellycompat_displayprefs table and hold opaque Jellyfin client
 	// JSON verbatim. Get returns "" when nothing is stored.
-	GetJellycompatDisplayPrefs(ctx context.Context, prefsID, client string) (string, error)
-	SetJellycompatDisplayPrefs(ctx context.Context, prefsID, client, value string) error
 
 	// Canonical typed setting values (contracts/settings/v1).
 	//

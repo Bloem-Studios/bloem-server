@@ -356,30 +356,6 @@ func (s *Service) ToggleFavorite(ctx context.Context, userID int, profileID, tar
 	return next, store.RemoveFavorite(ctx, profileID, targetID)
 }
 
-func (s *Service) RecordJellycompatMarkPlayed(ctx context.Context, userID int, profileID, targetID string, watchedAt time.Time) error {
-	_, err := s.recordMarkWatched(ctx, userID, profileID, []LeafWatchTarget{{MediaItemID: targetID}}, watchedAt, userstore.WatchHistorySourceJellycompat)
-	return err
-}
-
-func (s *Service) RecordJellycompatMarkUnplayed(ctx context.Context, userID int, profileID, targetID string) error {
-	_, err := s.recordMarkUnwatched(ctx, userID, profileID, []string{targetID})
-	return err
-}
-
-// RecordJellycompatMarkPlayedBatch marks all the given media items as played in
-// a single batch upsert and writes corresponding history entries. Used by
-// jellycompat's series-mark-played path to collapse a per-episode loop into
-// one progress upsert plus per-episode history inserts (audit 2026-05-01 §2.7).
-func (s *Service) RecordJellycompatMarkPlayedBatch(ctx context.Context, userID int, profileID string, targetIDs []string, watchedAt time.Time) error {
-	return s.recordMarkWatchedBatch(ctx, userID, profileID, targetIDs, watchedAt, userstore.WatchHistorySourceJellycompat)
-}
-
-// RecordJellycompatMarkUnplayedBatch hides prior visible history and clears
-// progress for all targets in a single store operation.
-func (s *Service) RecordJellycompatMarkUnplayedBatch(ctx context.Context, userID int, profileID string, targetIDs []string) error {
-	return s.recordMarkUnwatchedBatch(ctx, userID, profileID, targetIDs)
-}
-
 func (s *Service) storeForUser(ctx context.Context, userID int) (userstore.UserStore, error) {
 	if s == nil || s.storeProvider == nil {
 		return nil, fmt.Errorf("watch state store provider is not configured")
@@ -667,37 +643,6 @@ func formatWatchedAt(watchedAt time.Time) string {
 		return ""
 	}
 	return watchedAt.UTC().Format(time.RFC3339)
-}
-
-// RecordJellycompatProgress commits the leaf's explicit state and its optional
-// played/unplayed history mutation before notifying watch providers.
-func (s *Service) RecordJellycompatProgress(ctx context.Context, userID int, profileID string, edit userstore.JellycompatProgressEdit, played *bool) error {
-	if edit.EventAt.IsZero() {
-		edit.EventAt = time.Now().UTC()
-	}
-	store, err := s.storeForUser(ctx, userID)
-	if err != nil {
-		return err
-	}
-	writer, ok := store.(userstore.JellycompatProgressEditor)
-	if !ok {
-		return fmt.Errorf("atomic user progress updates unavailable")
-	}
-	if played != nil {
-		edit.ClearHistory = !*played
-		if *played {
-			entry := userstore.WatchHistoryEntry{ProfileID: profileID, MediaItemID: edit.MediaItemID, WatchedAt: formatWatchedAt(edit.EventAt), Completed: true, Source: userstore.WatchHistorySourceJellycompat}
-			s.applyStableIdentity(ctx, &entry)
-			edit.History = &entry
-		}
-	}
-	if err := writer.ApplyJellycompatProgress(ctx, profileID, edit); err != nil {
-		return err
-	}
-	if played != nil && *played {
-		s.notifyWatchedCompleted(ctx, userID, profileID, []string{edit.MediaItemID})
-	}
-	return nil
 }
 
 func (s *Service) markWatchedBatchEntries(ctx context.Context, profileID string, targetIDs []string, watchedAt time.Time, source userstore.WatchHistorySource) ([]userstore.MarkWatchedTarget, []userstore.WatchHistoryEntry) {

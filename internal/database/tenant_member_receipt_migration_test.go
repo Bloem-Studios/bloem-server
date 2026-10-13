@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-
-	"github.com/Silo-Server/silo-server/migrations"
 )
 
 const tenantMemberReceiptPreviousMigration int64 = 20260817080527
@@ -14,10 +12,10 @@ const tenantMemberReceiptPreviousMigration int64 = 20260817080527
 func TestTenantMemberReceiptMigrationPromotesLegacyGroupsAndRunsDownUp(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("initial up: %v", err)
 	}
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", tenantMemberReceiptPreviousMigration); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", tenantMemberReceiptPreviousMigration); err != nil {
 		t.Fatalf("prepare legacy schema: %v", err)
 	}
 	legacyTenantID := uuid.New()
@@ -62,7 +60,7 @@ func TestTenantMemberReceiptMigrationPromotesLegacyGroupsAndRunsDownUp(t *testin
 	if _, err := pool.Exec(ctx, `DELETE FROM access_groups WHERE organization_id=$1`, defaultTenantID); err != nil {
 		t.Fatalf("remove deployment default group before backfill: %v", err)
 	}
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("receipt migration up: %v", err)
 	}
 	var defaultGroupID int64
@@ -83,13 +81,13 @@ func TestTenantMemberReceiptMigrationPromotesLegacyGroupsAndRunsDownUp(t *testin
 	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.tenant_member_command_receipts') IS NOT NULL`).Scan(&receiptTable); err != nil || !receiptTable {
 		t.Fatalf("receipt table after up = %v, %v", receiptTable, err)
 	}
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", tenantMemberReceiptPreviousMigration); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", tenantMemberReceiptPreviousMigration); err != nil {
 		t.Fatalf("receipt migration down: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT to_regclass('public.tenant_member_command_receipts') IS NOT NULL`).Scan(&receiptTable); err != nil || receiptTable {
 		t.Fatalf("receipt table after down = %v, %v", receiptTable, err)
 	}
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("second receipt migration up: %v", err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM access_groups WHERE organization_id=$1 AND is_default`, legacyTenantID).Scan(&groups); err != nil || groups != 1 {

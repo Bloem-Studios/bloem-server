@@ -172,10 +172,7 @@ export const profileKeys = {
   householdSessions: () => ["profiles", "household", "sessions"] as const,
 };
 
-export const compatKeys = {
-  all: ["compat"] as const,
-  connectInfo: () => ["compat", "connect-info"] as const,
-};
+
 
 export const personKeys = {
   all: ["people"] as const,
@@ -423,7 +420,6 @@ export const adminKeys = {
   downloadsStats: (limit: number) => ["admin", "dashboard", "downloads-stats", limit] as const,
   restartKeys: () => ["admin", "restartKeys"] as const,
   catalogSearchStatus: () => ["admin", "catalogSearchStatus"] as const,
-  jellyfinCompatStatus: () => ["admin", "jellyfinCompatStatus"] as const,
   networkAccessCapabilities: () => ["admin", "networkAccess", "capabilities"] as const,
   networkAccessStatusRoot: () => ["admin", "networkAccess", "status"] as const,
   networkAccessStatus: (provider: string) =>

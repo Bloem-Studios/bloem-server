@@ -61,7 +61,7 @@ func TestRunnerAgainstStub(t *testing.T) {
 			{Name: "catalog_list", Surface: SurfaceNative, Method: http.MethodGet, URL: "/api/v1/catalog?limit=20"},
 			{Name: "playback_start", Surface: SurfaceNative, Method: http.MethodPost, URL: "/api/v1/playback/start", BodyFile: "playback-start.json", CaptureSessionID: true, Once: true},
 			{Name: "playback_replan", Surface: SurfaceNative, Method: http.MethodPost, URL: "/api/v1/playback/${session_id}/replan", Body: json.RawMessage(`{}`), Once: true},
-			{Name: "jellycompat_browse", Surface: SurfaceJellycompat, Method: http.MethodGet, URL: "/Items"},
+			{Name: "unsupported_surface", Surface: "removed", Method: http.MethodGet, URL: "/Items"},
 		},
 	}
 	runner := &Runner{Plan: plan, Log: os.Stderr}
@@ -104,7 +104,7 @@ func TestRunnerAgainstStub(t *testing.T) {
 		t.Fatalf("replan did not receive the captured session id: %+v", report.Paths[2])
 	}
 	if report.Paths[3].Skipped == "" {
-		t.Fatalf("jellycompat path must be skipped without a base URL")
+		t.Fatalf("unsupported surface must be skipped")
 	}
 	raw, err := json.Marshal(report)
 	if err != nil {

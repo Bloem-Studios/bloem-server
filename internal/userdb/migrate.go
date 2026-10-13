@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion = 31
+const schemaVersion = 32
 
 func runMigrations(db *sql.DB) error {
 	version, err := userVersion(db)
@@ -16,6 +16,9 @@ func runMigrations(db *sql.DB) error {
 		return fmt.Errorf("unsupported sqlite schema version %d", version)
 	}
 	if version == 0 {
+		if err := removeCompatibilitySQLite(db); err != nil {
+			return err
+		}
 		if _, err := db.Exec(profilePINRevisionSchema); err != nil {
 			return fmt.Errorf("creating profile PIN revision trigger: %w", err)
 		}
@@ -324,6 +327,15 @@ func runMigrations(db *sql.DB) error {
 	if _, err := tx.Exec(profilePINRevisionSchema); err != nil {
 		return fmt.Errorf("creating profile PIN revision trigger: %w", err)
 	}
+	if version < 32 {
+		if err := removeCompatibilitySQLite(tx); err != nil {
+			return fmt.Errorf("migration v32 failed: %w", err)
+		}
+		if _, err := tx.Exec("PRAGMA user_version = 32"); err != nil {
+			return err
+		}
+	}
+
 	return tx.Commit()
 }
 
@@ -691,4 +703,16 @@ func migrateToV7(tx *sql.Tx) error {
 	}
 
 	return nil
+}
+
+type execSQL interface {
+	Exec(string, ...any) (sql.Result, error)
+}
+
+func removeCompatibilitySQLite(db execSQL) error {
+	if _, err := db.Exec("DROP TABLE IF EXISTS jellycompat_displayprefs"); err != nil {
+		return err
+	}
+	_, err := db.Exec("DELETE FROM user_settings WHERE key LIKE 'jellycompat:%'")
+	return err
 }

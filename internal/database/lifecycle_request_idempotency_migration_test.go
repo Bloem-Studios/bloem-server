@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-
-	"github.com/Silo-Server/silo-server/migrations"
 )
 
 const lifecycleRequestIdempotencyPreviousMigration int64 = 20260829085838
@@ -16,10 +14,10 @@ const lifecycleReceiptResolutionFixPreviousMigration int64 = 20260829092200
 func TestLifecycleReceiptResolutionTriggerUpgradeUsesFinalState(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate latest: %v", err)
 	}
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", lifecycleReceiptResolutionFixPreviousMigration); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", lifecycleReceiptResolutionFixPreviousMigration); err != nil {
 		t.Fatalf("prepare original receipt trigger: %v", err)
 	}
 
@@ -56,7 +54,7 @@ WHERE idempotency_key_digest=$1`, keyDigest); err != nil {
 	if err := commitCompletedCreateReceipt(41); err == nil || !strings.Contains(err.Error(), "lifecycle_request_receipt_unresolved_at_commit") {
 		t.Fatalf("original trigger commit error = %v", err)
 	}
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("apply receipt resolution fix: %v", err)
 	}
 	if err := commitCompletedCreateReceipt(42); err != nil {
@@ -67,10 +65,10 @@ WHERE idempotency_key_digest=$1`, keyDigest); err != nil {
 func TestAccountIncarnationMigrationBackfillsAndOwnsIdentity(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate latest: %v", err)
 	}
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", lifecycleRequestIdempotencyPreviousMigration); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", lifecycleRequestIdempotencyPreviousMigration); err != nil {
 		t.Fatalf("prepare predecessor schema: %v", err)
 	}
 
@@ -81,7 +79,7 @@ VALUES ('incarnation-legacy','incarnation-legacy@example.test','x','user')
 RETURNING id`).Scan(&legacyID); err != nil {
 		t.Fatalf("seed legacy account: %v", err)
 	}
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("apply lifecycle idempotency migration: %v", err)
 	}
 
@@ -116,7 +114,7 @@ RETURNING account_incarnation_id`, callerSelected).Scan(&generated); err != nil 
 func TestLifecycleIdempotencyMigrationCreatesOptionalRetainedReceiptSchema(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate latest: %v", err)
 	}
 
@@ -167,7 +165,7 @@ VALUES ($1,'authenticated_account',$2,$3,'DELETE','admin.account.delete',$4,
 func TestLifecycleIdempotencyMigrationFreezesCompletedReceiptAndTargets(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate latest: %v", err)
 	}
 	var accountID int

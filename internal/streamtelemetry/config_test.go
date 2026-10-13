@@ -274,8 +274,8 @@ func TestConfigFamilyGate(t *testing.T) {
 				t.Fatalf("%s not observed by default", family)
 			}
 		}
-		if got := cfg.ObservedFamilies(); len(got) != 5 ||
-			got[0] != "abs" || got[1] != "jellycompat" || got[2] != "native" || got[3] != "proxy" || got[4] != "transcode_node" {
+		if got := cfg.ObservedFamilies(); len(got) != 3 ||
+			got[0] != "native" || got[1] != "proxy" || got[2] != "transcode_node" {
 			t.Fatalf("observed families = %v", got)
 		}
 	})
@@ -290,7 +290,7 @@ func TestConfigFamilyGate(t *testing.T) {
 		if !cfg.ObservesFamily(FamilyProxy) {
 			t.Fatal("proxy not observed")
 		}
-		for _, family := range []Family{FamilyNative, FamilyJellycompat, FamilyABS, FamilyTranscodeNode} {
+		for _, family := range []Family{FamilyNative, FamilyTranscodeNode} {
 			if cfg.ObservesFamily(family) {
 				t.Fatalf("%s observed despite FAMILIES=proxy", family)
 			}
@@ -302,12 +302,12 @@ func TestConfigFamilyGate(t *testing.T) {
 	t.Run("explicit list narrows and widens", func(t *testing.T) {
 		clearConfigEnv(t)
 		t.Setenv(enabledEnv, "true")
-		t.Setenv(familiesEnv, " Native , jellycompat ,, ABS ")
+		t.Setenv(familiesEnv, " Native ")
 		cfg := ConfigFromEnv("node")
 		if !cfg.Enabled {
 			t.Fatalf("config = %+v", cfg)
 		}
-		for _, family := range []Family{FamilyNative, FamilyJellycompat, FamilyABS} {
+		for _, family := range []Family{FamilyNative} {
 			if !cfg.ObservesFamily(family) {
 				t.Fatalf("%s not observed", family)
 			}
@@ -317,7 +317,7 @@ func TestConfigFamilyGate(t *testing.T) {
 				t.Fatalf("%s observed despite an explicit list omitting it", family)
 			}
 		}
-		if got := cfg.ObservedFamilies(); len(got) != 3 || got[0] != "abs" || got[1] != "jellycompat" || got[2] != "native" {
+		if got := cfg.ObservedFamilies(); len(got) != 1 || got[0] != "native" {
 			t.Fatalf("observed families = %v", got)
 		}
 	})
@@ -335,7 +335,7 @@ func TestConfigFamilyGate(t *testing.T) {
 		t.Setenv(enabledEnv, "true")
 		t.Setenv(familiesEnv, "  ,  ")
 		cfg := ConfigFromEnv("node")
-		if !cfg.Enabled || !cfg.ObservesFamily(FamilyNative) || !cfg.ObservesFamily(FamilyABS) {
+		if !cfg.Enabled || !cfg.ObservesFamily(FamilyNative) || !cfg.ObservesFamily(FamilyNative) {
 			t.Fatalf("config = %+v", cfg)
 		}
 	})

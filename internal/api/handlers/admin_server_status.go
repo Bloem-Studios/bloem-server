@@ -5,10 +5,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
-	"slices"
 	"time"
-
-	"github.com/Silo-Server/silo-server/internal/jellycompat"
 )
 
 const (
@@ -213,18 +210,7 @@ func (h *AdminHandler) ReadAdminServerStatus(ctx context.Context) AdminServerSta
 			resp.ArtworkStorage.PrivateLocked = artworkStorageLocked(settings)
 			resp.ArtworkStorage.StatusKnown = true
 		}
-		if err == nil && jellycompat.WebComponentStatusForConfig(h.Config, settings).RestartRequired {
-			resp.RestartRequired = true
-			if resp.RestartRequiredReason == "" {
-				resp.RestartRequiredReason = "jellyfin_compat"
-			}
-			// This requirement is derived here rather than marked on the
-			// tracker, so the accumulated list has to gain it too — a client
-			// scoping restarts by reason would otherwise never see it.
-			if !slices.Contains(resp.RestartRequiredReasons, "jellyfin_compat") {
-				resp.RestartRequiredReasons = append(resp.RestartRequiredReasons, "jellyfin_compat")
-			}
-		}
+
 	}
 
 	resp.ArtworkStorage.Backend = h.ArtworkBackend

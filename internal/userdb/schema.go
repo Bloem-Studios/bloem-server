@@ -287,7 +287,7 @@ CREATE INDEX IF NOT EXISTS idx_home_item_dismissals_lookup
 
 CREATE INDEX IF NOT EXISTS idx_hidden_history_items_lookup
     ON hidden_history_items(profile_id, hidden_before);
-` + settingContractSchema + jellycompatDisplayPrefsSchema + playbackSinkSchema + playbackSourceSchema + onboardingRevisionSchema
+` + settingContractSchema + playbackSinkSchema + playbackSourceSchema + onboardingRevisionSchema
 
 // profilePINRevisionSchema advances profiles.pin_revision whenever pin_hash
 // changes, the SQLite twin of the Postgres user_profiles_pin_revision trigger.

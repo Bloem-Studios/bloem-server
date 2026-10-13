@@ -41,10 +41,6 @@
 ./internal/auth TestUserRepositoryUpdateDemotingAdminAssignsDefaultAccessGroupDB
 ./internal/auth TestLoginIdentitySpaceDB
 ./internal/auth TestLoginSessionActivityAndAdminRevocationDB
-./internal/auth TestJellyfinSessionDeleteFailureRollsBackRevocationPostgres
-./internal/jellycompat TestApplyListFileFieldsDB
-./internal/jellycompat TestLoginAccountNameWithHashDB
-./internal/jellycompat TestRevokedCompatSessionStaysDeletedPostgres
 ./internal/invitations TestLinkInvitationLifecycleDB
 ./internal/invitations TestEmailedInvitationLinkReplacementDB
 ./internal/invitations TestInvitationServiceCommittedOutcomesDB

@@ -11,7 +11,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/database"
-	"github.com/Silo-Server/silo-server/internal/jellycompat"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
@@ -54,22 +53,11 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		JWTSecret: "admin-tenant-member-route-secret", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour,
 	}}
 	bootstrap := v1TenancyBootstrap{store: tenancy.NewStore(pool)}
-	compatStore := jellycompat.NewSessionStore(24*time.Hour, time.Now)
-	var compatInvalidationErr error
+	var extensionInvalidationErr error
 	router := newChiRouter(Dependencies{
 		DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap, MembershipProvisioner: bootstrap,
-		OnUserSessionsRevoked: func(ctx context.Context, userID int) error {
-			if err := compatStore.DeleteByUserIDContext(ctx, userID); err != nil {
-				return err
-			}
-			return compatInvalidationErr
-		},
-		BloemDependencies: BloemDependencies{
-			OnUserProfileSessionsRevoked: func(ctx context.Context, userID int, profileIDs []string) error {
-				return compatStore.DeleteByUserAndProfileIDs(ctx, userID, profileIDs)
-			},
-		},
+		OnUserSessionsRevoked: func(ctx context.Context, userID int) error { return extensionInvalidationErr },
 	})
 
 	routes := walkV1Routes(t, router)
@@ -268,16 +256,7 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 			('tenant-account-session',$1,'Account session',$2,NULL,NULL,'','account')`, member.UserID, expires, profileA.ID, profileB.ID); err != nil {
 			t.Fatalf("seed tenant sessions: %v", err)
 		}
-		for _, session := range []jellycompat.Session{
-			{Token: "compat-tenant-a", StreamAppUserID: member.UserID, ProfileID: profileA.ID},
-			{Token: "compat-tenant-a-single", StreamAppUserID: member.UserID, ProfileID: profileA.ID},
-			{Token: "compat-tenant-b", StreamAppUserID: member.UserID, ProfileID: profileB.ID},
-			{Token: "compat-account", StreamAppUserID: member.UserID},
-		} {
-			if err := compatStore.Put(session); err != nil {
-				t.Fatalf("seed compat session %q: %v", session.Token, err)
-			}
-		}
+
 		sessionsAPath := memberPath + "/" + strconv.Itoa(member.UserID) + "/auth-sessions"
 		sessionsA := performJSONRequest(t, router, http.MethodGet, sessionsAPath, "", adminLogin.AccessToken, nil)
 		if sessionsA.Code != http.StatusOK || !strings.Contains(sessionsA.Body.String(), "tenant-session-a") ||
@@ -294,15 +273,7 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		if revokeSingleA.Code != http.StatusNoContent {
 			t.Fatalf("tenant revoke single = %d %s", revokeSingleA.Code, revokeSingleA.Body.String())
 		}
-		if _, ok := compatStore.Get("compat-tenant-a-single"); ok {
-			t.Fatal("tenant A compat session remained after scoped single revoke")
-		}
-		if _, ok := compatStore.Get("compat-tenant-b"); !ok {
-			t.Fatal("tenant A scoped single revoke deleted tenant B compat session")
-		}
-		if _, ok := compatStore.Get("compat-account"); !ok {
-			t.Fatal("tenant A scoped single revoke deleted account-mode compat session")
-		}
+
 		revokeAllA := performJSONRequest(t, router, http.MethodDelete, sessionsAPath, "", adminLogin.AccessToken, nil)
 		if revokeAllA.Code != http.StatusNoContent {
 			t.Fatalf("tenant revoke all = %d %s", revokeAllA.Code, revokeAllA.Body.String())
@@ -320,15 +291,6 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		if !revokedA || revokedB || revokedAccount {
 			t.Fatalf("tenant revoke-all scope: a=%v b=%v account=%v", revokedA, revokedB, revokedAccount)
 		}
-		if _, ok := compatStore.Get("compat-tenant-a"); ok {
-			t.Fatal("tenant A compat session remained after scoped revoke-all")
-		}
-		if _, ok := compatStore.Get("compat-tenant-b"); !ok {
-			t.Fatal("tenant A scoped revoke-all deleted tenant B compat session")
-		}
-		if _, ok := compatStore.Get("compat-account"); !ok {
-			t.Fatal("tenant A scoped revoke-all deleted account-mode compat session")
-		}
 
 		memberAPath := memberPath + "/" + strconv.Itoa(member.UserID)
 		updatedMember := performJSONRequest(t, router, http.MethodPut, memberAPath,
@@ -337,25 +299,13 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		if updatedMember.Code != http.StatusOK {
 			t.Fatalf("update member identity = %d %s", updatedMember.Code, updatedMember.Body.String())
 		}
-		for _, token := range []string{"compat-tenant-b", "compat-account"} {
-			if _, ok := compatStore.Get(token); ok {
-				t.Fatalf("identity update left compat session %q valid", token)
-			}
-		}
-		if err := compatStore.Put(jellycompat.Session{Token: "compat-reset", StreamAppUserID: member.UserID, ProfileID: profileB.ID}); err != nil {
-			t.Fatal(err)
-		}
+
 		resetMember := performJSONRequest(t, router, http.MethodPost, memberAPath+"/reset-password",
 			`{"password":"new production route password"}`, adminLogin.AccessToken, nil)
 		if resetMember.Code != http.StatusOK || strings.Contains(resetMember.Body.String(), "new production") {
 			t.Fatalf("reset member password = %d %s", resetMember.Code, resetMember.Body.String())
 		}
-		if _, ok := compatStore.Get("compat-reset"); ok {
-			t.Fatal("password reset left compat session valid")
-		}
-		if err := compatStore.Put(jellycompat.Session{Token: "compat-suspend", StreamAppUserID: member.UserID, ProfileID: profileB.ID}); err != nil {
-			t.Fatal(err)
-		}
+
 		// This arm asserted the rollout-pending 503 the compatibility phase
 		// produced. Once the authority is finalized a suspend simply succeeds, so
 		// what is worth pinning here is that it takes effect and carries the
@@ -365,21 +315,19 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		if suspendedMember.Code != http.StatusOK || !strings.Contains(suspendedMember.Body.String(), `"status":"suspended"`) {
 			t.Fatalf("suspend member = %d %s, want 200 suspended", suspendedMember.Code, suspendedMember.Body.String())
 		}
-		if _, ok := compatStore.Get("compat-suspend"); ok {
-			t.Fatal("suspend left a live compatibility session for a suspended member")
-		}
+
 		resumedMember := performJSONRequest(t, router, http.MethodPost, memberAPath+"/resume", `{}`, adminLogin.AccessToken, nil)
 		if resumedMember.Code != http.StatusOK {
 			t.Fatalf("resume member = %d %s, want 200", resumedMember.Code, resumedMember.Body.String())
 		}
-		compatInvalidationErr = context.DeadlineExceeded
+		extensionInvalidationErr = context.DeadlineExceeded
 		committedEmail := "compat-failure-committed@example.test"
 		failedCompatUpdate := performJSONRequest(t, router, http.MethodPut, memberAPath,
 			`{"email":"`+committedEmail+`"}`, adminLogin.AccessToken, nil)
 		if failedCompatUpdate.Code != http.StatusInternalServerError || !strings.Contains(failedCompatUpdate.Body.String(), `"error":"internal_error"`) {
 			t.Fatalf("compat-failing identity update = %d %s, want surfaced 500", failedCompatUpdate.Code, failedCompatUpdate.Body.String())
 		}
-		compatInvalidationErr = nil
+		extensionInvalidationErr = nil
 		committedMember := performJSONRequest(t, router, http.MethodGet, memberAPath, "", adminLogin.AccessToken, nil)
 		if committedMember.Code != http.StatusOK || !strings.Contains(committedMember.Body.String(), `"email":"`+committedEmail+`"`) {
 			t.Fatalf("identity did not remain committed after compat failure = %d %s", committedMember.Code, committedMember.Body.String())

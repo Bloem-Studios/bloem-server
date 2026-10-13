@@ -929,10 +929,6 @@ func TestExternalSignInEmailAutoMatchRevokesCredentialsDB(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := env.pool.Exec(ctx, `INSERT INTO abs_sessions (user_id, token_hash, device_id) VALUES ($1, $2, 'abs-device')`,
-		invited.ID, "abs-"+env.suffix); err != nil {
-		t.Fatal(err)
-	}
 
 	verified := true
 	identity := env.identity("victim-idp")
@@ -955,13 +951,6 @@ func TestExternalSignInEmailAutoMatchRevokesCredentialsDB(t *testing.T) {
 	}
 	if _, err := keys.GetByKey(ctx, key.Key); err == nil {
 		t.Fatal("the matched account kept its API key")
-	}
-	var liveABS int
-	if err := env.pool.QueryRow(ctx, `SELECT COUNT(*) FROM abs_sessions WHERE user_id = $1 AND revoked_at IS NULL`, invited.ID).Scan(&liveABS); err != nil {
-		t.Fatal(err)
-	}
-	if liveABS != 0 {
-		t.Fatalf("live Audiobookshelf sessions = %d, want 0", liveABS)
 	}
 	if len(env.revoked) != 1 || env.revoked[0] != invited.ID {
 		t.Fatalf("session hook ran for %v, want [%d]", env.revoked, invited.ID)

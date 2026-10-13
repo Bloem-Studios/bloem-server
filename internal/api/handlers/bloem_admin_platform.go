@@ -380,7 +380,7 @@ func (h *BloemAdminPlatformHandler) HandleUpdateOrganization(w http.ResponseWrit
 	}
 	fields := map[string]string{}
 	if request.ExpectedRevision <= 0 {
-		fields[compatFieldExpectedRevision] = compatRevisionValidationMessage
+		fields[adminFieldExpectedRevision] = adminRevisionValidationMessage
 	}
 	if request.Name == nil && request.Slug == nil {
 		fields["organization"] = "must include name or slug"
@@ -468,7 +468,7 @@ func (h *BloemAdminPlatformHandler) handleOrganizationStatus(w http.ResponseWrit
 		return
 	}
 	if request.ExpectedRevision <= 0 {
-		writeAdminValidation(w, map[string]string{compatFieldExpectedRevision: compatRevisionValidationMessage})
+		writeAdminValidation(w, map[string]string{adminFieldExpectedRevision: adminRevisionValidationMessage})
 		return
 	}
 	if h.lifecycle != nil && h.lifecycleDigest != nil {
@@ -517,7 +517,7 @@ func (h *BloemAdminPlatformHandler) HandleTransferOwnership(w http.ResponseWrite
 	}
 	fields := map[string]string{}
 	if request.ExpectedRevision <= 0 {
-		fields[compatFieldExpectedRevision] = compatRevisionValidationMessage
+		fields[adminFieldExpectedRevision] = adminRevisionValidationMessage
 	}
 	if request.OwnerAccountID <= 0 {
 		fields["owner_account_id"] = "must identify an account"
@@ -612,7 +612,7 @@ func (h *BloemAdminPlatformHandler) HandleCreateMembership(w http.ResponseWriter
 	}
 	fields := map[string]string{}
 	if request.ExpectedRevision <= 0 {
-		fields[compatFieldExpectedRevision] = compatRevisionValidationMessage
+		fields[adminFieldExpectedRevision] = adminRevisionValidationMessage
 	}
 	if request.AccountID <= 0 {
 		fields["account_id"] = "must identify an account"
@@ -673,7 +673,7 @@ func (h *BloemAdminPlatformHandler) HandleUpdateMembership(w http.ResponseWriter
 	}
 	fields := map[string]string{}
 	if request.ExpectedRevision <= 0 {
-		fields[compatFieldExpectedRevision] = compatRevisionValidationMessage
+		fields[adminFieldExpectedRevision] = adminRevisionValidationMessage
 	}
 	if request.LegacyRole == nil && request.Status == nil {
 		fields["membership"] = "must include legacy_role or status"

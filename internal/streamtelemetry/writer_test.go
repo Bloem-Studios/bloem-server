@@ -200,7 +200,7 @@ func TestObserveSkipsUnobservedFamily(t *testing.T) {
 		return registry.Sweep()
 	}
 
-	if snapshot := serve(FamilyABS); len(snapshot.Sessions) != 0 {
+	if snapshot := serve(Family("removed")); len(snapshot.Sessions) != 0 {
 		t.Fatalf("gated-out family produced sessions: %+v", snapshot.Sessions)
 	}
 	snapshot := serve(FamilyNative)

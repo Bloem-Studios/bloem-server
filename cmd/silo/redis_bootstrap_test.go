@@ -13,17 +13,16 @@ func TestApplyBootstrapOverridesTakesRedisFromTheEnvironment(t *testing.T) {
 	cfg := &config.Config{Redis: saved}
 	applyBootstrapOverrides(cfg, &config.BootstrapConfig{
 		Listen:      ":8080",
-		JFListen:    ":8096",
 		Mode:        "integrated",
 		DatabaseURL: "postgres://db.example.invalid/silo",
 	})
 	if cfg.Redis != saved {
 		t.Errorf("without REDIS_URL Redis = %+v, want the saved %+v", cfg.Redis, saved)
 	}
-	if cfg.Server.Listen != ":8080" || cfg.JellyfinCompat.Listen != ":8096" ||
+	if cfg.Server.Listen != ":8080" ||
 		cfg.Server.Mode != "integrated" || cfg.Database.URL != "postgres://db.example.invalid/silo" {
-		t.Errorf("listen = %q, Jellyfin listen = %q, mode = %q, database URL = %q; want the environment's values",
-			cfg.Server.Listen, cfg.JellyfinCompat.Listen, cfg.Server.Mode, cfg.Database.URL)
+		t.Errorf("listen = %q, mode = %q, database URL = %q; want the environment's values",
+			cfg.Server.Listen, cfg.Server.Mode, cfg.Database.URL)
 	}
 
 	// REDIS_URL names the whole connection, so the saved redis.db goes too.

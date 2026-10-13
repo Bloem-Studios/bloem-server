@@ -17,7 +17,7 @@ Dockerfile
 Makefile  # Bloem gates and generation; bounded 20-minute Go package timeout covers the measured ~15-minute executor
 assets/icon.png
 cmd/playbackfixtures/main.go
-cmd/silo/abs_listener.go
+cmd/silo/abs_listener.go # deleted: removed protocol layer
 cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
@@ -135,16 +135,16 @@ internal/apiv2/profile_token_revision_test.go  # skipped: Bloem runs profile mut
 internal/apiv2/profiles.go
 internal/apiv2/registry.go
 internal/apiv2/router.go
-internal/audiobooks/abs/author_series_handler.go
-internal/audiobooks/abs/handler.go
-internal/audiobooks/abs/libraries_handler.go
-internal/audiobooks/abs/listening_stats_handler.go
-internal/audiobooks/abs/media_routes.go
-internal/audiobooks/abs/play_response.go
-internal/audiobooks/abs/rss_feeds.go
-internal/audiobooks/abs/rss_feeds_handler.go
+internal/audiobooks/abs/author_series_handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/libraries_handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/listening_stats_handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/media_routes.go # deleted: removed protocol layer
+internal/audiobooks/abs/play_response.go # deleted: removed protocol layer
+internal/audiobooks/abs/rss_feeds.go # deleted: removed protocol layer
+internal/audiobooks/abs/rss_feeds_handler.go # deleted: removed protocol layer
 internal/audiobooks/enrichment_state.go  # preserve unclaimed repair attempt history while resetting only a new no-match streak
-internal/audiobooks/media_store.go  # accept bigint library-policy filters without changing allowlist, disabled-library or route-pin semantics
+internal/audiobooks/media_store.go # deleted: removed protocol layer
 internal/auth/account_provisioner.go  # tenant provisioning and early transactional-provider check before account or SQLite side effects
 internal/auth/account_resolution.go  # current-account locking and verified-email matching use the membership-aware projection
 internal/auth/admin_users.go  # reuse Bloem membership-policy projection and lock only the account during revision-CAS mutations
@@ -214,19 +214,19 @@ internal/invitations/repository_atomic_test.go  # fully migrated isolated databa
 internal/invitations/service.go
 internal/invitations/service_atomic_test.go  # reuse real tenant membership provisioning in the atomic acceptance fixture
 internal/invitations/service_test.go
-internal/jellycompat/access_filter.go
-internal/jellycompat/access_filter_test.go
-internal/jellycompat/dto.go
-internal/jellycompat/dv_strip_test.go  # Explicitly disable tone mapping in the negative-route fixture; upstream defaults now enable it.
-internal/jellycompat/handlers_auth.go
-internal/jellycompat/handlers_images.go
-internal/jellycompat/handlers_items.go
-internal/jellycompat/handlers_playback.go
-internal/jellycompat/handlers_userconfig.go  # resolvedUserDTO passes ctx so Bloem Live TV access applies to every user DTO
-internal/jellycompat/router.go
-internal/jellycompat/server.go
-internal/jellycompat/streams.go
-internal/jellycompat/web_component.go
+internal/jellycompat/access_filter.go # deleted: removed protocol layer
+internal/jellycompat/access_filter_test.go # deleted: removed protocol layer
+internal/jellycompat/dto.go # deleted: removed protocol layer
+internal/jellycompat/dv_strip_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_auth.go # deleted: removed protocol layer
+internal/jellycompat/handlers_images.go # deleted: removed protocol layer
+internal/jellycompat/handlers_items.go # deleted: removed protocol layer
+internal/jellycompat/handlers_playback.go # deleted: removed protocol layer
+internal/jellycompat/handlers_userconfig.go # deleted: removed protocol layer
+internal/jellycompat/router.go # deleted: removed protocol layer
+internal/jellycompat/server.go # deleted: removed protocol layer
+internal/jellycompat/streams.go # deleted: removed protocol layer
+internal/jellycompat/web_component.go # deleted: removed protocol layer
 internal/libraryingest/executor.go
 internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
 internal/librarykind/librarykind.go
@@ -416,3 +416,428 @@ web/src/test-setup.ts
 web/src/test/requestBudget.ts  # Include Bloem public shell endpoints in deterministic boot server without exempting authenticated operations
 web/src/test/signedInBoot.test.tsx  # Exercise Bloem shell requests against real public endpoint fixtures before measuring budget
 web/vite.config.ts
+
+# Reviewed exception: Jim directed complete Jellyfin/ABS layer removal, 2026-10-13.
+# Explicit deleted upstream paths are retained as merge liabilities, not a wildcard exemption.
+cmd/silo/artwork_delivery_test.go # deleted: removed protocol layer
+cmd/silo/jellycompat_detail.go # deleted: removed protocol layer
+cmd/silo/jellycompat_detail_test.go # deleted: removed protocol layer
+internal/api/handlers/admin_jellyfin_settings_service_test.go # deleted: removed protocol layer
+internal/api/handlers/admin_jellyfin_status_service_test.go # deleted: removed protocol layer
+internal/api/handlers/compat_connect_info.go # deleted: removed protocol layer
+internal/api/handlers/jellyfin_compat.go # deleted: removed protocol layer
+internal/api/handlers/jellyfin_compat_test.go # deleted: removed protocol layer
+internal/apiv2/admin_jellyfin_compat_settings.go # deleted: removed protocol layer
+internal/apiv2/admin_jellyfin_compat_settings_test.go # deleted: removed protocol layer
+internal/apiv2/admin_jellyfin_compat_status.go # deleted: removed protocol layer
+internal/apiv2/admin_jellyfin_compat_status_test.go # deleted: removed protocol layer
+internal/apiv2/admin_jellyfin_compat_web.go # deleted: removed protocol layer
+internal/apiv2/admin_jellyfin_compat_web_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/access_log.go # deleted: removed protocol layer
+internal/audiobooks/abs/author_series_handler_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/base_url_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/bookmarks.go # deleted: removed protocol layer
+internal/audiobooks/abs/bookmarks_envelope_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/bookmarks_handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/bookmarks_handler_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/collapse.go # deleted: removed protocol layer
+internal/audiobooks/abs/collections.go # deleted: removed protocol layer
+internal/audiobooks/abs/collections_envelope_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/collections_handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/collections_handler_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/compression_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/continue_listening_handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/continue_listening_handler_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/extras_handlers.go # deleted: removed protocol layer
+internal/audiobooks/abs/file_handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/file_handler_public_track_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/filter.go # deleted: removed protocol layer
+internal/audiobooks/abs/items_detail_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/items_handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/items_in_progress_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/jwt.go # deleted: removed protocol layer
+internal/audiobooks/abs/libraries_metadata_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/libraries_shape_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/listening_stats_handler_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/login.go # deleted: removed protocol layer
+internal/audiobooks/abs/login_body_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/login_envelope_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/login_logout_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/login_ratelimit.go # deleted: removed protocol layer
+internal/audiobooks/abs/login_ratelimit_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/login_refresh_race_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/login_refresh_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/me_handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/me_handler_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/media_routes_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/minified.go # deleted: removed protocol layer
+internal/audiobooks/abs/minified_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/native_sessions.go # deleted: removed protocol layer
+internal/audiobooks/abs/native_sessions_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/ping_status_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/play_chapters_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/play_resume_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/playlists.go # deleted: removed protocol layer
+internal/audiobooks/abs/playlists_envelope_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/playlists_handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/playlists_handler_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/progress.go # deleted: removed protocol layer
+internal/audiobooks/abs/progress_internal_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/readfrom_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/router_socket_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/rss_feeds_handler_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/search_shape_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/session_local.go # deleted: removed protocol layer
+internal/audiobooks/abs/session_local_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/smart_collections.go # deleted: removed protocol layer
+internal/audiobooks/abs/smart_collections_envelope_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/smart_collections_handler.go # deleted: removed protocol layer
+internal/audiobooks/abs/smart_collections_handler_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/streamtelemetry.go # deleted: removed protocol layer
+internal/audiobooks/abs/streamtelemetry_bench_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/streamtelemetry_test.go # deleted: removed protocol layer
+internal/audiobooks/abs/testdata/media_routes.txt # deleted: removed protocol layer
+internal/audiobooks/abs/types.go # deleted: removed protocol layer
+internal/audiobooks/abs_bookmark_store.go # deleted: removed protocol layer
+internal/audiobooks/abs_collection_store.go # deleted: removed protocol layer
+internal/audiobooks/abs_playback_session_store.go # deleted: removed protocol layer
+internal/audiobooks/abs_playlist_store.go # deleted: removed protocol layer
+internal/audiobooks/abs_progress_store.go # deleted: removed protocol layer
+internal/audiobooks/abs_rss_feed_store.go # deleted: removed protocol layer
+internal/audiobooks/abs_session_store.go # deleted: removed protocol layer
+internal/audiobooks/abs_smart_collection_store.go # deleted: removed protocol layer
+internal/audiobooks/abssocket/server.go # deleted: removed protocol layer
+internal/audiobooks/abssocket/server_test.go # deleted: removed protocol layer
+internal/audiobooks/access_resolver.go # deleted: removed protocol layer
+internal/audiobooks/config.go # deleted: removed protocol layer
+internal/audiobooks/cred_validator.go # deleted: removed protocol layer
+internal/audiobooks/cred_validator_test.go # deleted: removed protocol layer
+internal/audiobooks/recommender.go # deleted: removed protocol layer
+internal/audiobooks/service.go # deleted: removed protocol layer
+internal/audiobooks/service_test.go # deleted: removed protocol layer
+internal/jellycompat/attachments_test.go # deleted: removed protocol layer
+internal/jellycompat/audio_profile_streams_test.go # deleted: removed protocol layer
+internal/jellycompat/audio_selection_test.go # deleted: removed protocol layer
+internal/jellycompat/audio_v2_routes_test.go # deleted: removed protocol layer
+internal/jellycompat/audiobook_exclusion_test.go # deleted: removed protocol layer
+internal/jellycompat/auth.go # deleted: removed protocol layer
+internal/jellycompat/auth_api_key.go # deleted: removed protocol layer
+internal/jellycompat/auth_api_key_scopes_test.go # deleted: removed protocol layer
+internal/jellycompat/auth_api_key_session_test.go # deleted: removed protocol layer
+internal/jellycompat/auth_directplay_test.go # deleted: removed protocol layer
+internal/jellycompat/auth_refresh_outage_test.go # deleted: removed protocol layer
+internal/jellycompat/auth_test.go # deleted: removed protocol layer
+internal/jellycompat/auto_transcode_fallback_test.go # deleted: removed protocol layer
+internal/jellycompat/batch_loaders.go # deleted: removed protocol layer
+internal/jellycompat/batch_loaders_test.go # deleted: removed protocol layer
+internal/jellycompat/batch_progress_test.go # deleted: removed protocol layer
+internal/jellycompat/boxset_children_detail_fields_test.go # deleted: removed protocol layer
+internal/jellycompat/browse_user_state.go # deleted: removed protocol layer
+internal/jellycompat/browse_user_state_test.go # deleted: removed protocol layer
+internal/jellycompat/catalog_contract_test.go # deleted: removed protocol layer
+internal/jellycompat/catalog_feedback_test.go # deleted: removed protocol layer
+internal/jellycompat/cleanup.go # deleted: removed protocol layer
+internal/jellycompat/cleanup_test.go # deleted: removed protocol layer
+internal/jellycompat/collection_collage_test.go # deleted: removed protocol layer
+internal/jellycompat/collection_images_test.go # deleted: removed protocol layer
+internal/jellycompat/compat_browse_filters_test.go # deleted: removed protocol layer
+internal/jellycompat/connect_info.go # deleted: removed protocol layer
+internal/jellycompat/connect_info_test.go # deleted: removed protocol layer
+internal/jellycompat/content_direct.go # deleted: removed protocol layer
+internal/jellycompat/content_direct_rating_test.go # deleted: removed protocol layer
+internal/jellycompat/content_direct_test.go # deleted: removed protocol layer
+internal/jellycompat/content_service.go # deleted: removed protocol layer
+internal/jellycompat/detail_subtitle_preferences_test.go # deleted: removed protocol layer
+internal/jellycompat/deviceprofile.go # deleted: removed protocol layer
+internal/jellycompat/deviceprofile_conditions.go # deleted: removed protocol layer
+internal/jellycompat/deviceprofile_conditions_test.go # deleted: removed protocol layer
+internal/jellycompat/deviceprofile_limits.go # deleted: removed protocol layer
+internal/jellycompat/deviceprofile_limits_test.go # deleted: removed protocol layer
+internal/jellycompat/deviceprofile_postgres.go # deleted: removed protocol layer
+internal/jellycompat/deviceprofile_postgres_test.go # deleted: removed protocol layer
+internal/jellycompat/displayprefs/displayprefs.go # deleted: removed protocol layer
+internal/jellycompat/displayprefs/displayprefs_test.go # deleted: removed protocol layer
+internal/jellycompat/download.go # deleted: removed protocol layer
+internal/jellycompat/download_route_test.go # deleted: removed protocol layer
+internal/jellycompat/dto_backdrop_test.go # deleted: removed protocol layer
+internal/jellycompat/dto_test.go # deleted: removed protocol layer
+internal/jellycompat/dv_strip.go # deleted: removed protocol layer
+internal/jellycompat/encoder_reporting_test.go # deleted: removed protocol layer
+internal/jellycompat/favorites_supported_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_attachments.go # deleted: removed protocol layer
+internal/jellycompat/handlers_autoscan.go # deleted: removed protocol layer
+internal/jellycompat/handlers_autoscan_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_clientlog.go # deleted: removed protocol layer
+internal/jellycompat/handlers_collections.go # deleted: removed protocol layer
+internal/jellycompat/handlers_collections_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_displayprefs.go # deleted: removed protocol layer
+internal/jellycompat/handlers_displayprefs_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_genres_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_items_batch_detail_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_items_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_missing_endpoints_router_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_missing_endpoints_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_persons.go # deleted: removed protocol layer
+internal/jellycompat/handlers_playback_config_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_recommendations.go # deleted: removed protocol layer
+internal/jellycompat/handlers_sessions.go # deleted: removed protocol layer
+internal/jellycompat/handlers_system.go # deleted: removed protocol layer
+internal/jellycompat/handlers_system_test.go # deleted: removed protocol layer
+internal/jellycompat/handlers_trickplay.go # deleted: removed protocol layer
+internal/jellycompat/handlers_userdata.go # deleted: removed protocol layer
+internal/jellycompat/handlers_websocket.go # deleted: removed protocol layer
+internal/jellycompat/hevc_dv_strip_test.go # deleted: removed protocol layer
+internal/jellycompat/hevc_encoding.go # deleted: removed protocol layer
+internal/jellycompat/hevc_output_conditions_test.go # deleted: removed protocol layer
+internal/jellycompat/hevc_routes_test.go # deleted: removed protocol layer
+internal/jellycompat/hevc_routing_test.go # deleted: removed protocol layer
+internal/jellycompat/hydrate_progress_no_detail_test.go # deleted: removed protocol layer
+internal/jellycompat/idcodec.go # deleted: removed protocol layer
+internal/jellycompat/idcodec_mediasource_test.go # deleted: removed protocol layer
+internal/jellycompat/idcodec_test.go # deleted: removed protocol layer
+internal/jellycompat/image_cache.go # deleted: removed protocol layer
+internal/jellycompat/image_cache_test.go # deleted: removed protocol layer
+internal/jellycompat/image_proxy_tags.go # deleted: removed protocol layer
+internal/jellycompat/image_proxy_tags_test.go # deleted: removed protocol layer
+internal/jellycompat/image_tag_signer.go # deleted: removed protocol layer
+internal/jellycompat/image_variants.go # deleted: removed protocol layer
+internal/jellycompat/image_variants_test.go # deleted: removed protocol layer
+internal/jellycompat/images.go # deleted: removed protocol layer
+internal/jellycompat/images_test.go # deleted: removed protocol layer
+internal/jellycompat/jellyfin12_db_test.go # deleted: removed protocol layer
+internal/jellycompat/jellyfin12_fields_test.go # deleted: removed protocol layer
+internal/jellycompat/language_filters_test.go # deleted: removed protocol layer
+internal/jellycompat/latest_via_sections_test.go # deleted: removed protocol layer
+internal/jellycompat/list_seasons_batch_test.go # deleted: removed protocol layer
+internal/jellycompat/listing_totals_test.go # deleted: removed protocol layer
+internal/jellycompat/logging.go # deleted: removed protocol layer
+internal/jellycompat/logging_test.go # deleted: removed protocol layer
+internal/jellycompat/login.go # deleted: removed protocol layer
+internal/jellycompat/login_directory_db_test.go # deleted: removed protocol layer
+internal/jellycompat/login_hash_username_db_test.go # deleted: removed protocol layer
+internal/jellycompat/login_password_change_test.go # deleted: removed protocol layer
+internal/jellycompat/login_pin_limit_db_test.go # deleted: removed protocol layer
+internal/jellycompat/login_routing_race_db_test.go # deleted: removed protocol layer
+internal/jellycompat/manifest_tonemap_failover_test.go # deleted: removed protocol layer
+internal/jellycompat/mapping.go # deleted: removed protocol layer
+internal/jellycompat/mapping_chapters_test.go # deleted: removed protocol layer
+internal/jellycompat/mapping_images_test.go # deleted: removed protocol layer
+internal/jellycompat/mapping_providerids_test.go # deleted: removed protocol layer
+internal/jellycompat/mapping_sort_test.go # deleted: removed protocol layer
+internal/jellycompat/mapping_userdata_test.go # deleted: removed protocol layer
+internal/jellycompat/marker_segments_test.go # deleted: removed protocol layer
+internal/jellycompat/media_routes.go # deleted: removed protocol layer
+internal/jellycompat/media_routes_test.go # deleted: removed protocol layer
+internal/jellycompat/needs_detail_fields_test.go # deleted: removed protocol layer
+internal/jellycompat/network_access_test.go # deleted: removed protocol layer
+internal/jellycompat/observe.go # deleted: removed protocol layer
+internal/jellycompat/observe_test.go # deleted: removed protocol layer
+internal/jellycompat/parent_browse_test.go # deleted: removed protocol layer
+internal/jellycompat/path_normalization.go # deleted: removed protocol layer
+internal/jellycompat/path_normalization_test.go # deleted: removed protocol layer
+internal/jellycompat/person_image_tags_test.go # deleted: removed protocol layer
+internal/jellycompat/person_item_access_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_4k_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_contract_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_finish_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_hevc_encoding_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_hevc_remux_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_info_source_id_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_info_unreadable_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_negotiation_dedup_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_output_conditions_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_profile_refresh_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_report_liveness_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_route_identity_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_scrobble.go # deleted: removed protocol layer
+internal/jellycompat/playback_scrobble_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_sessions.go # deleted: removed protocol layer
+internal/jellycompat/playback_sessions_activity.go # deleted: removed protocol layer
+internal/jellycompat/playback_sessions_activity_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_sessions_json.go # deleted: removed protocol layer
+internal/jellycompat/playback_sessions_json_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_sessions_list.go # deleted: removed protocol layer
+internal/jellycompat/playback_sessions_postgres.go # deleted: removed protocol layer
+internal/jellycompat/playback_sessions_postgres_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_static_directplay_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_subtitle_auth_test.go # deleted: removed protocol layer
+internal/jellycompat/playback_webos_progress_test.go # deleted: removed protocol layer
+internal/jellycompat/poster_gen.go # deleted: removed protocol layer
+internal/jellycompat/preferences_routes_test.go # deleted: removed protocol layer
+internal/jellycompat/presign_list.go # deleted: removed protocol layer
+internal/jellycompat/probed_runtime.go # deleted: removed protocol layer
+internal/jellycompat/probed_runtime_test.go # deleted: removed protocol layer
+internal/jellycompat/process_token_darwin.go # deleted: removed protocol layer
+internal/jellycompat/process_token_linux.go # deleted: removed protocol layer
+internal/jellycompat/profile_refresh.go # deleted: removed protocol layer
+internal/jellycompat/providerids.go # deleted: removed protocol layer
+internal/jellycompat/query.go # deleted: removed protocol layer
+internal/jellycompat/query_imagetypes_test.go # deleted: removed protocol layer
+internal/jellycompat/query_repeated_fields_test.go # deleted: removed protocol layer
+internal/jellycompat/query_test.go # deleted: removed protocol layer
+internal/jellycompat/ratelimit.go # deleted: removed protocol layer
+internal/jellycompat/ratelimit_test.go # deleted: removed protocol layer
+internal/jellycompat/readfrom_test.go # deleted: removed protocol layer
+internal/jellycompat/realtime_monitor_test.go # deleted: removed protocol layer
+internal/jellycompat/remote_dispatch_hwaccel_test.go # deleted: removed protocol layer
+internal/jellycompat/remote_relay_transport_test.go # deleted: removed protocol layer
+internal/jellycompat/remote_tonemap_capability_transport_test.go # deleted: removed protocol layer
+internal/jellycompat/remote_transcode_reconstruct_test.go # deleted: removed protocol layer
+internal/jellycompat/resume_filter_test.go # deleted: removed protocol layer
+internal/jellycompat/review_auth_sessions_test.go # deleted: removed protocol layer
+internal/jellycompat/router_activitylog_test.go # deleted: removed protocol layer
+internal/jellycompat/router_compression_test.go # deleted: removed protocol layer
+internal/jellycompat/router_socket_test.go # deleted: removed protocol layer
+internal/jellycompat/router_test.go # deleted: removed protocol layer
+internal/jellycompat/router_userstate_test.go # deleted: removed protocol layer
+internal/jellycompat/routing_policy_test.go # deleted: removed protocol layer
+internal/jellycompat/routing_test_helpers_test.go # deleted: removed protocol layer
+internal/jellycompat/runtime.go # deleted: removed protocol layer
+internal/jellycompat/search_guard.go # deleted: removed protocol layer
+internal/jellycompat/search_guard_test.go # deleted: removed protocol layer
+internal/jellycompat/seek_reanchor_test.go # deleted: removed protocol layer
+internal/jellycompat/series_userdata_test.go # deleted: removed protocol layer
+internal/jellycompat/session_repository.go # deleted: removed protocol layer
+internal/jellycompat/session_revocation_db_test.go # deleted: removed protocol layer
+internal/jellycompat/session_store.go # deleted: removed protocol layer
+internal/jellycompat/session_store_log_test.go # deleted: removed protocol layer
+internal/jellycompat/session_store_test.go # deleted: removed protocol layer
+internal/jellycompat/sessions_live_test.go # deleted: removed protocol layer
+internal/jellycompat/slice_page_ids_test.go # deleted: removed protocol layer
+internal/jellycompat/smart_boxset_test.go # deleted: removed protocol layer
+internal/jellycompat/specific_items_filters_test.go # deleted: removed protocol layer
+internal/jellycompat/streams_segment_error_test.go # deleted: removed protocol layer
+internal/jellycompat/streams_test.go # deleted: removed protocol layer
+internal/jellycompat/streamtelemetry.go # deleted: removed protocol layer
+internal/jellycompat/streamtelemetry_bench_test.go # deleted: removed protocol layer
+internal/jellycompat/streamtelemetry_test.go # deleted: removed protocol layer
+internal/jellycompat/subtitle_delivery.go # deleted: removed protocol layer
+internal/jellycompat/subtitle_mode_parity_test.go # deleted: removed protocol layer
+internal/jellycompat/subtitle_selection.go # deleted: removed protocol layer
+internal/jellycompat/subtitle_selection_test.go # deleted: removed protocol layer
+internal/jellycompat/subtitle_warm_test.go # deleted: removed protocol layer
+internal/jellycompat/system_routes_test.go # deleted: removed protocol layer
+internal/jellycompat/terminal_scrobble_recovery.go # deleted: removed protocol layer
+internal/jellycompat/testdata/media_routes.txt # deleted: removed protocol layer
+internal/jellycompat/testdata/web-seek-reanchor/behavior.cjs # deleted: removed protocol layer
+internal/jellycompat/testdata/web-seek-reanchor/htmlvideo.js # deleted: removed protocol layer
+internal/jellycompat/testdata/web-seek-reanchor/playbackmanager.js # deleted: removed protocol layer
+internal/jellycompat/theme_routing.go # deleted: removed protocol layer
+internal/jellycompat/theme_routing_test.go # deleted: removed protocol layer
+internal/jellycompat/theme_songs.go # deleted: removed protocol layer
+internal/jellycompat/theme_songs_stub_test.go # deleted: removed protocol layer
+internal/jellycompat/theme_songs_test.go # deleted: removed protocol layer
+internal/jellycompat/tone_map_capability_timeout_test.go # deleted: removed protocol layer
+internal/jellycompat/tone_map_inventory_test.go # deleted: removed protocol layer
+internal/jellycompat/trickplay_negotiation_test.go # deleted: removed protocol layer
+internal/jellycompat/trickplay_test.go # deleted: removed protocol layer
+internal/jellycompat/upstream_types.go # deleted: removed protocol layer
+internal/jellycompat/user_state_helpers.go # deleted: removed protocol layer
+internal/jellycompat/userconfig_case_test.go # deleted: removed protocol layer
+internal/jellycompat/userconfig_language_test.go # deleted: removed protocol layer
+internal/jellycompat/userdata_direct.go # deleted: removed protocol layer
+internal/jellycompat/userdata_direct_test.go # deleted: removed protocol layer
+internal/jellycompat/userdata_events.go # deleted: removed protocol layer
+internal/jellycompat/userdata_events_test.go # deleted: removed protocol layer
+internal/jellycompat/userdata_favorite_atomic_test.go # deleted: removed protocol layer
+internal/jellycompat/userdata_parent_atomic_test.go # deleted: removed protocol layer
+internal/jellycompat/userdata_parent_response_test.go # deleted: removed protocol layer
+internal/jellycompat/util.go # deleted: removed protocol layer
+internal/jellycompat/viewer_state_postgres_test.go # deleted: removed protocol layer
+internal/jellycompat/viewer_state_test.go # deleted: removed protocol layer
+internal/jellycompat/views_order.go # deleted: removed protocol layer
+internal/jellycompat/views_order_test.go # deleted: removed protocol layer
+internal/jellycompat/virtual_episode_test.go # deleted: removed protocol layer
+internal/jellycompat/web.go # deleted: removed protocol layer
+internal/jellycompat/web_component_test.go # deleted: removed protocol layer
+internal/userdb/displayprefs.go # deleted: removed protocol layer
+internal/userdb/jellycompat_favorite_test.go # deleted: removed protocol layer
+internal/userdb/jellycompat_parent.go # deleted: removed protocol layer
+internal/userdb/jellycompat_progress.go # deleted: removed protocol layer
+internal/userstore/jellycompat_progress.go # deleted: removed protocol layer
+internal/userstore/pgstore/displayprefs.go # deleted: removed protocol layer
+internal/userstore/pgstore/jellycompat_favorite_test.go # deleted: removed protocol layer
+internal/userstore/pgstore/jellycompat_parent.go # deleted: removed protocol layer
+internal/userstore/pgstore/jellycompat_progress.go # deleted: removed protocol layer
+internal/userstore/pgstore/jellycompat_progress_test.go # deleted: removed protocol layer
+internal/userstore/storetest/displayprefs.go # deleted: removed protocol layer
+internal/userstore/storetest/jellycompat_favorite.go # deleted: removed protocol layer
+internal/userstore/storetest/jellycompat_parent.go # deleted: removed protocol layer
+internal/userstore/storetest/jellycompat_progress.go # deleted: removed protocol layer
+internal/watchstate/jellycompat_parent.go # deleted: removed protocol layer
+web/src/api/v2/jellyfinStatusCache.test.ts # deleted: removed protocol layer
+web/src/api/v2/jellyfinStatusCache.ts # deleted: removed protocol layer
+web/src/hooks/queries/admin/jellyfinSettingsWrite.test.ts # deleted: removed protocol layer
+web/src/hooks/queries/admin/jellyfinStatus.test.ts # deleted: removed protocol layer
+web/src/hooks/queries/compat.ts # deleted: removed protocol layer
+web/src/lib/jellyfinCompat.test.ts # deleted: removed protocol layer
+web/src/lib/jellyfinCompat.ts # deleted: removed protocol layer
+web/src/pages/admin-settings/CompatibilityProxiesSettings.tsx # deleted: removed protocol layer
+
+# Protocol removal integration points; required to keep native services independent.
+.github/workflows/trusted-linux-ci.yml # compatibility removal wiring and native regression coverage
+cmd/silo/redis_bootstrap_test.go # compatibility removal wiring and native regression coverage
+internal/api/handlers/admin_server_status.go # compatibility removal wiring and native regression coverage
+internal/apiv2/document.go # compatibility removal wiring and native regression coverage
+internal/apiv2/operational_discovery.go # compatibility removal wiring and native regression coverage
+internal/apiv2/operational_discovery_test.go # compatibility removal wiring and native regression coverage
+internal/apiv2/schema_ownership_test.go # compatibility removal wiring and native regression coverage
+internal/auth/password_reset.go # compatibility removal wiring and native regression coverage
+internal/auth/provider_recheck.go # compatibility removal wiring and native regression coverage
+internal/catalog/orphan_cleanup.go # compatibility removal wiring and native regression coverage
+internal/database/displayprefs_move.go # compatibility removal wiring and native regression coverage
+internal/database/displayprefs_move_test.go # compatibility removal wiring and native regression coverage
+internal/database/invalid_index_rebuild.go # compatibility removal wiring and native regression coverage
+internal/nodeconfig/watcher.go # compatibility removal wiring and native regression coverage
+internal/notifications/interest_hooks.go # compatibility removal wiring and native regression coverage
+internal/notifications/interest_hooks_test.go # compatibility removal wiring and native regression coverage
+internal/secret/backfill.go # compatibility removal wiring and native regression coverage
+internal/settingsmigrate/plan.go # compatibility removal wiring and native regression coverage
+internal/userdb/conformance_test.go # compatibility removal wiring and native regression coverage
+internal/userdb/displayprefs_migrate.go # compatibility removal wiring and native regression coverage
+internal/userdb/displayprefs_migrate_test.go # compatibility removal wiring and native regression coverage
+internal/userdb/migrate.go # compatibility removal wiring and native regression coverage
+internal/userdb/schema.go # compatibility removal wiring and native regression coverage
+internal/userdb/sqlitestore.go # compatibility removal wiring and native regression coverage
+internal/userstore/pgstore/conformance_test.go # compatibility removal wiring and native regression coverage
+internal/userstore/store.go # compatibility removal wiring and native regression coverage
+internal/userstore/storetest/dated_mark_watched.go # compatibility removal wiring and native regression coverage
+internal/watchstate/service.go # compatibility removal wiring and native regression coverage
+scripts/ci/db-contracts.txt # compatibility removal wiring and native regression coverage
+scripts/ci/db-pins.txt # compatibility removal wiring and native regression coverage
+web/src/api/v2/operations.ts # compatibility removal wiring and native regression coverage
+web/src/components/RealtimeEventsProvider.tsx # compatibility removal wiring and native regression coverage
+web/src/hooks/queries/admin/settings.ts # compatibility removal wiring and native regression coverage
+web/src/hooks/queries/keys.ts # compatibility removal wiring and native regression coverage
+web/src/pages/SettingsLayout.tsx # compatibility removal wiring and native regression coverage
+web/src/pages/settings/ConnectAppsSettings.test.tsx # compatibility removal wiring and native regression coverage
+web/src/pages/settings/ConnectAppsSettings.tsx # compatibility removal wiring and native regression coverage
+web/src/pages/settings/connectApps.test.ts # compatibility removal wiring and native regression coverage
+web/src/pages/settings/connectApps.ts # compatibility removal wiring and native regression coverage
+web/src/pages/setup-wizard/steps/ConnectStep.tsx # compatibility removal wiring and native regression coverage
+docs/jellycompat-api.md # deleted — user-directed protocol removal
+docs/jellycompat-subtitles-api.md # deleted — user-directed protocol removal
+internal/apibench/README.md # user-directed protocol removal: native integration or historical test preservation
+internal/apibench/bench.go # user-directed protocol removal: native integration or historical test preservation
+internal/apibench/testdata/plan.example.json # user-directed protocol removal: native integration or historical test preservation
+internal/auth/provider_recheck_db_test.go # user-directed protocol removal: native integration or historical test preservation
+internal/catalog/orphan_cleanup_test.go # user-directed protocol removal: native integration or historical test preservation
+internal/config/restart_keys.go # user-directed protocol removal: native integration or historical test preservation
+internal/database/media_analysis_artifacts_migration_test.go # user-directed protocol removal: native integration or historical test preservation
+internal/notifications/jellycompat_favorite_test.go # deleted — user-directed protocol removal
+internal/pluginhost/host_info.go # user-directed protocol removal: native integration or historical test preservation
+internal/pluginhost/host_info_test.go # user-directed protocol removal: native integration or historical test preservation
+internal/streamtelemetry/config.go # user-directed protocol removal: native integration or historical test preservation
+internal/streamtelemetry/config_test.go # user-directed protocol removal: native integration or historical test preservation
+internal/streamtelemetry/identity.go # user-directed protocol removal: native integration or historical test preservation
+internal/streamtelemetry/route.go # user-directed protocol removal: native integration or historical test preservation
+internal/streamtelemetry/writer_test.go # user-directed protocol removal: native integration or historical test preservation
+internal/config/restart_keys_test.go # user-directed protocol removal: retired settings no longer require restart
+internal/api/handlers/admin_settings_checks_test.go # user-directed protocol removal: retire setting fixture
+web/src/pages/admin-settings/AdminSettingsLayout.test.tsx # user-directed protocol removal: retired page returns overview
+internal/playback/session_activity.go # user-directed protocol removal: retain native delivery activity, remove protocol activity/expiry adapters
+internal/playback/session_activity_test.go # user-directed protocol removal: deleted — compatibility-only expiry tests
+internal/compat/zishang520-webtransport-go/compat.go # deleted — exclusive retired Socket.IO transport dependency
+internal/compat/zishang520-webtransport-go/go.mod # deleted — exclusive retired Socket.IO transport dependency
+internal/compat/zishang520-webtransport-go/go.sum # deleted — exclusive retired Socket.IO transport dependency
+internal/passwordreset/repository_db_test.go  # Retire removed protocol fixtures; preserve native reset/session/device assertions

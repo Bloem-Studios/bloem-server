@@ -3,15 +3,15 @@ package database
 import (
 	"context"
 	"testing"
-
-	"github.com/Silo-Server/silo-server/migrations"
 )
 
 const adminPeoplePreviousVersion int64 = 20260813143000
 
 func TestAdminPeopleMigrationsUpDownUpWithOrganizationAuditRows(t *testing.T) {
 	db := newDisposableMigrationDatabase(t)
-	runAllMigrations(t, db)
+	if err := RunMigrations(t.Context(), db, compatibilityBaselineFS(t), "sql"); err != nil {
+		t.Fatal(err)
+	}
 	ctx := context.Background()
 	var actorID int
 	if err := db.QueryRow(ctx, `INSERT INTO users (username,email,password_hash,role,enabled) VALUES ('admin-people-migration','admin-people-migration@example.test','x','admin',true) RETURNING id`).Scan(&actorID); err != nil {
@@ -34,10 +34,10 @@ func TestAdminPeopleMigrationsUpDownUpWithOrganizationAuditRows(t *testing.T) {
 	if _, err := db.Exec(ctx, `INSERT INTO admin_people_bulk_jobs (job_id,organization_id,selection_reference,action_kind,action_key,actor_account_id,actor_authority,actor_security_revision,organization_policy_revision) VALUES ('admin-people-migration-job',$1,$2,'suspend_memberships','suspend_memberships:',$3,'platform_admin',1,1)`, organizationID, selectionID, actorID); err != nil {
 		t.Fatal(err)
 	}
-	if err := MigrateDownTo(ctx, db, migrations.FS, "sql", adminPeoplePreviousVersion); err != nil {
+	if err := MigrateDownTo(ctx, db, compatibilityBaselineFS(t), "sql", adminPeoplePreviousVersion); err != nil {
 		t.Fatalf("admin people down migration: %v", err)
 	}
-	if err := RunMigrations(ctx, db, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, db, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("admin people reapply: %v", err)
 	}
 	var hasTargets, hasSelectionReference, hasSelectionID bool

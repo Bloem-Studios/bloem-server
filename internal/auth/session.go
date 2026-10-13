@@ -356,12 +356,7 @@ func (r *SessionRepository) RevokeAsAdmin(ctx context.Context, actorID, userID i
 		return 0, ErrSessionNotFound
 	}
 	if sessionID == nil {
-		if err := revokeAudiobookshelfSessionsInTransaction(ctx, tx, []int{userID}); err != nil {
-			return 0, err
-		}
-		if err := deleteJellyfinSessionsInTransaction(ctx, tx, []int{userID}); err != nil {
-			return 0, err
-		}
+
 		if err := withdrawDeviceSignInApprovalsInTransaction(ctx, tx, []int{userID}); err != nil {
 			return 0, err
 		}

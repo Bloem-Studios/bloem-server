@@ -120,10 +120,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	// state and controls for the removable compatibility applications. The
 	// handler consumes the lifecycle service; it never writes application
 	// tables and never touches Docker.
-	var compatibilityHandler *handlers.BloemAdminCompatibilityHandler
-	if deps.CompatApplications != nil {
-		compatibilityHandler = handlers.NewBloemAdminCompatibilityHandler(deps.CompatApplications, deps.PublicURL)
-	}
+
 	system := handlers.NewBloemSystemHandler(store)
 	if deps.NativeStorageManagement != nil {
 		if audio, ok := deps.NativeStorageManagement.Capabilities.(interface{ NativeAudioReady(context.Context) bool }); ok {
@@ -151,7 +148,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 		bloemRouteSurfaces{
 			Client:   newBloemClientSurface(deps, authMW, tenantMW, searchProvider, liveTVAdmin),
 			Platform: platformHandler, People: peopleHandler, Organization: organizationHandler,
-			Explain: explainHandler, Compatibility: compatibilityHandler,
+			Explain:     explainHandler,
 			Entitlement: entitlementHandler, AccountPolicy: accountPolicyHandler,
 			Promotions: handlers.NewAdminPromotionsHandler(deps.Promotions), Ambience: handlers.NewAmbienceHandler(deps.Ambience),
 			ProfileCredentials: credentialHandler, ProfileCredentialLimit: credentialLimit,
@@ -174,7 +171,6 @@ type bloemRouteSurfaces struct {
 	People                 *handlers.BloemAdminPeopleHandler
 	Organization           *handlers.BloemAdminOrganizationHandler
 	Explain                *handlers.BloemPolicyExplainHandler
-	Compatibility          *handlers.BloemAdminCompatibilityHandler
 	Entitlement            *handlers.EntitlementTemplatesHandler
 	AccountPolicy          *handlers.AdminHandler
 	Promotions             *handlers.AdminPromotionsHandler
@@ -191,7 +187,6 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 	peopleHandler := surfaces.People
 	organizationHandler := surfaces.Organization
 	explainHandler := surfaces.Explain
-	compatibilityHandler := surfaces.Compatibility
 	entitlementHandler := surfaces.Entitlement
 	accountPolicyHandler := surfaces.AccountPolicy
 	client := surfaces.Client
@@ -302,19 +297,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 					})
 				})
 			}
-			if compatibilityHandler != nil {
-				compatibility := compatibilityHandler
-				r.Route("/platform/compatibility", func(r chi.Router) {
-					r.Get("/applications", compatibility.HandleListApplications)
-					r.Post("/enrollments", compatibility.HandleCreateEnrollment)
-					r.Route("/applications/{instance_id}", func(r chi.Router) {
-						r.Post("/enable", compatibility.HandleEnableApplication)
-						r.Post("/disable", compatibility.HandleDisableApplication)
-						r.Post("/rotate-credential", compatibility.HandleRotateCredential)
-						r.Post("/revoke", compatibility.HandleRevokeApplication)
-					})
-				})
-			}
+
 			if peopleHandler != nil {
 				people := peopleHandler
 				r.Get("/organization/entitlement-cohorts", people.HandleListEntitlementCohorts)

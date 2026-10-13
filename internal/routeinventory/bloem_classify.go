@@ -91,7 +91,7 @@ var bloemInfrastructureMiddleware = []string{
 	// X-Silo-* names, the lifecycle-idempotency phase preflight, the
 	// compatibility listener's prefix strip and its trace-id propagation.
 	// None of them authenticates or authorizes.
-	"apimw.NormalizeClientHeaders", "preflight.Handler", "compatapi.RelativePaths", "traceMiddleware",
+	"apimw.NormalizeClientHeaders", "preflight.Handler", "traceMiddleware",
 	// Preserve original request credentials/path before v2 projection rewrites.
 	// The capture only adds request context and always delegates; the later
 	// credential, viewer and native source gates supply actual authority.

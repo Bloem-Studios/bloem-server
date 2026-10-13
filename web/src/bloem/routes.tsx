@@ -16,7 +16,6 @@ import {
   OrganizationOverviewPage,
   PeoplePage,
   PolicyDecisionsPage,
-  CompatibilityApplicationsPage,
   DirectAccountPolicyBulkPage,
   DirectAccountsPage,
   EngagementPage,
@@ -53,7 +52,6 @@ export const bloemPlatformAdminRoutes = (
     <Route path="platform/engagement" element={<EngagementPage />} />
     <Route path="platform/direct-accounts" element={<DirectAccountsPage />} />
     <Route path="platform/direct-accounts/bulk" element={<DirectAccountPolicyBulkPage />} />
-    <Route path="platform/compatibility" element={<CompatibilityApplicationsPage />} />
     <Route path="livetv" element={<AdminLiveTV />} />
   </>
 );

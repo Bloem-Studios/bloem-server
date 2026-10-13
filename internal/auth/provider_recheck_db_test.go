@@ -1099,19 +1099,15 @@ func TestProviderRecheckScheduledPassDB(t *testing.T) {
 		t.Fatal("an account with an idle provider session is not due")
 	}
 
-	// A refused account loses its login and Audiobookshelf sessions and its
+	// A refused account loses its login sessions and its
 	// API keys.
 	exec(`INSERT INTO api_keys (user_id, label, api_key, revision) VALUES ($1, 'idle', $2, 1)`, env.user.ID, "sa_idle2_"+env.suffix)
-	exec(`INSERT INTO abs_sessions (user_id, token_hash, device_id) VALUES ($1, $2, 'abs-device')`, env.user.ID, "abs-"+env.suffix)
 	env.checker.respond = answer(pluginv1.CheckAccountStatus_CHECK_ACCOUNT_STATUS_NOT_FOUND, "")
 	if counts := run(); counts[CheckStatusNotFound] != 1 {
 		t.Fatalf("counts = %v", counts)
 	}
 	if count(`SELECT COUNT(*) FROM api_keys WHERE user_id = $1`, env.user.ID) != 0 {
 		t.Fatal("a refused account kept its API key")
-	}
-	if count(`SELECT COUNT(*) FROM abs_sessions WHERE user_id = $1 AND revoked_at IS NULL`, env.user.ID) != 0 {
-		t.Fatal("a refused account kept its Audiobookshelf session")
 	}
 	if session := env.sessionRow(t, sessionID); session.RevokedAt == nil {
 		t.Fatal("a refused account kept its login session")
@@ -1128,11 +1124,6 @@ func TestProviderRecheckScheduledPassDB(t *testing.T) {
 		t.Fatal("a revoked account is still due")
 	}
 
-	// A live Audiobookshelf session alone makes it due.
-	exec(`INSERT INTO abs_sessions (user_id, token_hash, device_id) VALUES ($1, $2, 'abs-device')`, env.user.ID, "abs2-"+env.suffix)
-	if !due() {
-		t.Fatal("an account with an Audiobookshelf session is not due")
-	}
 }
 
 // TestProviderRecheckRolledBackRevocationStoresNothingDB: a refusal's
@@ -1294,7 +1285,7 @@ func TestProviderRecheckAnswerFailuresAfterTheCallDB(t *testing.T) {
 }
 
 // TestProviderRecheckUnsupportedBoundsCredentialsDB: an UNSUPPORTED answer
-// revokes the account's API keys and Audiobookshelf sessions once the
+// revokes the account's API keys once the
 // provider has not vouched for the person (sign-in or active check) within
 // the absolute age, on the scheduled pass and on a refresh alike; login
 // sessions keep their absolute-age bound. Someone who signs in through the
@@ -1317,10 +1308,9 @@ func TestProviderRecheckUnsupportedBoundsCredentialsDB(t *testing.T) {
 		}
 		return n
 	}
-	credentials := func() (int, int) {
+	credentials := func() int {
 		t.Helper()
-		return count(`SELECT COUNT(*) FROM api_keys WHERE user_id = $1`, env.user.ID),
-			count(`SELECT COUNT(*) FROM abs_sessions WHERE user_id = $1 AND revoked_at IS NULL`, env.user.ID)
+		return count(`SELECT COUNT(*) FROM api_keys WHERE user_id = $1`, env.user.ID)
 	}
 	lastAuthenticated := func() time.Time {
 		t.Helper()
@@ -1344,7 +1334,6 @@ func TestProviderRecheckUnsupportedBoundsCredentialsDB(t *testing.T) {
 		t.Fatal("the sign-in did not stamp last_authenticated_at")
 	}
 	exec(`INSERT INTO api_keys (user_id, label, api_key, revision) VALUES ($1, 'bound', $2, 1)`, env.user.ID, "sa_bound_"+env.suffix)
-	exec(`INSERT INTO abs_sessions (user_id, token_hash, device_id) VALUES ($1, $2, 'abs-device')`, env.user.ID, "abs-bound-"+env.suffix)
 
 	// Authenticated through the provider within the absolute age (default
 	// 30 days): the keys stay.
@@ -1353,8 +1342,8 @@ func TestProviderRecheckUnsupportedBoundsCredentialsDB(t *testing.T) {
 	if counts, err := env.recheck.RecheckIdleIdentities(ctx); err != nil || counts[CheckStatusUnsupported] != 1 {
 		t.Fatalf("counts = %v, %v", counts, err)
 	}
-	if keys, abs := credentials(); keys != 1 || abs != 1 {
-		t.Fatalf("within the absolute age: keys = %d, abs = %d", keys, abs)
+	if keys := credentials(); keys != 1 {
+		t.Fatalf("within the absolute age: keys = %d", keys)
 	}
 
 	// Past it, the scheduled pass revokes them like a refusal, leaving login
@@ -1365,14 +1354,13 @@ func TestProviderRecheckUnsupportedBoundsCredentialsDB(t *testing.T) {
 	if counts, err := env.recheck.RecheckIdleIdentities(ctx); err != nil || counts[CheckStatusUnsupported] != 1 {
 		t.Fatalf("counts = %v, %v", counts, err)
 	}
-	if keys, abs := credentials(); keys != 0 || abs != 0 {
-		t.Fatalf("past the absolute age: keys = %d, abs = %d", keys, abs)
+	if keys := credentials(); keys != 0 {
+		t.Fatalf("past the absolute age: keys = %d", keys)
 	}
 	if env.sessionRow(t, sessionID).RevokedAt != nil {
 		t.Fatal("the bound revoked a login session")
 	}
-	// Only ending login sessions runs the hook (it drops jellycompat's
-	// cached sessions); keys and Audiobookshelf sessions need none.
+	// Only ending login sessions runs the revocation hook.
 	if len(env.revoked) != 0 {
 		t.Fatalf("revocation hook = %v", env.revoked)
 	}
@@ -1387,7 +1375,7 @@ func TestProviderRecheckUnsupportedBoundsCredentialsDB(t *testing.T) {
 	if _, err := env.svc.Refresh(ctx, refresh); err != nil {
 		t.Fatalf("refresh = %v", err)
 	}
-	if keys, _ := credentials(); keys != 0 {
+	if keys := credentials(); keys != 0 {
 		t.Fatal("a refresh-driven unsupported answer kept the API key")
 	}
 
@@ -1399,7 +1387,7 @@ func TestProviderRecheckUnsupportedBoundsCredentialsDB(t *testing.T) {
 	if _, err := env.recheck.RecheckIdleIdentities(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if keys, _ := credentials(); keys != 0 {
+	if keys := credentials(); keys != 0 {
 		t.Fatal("past a 7-day absolute age the API key stayed")
 	}
 
@@ -1416,7 +1404,7 @@ func TestProviderRecheckUnsupportedBoundsCredentialsDB(t *testing.T) {
 	if _, err := env.recheck.RecheckIdleIdentities(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if keys, _ := credentials(); keys != 1 {
+	if keys := credentials(); keys != 1 {
 		t.Fatal("a recent sign-in lost its API key")
 	}
 
@@ -1517,7 +1505,6 @@ func TestProviderRecheckUnsupportedSkipsLocalPasswordAccountsDB(t *testing.T) {
 	exec(`DELETE FROM server_settings WHERE key = $1`, config.AuthRefreshTokenExpirySettingKey)
 	exec(`UPDATE users SET local_password_login_enabled = true WHERE id = $1`, env.user.ID)
 	exec(`INSERT INTO api_keys (user_id, label, api_key, revision) VALUES ($1, 'local', $2, 1)`, env.user.ID, "sa_local_"+env.suffix)
-	exec(`INSERT INTO abs_sessions (user_id, token_hash, device_id) VALUES ($1, $2, 'abs-device')`, env.user.ID, "abs-local-"+env.suffix)
 	exec(`UPDATE plugin_auth_identities SET last_authenticated_at = NOW() - INTERVAL '40 days' WHERE id = $1`, env.identityID)
 	env.checker.respond = answer(pluginv1.CheckAccountStatus_CHECK_ACCOUNT_STATUS_UNSUPPORTED, "")
 	env.makeDue(t)
@@ -1527,9 +1514,6 @@ func TestProviderRecheckUnsupportedSkipsLocalPasswordAccountsDB(t *testing.T) {
 	}
 	if keys := count(`SELECT COUNT(*) FROM api_keys WHERE user_id = $1`, env.user.ID); keys != 1 {
 		t.Fatalf("API keys = %d, want 1", keys)
-	}
-	if abs := count(`SELECT COUNT(*) FROM abs_sessions WHERE user_id = $1 AND revoked_at IS NULL`, env.user.ID); abs != 1 {
-		t.Fatalf("Audiobookshelf sessions = %d, want 1", abs)
 	}
 	if len(env.revoked) != 0 {
 		t.Fatalf("revocation hook = %v, want none", env.revoked)
@@ -2035,7 +2019,6 @@ func TestProviderRecheckBreakGlassRefusalKeepsLocalCredentialsDB(t *testing.T) {
 	})
 	providerSession, refresh := env.session(t, true)
 	localSession, _ := env.session(t, false)
-	jellyfin := insertJellyfinSession(t, env.pool, env.user.ID)
 	key, err := NewAPIKeyRepository(env.pool).Create(ctx, env.user.ID, "breakglass", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -2048,11 +2031,6 @@ func TestProviderRecheckBreakGlassRefusalKeepsLocalCredentialsDB(t *testing.T) {
 	if env.sessionRow(t, providerSession).RevokedAt == nil {
 		t.Fatal("the provider session survived the refusal")
 	}
-	// A Jellyfin-compatible session does not record its identity, so the
-	// refusal deletes every one the account holds.
-	if jellyfinSessionExists(t, env.pool, jellyfin) {
-		t.Fatal("the refusal kept the account's Jellyfin-compatible session")
-	}
 	if env.sessionRow(t, localSession).RevokedAt != nil {
 		t.Fatal("the refusal revoked the break-glass account's local session")
 	}
@@ -2063,7 +2041,7 @@ func TestProviderRecheckBreakGlassRefusalKeepsLocalCredentialsDB(t *testing.T) {
 
 // TestProviderRecheckDisabledProviderBoundsCredentialsDB: once the
 // installation is no longer an enabled sign-in provider, nobody can
-// re-check its accounts, so their API keys and Audiobookshelf sessions get
+// re-check its accounts, so their API keys get
 // the absolute-age bound of an unsupported answer, from the scheduled pass
 // and from a refresh. Nothing is stored on the identity.
 func TestProviderRecheckDisabledProviderBoundsCredentialsDB(t *testing.T) {
@@ -2076,14 +2054,13 @@ func TestProviderRecheckDisabledProviderBoundsCredentialsDB(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	credentials := func() (int, int) {
+	credentials := func() int {
 		t.Helper()
-		var keys, abs int
-		if err := env.pool.QueryRow(ctx, `SELECT (SELECT COUNT(*) FROM api_keys WHERE user_id = $1),
-			(SELECT COUNT(*) FROM abs_sessions WHERE user_id = $1 AND revoked_at IS NULL)`, env.user.ID).Scan(&keys, &abs); err != nil {
+		var keys int
+		if err := env.pool.QueryRow(ctx, `SELECT COUNT(*) FROM api_keys WHERE user_id = $1`, env.user.ID).Scan(&keys); err != nil {
 			t.Fatal(err)
 		}
-		return keys, abs
+		return keys
 	}
 	due := func() bool {
 		t.Helper()
@@ -2099,7 +2076,6 @@ func TestProviderRecheckDisabledProviderBoundsCredentialsDB(t *testing.T) {
 	exec(`DELETE FROM server_settings WHERE key = $1`, config.AuthRefreshTokenExpirySettingKey)
 	exec(`UPDATE users SET local_password_login_enabled = false WHERE id = $1`, env.user.ID)
 	exec(`INSERT INTO api_keys (user_id, label, api_key, revision) VALUES ($1, 'disabled', $2, 1)`, env.user.ID, "sa_disabled_"+env.suffix)
-	exec(`INSERT INTO abs_sessions (user_id, token_hash, device_id) VALUES ($1, $2, 'abs-device')`, env.user.ID, "abs-disabled-"+env.suffix)
 	env.makeDue(t)
 	before := env.identityState(t)
 
@@ -2118,8 +2094,8 @@ func TestProviderRecheckDisabledProviderBoundsCredentialsDB(t *testing.T) {
 	if counts, err := env.recheck.RecheckIdleIdentities(ctx); err != nil || counts[CheckStatusUnsupported] != 1 {
 		t.Fatalf("counts = %v, %v", counts, err)
 	}
-	if keys, abs := credentials(); keys != 0 || abs != 0 {
-		t.Fatalf("past the absolute age: keys = %d, abs = %d", keys, abs)
+	if keys := credentials(); keys != 0 {
+		t.Fatalf("past the absolute age: keys = %d", keys)
 	}
 	if env.checker.callCount() != 0 {
 		t.Fatal("asked a disabled provider")
@@ -2139,7 +2115,7 @@ func TestProviderRecheckDisabledProviderBoundsCredentialsDB(t *testing.T) {
 	if _, err := env.svc.Refresh(ctx, refresh); err != nil {
 		t.Fatalf("refresh = %v", err)
 	}
-	if keys, _ := credentials(); keys != 0 {
+	if keys := credentials(); keys != 0 {
 		t.Fatal("a refresh against a disabled provider kept a stale account's API key")
 	}
 

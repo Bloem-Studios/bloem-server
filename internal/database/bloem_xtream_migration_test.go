@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -25,7 +24,7 @@ func TestBloemXtreamSourceMigration(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancel()
 	pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
-	provider, err := newMigrationProvider(pool, migrations.FS, "sql")
+	provider, err := newMigrationProvider(pool, compatibilityBaselineFS(t), "sql")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +45,7 @@ func TestBloemXtreamSourceMigration(t *testing.T) {
 	}
 	down := func() {
 		t.Helper()
-		if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", previous); err != nil {
+		if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", previous); err != nil {
 			t.Fatal(err)
 		}
 		pool.Reset()
@@ -80,7 +79,7 @@ func TestBloemXtreamSourceMigration(t *testing.T) {
 			if _, err := pool.Exec(ctx, test.setup); err != nil {
 				t.Fatal(err)
 			}
-			err := MigrateDownTo(ctx, pool, migrations.FS, "sql", previous)
+			err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", previous)
 			if err == nil || !strings.Contains(err.Error(), "remove Xtream providers and stop their streams") {
 				t.Fatalf("Down failed to refuse Xtream state: %v", err)
 			}

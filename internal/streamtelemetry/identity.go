@@ -8,9 +8,8 @@ import (
 type SubjectKind string
 
 const (
-	SubjectUser    SubjectKind = "user"
-	SubjectABSUser SubjectKind = "abs_user"
-	SubjectIP      SubjectKind = "ip"
+	SubjectUser SubjectKind = "user"
+	SubjectIP   SubjectKind = "ip"
 )
 
 type Subject struct {

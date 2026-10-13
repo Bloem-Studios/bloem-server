@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -14,12 +13,12 @@ func TestLiveTVPrairieMigrationsUpDownUp(t *testing.T) {
 	db := newDisposableMigrationDatabase(t)
 	ctx := context.Background()
 
-	if err := RunMigrations(ctx, db, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, db, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate Live TV up: %v", err)
 	}
 	assertLiveTVSchema(t, ctx, db)
 
-	if err := MigrateDownTo(ctx, db, migrations.FS, "sql", liveTVPreviousMigration); err != nil {
+	if err := MigrateDownTo(ctx, db, compatibilityBaselineFS(t), "sql", liveTVPreviousMigration); err != nil {
 		t.Fatalf("migrate Live TV down: %v", err)
 	}
 	var exists bool
@@ -30,7 +29,7 @@ func TestLiveTVPrairieMigrationsUpDownUp(t *testing.T) {
 		t.Fatal("livetv_tuners remains after rollback")
 	}
 
-	if err := RunMigrations(ctx, db, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, db, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate Live TV up again: %v", err)
 	}
 	assertLiveTVSchema(t, ctx, db)

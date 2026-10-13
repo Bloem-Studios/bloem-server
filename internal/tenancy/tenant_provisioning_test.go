@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"testing"
 	"time"
@@ -43,6 +44,10 @@ func testTenantPool(t *testing.T) (context.Context, *pgxpool.Pool, *tenancy.Stor
 // database and one-way, so a freeze test cannot share with the tests that hand
 // the authority over: whichever ran first would decide what the other sees.
 func buildTenantPool(t *testing.T) (context.Context, *pgxpool.Pool, *tenancy.Store) {
+	return buildTenantPoolWithMigrations(t, migrations.FS)
+}
+
+func buildTenantPoolWithMigrations(t *testing.T, migrationFS fs.FS) (context.Context, *pgxpool.Pool, *tenancy.Store) {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -76,7 +81,7 @@ func buildTenantPool(t *testing.T) (context.Context, *pgxpool.Pool, *tenancy.Sto
 		_, _ = admin.Exec(cleanupCtx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
 		admin.Close()
 	})
-	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := database.RunMigrations(ctx, pool, migrationFS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	return ctx, pool, tenancy.NewStore(pool)

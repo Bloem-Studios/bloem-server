@@ -5,31 +5,22 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
 	"go/types"
-	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"sort"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"golang.org/x/tools/go/packages"
 
 	"github.com/Silo-Server/silo-server/internal/api"
-	"github.com/Silo-Server/silo-server/internal/artworkurl"
-	"github.com/Silo-Server/silo-server/internal/blobstore"
-	"github.com/Silo-Server/silo-server/internal/compatgateway"
-	"github.com/Silo-Server/silo-server/internal/config"
-	"github.com/Silo-Server/silo-server/internal/jellycompat"
 	"github.com/Silo-Server/silo-server/internal/worker"
 )
 
@@ -192,14 +183,14 @@ func publicListenerCases() []struct {
 		layer string
 	}{
 		// Jellyfin protocol families, in every shape real clients emit.
-		{"/System/Info", "gateway"},
-		{"/system/info", "gateway"},
-		{"/emby/System/Info", "gateway"},
-		{"/jellyfin/System/Info", "gateway"},
-		{"/Users/AuthenticateByName", "gateway"},
-		{"/web/index.html", "gateway"},
+		{"/System/Info", "spa"},
+		{"/system/info", "spa"},
+		{"/emby/System/Info", "spa"},
+		{"/jellyfin/System/Info", "spa"},
+		{"/Users/AuthenticateByName", "spa"},
+		{"/web/index.html", "spa"},
 		// Audiobookshelf's single family.
-		{"/audiobookshelf/api/ping", "gateway"},
+		{"/audiobookshelf/api/ping", "spa"},
 		// Native surfaces: the API tree, the SPA shell, and the reserved SPA
 		// routes that share a name with a Jellyfin family.
 		{"/api/v1/health", "api"},
@@ -218,7 +209,7 @@ func publicListenerCases() []struct {
 // composition fault is reported against the composition rather than the
 // server wrapper.
 func TestPublicMuxRoutesEachLayer(t *testing.T) {
-	mux := publicMux(markerHandler{"api"}, markerHandler{"spa"}, markerHandler{"gateway"})
+	mux := publicMux(markerHandler{"api"}, markerHandler{"spa"})
 	for _, tc := range publicListenerCases() {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tc.path, nil))
@@ -244,7 +235,7 @@ func TestPublicMuxRoutesEachLayer(t *testing.T) {
 // Without a gateway the composition is byte-identical to the pre-gateway
 // listener: everything outside /api/** and /metrics is the SPA's.
 func TestPublicMuxWithoutGateway(t *testing.T) {
-	mux := publicMux(markerHandler{"api"}, markerHandler{"spa"}, nil)
+	mux := publicMux(markerHandler{"api"}, markerHandler{"spa"})
 	for _, path := range []string{"/", "/System/Info", "/audiobookshelf/api/ping", "/web"} {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
@@ -264,7 +255,7 @@ func TestPublicMuxWithoutGateway(t *testing.T) {
 // handler is reported here, against the builder, before the end-to-end test
 // below reports it against the port.
 func TestPublicServerRoutesEachLayer(t *testing.T) {
-	srv := publicServer(":9999", markerHandler{"api"}, markerHandler{"spa"}, markerHandler{"gateway"})
+	srv := publicServer(":9999", markerHandler{"api"}, markerHandler{"spa"})
 	if srv.Addr != ":9999" {
 		t.Fatalf("public server listens on %q", srv.Addr)
 	}
@@ -282,62 +273,6 @@ func TestPublicServerRoutesEachLayer(t *testing.T) {
 
 // --- The public port, over a real socket -------------------------------------
 
-// publicPortProbe drives the composed public port over real HTTP and reports
-// which layer answered. The gateway layer is adjudicated by the response the
-// *real* gateway gives when it owns a path and has no application behind it:
-// 503, Retry-After, a trace header, and its own error code. That is a
-// behavioral fingerprint no fallback handler produces, so "the gateway owns
-// this path" is established by what came back rather than by what the wiring
-// looks like.
-func probePublicPort(t *testing.T, client *http.Client, base string, cases []struct {
-	path  string
-	layer string
-}) {
-	t.Helper()
-	for _, tc := range cases {
-		resp, err := client.Get(base + tc.path)
-		if err != nil {
-			t.Fatalf("GET %s: %v", tc.path, err)
-		}
-		body, readErr := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-		if readErr != nil {
-			t.Fatalf("read %s: %v", tc.path, readErr)
-		}
-		layer := resp.Header.Get("X-Layer")
-
-		if tc.layer != "gateway" {
-			if layer != tc.layer {
-				t.Fatalf("%s was answered by %q, want %q (status %d)", tc.path, layer, tc.layer, resp.StatusCode)
-			}
-			continue
-		}
-
-		if layer != "" {
-			t.Fatalf("%s was answered by the %q layer; the compatibility gateway owns it", tc.path, layer)
-		}
-		if resp.StatusCode != http.StatusServiceUnavailable {
-			t.Fatalf("%s answered %d, want %d from the gateway with no application enrolled",
-				tc.path, resp.StatusCode, http.StatusServiceUnavailable)
-		}
-		if resp.Header.Get("Retry-After") == "" {
-			t.Fatalf("%s carries no Retry-After; that is not the gateway answering", tc.path)
-		}
-		if resp.Header.Get("X-Bloem-Trace-Id") == "" {
-			t.Fatalf("%s carries no gateway trace header; that is not the gateway answering", tc.path)
-		}
-		var payload struct {
-			Error string `json:"error"`
-		}
-		if err := json.Unmarshal(body, &payload); err != nil {
-			t.Fatalf("%s body is not the gateway's JSON error: %v (%q)", tc.path, err, string(body))
-		}
-		if payload.Error != "compatibility_unavailable" {
-			t.Fatalf("%s answered error %q, want compatibility_unavailable", tc.path, payload.Error)
-		}
-	}
-}
-
 func publicProbeClient() *http.Client {
 	return &http.Client{
 		Timeout: 10 * time.Second,
@@ -351,7 +286,7 @@ func publicProbeClient() *http.Client {
 // loopback port and returns its base URL. Nothing is stubbed but the API
 // router and the SPA: the listener, the server, the mux, and the gateway are
 // the real ones main uses.
-func startTestPublicPort(t *testing.T, gateway *compatgateway.Gateway) string {
+func startTestPublicPort(t *testing.T) string {
 	t.Helper()
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -359,7 +294,7 @@ func startTestPublicPort(t *testing.T, gateway *compatgateway.Gateway) string {
 		t.Fatalf("bind loopback listener: %v", err)
 	}
 	errCh := make(chan error, 1)
-	port := servePublic(ln, markerHandler{"api"}, markerHandler{"spa"}, gateway, errCh)
+	port := servePublic(ln, markerHandler{"api"}, markerHandler{"spa"}, errCh)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -375,40 +310,9 @@ func startTestPublicPort(t *testing.T, gateway *compatgateway.Gateway) string {
 	return "http://" + ln.Addr().String()
 }
 
-// This is the guarantee the source guards below only protect: the composition
-// root binds a socket, serves the composed handler on it, and every layer
-// answers on the wire. It drives servePublic — the one function main calls —
-// with the real *compatgateway.Gateway over a real TCP connection, so a
-// composition that is built and discarded, a handler swapped after the fact,
-// or a gateway that never reaches the port shows up as a wrong HTTP response
-// rather than as a passing structural check.
-func TestServePublicServesTheComposedHandlerOverTheNetwork(t *testing.T) {
-	gateway := compatgateway.New(compatgateway.Config{IdentitySecret: []byte("public-port-test-secret")})
-	base := startTestPublicPort(t, gateway)
-	client := publicProbeClient()
-
-	probePublicPort(t, client, base, publicListenerCases())
-
-	// /metrics is the composition's own, not any of the three layers'.
-	resp, err := client.Get(base + "/metrics")
-	if err != nil {
-		t.Fatalf("GET /metrics: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if layer := resp.Header.Get("X-Layer"); layer != "" {
-		t.Fatalf("/metrics was answered by the %q layer; it must stay off the public layers", layer)
-	}
-	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("/metrics answered %d, want 404 from the public listener", resp.StatusCode)
-	}
-}
-
-// A nil *compatgateway.Gateway must compose to the pre-gateway listener. The
-// trap is that a typed nil satisfies http.Handler as a *non-nil* interface, so
-// a servePublic that forwarded it straight through would route every owned
-// family into a nil receiver instead of the SPA.
-func TestServePublicWithoutGatewayServesTheSPA(t *testing.T) {
-	base := startTestPublicPort(t, nil)
+// Retired protocol paths fall through to the frontend.
+func TestServePublicServesTheSPA(t *testing.T) {
+	base := startTestPublicPort(t)
 	client := publicProbeClient()
 
 	for _, path := range []string{"/", "/System/Info", "/audiobookshelf/api/ping", "/web"} {
@@ -444,10 +348,9 @@ func TestServePublicWithoutGatewayServesTheSPA(t *testing.T) {
 // renaming something. A type-resolved rule asks what a value *is*.
 
 const (
-	compatgatewayPkg = "github.com/Silo-Server/silo-server/internal/compatgateway"
-	configPkg        = "github.com/Silo-Server/silo-server/internal/config"
-	apiPkg           = "github.com/Silo-Server/silo-server/internal/api"
-	serverPkg        = "github.com/Silo-Server/silo-server/internal/server"
+	configPkg = "github.com/Silo-Server/silo-server/internal/config"
+	apiPkg    = "github.com/Silo-Server/silo-server/internal/api"
+	serverPkg = "github.com/Silo-Server/silo-server/internal/server"
 )
 
 // serverBuilders may compose an http.Server. Each owns exactly one listener
@@ -455,7 +358,6 @@ const (
 // and is precisely the place a rival listener used to be able to appear.
 var serverBuilders = map[string]bool{
 	"publicServer":          true,
-	"absCompatServer":       true,
 	"startStandaloneServer": true,
 	// Opt-in via SILO_METRICS_LISTEN, owns exactly one socket on its own port,
 	// and serves only the Prometheus handler.
@@ -465,7 +367,6 @@ var serverBuilders = map[string]bool{
 // serveCallers may put a handler on a socket.
 var serveCallers = map[string]bool{
 	"servePublic":           true,
-	"serveAux":              true,
 	"startStandaloneServer": true,
 	"startMetricsListener":  true,
 }
@@ -773,7 +674,6 @@ func TestBlessedListenerFunctionsHaveExactlyOneCallSite(t *testing.T) {
 		// single place that builds the compat server. Bloem briefly called
 		// absCompatServer directly, which left the helper dead and gave the
 		// builder two call sites.
-		"absCompatServer":       "newAudiobookshelfListener",
 		"startStandaloneServer": "main",
 	}
 
@@ -795,7 +695,6 @@ func TestBlessedListenerFunctionsHaveExactlyOneCallSite(t *testing.T) {
 
 	for _, name := range namesOf(map[string]bool{
 		"publicServer": true, "servePublic": true, "listenPublic": true,
-		"absCompatServer": true, "startStandaloneServer": true,
 	}) {
 		got := callers[name]
 		if len(got) != 1 {
@@ -919,8 +818,8 @@ func TestPublicPortIsComposedFromTheRealDependencies(t *testing.T) {
 	if !ok {
 		t.Fatalf("servePublic is not a function, it is %s", obj.Type())
 	}
-	if sig.Params().Len() != 5 {
-		t.Fatalf("servePublic takes %d parameters; this guard pins the 5-parameter form", sig.Params().Len())
+	if sig.Params().Len() != 4 {
+		t.Fatalf("servePublic takes %d parameters; this guard pins the 4-parameter form", sig.Params().Len())
 	}
 	if _, isPointer := types.Unalias(sig.Params().At(0).Type()).(*types.Pointer); isPointer {
 		t.Fatal("servePublic's first parameter must stay the net.Listener interface")
@@ -929,34 +828,7 @@ func TestPublicPortIsComposedFromTheRealDependencies(t *testing.T) {
 		t.Fatalf("servePublic's first parameter is %s, want net.Listener: the bind has to happen inside the composition root",
 			sig.Params().At(0).Type())
 	}
-	gatewayParam := sig.Params().At(3).Type()
-	if _, isPointer := types.Unalias(gatewayParam).(*types.Pointer); !isPointer ||
-		!namedTypeIs(gatewayParam, compatgatewayPkg, "Gateway") {
-		t.Fatalf("servePublic's gateway parameter is %s; it must stay *compatgateway.Gateway so an argument swap cannot compile",
-			gatewayParam)
-	}
 
-	call := soleCallTo(t, pkg, "servePublic")
-	if len(call.Args) != 5 {
-		t.Fatalf("servePublic is called with %d arguments, want 5", len(call.Args))
-	}
-	requireValueFrom(t, pkg, "listener", call.Args[0], pkg.PkgPath, "listenPublic")
-	requireValueFrom(t, pkg, "API router", call.Args[1], apiPkg, "NewRouter")
-	requireValueFrom(t, pkg, "frontend", call.Args[2], serverPkg, "FrontendHandler")
-	requireValueFrom(t, pkg, "gateway", call.Args[3], compatgatewayPkg, "New")
-
-	// The auxiliary listener must not be pointed at the public address either.
-	// The configured address enters at main's call to the listener helper;
-	// absCompatServer itself now only ever sees that helper's parameter, so
-	// checking it there would assert on the identifier "listen" and prove
-	// nothing.
-	abs := soleCallTo(t, pkg, "newAudiobookshelfListener")
-	if len(abs.Args) != 5 {
-		t.Fatalf("newAudiobookshelfListener is called with %d arguments, want 5", len(abs.Args))
-	}
-	if got := types.ExprString(abs.Args[0]); !strings.HasSuffix(got, ".AudiobookshelfCompat.Listen") {
-		t.Fatalf("newAudiobookshelfListener binds %s; it may only bind the Audiobookshelf-compat address", got)
-	}
 }
 
 func listenerInterface(t *testing.T, pkg *packages.Package) *types.Interface {
@@ -1025,150 +897,6 @@ func TestConfiguredPublicAddressIsBoundOnlyByTheBlessedListener(t *testing.T) {
 
 	if mentions < 2 {
 		t.Fatalf("found %d mentions of the configured public address; the scan is stale", mentions)
-	}
-}
-
-func TestBloemJellyfinEndpointsPreserveLocalHandlerAndOptionalListener(t *testing.T) {
-	for _, listen := range []string{"", "127.0.0.1:8096"} {
-		t.Run("listen="+listen, func(t *testing.T) {
-			cfg := &config.Config{}
-			cfg.JellyfinCompat.Enabled = true
-			cfg.JellyfinCompat.Listen = listen
-			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
-			compat := jellycompat.NewServerWithDependencies(jellycompat.Dependencies{Config: cfg, AppContext: ctx})
-			handler, server := bloemJellyfinEndpoints(listen, compat)
-			if handler == nil || handler != compat.Handler() {
-				t.Fatal("local Jellyfin handler must be the constructed compat handler")
-			}
-			if listen == "" {
-				if server != nil {
-					t.Fatal("unconfigured dedicated listener must be absent")
-				}
-				return
-			}
-			if server == nil || server.Addr != listen || server.Handler != handler {
-				t.Fatalf("dedicated server does not retain compat address and handler: %+v", server)
-			}
-			if server.ReadTimeout != 30*time.Second || server.WriteTimeout != 0 || server.IdleTimeout != 120*time.Second {
-				t.Fatalf("dedicated listener timeouts = read %v, write %v, idle %v", server.ReadTimeout, server.WriteTimeout, server.IdleTimeout)
-			}
-		})
-	}
-}
-
-type startupABSMounter struct{}
-
-func (startupABSMounter) Mount(r chi.Router) {
-	r.Get("/ping", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "abs") })
-}
-
-func TestBloemLocalABSHandlerModeAndAvailability(t *testing.T) {
-	store, err := blobstore.NewFilesystem(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	const key = "provider/audiobooks/cover/card.rev.webp"
-	if err := store.Put(t.Context(), key, []byte("cover")); err != nil {
-		t.Fatal(err)
-	}
-	signer := artworkurl.NewSigner("startup-artwork-secret", time.Hour)
-	signedURL, _ := signer.Sign(key, time.Now())
-	for _, tc := range []struct {
-		mode    string
-		enabled bool
-		want    bool
-	}{
-		{"integrated", false, false}, {"integrated", true, true},
-		{"api", false, false}, {"api", true, true},
-		{"worker", false, false}, {"worker", true, false},
-		{"scan", false, false}, {"scan", true, false},
-		{"", false, false}, {"", true, false},
-	} {
-		t.Run(fmt.Sprintf("mode=%s/enabled=%t", tc.mode, tc.enabled), func(t *testing.T) {
-			deps := api.Dependencies{Blobs: blobstore.Stores{Assets: store}, ArtworkSigner: signer}
-			if tc.enabled {
-				deps.ABSHandler = startupABSMounter{}
-			}
-			handler := bloemLocalABSHandler(tc.mode, deps, nil, nil)
-			if !tc.want {
-				if handler != nil {
-					t.Fatal("unavailable local ABS handler must be a nil interface")
-				}
-				return
-			}
-			if handler == nil {
-				t.Fatal("enabled ABS in API modes must have a local handler")
-			}
-			for _, request := range []struct {
-				method, path string
-				status       int
-				body         string
-			}{
-				{http.MethodGet, "/ping", http.StatusOK, "abs"},
-				{http.MethodGet, signedURL, http.StatusOK, "cover"},
-				{http.MethodHead, signedURL, http.StatusOK, ""},
-				{http.MethodGet, "/api/v2/artwork/" + key, http.StatusNotFound, ""},
-				{http.MethodGet, "/api/v1/health", http.StatusNotFound, ""},
-				{http.MethodGet, "/", http.StatusNotFound, ""},
-			} {
-				rec := httptest.NewRecorder()
-				handler.ServeHTTP(rec, httptest.NewRequest(request.method, request.path, nil))
-				if rec.Code != request.status {
-					t.Fatalf("%s %s: status %d, want %d", request.method, request.path, rec.Code, request.status)
-				}
-				if request.status == http.StatusOK && rec.Body.String() != request.body {
-					t.Fatalf("%s %s: body %q, want %q", request.method, request.path, rec.Body.String(), request.body)
-				}
-			}
-		})
-	}
-}
-
-func TestBloemCompatibilityGatewayConfigKeepsOnlyAvailableLocalFamilies(t *testing.T) {
-	for _, tc := range []struct {
-		name          string
-		jellyfin, abs http.Handler
-		want          []compatgateway.AppKind
-	}{
-		{"none", nil, nil, nil},
-		{"jellyfin", markerHandler{"jellyfin"}, nil, []compatgateway.AppKind{compatgateway.KindJellyfin}},
-		{"abs", nil, markerHandler{"abs"}, []compatgateway.AppKind{compatgateway.KindAudiobookshelf}},
-		{"both", markerHandler{"jellyfin"}, markerHandler{"abs"}, []compatgateway.AppKind{compatgateway.KindJellyfin, compatgateway.KindAudiobookshelf}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			cfg := bloemCompatibilityGatewayConfig("startup-identity-secret", tc.jellyfin, tc.abs)
-			if string(cfg.IdentitySecret) != "startup-identity-secret" || cfg.States != nil || cfg.Transport != nil {
-				t.Fatal("gateway config must retain identity secret with no remote authority")
-			}
-			if len(cfg.LocalHandlers) != len(tc.want) {
-				t.Fatalf("local family count = %d, want %d", len(cfg.LocalHandlers), len(tc.want))
-			}
-			for _, kind := range tc.want {
-				if cfg.LocalHandlers[kind] == nil {
-					t.Fatalf("local family %s is missing", kind)
-				}
-			}
-			gateway := compatgateway.New(cfg)
-			for _, request := range []struct {
-				path    string
-				enabled bool
-				layer   string
-			}{
-				{"/System/Info", tc.jellyfin != nil, "jellyfin"},
-				{"/audiobookshelf/api/ping", tc.abs != nil, "abs"},
-			} {
-				rec := httptest.NewRecorder()
-				gateway.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, request.path, nil))
-				if request.enabled {
-					if rec.Code != http.StatusOK || rec.Header().Get("X-Layer") != request.layer {
-						t.Fatalf("%s: available family did not reach %s: %d %s", request.path, request.layer, rec.Code, rec.Body.String())
-					}
-				} else if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "compatibility_unavailable") {
-					t.Fatalf("%s: unavailable family must fail closed: %d %s", request.path, rec.Code, rec.Body.String())
-				}
-			}
-		})
 	}
 }
 

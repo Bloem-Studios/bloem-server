@@ -20,7 +20,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
-	"github.com/Silo-Server/silo-server/internal/compatapi"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/invitations"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
@@ -401,7 +400,6 @@ func wireBloemRouter(
 	}
 	wireBloemLifecycle(deps, lifecycle)
 	mountBloem(r, deps, authMiddleware, tenantMiddleware, searchProvider, lifecycle.admin, requireActingAdmin)
-	mountBloemCompatAPI(r, deps)
 }
 
 // wireBloemV2 hands the v2 listener Bloem's native tenant identity and the
@@ -415,21 +413,6 @@ func wireBloemV2(v2deps *apiv2.Dependencies, deps Dependencies, tenantMiddleware
 	}
 	if deps.Config != nil {
 		v2deps.StreamTokens = authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret)
-	}
-}
-
-// mountBloemCompatAPI mounts the private Compatibility Service API v1
-// (internal/compatapi). This is an internal surface for enrolled compatibility
-// applications only — it is not part of the public API: the edge gateway must
-// never forward /api/internal/** from public ingress, and every operation
-// additionally authenticates the calling application's service credential.
-// Mounted as its own separated route group; nil fails closed with no routes.
-func mountBloemCompatAPI(r chi.Router, deps Dependencies) {
-	if deps.CompatAPIV1 != nil {
-		r.Route("/api/internal/compat/v1", func(r chi.Router) {
-			r.Use(compatapi.RelativePaths)
-			deps.CompatAPIV1.RegisterRoutes(r)
-		})
 	}
 }
 

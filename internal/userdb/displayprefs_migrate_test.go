@@ -41,7 +41,7 @@ func runDisplayPrefsMove(t *testing.T, db *sql.DB) {
 
 // TestMigrateToV17MovesDisplayPrefs runs the real migration against a real
 // database. The parsing rules are unit-tested in
-// internal/jellycompat/displayprefs; what this covers is the wiring — blobs
+// internal/legacymigrate/displayprefs; what this covers is the wiring — blobs
 // land verbatim in the dedicated table, user_settings comes out with no
 // jellycompat tenants, and the one unparseable row is recorded rather than
 // silently deleted.
@@ -51,7 +51,7 @@ func TestMigrateToV17MovesDisplayPrefs(t *testing.T) {
 		t.Fatalf("open sqlite: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if err := InitSchema(db); err != nil {
+	if _, err := db.Exec(Schema + jellycompatDisplayPrefsSchema); err != nil {
 		t.Fatalf("InitSchema: %v", err)
 	}
 	seedLegacyDisplayPrefs(t, db)
@@ -62,7 +62,7 @@ func TestMigrateToV17MovesDisplayPrefs(t *testing.T) {
 			{"usersettings", "emby", `{"SortBy":"SortName",  "CustomPrefs":{"b":"2","a":"1"}}`},
 			{"f137a2dd", "", `{"SortBy":"DateCreated"}`},
 		} {
-			got, err := GetJellycompatDisplayPrefs(db, want.prefsID, want.client)
+			got, err := readLegacyDisplayPrefsFixture(db, want.prefsID, want.client)
 			if err != nil {
 				t.Fatalf("reading %s/%s: %v", want.prefsID, want.client, err)
 			}
@@ -132,7 +132,7 @@ func TestMigrateToV17IsAtomic(t *testing.T) {
 		t.Fatalf("open sqlite: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if err := InitSchema(db); err != nil {
+	if _, err := db.Exec(Schema + jellycompatDisplayPrefsSchema); err != nil {
 		t.Fatalf("InitSchema: %v", err)
 	}
 	seedLegacyDisplayPrefs(t, db)
@@ -159,4 +159,13 @@ func TestMigrateToV17IsAtomic(t *testing.T) {
 	if legacy != 3 || moved != 0 {
 		t.Errorf("rollback left %d legacy rows (want 3) and %d moved rows (want 0)", legacy, moved)
 	}
+}
+
+func readLegacyDisplayPrefsFixture(db *sql.DB, prefsID, client string) (string, error) {
+	var value string
+	err := db.QueryRow("SELECT value FROM jellycompat_displayprefs WHERE prefs_id=? AND client=?", prefsID, client).Scan(&value)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return value, err
 }

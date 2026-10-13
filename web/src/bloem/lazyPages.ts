@@ -18,9 +18,6 @@ export const PeoplePage = lazy(() => import("@/pages/admin-organization/PeoplePa
 export const PolicyDecisionsPage = lazy(
   () => import("@/pages/admin-organization/PolicyDecisionsPage"),
 );
-export const CompatibilityApplicationsPage = lazy(
-  () => import("@/pages/admin-platform/CompatibilityApplicationsPage"),
-);
 export const DirectAccountPolicyBulkPage = lazy(
   () => import("@/pages/admin-platform/DirectAccountPolicyBulkPage"),
 );

@@ -93,10 +93,10 @@ func TestTenantIdentityMigrationBackfill(t *testing.T) {
 
 			// Starting at the migration immediately before this boundary models a
 			// real upgrade rather than testing the final schema in isolation.
-			if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+			if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 				t.Fatalf("migrate initial schema: %v", err)
 			}
-			if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", tenantIdentityPreviousMigration); err != nil {
+			if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", tenantIdentityPreviousMigration); err != nil {
 				t.Fatalf("migrate to pre-tenant-identity version: %v", err)
 			}
 
@@ -108,7 +108,7 @@ func TestTenantIdentityMigrationBackfill(t *testing.T) {
 			}
 			assertTenantIdentityUpgrade(ctx, t, pool, seed, before, tt.wantOwner, tt.wantResolutionRequired)
 
-			if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", tenantIdentityPreviousMigration); err != nil {
+			if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", tenantIdentityPreviousMigration); err != nil {
 				t.Fatalf("migrate tenant identity foundation down: %v", err)
 			}
 			assertTenantIdentityBoundaryRemoved(ctx, t, pool)
@@ -287,7 +287,7 @@ VALUES ('ownerless-active', 'Ownerless Active', 'active')`)
 
 func migrateTenantIdentityLatest(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
 	t.Helper()
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate latest schema: %v", err)
 	}
 }

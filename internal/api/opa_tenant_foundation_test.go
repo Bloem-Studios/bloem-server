@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -43,7 +45,7 @@ const opaTenantIdentityPredecessor int64 = 20260812163547
 func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableAPIDatabase(t, "bloem_opa_foundation_", true)
-	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := database.RunMigrations(ctx, pool, opaCompatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
 	// A freshly migrated database is in the compatibility phase, which freezes
@@ -51,7 +53,7 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
 		t.Fatalf("finalize membership policy authority: %v", err)
 	}
-	if err := database.MigrateDownTo(ctx, pool, migrations.FS, "sql", opaTenantIdentityPredecessor); err != nil {
+	if err := database.MigrateDownTo(ctx, pool, opaCompatibilityBaselineFS(t), "sql", opaTenantIdentityPredecessor); err != nil {
 		t.Fatalf("migrate to tenant-identity predecessor: %v", err)
 	}
 
@@ -833,4 +835,25 @@ func assertOPAAcceptanceJSONFields(
 	if !slices.Equal(gotFields, want) {
 		t.Fatalf("%s fields = %v, want exact normalized fields %v", name, gotFields, want)
 	}
+}
+
+func opaCompatibilityBaselineFS(t *testing.T) fs.FS {
+	t.Helper()
+	out := fstest.MapFS{}
+	if err := fs.WalkDir(migrations.FS, "sql", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || strings.HasSuffix(path, "_remove_bloem_compatibility.sql") {
+			return nil
+		}
+		data, err := migrations.FS.ReadFile(path)
+		if err == nil {
+			out[path] = &fstest.MapFile{Data: data}
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return out
 }

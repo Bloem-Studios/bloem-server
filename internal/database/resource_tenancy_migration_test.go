@@ -46,10 +46,10 @@ func TestResourceTenancyMigrationBackfillAndRollback(t *testing.T) {
 	dsn := requiredPostgresTestDatabaseURL(t)
 	ctx := context.Background()
 	pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate initial schema: %v", err)
 	}
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", resourceTenancyPreviousMigration); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", resourceTenancyPreviousMigration); err != nil {
 		t.Fatalf("migrate to resource-tenancy predecessor: %v", err)
 	}
 
@@ -65,7 +65,7 @@ func TestResourceTenancyMigrationBackfillAndRollback(t *testing.T) {
 	}
 	before := snapshotResourceTenancyLegacyRoots(ctx, t, pool, false)
 
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate resource tenancy: %v", err)
 	}
 	assertResourceTenancyCoverage(ctx, t, pool)
@@ -77,7 +77,7 @@ func TestResourceTenancyMigrationBackfillAndRollback(t *testing.T) {
 		t.Fatalf("resource tenancy changed legacy roots:\n got %s\nwant %s", after, want)
 	}
 
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", resourceTenancyPreviousMigration); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", resourceTenancyPreviousMigration); err != nil {
 		t.Fatalf("migrate resource tenancy down: %v", err)
 	}
 	assertResourceTenancyBoundaryRemoved(ctx, t, pool)
@@ -85,7 +85,7 @@ func TestResourceTenancyMigrationBackfillAndRollback(t *testing.T) {
 		t.Fatalf("down migration changed legacy roots:\n got %s\nwant %s", got, want)
 	}
 
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("re-migrate resource tenancy: %v", err)
 	}
 	assertResourceTenancyCoverage(ctx, t, pool)
@@ -95,7 +95,7 @@ func TestResourceTenancyMigrationCleanInstallAndCompatibilityWrites(t *testing.T
 	dsn := requiredPostgresTestDatabaseURL(t)
 	ctx := context.Background()
 	pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate clean install: %v", err)
 	}
 	assertResourceTenancyCoverage(ctx, t, pool)
@@ -136,7 +136,7 @@ func TestResourceTenancyMigrationRejectsInvalidOwnershipAndEntitlements(t *testi
 	dsn := requiredPostgresTestDatabaseURL(t)
 	ctx := context.Background()
 	pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate clean install: %v", err)
 	}
 

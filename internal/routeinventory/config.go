@@ -24,10 +24,6 @@ const (
 	nodeHandlerCtor          = "router"
 	rootHandlerFunc          = "newRootHandler"
 	rootHandlerCtor          = "newRootMux"
-	absListenerFunc          = "newAudiobookshelfHandler"
-	jellycompatRouterFunc    = "NewRouter"
-	jellycompatRouterFile    = "internal/jellycompat/router.go"
-	absListenerFile          = "cmd/silo/abs_listener.go"
 	cmdSiloDir               = "cmd/silo"
 	internalAPIDir           = "internal/api"
 	internalAPIV2Dir         = "internal/apiv2"
@@ -110,20 +106,13 @@ func DefaultConfig(root string) Config {
 			internalDebugServerDir,
 			internalAPIDir,
 			"internal/api/handlers",
-			"internal/compatapi",
 			internalAPIV2Dir,
 			internalProxyDir,
 			internalTranscodeNodeDir,
 			cmdSiloDir,
 		},
 		Exclusions: []RouterExclusion{
-			{File: "internal/compatapi/handler.go", Func: "Handler.buildRoutes", Reason: "Standalone compatibility constructor; the mounted native routes are inventoried through RegisterRoutes."},
-			{
-				File: jellycompatRouterFile,
-				Func: jellycompatRouterFunc,
-				Reason: "Jellyfin-protocol compatibility listener; an external wire contract, " +
-					"out of scope for the native v2 migration",
-			},
+
 			{
 				File: "cmd/silo/bloem_root_handler.go",
 				Func: "bloemRootMux",
@@ -137,18 +126,6 @@ func DefaultConfig(root string) Config {
 				File:   "cmd/silo/metrics_listener.go",
 				Func:   "newMetricsMux",
 				Reason: "Prometheus scrape listener: one /metrics route on its own port, operational rather than part of the native API surface.",
-			},
-			{
-				File: "internal/audiobooks/abs/handler.go",
-				Func: "Handler.Router",
-				Reason: "Audiobookshelf-protocol compatibility router, the handler-side twin of the " +
-					"listener exclusion below; an external wire contract, out of scope for the native v2 migration",
-			},
-			{
-				File: absListenerFile,
-				Func: absListenerFunc,
-				Reason: "Audiobookshelf-protocol compatibility listener; an external wire contract, " +
-					"out of scope for the native v2 migration",
 			},
 		},
 	}

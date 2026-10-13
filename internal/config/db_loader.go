@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
 	subtitleai "github.com/Silo-Server/silo-server/internal/subtitles/ai"
 )
 
@@ -56,17 +54,6 @@ func boolOr(m map[string]string, key string, fallback bool) (bool, error) {
 		return false, fmt.Errorf("invalid bool for %q: %w", key, err)
 	}
 	return b, nil
-}
-
-func jellyfinCompatEnabledOrLegacyDefault(m map[string]string) (bool, error) {
-	if v, ok := m["jellyfin_compat.enabled"]; ok && v != "" {
-		b, err := strconv.ParseBool(v)
-		if err != nil {
-			return false, fmt.Errorf("invalid bool for %q: %w", "jellyfin_compat.enabled", err)
-		}
-		return b, nil
-	}
-	return stringOr(m, "jellyfin_compat.listen", ":8096") != "", nil
 }
 
 func firstConfiguredBool(m map[string]string, fallback bool, keys ...string) (bool, error) {
@@ -138,13 +125,6 @@ func durationOr(m map[string]string, key string, fallback time.Duration) (time.D
 	}
 	return d, nil
 }
-
-// defaultJellyfinCompatServerIDFromDB is the computed default server ID used when
-// no server_id is set in the database settings.
-var defaultJellyfinCompatServerIDFromDB = uuid.NewSHA1(
-	uuid.NameSpaceURL,
-	[]byte("https://silo.local/jellycompat"),
-).String()
 
 // LoadFromDB builds a Config from a map of server_settings key-value pairs.
 // The map keys use dot-notation (e.g., "auth.jwt_secret"). Missing or empty
@@ -400,46 +380,6 @@ func LoadFromDB(m map[string]string) (*Config, error) {
 		return nil, err
 	}
 	cfg.Auth.RefreshTokenExpiry = refreshTokenExpiry
-
-	// AudiobookshelfCompat — dedicated listener for ABS client apps. Docker
-	// deployments publish :13378, so listen by default unless disabled.
-	absCompatEnabled, err := boolOr(m, "audiobookshelf_compat.enabled", true)
-	if err != nil {
-		return nil, err
-	}
-	if absCompatEnabled {
-		cfg.AudiobookshelfCompat.Listen = bloemABSCompatListen(m)
-	}
-
-	// JellyfinCompat
-	compatEnabled, err := jellyfinCompatEnabledOrLegacyDefault(m)
-	if err != nil {
-		return nil, err
-	}
-	cfg.JellyfinCompat.Enabled = compatEnabled
-	cfg.JellyfinCompat.Listen = stringOr(m, "jellyfin_compat.listen", bloemJellyfinCompatListenDefault)
-	cfg.JellyfinCompat.PublicURL = stringOr(m, "jellyfin_compat.public_url", "http://127.0.0.1:8096")
-	cfg.JellyfinCompat.EmulatedServerVersion = stringOr(m, "jellyfin_compat.emulated_server_version", DefaultJellyfinCompatEmulatedServerVersion)
-	cfg.JellyfinCompat.ServerID = stringOr(m, "jellyfin_compat.server_id", defaultJellyfinCompatServerIDFromDB)
-	cfg.JellyfinCompat.ServerName = stringOr(m, "jellyfin_compat.server_name", "Silo")
-	webEnabled, err := boolOr(m, "jellyfin_compat.web_enabled", true)
-	if err != nil {
-		return nil, err
-	}
-	cfg.JellyfinCompat.WebEnabled = webEnabled
-	cfg.JellyfinCompat.WebVersion = stringOr(m, "jellyfin_compat.web_version", DefaultJellyfinWebVersion)
-	cfg.JellyfinCompat.WebDir = stringOr(m, "jellyfin_compat.web_dir", DefaultJellyfinWebDir)
-	cfg.JellyfinCompat.WebInstallDir = stringOr(m, "jellyfin_compat.web_install_dir", DefaultJellyfinWebInstallDir)
-	sessionTTL, err := durationOr(m, "jellyfin_compat.session_ttl", 87600*time.Hour)
-	if err != nil {
-		return nil, err
-	}
-	cfg.JellyfinCompat.SessionTTL = sessionTTL
-	playbackSessionTTL, err := durationOr(m, "jellyfin_compat.playback_session_ttl", 6*time.Hour)
-	if err != nil {
-		return nil, err
-	}
-	cfg.JellyfinCompat.PlaybackSessionTTL = playbackSessionTTL
 
 	// Recommendations
 	recsEnabled, err := boolOr(m, "recommendations.enabled", false)

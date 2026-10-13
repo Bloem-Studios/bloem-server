@@ -100,7 +100,6 @@ type Dependencies struct {
 	AdminAuditLogs                   AdminAuditLogsService
 	ExternalSignIn                   ExternalSignInService
 	AdminOperationalLogs             AdminOperationalLogsService
-	AdminJellyfinCompatSettings      AdminJellyfinCompatSettingsService
 	OrderedAndroidPush               OrderedAndroidPushService
 	WatchTogetherSuggestionDelete    WatchTogetherSuggestionDeleteService
 	WatchTogetherClose               WatchTogetherCloseService
@@ -140,9 +139,7 @@ type Dependencies struct {
 	AutoscanDelivery              AutoscanDeliveryService
 	Onboarding                    OnboardingService
 	DownloadCreation              DownloadCreationService
-	AdminJellyfinCompatStatus     AdminJellyfinCompatStatusService
 	AdminSettingRead              AdminSettingReadService
-	AdminJellyfinCompatWeb        AdminJellyfinCompatWebService
 	AdminRateLimitsWrite          AdminRateLimitWriteService
 	AdminRateLimits               AdminRateLimitReadService
 	DownloadSubscriptionMutations DownloadSubscriptionMutationService
@@ -219,7 +216,6 @@ type Dependencies struct {
 	NotificationRelay             NotificationRelayService
 	AdminNotificationPush         AdminNotificationPushService
 	NotificationInbox             NotificationInboxService
-	CompatConnectInfo             CompatConnectInfoService
 	AdminCatalogTransfer          AdminCatalogTransferService
 	AdminCatalogSearch            AdminCatalogSearchService
 	AdminSettingsChecks           AdminSettingsCheckService

@@ -12,8 +12,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/Silo-Server/silo-server/migrations"
 )
 
 var mediaAnalysisArtifactColumns = []string{"kind", "status", "detail", "failure_count", "last_error", "retry_after", "recorded_by"}
@@ -28,22 +26,18 @@ func TestGeneralizeMediaAnalysisArtifactsMigration(t *testing.T) {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(pool.Close)
+	pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
 	beforeMediaAnalysisArtifacts := versionBefore(t, "_generalize_media_analysis_artifacts.sql")
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("up: %v", err)
 	}
 	// Leave the database on the current schema whatever happens below.
 	t.Cleanup(func() {
-		if err := RunMigrations(context.Background(), pool, migrations.FS, "sql"); err != nil {
+		if err := RunMigrations(context.Background(), pool, compatibilityBaselineFS(t), "sql"); err != nil {
 			t.Errorf("re-up: %v", err)
 		}
 	})
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", beforeMediaAnalysisArtifacts); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", beforeMediaAnalysisArtifacts); err != nil {
 		t.Fatalf("down before the migration: %v", err)
 	}
 	assertPreArtifactShape(ctx, t, pool, "before")
@@ -58,7 +52,7 @@ INSERT INTO media_intro_fingerprints (
 		t.Fatalf("seed pre-migration fingerprint: %v", err)
 	}
 
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("up: %v", err)
 	}
 	var kind, status, recordedBy string
@@ -107,7 +101,7 @@ INSERT INTO media_intro_fingerprints (
 		t.Fatalf("seed new artifact rows: %v", err)
 	}
 
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", beforeMediaAnalysisArtifacts); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", beforeMediaAnalysisArtifacts); err != nil {
 		t.Fatalf("down: %v", err)
 	}
 	assertPreArtifactShape(ctx, t, pool, "down")
@@ -136,7 +130,7 @@ INSERT INTO media_intro_fingerprints (
 // before the one whose file name ends in suffix.
 func versionBefore(t *testing.T, suffix string) int64 {
 	t.Helper()
-	entries, err := fs.ReadDir(migrations.FS, "sql")
+	entries, err := fs.ReadDir(compatibilityBaselineFS(t), "sql")
 	if err != nil {
 		t.Fatal(err)
 	}

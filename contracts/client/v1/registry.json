@@ -679,14 +679,6 @@
           "direction": "response"
         },
         {
-          "type": "CompatConnectAccountInfo",
-          "direction": "response"
-        },
-        {
-          "type": "CompatConnectInfoResponse",
-          "direction": "response"
-        },
-        {
           "type": "DiagnosticsChunkStateResponse",
           "direction": "response"
         },
@@ -1458,10 +1450,6 @@
         },
         {
           "type": "Collection[WatchTogetherSuggestion]",
-          "direction": "response"
-        },
-        {
-          "type": "CompatConnectInfoResponse",
           "direction": "response"
         },
         {

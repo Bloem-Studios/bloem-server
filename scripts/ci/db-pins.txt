@@ -69,7 +69,6 @@
 ./internal/catalog TestTrickplayAvailabilityBatchesItemDetails
 ./internal/catalog TestTrickplayAvailabilityBatchesEpisodeDetails
 ./internal/catalog TestEpisodeDetailsFallBackAfterBatchFileFailureDB
-./internal/jellycompat TestTrickplayNegotiatedSourceSurvivesAPIReplicaDB
 
 # Listings: COUNT queries only when a total is requested and cannot be derived
 # from the page.
@@ -167,7 +166,6 @@
 ./internal/scanner TestEbookSkipPreloadPreservesEligibility
 
 # ID-less direct ranges reuse full session payloads while checking identities.
-./internal/jellycompat TestWebOSDurableRangeDoesNotReloadSnapshots
 
 # Artwork storage sweep: the GC-schedule lookup its anomaly guard consults must
 # count armed candidates only, never parked (live) ones.
@@ -213,7 +211,6 @@
 ./internal/userstore/pgstore TestPostgresRawPINWriteAdvancesPINRevision
 
 # Jellyfin password#PIN sign-ins share the per-profile PIN lockout.
-./internal/jellycompat TestLoginPINAttemptsShareProfileLimitDB
 
 # Log partitions: migration 028 and partman cut the same UTC periods on a
 # server whose TimeZone is not UTC, so no write falls into the default.

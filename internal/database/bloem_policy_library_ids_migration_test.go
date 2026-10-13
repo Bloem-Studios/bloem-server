@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/Silo-Server/silo-server/migrations"
 )
 
 const bloemPolicyLibraryIDsVersion int64 = 20260919095615
@@ -27,7 +26,7 @@ func TestBloemPolicyLibraryIDsMigration(t *testing.T) {
 			ctx := t.Context()
 			fixture := newMembershipPolicyFixture(t)
 			pool := fixture.pool
-			provider, err := newMigrationProvider(pool, migrations.FS, "sql")
+			provider, err := newMigrationProvider(pool, compatibilityBaselineFS(t), "sql")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -74,7 +73,7 @@ func TestBloemPolicyLibraryIDsMigration(t *testing.T) {
 					if step.up {
 						_, err = provider.UpTo(ctx, bloemPolicyLibraryIDsVersion)
 					} else {
-						err = MigrateDownTo(ctx, pool, migrations.FS, "sql", bloemPolicyLibraryIDsPredecessor)
+						err = MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", bloemPolicyLibraryIDsPredecessor)
 					}
 					if err != nil {
 						t.Fatal(err)
@@ -112,7 +111,7 @@ func TestBloemPolicyLibraryIDsMigration(t *testing.T) {
 						t.Fatalf("seed snapshot range: %v", err)
 					}
 					beforeFailure := bloemPolicyLibraryState(t, pool)
-					err := MigrateDownTo(ctx, pool, migrations.FS, "sql", bloemPolicyLibraryIDsPredecessor)
+					err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", bloemPolicyLibraryIDsPredecessor)
 					if err == nil || !strings.Contains(err.Error(), "membership_policy_rollback_snapshot.library_ids contains an ID outside integer range") {
 						t.Fatalf("Down must refuse loss of snapshot ID: %v", err)
 					}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/jellycompat/displayprefs"
+	"github.com/Silo-Server/silo-server/internal/legacymigrate/displayprefs"
 )
 
 // moveJellycompatDisplayPrefs is the one-time move of Jellyfin
@@ -14,7 +14,7 @@ import (
 // InitSchema creates them with IF NOT EXISTS on every open, before migrations.
 //
 // The key-parsing and classification rules live in
-// internal/jellycompat/displayprefs so this backend and Postgres cannot
+// internal/legacymigrate/displayprefs so this backend and Postgres cannot
 // disagree about them; everything here is reading rows, handing them over, and
 // writing what comes back. Values are copied byte-for-byte — the blobs are
 // opaque Jellyfin client JSON and reinterpreting them is not this migration's

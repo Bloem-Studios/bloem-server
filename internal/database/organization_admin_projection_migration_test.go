@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/google/uuid"
 )
 
@@ -14,10 +13,10 @@ const organizationAdminProjectionPreviousMigration int64 = 20260813170000
 func TestOrganizationAdminProjectionMigrationBackfillsAndRunsDownUp(t *testing.T) {
 	ctx := context.Background()
 	pool := newTenantIdentityDisposableDatabase(t, ctx, requiredPostgresTestDatabaseURL(t))
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatal(err)
 	}
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", organizationAdminProjectionPreviousMigration); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", organizationAdminProjectionPreviousMigration); err != nil {
 		t.Fatal(err)
 	}
 	var inviterID int64
@@ -30,7 +29,7 @@ func TestOrganizationAdminProjectionMigrationBackfillsAndRunsDownUp(t *testing.T
 	if _, err := pool.Exec(ctx, `INSERT INTO policy_decisions (decision_name,policy_generation,user_id,eval_time_ns,input_digest) VALUES ('silo.action.decision',1,$1,1,'legacy-projection')`, inviterID); err != nil {
 		t.Fatal(err)
 	}
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatal(err)
 	}
 	var defaultOrganizationID, invitationOrganizationID, decisionOrganizationID uuid.UUID
@@ -46,7 +45,7 @@ func TestOrganizationAdminProjectionMigrationBackfillsAndRunsDownUp(t *testing.T
 	if invitationOrganizationID != defaultOrganizationID || decisionOrganizationID != defaultOrganizationID {
 		t.Fatalf("backfill invitation=%s decision=%s default=%s", invitationOrganizationID, decisionOrganizationID, defaultOrganizationID)
 	}
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", organizationAdminProjectionPreviousMigration); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", organizationAdminProjectionPreviousMigration); err != nil {
 		t.Fatal(err)
 	}
 	for _, table := range []string{"invitations", "policy_decisions"} {
@@ -55,7 +54,7 @@ func TestOrganizationAdminProjectionMigrationBackfillsAndRunsDownUp(t *testing.T
 			t.Fatalf("%s organization column after down = %d, %v", table, count, err)
 		}
 	}
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("second up: %v", err)
 	}
 }

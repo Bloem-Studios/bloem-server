@@ -21,6 +21,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/testutil/migrationfixture"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
@@ -35,10 +36,11 @@ const task5ResourceTenancyPredecessor int64 = 20260812190000
 func TestDefaultOrganizationMaterializedMediaScopeParity(t *testing.T) {
 	ctx := context.Background()
 	pool := newTask5PolicyTestDatabase(t, ctx)
-	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	baseline := migrationfixture.Before(t, migrations.FS, migrationfixture.CompatibilityRemoval)
+	if err := database.RunMigrations(ctx, pool, baseline, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
-	if err := database.MigrateDownTo(ctx, pool, migrations.FS, "sql", task5ResourceTenancyPredecessor); err != nil {
+	if err := database.MigrateDownTo(ctx, pool, baseline, "sql", task5ResourceTenancyPredecessor); err != nil {
 		t.Fatalf("migrate to resource-tenancy predecessor: %v", err)
 	}
 

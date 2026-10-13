@@ -30,7 +30,6 @@ import WatchSyncSettings from "./WatchSyncSettings";
 import AISettings from "./AISettings";
 import AnnouncementsAdminSettings from "./AnnouncementsAdminSettings";
 import NotificationsAdminSettings from "./NotificationsAdminSettings";
-import CompatibilityProxiesSettings from "./CompatibilityProxiesSettings";
 import NetworkAccessSettings from "./NetworkAccessSettings";
 import InfrastructureSettings from "./InfrastructureSettings";
 import SettingsOverview from "./SettingsOverview";
@@ -54,7 +53,6 @@ const SETTINGS_COMPONENTS: Record<string, ComponentType> = {
   ai: AISettings,
   notifications: NotificationsAdminSettings,
   announcements: AnnouncementsAdminSettings,
-  compatibility: CompatibilityProxiesSettings,
   "network-access": NetworkAccessSettings,
   infrastructure: InfrastructureSettings,
 };

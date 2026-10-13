@@ -17,7 +17,6 @@ type BootstrapConfig struct {
 	DatabaseURL string
 	RedisURL    string // optional override; empty means use DB setting
 	Listen      string
-	JFListen    string
 	Mode        string
 	// SecretKey is the master key (raw SECRET_KEY env value) from which the
 	// at-rest credential cipher derives its data key. It lives outside Postgres
@@ -61,11 +60,6 @@ func LoadBootstrap(envFile string) (*BootstrapConfig, error) {
 		port = "8080"
 	}
 
-	jfPort := os.Getenv("JF_PORT")
-	if jfPort == "" {
-		jfPort = "8096"
-	}
-
 	mode := os.Getenv("MODE")
 	if mode == "" {
 		mode = "integrated"
@@ -77,7 +71,6 @@ func LoadBootstrap(envFile string) (*BootstrapConfig, error) {
 		DatabaseURL: dbURL,
 		RedisURL:    redisURL,
 		Listen:      ":" + port,
-		JFListen:    bloemBootstrapJFListen(jfPort),
 		Mode:        mode,
 		SecretKey:   []byte(secretKey),
 	}, nil

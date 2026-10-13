@@ -2,13 +2,10 @@ package main
 
 import (
 	"net/http"
-
-	"github.com/Silo-Server/silo-server/internal/compatgateway"
 )
 
 // bloemRootHandler is Bloem's root listener handler: the same shape as
-// upstream's newRootHandler, extended with a parameterised frontend and the
-// compatibility gateway composed over it.
+// upstream's newRootHandler, extended with a parameterised frontend.
 //
 // This cannot be a thin wrapper around upstream's newRootHandler: upstream's
 // version hard-codes server.FrontendHandler() and has no gateway parameter at
@@ -38,8 +35,8 @@ import (
 // identical sealed type so the invariant (nothing outside the returning
 // entry function can get the router back) still holds for Bloem's own mux,
 // without touching sealedHandler or its one legal construction site.
-func bloemRootHandler(apiRouter, frontend, gateway http.Handler) http.Handler {
-	return bloemSealedHandler{h: bloemRootMux(apiRouter, frontend, gateway)}
+func bloemRootHandler(apiRouter, frontend http.Handler) http.Handler {
+	return bloemSealedHandler{h: bloemRootMux(apiRouter, frontend)}
 }
 
 // bloemSealedHandler mirrors sealedHandler's shape (see root_handler.go) for
@@ -51,18 +48,17 @@ type bloemSealedHandler struct {
 func (h bloemSealedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.h.ServeHTTP(w, r) }
 
 // bloemRootMux is the root listener's real registration surface in Bloem: the
-// same three patterns upstream's newRootMux registers, with the compatibility
-// gateway composed ahead of the frontend fallback. Keep this in lockstep with
+// same three patterns upstream's newRootMux registers. Keep this in lockstep with
 // upstream's newRootMux (cmd/silo/root_handler.go) — same patterns, same
 // order — so the route-inventory generator's analysis of the upstream
 // function (see bloemRootHandler's comment) stays accurate for this one too.
-func bloemRootMux(apiRouter, frontend, gateway http.Handler) *http.ServeMux {
+func bloemRootMux(apiRouter, frontend http.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
 	// Keep the public listener explicit: a disabled metrics listener must not
 	// fall through to the SPA shell and look like a successful scrape.
 	mux.Handle("/metrics", http.NotFoundHandler())
 	mux.Handle("/api/", apiRouter)
-	mux.Handle("/", compatgateway.WithFrontendFallback(gateway, frontend))
+	mux.Handle("/", frontend)
 	return mux
 }
 

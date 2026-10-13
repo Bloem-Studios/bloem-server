@@ -25,7 +25,7 @@ describe("buildSettingsOverview health tiles", () => {
     const model = buildSettingsOverview({});
 
     expect(model.tiles).toHaveLength(5);
-    expect(model.cards).toHaveLength(16); // Includes Bloem administration and sign-in.
+    expect(model.cards).toHaveLength(15); // Includes Bloem administration and sign-in.
     expect(tile({}, "storage").stateText).toBe("Not set up");
     expect(card({}, "general")).toEqual({ id: "general" });
   });
@@ -106,7 +106,7 @@ describe("buildSettingsOverview health tiles", () => {
         serverStatus: {
           started_at: "2026-01-01T00:00:00Z",
           restart_required: true,
-          restart_required_reason: "jellyfin_compat",
+          restart_required_reason: "plugin_task_binding",
           restart_requested: false,
         },
       },
@@ -157,7 +157,7 @@ describe("buildSettingsOverview health tiles", () => {
       ...base,
       serverStatus: {
         ...base.serverStatus,
-        restart_required_reason: "jellyfin_compat",
+        restart_required_reason: "plugin_task_binding",
         restart_required_reasons: ["setting:playback.hw_accel", "jellyfin_compat"],
       },
     };
@@ -201,7 +201,7 @@ describe("buildSettingsOverview health tiles", () => {
         serverStatus: {
           started_at: "2026-01-01T00:00:00Z",
           restart_required: true,
-          restart_required_reason: "jellyfin_compat",
+          restart_required_reason: "plugin_task_binding",
           restart_requested: false,
         },
       },
@@ -298,7 +298,6 @@ describe("buildSettingsOverview groups", () => {
       "ai",
       "announcements",
       "notifications",
-      "compatibility",
       "network-access",
     ]);
   });

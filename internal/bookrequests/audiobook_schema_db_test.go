@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/database"
+	"github.com/Silo-Server/silo-server/internal/testutil/migrationfixture"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -118,15 +119,16 @@ func TestAudiobookAcquisitionSchemaDatabase(t *testing.T) {
 }
 
 func TestAudiobookAcquisitionMigrationRollbackDatabase(t *testing.T) {
-	_, v, pool := databaseFixture(t)
+	baseline := migrationfixture.Before(t, migrations.BloemFS, migrationfixture.CompatibilityRemoval)
+	_, v, pool := databaseFixtureWithMigrations(t, baseline)
 	_, previous := audiobookAcquisitionVersions(t)
 	r := submit(t, NewService(pool, nil), v, CreateInput{Title: "Synthetic Saga", Author: "Test Author"})
 	bookSQL(t, pool, `INSERT INTO bloem_audiobook_request_decisions(request_id,attempt,phase,outcome,envelope) VALUES($1,1,'select','no_match','{"v":1}')`, r.ID)
-	if err := database.MigrateDownTo(t.Context(), pool, migrations.BloemFS, "sql", previous); err == nil {
+	if err := database.MigrateDownTo(t.Context(), pool, baseline, "sql", previous); err == nil {
 		t.Fatal("rollback succeeded while acquisition history exists")
 	}
 	bookSQL(t, pool, `DELETE FROM bloem_audiobook_request_decisions`)
-	if err := database.MigrateDownTo(t.Context(), pool, migrations.BloemFS, "sql", previous); err != nil {
+	if err := database.MigrateDownTo(t.Context(), pool, baseline, "sql", previous); err != nil {
 		t.Fatalf("clean rollback: %v", err)
 	}
 	var exists bool
@@ -134,7 +136,7 @@ func TestAudiobookAcquisitionMigrationRollbackDatabase(t *testing.T) {
 		t.Fatalf("acquisition table survived rollback: %v %v", exists, err)
 	}
 	requireCheckViolation(t, pool, "restored fulfilment check", `UPDATE bloem_book_requests SET fulfilment='downloading' WHERE id=$1`, r.ID)
-	if err := database.RunMigrations(t.Context(), pool, migrations.BloemFS, "sql"); err != nil {
+	if err := database.RunMigrations(t.Context(), pool, baseline, "sql"); err != nil {
 		t.Fatalf("re-apply: %v", err)
 	}
 }

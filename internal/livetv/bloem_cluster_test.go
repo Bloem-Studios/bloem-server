@@ -104,20 +104,6 @@ func TestLiveTVClusterOwnerAndCompatLedger(t *testing.T) {
 	if err := a.bindSessionOwner(ctx, live.ID); err != nil {
 		t.Fatal(err)
 	}
-	stream := CompatStream{ID: uuid.NewString(), NativeSession: live.ID}
-	if err := a.PutCompatStream(ctx, stream, "opener-token"); err != nil {
-		t.Fatal(err)
-	}
-	if got, err := b.GetCompatStream(ctx, stream.ID, "opener-token"); err != nil || got.NativeSession != live.ID {
-		t.Fatalf("remote compat lookup %+v %v", got, err)
-	}
-	if _, err := b.GetCompatStream(ctx, stream.ID, "foreign-token"); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("foreign opener allowed %v", err)
-	}
-	var hash string
-	if err := pool.QueryRow(ctx, `SELECT opener_hash FROM bloem_livetv_compat_streams WHERE id=$1`, stream.ID).Scan(&hash); err != nil || hash == "opener-token" || len(hash) != 64 {
-		t.Fatalf("credential not hashed: %v", err)
-	}
 	if err := heartbeat.CleanupSelf(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -127,9 +113,7 @@ func TestLiveTVClusterOwnerAndCompatLedger(t *testing.T) {
 	if _, err := b.ReleaseSession(ctx, live.ID, 7, "p", true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.GetCompatStream(ctx, stream.ID, "opener-token"); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("released compat stream: %v", err)
-	}
+
 	if _, err := a.PeerHLSURL(ctx, live.PlaybackSessionID, 7, "p", true); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("released HLS route: %v", err)
 	}

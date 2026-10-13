@@ -14,6 +14,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
+	"github.com/Silo-Server/silo-server/internal/testutil/migrationfixture"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
@@ -276,12 +277,13 @@ func TestEnablingMirroredRequiresMarker(t *testing.T) {
 // A Bloem installation finalized before Silo switching existed has renamed the
 // users policy columns; upgrading it must still apply the switching migrations.
 func TestSwitchingMigrationsApplyToFinalizedDatabase(t *testing.T) {
-	ctx, pool, _ := buildTenantPool(t)
+	baseline := migrationfixture.Before(t, migrations.FS, migrationfixture.CompatibilityRemoval)
+	ctx, pool, _ := buildTenantPoolWithMigrations(t, baseline)
 	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
 	const beforeSwitching = 20261009130019
-	if err := database.MigrateDownTo(ctx, pool, migrations.FS, "sql", beforeSwitching); err != nil {
+	if err := database.MigrateDownTo(ctx, pool, baseline, "sql", beforeSwitching); err != nil {
 		t.Fatalf("roll back to before the switching migrations: %v", err)
 	}
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {

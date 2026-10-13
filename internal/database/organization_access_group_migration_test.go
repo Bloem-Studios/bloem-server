@@ -76,8 +76,10 @@ func environmentWithout(names ...string) []string {
 
 func TestProfileAccessGroupRequiredMigrationUpDownUp(t *testing.T) {
 	db := newDisposableMigrationDatabase(t)
-	runAllMigrations(t, db)
-	if err := MigrateDownTo(context.Background(), db, migrations.FS, "sql", profileAccessGroupPreviousVersion); err != nil {
+	if err := RunMigrations(t.Context(), db, compatibilityBaselineFS(t), "sql"); err != nil {
+		t.Fatal(err)
+	}
+	if err := MigrateDownTo(context.Background(), db, compatibilityBaselineFS(t), "sql", profileAccessGroupPreviousVersion); err != nil {
 		t.Fatalf("migrate to profile-group predecessor: %v", err)
 	}
 
@@ -107,20 +109,24 @@ func TestProfileAccessGroupRequiredMigrationUpDownUp(t *testing.T) {
 		t.Fatalf("seed nullable profile group: %v", err)
 	}
 
-	runAllMigrations(t, db)
+	if err := RunMigrations(t.Context(), db, compatibilityBaselineFS(t), "sql"); err != nil {
+		t.Fatal(err)
+	}
 	assertProfileGroupRequired(t, db, userID, groupID)
 	_, err := db.Exec(context.Background(), `
 		INSERT INTO user_profiles (organization_id, access_group_id, user_id, id, name)
 		VALUES ($1, NULL, $2, 'profile-group-null-rejected', 'Rejected')`, organizationID, userID)
 	assertSQLState(t, err, "23502")
 
-	if err := MigrateDownTo(context.Background(), db, migrations.FS, "sql", profileAccessGroupPreviousVersion); err != nil {
+	if err := MigrateDownTo(context.Background(), db, compatibilityBaselineFS(t), "sql", profileAccessGroupPreviousVersion); err != nil {
 		t.Fatalf("migrate profile-group requirement down: %v", err)
 	}
 	if _, err := db.Exec(context.Background(), `UPDATE user_profiles SET access_group_id=NULL WHERE user_id=$1`, userID); err != nil {
 		t.Fatalf("rollback did not restore nullable profile group: %v", err)
 	}
-	runAllMigrations(t, db)
+	if err := RunMigrations(t.Context(), db, compatibilityBaselineFS(t), "sql"); err != nil {
+		t.Fatal(err)
+	}
 	assertProfileGroupRequired(t, db, userID, groupID)
 }
 
@@ -150,7 +156,9 @@ func assertProfileGroupRequired(t *testing.T, db *pgxpool.Pool, userID int, want
 
 func TestOrganizationAccessGroupMigrationUpDownUp(t *testing.T) {
 	db := newDisposableMigrationDatabase(t)
-	runAllMigrations(t, db)
+	if err := RunMigrations(t.Context(), db, compatibilityBaselineFS(t), "sql"); err != nil {
+		t.Fatal(err)
+	}
 
 	orgA := insertOrganization(t, db, "group-org-a")
 	orgB := insertOrganization(t, db, "group-org-b")
@@ -182,10 +190,10 @@ func runAllMigrations(t *testing.T, db *pgxpool.Pool) {
 
 func runMigrationDownUp(t *testing.T, db *pgxpool.Pool, migrationFile string) {
 	t.Helper()
-	if err := MigrateDownTo(context.Background(), db, migrations.FS, "sql", organizationAccessGroupMigrationPreviousVersion); err != nil {
+	if err := MigrateDownTo(context.Background(), db, compatibilityBaselineFS(t), "sql", organizationAccessGroupMigrationPreviousVersion); err != nil {
 		t.Fatalf("migrate %s down: %v", migrationFile, err)
 	}
-	if err := RunMigrations(context.Background(), db, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(context.Background(), db, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate %s back up: %v", migrationFile, err)
 	}
 }

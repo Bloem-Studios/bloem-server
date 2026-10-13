@@ -63,12 +63,6 @@ services:
       # Keep the container listener fixed. PORT in .env is a host-side
       # published-port override.
       #
-      # No JF_PORT/ABS_PORT here: the Jellyfin- and Audiobookshelf-compatible
-      # APIs are reached through the compatibility gateway on this same PORT
-      # by default — no extra listener, no extra published port. Setting
-      # JF_PORT (and uncommenting the matching port mapping below) opts a
-      # deployment back into a dedicated Jellyfin listener on :8096, e.g. for
-      # a reverse-proxy setup built around that port; same for ABS_PORT/:13378.
       PORT: "8080"
       # Master key for at-rest credential encryption. Required — the server
       # refuses to start without it. Generate with: openssl rand -base64 48
@@ -81,13 +75,6 @@ services:
       POSTGRES_TUNE: ${POSTGRES_TUNE:-auto}
     ports:
       - "${PORT:-8090}:8080"
-      # Only needed if you explicitly re-enable a dedicated Jellyfin/ABS
-      # listener via admin settings (jellyfin_compat.listen /
-      # audiobookshelf_compat.listen) — both APIs are reached through the
-      # compatibility gateway on the port above by default. Uncomment and
-      # set JF_PORT/ABS_PORT in .env if you opt into a dedicated listener.
-      # - "${JF_PORT:-8096}:8096"
-      # - "${ABS_PORT:-13378}:13378"
     volumes:
       - ${MEDIA_ROOT:?Set MEDIA_ROOT in .env to the host media path}:${MEDIA_CONTAINER_ROOT:-/mnt/media}:ro
       - ${SILO_DATA_ROOT:-/opt/silo}/plugins:/var/lib/silo/plugins
@@ -150,35 +137,6 @@ services:
   #   env_file:
   #     - path: .env
   #       required: false
-
-  # ---------------------------------------------------------------------------
-  # Optional private compatibility companions (NOT enabled from this file).
-  #
-  # bloem-audiobookshelf and bloem-jellyfin are removable protocol facades
-  # that talk to Bloem's private compatibility API. Activation is overlay-only
-  # so their deployment contract stays in one reviewed place:
-  #
-  #   docker compose -f docker-compose.yml -f docker-compose.audiobookshelf.yml up -d
-  #   docker compose -f docker-compose.yml -f docker-compose.jellyfin.yml up -d
-  #
-  # The overlays keep each companion on an internal network with no host ports,
-  # a single-use enrollment token mounted as a Docker secret file, and one named
-  # volume of disposable protocol state. Companions never receive the Bloem
-  # database, Redis, media mounts, SECRET_KEY, provider or tuner credentials,
-  # or the Docker socket, and their images stay in the private
-  # ghcr.io/bloem-studios registry. For illustration, a companion service looks
-  # like this (see docker-compose.audiobookshelf.yml for the real contract):
-  #
-  # bloem-audiobookshelf:
-  #   image: ghcr.io/bloem-studios/bloem-audiobookshelf:latest   # private pull
-  #   restart: unless-stopped
-  #   networks: internal bloem-compat only — no ports, no egress
-  #   secrets: single-use enrollment token at /run/secrets/bloem_compat_enrollment
-  #   volumes: one named volume of disposable protocol state (SQLite/WAL)
-  #
-  # Operator guide: docs/operations/compatibility-applications.md
-  # Structural enforcement: scripts/verify-compat-compose.sh
-  # ---------------------------------------------------------------------------
 
   # Optional distributed-mode example. Most single-host installs should
   # just use the integrated service above.

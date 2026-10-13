@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"sync"
 	"testing"
@@ -17,6 +18,10 @@ import (
 )
 
 func databaseFixture(t *testing.T) (*Service, Viewer, *pgxpool.Pool) {
+	return databaseFixtureWithMigrations(t, migrations.BloemFS)
+}
+
+func databaseFixtureWithMigrations(t *testing.T, migrationFS fs.FS) (*Service, Viewer, *pgxpool.Pool) {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -52,7 +57,7 @@ func databaseFixture(t *testing.T) (*Service, Viewer, *pgxpool.Pool) {
 			t.Error(err)
 		}
 	})
-	if err = database.RunMigrations(t.Context(), pool, migrations.BloemFS, "sql"); err != nil {
+	if err = database.RunMigrations(t.Context(), pool, migrationFS, "sql"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = tenancy.FinalizeMembershipPolicyAuthority(t.Context(), pool); err != nil {

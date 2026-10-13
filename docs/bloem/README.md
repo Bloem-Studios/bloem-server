@@ -6,6 +6,8 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 
 ## Start here
 
+- [Protocol compatibility removal](../architecture/bloem-compatibility-removal.md) — native-only runtime, persistence cleanup and upstream merge invariant.
+
 - [Plugin broker extensions](../architecture/bloem-plugin-broker-extensions.md) — optional host-bound services on the existing callback connection.
 
 - [October 7 native storage deployment](../operations/2026-10-07-native-storage-deployment.md) — exact deployed revision, all 27 imported Silo commits, checks and limits.

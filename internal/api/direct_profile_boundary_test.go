@@ -147,7 +147,6 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		{"account settings list", http.MethodGet, "/api/v1/settings/", ""},
 		{"account setting read", http.MethodGet, "/api/v1/settings/ui.theme", ""},
 		{"account setting write", http.MethodPut, "/api/v1/settings/ui.theme", `{"value":"dark"}`},
-		{"compat connect info", http.MethodGet, "/api/v1/compat/connect-info", ""},
 		{"history import sources", http.MethodGet, "/api/v1/history-imports/sources", ""},
 		{"plex sync connections", http.MethodGet, "/api/v1/plex-sync/connections", ""},
 		{"webhook sync connections", http.MethodGet, "/api/v1/webhook-sync/connections", ""},

@@ -3,8 +3,6 @@ package database
 import (
 	"context"
 	"testing"
-
-	"github.com/Silo-Server/silo-server/migrations"
 )
 
 // TestMigrateDownToRestoresLegacyDisplayPrefs is the rollback rehearsal.
@@ -18,7 +16,7 @@ func TestMigrateDownToRestoresLegacyDisplayPrefs(t *testing.T) {
 	ctx := context.Background()
 	pool := newDisposableMigrationDatabase(t)
 
-	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
 
@@ -49,7 +47,7 @@ ON CONFLICT (username) DO UPDATE SET email=EXCLUDED.email RETURNING id`).Scan(&u
 	// DisplayPreferences pair, which is the destructive half. A wider target
 	// would also revert profile_onboarding, an older-binary migration that
 	// happens to sort in between and whose down drops its table.
-	if err := MigrateDownTo(ctx, pool, migrations.FS, "sql", 20260728132326); err != nil {
+	if err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", 20260728132326); err != nil {
 		t.Fatalf("MigrateDownTo: %v", err)
 	}
 

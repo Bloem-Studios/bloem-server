@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // ArtworkBackendAuto selects S3 when a public bucket is configured and local
@@ -223,41 +221,6 @@ type authConfigRaw struct {
 // The listener binds its own port (:13378, ABS's
 // conventional port) and serves the full ABS protocol — login, libraries,
 // items, sessions — without colliding with silo's SPA on the main listener.
-type AudiobookshelfCompatConfig struct {
-	Listen string `yaml:"-"`
-}
-
-// JellyfinCompatConfig holds compatibility proxy settings.
-type JellyfinCompatConfig struct {
-	Enabled               bool          `yaml:"enabled"`
-	Listen                string        `yaml:"listen"`
-	PublicURL             string        `yaml:"public_url"`
-	EmulatedServerVersion string        `yaml:"emulated_server_version"`
-	ServerID              string        `yaml:"server_id"`
-	ServerName            string        `yaml:"server_name"`
-	WebEnabled            bool          `yaml:"web_enabled"`
-	WebVersion            string        `yaml:"web_version"`
-	WebDir                string        `yaml:"web_dir"`
-	WebInstallDir         string        `yaml:"web_install_dir"`
-	SessionTTL            time.Duration `yaml:"-"`
-	PlaybackSessionTTL    time.Duration `yaml:"-"`
-}
-
-// jellyfinCompatConfigRaw is the raw YAML representation with duration strings.
-type jellyfinCompatConfigRaw struct {
-	Enabled               bool   `yaml:"enabled"`
-	Listen                string `yaml:"listen"`
-	PublicURL             string `yaml:"public_url"`
-	EmulatedServerVersion string `yaml:"emulated_server_version"`
-	ServerID              string `yaml:"server_id"`
-	ServerName            string `yaml:"server_name"`
-	WebEnabled            bool   `yaml:"web_enabled"`
-	WebVersion            string `yaml:"web_version"`
-	WebDir                string `yaml:"web_dir"`
-	WebInstallDir         string `yaml:"web_install_dir"`
-	SessionTTL            string `yaml:"session_ttl"`
-	PlaybackSessionTTL    string `yaml:"playback_session_ttl"`
-}
 
 // RecommendationsConfig holds AI recommendation engine settings.
 type RecommendationsConfig struct {
@@ -397,49 +360,46 @@ type ArtworkConfig struct {
 
 // Config is the top-level configuration for Silo.
 type Config struct {
-	Server               ServerConfig               `yaml:"server"`
-	Database             DatabaseConfig             `yaml:"database"`
-	S3                   S3Config                   `yaml:"-"`
-	UserDB               UserDBConfig               `yaml:"-"`
-	Scanner              ScannerConfig              `yaml:"-"`
-	Matcher              MatcherConfig              `yaml:"matcher"`
-	Artwork              ArtworkConfig              `yaml:"artwork"`
-	Metadata             MetadataConfig             `yaml:"-"`
-	Markers              MarkersConfig              `yaml:"-"`
-	Playback             PlaybackConfig             `yaml:"playback"`
-	LiveTV               LiveTVConfig               `yaml:"livetv"`
-	Redis                RedisConfig                `yaml:"redis"`
-	RateLimit            RateLimitConfig            `yaml:"rate_limiting"`
-	Auth                 AuthConfig                 `yaml:"-"`
-	JellyfinCompat       JellyfinCompatConfig       `yaml:"-"`
-	AudiobookshelfCompat AudiobookshelfCompatConfig `yaml:"-"`
-	Recommendations      RecommendationsConfig      `yaml:"-"`
-	AI                   AIConfig                   `yaml:"-"`
-	SubtitleAI           SubtitleAIConfig           `yaml:"-"`
-	MetadataAI           MetadataAIConfig           `yaml:"-"`
-	Download             DownloadConfig             `yaml:"-"`
-	Policy               PolicyConfig               `yaml:"-"`
-	ClientIP             ClientIPConfig             `yaml:"-"`
-	LAN                  LANConfig                  `yaml:"-"`
-	TMDBAPIKey           string                     `yaml:"-"`
-	MDBListAPIKey        string                     `yaml:"-"`
+	Server          ServerConfig          `yaml:"server"`
+	Database        DatabaseConfig        `yaml:"database"`
+	S3              S3Config              `yaml:"-"`
+	UserDB          UserDBConfig          `yaml:"-"`
+	Scanner         ScannerConfig         `yaml:"-"`
+	Matcher         MatcherConfig         `yaml:"matcher"`
+	Artwork         ArtworkConfig         `yaml:"artwork"`
+	Metadata        MetadataConfig        `yaml:"-"`
+	Markers         MarkersConfig         `yaml:"-"`
+	Playback        PlaybackConfig        `yaml:"playback"`
+	LiveTV          LiveTVConfig          `yaml:"livetv"`
+	Redis           RedisConfig           `yaml:"redis"`
+	RateLimit       RateLimitConfig       `yaml:"rate_limiting"`
+	Auth            AuthConfig            `yaml:"-"`
+	Recommendations RecommendationsConfig `yaml:"-"`
+	AI              AIConfig              `yaml:"-"`
+	SubtitleAI      SubtitleAIConfig      `yaml:"-"`
+	MetadataAI      MetadataAIConfig      `yaml:"-"`
+	Download        DownloadConfig        `yaml:"-"`
+	Policy          PolicyConfig          `yaml:"-"`
+	ClientIP        ClientIPConfig        `yaml:"-"`
+	LAN             LANConfig             `yaml:"-"`
+	TMDBAPIKey      string                `yaml:"-"`
+	MDBListAPIKey   string                `yaml:"-"`
 }
 
 // configRaw is used for initial YAML unmarshaling with string durations.
 type configRaw struct {
-	Server         ServerConfig            `yaml:"server"`
-	Database       DatabaseConfig          `yaml:"database"`
-	S3             s3ConfigRaw             `yaml:"s3"`
-	UserDB         userDBConfigRaw         `yaml:"user_db"`
-	Scanner        scannerConfigRaw        `yaml:"scanner"`
-	Artwork        ArtworkConfig           `yaml:"artwork"`
-	Matcher        MatcherConfig           `yaml:"matcher"`
-	Playback       PlaybackConfig          `yaml:"playback"`
-	LiveTV         LiveTVConfig            `yaml:"livetv"`
-	Redis          RedisConfig             `yaml:"redis"`
-	RateLimit      RateLimitConfig         `yaml:"rate_limiting"`
-	Auth           authConfigRaw           `yaml:"auth"`
-	JellyfinCompat jellyfinCompatConfigRaw `yaml:"jellyfin_compat"`
+	Server    ServerConfig     `yaml:"server"`
+	Database  DatabaseConfig   `yaml:"database"`
+	S3        s3ConfigRaw      `yaml:"s3"`
+	UserDB    userDBConfigRaw  `yaml:"user_db"`
+	Scanner   scannerConfigRaw `yaml:"scanner"`
+	Artwork   ArtworkConfig    `yaml:"artwork"`
+	Matcher   MatcherConfig    `yaml:"matcher"`
+	Playback  PlaybackConfig   `yaml:"playback"`
+	LiveTV    LiveTVConfig     `yaml:"livetv"`
+	Redis     RedisConfig      `yaml:"redis"`
+	RateLimit RateLimitConfig  `yaml:"rate_limiting"`
+	Auth      authConfigRaw    `yaml:"auth"`
 }
 
 var validModes = map[string]bool{
@@ -452,11 +412,6 @@ var validModes = map[string]bool{
 
 // dayRegexp matches duration strings with "d" suffix (e.g., "30d").
 var dayRegexp = regexp.MustCompile(`^(\d+)d$`)
-
-var defaultJellyfinCompatServerID = uuid.NewSHA1(
-	uuid.NameSpaceURL,
-	[]byte("https://silo.local/jellycompat"),
-).String()
 
 const playbackTranscodeDirSettingKey = "playback.transcode_dir"
 const downloadArtifactDirSettingKey = "download.artifact_dir"
@@ -494,11 +449,6 @@ func EffectiveDownloadArtifactDir(artifactDir, transcodeDir string) string {
 	// subdirectories, i.e. it would delete prepared downloads.
 	return filepath.Join(filepath.Dir(filepath.Clean(transcodeDir)), "silo-download-artifacts")
 }
-
-const DefaultJellyfinCompatEmulatedServerVersion = "12.1.0"
-const DefaultJellyfinWebVersion = "12.1"
-const DefaultJellyfinWebInstallDir = "/var/lib/silo/compat/jellyfin-web"
-const DefaultJellyfinWebDir = DefaultJellyfinWebInstallDir + "/current"
 
 // parseDuration parses a duration string that supports Go's time.ParseDuration
 // formats plus a custom "Nd" format for days.
@@ -579,20 +529,6 @@ func setDefaults() *configRaw {
 		Auth: authConfigRaw{
 			AccessTokenExpiry:  "8h",
 			RefreshTokenExpiry: "30d",
-		},
-		JellyfinCompat: jellyfinCompatConfigRaw{
-			Enabled:               false,
-			Listen:                ":8097",
-			PublicURL:             "http://127.0.0.1:8097",
-			EmulatedServerVersion: DefaultJellyfinCompatEmulatedServerVersion,
-			ServerID:              defaultJellyfinCompatServerID,
-			ServerName:            "Silo",
-			WebEnabled:            true,
-			WebVersion:            DefaultJellyfinWebVersion,
-			WebDir:                DefaultJellyfinWebDir,
-			WebInstallDir:         DefaultJellyfinWebInstallDir,
-			SessionTTL:            "87600h",
-			PlaybackSessionTTL:    "6h",
 		},
 	}
 }

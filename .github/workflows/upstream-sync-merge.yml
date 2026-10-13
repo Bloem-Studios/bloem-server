@@ -63,6 +63,7 @@ jobs:
           # carries upstream's individual commits, and squashing would make the
           # next merge-base calculation treat every one of them as unmerged.
           scripts/verify-upstream-sync-merge.sh
+          bash scripts/verify-no-compat.sh
 
       - name: Report to Discord
         if: always()

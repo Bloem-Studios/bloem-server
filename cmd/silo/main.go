@@ -8,7 +8,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"io/fs"
 	"log"
 	"log/slog"
@@ -27,7 +26,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -41,7 +39,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/animeids"
 	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
-	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/artworkkey"
 	"github.com/Silo-Server/silo-server/internal/artworkurl"
 	"github.com/Silo-Server/silo-server/internal/audiobooks"
@@ -56,7 +53,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalogseed"
 	"github.com/Silo-Server/silo-server/internal/chapterthumbs"
 	"github.com/Silo-Server/silo-server/internal/clientip"
-	"github.com/Silo-Server/silo-server/internal/compatgateway"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/dashmetrics"
 	"github.com/Silo-Server/silo-server/internal/database"
@@ -69,7 +65,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/idgen"
 	"github.com/Silo-Server/silo-server/internal/imagecache"
 	"github.com/Silo-Server/silo-server/internal/intromarkers"
-	"github.com/Silo-Server/silo-server/internal/jellycompat"
 	"github.com/Silo-Server/silo-server/internal/libraryingest"
 	"github.com/Silo-Server/silo-server/internal/librarymonitor"
 	"github.com/Silo-Server/silo-server/internal/literaryworks"
@@ -620,48 +615,6 @@ func runCredentialBackfills(ctx context.Context, pool *pgxpool.Pool, cipher *sec
 	}
 }
 
-func runCompatWebCommand(ctx context.Context, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("usage: silo compat-web {status|install|update|remove}")
-	}
-	command := args[0]
-	flags := flag.NewFlagSet("compat-web "+command, flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	root := flags.String("dir", config.DefaultJellyfinWebInstallDir, "Jellyfin Web component install root")
-	version := flags.String("version", config.DefaultJellyfinWebVersion, "Jellyfin Web version without leading v")
-	source := flags.String("source", jellycompat.DefaultWebSourceURL, "upstream jellyfin-web git repository")
-	if err := flags.Parse(args[1:]); err != nil {
-		return err
-	}
-
-	switch command {
-	case "status":
-		status := jellycompat.WebComponentStatusForConfig(&config.Config{
-			JellyfinCompat: config.JellyfinCompatConfig{
-				Enabled:       false,
-				WebVersion:    *version,
-				WebInstallDir: *root,
-				WebDir:        filepath.Join(*root, "current"),
-			},
-		}, map[string]string{
-			"jellyfin_compat.web_source_url": *source,
-		})
-		return json.NewEncoder(os.Stdout).Encode(status)
-	case "install", "update":
-		status, err := jellycompat.InstallWebComponent(ctx, jellycompat.WebComponentInstallOptions{
-			InstallRoot: *root,
-			SourceURL:   *source,
-			Version:     *version,
-		})
-		_ = json.NewEncoder(os.Stdout).Encode(status)
-		return err
-	case "remove":
-		return jellycompat.RemoveWebComponent(*root)
-	default:
-		return fmt.Errorf("unknown compat-web command %q", command)
-	}
-}
-
 // normalizeLoadedConfig repairs derived config values after every load: the
 // DB-seeded default is Jellyfin's Linux-only ffmpeg path, so resolve it
 // through the same discovery the playback pipeline uses. Registered as an
@@ -677,13 +630,6 @@ func applyBootstrapOverrides(cfg *config.Config, bc *config.BootstrapConfig) {
 	cfg.Server.Listen = bc.Listen
 	cfg.Server.Mode = bc.Mode
 	cfg.Database.URL = bc.DatabaseURL
-	// bc.JFListen is only non-empty when JF_PORT was set explicitly: that is
-	// an operator opt-in to a dedicated listener and should win over the
-	// DB-configured value. An empty bc.JFListen means no such opt-in, so the
-	// DB-configured jellyfin_compat.listen (empty by default) stands.
-	if bc.JFListen != "" {
-		cfg.JellyfinCompat.Listen = bc.JFListen
-	}
 	cfg.Redis = cfg.Redis.WithBootstrapURL(bc.RedisURL)
 }
 
@@ -716,12 +662,6 @@ func main() {
 	// a writer. Process exit stops those goroutines and closes the socket.
 	if err := telemetry.ConfigureRuntimeMetrics(); err != nil {
 		slog.Warn("runtime metrics configuration failed", "error", err)
-	}
-	if len(os.Args) > 1 && os.Args[1] == "compat-web" {
-		if err := runCompatWebCommand(context.Background(), os.Args[2:]); err != nil {
-			log.Fatalf("compat-web: %v", err)
-		}
-		return
 	}
 
 	if len(os.Args) > 1 && os.Args[1] == "auth" {
@@ -916,13 +856,6 @@ func main() {
 		}
 		settings["auth.jwt_secret"] = encoded
 	}
-	if settings["jellyfin_compat.server_id"] == "" {
-		serverID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("https://silo.local/jellycompat")).String()
-		if err := settingsRepo.Set(ctx, "jellyfin_compat.server_id", serverID); err != nil {
-			slog.Warn("failed to persist generated server ID", "error", err)
-		}
-		settings["jellyfin_compat.server_id"] = serverID
-	}
 
 	// Step 6: Build config from DB
 	cfg, err := config.LoadFromDB(settings)
@@ -1115,7 +1048,6 @@ func main() {
 			Listen:      cfg.Server.Listen,
 			Mode:        cfg.Server.Mode,
 			DatabaseURL: cfg.Database.URL,
-			JFListen:    cfg.JellyfinCompat.Listen,
 			RedisURL:    bc.RedisURL,
 			NodeURL:     nodeURL,
 			NodeName:    nodeName,
@@ -1250,7 +1182,6 @@ func main() {
 		Listen:      bc.Listen,
 		Mode:        bc.Mode,
 		DatabaseURL: bc.DatabaseURL,
-		JFListen:    bc.JFListen,
 		RedisURL:    bc.RedisURL,
 	})
 	configWatcher.OnLoad(normalizeLoadedConfig)
@@ -1372,12 +1303,6 @@ func main() {
 	}
 	bloemWireCoreDependencies(appCtx, &deps, pool, cfg)
 	accessGroupStore := access.NewTenantGroupStore(pool)
-	audiobooksService := audiobooks.New(&audiobooksSettingsAdapter{repo: settingsRepo})
-	absCompatEnabled, err := audiobooksService.ABSCompatEnabled(appCtx)
-	if err != nil {
-		slog.Warn("Audiobookshelf compatibility disabled; failed to read setting", "err", err)
-		absCompatEnabled = false
-	}
 	adminJobCancelRegistry := adminjob.NewCancelRegistry()
 	deps.AdminJobCancelRegistry = adminJobCancelRegistry
 	if needsWorkers && deps.DB != nil {
@@ -1668,20 +1593,7 @@ func main() {
 					DefaultPort: pluginhost.DefaultPortAPI,
 				}},
 			}
-			if live.JellyfinCompat.Enabled && live.JellyfinCompat.Listen != "" {
-				info.Listeners = append(info.Listeners, pluginhost.HostListener{
-					Name:        pluginhost.ListenerJellyfin,
-					Address:     pluginhost.LoopbackDialAddress(live.JellyfinCompat.Listen),
-					DefaultPort: pluginhost.DefaultPortJellyfin,
-				})
-			}
-			if absCompatEnabled && live.AudiobookshelfCompat.Listen != "" {
-				info.Listeners = append(info.Listeners, pluginhost.HostListener{
-					Name:        pluginhost.ListenerABS,
-					Address:     pluginhost.LoopbackDialAddress(live.AudiobookshelfCompat.Listen),
-					DefaultPort: pluginhost.DefaultPortABS,
-				})
-			}
+
 			return info, nil
 		}
 		catalogService := plugins.NewCatalogService(repositoryStore, plugins.CatalogServiceOptions{
@@ -3384,115 +3296,6 @@ func main() {
 		slog.Info("task manager started")
 	}
 
-	// Build the ABS-compatible REST + Socket.io handler when a DB pool is
-	// available. Routes are mounted at the root level by NewRouter (not under
-	// /api/v1/) so ABS clients resolve /login, /api/*, /abs/api/*, and
-	// /abs/socket.io/* without path prefix hacks.
-	if absCompatEnabled && deps.DB != nil {
-		absUserRepo := auth.NewUserRepository(deps.DB)
-		absSessionRepo := auth.NewSessionRepository(deps.DB)
-		absJWTService := auth.NewJWTService(
-			cfg.Auth.JWTSecret,
-			cfg.Auth.AccessTokenExpiry,
-			cfg.Auth.RefreshTokenExpiry,
-		)
-		configWatcher.OnChange(func(_, updated *config.Config) {
-			absJWTService.SetExpiries(updated.Auth.AccessTokenExpiry, updated.Auth.RefreshTokenExpiry)
-		})
-		absAuthSvc := auth.NewService(
-			auth.NewLocalProvider(absUserRepo, absSessionRepo),
-			absJWTService,
-			absSessionRepo,
-			absUserRepo,
-			nil, // invite codes: not needed for ABS compat
-			nil, // settings: not needed here
-			nil, // user store: not needed here
-		)
-		// Audiobookshelf compatibility (beta) signs in local accounts only:
-		// its sessions refresh without the provider re-check, so directory
-		// users are not routed to their provider here.
-		absItemRepo := catalog.NewItemRepository(deps.DB)
-		absEpisodeRepo := catalog.NewEpisodeRepository(deps.DB)
-		absSeasonRepo := catalog.NewSeasonRepository(deps.DB)
-		absPersonRepo := catalog.NewPersonRepository(deps.DB)
-		var absFileFetcher catalog.FileVersionFetcher
-		if deps.FileRepo != nil {
-			absFileFetcher = deps.FileRepo
-		}
-		absDetailSvc := catalog.NewDetailService(absItemRepo, absEpisodeRepo, absSeasonRepo, absPersonRepo, absFileFetcher)
-		if deps.ImageResolver != nil {
-			absDetailSvc.SetImageResolver(deps.ImageResolver)
-		}
-		var absScopeResolver scopeResolver
-		if policySystem != nil {
-			absScopeResolver = newTenantAwareViewerResolver(deps.DB,
-				policy.NewViewerResolver(absUserRepo, userStoreProvider, nil, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent))
-		} else {
-			absScopeResolver = access.NewResolver(absUserRepo, userStoreProvider, nil, accessGroupStore).WithUnratedContentPolicy(unratedContent)
-		}
-		absHDeps := audiobooks.ABSHandlerDeps{
-			Pool:     deps.DB,
-			Items:    absItemRepo,
-			Files:    deps.FileRepo,
-			Settings: settingsRepo,
-			Auth: &audiobooks.SiloCredValidator{
-				Auth: absAuthSvc,
-				Pool: deps.DB,
-			},
-			AccessResolver: audiobooks.NewABSAccessResolver(absUserRepo, userStoreProvider, absScopeResolver, accessGroupStore),
-			Recs:           recommendations.NewRepo(deps.DB),
-			Detail:         absDetailSvc,
-			SessionMgr:     sessionMgr,
-			SessionSyncer:  deps.SessionSyncer,
-		}
-		absH := audiobooksService.BuildABSHandler(absHDeps)
-		// Must precede Mount: Mount is what registers the observed handlers.
-		absH.SetStreamTelemetry(streamTelemetryRegistry)
-		deps.ABSHandler = absH
-	}
-	_ = audiobooksService
-
-	// Step 7: Build HTTP router with all dependencies.
-	// compatServer is populated after the compat server is constructed below;
-	// the closure captures the pointer so revocation calls reach the live instance.
-	var compatServer atomic.Pointer[jellycompat.Server]
-	dropCompatSessions := func(userID int) {
-		if compat := compatServer.Load(); compat != nil {
-			compat.SessionStore().EvictUser(userID)
-		}
-	}
-	// The revoking transaction deletes the account's stored
-	// Jellyfin-compatible sessions, but every replica caches them in memory
-	// and serves a cached one without reading the database, so a revocation
-	// is announced on the admin channel for each replica to drop its copies.
-	if err := eventBus.Subscribe(appCtx, cache.ChannelAdmin, func(event cache.Event) {
-		if event.Type != cache.EventUserSessionsRevoked {
-			return
-		}
-		if userID, err := strconv.Atoi(event.Payload); err == nil {
-			dropCompatSessions(userID)
-		}
-	}); err != nil {
-		slog.Warn("subscribe session revocation failed", "error", err)
-	}
-	deps.OnUserSessionsRevoked = func(ctx context.Context, userID int) error {
-		if compat := compatServer.Load(); compat != nil {
-			if err := compat.SessionStore().DeleteByUserIDContext(ctx, userID); err != nil {
-				return err
-			}
-		}
-		if err := eventBus.Publish(ctx, cache.ChannelAdmin, cache.Event{Type: cache.EventUserSessionsRevoked, Payload: strconv.Itoa(userID)}); err != nil {
-			return fmt.Errorf("publish session revocation: %w", err)
-		}
-		return nil
-	}
-	deps.OnUserProfileSessionsRevoked = bloemProfileSessionRevoker(&compatServer)
-	// Jellyfin-compatible downloads go through the router's download service,
-	// so they meet the same policy and share its bandwidth limiters. It stays
-	// a nil interface when the router builds no service, which refuses them.
-	var compatDownloads jellycompat.DownloadServer
-	deps.OnDownloadService = func(svc *downloads.Service) { compatDownloads = newBloemCompatDownloadServer(svc, deps.DB) }
-
 	distFS, fsErr := fs.Sub(siloweb.DistFS, "dist")
 	if fsErr != nil {
 		log.Fatalf("failed to create frontend FS: %v", fsErr)
@@ -3531,12 +3334,7 @@ func main() {
 	router := api.NewRouter(deps)
 	defer api.StartListCollectionMaintenance(ctx, deps, needsWorkers)()
 
-	// Step 8: The compatibility gateway the public listener composes is
-	// constructed in Step 10 below, once the in-process Jellyfin- and
-	// Audiobookshelf-compatible handlers it dispatches to locally exist.
-	// See the compatgateway.New call there for the full rationale. Upstream
-	// builds rootHandler here; Bloem cannot, so only the metrics listener —
-	// which does not depend on it — is taken at this point.
+	// Start the separate metrics listener.
 	stopMetricsListener, err := startMetricsListener(true)
 	if err != nil {
 		log.Fatalf("metrics listener: %v", err)
@@ -3641,191 +3439,6 @@ func main() {
 	// http.Server of its own, so there is no second wiring here that could
 	// drift from the one the tests drive.
 
-	// jellyfinLocalHandler is the in-process Jellyfin-compatibility handler
-	// the compatibility gateway dispatches to directly, same-origin, with no
-	// extra port. It is built whenever Jellyfin compat is enabled at all;
-	// compatSrv, the dedicated :8096-style listener below, is a separate,
-	// optional opt-in gated on cfg.JellyfinCompat.Listen being explicitly
-	// set — an operator who relies on that dedicated port keeps it.
-	var compatSrv *http.Server
-	var jellyfinLocalHandler http.Handler
-	if (mode == "integrated" || mode == "api") && cfg.JellyfinCompat.Enabled {
-		compatDeps := jellycompat.Dependencies{
-			ArtworkHandler:       apiv2.NewBloemArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)),
-			Config:               cfg,
-			AppContext:           appCtx,
-			RegisterShutdownWork: registerShutdownWork,
-			LiveConfig:           configWatcher.Config,
-			DB:                   deps.DB,
-			SecretCipher:         dataCipher,
-			ClientIPResolver:     ipResolver,
-			IngressTokens:        networkAccess.Registry,
-			ActivityLogWriter:    deps.ActivityLogWriter,
-			NodeID:               deps.NodeID,
-			StreamTelemetry:      streamTelemetryRegistry,
-			NodePlanner:          deps.NodePlanner,
-			JWTSecret:            cfg.Auth.JWTSecret,
-			RecWorker:            recWorker,
-			FrontendFS:           deps.FrontendFS,
-			// Hand remote-transcode recipes to the shared recipe store so a dedicated
-			// transcode node that restarts can rebuild a jellycompat session.
-			RecipeNodeStore:  noderecipe.NewStore(apiRedisClient, 0),
-			SessionSyncer:    deps.SessionSyncer,
-			LiveTV:           liveTVSvc,
-			SubtitlePlaySync: subtitlePlaySync,
-			// One PIN budget per profile across the native and Jellyfin logins.
-			ProfilePINAttempts: deps.ProfilePINAttempts,
-			// The native limiter itself, so budgets, reloads, and counters
-			// are shared with the native API. Nil when rate limiting is off.
-			RateLimit: deps.RateLimitMW,
-		}
-
-		// Wire direct dependencies when DB is available.
-		if deps.DB != nil {
-			browseRepo := catalog.NewBrowseRepository(deps.DB)
-			itemRepo := catalog.NewItemRepository(deps.DB)
-			seasonRepo := catalog.NewSeasonRepository(deps.DB)
-			episodeRepo := catalog.NewEpisodeRepository(deps.DB)
-			providerIDRepo := catalog.NewProviderIDRepository(deps.DB)
-			personRepo := catalog.NewPersonRepository(deps.DB)
-			folderRepo := deps.FolderRepo
-
-			var fileFetcher catalog.FileVersionFetcher
-			if deps.FileRepo != nil {
-				fileFetcher = deps.FileRepo
-			}
-
-			detailSvc := newCompatDetailService(&deps, itemRepo, episodeRepo, seasonRepo, personRepo, fileFetcher, userStoreProvider)
-
-			compatDeps.BrowseRepo = browseRepo
-			compatDeps.ItemRepo = itemRepo
-			compatDeps.SeasonRepo = seasonRepo
-			compatDeps.EpisodeRepo = episodeRepo
-			compatDeps.ProviderIDRepo = providerIDRepo
-			compatDeps.StableIdentityResolver = watchstate.NewStableIdentityResolver(itemRepo, episodeRepo, providerIDRepo)
-			compatDeps.DetailSvc = detailSvc
-			compatDeps.FolderRepo = folderRepo
-			compatDeps.SessionMgr = sessionMgr
-			if deps.MarkerPopulation != nil {
-				compatDeps.MarkerPopulation = deps.MarkerPopulation
-			}
-			compatDeps.UserStoreProvider = userStoreProvider
-			compatDeps.WatchCompletionObserver = deps.WatchCompletionObserver
-			if eventsHub != nil {
-				compatDeps.UserStateEvents = eventsHub
-			}
-			compatDeps.SettingsRepo = settingsRepo
-			compatDeps.PersonRepo = personRepo
-			if deps.CollectionService != nil {
-				compatDeps.CollectionPosters = deps.CollectionService
-			}
-			if watchProviderService != nil {
-				compatDeps.WatchScrobbler = watchProviderService
-			}
-			compatSearchService := catalog.NewCatalogSearchServiceFromSettings(
-				catalogSearchStartupSettings,
-				itemRepo,
-				catalog.NewSearchIndexEventRepository(deps.DB),
-				deps.CatalogSearchVectorizer,
-			)
-			if compatSearchService != nil {
-				compatSearchService.StartCoverageRefresh(appCtx)
-				compatDeps.CatalogSearchProvider = compatSearchService.Provider()
-				// Latch the resolved provider for the package-level enqueue
-				// helpers (idempotent with the API router's latch; this also
-				// covers modes that wire jellycompat without the router).
-				activeSearchProvider := catalog.SearchProviderPostgres
-				if _, ok := compatSearchService.Provider().(*catalog.MeilisearchSearchProvider); ok {
-					activeSearchProvider = catalog.SearchProviderMeilisearch
-				}
-				catalog.SetActiveSearchIndexProvider(activeSearchProvider)
-			}
-
-			if blobs := blobstore.NewByteStore(deps.Blobs.Assets); blobs != nil {
-				compatDeps.SubtitleBlobs = blobs
-			}
-			if deps.TrickplayReader != nil {
-				compatDeps.Trickplay = deps.TrickplayReader
-			}
-			compatDeps.PosterPresigner = jellycompat.NewResolverPosterPresigner(deps.ArtworkResolver)
-
-			if deps.FileRepo != nil {
-				compatDeps.FileResolver = jellycompat.GuardNativeStorageFiles(deps.FileRepo)
-				compatDeps.MediaSourceOwners = deps.FileRepo
-			}
-			compatDeps.Downloads = compatDownloads
-
-			compatDeps.SubtitleRepo = subtitles.NewPgRepository(deps.DB, deps.SecretCipher)
-
-			// Construct auth service for jellycompat login.
-			userRepo := auth.NewUserRepository(deps.DB)
-			compatDeps.APIKeyValidator = auth.NewAPIKeyRepository(deps.DB)
-			compatDeps.APIKeyUserLoader = userRepo
-			compatDeps.ScanQueue = deps.LibraryScanQueue
-			sessionRepo := auth.NewSessionRepository(deps.DB)
-			jwtService := auth.NewJWTService(
-				cfg.Auth.JWTSecret,
-				cfg.Auth.AccessTokenExpiry,
-				cfg.Auth.RefreshTokenExpiry,
-			)
-			configWatcher.OnChange(func(_, updated *config.Config) {
-				jwtService.SetExpiries(updated.Auth.AccessTokenExpiry, updated.Auth.RefreshTokenExpiry)
-			})
-			provider := auth.NewLocalProvider(userRepo, sessionRepo)
-			compatDeps.AuthService = auth.NewService(provider, jwtService, sessionRepo, userRepo, nil, nil, nil)
-			if authProviderRegistry != nil {
-				// Directory (LDAP) users sign in with their directory password.
-				compatDeps.AuthService.SetPluginProviderSource(authProviderRegistry)
-				// Compatibility sessions refresh their Silo session too.
-				compatDeps.AuthService.SetProviderRecheck(deps.AuthProviderRecheck)
-			}
-
-			// Access filter resolver for viewer-scoped library access.
-			// Backed by the shared access.Resolver so account-level library
-			// restrictions (users.library_ids), profile restrictions,
-			// user-disabled libraries, and rating/quality ceilings apply to
-			// the compat API exactly as they do to the native API.
-			if userStoreProvider != nil {
-				var compatScopeResolver jellycompat.ScopeResolver
-				if policySystem != nil {
-					compatScopeResolver = newTenantAwareViewerResolver(deps.DB, policy.NewViewerResolver(
-						userRepo,
-						userStoreProvider,
-						nil, // profile tokens unused: compat login already verifies PINs
-						policySystem.PDP(),
-						accessGroupStore,
-					).WithUnratedContentPolicy(unratedContent))
-				} else {
-					// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
-					compatScopeResolver = access.NewResolver(
-						userRepo,
-						userStoreProvider,
-						nil, // profile tokens unused: compat login already verifies PINs
-						accessGroupStore,
-					).WithUnratedContentPolicy(unratedContent)
-				}
-				compatDeps.AccessFilterFn = jellycompat.NewScopeAccessFilter(compatScopeResolver)
-				compatDeps.LiveTVAccessFn = jellycompat.NewScopeLiveTVAccess(compatScopeResolver)
-				compatDeps.PlaybackScopeResolver = compatScopeResolver
-			}
-		}
-
-		compat := jellycompat.NewServerWithDependencies(compatDeps)
-		compatServer.Store(compat)
-		compatTerminalRecoveryReady = compat.StartBackgroundTasks(context.Background())
-		jellyfinLocalHandler, compatSrv = bloemJellyfinEndpoints(cfg.JellyfinCompat.Listen, compat)
-	}
-
-	absLocalHandler := bloemLocalABSHandler(mode, deps, ipResolver, networkAccess.Registry)
-
-	var absSrv *http.Server
-	if absLocalHandler != nil && cfg.AudiobookshelfCompat.Listen != "" {
-		absSrv = newAudiobookshelfListener(cfg.AudiobookshelfCompat.Listen, deps.ABSHandler,
-			apiv2.NewBloemArtworkHandler(deps.Blobs.Assets, deps.ArtworkSigner, deps.ArtworkRepair, storageCovers(deps)), ipResolver, networkAccess.Registry)
-	}
-
-	compatGateway := compatgateway.New(bloemCompatibilityGatewayConfig(cfg.Auth.JWTSecret, jellyfinLocalHandler, absLocalHandler))
-
 	// Run non-critical startup work in the background so it doesn't delay the
 	// HTTP listener from accepting connections. Steps run sequentially and stop
 	// early if the app context is cancelled (shutdown).
@@ -3864,7 +3477,7 @@ func main() {
 	if publicLn, bindErr := listenPublic(cfg.Server.Listen); bindErr != nil {
 		errCh <- fmt.Errorf("HTTP server error: %w", bindErr)
 	} else {
-		public = servePublic(publicLn, router, server.FrontendHandler(), compatGateway, errCh)
+		public = servePublic(publicLn, router, server.FrontendHandler(), errCh)
 		// Bound before serving so resident plugins, which reverse-proxy to
 		// this listener, are only started once it exists.
 		go func() {
@@ -3885,12 +3498,6 @@ func main() {
 				warnOnMultipleAPIReplicas(appCtx, cache.NewAPIReplicaPresence(apiRedisClient, nodeID), pluginService)
 			}
 		}
-	}
-	if compatSrv != nil {
-		serveAux("jellyfin compat", compatSrv, errCh)
-	}
-	if absSrv != nil {
-		serveAux("abs compat", absSrv, errCh)
 	}
 
 	lanAdvertiser := bloemStartListeners(appCtx, cfg, public != nil, pool, brandingSvc)
@@ -3949,16 +3556,7 @@ func main() {
 			slog.Error("HTTP shutdown error", "error", shutdownErr)
 		}
 	}
-	if compatSrv != nil {
-		if shutdownErr := compatSrv.Shutdown(shutdownCtx); shutdownErr != nil {
-			slog.Error("jellyfin compat shutdown error", "error", shutdownErr)
-		}
-	}
-	if absSrv != nil {
-		if shutdownErr := absSrv.Shutdown(shutdownCtx); shutdownErr != nil {
-			slog.Error("abs compat shutdown error", "error", shutdownErr)
-		}
-	}
+
 	if liveTVSvc != nil {
 		if closeErr := liveTVSvc.Close(shutdownCtx); closeErr != nil {
 			slog.Error("live tv shutdown error", "error", closeErr)

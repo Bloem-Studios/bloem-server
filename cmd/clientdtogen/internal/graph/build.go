@@ -55,6 +55,8 @@ var knownNamed = map[string]TypeRef{
 	"time.Time":                   {Kind: KindTime},
 	"github.com/google/uuid.UUID": {Kind: KindUUID},
 	"encoding/json.RawMessage":    {Kind: KindRaw, Nullable: true},
+	// Go 1.27 resolves RawMessage to this alias target.
+	"encoding/json/jsontext.Value": {Kind: KindRaw, Nullable: true},
 
 	// apiv2's instants carry custom marshallers, so without an entry here the
 	// graph refuses them as "response shape invisible". The shape is not

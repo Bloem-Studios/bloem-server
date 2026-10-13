@@ -1,4 +1,4 @@
-.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint lint-changed test test-go test-db-pins test-web embed-stub clean jellyfin-web verify-local-paths verify-case-collisions install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures route-inventory verify-route-inventory lint-router-recovery verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types
+.PHONY: frontend build dev-frontend dev-backend dev-proxy dev-transcode lint lint-changed test test-go test-db-pins test-web embed-stub clean verify-local-paths verify-case-collisions install-hooks migrate-create migrate-validate migrate-status migrate-up migrate-down-to settings-bindings verify-settings-bindings verify-settings-bindings-web verify-settings-bindings-all playback-fixtures verify-playback-fixtures route-inventory verify-route-inventory lint-router-recovery verify-migration-ledger verify-scenario-catalogs offline-routes verify-offline-routes apiv2-openapi verify-apiv2-openapi verify-apiv2-contract apiv2-fixtures verify-apiv2-fixtures apiv2-fixtures-sync verify-apiv2-fixtures-siblings apiv2-web-types verify-apiv2-web-types
 
 GIT_COMMON_DIR := $(strip $(shell git rev-parse --git-common-dir 2>/dev/null))
 MAIN_CHECKOUT_ROOT := $(if $(GIT_COMMON_DIR),$(abspath $(GIT_COMMON_DIR)/..))
@@ -15,8 +15,6 @@ else ifneq ($(wildcard $(SHARED_PLUGIN_SDK_DIR)),)
 DEV_PLUGIN_SDK_DIR ?= $(SHARED_PLUGIN_SDK_DIR)
 endif
 
-JELLYFIN_WEB_INSTALL_DIR ?= .local/compat/jellyfin-web
-JELLYFIN_WEB_VERSION ?= 12.1
 
 # Build version stamping: inject the git revision so the admin Build panel shows a
 # version even when Go's VCS metadata isn't embedded (mirrors the Dockerfile ldflags).
@@ -440,10 +438,6 @@ install-hooks:
 		echo "warning: overwriting existing local core.hooksPath ($$existing) with .githooks"; \
 	fi
 	git config core.hooksPath .githooks
-
-# Fetch and build the pinned Jellyfin Web component into a gitignored local cache.
-jellyfin-web:
-	go run ./cmd/silo/ compat-web install --dir "$(JELLYFIN_WEB_INSTALL_DIR)" --version "$(JELLYFIN_WEB_VERSION)"
 
 # Clean build artifacts
 clean:
@@ -929,3 +923,8 @@ test-scenario-hardware-inventory:
 .PHONY: test-scenario-plugin-launch
 test-scenario-plugin-launch:
 	SILO_SCENARIO_REQUIRED=1 go test -count=1 -run '^TestRequiredPluginLaunchAcceptance$$' ./internal/scenariocatalog/executor
+
+.PHONY: verify-no-compat
+verify-no-compat:
+	bash scripts/verify-no-compat.sh
+	bash scripts/verify-no-compat_test.sh

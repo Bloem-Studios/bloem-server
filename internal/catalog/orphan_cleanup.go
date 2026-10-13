@@ -31,18 +31,6 @@ const orphanedMediaItemSafetyConditions = `NOT EXISTS (
 	WHERE lci.media_item_id = mi.content_id
   )
   AND NOT EXISTS (
-	SELECT 1 FROM public.abs_bookmarks ab
-	WHERE ab.library_item_id = mi.content_id
-  )
-  AND NOT EXISTS (
-	SELECT 1 FROM public.abs_playback_sessions aps
-	WHERE aps.content_id = mi.content_id
-  )
-  AND NOT EXISTS (
-	SELECT 1 FROM public.abs_rss_feeds arf
-	WHERE arf.library_item_id = mi.content_id
-  )
-  AND NOT EXISTS (
 	SELECT 1 FROM public.downloads d
 	WHERE d.content_id = mi.content_id
   )

@@ -31,7 +31,6 @@ export const ADMIN_SETTINGS_PAGE_IDS = [
   "ai",
   "announcements",
   "notifications",
-  "compatibility",
   "network-access",
 ] as const;
 
@@ -151,7 +150,6 @@ function searchProviderLabel(value: string): string {
  * where the single last-writer reason is the closest signal there is.
  */
 const NON_SETTINGS_RESTART_REASONS = new Set([
-  "jellyfin_compat",
   "ratelimit_backend",
   "plugin_auth_binding",
   "plugin_task_binding",

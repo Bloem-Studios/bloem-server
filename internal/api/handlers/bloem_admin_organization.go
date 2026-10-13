@@ -262,7 +262,7 @@ func (h *BloemAdminOrganizationHandler) HandleDeleteEntitlement(w http.ResponseW
 		return
 	}
 	if request.ExpectedRevision <= 0 {
-		writeAdminValidation(w, map[string]string{compatFieldExpectedRevision: "must be positive"})
+		writeAdminValidation(w, map[string]string{adminFieldExpectedRevision: "must be positive"})
 		return
 	}
 	if err := h.resources.DeleteLibraryEntitlement(r.Context(), tenant.OrganizationID, folderID, request.ExpectedRevision); err != nil {
@@ -386,7 +386,7 @@ func requireBloemOrganizationContext(w http.ResponseWriter, r *http.Request) (te
 
 func requireOrganizationRevision(w http.ResponseWriter, tenant tenancy.Context, expected int64) bool {
 	if expected <= 0 {
-		writeAdminValidation(w, map[string]string{compatFieldExpectedRevision: compatRevisionValidationMessage})
+		writeAdminValidation(w, map[string]string{adminFieldExpectedRevision: adminRevisionValidationMessage})
 		return false
 	}
 	if expected != tenant.PolicyRevision {

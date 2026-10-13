@@ -2,14 +2,10 @@ package livetv
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -114,74 +110,4 @@ func (s *PgStore) HLSOwner(ctx context.Context, playbackID string) (hlsOwner, er
 		return hlsOwner{}, fmt.Errorf("resolve live TV owner: %w", err)
 	}
 	return owner, nil
-}
-
-// CompatStream contains no credentials or tuner URLs. The verified compat
-// principal supplies its own token; the database stores only its SHA-256 hash.
-type CompatStream struct {
-	ID            string
-	NativeSession string
-	ChannelID     string
-	OpenedAt      time.Time
-}
-
-type compatStreamStore interface {
-	PutCompatStream(context.Context, CompatStream, string) error
-	GetCompatStream(context.Context, string, string) (CompatStream, error)
-}
-
-func (s *Service) HasSharedCompatStreams() bool {
-	if s == nil {
-		return false
-	}
-	_, ok := s.store.(compatStreamStore)
-	return ok
-}
-
-func openerHash(token string) string {
-	sum := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(sum[:])
-}
-
-func (s *Service) PutCompatStream(ctx context.Context, stream CompatStream, token string) error {
-	store, ok := s.store.(compatStreamStore)
-	if !ok || token == "" {
-		return ErrInvalidArgument
-	}
-	return store.PutCompatStream(ctx, stream, openerHash(token))
-}
-
-func (s *Service) GetCompatStream(ctx context.Context, id, token string) (CompatStream, error) {
-	store, ok := s.store.(compatStreamStore)
-	if !ok || token == "" {
-		return CompatStream{}, ErrNotFound
-	}
-	if _, err := uuid.Parse(id); err != nil {
-		return CompatStream{}, ErrNotFound
-	}
-	return store.GetCompatStream(ctx, id, openerHash(token))
-}
-
-func (s *PgStore) PutCompatStream(ctx context.Context, stream CompatStream, hash string) error {
-	// Keep the map bounded without keeping an extra scheduled cleanup job.
-	// Released rows carry no authority; pruning them cannot affect an open stream.
-	_, err := s.db.Exec(ctx, `DELETE FROM bloem_livetv_compat_streams WHERE id IN (
- SELECT c.id FROM bloem_livetv_compat_streams c JOIN livetv_sessions s ON s.id=c.native_session_id
- WHERE s.status<>'active' LIMIT 64 FOR UPDATE OF c SKIP LOCKED)`)
-	if err != nil {
-		return err
-	}
-	_, err = s.db.Exec(ctx, `INSERT INTO bloem_livetv_compat_streams (id,native_session_id,opener_hash) VALUES ($1,$2,$3)`, stream.ID, stream.NativeSession, hash)
-	return err
-}
-
-func (s *PgStore) GetCompatStream(ctx context.Context, id, hash string) (CompatStream, error) {
-	var result CompatStream
-	err := s.db.QueryRow(ctx, `SELECT c.id::text,c.native_session_id,s.channel_id,c.created_at
- FROM bloem_livetv_compat_streams c JOIN livetv_sessions s ON s.id=c.native_session_id
- WHERE c.id=$1::uuid AND c.opener_hash=$2 AND s.status='active'`, id, hash).Scan(&result.ID, &result.NativeSession, &result.ChannelID, &result.OpenedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return CompatStream{}, ErrNotFound
-	}
-	return result, err
 }
