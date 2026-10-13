@@ -291,6 +291,9 @@ func (s *Service) Sweep(ctx context.Context, limit int) error {
 	if s == nil || s.Pool == nil || limit < 1 || limit > 500 {
 		return ErrSnapshot
 	}
+	if err := s.CleanupTargets(ctx, limit); err != nil {
+		return err
+	}
 	_, err := s.Pool.Exec(ctx, `DELETE FROM bloem_list_jobs WHERE id IN (
  SELECT j.id FROM bloem_list_jobs j WHERE j.deadline<clock_timestamp()-interval '1 hour'
  AND NOT EXISTS(SELECT 1 FROM bloem_list_bindings b WHERE b.preview_id=j.id)

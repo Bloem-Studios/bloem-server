@@ -3081,6 +3081,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.BrandingService != nil {
 		v2deps.AdminBrandingAssets = handlers.NewBrandingHandler(deps.BrandingService)
 	}
+	wireBloemListMutationGuards(&v2deps, deps.DB)
 	if deps.v2Wiring != nil {
 		deps.v2Wiring(v2deps)
 	}
@@ -3770,6 +3771,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 				if collectionHandler != nil {
 					r.Route("/collections", func(r chi.Router) {
 						r.Use(apimw.RequireProfile)
+						r.Use(bloemListMutationMiddleware(deps.DB, "personal"))
 						r.Get("/", collectionHandler.HandleListCollections)
 						r.Get("/capabilities", collectionHandler.HandleCapabilities)
 						r.Put("/sort-preference", collectionHandler.HandleSetCollectionSortPreference)
@@ -4577,6 +4579,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 							if libraryCollectionHandler != nil {
 								collectionTemplateHandler := handlers.NewCollectionTemplateHandler(nil)
 								r.Route("/collections", func(r chi.Router) {
+									r.Use(bloemListMutationMiddleware(deps.DB, "server"))
 									r.Get("/", libraryCollectionHandler.HandleListAdminCollections)
 									r.Get("/templates", collectionTemplateHandler.HandleListTemplates)
 									r.Get("/template-bundles", libraryCollectionHandler.HandleListTemplateBundles)
