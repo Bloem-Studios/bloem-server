@@ -19,6 +19,9 @@ import (
 )
 
 func listNativeDomainFixture(t *testing.T) (*listCollectionDomain, listcollections.Subject, int) {
+	return listNativeDomainFixtureRole(t, "admin")
+}
+func listNativeDomainFixtureRole(t *testing.T, role string) (*listCollectionDomain, listcollections.Subject, int) {
 	t.Helper()
 	pool, ctx := coverRecipeDatabase(t), t.Context()
 	tx, err := pool.Begin(ctx)
@@ -26,7 +29,7 @@ func listNativeDomainFixture(t *testing.T) (*listCollectionDomain, listcollectio
 		t.Fatal(err)
 	}
 	defer tx.Rollback(ctx)
-	u, err := auth.NewUserRepository(pool).CreateInTransaction(ctx, tx, models.CreateUserInput{Username: uuid.NewString(), Password: "synthetic-only", Role: "admin"})
+	u, err := auth.NewUserRepository(pool).CreateInTransaction(ctx, tx, models.CreateUserInput{Username: uuid.NewString(), Password: "synthetic-only", Role: role})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +83,7 @@ func listNativeDomainFixture(t *testing.T) (*listCollectionDomain, listcollectio
 		t.Fatal(err)
 	}
 	scope := access.Scope{UserID: u.ID, ProfileID: profile, ProfileVerified: true, AllowedLibraryIDs: []int{folder}}
-	return &listCollectionDomain{managed: managed, source: &managedCalendarSource{pool: pool, stores: stores, resolver: managedCalendarResolverFixture{scope: scope}}}, listcollections.Subject{UserID: u.ID, ProfileID: profile, InstallationID: installation, InstanceID: info.InstanceID, IsAdmin: true}, folder
+	return &listCollectionDomain{managed: managed, source: &managedCalendarSource{pool: pool, stores: stores, resolver: managedCalendarResolverFixture{scope: scope}}}, listcollections.Subject{UserID: u.ID, ProfileID: profile, InstallationID: installation, InstanceID: info.InstanceID, IsAdmin: role == "admin"}, folder
 }
 
 func TestListFollowNativeDomainAudiencesAndAuthority(t *testing.T) {

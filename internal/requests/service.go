@@ -959,7 +959,7 @@ func (s *Service) CreateRequest(ctx context.Context, viewer Viewer, input Create
 		status = StatusApproved
 	}
 	record := CreateRequestRecord{
-		ID:        id,
+		ID:        bloemListRequestID(ctx, id, viewer, normalized),
 		Input:     normalized,
 		Status:    status,
 		Outcome:   OutcomeActive,
