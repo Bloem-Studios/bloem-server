@@ -9,16 +9,28 @@ import (
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
+// Bloem-owned compatibility tables go; the Jellyfin and Audiobookshelf tables
+// belong to upstream Silo, which can serve the database again while switching
+// is mirrored, so they stay even though Bloem no longer uses them.
 func TestBloemCompatibilityTablesRemovedOnFreshInstall(t *testing.T) {
 	pool := newDisposableMigrationDatabase(t)
 	runAllMigrations(t, pool)
-	for _, table := range []string{"abs_audiobook_author_counts", "abs_sessions", "abs_bookmarks", "abs_playback_sessions", "abs_rss_feeds", "jellycompat_sessions", "jellycompat_playback_sessions", "jellycompat_device_profiles", "jellycompat_displayprefs", "compat_applications", "compat_application_enrollments", "compat_application_credentials", "compat_application_audit", "bloem_livetv_compat_streams"} {
+	exists := func(table string) bool {
+		t.Helper()
 		var exists bool
 		if err := pool.QueryRow(t.Context(), "SELECT to_regclass('public.' || $1) IS NOT NULL", table).Scan(&exists); err != nil {
 			t.Fatal(err)
 		}
-		if exists {
+		return exists
+	}
+	for _, table := range []string{"compat_applications", "compat_application_enrollments", "compat_application_credentials", "compat_application_audit", "bloem_livetv_compat_streams"} {
+		if exists(table) {
 			t.Errorf("removed compatibility table remains: %s", table)
+		}
+	}
+	for _, table := range []string{"abs_audiobook_author_counts", "abs_sessions", "abs_bookmarks", "abs_playback_sessions", "abs_rss_feeds", "jellycompat_sessions", "jellycompat_playback_sessions", "jellycompat_device_profiles", "jellycompat_displayprefs"} {
+		if !exists(table) {
+			t.Errorf("upstream Silo table removed: %s", table)
 		}
 	}
 }
@@ -58,7 +70,8 @@ func TestBloemCompatibilityRemovalPreservesNativeDataOnUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(t.Context(), `INSERT INTO media_items(content_id,type,title) VALUES('compat-removal-native-book','audiobook','Native audiobook');
- INSERT INTO server_settings(key,value) VALUES('audiobooks.abs.fixture','invented-fixture') ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value;`); err != nil {
+ INSERT INTO server_settings(key,value) VALUES('audiobooks.abs.fixture','invented-fixture') ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value;
+ INSERT INTO server_settings(key,value) VALUES('jellyfin_compat.server_id','invented-silo-server-id') ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value;`); err != nil {
 		t.Fatal(err)
 	}
 	for _, statement := range []string{
@@ -88,12 +101,18 @@ func TestBloemCompatibilityRemovalPreservesNativeDataOnUpgrade(t *testing.T) {
 	if position != 42 || duration != 120 {
 		t.Fatalf("native progress changed: %v/%v", position, duration)
 	}
-	var remaining int
-	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM server_settings WHERE starts_with(key,'jellyfin_compat.') OR starts_with(key,'audiobookshelf_compat.') OR starts_with(key,'audiobooks.abs.')`).Scan(&remaining); err != nil {
+	// Silo's own state survives for a switch back: its server identity, its
+	// Audiobookshelf settings and sessions.
+	var serverID, absSetting string
+	var absSessions int
+	if err := pool.QueryRow(t.Context(), `SELECT
+		(SELECT value FROM server_settings WHERE key='jellyfin_compat.server_id'),
+		(SELECT value FROM server_settings WHERE key='audiobooks.abs.fixture'),
+		(SELECT count(*) FROM abs_sessions WHERE user_id=$1)`, userID).Scan(&serverID, &absSetting, &absSessions); err != nil {
 		t.Fatal(err)
 	}
-	if remaining != 0 {
-		t.Fatalf("removed settings remaining: %d", remaining)
+	if serverID != "invented-silo-server-id" || absSetting != "invented-fixture" || absSessions != 1 {
+		t.Fatalf("upstream Silo state changed: server id %q, setting %q, sessions %d", serverID, absSetting, absSessions)
 	}
 	// A subsequent startup must not recreate tables or fail historical hooks.
 	if err := RunMigrations(t.Context(), pool, migrations.FS, "sql"); err != nil {
@@ -106,13 +125,13 @@ func TestBloemCompatibilityRemovalFailsAtomicallyOnUnknownDependency(t *testing.
 	if err := RunMigrations(t.Context(), pool, compatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(t.Context(), `CREATE VIEW native_unknown_compat_dependency AS SELECT * FROM abs_sessions`); err != nil {
+	if _, err := pool.Exec(t.Context(), `CREATE VIEW native_unknown_compat_dependency AS SELECT * FROM compat_application_audit`); err != nil {
 		t.Fatal(err)
 	}
 	if err := RunMigrations(t.Context(), pool, migrations.FS, "sql"); err == nil {
 		t.Fatal("unknown dependency was silently deleted")
 	}
-	for _, table := range []string{"abs_audiobook_author_counts", "abs_sessions", "jellycompat_sessions", "compat_applications"} {
+	for _, table := range []string{"compat_applications", "compat_application_enrollments", "compat_application_credentials", "compat_application_audit"} {
 		var exists bool
 		if err := pool.QueryRow(t.Context(), "SELECT to_regclass('public.' || $1) IS NOT NULL", table).Scan(&exists); err != nil {
 			t.Fatal(err)

@@ -69,6 +69,12 @@ beyond the default one, entitlement templates, profile logins, Live TV and DVR,
 native storage and presentation plugins. Their rows stay in the database and
 work again when Bloem serves it.
 
+The reverse holds for Silo's Jellyfin and Audiobookshelf compatibility. Bloem
+removed both protocols, but their tables, the author-count view and their
+settings (including `jellyfin_compat.server_id`, the server identity Silo's
+clients recognise) stay in the database for Silo. Bloem neither reads nor
+writes them. Drop them only when Silo switching ends for good.
+
 ## Operating rules
 
 - **One backend at a time.** Stop one before starting the other. The policy
