@@ -61,7 +61,7 @@ func (s *entitlementHandlerStoreStub) ApplyTemplate(_ context.Context, tenantID 
 	}
 	return entitlements.ApplyResult{TenantID: tenantID, TemplateKey: key, TemplateRevision: revision, GroupID: 55, DryRun: dryRun, Changed: changed}, nil
 }
-func (s *entitlementHandlerStoreStub) ApplyDefaultAccountTemplate(context.Context, int, string, int64, bool) (entitlements.ApplyResult, error) {
+func (s *entitlementHandlerStoreStub) ApplyDefaultAccountTemplate(context.Context, int, int, string, int64, bool) (entitlements.ApplyResult, error) {
 	return entitlements.ApplyResult{}, nil
 }
 func (s *entitlementHandlerStoreStub) GetOrganizationEntitlement(context.Context, uuid.UUID) (entitlements.OrganizationEntitlement, error) {

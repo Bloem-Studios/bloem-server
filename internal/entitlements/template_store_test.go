@@ -420,14 +420,14 @@ func TestApplyAccountTemplateKeepsDirectAccountsIndependentAndPreservesCustomPro
 		uuid.NewString(), customGroupID, uuid.NewString(), secondAccountID)
 	require.NoError(t, err)
 
-	first, err := store.ApplyAccountTemplate(ctx, organizationID, firstAccountID, firstTemplate.Key, firstTemplate.Revision, false)
+	first, err := store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), organizationID, firstAccountID, firstTemplate.Key, firstTemplate.Revision, false)
 	require.NoError(t, err)
-	second, err := store.ApplyAccountTemplate(ctx, organizationID, secondAccountID, secondTemplate.Key, secondTemplate.Revision, false)
+	second, err := store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), organizationID, secondAccountID, secondTemplate.Key, secondTemplate.Revision, false)
 	require.NoError(t, err)
 	if first.GroupID == second.GroupID {
 		t.Fatal("different direct templates reused the same managed group")
 	}
-	idempotent, err := store.ApplyAccountTemplate(ctx, organizationID, firstAccountID, firstTemplate.Key, firstTemplate.Revision, false)
+	idempotent, err := store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), organizationID, firstAccountID, firstTemplate.Key, firstTemplate.Revision, false)
 	require.NoError(t, err)
 	require.False(t, idempotent.Changed)
 
@@ -449,7 +449,7 @@ func TestApplyAccountTemplateKeepsDirectAccountsIndependentAndPreservesCustomPro
 		Name: firstTemplate.Name, Enabled: true, Policy: premiumPolicy([]int{}),
 	})
 	require.NoError(t, err)
-	reconciled, err := store.ApplyAccountTemplate(ctx, organizationID, firstAccountID, secondRevision.Key, secondRevision.Revision, false)
+	reconciled, err := store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), organizationID, firstAccountID, secondRevision.Key, secondRevision.Revision, false)
 	require.NoError(t, err)
 	require.True(t, reconciled.Changed)
 	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='First custom'`, firstAccountID).Scan(&firstCustomGroup))
@@ -467,14 +467,14 @@ func TestSharedDynamicDirectExactCohortRemainsImmutableOnLibraryChange(t *testin
 	require.NoError(t, err)
 	firstID := insertDirectEntitlementAccount(t, ctx, pool, organizationID, defaultGroupID, "dynamic-first")
 	secondID := insertDirectEntitlementAccount(t, ctx, pool, organizationID, defaultGroupID, "dynamic-second")
-	_, err = store.ApplyAccountTemplate(ctx, organizationID, firstID, template.Key, template.Revision, false)
+	_, err = store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), organizationID, firstID, template.Key, template.Revision, false)
 	require.NoError(t, err)
-	_, err = store.ApplyAccountTemplate(ctx, organizationID, secondID, template.Key, template.Revision, false)
+	_, err = store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), organizationID, secondID, template.Key, template.Revision, false)
 	require.NoError(t, err)
 	var firstRevision int64
 	require.NoError(t, pool.QueryRow(ctx, `SELECT access_policy_revision FROM organization_memberships WHERE account_id=$1`, firstID).Scan(&firstRevision))
 	newLibraryID := insertEntitlementLibrary(t, ctx, pool, "dynamic-added-"+uuid.NewString(), true)
-	_, err = store.ApplyAccountTemplate(ctx, organizationID, secondID, template.Key, template.Revision, false)
+	_, err = store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), organizationID, secondID, template.Key, template.Revision, false)
 	require.NoError(t, err)
 	var invalidatedRevision int64
 	require.NoError(t, pool.QueryRow(ctx, `SELECT access_policy_revision FROM organization_memberships WHERE account_id=$1`, firstID).Scan(&invalidatedRevision))
@@ -505,7 +505,7 @@ func TestTenantApplyReusesDirectAccountExactCohort(t *testing.T) {
 		Key: suffix, Name: "Separated " + suffix, Enabled: true, Policy: standardPolicy([]int{}),
 	})
 	require.NoError(t, err)
-	direct, err := store.ApplyAccountTemplate(ctx, tenant.ID, accountID, template.Key, template.Revision, false)
+	direct, err := store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), tenant.ID, accountID, template.Key, template.Revision, false)
 	require.NoError(t, err)
 
 	managedDefault, err := store.ApplyTemplate(ctx, tenant.ID, template.Key, template.Revision, false)
@@ -530,7 +530,7 @@ func TestTenantApplyMovesFormerDefaultAssignmentsToExactCohort(t *testing.T) {
 	})
 	require.NoError(t, err)
 	exactAccountID := insertDirectEntitlementAccount(t, ctx, pool, tenant.ID, formerDefaultID, "exact-occupant")
-	exact, err := store.ApplyAccountTemplate(ctx, tenant.ID, exactAccountID, template.Key, template.Revision, false)
+	exact, err := store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), tenant.ID, exactAccountID, template.Key, template.Revision, false)
 	require.NoError(t, err)
 
 	legacyAccountID := insertDirectEntitlementAccount(t, ctx, pool, tenant.ID, formerDefaultID, "legacy-occupant")
@@ -581,7 +581,7 @@ func TestTenantApplyPreservesAdministratorOwnedCustomDefaultAssignments(t *testi
 	})
 	require.NoError(t, err)
 	exactAccountID := insertDirectEntitlementAccount(t, ctx, pool, tenant.ID, canonicalDefaultID, "custom-default-exact")
-	exact, err := store.ApplyAccountTemplate(ctx, tenant.ID, exactAccountID, template.Key, template.Revision, false)
+	exact, err := store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), tenant.ID, exactAccountID, template.Key, template.Revision, false)
 	require.NoError(t, err)
 
 	customDefault, err := access.NewTenantGroupStore(pool).Create(ctx, tenant.ID, access.CreateGroupInput{
@@ -655,7 +655,7 @@ func TestManagedZeroProfileLimitAllowsPrimaryAndRejectsAdditional(t *testing.T) 
 	policy.MaxProfiles = 0
 	template, err := store.Create(ctx, entitlements.CreateTemplateInput{Key: entitlementTestKey(t, "managed-zero-cap"), Name: "Managed zero cap " + uuid.NewString(), Enabled: true, Policy: policy})
 	require.NoError(t, err)
-	applied, err := store.ApplyAccountTemplate(ctx, organizationID, accountID, template.Key, template.Revision, false)
+	applied, err := store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), organizationID, accountID, template.Key, template.Revision, false)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,'Primary',$3,$4)`, uuid.NewString(), accountID, organizationID, applied.GroupID)
 	require.NoError(t, err)
@@ -763,6 +763,17 @@ func insertDirectEntitlementAccount(t *testing.T, ctx context.Context, pool *pgx
 		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, uuid.New(), organizationID, accountID, defaultGroupID)
 	require.NoError(t, err)
 	return accountID
+}
+
+// insertEntitlementActor creates the administrator an apply is attributed to.
+func insertEntitlementActor(t *testing.T, ctx context.Context, pool *pgxpool.Pool) int {
+	t.Helper()
+	var actorID int
+	suffix := uuid.NewString()
+	require.NoError(t, pool.QueryRow(ctx, `
+		INSERT INTO users (email,username,password_hash,role)
+		VALUES ($1,$2,'test-hash','admin') RETURNING id`, "actor-"+suffix+"@example.test", "actor-"+suffix).Scan(&actorID))
+	return actorID
 }
 
 func standardPolicy(libraryIDs []int) entitlements.Policy {

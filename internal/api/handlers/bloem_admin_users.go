@@ -28,11 +28,11 @@ import (
 )
 
 type DirectEntitlementProvisioner interface {
-	ApplyDefaultAccountTemplate(context.Context, int, string, int64, bool) (entitlements.ApplyResult, error)
+	ApplyDefaultAccountTemplate(context.Context, int, int, string, int64, bool) (entitlements.ApplyResult, error)
 }
 
 type transactionalDirectEntitlementProvisioner interface {
-	ApplyDefaultAccountTemplateInTransaction(context.Context, pgx.Tx, int, string, int64, bool) (entitlements.ApplyResult, error)
+	ApplyDefaultAccountTemplateInTransaction(context.Context, pgx.Tx, int, int, string, int64, bool) (entitlements.ApplyResult, error)
 }
 
 type transactionalAdminUserRepository interface {
@@ -309,7 +309,7 @@ func (h *AdminHandler) handleLifecycleUpdateUser(
 			if !ok {
 				return lifecycleidempotency.Result{}, errors.New("entitlement store does not support caller-owned transactions")
 			}
-			applied, err := entitlementWriter.ApplyDefaultAccountTemplateInTransaction(ctx, tx, id, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
+			applied, err := entitlementWriter.ApplyDefaultAccountTemplateInTransaction(ctx, tx, actorID, id, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
 			if err != nil {
 				return lifecycleidempotency.Result{}, err
 			}
@@ -632,7 +632,7 @@ func (h *AdminHandler) bloemCreateUser(w http.ResponseWriter, r *http.Request, b
 			return nil, 0, false
 		}
 		applied, applyErr := h.directEntitlements.ApplyDefaultAccountTemplate(
-			r.Context(), user.ID, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false,
+			r.Context(), requestAccountID(r), user.ID, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false,
 		)
 		if applyErr != nil {
 			_ = h.userRepo.Delete(r.Context(), user.ID)
@@ -708,12 +708,20 @@ func (h *AdminHandler) bloemPrepareUpdateUser(w http.ResponseWriter, r *http.Req
 	return currentUser, false
 }
 
+// requestAccountID is the authenticated account making the request, or 0.
+func requestAccountID(r *http.Request) int {
+	if claims := apimw.GetClaims(r.Context()); claims != nil {
+		return claims.UserID
+	}
+	return 0
+}
+
 // bloemApplyUpdateUserEntitlement applies a requested direct entitlement
 // template after the account update. ok=false means it wrote the response.
 func (h *AdminHandler) bloemApplyUpdateUserEntitlement(w http.ResponseWriter, r *http.Request, id int, req updateUserRequest, directEntitlementRequested bool) (int64, bool) {
 	var appliedEntitlementRevision int64
 	if directEntitlementRequested {
-		applied, applyErr := h.directEntitlements.ApplyDefaultAccountTemplate(r.Context(), id, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
+		applied, applyErr := h.directEntitlements.ApplyDefaultAccountTemplate(r.Context(), requestAccountID(r), id, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
 		if applyErr != nil {
 			switch {
 			case errors.Is(applyErr, entitlements.ErrTemplateNotFound), errors.Is(applyErr, entitlements.ErrTemplateUnavailable):

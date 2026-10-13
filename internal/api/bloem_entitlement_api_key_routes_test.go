@@ -49,7 +49,7 @@ func (routerTemplateStoreStub) Archive(context.Context, string, int64) (entitlem
 func (routerTemplateStoreStub) ApplyTemplate(context.Context, uuid.UUID, string, int64, bool) (entitlements.ApplyResult, error) {
 	return entitlements.ApplyResult{}, errRouterTemplateStoreUnused
 }
-func (routerTemplateStoreStub) ApplyDefaultAccountTemplate(_ context.Context, _ int, key string, revision int64, dryRun bool) (entitlements.ApplyResult, error) {
+func (routerTemplateStoreStub) ApplyDefaultAccountTemplate(_ context.Context, _, _ int, key string, revision int64, dryRun bool) (entitlements.ApplyResult, error) {
 	return entitlements.ApplyResult{TemplateKey: key, TemplateRevision: revision, DryRun: dryRun}, nil
 }
 func (routerTemplateStoreStub) GetOrganizationEntitlement(context.Context, uuid.UUID) (entitlements.OrganizationEntitlement, error) {

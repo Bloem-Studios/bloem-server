@@ -50,7 +50,7 @@ type recordingDirectEntitlements struct {
 	dryRun    bool
 }
 
-func (r *recordingDirectEntitlements) ApplyDefaultAccountTemplate(_ context.Context, accountID int, key string, revision int64, dryRun bool) (entitlements.ApplyResult, error) {
+func (r *recordingDirectEntitlements) ApplyDefaultAccountTemplate(_ context.Context, _ int, accountID int, key string, revision int64, dryRun bool) (entitlements.ApplyResult, error) {
 	r.accountID, r.key, r.revision, r.dryRun = accountID, key, revision, dryRun
 	return entitlements.ApplyResult{AccountID: accountID, TemplateKey: key, TemplateRevision: revision, GroupID: 44}, nil
 }

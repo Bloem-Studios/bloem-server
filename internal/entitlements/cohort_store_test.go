@@ -332,6 +332,7 @@ func TestApplyAccountTemplateReusesExactCohortWithoutMutatingDerivedCohort(t *te
 
 	result, err := fixture.store.ApplyAccountTemplate(
 		fixture.ctx,
+		fixture.actorID,
 		fixture.organizationID,
 		fixture.actorID,
 		parent.SourceTemplateKey,

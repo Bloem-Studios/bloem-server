@@ -436,7 +436,7 @@ const cohortSelect = `
 	          FROM organization_memberships m
 	         WHERE m.organization_id=r.organization_id
 	           AND m.access_group_id=r.access_group_id) AS member_count,
-	       r.created_by_account_id,r.created_at
+	       COALESCE(r.created_by_account_id,0),r.created_at
 	FROM entitlement_policy_cohort_revisions r
 	JOIN entitlement_policy_cohorts c
 	  ON c.id=r.cohort_id AND c.organization_id=r.organization_id`

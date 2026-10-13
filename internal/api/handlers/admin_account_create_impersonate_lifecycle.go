@@ -52,7 +52,7 @@ func (h *AdminHandler) handleLifecycleCreateUser(w http.ResponseWriter, r *http.
 			if !ok {
 				return nil, lifecycleidempotency.Result{}, errors.New("entitlement store does not support caller-owned transactions")
 			}
-			applied, err := writer.ApplyDefaultAccountTemplateInTransaction(ctx, tx, created.User.ID, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
+			applied, err := writer.ApplyDefaultAccountTemplateInTransaction(ctx, tx, actorID, created.User.ID, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
 			if err != nil {
 				return nil, lifecycleidempotency.Result{}, err
 			}

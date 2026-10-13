@@ -48,7 +48,7 @@ type EntitlementTemplateHandlerStore interface {
 	Clone(context.Context, string, int64, entitlements.CreateTemplateInput) (entitlements.Template, error)
 	Archive(context.Context, string, int64) (entitlements.Template, error)
 	ApplyTemplate(context.Context, uuid.UUID, string, int64, bool) (entitlements.ApplyResult, error)
-	ApplyDefaultAccountTemplate(context.Context, int, string, int64, bool) (entitlements.ApplyResult, error)
+	ApplyDefaultAccountTemplate(context.Context, int, int, string, int64, bool) (entitlements.ApplyResult, error)
 	GetOrganizationEntitlement(context.Context, uuid.UUID) (entitlements.OrganizationEntitlement, error)
 	GetDefaultAccountEntitlement(context.Context, int) (entitlements.AccountEntitlement, error)
 }
@@ -599,7 +599,7 @@ func (h *EntitlementTemplatesHandler) HandleAccountDryRun(w http.ResponseWriter,
 		writeAdminValidation(w, map[string]string{"template": "must include key and positive revision"})
 		return
 	}
-	result, err := h.store.ApplyDefaultAccountTemplate(r.Context(), accountID, request.TemplateKey, request.TemplateRevision, true)
+	result, err := h.store.ApplyDefaultAccountTemplate(r.Context(), claims.AccountID, accountID, request.TemplateKey, request.TemplateRevision, true)
 	if err != nil {
 		h.writeError(w, err)
 		return
@@ -662,14 +662,14 @@ func (h *EntitlementTemplatesHandler) HandleAccountApply(w http.ResponseWriter, 
 	} else {
 		receiptKey := strconv.Itoa(claims.AccountID) + ":account:" + strconv.Itoa(accountID) + ":" + request.IdempotencyKey
 		result, repeated, err = h.applyOnce(r.Context(), claims.AccountID, "account", strconv.Itoa(accountID), request.IdempotencyKey, receiptKey, request.TemplateKey, request.TemplateRevision, func() (entitlements.ApplyResult, error) {
-			preview, previewErr := h.store.ApplyDefaultAccountTemplate(r.Context(), accountID, request.TemplateKey, request.TemplateRevision, true)
+			preview, previewErr := h.store.ApplyDefaultAccountTemplate(r.Context(), claims.AccountID, accountID, request.TemplateKey, request.TemplateRevision, true)
 			if previewErr != nil {
 				return entitlements.ApplyResult{}, previewErr
 			}
 			if entitlementPreviewHash(preview) != confirmation.PreviewHash {
 				return entitlements.ApplyResult{}, errEntitlementConfirmationStale
 			}
-			return h.store.ApplyDefaultAccountTemplate(r.Context(), accountID, request.TemplateKey, request.TemplateRevision, false)
+			return h.store.ApplyDefaultAccountTemplate(r.Context(), claims.AccountID, accountID, request.TemplateKey, request.TemplateRevision, false)
 		})
 	}
 	if err != nil {

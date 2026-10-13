@@ -437,7 +437,9 @@ func (s *Store) GetOrganizationEntitlement(ctx context.Context, organizationID u
 // template group and makes it the entitlement group for one direct account.
 // Profiles in the account's prior managed group or the organization default
 // follow the entitlement; deliberately custom-group profiles are preserved.
-func (s *Store) ApplyAccountTemplate(ctx context.Context, organizationID uuid.UUID, accountID int, key string, revision int64, dryRun bool) (result ApplyResult, err error) {
+// actorAccountID is the administrator making the change; it is recorded as
+// the creator of the template revision's cohort when this apply creates it.
+func (s *Store) ApplyAccountTemplate(ctx context.Context, actorAccountID int, organizationID uuid.UUID, accountID int, key string, revision int64, dryRun bool) (result ApplyResult, err error) {
 	if organizationID == uuid.Nil || accountID <= 0 || revision <= 0 {
 		return ApplyResult{}, fmt.Errorf("%w: organization, account, and revision are required", ErrInvalidPolicy)
 	}
@@ -446,7 +448,7 @@ func (s *Store) ApplyAccountTemplate(ctx context.Context, organizationID uuid.UU
 		return ApplyResult{}, fmt.Errorf("entitlements: begin account template apply: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	result, err = s.applyAccountTemplateInTx(ctx, tx, organizationID, accountID, key, revision, accountID, dryRun)
+	result, err = s.applyAccountTemplateInTx(ctx, tx, organizationID, accountID, key, revision, actorAccountID, dryRun)
 	if err != nil || dryRun {
 		return result, err
 	}
@@ -652,7 +654,7 @@ func (s *Store) applyAccountTemplateInTx(ctx context.Context, tx pgx.Tx, organiz
 // ApplyDefaultAccountTemplate is the direct-product provisioning shortcut:
 // direct accounts live in the deployment default organization, while Park
 // tenant accounts use ApplyTemplate on their tenant organization.
-func (s *Store) ApplyDefaultAccountTemplate(ctx context.Context, accountID int, key string, revision int64, dryRun bool) (ApplyResult, error) {
+func (s *Store) ApplyDefaultAccountTemplate(ctx context.Context, actorAccountID, accountID int, key string, revision int64, dryRun bool) (ApplyResult, error) {
 	var organizationID uuid.UUID
 	if err := s.pool.QueryRow(ctx, `
 		SELECT o.id
@@ -663,12 +665,12 @@ func (s *Store) ApplyDefaultAccountTemplate(ctx context.Context, accountID int, 
 	} else if err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: resolve direct account organization: %w", err)
 	}
-	return s.ApplyAccountTemplate(ctx, organizationID, accountID, key, revision, dryRun)
+	return s.ApplyAccountTemplate(ctx, actorAccountID, organizationID, accountID, key, revision, dryRun)
 }
 
 // ApplyDefaultAccountTemplateInTransaction applies a direct-account template
 // through a caller-owned lifecycle transaction.
-func (s *Store) ApplyDefaultAccountTemplateInTransaction(ctx context.Context, tx pgx.Tx, accountID int, key string, revision int64, dryRun bool) (ApplyResult, error) {
+func (s *Store) ApplyDefaultAccountTemplateInTransaction(ctx context.Context, tx pgx.Tx, actorAccountID, accountID int, key string, revision int64, dryRun bool) (ApplyResult, error) {
 	var organizationID uuid.UUID
 	if err := tx.QueryRow(ctx, `
 		SELECT o.id
@@ -679,7 +681,7 @@ func (s *Store) ApplyDefaultAccountTemplateInTransaction(ctx context.Context, tx
 	} else if err != nil {
 		return ApplyResult{}, fmt.Errorf("entitlements: resolve direct account organization: %w", err)
 	}
-	return s.applyAccountTemplateInTx(ctx, tx, organizationID, accountID, key, revision, accountID, dryRun)
+	return s.applyAccountTemplateInTx(ctx, tx, organizationID, accountID, key, revision, actorAccountID, dryRun)
 }
 
 // Store persists templates and materializes them into tenant access groups.
