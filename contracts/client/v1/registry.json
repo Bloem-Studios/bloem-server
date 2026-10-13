@@ -789,26 +789,6 @@
           "direction": "request",
           "dialect": "bloem",
           "gate": "audiobook_requests_v1"
-        },
-        {
-          "type": "BloemListConnection",
-          "direction": "response"
-        },
-        {
-          "type": "BloemListCapability",
-          "direction": "response"
-        },
-        {
-          "type": "BloemListPreviewCommand",
-          "direction": "request"
-        },
-        {
-          "type": "BloemListCreateCommand",
-          "direction": "request"
-        },
-        {
-          "type": "BloemListBindingStatus",
-          "direction": "response"
         }
       ]
     },
@@ -2666,14 +2646,6 @@
         {
           "type": "ChatGPTModel",
           "direction": "response"
-        },
-        {
-          "type": "BloemListJob",
-          "direction": "response"
-        },
-        {
-          "type": "BloemListDisconnect",
-          "direction": "response"
         }
       ]
     },
@@ -2764,28 +2736,6 @@
         {
           "type": "AudiobookCandidateApproval",
           "direction": "request"
-        }
-      ]
-    },
-    {
-      "path": "internal/listcollections",
-      "dialect": "upstream-compat",
-      "roots": [
-        {
-          "type": "PreviewStatus",
-          "direction": "response"
-        },
-        {
-          "type": "RequestCounts",
-          "direction": "response"
-        },
-        {
-          "type": "Entry",
-          "direction": "response"
-        },
-        {
-          "type": "Unmatched",
-          "direction": "response"
         }
       ]
     }
