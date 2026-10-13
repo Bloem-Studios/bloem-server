@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"strconv"
+	"strings"
+	"unicode"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/managedtracking"
@@ -82,7 +84,12 @@ func libraryItem(item *models.MediaItem) *library.LibraryItem {
 			ids[key] = value
 		}
 	}
-	return &library.LibraryItem{ContentId: item.ContentID, Kind: item.Type, Title: item.Title, Year: int32(item.Year), ExternalIds: ids}
+	return &library.LibraryItem{ContentId: item.ContentID, Kind: item.Type, Title: strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, item.Title), Year: int32(item.Year), ExternalIds: ids}
 }
 
 func (s *managedCalendarSource) addManagedLibraryIdentities(ctx context.Context, items []*library.LibraryItem) error {

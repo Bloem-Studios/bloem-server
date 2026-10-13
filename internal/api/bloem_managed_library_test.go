@@ -12,6 +12,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/managedtracking"
+	"github.com/Silo-Server/silo-server/internal/models"
 )
 
 func TestManagedLibraryFailsClosedWithoutCatalog(t *testing.T) {
@@ -92,4 +93,19 @@ func TestManagedLibraryUsesNativeAccessAndAvailability(t *testing.T) {
 	scope.DisabledLibraryIDs = []int{folder}
 	source.resolver = managedCalendarResolverFixture{scope: scope}
 	assert(0, false)
+}
+
+func TestManagedLibraryTitleUsesSingleLineDisplayText(t *testing.T) {
+	item := &models.MediaItem{ContentID: "synthetic", Type: "ebook", Title: "First\tLine\nSubtitle\rEdition"}
+	row := libraryItem(item)
+	if row.Title != "First Line Subtitle Edition" {
+		t.Fatalf("companion title retains control characters: %q", row.Title)
+	}
+	if item.Title != "First\tLine\nSubtitle\rEdition" {
+		t.Fatal("changed native catalog metadata")
+	}
+	plain := libraryItem(&models.MediaItem{Title: "Amélie — Volume Ⅰ", ContentID: "other", Type: "movie"})
+	if plain.Title != "Amélie — Volume Ⅰ" {
+		t.Fatal("changed ordinary title", plain.Title)
+	}
 }
