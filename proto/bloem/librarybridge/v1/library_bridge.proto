@@ -1,0 +1,65 @@
+syntax = "proto3";
+package bloem.librarybridge.v1;
+option go_package = "github.com/Silo-Server/silo-server/internal/managedtracking/librarywire;librarywire";
+import "google/protobuf/timestamp.proto";
+
+// Read-only metadata and scoped companion mutations. Never carries media paths,
+// credentials or stream URLs. Playback remains the ordinary host's decision.
+service LibraryHost {
+ rpc Read(LibraryRequest) returns (LibraryPage);
+ rpc Mutate(LibraryMutation) returns (LibraryMutationReceipt);
+}
+message LibraryRequest {
+ string account_id = 1; string profile_id = 2; string view = 3;
+ string parent_id = 4; string cursor = 5; uint32 limit = 6;
+ string query = 7; string kind = 8;
+}
+message LibraryItem {
+ string content_id = 1; string kind = 2; string title = 3;
+ map<string,string> external_ids = 4; int32 year = 5;
+ bool available = 6;
+}
+message LibraryCollection {
+ string id = 1; string name = 2; string description = 3;
+ string scope = 4; bool writable = 5; uint64 revision = 6;
+ string definition_kind = 7;
+}
+message LibraryCopy {
+ string id = 1; string content_id = 2; string kind = 3;
+ string title = 4; map<string,string> external_ids = 5;
+ // Explicit user ownership, independently of server availability.
+ string format = 6; string edition = 7; string resolution = 8;
+ string hdr = 9; string audio = 10; uint32 bitrate_kbps = 11;
+ string acquired_on = 12; int64 price_cents = 13; string currency = 14;
+ string store = 15; string location = 16; string notes = 17;
+ map<string,string> custom = 18; bool removed = 19; uint64 revision = 20;
+}
+message BookState {
+ string content_id = 1; string kind = 2; string edition_id = 3;
+ string isbn = 4; int64 file_id = 5;
+ double audiobook_seconds = 6; double audiobook_duration_seconds = 7;
+ string ebook_location = 8; double ebook_fraction = 9;
+ bool completed = 10; bool reset = 11;
+ google.protobuf.Timestamp changed_at = 12; uint64 revision = 13;
+ string title = 14; map<string,string> external_ids = 15;
+}
+message LibraryPage {
+ string instance_id = 1; string account_id = 2; string profile_id = 3;
+ string view = 4; string parent_id = 5; string next_cursor = 6;
+ bool complete = 7;
+ google.protobuf.Timestamp generated_at = 8;
+ google.protobuf.Timestamp expires_at = 9;
+ repeated LibraryItem items = 10; repeated LibraryCollection collections = 11;
+ repeated LibraryCopy copies = 12; repeated BookState book_states = 13;
+ uint64 revision = 14;
+}
+message LibraryMutation {
+ string account_id = 1; string profile_id = 2; string event_id = 3;
+ string operation = 4; string target_id = 5; uint64 expected_revision = 6;
+ string name = 7; string description = 8; repeated LibraryItem items = 9;
+ LibraryCopy copy = 10; BookState book_state = 11;
+}
+message LibraryMutationReceipt {
+ string event_id = 1; string target_id = 2; uint64 revision = 3;
+ string status = 4; // applied, no_change or removed; faults never imply success.
+}

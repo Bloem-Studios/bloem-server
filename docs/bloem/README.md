@@ -145,3 +145,5 @@ Silo's `v1-scope.md` no longer carries that fork-only row.
 - [Managed Pastime personal synchronization](../architecture/bloem-pastime-personal-sync.md) — authority, conflicts and retry boundaries.
 
 - [Pastime profile availability](../architecture/bloem-pastime-availability.md) — bounded source-authorized lookups and playback handoff.
+
+- [Connected Pastime library bridge](../architecture/bloem-connected-library.md) — inventory, collections, explicit copies and edition-bound book state.

@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	calendar "github.com/Silo-Server/silo-server/internal/managedtracking/calendarwire"
+	library "github.com/Silo-Server/silo-server/internal/managedtracking/librarywire"
 	rec "github.com/Silo-Server/silo-server/internal/managedtracking/recommendationswire"
 	managedv1 "github.com/Silo-Server/silo-server/internal/managedtracking/wire"
 )
@@ -29,6 +30,7 @@ func (s *Service) RegisterBroker(server *grpc.Server, plugin string, installatio
 		managedv1.RegisterManagedTrackingHostServer(server, &brokerService{service: s, installation: installation})
 		calendar.RegisterCalendarHostServer(server, &calendarBroker{service: s, installation: installation})
 		rec.RegisterRecommendationsHostServer(server, &recommendationsBroker{service: s, installation: installation})
+		library.RegisterLibraryHostServer(server, &libraryBroker{service: s, installation: installation})
 	}
 }
 func safeRPC(err error) error {
@@ -64,6 +66,12 @@ func (b *brokerService) GetInfo(ctx context.Context, _ *managedv1.InfoRequest) (
 	}
 	if _, ok := b.service.calendarSource().(RecommendationsSource); ok {
 		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.recommendations.v1", "bloem.recommendations.feedback.v1")
+	}
+	if _, ok := b.service.calendarSource().(LibrarySource); ok {
+		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.library.read.v1")
+	}
+	if _, ok := b.service.calendarSource().(LibraryMutationSource); ok {
+		out.ExtensionCapabilities = append(out.ExtensionCapabilities, "bloem.collections.write.v1")
 	}
 	return out, nil
 }
