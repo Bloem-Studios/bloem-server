@@ -13,7 +13,7 @@
 .gitignore
 .golangci.yml
 AGENTS.md
-Dockerfile
+Dockerfile  # builds the Bloem presentation plugin workers; no Socket.IO transport module copy and no Jellyfin Web installer runtime (Node/npm, git, compat directory) since the protocol layers were removed
 Dockerfile.dev  # the retired Socket.IO transport replacement module is deleted, so the dev image no longer copies it
 Makefile  # Bloem gates and generation; bounded 20-minute Go package timeout covers the measured ~15-minute executor
 assets/icon.png

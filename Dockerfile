@@ -1,9 +1,3 @@
-# Node.js for the runtime Jellyfin Web installer, which builds upstream
-# jellyfin-web in the container. Jellyfin Web 12.x requires Node.js >=24,
-# independent of the Silo frontend toolchain. The installer runs the npm
-# release each Jellyfin Web version declares in engines.npm.
-FROM node:24-slim AS jellyfin_web_node
-
 # Stage 1: Build frontend
 FROM node:22-slim AS frontend
 RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
@@ -74,7 +68,7 @@ RUN apt-get update && \
     echo "deb [signed-by=/usr/share/keyrings/jellyfin.gpg arch=${TARGETARCH}] https://repo.jellyfin.org/debian trixie main" \
       > /etc/apt/sources.list.d/jellyfin.list && \
     apt-get update && \
-    apt-get install -y --no-install-recommends "jellyfin-ffmpeg8=${JELLYFIN_FFMPEG_VERSION}-trixie" git libvips42 fonts-noto-core fonts-noto-cjk && \
+    apt-get install -y --no-install-recommends "jellyfin-ffmpeg8=${JELLYFIN_FFMPEG_VERSION}-trixie" libvips42 fonts-noto-core fonts-noto-cjk && \
     apt-get purge -y gnupg && apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 # Debian's Intel OpenCL runtime lags the media hardware supported by the
@@ -93,11 +87,7 @@ RUN if [ "${TARGETARCH}" = "amd64" ]; then \
       cd / && \
       rm -rf "${runtime_dir}" /var/lib/apt/lists/*; \
     fi
-RUN mkdir -p /tmp/silo-transcode /var/lib/silo/artwork /var/lib/silo/compat/jellyfin-web
-COPY --from=jellyfin_web_node /usr/local/bin/node /usr/local/bin/node
-COPY --from=jellyfin_web_node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
-RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
-    ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+RUN mkdir -p /tmp/silo-transcode /var/lib/silo/artwork
 COPY --from=build /silo /usr/local/bin/silo
 COPY --from=build /bloem-presentation-plugins/ /usr/local/lib/bloem/plugins/
 EXPOSE 8080 8096 13378
