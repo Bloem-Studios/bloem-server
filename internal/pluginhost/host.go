@@ -23,12 +23,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/processmetrics"
 )
 
-// BrokerRegistrar installs optional services on the installation-bound broker.
-// The host supplies caller identity; plugin requests cannot choose it.
-type BrokerRegistrar func(*grpc.Server, string, int)
-
 type Config struct {
-	BrokerRegistrar     BrokerRegistrar
 	Logger              hclog.Logger
 	HealthCheckInterval time.Duration
 	HealthFailureLimit  int
@@ -73,7 +68,6 @@ type StartRequest struct {
 }
 
 type Host struct {
-	brokerRegistrar     BrokerRegistrar
 	logger              hclog.Logger
 	healthCheckInterval time.Duration
 	healthFailureLimit  int
@@ -153,7 +147,6 @@ func NewHost(cfg Config) *Host {
 		hostInfo:            cfg.HostInfo,
 		instanceState:       cfg.InstanceState,
 		runtimeHostForStart: cfg.RuntimeHostForStart,
-		brokerRegistrar:     cfg.BrokerRegistrar,
 		networkAccess:       cfg.NetworkAccess,
 		instances:           make(map[int]*instance),
 		starting:            make(map[int]chan struct{}),
@@ -537,10 +530,10 @@ func (h *Host) stopInstance(instance *instance) {
 // broker stream lives for the plugin's lifetime; closing the plugin process
 // tears it down.
 //
-// Skipped when neither RuntimeHost services nor an optional registrar are configured.
+// Skipped when no RuntimeHost services are configured.
 func (h *Host) bindRuntimeHost(ctx context.Context, sdkClient *sdkruntime.Client, pluginID string, installationID int, provider, ingressToken string, hostInfo HostInfoFunc, instanceState InstanceStateStore) error {
 	if h.eventPublisher == nil && h.libraryLister == nil && h.catalogPresence == nil && h.installedPlugins == nil && h.globalConfigSetter == nil &&
-		hostInfo == nil && instanceState == nil && h.networkAccess == nil && h.brokerRegistrar == nil {
+		hostInfo == nil && instanceState == nil && h.networkAccess == nil {
 		return nil
 	}
 
@@ -570,9 +563,6 @@ func (h *Host) bindRuntimeHost(ctx context.Context, sdkClient *sdkruntime.Client
 			IngressToken:          ingressToken,
 		})
 		pluginv1.RegisterRuntimeHostServer(s, srv)
-		if h.brokerRegistrar != nil {
-			h.brokerRegistrar(s, pluginID, installationID)
-		}
 		return s
 	})
 

@@ -8,8 +8,6 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 
 - [Protocol compatibility removal](../architecture/bloem-compatibility-removal.md) — native-only runtime, persistence cleanup and upstream merge invariant.
 
-- [Plugin broker extensions](../architecture/bloem-plugin-broker-extensions.md) — optional host-bound services on the existing callback connection.
-
 - [October 7 native storage deployment](../operations/2026-10-07-native-storage-deployment.md) — exact deployed revision, all 27 imported Silo commits, checks and limits.
 - [Silo backend switching](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the mirrored phase, its invariants, and `make silo-switch-check`.
 - [SDK compatibility and contract generation](../architecture/bloem-sdk-compatibility.md) — plugin SDK, generated client DTOs and consumer synchronization.
@@ -142,12 +140,3 @@ The retired `playback.proxy_policy` explanation now lives only in the
 Silo's `v1-scope.md` no longer carries that fork-only row.
 
 - `docs/design/schemas/playback-v3/v3/**` — playback schema and fixtures validated by `make verify-playback-fixtures`.
-
-- [Native Pastime managed tracking](../architecture/bloem-managed-tracking.md)
-
-- [Managed Pastime personal synchronization](../architecture/bloem-pastime-personal-sync.md) — authority, conflicts and retry boundaries.
-
-- [Pastime profile availability](../architecture/bloem-pastime-availability.md) — bounded source-authorized lookups and playback handoff.
-
-- [Connected Pastime library bridge](../architecture/bloem-connected-library.md) — inventory, collections, explicit copies and edition-bound book state.
-- [Pastime list collections](../architecture/bloem-pastime-list-collections.md) — source proofs, native membership and request delivery.
