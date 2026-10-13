@@ -171,6 +171,10 @@ verify-upstream-sync-merge:
 # the CI/release gate, so keep the upstream merge fixture attached here too.
 BLOEM_OPENAPI := contracts/api/bloem/v1/openapi.json
 
+.PHONY: bloem-list-proto
+bloem-list-proto:
+	protoc -I proto --go_out=. --go_opt=module=github.com/Silo-Server/silo-server --go-grpc_out=. --go-grpc_opt=module=github.com/Silo-Server/silo-server proto/bloem/listbridge/v1/list_bridge.proto
+
 # The Bloem-native surface's OpenAPI artifact. /api/v2 has had one since it
 # existed; the surface Bloem itself owns did not, which is why "does this
 # endpoint exist?" had no answer short of grepping route literals.
