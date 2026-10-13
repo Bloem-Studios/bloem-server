@@ -8,12 +8,15 @@ product and Authentik application remain Silo; their names are outside this chan
 
 ## Persistence boundary
 
-Migration `20261013004554_remove_bloem_compatibility.sql` drops compatibility-owned
-session, playback, bookmark, RSS, display-preference, legacy list, enrollment,
-credential/audit and Live TV compatibility-stream tables, plus the ABS-only
-author-count materialized view. It removes settings under
-`jellyfin_compat.`, `audiobookshelf_compat.`, `audiobooks.abs.` and legacy
-`jellycompat:` user keys. Native canonical collections and watch progress stay intact.
+Migration `20261013161500_remove_bloem_compatibility.sql` drops Bloem's own
+compatibility persistence: the application enrollment, credential and audit
+tables and the Live TV compatibility streams. The Jellyfin and Audiobookshelf
+tables, the ABS author-count materialized view and the `jellyfin_compat.`,
+`audiobookshelf_compat.`, `audiobooks.abs.` and `jellycompat:` settings belong to
+upstream Silo, which can serve the database again while the membership policy is
+mirrored; Bloem no longer reads or writes them, and they stay until Silo switching
+ends (`docs/architecture/silo-backend-switching.md`). Native canonical collections
+and watch progress stay intact.
 Historical SQL remains unchanged; the displayprefs parser lives in
 `internal/legacymigrate/displayprefs` solely to execute old migration chains.
 SQLite schema version 32 removes legacy displayprefs storage and keys.

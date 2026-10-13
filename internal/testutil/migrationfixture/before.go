@@ -10,7 +10,7 @@ import (
 	"testing/fstest"
 )
 
-const CompatibilityRemoval int64 = 20261013004554
+const CompatibilityRemoval int64 = 20261013161500
 
 func Before(t testing.TB, source fs.FS, version int64) fs.FS {
 	t.Helper()
