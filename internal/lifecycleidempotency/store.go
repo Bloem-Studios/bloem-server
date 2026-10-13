@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -31,29 +30,10 @@ func (s *PostgresStore) CurrentPhase(ctx context.Context) (Phase, error) {
 	return phase, nil
 }
 
-// serializationAttempts bounds reruns of a lifecycle transaction that lost a
-// repeatable-read write conflict. Account identity writes publish through the
-// managed-tracking clock row, so a writer whose snapshot predates another
-// publication fails with SQLSTATE 40001 rather than overwriting it.
-const serializationAttempts = 5
-
 func (s *PostgresStore) InTransaction(ctx context.Context, fn func(context.Context, pgx.Tx) error) error {
 	if s == nil || s.pool == nil {
 		return fmt.Errorf("lifecycle receipt store has no database pool")
 	}
-	// A rerun starts from a fresh snapshot and repeats every decision, so fn
-	// must leave no state outside the transaction until it commits.
-	for attempt := 1; ; attempt++ {
-		err := s.inTransaction(ctx, fn)
-		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "40001" &&
-			attempt < serializationAttempts && ctx.Err() == nil {
-			continue
-		}
-		return err
-	}
-}
-
-func (s *PostgresStore) inTransaction(ctx context.Context, fn func(context.Context, pgx.Tx) error) error {
 	// Lifecycle confirmation and mutation must observe one database snapshot.
 	// In particular, entitlement previews resolve dynamic library membership
 	// before materialization; READ COMMITTED could authorize one projection and

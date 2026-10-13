@@ -183,8 +183,6 @@ func (h *AdminTenantMembersHandler) handleLifecycleRevokeAllAuthSessions(w http.
 	var invalidatedProfileIDs []string
 	h.executeMemberLifecycle(w, r, tenantID, userID, "tenant.member.sessions.delete", nil, nil,
 		func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-			// A serialization rerun collects the profiles again from its own snapshot.
-			invalidatedProfileIDs = nil
 			rows, err := tx.Query(ctx, `
 SELECT id FROM user_profiles WHERE user_id=$1 AND organization_id=$2 ORDER BY id`, userID, tenantID)
 			if err != nil {
