@@ -58,7 +58,7 @@ func ValidatePageAt(p Page, now time.Time) error {
 
 func validateEntry(e Entry) error {
 	if e.Kind == "unsupported" {
-		if !requiredText(e.Title, 1000) || !requiredText(e.SourceEntryID, 256) || e.Year < 0 || e.Year > 9999 || len(e.ExternalIDs) != 0 {
+		if !requiredText(e.Title, 4096) || !requiredText(e.SourceEntryID, 256) || e.Year < 0 || e.Year > 9999 || len(e.ExternalIDs) != 0 {
 			return ErrSnapshot
 		}
 		switch e.UnsupportedReason {
@@ -71,7 +71,7 @@ func validateEntry(e Entry) error {
 	if e.UnsupportedReason != "" || e.SourceEntryID != "" && !requiredText(e.SourceEntryID, 256) {
 		return ErrSnapshot
 	}
-	if !safeText(e.Title, 1000) || e.Year < 0 || e.Year > 9999 || len(e.ExternalIDs) == 0 || len(e.ExternalIDs) > 5 {
+	if !safeText(e.Title, 4096) || e.Year < 0 || e.Year > 9999 || len(e.ExternalIDs) == 0 || len(e.ExternalIDs) > 5 {
 		return ErrSnapshot
 	}
 	book := e.Kind == "ebook" || e.Kind == "audiobook"
@@ -185,7 +185,7 @@ func Digest(entries []Entry) (Hash, error) {
 
 func DecodePage(raw []byte, now time.Time) (Page, error) {
 	var p Page
-	if len(raw) > MaxSnapshotBytes {
+	if len(raw) > MaxSnapshotBytes || !utf8.Valid(raw) {
 		return p, ErrSnapshot
 	}
 	decoder := json.NewDecoder(bytes.NewReader(raw))

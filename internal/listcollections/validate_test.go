@@ -120,10 +120,20 @@ func TestListPageStrictJSON(t *testing.T) {
 		bytes.Replace(raw, []byte(`"version":1`), []byte(`"version":1,"notes":"private"`), 1),
 		append(append([]byte{}, raw...), []byte(` {}`)...),
 		[]byte(strings.Repeat(" ", MaxSnapshotBytes+1)),
+		bytes.Replace(raw, []byte("Synthetic movie"), []byte{'b', 'a', 'd', 0xff}, 1),
 	} {
 		if _, err := DecodePage(changed, snapshotNow); err == nil {
 			t.Fatal("malformed JSON accepted")
 		}
+	}
+}
+
+func TestListSnapshotAllowsNativeUnicodeCatalogTitle(t *testing.T) {
+	p := validPage(t)
+	p.Entries[0].Title = strings.Repeat("界", 500)
+	p.Digest, _ = Digest(p.Entries)
+	if err := ValidatePageAt(p, snapshotNow); err != nil {
+		t.Fatal("valid native catalog title rejected", err)
 	}
 }
 
