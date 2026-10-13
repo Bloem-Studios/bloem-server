@@ -91,6 +91,11 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			entitlementSecret = []byte(deps.Config.Auth.JWTSecret)
 		}
 		entitlementHandler = handlers.NewEntitlementTemplatesHandler(entitlements.NewTemplateStore(deps.DB), entitlementSecret)
+		platformAdmins := deps.PlatformAdminAuthorizer
+		if platformAdmins == nil {
+			platformAdmins = auth.NewPlatformAdminAuthorizer(auth.NewUserRepository(deps.DB))
+		}
+		entitlementHandler.SetPlatformAdminAuthorizer(platformAdmins)
 		if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
 			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
 			entitlementHandler.SetLifecycleIdempotency(
@@ -228,7 +233,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 			mountUnavailableAdminContextRoutes(r)
 			return
 		}
-		mountPlatformEntitlementScopedRoutes(r, accountPolicyHandler, authMW, adminMW)
+		mountPlatformEntitlementScopedRoutes(r, accountPolicyHandler, entitlementHandler, authMW, adminMW)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(adminMW.Require)
 			mountBloemAdminBookRequests(r, surfaces.BookRequests)
@@ -236,8 +241,8 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 			mountBloemEngagementRoutes(r, surfaces.Promotions, surfaces.Ambience)
 			if entitlementHandler != nil {
 				entitlement := entitlementHandler
-				r.Get("/platform/entitlement-templates", entitlement.HandleList)
-				r.Post("/platform/entitlement-templates", entitlement.HandleCreate)
+				// The catalog list (with create, on the same path) and the
+				// per-account dry-run/apply are in mountPlatformEntitlementScopedRoutes.
 				r.Get("/platform/entitlement-templates/{key}", entitlement.HandleGet)
 				r.Get("/platform/entitlement-templates/{key}/revisions", entitlement.HandleListRevisions)
 				r.Get("/platform/entitlement-templates/{key}/history", entitlement.HandleListRevisions)
@@ -248,8 +253,6 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 				r.Get("/platform/organizations/{id}/entitlement/audit", entitlement.HandleOrganizationAudit)
 				r.Post("/platform/organizations/{id}/entitlement/dry-run", entitlement.HandleOrganizationDryRun)
 				r.Post("/platform/organizations/{id}/entitlement/apply", entitlement.HandleOrganizationApply)
-				r.Post("/platform/accounts/{account_id}/entitlement/dry-run", entitlement.HandleAccountDryRun)
-				r.Post("/platform/accounts/{account_id}/entitlement/apply", entitlement.HandleAccountApply)
 				r.Get("/platform/users/{user_id}/entitlement", entitlement.HandleGetAccountEntitlement)
 				r.Post("/platform/users/{user_id}/entitlement/dry-run", entitlement.HandleAccountDryRun)
 				r.Post("/platform/users/{user_id}/entitlement/apply", entitlement.HandleAccountApply)
@@ -332,8 +335,8 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 // scoped API key. It contains only authoritative policy reads and the bulk
 // workflow. Selecting the established validator from the bearer-token prefix
 // keeps both credential formats on their normal validation path.
-func mountPlatformEntitlementScopedRoutes(r chi.Router, handler *handlers.AdminHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware) {
-	if handler == nil || authMW == nil || adminMW == nil {
+func mountPlatformEntitlementScopedRoutes(r chi.Router, handler *handlers.AdminHandler, entitlement *handlers.EntitlementTemplatesHandler, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware) {
+	if authMW == nil || adminMW == nil {
 		return
 	}
 	eitherPlatformCredential := func(next http.Handler) http.Handler {
@@ -347,6 +350,22 @@ func mountPlatformEntitlementScopedRoutes(r chi.Router, handler *handlers.AdminH
 			}
 			admin.ServeHTTP(w, r)
 		})
+	}
+	if entitlement != nil {
+		// A storefront provisions accounts on templates with its API key: it reads
+		// the enabled catalog and previews and applies one template per account.
+		// Create shares the catalog path, so it moves too; its handler still
+		// requires an admin session.
+		r.Group(func(r chi.Router) {
+			r.Use(eitherPlatformCredential)
+			r.Get("/admin/platform/entitlement-templates", entitlement.HandleList)
+			r.Post("/admin/platform/entitlement-templates", entitlement.HandleCreate)
+			r.Post("/admin/platform/accounts/{account_id}/entitlement/dry-run", entitlement.HandleAccountDryRun)
+			r.Post("/admin/platform/accounts/{account_id}/entitlement/apply", entitlement.HandleAccountApply)
+		})
+	}
+	if handler == nil {
+		return
 	}
 	r.Group(func(r chi.Router) {
 		r.Use(eitherPlatformCredential)

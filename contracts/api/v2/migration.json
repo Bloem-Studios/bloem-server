@@ -7286,18 +7286,19 @@
       "handler": "(*internal/api/handlers.EntitlementTemplatesHandler).HandleAccountApply",
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem.go",
-      "route_group": "/api/bloem/v1/admin",
-      "middleware_chain": 2,
+      "route_group": "/api/bloem/v1",
+      "middleware_chain": 42,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
-        "admin_context"
+        "admin_context",
+        "authenticated"
       ],
       "profile_required": false,
       "admin_required": true,
       "conditional": true,
       "conditions": [
-        "entitlementHandler != nil"
+        "entitlement != nil"
       ],
       "delegates_to": null,
       "request_kind": "json",
@@ -7333,18 +7334,19 @@
       "handler": "(*internal/api/handlers.EntitlementTemplatesHandler).HandleAccountDryRun",
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem.go",
-      "route_group": "/api/bloem/v1/admin",
-      "middleware_chain": 2,
+      "route_group": "/api/bloem/v1",
+      "middleware_chain": 42,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
-        "admin_context"
+        "admin_context",
+        "authenticated"
       ],
       "profile_required": false,
       "admin_required": true,
       "conditional": true,
       "conditions": [
-        "entitlementHandler != nil"
+        "entitlement != nil"
       ],
       "delegates_to": null,
       "request_kind": "json",
@@ -7702,18 +7704,19 @@
       "handler": "(*internal/api/handlers.EntitlementTemplatesHandler).HandleList",
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem.go",
-      "route_group": "/api/bloem/v1/admin",
-      "middleware_chain": 2,
+      "route_group": "/api/bloem/v1",
+      "middleware_chain": 42,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
-        "admin_context"
+        "admin_context",
+        "authenticated"
       ],
       "profile_required": false,
       "admin_required": true,
       "conditional": true,
       "conditions": [
-        "entitlementHandler != nil"
+        "entitlement != nil"
       ],
       "delegates_to": null,
       "request_kind": "none",
@@ -7749,18 +7752,19 @@
       "handler": "(*internal/api/handlers.EntitlementTemplatesHandler).HandleCreate",
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem.go",
-      "route_group": "/api/bloem/v1/admin",
-      "middleware_chain": 2,
+      "route_group": "/api/bloem/v1",
+      "middleware_chain": 42,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
-        "admin_context"
+        "admin_context",
+        "authenticated"
       ],
       "profile_required": false,
       "admin_required": true,
       "conditional": true,
       "conditions": [
-        "entitlementHandler != nil"
+        "entitlement != nil"
       ],
       "delegates_to": null,
       "request_kind": "json",

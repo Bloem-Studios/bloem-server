@@ -9,6 +9,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,6 +19,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -77,6 +79,16 @@ type EntitlementTemplatesHandler struct {
 	receipts        map[string]entitlementReceipt
 	lifecycle       lifecycleidempotency.Coordinator
 	lifecycleDigest lifecycleidempotency.RequestDigester
+	// platformAdmins confirms an API key's owning account is an enabled
+	// platform administrator. Nil keeps every template route session-only.
+	platformAdmins auth.PlatformAdminAuthorizer
+}
+
+// SetPlatformAdminAuthorizer lets an admin-owned API key read the template
+// catalog and preview or apply a template to one account, as a storefront does
+// when it provisions accounts. Template authoring stays session-only.
+func (h *EntitlementTemplatesHandler) SetPlatformAdminAuthorizer(authorizer auth.PlatformAdminAuthorizer) {
+	h.platformAdmins = authorizer
 }
 
 func (h *EntitlementTemplatesHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
@@ -163,7 +175,7 @@ func templateToJSON(item entitlements.Template) entitlementTemplateJSON {
 }
 
 func (h *EntitlementTemplatesHandler) HandleList(w http.ResponseWriter, r *http.Request) {
-	if !h.requirePlatform(w, r) {
+	if _, ok := h.requirePlatformAccountCaller(w, r); !ok {
 		return
 	}
 	includeArchived := true
@@ -570,7 +582,7 @@ func (h *EntitlementTemplatesHandler) HandleGetAccountEntitlement(w http.Respons
 }
 
 func (h *EntitlementTemplatesHandler) HandleAccountDryRun(w http.ResponseWriter, r *http.Request) {
-	claims, ok := h.requirePlatformMutation(w, r)
+	claims, ok := h.requirePlatformAccountCaller(w, r)
 	if !ok {
 		return
 	}
@@ -602,7 +614,7 @@ func (h *EntitlementTemplatesHandler) HandleAccountDryRun(w http.ResponseWriter,
 }
 
 func (h *EntitlementTemplatesHandler) HandleAccountApply(w http.ResponseWriter, r *http.Request) {
-	claims, ok := h.requirePlatformMutation(w, r)
+	claims, ok := h.requirePlatformAccountCaller(w, r)
 	if !ok {
 		return
 	}
@@ -924,6 +936,38 @@ func (h *EntitlementTemplatesHandler) requirePlatformMutation(w http.ResponseWri
 	}
 	claims, _ := middleware.GetAdminContextClaims(r.Context())
 	return claims, true
+}
+
+// requirePlatformAccountCaller admits a platform admin context, or an API key
+// owned by an enabled platform administrator that is unscoped or carries
+// admin:entitlements:accounts. It guards only the catalog read and per-account
+// preview and apply; the key's account becomes the actor that confirmations
+// and receipts are bound to.
+func (h *EntitlementTemplatesHandler) requirePlatformAccountCaller(w http.ResponseWriter, r *http.Request) (auth.AdminContextClaims, bool) {
+	if _, ok := middleware.GetAdminContextClaims(r.Context()); ok {
+		return h.requirePlatformMutation(w, r)
+	}
+	claims := middleware.GetClaims(r.Context())
+	if claims == nil || claims.TokenType != auth.TokenTypeAPIKey || claims.UserID <= 0 || claims.Role != models.RoleAdmin ||
+		(len(claims.APIKeyScopes) > 0 && !slices.Contains(claims.APIKeyScopes, auth.ScopeAdminEntitlementsAccounts)) {
+		writeError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
+		return auth.AdminContextClaims{}, false
+	}
+	if h == nil || h.store == nil || h.platformAdmins == nil {
+		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are unavailable")
+		return auth.AdminContextClaims{}, false
+	}
+	allowed, err := h.platformAdmins.IsPlatformAdmin(r.Context(), claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are unavailable")
+		return auth.AdminContextClaims{}, false
+	}
+	if !allowed {
+		writeError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
+		return auth.AdminContextClaims{}, false
+	}
+	incarnation, _ := uuid.Parse(claims.AccountIncarnationID)
+	return auth.AdminContextClaims{AccountID: claims.UserID, AccountIncarnationID: incarnation, Scope: auth.AdminScopePlatform}, true
 }
 
 func (h *EntitlementTemplatesHandler) writeError(w http.ResponseWriter, err error) {

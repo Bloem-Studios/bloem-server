@@ -41,3 +41,35 @@ func TestBloemEntitlementBulkAPIKeyScope(t *testing.T) {
 		})
 	}
 }
+
+// TestBloemEntitlementAccountsAPIKeyScope covers admin:entitlements:accounts:
+// the template catalog read and per-account preview and apply, nothing else.
+func TestBloemEntitlementAccountsAPIKeyScope(t *testing.T) {
+	accounts := []string{auth.ScopeAdminEntitlementsAccounts}
+	tests := []struct {
+		name   string
+		scopes []string
+		method string
+		path   string
+		want   bool
+	}{
+		{"accounts scope lists templates", accounts, http.MethodGet, "/api/bloem/v1/admin/platform/entitlement-templates", true},
+		{"accounts scope previews an account", accounts, http.MethodPost, "/api/bloem/v1/admin/platform/accounts/42/entitlement/dry-run", true},
+		{"accounts scope applies to an account", accounts, http.MethodPost, "/api/bloem/v1/admin/platform/accounts/42/entitlement/apply", true},
+		{"accounts scope denies template creation", accounts, http.MethodPost, "/api/bloem/v1/admin/platform/entitlement-templates", false},
+		{"accounts scope denies template revision", accounts, http.MethodPost, "/api/bloem/v1/admin/platform/entitlement-templates/standard/revisions", false},
+		{"accounts scope denies one template read", accounts, http.MethodGet, "/api/bloem/v1/admin/platform/entitlement-templates/standard", false},
+		{"accounts scope denies organization apply", accounts, http.MethodPost, "/api/bloem/v1/admin/platform/organizations/10000000-0000-0000-0000-000000000001/entitlement/apply", false},
+		{"accounts scope denies malformed account id", accounts, http.MethodPost, "/api/bloem/v1/admin/platform/accounts/abc/entitlement/apply", false},
+		{"accounts scope denies bulk jobs", accounts, http.MethodPost, "/api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs", false},
+		{"bulk scope still denies account apply", []string{auth.ScopeAdminEntitlementsBulk}, http.MethodPost, "/api/bloem/v1/admin/platform/accounts/42/entitlement/dry-run", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := httptest.NewRequest(tt.method, tt.path, nil)
+			if got := apiKeyScopesAllow(tt.scopes, r); got != tt.want {
+				t.Fatalf("apiKeyScopesAllow(%v, %s %s) = %v, want %v", tt.scopes, tt.method, tt.path, got, tt.want)
+			}
+		})
+	}
+}

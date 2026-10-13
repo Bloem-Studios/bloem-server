@@ -1,5 +1,5 @@
 {
-  "revision": "1a133e486bae013428f78521e6ab77bab79e0ca458fb2e881df95985fe9f6525",
+  "revision": "048d305e6e9b2c5cb050f4e272a8e113bcc398571af0a75f98cf9e53fb8be38d",
   "state": "available",
   "allowed": true,
   "available": true,
@@ -24,6 +24,10 @@
     {
       "name": "admin:entitlements:bulk",
       "description": "Read authoritative account policies, discover organization policy cohorts, and run confirmed durable bulk entitlement jobs."
+    },
+    {
+      "name": "admin:entitlements:accounts",
+      "description": "Read entitlement templates and preview and apply a template to one account. Cannot create or change templates."
     }
   ],
   "rate_tiers": [

@@ -31,6 +31,13 @@ const (
 	// confirmed durable bulk-policy surface. The owning account must still be
 	// an enabled platform administrator.
 	ScopeAdminEntitlementsBulk = "admin:entitlements:bulk"
+
+	// ScopeAdminEntitlementsAccounts permits reading the entitlement template
+	// catalog and previewing and applying a template to one account, which is
+	// what a storefront needs to provision accounts on templates. The owning
+	// account must still be an enabled platform administrator; creating,
+	// revising, or archiving templates stays with an admin session.
+	ScopeAdminEntitlementsAccounts = "admin:entitlements:accounts"
 )
 
 // APIKeyScope is one scope a key may carry, paired with the description
@@ -59,6 +66,10 @@ func APIKeyScopeCatalog() []APIKeyScope {
 		{
 			Name:        ScopeAdminEntitlementsBulk,
 			Description: "Read authoritative account policies, discover organization policy cohorts, and run confirmed durable bulk entitlement jobs.",
+		},
+		{
+			Name:        ScopeAdminEntitlementsAccounts,
+			Description: "Read entitlement templates and preview and apply a template to one account. Cannot create or change templates.",
 		},
 	}
 }

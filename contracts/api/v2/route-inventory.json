@@ -7592,19 +7592,20 @@
       "namespace": "legacy_unversioned",
       "method": "POST",
       "path": "/api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/apply",
-      "route_group": "/api/bloem/v1/admin",
+      "route_group": "/api/bloem/v1",
       "handler": "(*internal/api/handlers.EntitlementTemplatesHandler).HandleAccountApply",
       "handler_expr": "entitlement.HandleAccountApply",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 2,
+      "middleware_chain": 42,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
-        "admin_context"
+        "admin_context",
+        "authenticated"
       ],
       "conditions": [
-        "entitlementHandler != nil"
+        "entitlement != nil"
       ],
       "conditional": true,
       "request_kind": "json",
@@ -7622,19 +7623,20 @@
       "namespace": "legacy_unversioned",
       "method": "POST",
       "path": "/api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run",
-      "route_group": "/api/bloem/v1/admin",
+      "route_group": "/api/bloem/v1",
       "handler": "(*internal/api/handlers.EntitlementTemplatesHandler).HandleAccountDryRun",
       "handler_expr": "entitlement.HandleAccountDryRun",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 2,
+      "middleware_chain": 42,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
-        "admin_context"
+        "admin_context",
+        "authenticated"
       ],
       "conditions": [
-        "entitlementHandler != nil"
+        "entitlement != nil"
       ],
       "conditional": true,
       "request_kind": "json",
@@ -7832,19 +7834,20 @@
       "namespace": "legacy_unversioned",
       "method": "GET",
       "path": "/api/bloem/v1/admin/platform/entitlement-templates",
-      "route_group": "/api/bloem/v1/admin",
+      "route_group": "/api/bloem/v1",
       "handler": "(*internal/api/handlers.EntitlementTemplatesHandler).HandleList",
       "handler_expr": "entitlement.HandleList",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 2,
+      "middleware_chain": 42,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
-        "admin_context"
+        "admin_context",
+        "authenticated"
       ],
       "conditions": [
-        "entitlementHandler != nil"
+        "entitlement != nil"
       ],
       "conditional": true,
       "request_kind": "none",
@@ -7862,19 +7865,20 @@
       "namespace": "legacy_unversioned",
       "method": "POST",
       "path": "/api/bloem/v1/admin/platform/entitlement-templates",
-      "route_group": "/api/bloem/v1/admin",
+      "route_group": "/api/bloem/v1",
       "handler": "(*internal/api/handlers.EntitlementTemplatesHandler).HandleCreate",
       "handler_expr": "entitlement.HandleCreate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 2,
+      "middleware_chain": 42,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
-        "admin_context"
+        "admin_context",
+        "authenticated"
       ],
       "conditions": [
-        "entitlementHandler != nil"
+        "entitlement != nil"
       ],
       "conditional": true,
       "request_kind": "json",

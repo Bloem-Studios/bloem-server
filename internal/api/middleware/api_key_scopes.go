@@ -72,6 +72,11 @@ var apiKeyScopeRoutes = map[string][]scopeRoute{
 		{http.MethodGet, regexp.MustCompile(`^/api/bloem/v1/admin/platform/accounts/[0-9]+/entitlement$`)},
 		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v1/admin/platform/accounts/entitlement-snapshots$`)},
 	},
+	auth.ScopeAdminEntitlementsAccounts: {
+		{http.MethodGet, regexp.MustCompile(`^/api/bloem/v1/admin/platform/entitlement-templates$`)},
+		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v1/admin/platform/accounts/[0-9]+/entitlement/dry-run$`)},
+		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v1/admin/platform/accounts/[0-9]+/entitlement/apply$`)},
+	},
 }
 
 // apiKeyScopesAllow reports whether a key carrying scopes may perform the
