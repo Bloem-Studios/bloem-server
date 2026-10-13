@@ -185,25 +185,32 @@ func Digest(entries []Entry) (Hash, error) {
 
 func DecodePage(raw []byte, now time.Time) (Page, error) {
 	var p Page
-	if len(raw) > MaxSnapshotBytes || !utf8.Valid(raw) {
-		return p, ErrSnapshot
-	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	if err := uniqueJSON(decoder, 0); err != nil {
-		return p, ErrSnapshot
-	}
-	if _, err := decoder.Token(); err != io.EOF {
-		return p, ErrSnapshot
-	}
-	decoder = json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&p); err != nil {
-		return Page{}, ErrSnapshot
+	if err := decodeStrict(raw, &p); err != nil {
+		return Page{}, err
 	}
 	if err := ValidatePageAt(p, now); err != nil {
 		return Page{}, err
 	}
 	return p, nil
+}
+
+func decodeStrict(raw []byte, out any) error {
+	if len(raw) > MaxSnapshotBytes || !utf8.Valid(raw) {
+		return ErrSnapshot
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	if err := uniqueJSON(decoder, 0); err != nil {
+		return ErrSnapshot
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return ErrSnapshot
+	}
+	decoder = json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(out); err != nil {
+		return ErrSnapshot
+	}
+	return nil
 }
 
 // uniqueJSON rejects duplicate object keys at every level before decoding into

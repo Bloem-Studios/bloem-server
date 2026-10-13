@@ -41,6 +41,7 @@ message Resolution {
   uint32 count = 7;
   string resolution_token = 8;
   google.protobuf.Timestamp expires_at = 9;
+  string signing_key = 10;
 }
 message Entry {
   string kind = 1;

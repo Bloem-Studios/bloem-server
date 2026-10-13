@@ -50,17 +50,18 @@ type Entry struct {
 }
 
 type Job struct {
-	ID         string    `json:"id"`
-	Mode       string    `json:"mode"`
-	InstanceID string    `json:"instance_id"`
-	AccountID  string    `json:"account_id"`
-	ProfileID  string    `json:"profile_id"`
-	BindingID  string    `json:"binding_id"`
-	Locator    string    `json:"locator"`
-	SourceID   string    `json:"source_id"`
-	LeaseToken string    `json:"lease_token"`
-	Generation uint64    `json:"generation"`
-	ExpiresAt  time.Time `json:"expires_at"`
+	ResolutionToken string    `json:"resolution_token,omitempty"`
+	ID              string    `json:"id"`
+	Mode            string    `json:"mode"`
+	InstanceID      string    `json:"instance_id"`
+	AccountID       string    `json:"account_id"`
+	ProfileID       string    `json:"profile_id"`
+	BindingID       string    `json:"binding_id"`
+	Locator         string    `json:"locator"`
+	SourceID        string    `json:"source_id"`
+	LeaseToken      string    `json:"lease_token"`
+	Generation      uint64    `json:"generation"`
+	ExpiresAt       time.Time `json:"expires_at"`
 }
 
 type Page struct {

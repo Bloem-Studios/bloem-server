@@ -341,6 +341,7 @@ type Resolution struct {
 	Count           uint32                 `protobuf:"varint,7,opt,name=count,proto3" json:"count,omitempty"`
 	ResolutionToken string                 `protobuf:"bytes,8,opt,name=resolution_token,json=resolutionToken,proto3" json:"resolution_token,omitempty"`
 	ExpiresAt       *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	SigningKey      string                 `protobuf:"bytes,10,opt,name=signing_key,json=signingKey,proto3" json:"signing_key,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -436,6 +437,13 @@ func (x *Resolution) GetExpiresAt() *timestamppb.Timestamp {
 		return x.ExpiresAt
 	}
 	return nil
+}
+
+func (x *Resolution) GetSigningKey() string {
+	if x != nil {
+		return x.SigningKey
+	}
+	return ""
 }
 
 type Entry struct {
@@ -995,7 +1003,7 @@ const file_bloem_listbridge_v1_list_bridge_proto_rawDesc = "" +
 	"generation\x129\n" +
 	"\n" +
 	"expires_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12)\n" +
-	"\x10resolution_token\x18\f \x01(\tR\x0fresolutionToken\"\xa5\x02\n" +
+	"\x10resolution_token\x18\f \x01(\tR\x0fresolutionToken\"\xc6\x02\n" +
 	"\n" +
 	"Resolution\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x1f\n" +
@@ -1010,7 +1018,10 @@ const file_bloem_listbridge_v1_list_bridge_proto_rawDesc = "" +
 	"\x05count\x18\a \x01(\rR\x05count\x12)\n" +
 	"\x10resolution_token\x18\b \x01(\tR\x0fresolutionToken\x129\n" +
 	"\n" +
-	"expires_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"\xac\x02\n" +
+	"expires_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12\x1f\n" +
+	"\vsigning_key\x18\n" +
+	" \x01(\tR\n" +
+	"signingKey\"\xac\x02\n" +
 	"\x05Entry\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
