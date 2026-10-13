@@ -34,6 +34,9 @@ func (d *listPublicationDomain) AuthorizeTx(_ context.Context, _ pgx.Tx, s listc
 	}
 	return nil
 }
+func (d *listPublicationDomain) AuthorizeDetachTx(context.Context, pgx.Tx, listcollections.Subject) error {
+	return nil
+}
 func (d *listPublicationDomain) CreateTx(ctx context.Context, tx pgx.Tx, s listcollections.Subject, in listcollections.CreateInput, binding string) (string, int64, error) {
 	provider := pgstore.NewBloemListCollectionCreator(nil, tx, s.UserID, binding)
 	handler := handlers.NewCollectionHandler(provider)
@@ -242,6 +245,8 @@ func TestListFollowDurableSnapshotPublication(t *testing.T) {
 	if _, err = complete(); !errors.Is(err, listcollections.ErrConflict) {
 		t.Fatal("older generation replayed after a newer refresh", err)
 	}
+	// A source can be disabled/revoked while local ownership remains valid.
+	domain.deniedProfile = subject.ProfileID
 	if err = service.Disconnect(ctx, subject, binding.ID); err != nil {
 		t.Fatal(err)
 	}

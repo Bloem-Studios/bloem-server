@@ -55,6 +55,7 @@ type Binding struct {
 }
 type CollectionDomain interface {
 	AuthorizeTx(context.Context, pgx.Tx, Subject) error
+	AuthorizeDetachTx(context.Context, pgx.Tx, Subject) error
 	CreateTx(context.Context, pgx.Tx, Subject, CreateInput, string) (string, int64, error)
 	CandidatesTx(context.Context, pgx.Tx, Subject, Binding, []Entry) ([]Candidate, error)
 	ReplaceTx(context.Context, pgx.Tx, Subject, Binding, []string) (int64, error)
@@ -73,6 +74,9 @@ func (s *Service) authorize(ctx context.Context, tx pgx.Tx, subject Subject) err
 	return s.Domain.AuthorizeTx(ctx, tx, subject)
 }
 func (s *Service) transaction(ctx context.Context, subject Subject, fn func(pgx.Tx) error) error {
+	return s.transactionAuthorized(ctx, subject, s.authorize, fn)
+}
+func (s *Service) transactionAuthorized(ctx context.Context, subject Subject, authorize func(context.Context, pgx.Tx, Subject) error, fn func(pgx.Tx) error) error {
 	if s == nil || s.Pool == nil {
 		return ErrAuthority
 	}
@@ -81,13 +85,13 @@ func (s *Service) transaction(ctx context.Context, subject Subject, fn func(pgx.
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if err = s.authorize(ctx, tx, subject); err != nil {
+	if err = authorize(ctx, tx, subject); err != nil {
 		return err
 	}
 	if err = fn(tx); err != nil {
 		return err
 	}
-	if err = s.authorize(ctx, tx, subject); err != nil {
+	if err = authorize(ctx, tx, subject); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -234,12 +238,17 @@ func (s *Service) Disconnect(ctx context.Context, subject Subject, id string) er
 	if !validID(id) {
 		return ErrSnapshot
 	}
-	return s.transaction(ctx, subject, func(tx pgx.Tx) error {
+	if s == nil || s.Domain == nil || subject.UserID < 1 || subject.InstallationID < 1 || !requiredText(subject.ProfileID, 256) || !requiredText(subject.InstanceID, 256) {
+		return ErrAuthority
+	}
+	return s.transactionAuthorized(ctx, subject, s.Domain.AuthorizeDetachTx, func(tx pgx.Tx) error {
 		b, e := s.lockBinding(ctx, tx, id)
 		if e != nil {
 			return e
 		}
-		if b.Subject != subject {
+		owner := b.Subject
+		owner.IsAdmin = subject.IsAdmin
+		if owner != subject || b.Scope == "server" && !subject.IsAdmin {
 			return ErrAuthority
 		}
 		if b.Status == "detached" {
