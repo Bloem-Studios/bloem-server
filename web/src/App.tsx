@@ -65,7 +65,6 @@ import LegacyRequestDetailRedirect from "@/pages/LegacyRequestDetailRedirect";
 import { buildLegacyWebhookSyncRedirectTarget } from "@/lib/webhookSync";
 import { guardRedirectTarget } from "@/lib/authRedirect";
 import { toast } from "sonner";
-import SeasonalLayer from "@/components/seasonal/SeasonalLayer";
 import { RequireAdmin } from "@/bloem/BloemAdminShell";
 import { PlatformContextGuard } from "@/contexts/AdminContextProvider";
 import {
@@ -89,6 +88,8 @@ const importCollections = () => import("@/bloem/list-collections/BloemCollection
 const importRecommendations = () => import("@/pages/Recommendations");
 
 const AdminLayout = lazy(() => import("@/components/AdminLayout"));
+// Bloem: seasonal decorations stay out of the launch bundle.
+const SeasonalLayer = lazy(() => import("@/components/seasonal/SeasonalLayer"));
 const AdminDownloadPreparationsRefresh = lazy(
   () => import("@/components/AdminDownloadPreparationsRefresh"),
 );
@@ -862,7 +863,9 @@ function AppShell() {
                         <RouteAnnouncer />
                         <QueryCacheManager />
                         <AppChrome />
-                        <SeasonalLayer />
+                        <Suspense fallback={null}>
+                          <SeasonalLayer />
+                        </Suspense>
                         <Suspense fallback={<RouteLoading />}>
                           <Outlet />
                         </Suspense>

@@ -2,6 +2,11 @@
 import { lazy } from "react";
 
 export const LiveTVWatch = lazy(() => import("@/pages/LiveTVWatch"));
+export const DirectProfileCredentials = lazy(() =>
+  import("@/components/profiles/DirectProfileCredentials").then((module) => ({
+    default: module.DirectProfileCredentials,
+  })),
+);
 export const AdminAccessGroups = lazy(() => import("@/pages/AdminAccessGroups"));
 export const AdminLiveTV = lazy(() => import("@/pages/AdminLiveTV"));
 export const ActivityAuditPage = lazy(() => import("@/pages/admin-organization/ActivityAuditPage"));

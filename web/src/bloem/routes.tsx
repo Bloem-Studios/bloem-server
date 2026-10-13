@@ -1,13 +1,13 @@
 // Bloem routes and route wrappers, spliced into the Silo-owned App.tsx route
 // table at single insertion points so App.tsx stays close to upstream.
-import { type ComponentType, type ReactElement, type ReactNode } from "react";
+import { Suspense, type ComponentType, type ReactElement, type ReactNode } from "react";
 import { Navigate, Route } from "react-router";
 import { ItemCampaigns } from "@/components/engagement/CampaignPlacements";
-import { DirectProfileCredentials } from "@/components/profiles/DirectProfileCredentials";
 import { OrganizationContextGuard } from "@/contexts/AdminContextProvider";
 import { AdminContextRedirect, AdminContextSelection } from "./BloemAdminShell";
 import {
   AdminAccessGroups,
+  DirectProfileCredentials,
   LiveTVWatch,
   AdminLiveTV,
   ActivityAuditPage,
@@ -87,7 +87,9 @@ export function withDirectProfileCredentials(settings: ReactElement) {
   return (
     <>
       {settings}
-      <DirectProfileCredentials />
+      <Suspense fallback={null}>
+        <DirectProfileCredentials />
+      </Suspense>
     </>
   );
 }
