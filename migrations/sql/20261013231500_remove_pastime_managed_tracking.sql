@@ -11,7 +11,9 @@
 --   enrollment by account and profile) are deleted; Silo's ON DELETE CASCADE
 --   removes their sync runs, exports, list items and scrobble sessions. Every
 --   other connection, including a Pastime connection a profile linked through
---   ordinary watch sync, stays.
+--   ordinary watch sync, stays. Enrollment rows cascade from the plugin
+--   installation, so the installation must still exist (disabled is fine) when
+--   this runs; uninstalling it first leaves its connections behind.
 -- * Collections a list binding published keep their items and become manual
 --   collections: the bloem_list_binding marker leaves source_config.
 -- * Favorites, watchlists, ratings, progress and watch history are Silo's and
@@ -20,7 +22,15 @@
 -- No CASCADE: a dependent nobody knows about aborts the whole migration.
 -- Triggers go before the data changes, so none of them fires during the
 -- connection delete or the collection updates.
+--
+-- Locks: DROP TRIGGER and DROP TABLE take ACCESS EXCLUSIVE locks on users and
+-- the other formerly triggered Silo tables and hold them until commit. A short
+-- lock_timeout makes the step give up and roll back whole instead of queueing
+-- every login and playback write behind a long-running transaction; the next
+-- start retries it.
 -- +goose StatementBegin
+SET LOCAL lock_timeout = '5s';
+
 DROP TRIGGER IF EXISTS bloem_managed_users ON public.users;
 DROP TRIGGER IF EXISTS bloem_managed_profiles ON public.user_profiles;
 DROP TRIGGER IF EXISTS bloem_managed_memberships ON public.organization_memberships;

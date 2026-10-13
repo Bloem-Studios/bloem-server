@@ -6,13 +6,16 @@ package tenancy_test
 // for a granted Pastime installation and strips list markers from collections.
 // While the database is mirrored for Silo switching, Silo-shaped writes to
 // every formerly triggered table must succeed afterwards, including deleting
-// an account that has ebook and audiobook progress.
+// an account that has ebook and audiobook progress. Behind a long-running
+// lock holder it gives up and rolls back whole rather than queue.
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/database"
@@ -322,4 +325,42 @@ func TestPastimeRemovalFailsAtomicallyOnUnknownDependency(t *testing.T) {
 	if n := pastimeRemovalCount(t, ctx, pool, `SELECT count(*) FROM watch_provider_connections WHERE id=$1::uuid`, managed); n != 1 {
 		t.Error("failed removal deleted the managed connection")
 	}
+}
+
+// A long-running transaction on a formerly triggered table must make the
+// removal give up and roll back whole, not hold users locked while it queues.
+func TestPastimeRemovalGivesUpBehindALongLockHolder(t *testing.T) {
+	ctx, pool := pastimeRemovalBaseline(t)
+	blocker, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = blocker.Rollback(ctx) }()
+	if _, err := blocker.Exec(ctx, `LOCK TABLE user_watch_progress IN ACCESS SHARE MODE`); err != nil {
+		t.Fatal(err)
+	}
+
+	before := pastimeObjects(t, ctx, pool)
+	err = database.RunMigrations(ctx, pool, migrations.FS, "sql")
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "55P03" { // lock_not_available
+		t.Fatalf("removal behind a held lock = %v, want lock_not_available", err)
+	}
+	after := pastimeObjects(t, ctx, pool)
+	for kind, n := range before {
+		if after[kind] != n {
+			t.Errorf("timed-out removal changed %s: %d -> %d", kind, n, after[kind])
+		}
+	}
+	if n := pastimeRemovalCount(t, ctx, pool, `SELECT count(*) FROM goose_db_version WHERE version_id=$1`, pastimeRemovalVersion); n != 0 {
+		t.Error("timed-out removal was recorded as applied")
+	}
+
+	if err := blocker.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
+		t.Fatalf("retry after the lock holder finished: %v", err)
+	}
+	assertNoPastimeObjects(t, ctx, pool)
 }

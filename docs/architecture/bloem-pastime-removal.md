@@ -37,19 +37,39 @@ The historical Pastime migrations stay byte-identical and executable. Rollback
 tests that walk the whole chain skip the removal file, as they skip the
 compatibility removal (`compatibilityBaselineFS`, `opaCompatibilityBaselineFS`).
 
+## Upgrade constraints
+
+- The enrollment rows cascade from the Pastime plugin installation
+  (`plugin_installations` to `bloem_managed_grants` to
+  `bloem_managed_enrollments`), and Silo's plugin uninstall does not delete
+  watch-provider connections. If the installation is uninstalled before the
+  migration runs, the migration finds no enrollments and the managed
+  connections stay behind as ordinary rows for a plugin that no longer exists.
+  The installation must still exist when the migration runs; disabling it is
+  enough. Uninstall it only after the migration has committed.
+- The migration takes `ACCESS EXCLUSIVE` locks on `users` and the other
+  formerly triggered Silo tables and holds them until commit. It sets a 5 s
+  `lock_timeout`: behind a longer-running transaction on any of those tables it
+  rolls back whole and the next start retries, instead of blocking logins and
+  playback writes while it queues. Run it with no other database clients so it
+  is not blocked at all.
+
 ## Host boundary
 
 - `internal/pluginhost/host.go` and `internal/auth/login_identity_space_db_test.go`
   match upstream Silo again and are no longer seams.
 - Lifecycle repeatable-read transactions are not rerun after a serialization
   failure. That retry existed only for the managed-tracking fence.
-- A Pastime plugin installation that stays enabled has no private broker to
-  call, and Silo's generic watch sync treats its capability as an ordinary
-  provider.
+- The host no longer serves the managed-tracking broker service. A
+  `bloem.pastime` 0.1.x plugin requires it, so when its installation is enabled
+  every start fails at `BindHostBroker` (`FailedPrecondition`) and the host
+  stops the process. Disable that installation and uninstall it after the
+  migration; only a plugin built on public Silo capabilities can replace it.
 
 ## Evidence
 
 `internal/tenancy/bloem_pastime_removal_switching_test.go` covers a fresh
 migration chain with no Pastime objects, a seeded upgrade in the mirrored phase
-that keeps Silo data and accepts Silo-shaped writes, and atomic failure when an
-unknown view depends on a dropped table.
+that keeps Silo data and accepts Silo-shaped writes, atomic failure when an
+unknown view depends on a dropped table, and an atomic give-up and later retry
+when a long-running transaction holds a lock on a formerly triggered table.
