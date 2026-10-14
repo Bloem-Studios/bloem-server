@@ -47,6 +47,14 @@ contract checks job runs the gate on every pull request head instead, and
 `TestUpstreamSyncMergeReliesOnCIForTheCompatibilityGate` in `internal/api` keeps
 that job unconditional, with ripgrep installed first.
 
+## PostgreSQL version
+
+Every PostgreSQL service in `ci.yml` runs the image `docker-compose.yml`
+deploys (`pgvector/pgvector:pg18`), and `TestCIPostgresServicesMatchTheDeploymentMajor`
+in `internal/api` keeps them equal. PostgreSQL 18 reports an `ON DELETE RESTRICT`
+violation as SQLSTATE 23001, where 17 reports 23503, so a 17 service hides
+behavior production has.
+
 ## Mixed library location pins
 
 `scripts/ci/bloem-library-locations.txt` lists the required mixed-location and
