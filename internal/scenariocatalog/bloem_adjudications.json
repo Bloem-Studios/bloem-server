@@ -332,7 +332,7 @@
       "registration_index": 0,
       "scenario": "scopes.ok",
       "transport": "v2",
-      "reason": "Native scope discovery includes five reviewed scopes; v1 remains its original two-scope projection. Pin all five names and their order; scopes never grant their owner authority.",
+      "reason": "Native scope discovery includes six reviewed scopes; v1 remains its original two-scope projection. Pin all six names and their order; scopes never grant their owner authority.",
       "expect": {
         "status": 200,
         "headers": [
@@ -359,7 +359,7 @@
           {
             "pointer": "/scopes",
             "op": "length",
-            "value": 5
+            "value": 6
           },
           {
             "pointer": "/scopes",
@@ -405,6 +405,11 @@
             "pointer": "/scopes/4/name",
             "op": "equals",
             "value": "admin:entitlements:bulk"
+          },
+          {
+            "pointer": "/scopes/5/name",
+            "op": "equals",
+            "value": "admin:entitlements:accounts"
           }
         ]
       },
@@ -417,7 +422,7 @@
       "registration_index": 0,
       "scenario": "scopes.meaning",
       "transport": "v2",
-      "reason": "Native scope discovery includes five reviewed scopes; v1 remains its original two-scope projection. Pin all five names and their order; scopes never grant their owner authority.",
+      "reason": "Native scope discovery includes six reviewed scopes; v1 remains its original two-scope projection. Pin all six names and their order; scopes never grant their owner authority.",
       "expect": {
         "status": 200,
         "headers": [
@@ -444,7 +449,7 @@
           {
             "pointer": "/scopes",
             "op": "length",
-            "value": 5
+            "value": 6
           },
           {
             "pointer": "/scopes",
@@ -490,6 +495,11 @@
             "pointer": "/scopes/4/name",
             "op": "equals",
             "value": "admin:entitlements:bulk"
+          },
+          {
+            "pointer": "/scopes/5/name",
+            "op": "equals",
+            "value": "admin:entitlements:accounts"
           }
         ]
       },
@@ -502,7 +512,7 @@
       "registration_index": 0,
       "scenario": "scopes.api_key_allowed",
       "transport": "v2",
-      "reason": "Native scope discovery includes five reviewed scopes; v1 remains its original two-scope projection. Pin all five names and their order; scopes never grant their owner authority.",
+      "reason": "Native scope discovery includes six reviewed scopes; v1 remains its original two-scope projection. Pin all six names and their order; scopes never grant their owner authority.",
       "expect": {
         "status": 200,
         "headers": [
@@ -534,7 +544,7 @@
           {
             "pointer": "/scopes",
             "op": "length",
-            "value": 5
+            "value": 6
           },
           {
             "pointer": "/scopes/0/name",
@@ -560,6 +570,11 @@
             "pointer": "/scopes/4/name",
             "op": "equals",
             "value": "admin:entitlements:bulk"
+          },
+          {
+            "pointer": "/scopes/5/name",
+            "op": "equals",
+            "value": "admin:entitlements:accounts"
           }
         ]
       },
@@ -572,7 +587,7 @@
       "registration_index": 0,
       "scenario": "scopes.shape",
       "transport": "v2",
-      "reason": "Native scope discovery includes five reviewed scopes; v1 remains its original two-scope projection. Pin all five names and their order; scopes never grant their owner authority.",
+      "reason": "Native scope discovery includes six reviewed scopes; v1 remains its original two-scope projection. Pin all six names and their order; scopes never grant their owner authority.",
       "expect": {
         "status": 200,
         "headers": [
@@ -599,7 +614,7 @@
           {
             "pointer": "/scopes",
             "op": "length",
-            "value": 5
+            "value": 6
           },
           {
             "pointer": "/scopes",
@@ -645,6 +660,11 @@
             "pointer": "/scopes/4/name",
             "op": "equals",
             "value": "admin:entitlements:bulk"
+          },
+          {
+            "pointer": "/scopes/5/name",
+            "op": "equals",
+            "value": "admin:entitlements:accounts"
           }
         ]
       },
@@ -657,7 +677,7 @@
       "registration_index": 0,
       "scenario": "scopes.sorted",
       "transport": "v2",
-      "reason": "Native scope discovery includes five reviewed scopes; v1 remains its original two-scope projection. Pin all five names and their order; scopes never grant their owner authority.",
+      "reason": "Native scope discovery includes six reviewed scopes; v1 remains its original two-scope projection. Pin all six names and their order; scopes never grant their owner authority.",
       "expect": {
         "status": 200,
         "headers": [
@@ -684,7 +704,7 @@
           {
             "pointer": "/scopes",
             "op": "length",
-            "value": 5
+            "value": 6
           },
           {
             "pointer": "/scopes",
@@ -730,6 +750,11 @@
             "pointer": "/scopes/4/name",
             "op": "equals",
             "value": "admin:entitlements:bulk"
+          },
+          {
+            "pointer": "/scopes/5/name",
+            "op": "equals",
+            "value": "admin:entitlements:accounts"
           }
         ]
       },

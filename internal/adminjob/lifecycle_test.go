@@ -350,12 +350,7 @@ func TestUndeterminedStorageCommitLeavesJobRunningForRestartRecovery(t *testing.
 		t.Fatalf("uncertain transition after another poll = %+v, err=%v", current, err)
 	}
 	worker.Stop()
-	if _, err := r.pool.Exec(t.Context(), `UPDATE admin_jobs SET heartbeat_at=NOW()-INTERVAL '1 hour' WHERE id=$1`, job.ID); err != nil {
-		t.Fatal(err)
-	}
-	if requeued, err := r.RequeueStaleRunning(t.Context(), time.Now().Add(-time.Minute)); err != nil || requeued != 1 {
-		t.Fatalf("uncertain transition after restart requeued=%d err=%v", requeued, err)
-	}
+	requeueAfterRunnerStop(t, r, job.ID, worker.heartbeatInterval)
 }
 
 func TestCommittedStorageTransitionRecordsManualRestartFlag(t *testing.T) {

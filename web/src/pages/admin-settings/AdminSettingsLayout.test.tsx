@@ -141,9 +141,7 @@ describe("AdminSettingsLayout", () => {
     vi.stubGlobal("scrollTo", vi.fn());
     renderInteractiveLayout("/jellyfin");
 
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "Settings" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
   });
 
   it("redirects an unknown settings page to the overview", async () => {

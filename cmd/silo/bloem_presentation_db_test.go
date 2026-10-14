@@ -76,6 +76,8 @@ func TestBloemPresentationApplicationWiringUsesWorkers(t *testing.T) {
 	t.Setenv("BLOEM_PRESENTATION_PLUGIN_DIR", directory)
 	available := api.Dependencies{}
 	bloemWireServices(ctx, &available, pool, nil, "", nil)
+	// The wiring starts both workers before it returns, so the first call
+	// after it must answer: a cold start no longer counts against it.
 	cards, _, err = available.Promotions.ActiveHome(t.Context(), viewer)
 	if err != nil || len(cards) != 1 || cards[0].ID != campaign.ID {
 		t.Fatalf("application did not use promotion worker: %+v, %v", cards, err)

@@ -451,7 +451,13 @@ func TestProviderRecheckUnavailableDB(t *testing.T) {
 	for name, respond := range answers {
 		t.Run(name, func(t *testing.T) {
 			env := newRecheckEnv(t, "una"+name, "rt-1")
-			env.recheck.timeout = 100 * time.Millisecond
+			if name == "timeout" {
+				// Only the hanging plugin needs a short call timeout. The
+				// call-outcome marker write shares it, and a statement cut
+				// off by its deadline closes the locked connection, so a
+				// loaded database must not get near it.
+				env.recheck.timeout = time.Second
+			}
 			env.checker.respond = respond
 			sessionID, refresh := env.session(t, true)
 			env.makeDue(t)

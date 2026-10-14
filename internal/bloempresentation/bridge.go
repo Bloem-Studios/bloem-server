@@ -24,6 +24,15 @@ const maxOperationBytes = 128
 const maxErrorBytes = 1024
 const maxCallDuration = 750 * time.Millisecond
 
+// maxStartDuration bounds Warm: launching a worker and its ready exchange.
+// It is longer than a call's budget because a cold process start on a loaded
+// host can exceed that budget, and Warm runs where nothing waits on it.
+const maxStartDuration = 5 * time.Second
+
+// ReadyOperation is answered by Serve itself, never by a dispatch, with the
+// payload true. Warm sends it to know a worker has started and is serving.
+const ReadyOperation = "bloem.presentation.ready"
+
 // Runner is the host-side evaluator contract used by presentation adapters.
 type Runner interface {
 	Call(context.Context, string, any, any) error
@@ -104,6 +113,12 @@ func Serve(reader io.Reader, writer io.Writer, dispatch Dispatch) error {
 		if request.Version != 1 || !validOperation(request.Operation) || len(request.Payload) == 0 {
 			return errors.New("invalid presentation request")
 		}
+		if request.Operation == ReadyOperation {
+			if err := writeResponse(writer, responseEnvelope{Version: 1, Payload: json.RawMessage("true")}); err != nil {
+				return err
+			}
+			continue
+		}
 		result, dispatchErr := dispatch(request.Operation, request.Payload)
 		response := responseEnvelope{Version: 1, Payload: json.RawMessage("null")}
 		if dispatchErr != nil {
@@ -115,20 +130,27 @@ func Serve(reader io.Reader, writer io.Writer, dispatch Dispatch) error {
 				response.Error = "cannot encode presentation result"
 			}
 		}
-		data, err := json.Marshal(response)
-		if err != nil {
+		if err := writeResponse(writer, response); err != nil {
 			return err
-		}
-		if len(data)+1 > MaxMessageBytes {
-			data, _ = json.Marshal(responseEnvelope{Version: 1, Payload: json.RawMessage("null"), Error: "presentation result exceeds limit"})
-		}
-		data = append(data, byte(10))
-		if n, err := writer.Write(data); err != nil {
-			return err
-		} else if n != len(data) {
-			return io.ErrShortWrite
 		}
 	}
+}
+
+func writeResponse(writer io.Writer, response responseEnvelope) error {
+	data, err := json.Marshal(response)
+	if err != nil {
+		return err
+	}
+	if len(data)+1 > MaxMessageBytes {
+		data, _ = json.Marshal(responseEnvelope{Version: 1, Payload: json.RawMessage("null"), Error: "presentation result exceeds limit"})
+	}
+	data = append(data, byte(10))
+	if n, err := writer.Write(data); err != nil {
+		return err
+	} else if n != len(data) {
+		return io.ErrShortWrite
+	}
+	return nil
 }
 
 func boundedError(err error) string {
@@ -139,9 +161,11 @@ func boundedError(err error) string {
 	return message
 }
 
-// Client serializes exchanges with one lazily started worker. Cancellation and
-// protocol errors terminate that worker; the next call starts a fresh process.
-// A client must be closed during host shutdown.
+// Client serializes exchanges with one worker process. Warm starts it ahead
+// of the first call; otherwise the first call starts it. Cancellation and
+// protocol errors terminate that worker, and a replacement starts in the
+// background (Warm), so the call after a failure does not pay for a cold
+// start inside its budget. A client must be closed during host shutdown.
 type Client struct {
 	path    string
 	command func(string) *exec.Cmd
@@ -252,6 +276,99 @@ func encodeRequest(operation string, request any) ([]byte, error) {
 	return append(data, byte(10)), nil
 }
 
+// exchange sends one encoded request to the worker and returns the payload of
+// its answer. Any error leaves the worker unusable; the caller resets it.
+func exchange(process *worker, data []byte) (json.RawMessage, error) {
+	if _, err := process.input.Write(data); err != nil {
+		return nil, fmt.Errorf("write presentation request: %w", err)
+	}
+	line, err := readLine(process.reader)
+	if err != nil {
+		return nil, fmt.Errorf("read presentation response: %w", err)
+	}
+	var envelope responseEnvelope
+	if err := decodeEnvelope(line, &envelope); err != nil {
+		return nil, err
+	}
+	if envelope.Version != 1 || len(envelope.Payload) == 0 {
+		return nil, errors.New("invalid presentation response")
+	}
+	if envelope.Error != "" {
+		return nil, fmt.Errorf("presentation worker: %s", boundedError(errors.New(envelope.Error)))
+	}
+	return envelope.Payload, nil
+}
+
+// Warm starts the worker if it is not running and waits until it answers
+// ReadyOperation. It is bounded by ctx and maxStartDuration, not by a call's
+// budget, and it queues for the worker like a call. Calls that arrive while
+// it runs wait within their own budget and, if it runs out, return without
+// stopping the starting worker. A worker that cannot start or answer is
+// stopped; the next call starts one as before.
+func (c *Client) Warm(ctx context.Context) error {
+	if ctx == nil {
+		return errors.New("presentation context is required")
+	}
+	ctx, cancel := context.WithTimeout(ctx, maxStartDuration)
+	defer cancel()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-c.closed:
+		return errors.New("presentation client is closed")
+	case <-c.gate:
+	}
+	defer func() { c.gate <- struct{}{} }()
+	select {
+	case <-c.closed:
+		return errors.New("presentation client is closed")
+	default:
+	}
+	data, err := encodeRequest(ReadyOperation, nil)
+	if err != nil {
+		return err
+	}
+	process, err := c.start()
+	if err != nil {
+		return err
+	}
+	result := make(chan error, 1)
+	go func() {
+		payload, err := exchange(process, data)
+		if err == nil && string(payload) != "true" {
+			err = errors.New("invalid presentation ready response")
+		}
+		result <- err
+	}()
+	select {
+	case <-ctx.Done():
+		c.reset(process)
+		<-result
+		return ctx.Err()
+	case <-c.closed:
+		c.reset(process)
+		<-result
+		return errors.New("presentation client is closed")
+	case err := <-result:
+		if err != nil {
+			c.reset(process)
+		}
+		return err
+	}
+}
+
+// rewarm starts a replacement for a worker a failed call stopped. It runs in
+// the background and is not retried: if it fails, the next call starts the
+// worker itself.
+func (c *Client) rewarm() {
+	select {
+	case <-c.closed:
+		return
+	default:
+	}
+	go func() { _ = c.Warm(context.Background()) }()
+}
+
 // Call applies a 750-millisecond budget to queue admission, request encoding,
 // and worker I/O, bounded by an earlier caller deadline. Cancellation does not
 // wait for arbitrary MarshalJSON callbacks: one unfinished encoder retains the
@@ -341,30 +458,9 @@ func (c *Client) Call(ctx context.Context, operation string, request, response a
 	}
 	result := make(chan error, 1)
 	go func() {
-		if _, err := process.input.Write(data); err != nil {
-			result <- fmt.Errorf("write presentation request: %w", err)
-			return
-		}
-		line, err := readLine(process.reader)
-		if err != nil {
-			result <- fmt.Errorf("read presentation response: %w", err)
-			return
-		}
-		var envelope responseEnvelope
-		if err := decodeEnvelope(line, &envelope); err != nil {
-			result <- err
-			return
-		}
-		if envelope.Version != 1 || len(envelope.Payload) == 0 {
-			result <- errors.New("invalid presentation response")
-			return
-		}
-		if envelope.Error != "" {
-			result <- fmt.Errorf("presentation worker: %s", boundedError(errors.New(envelope.Error)))
-			return
-		}
-		if response != nil {
-			err = json.Unmarshal(envelope.Payload, response)
+		payload, err := exchange(process, data)
+		if err == nil && response != nil {
+			err = json.Unmarshal(payload, response)
 		}
 		result <- err
 	}()
@@ -372,6 +468,7 @@ func (c *Client) Call(ctx context.Context, operation string, request, response a
 	case <-ctx.Done():
 		c.reset(process)
 		<-result
+		c.rewarm()
 		return ctx.Err()
 	case <-c.closed:
 		c.reset(process)
@@ -380,6 +477,7 @@ func (c *Client) Call(ctx context.Context, operation string, request, response a
 	case err := <-result:
 		if err != nil {
 			c.reset(process)
+			c.rewarm()
 		}
 		return err
 	}

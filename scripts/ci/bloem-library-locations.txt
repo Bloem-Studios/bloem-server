@@ -70,7 +70,7 @@
 # A page containing only newly excluded movies still releases prior publication.
 ./internal/libraryingest TestNativeMovieStorageExcludedOnlyPageRemovesPriorPublication
 
-# Native audiobook publication, pinned delivery and compatibility boundaries.
+# Native audiobook publication and pinned delivery.
 ./internal/scanner TestNativeAudioPublishesOrderedPresentationDB
 ./internal/scanner TestNativeAudioStagesIncompleteBookAcrossPagesDB
 ./internal/scanner TestNativeAudioCompletesBookOnEmptyFinalPageDB
@@ -90,11 +90,9 @@
 ./internal/api TestNativeAudioPlaybackStartSeekNextTrackResumeDB
 ./internal/api TestNativeAudioPlaybackRevocationDB
 ./internal/api TestNativeAudioHiddenPresentationServesNoCoverDB
-./internal/audiobooks TestABSHidesNativeAudioButKeepsLocalTracksDB
 ./internal/scanner TestLocalAudiobookScanPreservesPublishedNativeAudioDB
 
-# Independent-review regressions for metadata locks and ABS library authority.
+# Independent-review regressions for metadata locks and staging replay.
 ./internal/scanner TestNativeAudioInitialMetadataPreservesEnrichmentDuringLockWaitDB
-./internal/audiobooks TestABSLocalCompatibilityRequiresAccessibleLibraryDB
 ./internal/scanner TestNativeAudioStagingReplayAtTrackLimitDB
 ./internal/scanner TestNativeAudioStagingOverflowRemainsRejectedOnReplayDB

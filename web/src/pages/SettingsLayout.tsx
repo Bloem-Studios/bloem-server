@@ -350,13 +350,7 @@ const NAV_SECTIONS: NavSection[] = [
         label: "Connect Apps",
         icon: Cast,
         description: "Sign-in details for native apps and this website.",
-        keywords: [
-          "sign in",
-          "login",
-          "server address",
-          "username",
-          "pin",
-        ],
+        keywords: ["sign in", "login", "server address", "username", "pin"],
         settings: settingIndex(
           "Native app or website",
           "Server",

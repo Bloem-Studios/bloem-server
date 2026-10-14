@@ -62,8 +62,13 @@ jobs:
           # A merge commit, not a squash: this PR's whole value is that it
           # carries upstream's individual commits, and squashing would make the
           # next merge-base calculation treat every one of them as unmerged.
+          #
+          # The compatibility-removal gate is not run here. CI's Go contract
+          # checks job runs it on every pull request head, including this
+          # tested one, and this step merges only when CI succeeded. Run from
+          # this checkout it would inspect the default branch rather than the
+          # head, and only after gh pr merge had already landed it.
           scripts/verify-upstream-sync-merge.sh
-          bash scripts/verify-no-compat.sh
 
       - name: Report to Discord
         if: always()

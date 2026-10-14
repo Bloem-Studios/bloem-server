@@ -29,10 +29,15 @@ The reviewed bundled executables are:
 The generic process bridge is in `internal/bloempresentation`. The worker stream
 uses version-one newline-delimited JSON request/response envelopes. Calls are
 serialized, messages are capped at 4 MiB, and queued/active exchanges have a
-750 ms budget bounded by the caller's earlier deadline. The bridge reuses a
-worker lazily; failures, malformed envelopes, crashes or active cancellation
-dispose of it, and the next call starts a new worker. Application shutdown
-closes the clients.
+750 ms budget bounded by the caller's earlier deadline. A cold process start
+on a loaded host can exceed that budget, so worker starts happen outside it:
+the application starts both workers when it wires them (`Client.Warm`, a ready
+exchange `Serve` answers itself, bounded by 5 seconds), and the bridge reuses
+the worker. Failures, malformed envelopes, crashes or active cancellation
+dispose of it, and a replacement starts in the background the same way. A call
+that arrives while a worker starts waits within its own budget and, if that
+runs out, returns without stopping the starting worker. A worker that fails to
+start is left to the next call. Application shutdown closes the clients.
 
 The budget covers queue admission, request encoding and worker I/O. Go cannot
 preempt arbitrary JSON callbacks: an abandoned encoder retains the client gate

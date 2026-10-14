@@ -204,6 +204,11 @@ func (e *Env) reseedBloemSettings() {
 	// Each reseed restores the fixture's canonical external URL; scenarios
 	// testing missing configuration can still override it explicitly.
 	e.mustSetting("server.public_url", publicURL)
+	// GET /api/v1/health answers the preserved Silo server ID
+	// (handlers.BloemHealthHandler). Upstream's executor supplies the same
+	// fixture value through the compatibility configuration Bloem removed;
+	// here it is the row an upgraded Silo database carries.
+	e.mustSetting("jellyfin_compat.server_id", serverID)
 	// V2 invite-code creation requires a caller-selected value. Both the
 	// generic runner and the dedicated effect tests execute these packets.
 	e.fixtures["caller_invite_code"] = strings.ToUpper(rand.Text()[:8])
