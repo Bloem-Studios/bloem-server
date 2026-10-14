@@ -51,10 +51,11 @@ func (b *ClientBuckets) Key(ip string) string {
 
 // HourlyLimiter allows limit events per key in any rolling hour, in memory.
 type HourlyLimiter struct {
-	limit int
-	mu    sync.Mutex
-	hits  map[string][]time.Time
-	now   func() time.Time
+	limit   int
+	mu      sync.Mutex
+	hits    map[string][]time.Time
+	pruneAt time.Time
+	now     func() time.Time
 }
 
 func NewHourlyLimiter(limit int) *HourlyLimiter {
@@ -67,6 +68,20 @@ func (l *HourlyLimiter) Allow(key string) (bool, time.Duration) {
 	cutoff := now.Add(-time.Hour)
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if l.limit <= 0 {
+		return false, time.Hour
+	}
+	if !now.Before(l.pruneAt) {
+		for k, v := range l.hits {
+			if len(v) == 0 || !v[len(v)-1].After(cutoff) {
+				delete(l.hits, k)
+			}
+		}
+		l.pruneAt = now.Add(time.Minute)
+	}
+	if _, known := l.hits[key]; !known && len(l.hits) >= 100_000 {
+		return false, time.Minute
+	}
 	kept := l.hits[key][:0]
 	for _, at := range l.hits[key] {
 		if at.After(cutoff) {
@@ -78,13 +93,6 @@ func (l *HourlyLimiter) Allow(key string) (bool, time.Duration) {
 		return false, kept[0].Sub(cutoff)
 	}
 	l.hits[key] = append(kept, now)
-	if len(l.hits) > 100_000 {
-		// Bounded memory: drop keys with no recent events.
-		for k, v := range l.hits {
-			if len(v) == 0 || !v[len(v)-1].After(cutoff) {
-				delete(l.hits, k)
-			}
-		}
-	}
+
 	return true, 0
 }

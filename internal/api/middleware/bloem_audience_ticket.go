@@ -48,6 +48,11 @@ func IsAudienceTicketAuthorized(ctx context.Context) bool {
 // returns its claims. ok is false when a response has been written.
 func audienceTicketPrincipal(w http.ResponseWriter, r *http.Request, am *AuthMiddleware, principal auth.AudienceTicket) (*auth.Claims, bool) {
 	claims := principal.Claims()
+	if claims.AuthMethod == auth.AuthMethodPreviewGuest {
+		WritePreviewOnly(w)
+		return nil, false
+	}
+
 	if claims.TokenType == auth.TokenTypeAPIKey {
 		// An API key has no login session. Check both its captured and fresh
 		// authority: a ticket must not outlive key revocation or widen scopes.

@@ -66,8 +66,12 @@ ALTER TABLE public.auth_sessions ADD CONSTRAINT auth_sessions_direct_profile_bin
 CREATE FUNCTION public.bloem_preview_session_guard() RETURNS trigger
 LANGUAGE plpgsql AS $$
 DECLARE
-    shared boolean := EXISTS (SELECT 1 FROM public.bloem_preview_settings WHERE account_id = NEW.user_id);
+    shared boolean;
 BEGIN
+    -- Settings assignment locks this same user row before revoking old
+    -- credentials. Check shared status only after that lock has settled.
+    PERFORM id FROM public.users WHERE id = NEW.user_id FOR SHARE;
+    shared := EXISTS (SELECT 1 FROM public.bloem_preview_settings WHERE account_id = NEW.user_id);
     IF shared AND NEW.auth_method IS DISTINCT FROM 'preview_guest' THEN
         RAISE EXCEPTION 'the shared preview account signs in only through a preview ticket'
             USING ERRCODE = '42501';
@@ -88,6 +92,7 @@ CREATE TRIGGER bloem_preview_session_guard
 CREATE FUNCTION public.bloem_preview_api_key_guard() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
+    PERFORM id FROM public.users WHERE id = NEW.user_id FOR SHARE;
     IF EXISTS (SELECT 1 FROM public.bloem_preview_settings WHERE account_id = NEW.user_id) THEN
         RAISE EXCEPTION 'the shared preview account cannot hold API keys' USING ERRCODE = '42501';
     END IF;

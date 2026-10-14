@@ -9,6 +9,8 @@ import (
 // previewAccess classifies a v2 operation for preview principals. The zero
 // value denies, so an operation nobody listed, including every new upstream
 // operation, is refused.
+const previewEventsTicketOperation = "createEventsSocketTicket"
+
 type previewAccess int
 
 const (
@@ -45,7 +47,7 @@ var previewOperations = map[string]previewAccess{
 	// Recommendations: global rows only; For You, discover and taste are refused.
 	"listPopular": previewSafe, "listRecentlyAdded": previewSafe, "listSimilar": previewSafe,
 	// Plumbing.
-	"createEventsSocketTicket": previewPersonalOnly, "logout": previewSafe,
+	previewEventsTicketOperation: previewPersonalOnly, "logout": previewSafe,
 	// Personal previews only.
 	"listSessions": previewPersonalOnly, "getLoginSessionCapabilities": previewPersonalOnly,
 	"deleteSession": previewPersonalOnly, "approveDeviceLogin": previewPersonalOnly,

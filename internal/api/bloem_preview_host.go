@@ -3,13 +3,15 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/golang-jwt/jwt/v5"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -55,7 +57,8 @@ func previewHostGuard(settings auth.PreviewGuestSettingsSource, tokens previewTo
 			host := auth.HostOnly(r.Host)
 			r = r.WithContext(auth.WithRequestHost(r.Context(), host))
 			current, err := settings.PreviewGuestSettings(r.Context())
-			guestRequest := (current.Host != "" && host == current.Host) || strings.HasPrefix(r.URL.Path, "/api/bloem/v1/preview/") || previewRequestCarriesGuest(r, tokens)
+			carriesGuest := previewRequestCarriesGuest(r, tokens)
+			guestRequest := (current.Host != "" && host == current.Host) || strings.HasPrefix(r.URL.Path, "/api/bloem/v1/preview/") || carriesGuest
 			if guestRequest && !traffic.AllowGlobal() {
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Retry-After", "1")
@@ -74,6 +77,12 @@ func previewHostGuard(settings auth.PreviewGuestSettingsSource, tokens previewTo
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusServiceUnavailable)
 				_, _ = w.Write([]byte(`{"error":"unavailable","message":"Preview host configuration is unavailable."}`))
+				return
+			}
+			if carriesGuest && host != current.Host {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"error":"unauthorized","code":"preview_session_invalid","message":"This preview session is not valid here."}`))
 				return
 			}
 			if current.Host == "" || host != current.Host {

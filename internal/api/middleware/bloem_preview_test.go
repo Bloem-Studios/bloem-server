@@ -228,3 +228,20 @@ func TestPreviewGuestLimiterCapsOneGuestAndAllGuests(t *testing.T) {
 		t.Fatalf("all guests together got %d immediate requests, want about the burst of 120", total)
 	}
 }
+
+func TestGuestCannotConsumeAnAudienceTicket(t *testing.T) {
+	store := auth.NewAudienceTicketStore(nil)
+	raw, _, err := store.Mint(t.Context(), auth.AudienceTicket{Audience: auth.AudienceEventsWS, AccountID: 7, SessionID: "s-guest", Role: "user", TokenType: auth.TokenTypeAccess, AuthMethod: auth.AuthMethodPreviewGuest})
+	if err != nil {
+		t.Fatal(err)
+	}
+	am := guestMiddleware(auth.PreviewGuestSettings{Enabled: true, Host: "browse.example.test", AccountID: 7}, true)
+	am.SetAudienceTicketStore(store)
+	r := httptest.NewRequest("GET", "/api/v1/events/ws?ticket="+raw, nil)
+	r.Host = "browse.example.test"
+	w := httptest.NewRecorder()
+	am.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })).ServeHTTP(w, r)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("guest audience ticket accepted: %d", w.Code)
+	}
+}

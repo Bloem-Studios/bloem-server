@@ -2,11 +2,13 @@ package middleware
 
 import (
 	"context"
-	"github.com/Silo-Server/silo-server/internal/auth"
-	"golang.org/x/time/rate"
 	"net/http"
 	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
+
+	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
 // CodePreviewOnly is the refusal code a preview principal receives, in the

@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+
 	"github.com/Silo-Server/silo-server/internal/clientip"
 )
 

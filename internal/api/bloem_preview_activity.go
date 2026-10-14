@@ -1,9 +1,10 @@
 package api
 
 import (
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"net/http"
 	"strings"
+
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 
 	"github.com/Silo-Server/silo-server/internal/activitylog"
 	"github.com/Silo-Server/silo-server/internal/auth"

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -84,4 +85,63 @@ func TestEnabledPreviewSettingsMustBeComplete(t *testing.T) {
 	ctx, pool := previewTestDB(t)
 	_, err := pool.Exec(ctx, `UPDATE bloem_preview_settings SET enabled=true`)
 	requireSQLState(t, err, "23514")
+}
+
+func TestSharedAccountGuardSerializesCredentialInsertWithAssignment(t *testing.T) {
+	for _, kind := range []string{"session", "api-key"} {
+		t.Run(kind, func(t *testing.T) {
+			ctx, pool := previewTestDB(t)
+			account := insertAccount(t, ctx, pool, "user")
+			tx, err := pool.Begin(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = tx.Rollback(ctx) }()
+			if _, err := tx.Exec(ctx, `SELECT id FROM users WHERE id=$1 FOR UPDATE`, account); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := tx.Exec(ctx, `UPDATE bloem_preview_settings SET account_id=$1`, account); err != nil {
+				t.Fatal(err)
+			}
+			cfg := pool.Config().ConnConfig.Copy()
+			conn, err := pgx.ConnectConfig(ctx, cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = conn.Close(ctx) }()
+			done := make(chan error, 1)
+			go func() {
+				var err error
+				if kind == "session" {
+					_, err = conn.Exec(ctx, `INSERT INTO auth_sessions (id,user_id,expires_at) VALUES ($1,$2,now()+interval '1 hour')`, uuid.NewString(), account)
+				} else {
+					_, err = conn.Exec(ctx, `INSERT INTO api_keys (user_id,label,api_key) VALUES ($1,'race',$2)`, account, "sa_"+uuid.NewString())
+				}
+				done <- err
+			}()
+			deadline := time.Now().Add(3 * time.Second)
+			for {
+				var blocked bool
+				if err := pool.QueryRow(ctx, `SELECT COALESCE(wait_event_type='Lock',false) FROM pg_stat_activity WHERE pid=$1`, conn.PgConn().PID()).Scan(&blocked); err != nil {
+					t.Fatal(err)
+				}
+				if blocked {
+					break
+				}
+				if time.Now().After(deadline) {
+					t.Fatal("credential insert did not reach its row lock")
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			if err := tx.Commit(ctx); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case err := <-done:
+				requireSQLState(t, err, "42501")
+			case <-time.After(3 * time.Second):
+				t.Fatal("credential insert did not finish")
+			}
+		})
+	}
 }

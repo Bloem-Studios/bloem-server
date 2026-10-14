@@ -2,16 +2,17 @@ package api
 
 import (
 	"context"
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/clientip"
-	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/preview"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/clientip"
+	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/preview"
 
 	"github.com/Silo-Server/silo-server/internal/activitylog"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -76,6 +77,7 @@ func TestPreviewHostGuard(t *testing.T) {
 		// Elsewhere the guard does nothing; RequireAuth refuses guests there.
 		{"lib.example.test", "POST", "/api/v2/auth/login", "", http.StatusNoContent},
 		{"lib.example.test", "GET", "/api/v2/catalog/items/x", "member", http.StatusNoContent},
+		{"lib.example.test", "GET", "/api/v1/plugins/1/", "guest", http.StatusUnauthorized},
 	} {
 		if got := serve(tc.host, tc.method, tc.path, tc.bearer); got != tc.want {
 			t.Errorf("%s %s %s (%s) = %d, want %d", tc.host, tc.method, tc.path, tc.bearer, got, tc.want)
@@ -111,8 +113,8 @@ func TestPreviewRequestsHideAddressesAndKeepAdmissionBuckets(t *testing.T) {
 		guest                    bool
 	}{
 		{"browse.example.test", "/api/v2/catalog/items/x", "", "", true},
-		{"lib.example.test", "/api/v2/catalog/items/x", "guest", "", true},
-		{"lib.example.test", "/api/v2/auth/refresh", "", `{"refresh_token":"guest"}`, true},
+		{"browse.example.test", "/api/v2/catalog/items/x", "guest", "", true},
+		{"browse.example.test", "/api/v2/auth/refresh", "", `{"refresh_token":"guest"}`, true},
 		{"lib.example.test", "/api/v2/catalog/items/x", "member", "", false},
 	} {
 		r := httptest.NewRequest("POST", tc.path, strings.NewReader(tc.body))

@@ -108,8 +108,8 @@ func validate(s Settings) error {
 	if s.SessionTTL < 5*time.Minute || s.SessionTTL > 24*time.Hour {
 		return fail("session lifetime must be between 5 minutes and 24 hours")
 	}
-	if s.IdleTTL < time.Minute || s.IdleTTL > s.SessionTTL {
-		return fail("idle lifetime must be at least a minute and no longer than the session")
+	if s.IdleTTL < time.Minute || s.IdleTTL > 2*time.Hour || s.IdleTTL > s.SessionTTL {
+		return fail("idle lifetime must be between one minute and two hours, and no longer than the session")
 	}
 	if s.MaxConcurrent < 1 || s.MaxConcurrent > 10000 {
 		return fail("capacity must be between 1 and 10000")
@@ -220,9 +220,8 @@ func revokeGuests(ctx context.Context, tx pgx.Tx) error {
 	return nil
 }
 
-// Reader caches the settings for request paths. Exchanges and settings
-// writes read the store directly; the cache only delays how soon a host or
-// account change reaches request checks, never a revocation.
+// Reader caches presentation settings. Guest admission reads authoritative
+// settings so host/account changes never wait for the cache expiry.
 type Reader struct {
 	store *Store
 	ttl   time.Duration
@@ -267,11 +266,15 @@ func (r *Reader) Invalidate() {
 
 // PreviewGuestSettings implements auth.PreviewGuestSettingsSource.
 func (r *Reader) PreviewGuestSettings(ctx context.Context) (auth.PreviewGuestSettings, error) {
-	s, err := r.Settings(ctx)
+	// Security decisions must not wait for the presentation cache to expire.
+	fresh, err := r.store.Get(ctx)
 	if err != nil {
 		return auth.PreviewGuestSettings{}, err
 	}
-	return auth.PreviewGuestSettings{Enabled: s.Enabled, Host: s.Host, AccountID: s.AccountID}, nil
+	r.mu.Lock()
+	r.cached, r.loaded, r.present = fresh, r.now(), true
+	r.mu.Unlock()
+	return auth.PreviewGuestSettings{Enabled: fresh.Enabled, Host: fresh.Host, AccountID: fresh.AccountID}, nil
 }
 
 // CachedAccountID never performs I/O; the host guard refreshes this snapshot

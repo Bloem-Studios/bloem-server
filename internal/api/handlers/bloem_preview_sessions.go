@@ -38,6 +38,7 @@ func NewBloemPreviewHandler(exchange PreviewExchanger, settings PreviewSettingsR
 
 // HandleCreateSession exchanges a launch ticket for a guest session.
 func (h *BloemPreviewHandler) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
 	var req struct {
 		Ticket       string `json:"ticket"`
 		RefreshToken string `json:"refresh_token"`

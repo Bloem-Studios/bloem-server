@@ -153,3 +153,32 @@ func TestReaderCachesAndReportsGuestSettings(t *testing.T) {
 		t.Fatal("reader kept a disabled preview after Invalidate")
 	}
 }
+
+func TestGuestAdmissionReadsFreshSettings(t *testing.T) {
+	ctx, pool := previewTestDB(t)
+	store := preview.NewStore(pool)
+	pub, _ := newKey(t)
+	s := validSettings(t, insertAccount(t, ctx, pool, "user"), pub)
+	if err := store.Put(ctx, s); err != nil {
+		t.Fatal(err)
+	}
+	reader := preview.NewReader(store, time.Hour)
+	if _, err := reader.PreviewGuestSettings(ctx); err != nil {
+		t.Fatal(err)
+	}
+	s.Host = "new-browse.example.test"
+	if err := store.Put(ctx, s); err != nil {
+		t.Fatal(err)
+	}
+	got, err := reader.PreviewGuestSettings(ctx)
+	if err != nil || got.Host != s.Host {
+		t.Fatalf("guest admission retained old host: %+v %v", got, err)
+	}
+	if err := store.Disable(ctx); err != nil {
+		t.Fatal(err)
+	}
+	got, err = reader.PreviewGuestSettings(ctx)
+	if err != nil || got.Enabled {
+		t.Fatalf("guest admission retained enabled state: %+v %v", got, err)
+	}
+}
