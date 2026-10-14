@@ -1,6 +1,6 @@
 # Bloem-owned additions. Shared target recipes and behavioral hooks stay in Makefile.
 
-.PHONY: bloem-openapi verify-bloem-openapi migrate-continuum-check verify-upstream-sync-merge settings-bindings-native client-dtos verify-client-dtos lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage verify-seams migration-ledger test-db-prepare test-scenarios client-copies client-copies-settings client-copies-dtos silo-switch-check
+.PHONY: bloem-openapi verify-bloem-openapi migrate-continuum-check verify-upstream-sync-merge settings-bindings-native client-dtos verify-client-dtos lifecycle-idempotency-record-client lifecycle-idempotency-status lifecycle-idempotency-finalize client-digest verify-client-digest verify-client-coverage verify-seams migration-ledger test-db-prepare test-bloem-library-locations test-scenarios client-copies client-copies-settings client-copies-dtos silo-switch-check
 
 # Generators and helper scripts run Python; never leave __pycache__ behind in
 # the tree (or in the sibling client repositories).
@@ -19,6 +19,18 @@ GO_TEST_PACKAGES = $(shell go list ./... | grep -v '/internal/scenariocatalog/ex
 test-db-prepare:
 	@if [ -z "$$SILO_TEST_DATABASE_URL" ]; then echo "test-db-prepare: SILO_TEST_DATABASE_URL is not set" >&2; exit 1; fi
 	go run ./cmd/bloem-testdb $(if $(filter 1,$(TEST_DB_RECREATE)),-recreate)
+
+# Mixed library location and native audiobook regressions listed in
+# scripts/ci/bloem-library-locations.txt. Like test-db-pins, a listed test that
+# is missing, skipped or failing fails the run. Most of them carry the
+# integration build tag and refuse services they do not own:
+# SILO_TEST_DATABASE_URL must name a migrated database (make test-db-prepare)
+# whose name starts with bloem_storage_test_, and the Redis cursor tests need
+# SILO_TEST_REDIS_URL=redis://127.0.0.1:65421/0 on a disposable server.
+# Packages run one at a time: the tagged tests clone that database as a
+# template, which PostgreSQL refuses while another package is connected to it.
+test-bloem-library-locations: embed-stub
+	GOFLAGS="$(strip $(GOFLAGS) -tags=integration -p=1)" go run ./scripts/ci/dbpins -list scripts/ci/bloem-library-locations.txt
 
 # Silo <-> Bloem backend switching, end to end: the upstream Silo image and a
 # Bloem image take turns on one database (scripts/bloem/silo-switch-check.sh).
