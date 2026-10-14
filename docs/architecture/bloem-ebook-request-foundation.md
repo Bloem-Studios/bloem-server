@@ -68,6 +68,13 @@ receipt-free started claim. Generic transport errors remain uncertain and
 recover only through reads. The library loader carries the storage location's
 selection revision into its authority check.
 
+The requester-visible reason follows that distinction. An uncertain outcome
+reads "Submission outcome is unknown; checking the backend without submitting
+again." A proven non-submission reads "The backend did not accept the
+submission; it will be submitted again." After five failures the request is
+`failed`: a non-submission says that an administrator retry submits again, and
+an uncertain one says that retry checks the existing submission.
+
 Cancellation affects Bloem only. Bookwarehouse may continue work already
 started. Disabling acquisition blocks new provider work; it does not promise
 provider cancellation. Provider errors exposed to clients exclude credentials

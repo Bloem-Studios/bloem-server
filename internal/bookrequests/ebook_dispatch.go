@@ -407,7 +407,8 @@ func (s *Service) finishEbook(ctx context.Context, work *ebookWork, status Provi
 	}
 	// Reset only a new, receipt-free claim whose adapter proved no submission.
 	// An adopted or recovered acquisition always retains its started fence.
-	if errors.Is(callErr, ErrProviderNotCalled) && !work.started && work.receipt.ExternalID == "" {
+	notSent := errors.Is(callErr, ErrProviderNotCalled) && !work.started && work.receipt.ExternalID == ""
+	if notSent {
 		if _, err = tx.Exec(ctx, `UPDATE bloem_ebook_request_dispatches SET started=false WHERE request_id=$1 AND lease_token=$2 AND external_id=''`, r.ID, work.token); err != nil {
 			return false, err
 		}
@@ -424,10 +425,16 @@ func (s *Service) finishEbook(ctx context.Context, work *ebookWork, status Provi
 	}
 	fulfilment, reason, failures, delay := "queued", "", 0, 30
 	providerStatus := status.Status
-	if callErr != nil || status.Status == "unknown" {
+	retrying := callErr != nil || status.Status == "unknown"
+	if retrying {
 		failures = work.failures + 1
 		delay = min(900, 30*(1<<min(failures-1, 5)))
 		fulfilment, reason = "retrying", "Submission outcome is unknown; checking the backend without submitting again."
+		if notSent {
+			// The adapter proved nothing reached the backend (for example the
+			// plugin refused its preflight), so the next attempt submits again.
+			reason = "The backend did not accept the submission; it will be submitted again."
+		}
 		providerStatus = "unknown"
 	} else {
 		switch status.Status {
@@ -442,7 +449,10 @@ func (s *Service) finishEbook(ctx context.Context, work *ebookWork, status Provi
 	}
 	if failures >= ebookMaxFailures {
 		fulfilment = "failed"
-		if reason == "" {
+		switch {
+		case notSent:
+			reason = "Submission failed repeatedly before reaching the backend; retry submits it again."
+		case reason == "" || retrying:
 			reason = "Backend checks stopped after repeated failures; retry checks the existing submission."
 		}
 	}
