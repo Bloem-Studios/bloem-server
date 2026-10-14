@@ -64,42 +64,7 @@ func TestLocationScanScaleDB(t *testing.T) {
 		_, err := tx.Exec(ctx, `SELECT 1 FROM media_folders WHERE id=$1 FOR UPDATE`, l.FolderID)
 		return err
 	}
-	publish := func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry, _ []string) error {
-		if len(files) == 0 {
-			return nil
-		}
-		paths := make([]string, len(files))
-		for i, e := range files {
-			catalogPath, err := CatalogLocation(l.ID, e.Id)
-			if err != nil {
-				return err
-			}
-			paths[i] = catalogPath
-		}
-		rows, err := tx.Query(ctx, `INSERT INTO media_files(media_folder_id,file_path) SELECT $1,p FROM unnest($2::text[]) p ON CONFLICT(file_path) DO UPDATE SET missing_since=NULL RETURNING id,file_path`, l.FolderID, paths)
-		if err != nil {
-			return err
-		}
-		ids := map[string]int{}
-		for rows.Next() {
-			var id int
-			var path string
-			if err = rows.Scan(&id, &path); err != nil {
-				rows.Close()
-				return err
-			}
-			ids[path] = id
-		}
-		rows.Close()
-		if err = rows.Err(); err != nil {
-			return err
-		}
-		refs := make([]FileRef, len(files))
-		for i, e := range files {
-			refs[i] = FileRef{MediaFileID: ids[paths[i]], PersistedRef: PersistedRef{LocationID: l.ID, EntryID: e.Id, Revision: e.Revision, LogicalPath: e.LogicalPath}}
-		}
-		return AttachFilesTx(ctx, tx, 1, refs)
-	}
+	publish := scalePublisher(l)
 	for round := 0; round < 2; round++ {
 		const ttl = time.Minute
 		lease, err := r.BeginLocationAuthorized(ctx, l, "scale", ttl, lockLibrary)
@@ -189,6 +154,170 @@ func TestLocationScanScaleDB(t *testing.T) {
 		mu.Unlock()
 		if members != total || missing != 0 {
 			t.Fatalf("round %d published %d memberships, %d missing, want %d present", round, members, missing, total)
+		}
+		if completion >= ttl {
+			t.Fatalf("round %d completion %v outlasted the %v lease", round, completion, ttl)
+		}
+	}
+}
+
+// scalePublisher attaches each page's files as the catalog does: one
+// media_files upsert and one AttachFilesTx per page.
+func scalePublisher(l Location) PagePublisher {
+	return func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry, _ []string) error {
+		if len(files) == 0 {
+			return nil
+		}
+		paths := make([]string, len(files))
+		for i, e := range files {
+			catalogPath, err := CatalogLocation(l.ID, e.Id)
+			if err != nil {
+				return err
+			}
+			paths[i] = catalogPath
+		}
+		rows, err := tx.Query(ctx, `INSERT INTO media_files(media_folder_id,file_path) SELECT $1,p FROM unnest($2::text[]) p ON CONFLICT(file_path) DO UPDATE SET missing_since=NULL RETURNING id,file_path`, l.FolderID, paths)
+		if err != nil {
+			return err
+		}
+		ids := map[string]int{}
+		for rows.Next() {
+			var id int
+			var path string
+			if err = rows.Scan(&id, &path); err != nil {
+				rows.Close()
+				return err
+			}
+			ids[path] = id
+		}
+		rows.Close()
+		if err = rows.Err(); err != nil {
+			return err
+		}
+		refs := make([]FileRef, len(files))
+		for i, e := range files {
+			refs[i] = FileRef{MediaFileID: ids[paths[i]], PersistedRef: PersistedRef{LocationID: l.ID, EntryID: e.Id, Revision: e.Revision, LogicalPath: e.LogicalPath}}
+		}
+		return AttachFilesTx(ctx, tx, 1, refs)
+	}
+}
+
+// TestLocationTreeScanScaleDB lists a tree-shaped location, as an S3 movie or
+// audiobook library is: a root of BLOEM_STORAGE_SCALE_TREE_DIRS directories of
+// BLOEM_STORAGE_SCALE_TREE_FILES files each. It then lists it incrementally
+// with a root page that removes BLOEM_STORAGE_SCALE_TREE_REMOVED directories,
+// so that page rebuilds the reach. Completion recomputes the whole tree's
+// reach, which is the costliest completion shape. Opt-in: it logs page and
+// completion timings and fails a completion that outlasts its lease.
+func TestLocationTreeScanScaleDB(t *testing.T) {
+	dirs, _ := strconv.Atoi(os.Getenv("BLOEM_STORAGE_SCALE_TREE_DIRS"))
+	filesPer, _ := strconv.Atoi(os.Getenv("BLOEM_STORAGE_SCALE_TREE_FILES"))
+	removedDirs, _ := strconv.Atoi(os.Getenv("BLOEM_STORAGE_SCALE_TREE_REMOVED"))
+	if dirs <= 0 || filesPer <= 0 {
+		t.Skip("BLOEM_STORAGE_SCALE_TREE_DIRS and BLOEM_STORAGE_SCALE_TREE_FILES are not set")
+	}
+	const perPage = 512
+	r, _, l := scopedFixture(t, "root")
+	ctx := t.Context()
+	dirID := func(i int) string { return fmt.Sprintf("d%05d", i) }
+	removed := make([]string, 0, removedDirs)
+	for i := range min(removedDirs, dirs) {
+		removed = append(removed, dirID(i*(dirs/max(removedDirs, 1))))
+	}
+	list := func(_ context.Context, q *storagev1.ListRequest) (*storagev1.ListResponse, error) {
+		page := &storagev1.ListResponse{}
+		if q.ChangesSince != "" {
+			page.Complete = true
+			page.ChangeToken = q.DirectoryId + "-T2"
+			if q.DirectoryId == "root" {
+				page.RemovedEntryIds = removed
+			}
+			return page, nil
+		}
+		start := 0
+		if q.Cursor != "" {
+			start, _ = strconv.Atoi(q.Cursor)
+		}
+		total := filesPer
+		if q.DirectoryId == "root" {
+			total = dirs
+		}
+		end := min(start+perPage, total)
+		for i := start; i < end; i++ {
+			if q.DirectoryId == "root" {
+				page.Entries = append(page.Entries, dirEntry(dirID(i)))
+				continue
+			}
+			id := fmt.Sprintf("%s-f%04d", q.DirectoryId, i)
+			page.Entries = append(page.Entries, &storagev1.Entry{Id: id, Name: id + ".epub", LogicalPath: q.DirectoryId + "/" + id, Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Size: 1000 + int64(i), Revision: "v1"})
+		}
+		if end < total {
+			page.NextCursor = strconv.Itoa(end)
+		} else {
+			page.Complete = true
+			page.ChangeToken = q.DirectoryId + "-T"
+		}
+		return page, nil
+	}
+	client := providerClient(t, list)
+	lockLibrary := func(ctx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `SELECT 1 FROM media_folders WHERE id=$1 FOR UPDATE`, l.FolderID)
+		return err
+	}
+	publish := scalePublisher(l)
+	for round := 0; round < 2; round++ {
+		const ttl = time.Minute
+		lease, err := r.BeginLocationAuthorized(ctx, l, "tree", ttl, lockLibrary)
+		if err != nil {
+			t.Fatal(err)
+		}
+		started := time.Now()
+		var pages, rootPages []time.Duration
+		listed := 0
+		for {
+			cp, more, err := r.NextDirectory(ctx, lease)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !more {
+				break
+			}
+			page, err := r.FetchPage(ctx, lease, cp, client)
+			if err != nil {
+				t.Fatal(err)
+			}
+			pageStarted := time.Now()
+			if err = r.ApplyPageAuthorized(ctx, lease, cp, page, lockLibrary, publish); err != nil {
+				t.Fatalf("round %d page %d: %v", round, len(pages), err)
+			}
+			d := time.Since(pageStarted)
+			pages = append(pages, d)
+			if cp.DirectoryID == "root" {
+				rootPages = append(rootPages, d.Round(time.Millisecond))
+			}
+			listed += len(page.GetEntries())
+			if n := len(pages); n&(n-1) == 0 {
+				execSQL(t, r.pool, `ANALYZE`)
+			}
+		}
+		listing := time.Since(started)
+		completeStarted := time.Now()
+		if err = r.CompleteAuthorized(ctx, lease, lockLibrary, nil); err != nil {
+			t.Fatalf("round %d completion: %v", round, err)
+		}
+		completion := time.Since(completeStarted)
+		var members int
+		if err = r.pool.QueryRow(ctx, `SELECT count(*) FROM bloem_storage_file_roots WHERE location_id=$1 AND enabled`, l.ID).Scan(&members); err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("round %d: %d pages (root pages %v), listing %v, mean page %v, max page %v, completion %v, memberships %d",
+			round, len(pages), rootPages, listing.Round(time.Millisecond), mean(pages).Round(time.Millisecond), slices.Max(pages).Round(time.Millisecond), completion.Round(time.Millisecond), members)
+		want := dirs * filesPer
+		if round == 1 {
+			want -= len(removed) * filesPer
+		}
+		if members != want {
+			t.Fatalf("round %d published %d memberships, want %d", round, members, want)
 		}
 		if completion >= ttl {
 			t.Fatalf("round %d completion %v outlasted the %v lease", round, completion, ttl)

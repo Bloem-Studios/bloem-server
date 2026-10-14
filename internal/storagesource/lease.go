@@ -312,6 +312,15 @@ func (r *Repository) complete(ctx context.Context, lease Lease, authorize Comple
 	if missing != nil {
 		*missing = newMissing
 	}
+	// Reconciliation and the finalizer each get the lease's full duration.
+	// This transaction holds the run row and the source, so no other owner
+	// can take the run over between them; the lease must still be current.
+	if err = verifyLease(ctx, tx, lease); err != nil {
+		return err
+	}
+	if err = renewLeaseTx(ctx, tx, lease); err != nil {
+		return err
+	}
 	if finalize != nil {
 		if err = finalize(ctx, tx); err != nil {
 			return err

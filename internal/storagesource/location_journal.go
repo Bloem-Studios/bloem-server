@@ -339,14 +339,15 @@ func reconcileLocationTx(ctx context.Context, tx pgx.Tx, lease Lease) (int, erro
 	// publish the reachable ones that are missing or disabled. The result is
 	// the reachable set exactly, as disabling every membership and enabling
 	// the reachable ones would leave it, without rewriting unchanged rows.
+	// One statement computes the reachable set once for both writes. They
+	// touch disjoint rows, enabled unreachable ones and disabled or missing
+	// reachable ones, so neither sees the other's change.
 	args := []any{lease.LocationID, lease.ConfigurationRevision}
-	if _, err := tx.Exec(ctx, completedLocationReachSQL+`, reachable AS (`+completedMembershipSQL+`)
- UPDATE bloem_storage_file_roots m SET enabled=false WHERE m.location_id=$1 AND m.enabled
- AND NOT EXISTS(SELECT 1 FROM reachable v WHERE v.media_file_id=m.media_file_id AND v.root_id=m.root_id)`, args...); err != nil {
-		return 0, err
-	}
-	if _, err := tx.Exec(ctx, completedLocationReachSQL+`INSERT INTO bloem_storage_file_roots(location_id,media_file_id,root_id)
- SELECT $1::uuid,v.media_file_id,v.root_id FROM (`+completedMembershipSQL+`) v
+	if _, err := tx.Exec(ctx, completedLocationReachSQL+`, reachable AS MATERIALIZED (`+completedMembershipSQL+`),
+ disabled AS (UPDATE bloem_storage_file_roots m SET enabled=false WHERE m.location_id=$1 AND m.enabled
+ AND NOT EXISTS(SELECT 1 FROM reachable v WHERE v.media_file_id=m.media_file_id AND v.root_id=m.root_id))
+ INSERT INTO bloem_storage_file_roots(location_id,media_file_id,root_id)
+ SELECT $1::uuid,v.media_file_id,v.root_id FROM reachable v
  WHERE NOT EXISTS(SELECT 1 FROM bloem_storage_file_roots m WHERE m.location_id=$1 AND m.media_file_id=v.media_file_id AND m.root_id=v.root_id AND m.enabled)
  ON CONFLICT(location_id,media_file_id,root_id) DO UPDATE SET enabled=true`, args...); err != nil {
 		return 0, err

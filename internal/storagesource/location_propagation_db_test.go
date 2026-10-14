@@ -564,6 +564,54 @@ func TestCompletionRenewsLeaseForItsWorkDB(t *testing.T) {
 	}
 }
 
+// Reconciliation and the finalizer each get the lease's full duration, so a
+// completion whose phases together outlast the lease commits. A phase that
+// alone outlasts it still fails: completion never revives an expired lease.
+func TestCompletionRenewsLeaseBetweenPhasesDB(t *testing.T) {
+	const ttl = 2 * time.Second
+	cases := map[string]struct {
+		reconcile, finalize string
+		wantStale           bool
+	}{
+		"phases together outlast the lease": {reconcile: "1.4", finalize: "1.4"},
+		"reconciliation outlasts the lease": {reconcile: "2.5", finalize: "0", wantStale: true},
+		"finalizer outlasts the lease":      {reconcile: "0", finalize: "2.5", wantStale: true},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			r, _, l := scopedFixture(t, "root")
+			lease, err := r.BeginLocationAuthorized(t.Context(), l, "worker", ttl, func(context.Context, pgx.Tx) error { return nil })
+			if err != nil {
+				t.Fatal(err)
+			}
+			cp, _, err := r.NextDirectory(t.Context(), lease)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = r.ApplyPage(t.Context(), lease, cp, &storagev1.ListResponse{Entries: books("book"), Complete: true}, nil); err != nil {
+				t.Fatal(err)
+			}
+			// Reconciliation's membership statement stands in for a large location's.
+			execSQL(t, r.pool, `CREATE FUNCTION test_slow_reconcile() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(`+tc.reconcile+`); RETURN NULL; END $$`)
+			execSQL(t, r.pool, `CREATE TRIGGER test_slow_reconcile AFTER INSERT ON bloem_storage_file_roots FOR EACH STATEMENT EXECUTE FUNCTION test_slow_reconcile()`)
+			slow := func(ctx context.Context, tx pgx.Tx) error {
+				_, err := tx.Exec(ctx, `SELECT pg_sleep(`+tc.finalize+`)`)
+				return err
+			}
+			err = r.CompleteAuthorized(t.Context(), lease, func(context.Context, pgx.Tx) error { return nil }, slow)
+			if tc.wantStale {
+				if !errors.Is(err, ErrStaleLease) {
+					t.Fatalf("completion phase outlasting the lease: %v, want ErrStaleLease", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("completion whose phases together outlast the lease: %v", err)
+			}
+		})
+	}
+}
+
 // Completing an unchanged location rewrites no membership or entry.
 func TestUnchangedCompletionRewritesNothingDB(t *testing.T) {
 	r, _, l := scopedFixture(t, "root")
