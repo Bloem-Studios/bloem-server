@@ -202,6 +202,9 @@ func (s *Service) UpdateIntegrationConditional(ctx context.Context, v Viewer, in
 	if in.ID == "" {
 		return nil, fmt.Errorf("%w: integration id required", ErrInvalidInput)
 	}
+	if err := s.guardBloemLaneIntegration(ctx, in, true); err != nil { // Bloem: bloem_lane_integration_guard.go
+		return nil, err
+	}
 	store, err := s.conditionalStore()
 	if err != nil {
 		return nil, err
