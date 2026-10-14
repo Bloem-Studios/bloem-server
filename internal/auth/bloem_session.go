@@ -228,6 +228,10 @@ func revokeAllByImpersonatorWithQuerier(ctx context.Context, querier sessionExec
 // normalizeSessionAuthMethod fills and validates a new session's auth method
 // before createWithQuerier inserts it.
 func normalizeSessionAuthMethod(session *models.AuthSession) error {
+	if session.AuthMethod == AuthMethodPreviewGuest {
+		return fmt.Errorf("creating session: a preview guest session is opened only by a ticket exchange")
+	}
+
 	// auth_sessions_direct_profile_binding_check ties the three profile columns
 	// together: an account session carries no profile, and a direct-profile
 	// session carries both the profile and the credential revision it was

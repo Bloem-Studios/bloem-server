@@ -106,6 +106,8 @@ type Service struct {
 	order        []string
 	pluginSource PluginProviderSource
 	accounts     *AccountProvisioner
+	// Bloem: guest preview sessions (bloem_preview_guest.go). Nil refuses them.
+	previewGuests *PreviewGuests
 	// recheck re-checks sessions opened through an external provider at
 	// refresh; nil skips it.
 	recheck *ProviderRecheck
@@ -1066,6 +1068,10 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*TokenPair,
 	}
 	if session.AuthMethod == AuthMethodDirectProfile {
 		return s.refreshDirectProfile(ctx, claims, session)
+	}
+	if session.AuthMethod == AuthMethodPreviewGuest {
+		// Bloem: a guest session never slides (bloem_preview_guest.go).
+		return s.refreshPreviewGuest(ctx, claims)
 	}
 
 	user, err := s.users.GetByID(ctx, session.UserID)
