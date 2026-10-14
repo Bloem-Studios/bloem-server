@@ -13,7 +13,7 @@ import type {
   ScanRun,
   TaskInfo,
 } from "@/api/types";
-import {  type ProfileRequestContextSnapshot } from "@/api/client";
+import { type ProfileRequestContextSnapshot } from "@/api/client";
 import {
   mintEventsSocketTicket,
   captureEventsAuthority,
@@ -178,10 +178,6 @@ function upsertJob(existing: AdminJob[] | undefined, nextJob: AdminJob, limit = 
   }
   return sortJobs(jobs).slice(0, limit);
 }
-
-
-
-
 
 function hydrateAdminJobSnapshot(queryClient: QueryClient, jobs: AdminJob[]) {
   void queryClient.invalidateQueries({ queryKey: adminKeys.jobs("__all") });
@@ -729,7 +725,6 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
         updateHistoryImportCaches(queryClient, message.data as HistoryImportRun);
         break;
       case "settings":
-
         break;
       case "user_state":
         handleUserStateEvent(
