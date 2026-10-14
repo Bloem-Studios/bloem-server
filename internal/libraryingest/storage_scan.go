@@ -611,8 +611,11 @@ const storageRenewalAttemptLimit = 10 * time.Second
 // confirmation, stops the scan.
 func startStorageRenewal(ctx context.Context, cancel context.CancelCauseFunc, interval, ttl time.Duration, renew func(context.Context) error) (stop, confirm func()) {
 	renewalCtx, stopRenewal := context.WithCancelCause(ctx)
+	// Confirmations are offsets from start, so the lease window follows the
+	// monotonic clock and a wall-clock step cannot widen or shrink it.
+	start := time.Now()
 	var confirmed atomic.Int64
-	confirm = func() { confirmed.Store(time.Now().UnixNano()) }
+	confirm = func() { confirmed.Store(int64(time.Since(start))) }
 	confirm()
 	done := make(chan struct{})
 	go func() {
@@ -633,7 +636,7 @@ func startStorageRenewal(ctx context.Context, cancel context.CancelCauseFunc, in
 				confirm()
 				continue
 			}
-			if storageRenewalAttemptTimedOut(renewalCtx, cause, err) && time.Since(time.Unix(0, confirmed.Load())) < ttl {
+			if storageRenewalAttemptTimedOut(renewalCtx, cause, err) && time.Since(start)-time.Duration(confirmed.Load()) < ttl {
 				slog.WarnContext(ctx, "storage scan renewal timed out; retrying while the lease is current", "component", "libraryingest", "error", err)
 				continue
 			}
