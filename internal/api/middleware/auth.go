@@ -312,7 +312,12 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			}
 			r.Header.Set("X-Silo-Device-Id", claims.DeviceID)
 		}
-		next.ServeHTTP(w, r.WithContext(ctx))
+		// Native structured responses use their actual Huma writer, after the gates.
+		if strings.HasPrefix(r.URL.Path, "/api/v2/") {
+			next.ServeHTTP(w, r.WithContext(ctx))
+		} else {
+			servePreviewResponse(next, w, r.WithContext(ctx))
+		}
 	})
 }
 

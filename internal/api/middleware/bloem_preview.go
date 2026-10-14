@@ -9,6 +9,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/previewcontext"
 )
 
 // CodePreviewOnly is the refusal code a preview principal receives, in the
@@ -46,7 +47,7 @@ func IsPreviewPrincipal(ctx context.Context) bool {
 }
 
 func withPreviewPrincipal(ctx context.Context) context.Context {
-	return context.WithValue(ctx, previewPrincipalKey{}, true)
+	return previewcontext.With(context.WithValue(ctx, previewPrincipalKey{}, true))
 }
 
 // WritePreviewOnly refuses a request because the caller is a preview principal.

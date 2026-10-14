@@ -168,6 +168,12 @@ func rateLimiter(deps Dependencies, bucket string) func(http.Handler) http.Handl
 func runChain(ctx huma.Context, next func(huma.Context), chain []func(http.Handler) http.Handler) {
 	r, w := humachi.Unwrap(ctx)
 	var h http.Handler = http.HandlerFunc(func(_ http.ResponseWriter, r2 *http.Request) {
+		if apimw.IsPreviewPrincipal(r2.Context()) {
+			apimw.PreviewResponses(http.HandlerFunc(func(w2 http.ResponseWriter, r3 *http.Request) {
+				next(humachi.NewContext(ctx.Operation(), r3, w2))
+			})).ServeHTTP(w, r2)
+			return
+		}
 		next(huma.WithContext(ctx, r2.Context()))
 	})
 	for i := len(chain) - 1; i >= 0; i-- {
