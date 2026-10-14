@@ -145,15 +145,17 @@ func cut(s string) (string, string, bool) {
 func sorted(set map[string]bool) []string { return slices.Sorted(maps.Keys(set)) }
 
 // oracleRun scans to completion, checking every committed page against the
-// full rebuild. It returns the completed lease.
-func oracleRun(t *testing.T, r *Repository, l Location, listing *scriptedListing, skip DirectorySkipper) Lease {
+// full rebuild. It returns the completed lease. A staged run publishes each
+// directory's files only on its completing page, as the audiobook stager does.
+func oracleRun(t *testing.T, r *Repository, l Location, listing *scriptedListing, skip DirectorySkipper, staged bool) Lease {
 	t.Helper()
 	client := providerClient(t, listing.list)
 	lease := scopedBegin(t, r, l)
 	oracle := newFullRebuildOracle(t, r, lease)
 	var calls int
-	publish := scopedPublisher(t, l, &calls)
-	for steps := 0; steps < 100; steps++ {
+	direct := scopedPublisher(t, l, &calls)
+	pending := map[string][]*storagev1.Entry{}
+	for steps := 0; steps < 200; steps++ {
 		cp, more, err := r.NextDirectory(t.Context(), lease)
 		if err != nil {
 			t.Fatal(err)
@@ -171,6 +173,19 @@ func oracleRun(t *testing.T, r *Repository, l Location, listing *scriptedListing
 		if err != nil {
 			t.Fatal(err)
 		}
+		publish := direct
+		if staged {
+			dir, complete := cp.DirectoryID, page.GetComplete()
+			publish = func(ctx context.Context, tx pgx.Tx, files []*storagev1.Entry, removed []string) error {
+				pending[dir] = append(pending[dir], files...)
+				if !complete {
+					return nil
+				}
+				all := pending[dir]
+				delete(pending, dir)
+				return direct(ctx, tx, all, removed)
+			}
+		}
 		if err = r.applyPage(t.Context(), lease, cp, page, skip, nil, publish); err != nil {
 			t.Fatal(err)
 		}
@@ -178,6 +193,23 @@ func oracleRun(t *testing.T, r *Repository, l Location, listing *scriptedListing
 	}
 	t.Fatal("directory graph did not terminate")
 	return lease
+}
+
+// checkCompletedLocation verifies a completed run left exactly the completed
+// graph's memberships enabled, and absence stamps on exactly the entries that
+// graph no longer reaches.
+func checkCompletedLocation(t *testing.T, r *Repository, l Location, lease Lease, step string) {
+	t.Helper()
+	want := rows(t, r, completedLocationReachSQL+`SELECT v.media_file_id::text||'|'||v.root_id::text FROM (`+completedMembershipSQL+`) v`, l.ID, lease.ConfigurationRevision)
+	got := rows(t, r, `SELECT media_file_id::text||'|'||root_id::text FROM bloem_storage_file_roots WHERE location_id=$1 AND enabled`, l.ID)
+	if !maps.Equal(got, want) {
+		t.Fatalf("%s: completed memberships %v, want %v", step, sorted(got), sorted(want))
+	}
+	wrong := rows(t, r, completedLocationReachSQL+`SELECT e.entry_id FROM bloem_storage_location_entries e WHERE e.location_id=$1 AND
+ (e.absence_confirmed_at IS NULL) <> EXISTS(SELECT 1 FROM bloem_storage_location_edges edge JOIN reach r ON r.directory_id=edge.parent_directory_id WHERE edge.location_id=e.location_id AND edge.entry_id=e.entry_id)`, l.ID, lease.ConfigurationRevision)
+	if len(wrong) > 0 {
+		t.Fatalf("%s: absence stamps wrong for %v", step, sorted(wrong))
+	}
 }
 
 func books(ids ...string) []*storagev1.Entry {
@@ -192,11 +224,16 @@ func page(entries ...*storagev1.Entry) []*storagev1.Entry { return entries }
 
 // Per-page propagation must reach exactly what a full rebuild of the run graph
 // would, across aliases, cycles, roots reached late, shrinking incremental
-// listings, skipped directories, demoted directories and restarted listings.
+// listings, skipped directories, demoted and promoted directories, staged
+// publication and restarted listings. Each completed run must then publish
+// exactly the completed graph. Shrinking scenarios reach the directory first,
+// through an incremental parent's retained edge, so the page that drops it
+// must rebuild the reach.
 func TestPagePropagationMatchesFullRebuildDB(t *testing.T) {
 	type round struct {
 		listing *scriptedListing
 		skip    DirectorySkipper
+		staged  bool
 	}
 	cases := map[string]struct {
 		roots  []string
@@ -229,23 +266,106 @@ func TestPagePropagationMatchesFullRebuildDB(t *testing.T) {
 			}, removed: map[string][]string{"root": {"c2"}}}},
 		}},
 		"skipped directory leaves the reach": {roots: []string{"root"}, rounds: []round{
-			{listing: &scriptedListing{full: map[string][][]*storagev1.Entry{
+			{listing: &scriptedListing{tokens: true, full: map[string][][]*storagev1.Entry{
 				"root":   {page(dirEntry("keep"), dirEntry("skipme"))},
 				"keep":   {books("k1")},
 				"skipme": {books("s1")},
 			}}},
-			{listing: &scriptedListing{full: map[string][][]*storagev1.Entry{
-				"root": {page(dirEntry("skipme")), page(dirEntry("keep"))},
-				"keep": {books("k1")},
-			}}, skip: func(e *storagev1.Entry) bool { return e.Id == "skipme" }},
+			// The root's first page reaches skipme through its retained edge;
+			// its second page applies the skip rule to it.
+			{skip: func(e *storagev1.Entry) bool { return e.Id == "skipme" }, listing: &scriptedListing{tokens: true, incremental: map[string][][]*storagev1.Entry{
+				"root": {page(bookEntry("r1")), page(dirEntry("skipme"))},
+				"keep": {}, "skipme": {books("s2")},
+			}}},
 		}},
 		"demoted directory leaves the reach": {roots: []string{"root"}, rounds: []round{
-			{listing: &scriptedListing{full: map[string][][]*storagev1.Entry{
+			{listing: &scriptedListing{tokens: true, full: map[string][][]*storagev1.Entry{
 				"root": {page(dirEntry("x"), bookEntry("r1"))},
 				"x":    {books("x1")},
 			}}},
+			// The root's first page reaches x through its retained edge; its
+			// second page lists x as a file.
+			{listing: &scriptedListing{tokens: true, incremental: map[string][][]*storagev1.Entry{
+				"root": {books("r2"), books("x")},
+				"x":    {},
+			}}},
+		}},
+		"promoted file becomes a directory": {roots: []string{"root"}, rounds: []round{
 			{listing: &scriptedListing{full: map[string][][]*storagev1.Entry{
-				"root": {books("r1"), books("x")},
+				"root": {page(bookEntry("x"), dirEntry("c"))},
+				"c":    {books("c1")},
+			}}},
+			{listing: &scriptedListing{full: map[string][][]*storagev1.Entry{
+				"root": {page(dirEntry("x"), dirEntry("c"))},
+				"c":    {books("c1")},
+				"x":    {books("x1"), page(dirEntry("y"))},
+				"y":    {books("y1")},
+			}}},
+		}},
+		"alias promotion while the other parent is incremental": {roots: []string{"a", "q"}, rounds: []round{
+			{listing: &scriptedListing{tokens: true, full: map[string][][]*storagev1.Entry{
+				"a": {page(bookEntry("x"), bookEntry("a1"))},
+				"q": {books("q1")},
+			}}},
+			{listing: &scriptedListing{tokens: true, full: map[string][][]*storagev1.Entry{
+				"x": {books("x1")},
+			}, incremental: map[string][][]*storagev1.Entry{
+				"a": {},
+				"q": {page(dirEntry("x"))},
+			}}},
+		}},
+		"alias demotion while the other parent is incremental": {roots: []string{"a", "q"}, rounds: []round{
+			{listing: &scriptedListing{tokens: true, full: map[string][][]*storagev1.Entry{
+				"a": {page(dirEntry("x"), bookEntry("a1"))},
+				"q": {books("q1")},
+				"x": {books("x1")},
+			}}},
+			{listing: &scriptedListing{tokens: true, incremental: map[string][][]*storagev1.Entry{
+				"a": {},
+				"q": {page(bookEntry("x"))},
+				"x": {},
+			}}},
+		}},
+		"deep incremental tree gains a nested directory": {roots: []string{"root"}, rounds: []round{
+			{listing: &scriptedListing{tokens: true, full: map[string][][]*storagev1.Entry{
+				"root": {page(dirEntry("a"), bookEntry("r1"))},
+				"a":    {page(dirEntry("b"), bookEntry("a1"))},
+				"b":    {page(dirEntry("c"), bookEntry("b1"))},
+				"c":    {books("c1", "c2")},
+			}}},
+			{listing: &scriptedListing{tokens: true, full: map[string][][]*storagev1.Entry{
+				"d": {books("d1"), page(dirEntry("e"))},
+				"e": {books("e1")},
+			}, incremental: map[string][][]*storagev1.Entry{
+				"root": {}, "a": {}, "c": {},
+				"b": {page(dirEntry("d"))},
+			}}},
+		}},
+		"staged files publish on the completing page": {roots: []string{"m", "q"}, rounds: []round{
+			{staged: true, listing: &scriptedListing{full: map[string][][]*storagev1.Entry{
+				"m": {page(dirEntry("n"))},
+				"n": {books("n1", "n2"), books("n3"), page(dirEntry("o"))},
+				"o": {books("o1"), books("o2")},
+				"q": {page(dirEntry("n"), bookEntry("q1"))},
+			}}},
+			{staged: true, listing: &scriptedListing{full: map[string][][]*storagev1.Entry{
+				"m": {page(dirEntry("n"))},
+				"n": {books("n1"), books("n4"), page(dirEntry("o"))},
+				"o": {books("o1"), books("o3")},
+				"q": {page(dirEntry("n"), bookEntry("q1"))},
+			}}},
+		}},
+		"directory returns within its token window": {roots: []string{"root"}, rounds: []round{
+			{listing: &scriptedListing{tokens: true, full: map[string][][]*storagev1.Entry{
+				"root": {page(dirEntry("dd"), bookEntry("r1"))},
+				"dd":   {books("d1", "d2")},
+			}}},
+			{listing: &scriptedListing{tokens: true, incremental: map[string][][]*storagev1.Entry{
+				"root": {},
+			}, removed: map[string][]string{"root": {"dd"}}}},
+			{listing: &scriptedListing{tokens: true, incremental: map[string][][]*storagev1.Entry{
+				"root": {page(dirEntry("dd"))},
+				"dd":   {page(), books("d3")},
 			}}},
 		}},
 		"restarted listing rebuilds the reach": {roots: []string{"root"}, rounds: []round{
@@ -261,16 +381,30 @@ func TestPagePropagationMatchesFullRebuildDB(t *testing.T) {
 				"c1":   {},
 			}, reject: map[string]string{"root": "1"}}},
 		}},
+		"expired token on the first page restarts in full": {roots: []string{"root"}, rounds: []round{
+			{listing: &scriptedListing{tokens: true, full: map[string][][]*storagev1.Entry{
+				"root": {page(dirEntry("c1"), dirEntry("c2"))},
+				"c1":   {books("k1")},
+				"c2":   {books("k2")},
+			}}},
+			{listing: &scriptedListing{tokens: true, full: map[string][][]*storagev1.Entry{
+				"root": {page(dirEntry("c2")), page(dirEntry("c3"))},
+				"c3":   {books("k3")},
+			}, incremental: map[string][][]*storagev1.Entry{
+				"c1": {}, "c2": {},
+			}, reject: map[string]string{"root": ""}}},
+		}},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			r, _, l := scopedFixture(t, tc.roots...)
 			for i, round := range tc.rounds {
-				lease := oracleRun(t, r, l, round.listing, round.skip)
+				lease := oracleRun(t, r, l, round.listing, round.skip, round.staged)
 				var state string
 				if err := r.pool.QueryRow(t.Context(), `SELECT state FROM bloem_storage_scan_runs WHERE id=$1`, lease.RunID).Scan(&state); err != nil || state != "complete" {
 					t.Fatalf("round %d state=%s err=%v", i, state, err)
 				}
+				checkCompletedLocation(t, r, l, lease, fmt.Sprintf("round %d", i))
 			}
 		})
 	}
