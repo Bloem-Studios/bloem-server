@@ -47,6 +47,10 @@ func classGate(deps Dependencies) func(huma.Context, func(huma.Context)) {
 		if link, _ := op.Metadata[metaDirectDownloadLink].(bool); link && missing == "" {
 			chain = directDownloadGateChain(deps, chain)
 		}
+		if class != ClassPublic && missing == "" {
+			// Bloem: preview principals run listed operations only.
+			chain = append(chain, previewGate(op.OperationID))
+		}
 		r, w := humachi.Unwrap(ctx)
 		if missing != "" {
 			// A gate the class needs is not wired. Fail closed with a typed
@@ -242,6 +246,10 @@ func (d *denialWriter) Write(p []byte) (int, error) {
 // Retry-After is carried over on 429 and 503; the legacy X-RateLimit-* fields
 // are not part of v2 and are dropped.
 func (d *denialWriter) problem() *Problem {
+	if d.reason == apimw.ReasonPreviewOnly {
+		return NewProblem(TypePermissionDenied, "This is not available in the preview.").
+			WithHeader("X-Bloem-Denial", apimw.CodePreviewOnly)
+	}
 	var legacy struct {
 		Error   string `json:"error"`
 		Message string `json:"message"`
