@@ -5014,6 +5014,10 @@ func resolveOptionalPluginAccessUser(
 		if err != nil || !user.Enabled {
 			return false, false, 0, "", false
 		}
+		if preview, err := sessionRepo.AccountPreviewOnly(r.Context(), user.ID); err != nil || preview {
+			// Bloem: preview principals reach plugins only as anonymous.
+			return false, false, 0, "", false
+		}
 		return true, user.Role == adminRole, user.ID, "", false
 	}
 
@@ -5025,8 +5029,8 @@ func resolveOptionalPluginAccessUser(
 	if claims.PasswordChangeRequired {
 		return false, false, 0, "", false
 	}
-	role, valid, err := sessionRepo.ActiveSessionRole(r.Context(), claims.SessionID)
-	if err != nil || !valid {
+	role, preview, valid, err := sessionRepo.ActiveSessionAuthority(r.Context(), claims.SessionID)
+	if err != nil || !valid || preview {
 		return false, false, 0, "", false
 	}
 	profileBound = claims.AuthMethod == auth.AuthMethodDirectProfile

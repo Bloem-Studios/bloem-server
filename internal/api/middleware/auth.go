@@ -151,6 +151,16 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			if !ok {
 				return
 			}
+			preview, err := am.apiKeyOwnerPreview(r.Context(), claims.UserID)
+			if err != nil {
+				writeCredentialCheckUnavailable(w, r, err)
+				return
+			}
+			if preview && claims.TokenType == auth.TokenTypeAPIKey {
+				WritePreviewOnly(w)
+				return
+			}
+			previewOnly = preview
 			r = r.WithContext(withAudienceTicketAuthorized(r.Context()))
 		} else if strings.HasPrefix(token, "sa_") {
 			// API key authentication.
