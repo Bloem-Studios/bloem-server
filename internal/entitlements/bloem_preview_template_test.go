@@ -21,7 +21,8 @@ func requireCheckViolation(t *testing.T, err error, constraint string) {
 
 func TestPreviewTemplateIsSeededWithItsInvariants(t *testing.T) {
 	ctx, _, store := entitlementTestStore(t)
-	template, err := store.Latest(ctx, accesspolicy.PreviewTemplateKey)
+	// Revision 1 is the seeded one; later revisions may curate libraries.
+	template, err := store.Get(ctx, accesspolicy.PreviewTemplateKey, 1)
 	require.NoError(t, err)
 	require.True(t, template.Enabled)
 	require.False(t, template.Archived)
