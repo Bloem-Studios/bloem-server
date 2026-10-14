@@ -35,7 +35,11 @@ cannot declare this capability. Connections reuse the encrypted
 media-type list does not qualify. Integration IDs are opaque strings.
 
 Platform administrators configure the lane from an administrative context for
-the default organization. Policy, connection creation and library binding are
+the default organization or a verified platform context. Platform setup resolves
+only the default organization and checks its active account and membership; an
+initializing default is allowed only during the `mirrored` membership policy
+phase. This exception applies only to ebook setup, not organization session
+selection or request queues. Policy, connection creation and library binding are
 separate mutations. Connections default to EPUB and HTTPS; trusted local HTTP
 requires explicit opt-in. PDF requires an explicit connection configuration
 opt-in. Responses never contain connection credentials.

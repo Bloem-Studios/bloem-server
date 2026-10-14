@@ -3007,14 +3007,20 @@ All paths below have the `/api/bloem/v1` prefix.
 | `POST` | `/admin/organization/ebook-request-integrations/{id}/test` | Run the plugin's connection test on a saved connection; returns `{ok, message}`. |
 | `PUT` | `/admin/organization/ebook-request-policy` | Persist explicit `{enabled: boolean}`. |
 
+The integration setup and policy operations also accept a verified platform
+administrative context. They resolve only the deployment default organization
+and recheck the current account, membership and platform authority. An
+initializing default organization is accepted only while membership policy
+is mirrored. Queue review still requires an organization administrative context;
+this setup exception does not activate an organization or issue a tenant context.
+
 Filing accepts `{title, author?, isbn, note?}`. ISBN-10 normalizes to ISBN-13;
 ASIN, extra fields and multiple JSON bodies are rejected. An identical filing
 key replay returns 200; new filing returns 201; changed payloads conflict.
 Request IDs are UUIDs; connection IDs are opaque strings. List pagination uses
 `limit` up to 100 and nonnegative `offset`. Responses are private and no-store.
 
-Setup mutations require platform administrator authority within the default
-organization's administrative context. Connection input is
+Setup mutations require platform administrator authority. Connection input is
 `{name, base_url, api_key, installation_id, capability_id, allow_http?}`.
 Only the separately installed ordinary `bloem.requests.bookwarehouse` plugin
 qualifies. Credentials are encrypted and absent from setup responses.

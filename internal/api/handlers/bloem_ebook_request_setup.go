@@ -5,8 +5,10 @@ import (
 	"net/http"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/bookrequests"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 type EbookRequestInstallation struct {
@@ -45,6 +47,39 @@ type BloemEbookRequestSetup interface {
 	Test(context.Context, bookrequests.Viewer, string) (RequestIntegrationTestResult, error)
 }
 
+// Only the ebook setup adapter may resolve the platform's own default lane.
+// Administrative session selection and organization authorization stay unchanged.
+type bloemEbookPlatformSetup interface {
+	ResolvePlatformViewer(context.Context, int) (bookrequests.Viewer, error)
+}
+
+func (h *BloemBookRequestsHandler) ebookPlatformSetupViewer(w http.ResponseWriter, r *http.Request) (bookrequests.Viewer, bool, bool) {
+	claims, valid := apimw.GetAdminContextClaims(r.Context())
+	if !valid || claims.Scope != auth.AdminScopePlatform {
+		return bookrequests.Viewer{}, false, false
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+	if claims.AccountID <= 0 || h == nil {
+		h.writeRequestError(w, bookrequests.ErrForbidden)
+		return bookrequests.Viewer{}, false, true
+	}
+	setup, available := h.ebookSetup.(bloemEbookPlatformSetup)
+	if !available {
+		h.unavailable(w)
+		return bookrequests.Viewer{}, false, true
+	}
+	viewer, err := setup.ResolvePlatformViewer(r.Context(), claims.AccountID)
+	if err != nil {
+		h.writeRequestError(w, err)
+		return bookrequests.Viewer{}, false, true
+	}
+	if viewer.UserID != claims.AccountID || viewer.OrganizationID == uuid.Nil || !viewer.Admin {
+		h.writeRequestError(w, bookrequests.ErrForbidden)
+		return bookrequests.Viewer{}, false, true
+	}
+	return viewer, true, true
+}
+
 type EbookRequestPolicy struct {
 	Enabled bool `json:"enabled"`
 }
@@ -78,6 +113,18 @@ func (h *BloemBookRequestsHandler) SetEbookRequestSetup(setup BloemEbookRequestS
 }
 
 func (h *BloemBookRequestsHandler) HandleEbookIntegrationList(w http.ResponseWriter, r *http.Request) {
+	if v, ok, platform := h.ebookPlatformSetupViewer(w, r); platform {
+		if !ok {
+			return
+		}
+		out, err := h.ebookSetup.List(r.Context(), v)
+		if err != nil {
+			h.writeRequestError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, out)
+		return
+	}
 	t, ok := requireBloemOrganizationContext(w, r)
 	if !ok {
 		return
@@ -100,6 +147,9 @@ func (h *BloemBookRequestsHandler) HandleEbookIntegrationList(w http.ResponseWri
 }
 
 func (h *BloemBookRequestsHandler) ebookSetupViewer(w http.ResponseWriter, r *http.Request) (bookrequests.Viewer, bool) {
+	if v, ok, platform := h.ebookPlatformSetupViewer(w, r); platform {
+		return v, ok
+	}
 	t, ok := requireBloemOrganizationContext(w, r)
 	if !ok {
 		return bookrequests.Viewer{}, false

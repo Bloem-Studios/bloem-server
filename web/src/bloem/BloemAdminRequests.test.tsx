@@ -150,6 +150,26 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("organization ebook queue", () => {
+  it("opens default ebook setup from platform context without an organization queue", async () => {
+    mocks.ebookSupported = true;
+    mocks.active = {
+      key: "platform",
+      scope: "platform",
+      name: "Platform",
+      status: "active",
+      authority: "platform_admin",
+      policyRevision: 0,
+      securityRevision: 0,
+    };
+    activateAdminV2Context("platform", "platform");
+    open("/admin/requests?kind=ebook");
+    await screen.findByRole("heading", { name: "Ebook fulfillment" });
+    await screen.findByLabelText("API key");
+    expect(mocks.integrations.mock.calls.at(-1)?.[0]?.key).toBe("platform");
+    expect(mocks.ebookList).not.toHaveBeenCalled();
+    await screen.findByText(/Select an organization in the navigation/);
+  });
+
   it("saves ebook acquisition opt-in separately even when no provider is configured", async () => {
     mocks.ebookSupported = true;
     mocks.active = { ...org("a"), authority: "platform_admin" };

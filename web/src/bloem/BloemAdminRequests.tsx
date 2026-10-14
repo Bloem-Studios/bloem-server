@@ -125,11 +125,11 @@ function BookQueue({ ebook }: { ebook: boolean }) {
           fulfilment{ebook ? " and library availability" : ""}.
         </p>
       </header>
+      {ebook && active?.authority === "platform_admin" && <EbookRequestIntegrationPanel />}
       {active?.scope !== "organization" ? (
         <p role="status">Select an organization in the navigation to review its {noun} requests.</p>
       ) : (
         <>
-          {ebook && active?.authority === "platform_admin" && <EbookRequestIntegrationPanel />}
           {!ebook && <AudiobookAcquisitionPanel />}
           {ebook && (
             <p className="text-muted-foreground text-sm">

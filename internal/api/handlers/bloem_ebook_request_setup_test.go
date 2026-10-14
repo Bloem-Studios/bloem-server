@@ -11,16 +11,19 @@ import (
 	"github.com/google/uuid"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/bookrequests"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
 type ebookSetupStub struct {
-	calls   int
-	v       bookrequests.Viewer
-	enabled bool
-	in      EbookRequestConnectionInput
-	tested  string
+	calls         int
+	platformCalls int
+	platformError error
+	v             bookrequests.Viewer
+	enabled       bool
+	in            EbookRequestConnectionInput
+	tested        string
 }
 
 func (s *ebookSetupStub) List(context.Context, bookrequests.Viewer) (EbookRequestSetup, error) {
@@ -135,5 +138,57 @@ func TestBloemEbookRequestConnectionTestUsesPathAndBoundAuthority(t *testing.T) 
 	ebookSetupHandler(s).HandleEbookIntegrationTest(w, r)
 	if w.Code != http.StatusOK || s.calls != 1 || s.tested != "100123" || s.v.UserID != 7 || !s.v.Admin || w.Header().Get("Cache-Control") != "private, no-store" || !strings.Contains(w.Body.String(), `"ok":true`) {
 		t.Fatalf("connection test: %d %s %+v", w.Code, w.Body.String(), s)
+	}
+}
+
+func (s *ebookSetupStub) ResolvePlatformViewer(_ context.Context, id int) (bookrequests.Viewer, error) {
+	s.platformCalls++
+	return bookrequests.Viewer{UserID: id, OrganizationID: uuid.MustParse("00000000-0000-0000-0000-000000000025"), Admin: true}, s.platformError
+}
+func TestBloemEbookSetupPlatformContextUsesDefaultViewer(t *testing.T) {
+	for _, tc := range []struct {
+		name, body string
+		handle     func(*BloemBookRequestsHandler) http.HandlerFunc
+		status     int
+	}{
+		{"list", "", func(h *BloemBookRequestsHandler) http.HandlerFunc { return h.HandleEbookIntegrationList }, 200},
+		{"policy", `{"enabled":true}`, func(h *BloemBookRequestsHandler) http.HandlerFunc { return h.HandleEbookRequestPolicy }, 200},
+		{"create", `{"name":"Books","base_url":"https://example.test","api_key":"synthetic","installation_id":1,"capability_id":"router"}`, func(h *BloemBookRequestsHandler) http.HandlerFunc { return h.HandleEbookIntegrationCreate }, 201},
+		{"library", `{"library_id":25}`, func(h *BloemBookRequestsHandler) http.HandlerFunc { return h.HandleEbookIntegrationLibrary }, 200},
+		{"test", "", func(h *BloemBookRequestsHandler) http.HandlerFunc { return h.HandleEbookIntegrationTest }, 200},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &ebookSetupStub{}
+			h := ebookSetupHandler(s)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/organization/ebook-request-integrations", strings.NewReader(tc.body))
+			r = r.WithContext(apimw.SetAdminContextClaims(r.Context(), auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}))
+			tc.handle(h)(w, r)
+			if w.Code != tc.status || s.calls != 1 || s.platformCalls != 1 {
+				t.Fatalf("platform setup: %d %s calls=%d resolved=%d", w.Code, w.Body.String(), s.calls, s.platformCalls)
+			}
+		})
+	}
+}
+func TestBloemEbookSetupPlatformContextFailsClosed(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		claims auth.AdminContextClaims
+		err    error
+	}{
+		{"missing claims", auth.AdminContextClaims{}, nil},
+		{"missing account", auth.AdminContextClaims{Scope: auth.AdminScopePlatform}, nil},
+		{"revoked membership", auth.AdminContextClaims{Scope: auth.AdminScopePlatform, AccountID: 7}, bookrequests.ErrForbidden},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &ebookSetupStub{platformError: tc.err}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPut, "/organization/ebook-request-policy", strings.NewReader(`{"enabled":true}`))
+			r = r.WithContext(apimw.SetAdminContextClaims(r.Context(), tc.claims))
+			ebookSetupHandler(s).HandleEbookRequestPolicy(w, r)
+			if w.Code != 403 || s.calls != 0 {
+				t.Fatalf("invalid context reached setup: %d %s", w.Code, w.Body.String())
+			}
+		})
 	}
 }

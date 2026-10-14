@@ -13,6 +13,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/requests"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -178,4 +179,32 @@ func (s bloemEbookSetup) Test(ctx context.Context, v bookrequests.Viewer, id str
 		return handlers.RequestIntegrationTestResult{}, bookrequests.ErrConflict
 	}
 	return checkRequestConnection(ctx, s.router, *stored, []string{stored.APIKeyRef})
+}
+
+// ResolvePlatformViewer binds only ebook setup to the deployment's default
+// organization. Initializing organizations qualify only while Silo is mirrored.
+func (s bloemEbookSetup) ResolvePlatformViewer(ctx context.Context, accountID int) (bookrequests.Viewer, error) {
+	tenant, err := tenancy.NewResolver(tenancy.NewStore(s.pool)).Resolve(ctx, accountID, nil, true)
+	if err != nil {
+		return bookrequests.Viewer{}, bookrequests.ErrForbidden
+	}
+	if !tenant.OrganizationDefault || tenant.AccountID != accountID || tenant.MembershipStatus != tenancy.MembershipActive {
+		return bookrequests.Viewer{}, bookrequests.ErrForbidden
+	}
+	if tenant.OrganizationStatus == tenancy.OrganizationInitializing {
+		var phase string
+		if err := s.pool.QueryRow(ctx, `SELECT phase FROM membership_policy_authority WHERE singleton`).Scan(&phase); err != nil {
+			return bookrequests.Viewer{}, err
+		}
+		if phase != "mirrored" {
+			return bookrequests.Viewer{}, bookrequests.ErrForbidden
+		}
+	} else if tenant.OrganizationStatus != tenancy.OrganizationActive {
+		return bookrequests.Viewer{}, bookrequests.ErrForbidden
+	}
+	viewer := bookrequests.Viewer{UserID: accountID, OrganizationID: tenant.OrganizationID, Admin: true}
+	if err := s.requirePlatform(ctx, viewer); err != nil {
+		return bookrequests.Viewer{}, err
+	}
+	return viewer, nil
 }

@@ -35,7 +35,7 @@ export function EbookRequestIntegrationPanel() {
     identity.serverOrigin,
     identity.authContextVersion,
   ] as const;
-  const allowed = active?.scope === "organization" && active.authority === "platform_admin";
+  const allowed = active?.authority === "platform_admin";
   const list = useQuery({
     queryKey: scope,
     queryFn: () => ebookRequestsApi.integrations(context),

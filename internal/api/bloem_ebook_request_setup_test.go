@@ -76,3 +76,63 @@ func TestBloemEbookRequestSetupPolicyDurableDefaultAndAuthorityDatabase(t *testi
 		t.Fatalf("revoked platform authority allowed: %v", err)
 	}
 }
+
+func TestBloemEbookPlatformSetupMirroredDefaultAuthorityDatabase(t *testing.T) {
+	pool := newDisposableAPIDatabase(t, "bloem_ebook_platform_setup_test_", true)
+	if err := database.RunMigrations(t.Context(), pool, migrations.BloemFS, "sql"); err != nil {
+		t.Fatal(err)
+	}
+	var account int
+	if err := pool.QueryRow(t.Context(), `INSERT INTO users(username,email,password_hash,role) VALUES('platform-ebook','platform-ebook@example.test','x','admin') RETURNING id`).Scan(&account); err != nil {
+		t.Fatal(err)
+	}
+	setup := bloemEbookSetup{pool: pool, books: bookrequests.NewService(pool, nil), platform: auth.NewPlatformAdminAuthorizer(auth.NewUserRepository(pool))}
+	if _, err := tenancy.NewStore(pool).ProvisionDefaultMembership(t.Context(), account, "admin"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := setup.ResolvePlatformViewer(t.Context(), account); !errors.Is(err, bookrequests.ErrForbidden) {
+		t.Fatalf("initializing compatibility allowed: %v", err)
+	}
+	if _, err := tenancy.EnableSiloSwitching(t.Context(), pool); err != nil {
+		t.Fatal(err)
+	}
+	var defaultOrg uuid.UUID
+	if err := pool.QueryRow(t.Context(), `SELECT id FROM organizations WHERE is_default`).Scan(&defaultOrg); err != nil {
+		t.Fatal(err)
+	}
+	viewer, err := setup.ResolvePlatformViewer(t.Context(), account)
+	if err != nil || viewer.UserID != account || viewer.OrganizationID != defaultOrg || !viewer.Admin {
+		t.Fatalf("mirrored default setup: %+v %v", viewer, err)
+	}
+	exec := func(sql string, args ...any) {
+		t.Helper()
+		if _, err := pool.Exec(t.Context(), sql, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct{ name, change, restore string }{
+		{"disabled account", `UPDATE users SET enabled=false WHERE id=$1`, `UPDATE users SET enabled=true WHERE id=$1`},
+		{"nonadmin account", `UPDATE users SET role='user' WHERE id=$1`, `UPDATE users SET role='admin' WHERE id=$1`},
+		{"suspended membership", `UPDATE organization_memberships SET status='suspended' WHERE account_id=$1`, `UPDATE organization_memberships SET status='active' WHERE account_id=$1`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			exec(tc.change, account)
+			defer exec(tc.restore, account)
+			if _, err := setup.ResolvePlatformViewer(t.Context(), account); !errors.Is(err, bookrequests.ErrForbidden) {
+				t.Fatalf("invalid authority allowed: %v", err)
+			}
+		})
+	}
+	t.Run("missing account", func(t *testing.T) {
+		if _, err := setup.ResolvePlatformViewer(t.Context(), account+100000); !errors.Is(err, bookrequests.ErrForbidden) {
+			t.Fatalf("missing account allowed: %v", err)
+		}
+	})
+	t.Run("no default organization", func(t *testing.T) {
+		exec(`UPDATE organizations SET is_default=false WHERE id=$1`, defaultOrg)
+		defer exec(`UPDATE organizations SET is_default=true WHERE id=$1`, defaultOrg)
+		if _, err := setup.ResolvePlatformViewer(t.Context(), account); !errors.Is(err, bookrequests.ErrForbidden) {
+			t.Fatalf("nondefault scope allowed: %v", err)
+		}
+	})
+}
