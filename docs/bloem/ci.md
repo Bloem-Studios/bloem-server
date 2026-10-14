@@ -34,6 +34,16 @@ software tone-map acceptance test. Its fixture tags frames through `setparams`,
 because FFmpeg 8 ignores `-color_trc` and related options when the frames
 carry their own color properties.
 
+## Upstream sync merges
+
+`.github/workflows/upstream-sync-merge.yml` merges an upstream-sync pull request
+only after CI succeeded on its exact head. It does not run the
+compatibility-removal gate itself: from its default-branch checkout the gate
+would inspect `main` rather than the head, and only after the merge. The Go
+contract checks job runs the gate on every pull request head instead, and
+`TestUpstreamSyncMergeReliesOnCIForTheCompatibilityGate` in `internal/api` keeps
+that job unconditional, with ripgrep installed first.
+
 ## Mixed library location pins
 
 `scripts/ci/bloem-library-locations.txt` lists the required mixed-location and
