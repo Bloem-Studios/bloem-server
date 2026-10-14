@@ -126,4 +126,43 @@ requests remove addresses and browser/client headers from observer context and
 skip request/activity writers. Expired signed guest credentials receive the same
 privacy treatment. Activity filtering reads only a cached account snapshot and
 performs no database I/O on the writer's request path. Aggregate preview event
-counters and setup/admin controls belong to the later preview setup milestone.
+counters remain part of the later server presentation milestone.
+
+## Preview administration
+
+The native Platform preview control plane accepts either a Platform admin
+context or an API key carrying `admin:preview` (an unscoped admin key also
+retains access). The scope only narrows authority: every operation checks the
+enabled administrator again in PostgreSQL. Organization contexts and unrelated
+key scopes are refused. Settings, key rotation, account creation, template
+curation and guest revocation serialize with exchange under the same advisory
+transaction lock.
+
+Setup creates the reserved shared account, its primary profile and welcome
+onboarding completion, applies the protected preview template and claims issuer
+ownership atomically. It never adopts an existing account occupying the reserved
+login name. Password sign-in is disabled; a Bloem-owned public login guard also
+returns `403 preview_account` before the ordinary login handler could hit the
+database session guard. Repeated setup for the same issuer returns the account;
+another issuer cannot replace or clear ownership.
+
+Settings updates merge only explicitly supplied fields inside the lock.
+Account identity and ticket keys are read-only there. Rotations replace the
+one- or two-key allowlist separately, supporting overlap without stale settings
+forms restoring retired keys. The canonical configured host and the normal
+host serving the admin request cannot become the preview host. Presentation
+links must be absolute HTTPS URLs without credentials; content-rating ceilings
+must be recognized ratings.
+
+Library curation appends an immutable revision to the protected template and
+reapplies it to the shared account in the same transaction. An explicit empty
+library list grants no libraries. The picker uses only PostgreSQL catalogue
+reads, the shared account's materialized library selection and the configured
+maturity ceiling. Both keyword search and provider-ID lookup return metadata
+only. They do not invoke providers, prepare files or mint grants. Probe
+verification checks a ticket without consuming it; capacity information stays
+behind admin authority.
+
+This control plane does not complete public showcase readiness. App preview
+metadata, personal/social row filtering, response hygiene and file-derived
+artwork and detail-work protections remain in the server presentation milestone.

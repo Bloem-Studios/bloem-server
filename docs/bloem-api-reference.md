@@ -3162,6 +3162,34 @@ See [publication and playback invariants](architecture/bloem-native-audio-playba
 These public native extensions are mounted when a database and signing secret
 are available. See [guest-session invariants](architecture/bloem-browse-only-content-policy.md#guest-preview-sessions).
 
+The Platform control plane uses `/api/bloem/v1/admin/platform/preview`, with
+either a Platform context or a live administrator's `admin:preview` API key.
+Unscoped admin keys retain access; organization contexts and other scoped keys
+are refused. Responses use `Cache-Control: no-store`.
+
+| Method and suffix | Request | Response |
+| --- | --- | --- |
+| `POST /account` | `{issuer}` | `201 {account_id}`; repeats reuse the account |
+| `GET /settings` | None | Settings, public keys and read-only account ID; TTLs in seconds |
+| `PUT /settings` | `{issuer, enabled?, host?, brand?, cta_url?, cta_label?, storefront_url?, launch_url?, maturity_ceiling?, session_ttl_seconds?, idle_ttl_seconds?, max_concurrent?}` | `204`; merges supplied fields atomically |
+| `PUT /libraries` | `{issuer, library_ids}`; explicit array, at most 1000 IDs | `{template_revision}`; empty array grants no libraries |
+| `PUT /keys` | `{issuer, public_keys}`; one or two distinct base64 Ed25519 public keys | `204`; replaces the key allowlist |
+| `DELETE /sessions` | `{issuer}` | `204`; revokes guests without disabling the preview |
+| `POST /verify` | `{ticket}` | `{valid, account_ready, item, expires_at}`; does not consume the ticket |
+| `GET /capacity` | None | `{enabled, account_ready, active, maximum}` |
+| `GET /catalog` | `query` and/or `provider=tmdb|imdb|tvdb&provider_id=...` | `{items:[{content_id, kind, title, year, overview}]}`; at most 50 visible items |
+
+Configuration requires setup first. The settings write accepts only the listed
+fields; key and account changes use their dedicated operations. Payloads are
+limited to 16 KiB and unknown fields are refused. Another issuer or reserved
+name collision returns `409 preview_setup_conflict` at setup. Invalid settings
+return `400 invalid_preview_settings`; invalid library selections return
+`400 invalid_preview_libraries`. An unavailable account returns
+`409 preview_not_configured`, an invalid probe ticket returns
+`403 preview_ticket_invalid`, and a storage failure returns
+`503 preview_unavailable`. Catalogue reads apply preview libraries and maturity
+limits to both keyword and provider lookup. They return no file data or grants.
+
 | Method and path | Request | Response |
 | --- | --- | --- |
 | `POST /api/bloem/v1/preview/sessions` | `{ticket, refresh_token?}` on the preview host | `201 {access_token, refresh_token, token_type, expires_in, expires_at, item}` |

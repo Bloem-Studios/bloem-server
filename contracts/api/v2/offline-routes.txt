@@ -44,6 +44,7 @@ DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots
+DELETE /api/bloem/v1/admin/platform/preview/sessions
 DELETE /api/bloem/v1/admin/platform/promotions/{id}
 DELETE /api/v1/admin/access-groups/{id}
 DELETE /api/v1/admin/api-keys/{id}
@@ -138,6 +139,9 @@ GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bul
 GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts
 GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}
 GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots
+GET /api/bloem/v1/admin/platform/preview/capacity
+GET /api/bloem/v1/admin/platform/preview/catalog
+GET /api/bloem/v1/admin/platform/preview/settings
 GET /api/bloem/v1/admin/platform/promotions/
 GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement
 GET /api/bloem/v1/capabilities
@@ -436,6 +440,8 @@ POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bu
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots
+POST /api/bloem/v1/admin/platform/preview/account
+POST /api/bloem/v1/admin/platform/preview/verify
 POST /api/bloem/v1/admin/platform/promotions/
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run
@@ -560,6 +566,9 @@ PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bul
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots
+PUT /api/bloem/v1/admin/platform/preview/keys
+PUT /api/bloem/v1/admin/platform/preview/libraries
+PUT /api/bloem/v1/admin/platform/preview/settings
 PUT /api/bloem/v1/admin/platform/promotions/{id}
 PUT /api/v1/admin/access-groups/{id}
 PUT /api/v1/admin/api-keys/{id}/tier
