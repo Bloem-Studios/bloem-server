@@ -160,18 +160,22 @@ func (a bloemAudiobookRouter) CheckStatus(ctx context.Context, in bookrequests.A
 	return out, nil
 }
 
-// audiobookProviderStatus maps the plugin's normalized status onto the
-// dispatch states. The plugin reports a verification hold and a download it
-// cannot find with the normalized status "queued"; only the external status
-// separates them from a download that is still waiting.
+// audiobookProviderStatus maps the plugin's CheckStatus answer onto the
+// dispatch states. Release builds answer in the host's vocabulary: "review",
+// and "unknown" with external status "missing", "absent" or "unknown".
+// Pre-release builds answered "queued" for all of these, so a queued answer is
+// also mapped by its external status. External status "unknown" means the
+// plugin could not read the download client; that check never counts toward
+// a lost download.
 func audiobookProviderStatus(status, external string) string {
-	if status != "queued" {
+	switch {
+	case external == "unknown" && (status == "queued" || status == "unknown"):
+		return bookrequests.AudiobookProviderUnreadable
+	case status != "queued":
 		return status
-	}
-	switch external {
-	case "review":
+	case external == "review":
 		return "review"
-	case "missing", "absent":
+	case external == "missing" || external == "absent":
 		return "unknown"
 	}
 	return status

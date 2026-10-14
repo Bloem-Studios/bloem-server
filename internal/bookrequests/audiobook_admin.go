@@ -61,6 +61,8 @@ type AudiobookCandidateApproval struct {
 
 // audiobookStuckReason classifies stuck acquisitions (A.12). Nothing is
 // failed automatically for being slow; an admin retry starts a new attempt.
+// A download client the backend has not been able to read for an hour is
+// also 'unreachable'; that request keeps waiting rather than failing.
 const audiobookStuckReason = `CASE
  WHEN d.request_id IS NULL THEN CASE WHEN r.status='approved' AND r.outcome='active' AND r.updated_at<now()-interval '1 hour' THEN 'not_reached' ELSE '' END
  WHEN r.status<>'approved' OR r.outcome<>'active' THEN ''
@@ -69,6 +71,7 @@ const audiobookStuckReason = `CASE
  WHEN d.provider_status='unknown' AND d.failure_count>=3 THEN 'unreachable'
  WHEN d.provider_status='completed' AND a.provider_completed_at<now()-interval '24 hours' THEN 'not_in_library'
  WHEN d.provider_status NOT IN ('review','failed') AND d.next_attempt_at<now()-interval '1 hour' THEN 'not_reached'
+ WHEN a.external_status='unknown' AND d.provider_status IN ('queued','downloading','unknown') AND a.updated_at<now()-interval '1 hour' THEN 'unreachable'
  ELSE '' END`
 
 const audiobookAcquisitionColumns = `r.id,d.request_id IS NOT NULL,COALESCE(a.attempt,0),a.attempt_started_at,COALESCE(d.provider_status,''),COALESCE(a.external_status,''),COALESCE(a.review_kind,''),

@@ -589,6 +589,7 @@ type audiobookApply struct {
 	searchPass     bool
 	reviewKind     *string
 	providerDone   bool
+	unreadable     bool
 }
 
 func (s *Service) finishAudiobook(ctx context.Context, work *audiobookWork, outcome AudiobookOutcome, callErr error) (bool, []audiobookNotice, error) {
@@ -689,6 +690,11 @@ func (s *Service) finishAudiobook(ctx context.Context, work *audiobookWork, outc
 			setReview("verification")
 		case "failed":
 			failed(audiobookReasonFailed)
+		case AudiobookProviderUnreadable:
+			// The download client could not be read. Keep the state and
+			// counters: only an answer about the download itself moves the
+			// request, so an outage never fails it as lost.
+			apply.reason, apply.unreadable = r.OutcomeReason, true
 		default:
 			if outcome.ExternalStatus == "absent" {
 				apply.absent = work.absent + 1
@@ -740,10 +746,13 @@ func (s *Service) finishAudiobook(ctx context.Context, work *audiobookWork, outc
 	if err != nil {
 		return false, nil, err
 	}
+	// A repeated unreadable check keeps updated_at, so it dates the outage
+	// for the admin stuck view.
 	_, err = tx.Exec(ctx, `UPDATE bloem_audiobook_request_acquisitions SET absent_checks=$3,external_status=COALESCE($4,external_status),
  search_passes=search_passes+CASE WHEN $5 THEN 1 ELSE 0 END,review_kind=COALESCE($6,review_kind),
- provider_completed_at=CASE WHEN $7 THEN COALESCE(provider_completed_at,now()) ELSE provider_completed_at END,updated_at=now()
- WHERE request_id=$1 AND attempt=$2`, r.ID, work.input.Attempt, apply.absent, apply.externalStatus, apply.searchPass, apply.reviewKind, apply.providerDone)
+ provider_completed_at=CASE WHEN $7 THEN COALESCE(provider_completed_at,now()) ELSE provider_completed_at END,
+ updated_at=CASE WHEN $8 AND external_status='unknown' THEN updated_at ELSE now() END
+ WHERE request_id=$1 AND attempt=$2`, r.ID, work.input.Attempt, apply.absent, apply.externalStatus, apply.searchPass, apply.reviewKind, apply.providerDone, apply.unreadable)
 	if err != nil {
 		return false, nil, err
 	}

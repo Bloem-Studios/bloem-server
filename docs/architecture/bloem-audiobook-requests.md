@@ -125,14 +125,20 @@ never enter the dispatch descriptor, receipt, decision log or requester view.
 The plugin owns release search, AI selection/verification and downloader calls;
 the host owns policy, identity, attempts and catalog completion.
 
-The plugin's normalized `CheckStatus` status stays `queued` for a verification
-hold and for a download the client no longer shows. The host adapter maps these
-by `external_status`: `review` becomes a verification review and must carry a
-verify decision with outcome `review`; `missing` and `absent` become uncertain
-checks. A confirmed download that disappears is therefore retried with back-off
-and then reported lost, and an unconfirmed hand-off that never appears is
-searched again after two absent checks. Any other `queued` status keeps waiting,
-including an unreachable client. The cross-process acceptance in
+The plugin answers `CheckStatus` in the host's vocabulary. `review` must carry a
+verify decision with outcome `review` and holds the request for an
+administrator; `completed` must carry external status `verified` and a
+`verified` decision. `unknown` with external status `missing` (a confirmed
+download the client no longer shows) is an uncertain check: it backs off and,
+after five, reports the download lost. `unknown` with `absent` (a hand-off the
+client never showed) is searched again after two absent checks. `unknown` with
+external status `unknown` means the plugin could not read the download client.
+That check keeps the request's state and counters, so a client outage never
+reports a download lost; an outage longer than an hour shows as `unreachable` in
+the admin stuck view. A failed `CheckStatus` call (the plugin itself
+unavailable) is still an uncertain check. Pre-release plugin builds answered
+`queued` for all four cases; the adapter maps those by external status to the
+same states. The cross-process acceptance in
 `internal/api/bloem_audiobook_lifecycle_test.go` runs this contract against the
 real plugin executable when `BLOEM_AUDIOBOOK_REQUEST_PLUGIN_BINARY` is set.
 
