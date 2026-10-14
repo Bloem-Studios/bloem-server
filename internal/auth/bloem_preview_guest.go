@@ -123,6 +123,25 @@ func (p *PreviewGuests) Reissue(ctx context.Context, refreshToken string) (*Toke
 	return p.refresh(ctx, claims)
 }
 
+// ReissueInTx reuses a session without acquiring another pool connection while
+// the exchange holds its transaction and the shared settings lock.
+func (p *PreviewGuests) ReissueInTx(ctx context.Context, tx pgx.Tx, refreshToken string) (*TokenPair, error) {
+	claims, err := p.jwt.ValidateToken(refreshToken)
+	if err != nil || claims.TokenType != TokenTypeRefresh {
+		return nil, ErrSessionRevoked
+	}
+	var settings PreviewGuestSettings
+	err = tx.QueryRow(ctx, `SELECT enabled, host, COALESCE(account_id,0) FROM bloem_preview_settings`).Scan(&settings.Enabled, &settings.Host, &settings.AccountID)
+	if err != nil {
+		return nil, sessionCheckUnavailable("reading preview settings", err)
+	}
+	return p.refreshWithSettings(ctx, tx, settings, claims)
+}
+
+type guestQueryRower interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
 // refresh issues a pair for a live guest session without extending it: a
 // guest session ends at its absolute expiry however active it is.
 func (p *PreviewGuests) refresh(ctx context.Context, claims *Claims) (*TokenPair, error) {
@@ -133,12 +152,19 @@ func (p *PreviewGuests) refresh(ctx context.Context, claims *Claims) (*TokenPair
 	if err != nil {
 		return nil, sessionCheckUnavailable("reading preview settings", err)
 	}
-	if !settings.Enabled || settings.AccountID != claims.UserID || RequestHostFromContext(ctx) != settings.Host {
+	return p.refreshWithSettings(ctx, p.pool, settings, claims)
+}
+
+func (p *PreviewGuests) refreshWithSettings(ctx context.Context, db guestQueryRower, settings PreviewGuestSettings, claims *Claims) (*TokenPair, error) {
+	if claims.AuthMethod != AuthMethodPreviewGuest {
+		return nil, ErrSessionRevoked
+	}
+	if !settings.Enabled || settings.AccountID != claims.UserID || HostOnly(RequestHostFromContext(ctx)) != settings.Host {
 		return nil, ErrSessionRevoked
 	}
 	var role, incarnation string
 	var expiresAt time.Time
-	err = p.pool.QueryRow(ctx, `SELECT u.role, u.account_incarnation_id::text, s.expires_at
+	err := db.QueryRow(ctx, `SELECT u.role, u.account_incarnation_id::text, s.expires_at
 		FROM auth_sessions s
 		JOIN bloem_preview_guest_sessions g ON g.session_id = s.id
 		JOIN users u ON u.id = s.user_id
@@ -149,6 +175,9 @@ func (p *PreviewGuests) refresh(ctx context.Context, claims *Claims) (*TokenPair
 	}
 	if err != nil {
 		return nil, sessionCheckUnavailable("checking guest session", err)
+	}
+	if claims.AccountIncarnationID != incarnation {
+		return nil, ErrSessionRevoked
 	}
 	return p.tokens(Claims{UserID: claims.UserID, AccountIncarnationID: incarnation, Role: role, SessionID: claims.SessionID, AuthMethod: AuthMethodPreviewGuest}, expiresAt)
 }
