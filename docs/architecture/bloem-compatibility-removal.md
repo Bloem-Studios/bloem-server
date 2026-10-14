@@ -14,8 +14,13 @@ tables and the Live TV compatibility streams. The Jellyfin and Audiobookshelf
 tables, the ABS author-count materialized view and the `jellyfin_compat.`,
 `audiobookshelf_compat.`, `audiobooks.abs.` and `jellycompat:` settings belong to
 upstream Silo, which can serve the database again while the membership policy is
-mirrored; Bloem no longer reads or writes them, and they stay until Silo switching
-ends (`docs/architecture/silo-backend-switching.md`). Native canonical collections
+mirrored. They stay until Silo switching ends
+(`docs/architecture/silo-backend-switching.md`). Bloem writes none of them and reads
+one: `jellyfin_compat.server_id`, which `GET /api/v1/health` still answers as
+`server_id`, so clients that enrolled against health before the removal keep the
+server ID they stored. A database without that row answers the deployment identity
+(`server.identity_id`), and `server_name` is the branding name
+(`internal/api/handlers/bloem_health_identity.go`). Native canonical collections
 and watch progress stay intact.
 Historical SQL remains unchanged; the displayprefs parser lives in
 `internal/legacymigrate/displayprefs` solely to execute old migration chains.

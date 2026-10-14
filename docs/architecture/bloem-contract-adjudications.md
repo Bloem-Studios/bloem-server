@@ -14,9 +14,9 @@ not a claim that the original Silo expectations passed unchanged.
 
 The implementation is
 [`bloem_adjudications.go`](../../internal/scenariocatalog/bloem_adjudications.go),
-with all 47 transport decisions and their reasons in
+with all 45 transport decisions and their reasons in
 [`bloem_adjudications.json`](../../internal/scenariocatalog/bloem_adjudications.json).
-The loader checks SHA-256 pins for all seven affected baseline catalogs and compares
+The loader checks SHA-256 pins for all six affected baseline catalogs and compares
 each supplied scenario and row with its original. A changed request, principal,
 row, or original assertion fails closed and requires renewed review. It returns
 copies; the frozen loader and its historical selectors are not rewritten.
@@ -38,11 +38,10 @@ copies; the frozen loader and its historical selectors are not rewritten.
 | Four `sessions.*` cases / v2 | The listing also carries `current_session`; each session also carries `current` and `last_seen_at` | Silo's v2 session listing added them after the oracle was frozen. Silo wins. |
 | `profiles_list.ok` / v2 | The listing also carries `max_advisory_age_supported` and `require_advisory_age_supported` | Silo's v2 profile listing added them after the oracle was frozen. Silo wins. |
 | Ten `device_lookup.*` cases / v2 | `server_name` is `Bloem` | Bloem's default display name (`branding.DefaultServerName`); the oracle expects Silo's brand. |
-| `health.identity`, `health.shape` / v1 | `GET /api/v1/health` returns only `status`; `server_name` and `server_id` are absent | They came from the Jellyfin-compatibility configuration, which the [compatibility removal](bloem-compatibility-removal.md) deleted, so nothing configures them. The contract already omits them when unconfigured. Clients read identity from `GET /api/v2/system/identity` or `GET /api/bloem/v1/server/identity`. |
 
 Only expected responses and the reviewed onboarding follow-up headers change.
 Requests, identities, fixtures, mutation sequencing, transport pairing, and
-follow-up execution do not. A focused real-router packet executes all 84 transport
+follow-up execution do not. A focused real-router packet executes all 82 transport
 leaves, including the unchanged partners. Negative tests reject disclosed keys
 and changes to the pinned originals.
 

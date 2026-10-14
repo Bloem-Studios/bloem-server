@@ -6,8 +6,7 @@
     "api/api-v1-api-keys.json": "d2acd59dc7ffa47802636f956b46ffc4d6e0f80fa7bb82bcec40135c470723bb",
     "api/api-v1-auth.json": "20f5ffaf6cf12c50e45cc89c3ffa716c8ead9a7ce9216e9d31d9676f91fe39b4",
     "api/api-v1-onboarding.json": "b0192356f6ee561598360543cc442cc2e9f869465f0f792df9cc505dae8c8893",
-    "api/api-v1-profiles.json": "7534a2b8c5a70188e59159b36f7f863ebde6b77713fd876c03682677c62c3f87",
-    "api/api-v1.json": "bfc323666a6b3051d3cee4358cf7ccb040b51525dced18b6984c34973dd45495"
+    "api/api-v1-profiles.json": "7534a2b8c5a70188e59159b36f7f863ebde6b77713fd876c03682677c62c3f87"
   },
   "decisions": [
     {
@@ -2991,54 +2990,6 @@
         ]
       },
       "then": {}
-    },
-    {
-      "catalog": "api/api-v1.json",
-      "method": "GET",
-      "path": "/api/v1/health",
-      "registration_index": 0,
-      "scenario": "health.identity",
-      "transport": "v1",
-      "reason": "Bloem removed the Jellyfin-compatibility configuration that supplied the health identity (bloem-compatibility-removal.md), so nothing configures server_name or server_id and health omits both, as the contract allows when unconfigured. Identity is served by GET /api/v2/system/identity and GET /api/bloem/v1/server/identity.",
-      "expect": {
-        "status": 200,
-        "body": [
-          {
-            "pointer": "/status",
-            "op": "equals",
-            "value": "ok"
-          },
-          {
-            "pointer": "/server_name",
-            "op": "absent"
-          },
-          {
-            "pointer": "/server_id",
-            "op": "absent"
-          }
-        ]
-      }
-    },
-    {
-      "catalog": "api/api-v1.json",
-      "method": "GET",
-      "path": "/api/v1/health",
-      "registration_index": 0,
-      "scenario": "health.shape",
-      "transport": "v1",
-      "reason": "Bloem removed the Jellyfin-compatibility configuration that supplied the health identity (bloem-compatibility-removal.md), so nothing configures server_name or server_id and health omits both, as the contract allows when unconfigured. Identity is served by GET /api/v2/system/identity and GET /api/bloem/v1/server/identity.",
-      "expect": {
-        "status": 200,
-        "body": [
-          {
-            "pointer": "",
-            "op": "keys_equal",
-            "value": [
-              "status"
-            ]
-          }
-        ]
-      }
     }
   ]
 }
