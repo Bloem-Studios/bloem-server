@@ -483,3 +483,25 @@ func TestUnchangedCompletionRewritesNothingDB(t *testing.T) {
 		t.Fatalf("memberships=%d err=%v", members, err)
 	}
 }
+
+// A replayed page proves the lease as its first application did.
+func TestReplayedPageRenewsLeaseDB(t *testing.T) {
+	r, _, l := scopedFixture(t, "root")
+	lease := scopedBegin(t, r, l)
+	cp, _, err := r.NextDirectory(t.Context(), lease)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed := &storagev1.ListResponse{Entries: books("book"), NextCursor: "1"}
+	if err = r.ApplyPage(t.Context(), lease, cp, listed, nil); err != nil {
+		t.Fatal(err)
+	}
+	execSQL(t, r.pool, `UPDATE bloem_storage_scan_runs SET lease_until=clock_timestamp()+interval '5 seconds' WHERE id=$1`, lease.RunID)
+	if err = r.ApplyPage(t.Context(), lease, cp, listed, nil); err != nil {
+		t.Fatalf("replay: %v", err)
+	}
+	var extended bool
+	if err = r.pool.QueryRow(t.Context(), `SELECT lease_until>clock_timestamp()+interval '30 seconds' FROM bloem_storage_scan_runs WHERE id=$1`, lease.RunID).Scan(&extended); err != nil || !extended {
+		t.Fatalf("replayed page did not renew the lease: %v", err)
+	}
+}

@@ -86,6 +86,10 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 		if savedCursor != checkpoint.Cursor || !bytes.Equal(savedDigest, digest[:]) {
 			return ErrCheckpointConflict
 		}
+		// A replayed page verified the lease like any other page.
+		if err = renewLeaseTx(ctx, tx, lease); err != nil {
+			return err
+		}
 		return tx.Commit(ctx)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
