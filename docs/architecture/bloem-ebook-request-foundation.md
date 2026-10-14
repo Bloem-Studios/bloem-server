@@ -92,7 +92,11 @@ and retries durably. No tenant book titles go to deployment-wide broadcasts.
 
 `ebook_requests_v1` advertises the mounted API, while its per-profile capability
 reports opt-in and current policy. This increment supports embedded web/admin
-flows. Ebook request adoption in Bloem Apple and Android is deferred; ebook
-routes are not added to the direct-profile session allowlist. Jellyfin and
-Audiobookshelf do not expose this Bloem request API. Automatic audiobook
-acquisition remains deferred.
+flows. Ebook request adoption in Bloem Apple and Android is deferred. Ebook
+requests are open to any user of Bloem, so the five viewer routes (capability,
+history, filing, read and withdrawal) are in the direct-profile session
+allowlist, as the audiobook viewer routes are. A bound profile files and
+withdraws as itself under the same default-organization and profile checks;
+approval, retry and setup stay administrative. Jellyfin and Audiobookshelf do
+not expose this Bloem request API. Automatic audiobook acquisition uses its own
+lane.

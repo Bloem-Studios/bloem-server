@@ -79,9 +79,10 @@ ordinary account bearer token and an `X-Profile-Id` header:
   `GET /api/bloem/v1/music/artists/{id}`, and `GET /api/bloem/v1/music/albums/{id}`
 
 Music artist and album reads additionally require an allowed positive
-`library_id`. Direct-profile sessions are not admitted to `/api/bloem/v1`: the
-router's direct-profile allowlist contains only `/api/v1` routes, so
-authentication rejects them before `RequireProfile` runs. The
+`library_id`. Direct-profile sessions are admitted to `/api/bloem/v1` only for
+the audiobook and ebook request viewer routes (capability, history, filing,
+read and withdrawal). Authentication rejects them on every other native route
+before `RequireProfile` runs. The
 `direct_profile_login` capability field reports whether `POST /api/v1/auth/profile-login`
 is wired; it does not advertise a native direct-profile session mode.
 
@@ -2982,7 +2983,8 @@ of storage files are not supported.
 capability reports the current default-off policy and an independent quota.
 Only the durable default organization can file; hosted organizations cannot.
 Authentication, current membership and profile/PIN checks match the audiobook
-viewer boundary. These routes are not part of the direct-profile allowlist.
+viewer boundary. The five viewer routes are in the direct-profile allowlist: a
+session bound to one profile files, reads and withdraws as that profile.
 
 All paths below have the `/api/bloem/v1` prefix.
 
