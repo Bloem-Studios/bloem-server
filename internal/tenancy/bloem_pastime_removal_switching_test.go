@@ -2,19 +2,23 @@ package tenancy_test
 
 // The Pastime removal migration drops every trigger, function, table and
 // sequence managed tracking added, including the triggers on tables upstream
-// Silo writes. It deletes only the watch-provider connections enrollment wrote
-// for a granted Pastime installation and strips list markers from collections.
-// While the database is mirrored for Silo switching, Silo-shaped writes to
-// every formerly triggered table must succeed afterwards, including deleting
-// an account that has ebook and audiobook progress. Behind a long-running
-// lock holder it gives up and rolls back whole rather than queue.
+// Silo writes, and strips list markers from collections. It writes no
+// watch-provider connection or child row: the connections enrollment wrote
+// stay as ordinary watch-sync rows for the plugin installation that owns the
+// provider key. While the database is mirrored for Silo switching, Silo-shaped
+// writes to every formerly triggered table must succeed afterwards, including
+// deleting an account that has ebook and audiobook progress. Behind a
+// long-running lock holder it gives up and rolls back whole rather than queue.
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -101,6 +105,39 @@ func pastimeConnection(t *testing.T, ctx context.Context, pool *pgxpool.Pool, pr
 	return id
 }
 
+// watchSyncRows fingerprints watch_provider_connections and every table with a
+// foreign key onto it: a row count and an md5 over the sorted row texts.
+func watchSyncRows(t *testing.T, ctx context.Context, pool *pgxpool.Pool) map[string]string {
+	t.Helper()
+	rows, err := pool.Query(ctx, `SELECT 'watch_provider_connections'
+		UNION SELECT conrelid::regclass::text FROM pg_constraint
+		WHERE contype = 'f' AND confrelid = 'public.watch_provider_connections'::regclass`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tables, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, child := range []string{"watch_provider_sync_runs", "watch_provider_history_exports", "watch_provider_list_items",
+		"watch_provider_scrobble_sessions", "watch_provider_rating_items", "watch_provider_dropped_items"} {
+		if !slices.Contains(tables, child) {
+			t.Fatalf("%s no longer references watch_provider_connections: %v", child, tables)
+		}
+	}
+	fingerprint := make(map[string]string, len(tables))
+	for _, table := range tables {
+		var count int
+		var digest string
+		if err := pool.QueryRow(ctx, `SELECT count(*), coalesce(md5(string_agg(r::text, E'\n' ORDER BY r::text)), '')
+			FROM `+table+` r`).Scan(&count, &digest); err != nil { // regclass text is quoted as needed
+			t.Fatalf("fingerprint %s: %v", table, err)
+		}
+		fingerprint[table] = fmt.Sprintf("%d %s", count, digest)
+	}
+	return fingerprint
+}
+
 func TestPastimeRemovalLeavesNoManagedObjects(t *testing.T) {
 	ctx, pool, _ := buildTenantPool(t)
 	assertNoPastimeObjects(t, ctx, pool)
@@ -150,8 +187,8 @@ func TestPastimeRemovalKeepsSiloDataAndWritesInMirroredPhase(t *testing.T) {
 		pastimeRemovalExec(t, ctx, pool, statement, user)
 	}
 
-	// The enrolled profile's managed connection goes with its children; a
-	// profile's own Pastime link and another provider's connection stay.
+	// The enrolled profile's managed connection, a profile's own Pastime link
+	// and another provider's connection, each with Silo's child rows.
 	install, provider := seedPastimeGrant(t, ctx, pool, user, "pr-main")
 	managed := pastimeConnection(t, ctx, pool, provider, user, "pr-main", "managed-ciphertext")
 	selfLinked := pastimeConnection(t, ctx, pool, provider, user, "pr-kids", "self-linked-ciphertext")
@@ -164,6 +201,15 @@ func TestPastimeRemovalKeepsSiloDataAndWritesInMirroredPhase(t *testing.T) {
 	}
 	pastimeRemovalExec(t, ctx, pool, `INSERT INTO watch_provider_scrobble_sessions (playback_session_id, connection_id, media_item_id)
 		VALUES ('pr-session', $1::uuid, 'pr-movie')`, managed)
+	pastimeRemovalExec(t, ctx, pool, `INSERT INTO watch_provider_history_exports (connection_id, history_id, media_item_id, watched_at, provider_item_key, status, last_error)
+		VALUES ($1::uuid, 'pr-history', 'pr-movie', now(), 'fixture-key', 'pending', ''),
+		       ($1::uuid, 'pr-history-unmatched', 'pr-movie', now(), 'fixture-key', 'not_found', 'not found')`, managed)
+	pastimeRemovalExec(t, ctx, pool, `INSERT INTO watch_provider_rating_items (connection_id, media_item_id, kind, synced_rating)
+		VALUES ($1::uuid, 'pr-movie', 'movie', 4)`, managed)
+	pastimeRemovalExec(t, ctx, pool, `INSERT INTO watch_provider_dropped_items (connection_id, series_id, provider_item_key, remote_seen)
+		VALUES ($1::uuid, 'pr-series', 'fixture-series', true)`, managed)
+	pastimeRemovalExec(t, ctx, pool, `INSERT INTO watch_provider_history_exports (connection_id, history_id, media_item_id, watched_at, provider_item_key, status)
+		VALUES ($1::uuid, 'pr-history', 'pr-movie', now(), 'fixture-key', 'pending')`, selfLinked)
 
 	// Published list collections and one synced collection with no marker.
 	const binding = "00000000-0000-0000-0000-0000000000b1"
@@ -177,27 +223,38 @@ func TestPastimeRemovalKeepsSiloDataAndWritesInMirroredPhase(t *testing.T) {
 		VALUES ($1::uuid, $2, $3, 'pr-main', '{}', gen_random_uuid(), decode(repeat('00', 32), 'hex'), 'source', repeat('A', 43), 'fixture', 'personal', 'pr-list')`,
 		binding, install, user)
 
+	watchSyncBefore := watchSyncRows(t, ctx, pool)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("apply the removal in the mirrored phase: %v", err)
 	}
 	assertNoPastimeObjects(t, ctx, pool)
 
+	// Every watch-provider connection and child row is exactly as it was.
+	if after := watchSyncRows(t, ctx, pool); !maps.Equal(after, watchSyncBefore) {
+		t.Errorf("watch-sync rows changed:\nbefore %v\nafter  %v", watchSyncBefore, after)
+	}
 	connections := func(id string) int {
 		t.Helper()
 		return pastimeRemovalCount(t, ctx, pool, `SELECT
 			(SELECT count(*) FROM watch_provider_connections WHERE id=$1::uuid)
 			+ (SELECT count(*) FROM watch_provider_sync_runs WHERE connection_id=$1::uuid)
 			+ (SELECT count(*) FROM watch_provider_list_items WHERE connection_id=$1::uuid)
-			+ (SELECT count(*) FROM watch_provider_scrobble_sessions WHERE connection_id=$1::uuid)`, id)
+			+ (SELECT count(*) FROM watch_provider_scrobble_sessions WHERE connection_id=$1::uuid)
+			+ (SELECT count(*) FROM watch_provider_history_exports WHERE connection_id=$1::uuid)
+			+ (SELECT count(*) FROM watch_provider_rating_items WHERE connection_id=$1::uuid)
+			+ (SELECT count(*) FROM watch_provider_dropped_items WHERE connection_id=$1::uuid)`, id)
 	}
-	if n := connections(managed); n != 0 {
-		t.Errorf("managed connection and its rows remain: %d", n)
+	for _, want := range []struct {
+		name, id string
+		rows     int
+	}{{"enrolled Pastime", managed, 8}, {"self-linked Pastime", selfLinked, 2}, {"other provider", other, 3}} {
+		if n := connections(want.id); n != want.rows {
+			t.Errorf("%s connection rows = %d, want %d", want.name, n, want.rows)
+		}
 	}
-	if n := connections(other); n != 3 {
-		t.Errorf("other provider's connection rows = %d, want 3", n)
-	}
-	if n := connections(selfLinked); n != 1 {
-		t.Errorf("self-linked Pastime connection rows = %d, want 1", n)
+	if n := pastimeRemovalCount(t, ctx, pool, `SELECT count(*) FROM watch_provider_history_exports
+		WHERE connection_id=$1::uuid AND status='pending'`, managed); n != 1 {
+		t.Errorf("enrolled connection's pending exports = %d, want 1", n)
 	}
 	var kind, config string
 	if err := pool.QueryRow(ctx, `SELECT collection_type, source_config::text FROM user_personal_collections WHERE id='pr-list'`).Scan(&kind, &config); err != nil {
@@ -225,7 +282,7 @@ func TestPastimeRemovalKeepsSiloDataAndWritesInMirroredPhase(t *testing.T) {
 		t.Errorf("Silo user data rows = %d, want 6", n)
 	}
 	if n := pastimeRemovalCount(t, ctx, pool, `SELECT count(*) FROM plugin_installations WHERE id=$1`, install); n != 1 {
-		t.Error("the plugin installation is the operator's to remove")
+		t.Error("the removal deleted the plugin installation that owns the kept connections")
 	}
 
 	// Silo-shaped writes to every formerly triggered table.
@@ -265,10 +322,19 @@ func TestPastimeRemovalKeepsSiloDataAndWritesInMirroredPhase(t *testing.T) {
 	pastimeRemovalExec(t, ctx, pool, `INSERT INTO watch_provider_connections (provider, user_id, profile_id, access_token, last_error)
 		VALUES ($1, $2, 'pr-new-main', 'second', 'sync finished')
 		ON CONFLICT (provider, user_id, profile_id) DO UPDATE SET access_token=EXCLUDED.access_token, last_error=EXCLUDED.last_error`, provider, account)
-	pastimeRemovalExec(t, ctx, pool, `UPDATE watch_provider_connections SET access_token='rotated' WHERE id=$1::uuid`, selfLinked)
+	pastimeRemovalExec(t, ctx, pool, `UPDATE watch_provider_connections SET access_token='rotated' WHERE id IN ($1::uuid, $2::uuid)`, selfLinked, managed)
 	if n := pastimeRemovalCount(t, ctx, pool, `SELECT count(*) FROM watch_provider_connections
-		WHERE (id=$1::uuid AND access_token='second' AND last_error='sync finished') OR (id=$2::uuid AND access_token='rotated')`, fresh, selfLinked); n != 2 {
-		t.Errorf("silo credential writes kept = %d, want 2", n)
+		WHERE (id=$1::uuid AND access_token='second' AND last_error='sync finished') OR (id IN ($2::uuid, $3::uuid) AND access_token='rotated')`,
+		fresh, selfLinked, managed); n != 3 {
+		t.Errorf("silo credential writes kept = %d, want 3", n)
+	}
+	// The kept enrolled connection is the user's: Silo's exporter drains it and
+	// disconnecting removes it with its child rows.
+	pastimeRemovalExec(t, ctx, pool, `UPDATE watch_provider_history_exports SET status='sent', attempt_count=1, last_attempt_at=now()
+		WHERE connection_id=$1::uuid AND status='pending'`, managed)
+	pastimeRemovalExec(t, ctx, pool, `DELETE FROM watch_provider_connections WHERE id=$1::uuid`, managed)
+	if n := connections(managed); n != 0 {
+		t.Errorf("disconnected enrolled connection rows = %d, want 0", n)
 	}
 	pastimeRemovalExec(t, ctx, pool, `INSERT INTO watch_provider_scrobble_sessions (playback_session_id, connection_id, media_item_id)
 		VALUES ('pr-new-session', $1::uuid, 'pr-movie')`, fresh)
@@ -323,7 +389,7 @@ func TestPastimeRemovalFailsAtomicallyOnUnknownDependency(t *testing.T) {
 		}
 	}
 	if n := pastimeRemovalCount(t, ctx, pool, `SELECT count(*) FROM watch_provider_connections WHERE id=$1::uuid`, managed); n != 1 {
-		t.Error("failed removal deleted the managed connection")
+		t.Error("failed removal lost the managed connection")
 	}
 }
 

@@ -6,14 +6,12 @@
 -- tables and sequences.
 --
 -- Data:
--- * The watch_provider_connections rows that enrollment wrote for a granted
---   Pastime installation (provider plugin:<installation>:pastime, matched to an
---   enrollment by account and profile) are deleted; Silo's ON DELETE CASCADE
---   removes their sync runs, exports, list items and scrobble sessions. Every
---   other connection, including a Pastime connection a profile linked through
---   ordinary watch sync, stays. Enrollment rows cascade from the plugin
---   installation, so the installation must still exist (disabled is fine) when
---   this runs; uninstalling it first leaves its connections behind.
+-- * watch_provider_connections and their child rows (sync runs, history
+--   exports, list, rating and dropped items, scrobble sessions) are Silo's and
+--   are not touched. The connections enrollment wrote stay as ordinary
+--   watch-sync rows for the plugin installation that owns provider
+--   plugin:<installation>:pastime; that installation stays disabled until a
+--   version built on public Silo capabilities replaces it in place.
 -- * Collections a list binding published keep their items and become manual
 --   collections: the bloem_list_binding marker leaves source_config.
 -- * Favorites, watchlists, ratings, progress and watch history are Silo's and
@@ -21,7 +19,7 @@
 --
 -- No CASCADE: a dependent nobody knows about aborts the whole migration.
 -- Triggers go before the data changes, so none of them fires during the
--- connection delete or the collection updates.
+-- collection updates.
 --
 -- Locks: DROP TRIGGER and DROP TABLE take ACCESS EXCLUSIVE locks on users and
 -- the other formerly triggered Silo tables and hold them until commit. A short
@@ -63,18 +61,6 @@ DROP FUNCTION IF EXISTS public.bloem_managed_refresh_identity(integer);
 DROP FUNCTION IF EXISTS public.bloem_managed_refresh_account(integer);
 DROP FUNCTION IF EXISTS public.bloem_managed_verified_identity(integer);
 DROP FUNCTION IF EXISTS public.bloem_managed_display_name(text, text);
-
-DO $$
-BEGIN
-    IF to_regclass('public.bloem_managed_enrollments') IS NOT NULL THEN
-        DELETE FROM public.watch_provider_connections c
-        USING public.bloem_managed_enrollments e
-        WHERE c.provider LIKE 'plugin:%:pastime'
-          AND c.provider = 'plugin:' || e.installation_id || ':pastime'
-          AND c.user_id = e.account_id
-          AND c.profile_id = e.profile_id;
-    END IF;
-END $$;
 
 UPDATE public.user_personal_collections
 SET collection_type = CASE WHEN native AND collection_type = 'synced' THEN 'manual' ELSE collection_type END,

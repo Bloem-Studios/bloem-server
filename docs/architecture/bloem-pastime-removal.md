@@ -18,15 +18,22 @@ Pastime migrations created:
 - the `bloem_managed_*`, `bloem_companion_*` and `bloem_list_*` tables and
   sequences.
 
-Before the enrollment table goes, the migration deletes the
-`watch_provider_connections` rows that enrollment wrote: provider
-`plugin:<installation>:pastime`, matched to an enrollment by account and
-profile. Silo's `ON DELETE CASCADE` removes their sync runs, exports, list items,
-scrobble sessions and other child rows. Every other connection stays, including a Pastime
-connection a profile linked through ordinary watch sync. Collections a list
-binding published keep their items; the `bloem_list_binding` marker leaves
-`source_config`, and a synced native personal collection becomes manual.
-Favorites, watchlists, ratings, progress and watch history are not touched.
+The migration writes no `watch_provider_connections` row and none of their
+child rows (sync runs, history exports, list, rating and dropped items,
+scrobble sessions). The connections enrollment wrote stay as ordinary,
+user-removable watch-sync rows for the plugin installation that owns provider
+`plugin:<installation>:pastime`, alongside any Pastime connection a profile
+linked itself. While that installation is disabled no provider serves the key,
+so Silo's watch sync sends nothing for these connections (a scheduled sync
+records a failed run): pending history exports stay pending, and plays
+finished meanwhile stay in Silo's watch history with no export row. Once a
+version with watched export serves the key again, its scheduled sync
+reconciles each connection's completed history and queues the missing plays.
+
+Collections a list binding published keep their items; the
+`bloem_list_binding` marker leaves `source_config`, and a synced native
+personal collection becomes manual. Favorites, watchlists, ratings, progress
+and watch history are not touched.
 
 The migration runs in one transaction, uses `IF EXISTS` and no `CASCADE`, so an
 unknown dependent aborts all of it. It writes no membership-policy column and
@@ -39,14 +46,12 @@ compatibility removal (`compatibilityBaselineFS`, `opaCompatibilityBaselineFS`).
 
 ## Upgrade constraints
 
-- The enrollment rows cascade from the Pastime plugin installation
-  (`plugin_installations` to `bloem_managed_grants` to
-  `bloem_managed_enrollments`), and Silo's plugin uninstall does not delete
-  watch-provider connections. If the installation is uninstalled before the
-  migration runs, the migration finds no enrollments and the managed
-  connections stay behind as ordinary rows for a plugin that no longer exists.
-  The installation must still exist when the migration runs; disabling it is
-  enough. Uninstall it only after the migration has committed.
+- Disable the `bloem.pastime` installation before the release and keep it
+  disabled until a version built on public Silo capabilities replaces it in
+  place (same plugin ID, same capability ID, so the provider key and its
+  connections carry over). Do not uninstall it: Silo's uninstall does not
+  delete watch-provider connections, so its rows would be left for a provider
+  no installation serves.
 - The migration takes `ACCESS EXCLUSIVE` locks on `users` and the other
   formerly triggered Silo tables and holds them until commit. It sets a 5 s
   `lock_timeout`: behind a longer-running transaction on any of those tables it
@@ -63,13 +68,15 @@ compatibility removal (`compatibilityBaselineFS`, `opaCompatibilityBaselineFS`).
 - The host no longer serves the managed-tracking broker service. A
   `bloem.pastime` 0.1.x plugin requires it, so when its installation is enabled
   every start fails at `BindHostBroker` (`FailedPrecondition`) and the host
-  stops the process. Disable that installation and uninstall it after the
-  migration; only a plugin built on public Silo capabilities can replace it.
+  stops the process. Keep that installation disabled until an upgrade built on
+  public Silo capabilities replaces it in place.
 
 ## Evidence
 
 `internal/tenancy/bloem_pastime_removal_switching_test.go` covers a fresh
-migration chain with no Pastime objects, a seeded upgrade in the mirrored phase
-that keeps Silo data and accepts Silo-shaped writes, atomic failure when an
-unknown view depends on a dropped table, and an atomic give-up and later retry
-when a long-running transaction holds a lock on a formerly triggered table.
+migration chain with no Pastime objects; a seeded upgrade in the mirrored phase
+that leaves every watch-provider connection and its child rows unchanged
+(enrolled, self-linked and other-provider), keeps Silo data and accepts
+Silo-shaped writes; atomic failure when an unknown view depends on a dropped
+table; and an atomic give-up and later retry when a long-running transaction
+holds a lock on a formerly triggered table.
