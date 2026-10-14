@@ -12,7 +12,7 @@ const source = {
 const dir = (name: string) => ({ name, logical_path: name, selection_ref: name + "-ref" });
 const page = (directories: StoragePage["directories"] = [], next_cursor = ""): StoragePage => ({
   current: dir("Root"),
-  breadcrumbs: [dir("Root")],
+  breadcrumbs: [],
   directories,
   next_cursor,
 });
@@ -124,7 +124,7 @@ it("supports breadcrumbs, Up, and keyboard Escape cancellation", async () => {
     .mockResolvedValueOnce({
       ...page(),
       current: dir("Books"),
-      breadcrumbs: [dir("Root"), dir("Books")],
+      breadcrumbs: [dir("Root")],
     })
     .mockResolvedValueOnce(page());
   const close = vi.fn();
@@ -146,3 +146,47 @@ it("supports breadcrumbs, Up, and keyboard Escape cancellation", async () => {
   await user.keyboard("{Escape}");
   expect(close).toHaveBeenCalledWith(false);
 });
+
+it.each(["bloem.storage.s3", "bloem.storage.bookwarehouse"])(
+  "keeps sibling selections while navigating nested folders in %s",
+  async (plugin_id) => {
+    const user = (await import("@testing-library/user-event")).default.setup();
+    const root = dir("Root");
+    const archive = dir("Archive");
+    const seventies = dir("70s");
+    const eighties = dir("80s");
+    const browse = vi.fn(async (_key: string, ref = "") => {
+      if (!ref || ref === root.selection_ref) return page([archive]);
+      if (ref === archive.selection_ref)
+        return { ...page([seventies, eighties]), current: archive, breadcrumbs: [root] };
+      if (ref === seventies.selection_ref)
+        return { ...page(), current: seventies, breadcrumbs: [root, archive] };
+      throw new Error("Unexpected directory reference");
+    });
+    const select = vi.fn();
+    render(
+      <StorageFolderBrowser
+        open
+        onOpenChange={() => {}}
+        api={{ browse } as unknown as LocationApi}
+        source={{ ...source, plugin_id }}
+        onSelect={select}
+      />,
+    );
+    await user.click(await screen.findByRole("button", { name: "Archive" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Select 70s" }));
+    await user.click(screen.getByRole("button", { name: "70s" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Up" })).toBeEnabled());
+    expect(screen.getByLabelText("Storage folder breadcrumbs")).toHaveTextContent("70s");
+    expect(screen.queryByRole("button", { name: "Use Current Folder" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Up" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Select 80s" }));
+    expect(browse.mock.calls.at(-1)?.[1]).toBe(archive.selection_ref);
+    expect(screen.getByText("2 folders selected")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Add selected folders" }));
+    expect(select).toHaveBeenCalledWith([
+      { ...seventies, source_key: source.source_key, configuration_revision: 1 },
+      { ...eighties, source_key: source.source_key, configuration_revision: 1 },
+    ]);
+  },
+);

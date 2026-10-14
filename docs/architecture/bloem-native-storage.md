@@ -46,6 +46,18 @@ API serving, worker HLS and the remaining surface limits.
 
 ## Creating a library
 
+The native library-locations API can submit multiple filesystem paths and
+multiple selected provider roots together in one library mutation when the
+server advertises location mixing. Source browsing returns `current` separately
+from `breadcrumbs`: the
+breadcrumb list contains ancestors from the source root through the immediate
+parent, and is empty at the source root. The web picker uses its final breadcrumb
+for Up, displays the current directory separately, and retains selections while
+navigating. Pending selections use the multi-folder action rather than replacing
+them with the current folder. Directory references remain opaque; display names
+and logical paths do not become provider identities. S3 prefixes and Bookwarehouse
+virtual directories follow the same browser contract.
+
 An administrator creates an ebook or admitted movie library through the ordinary v2
 `createLibrary` with `storage_source` instead of `paths`. The creation
 transaction retains the installation's `FOR SHARE` lock before inserting the

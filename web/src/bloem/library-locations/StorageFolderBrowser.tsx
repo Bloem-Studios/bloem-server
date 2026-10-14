@@ -114,15 +114,20 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
                 {dir.name || "Root"}
               </Button>
             ))}
+            {page && (
+              <span aria-current="page" className="px-3 py-2 text-sm font-medium">
+                {page.current.name || "Root"}
+              </span>
+            )}
           </nav>
           <div className="flex gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled={loading || !page || page.breadcrumbs.length < 2}
+              disabled={loading || !page || !page.breadcrumbs.length}
               onClick={() =>
-                void load(page!.breadcrumbs[page!.breadcrumbs.length - 2]!.selection_ref)
+                void load(page!.breadcrumbs[page!.breadcrumbs.length - 1]!.selection_ref)
               }
             >
               Up
@@ -200,19 +205,26 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
               Load more folders
             </Button>
           )}
+          {selected.length > 0 && (
+            <p role="status" className="text-muted-foreground text-sm">
+              {selected.length} folder{selected.length === 1 ? "" : "s"} selected
+            </p>
+          )}
         </div>
         <DialogFooter className="flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={close}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={loading || !page || !!error}
-            onClick={() => page && commit([page.current])}
-          >
-            Use Current Folder
-          </Button>
+          {selected.length === 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loading || !page || !!error}
+              onClick={() => page && commit([page.current])}
+            >
+              Use Current Folder
+            </Button>
+          )}
           <Button
             type="button"
             disabled={loading || !selected.length || !!error}
