@@ -338,7 +338,8 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	if lease.ConfigurationRevision != source.ConfigurationRevision {
 		return result, storagesource.ErrStaleLease
 	}
-	stopRenew = startStorageRenewal(job, cancel, c.leaseTTL/3, func(ctx context.Context) error {
+	var confirmLease func()
+	stopRenew, confirmLease = startStorageRenewal(job, cancel, c.leaseTTL/3, c.leaseTTL, func(ctx context.Context) error {
 		return c.sources.RenewAuthorized(ctx, lease, c.leaseTTL, authorize)
 	})
 	defer stopRenew()
@@ -475,6 +476,8 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		if err = c.sources.ApplyPageAuthorizedSkipping(job, lease, checkpoint, page, skipDirectory, authorize, publish); err != nil {
 			return result, err
 		}
+		// The committed page renewed the lease.
+		confirmLease()
 		matches = slices.DeleteFunc(matches, func(m scanner.StorageMovieMatch) bool {
 			attempted := matchAttempted[m.ContentID]
 			matchAttempted[m.ContentID] = true
@@ -592,10 +595,25 @@ func storageRenewalOnlyCanceled(err error) bool {
 	return false
 }
 
+// storageRenewalAttemptLimit bounds one renewal transaction.
+const storageRenewalAttemptLimit = 10 * time.Second
+
 // startStorageRenewal covers long parsing/cover I/O. Stop cancels any outstanding
 // SQL call and joins the worker before its caller releases runtime admission.
-func startStorageRenewal(ctx context.Context, cancel context.CancelCauseFunc, interval time.Duration, renew func(context.Context) error) func() {
-	renewalCtx, stop := context.WithCancelCause(ctx)
+// Confirm records that the lease was renewed some other way, as each committed
+// page renews it.
+//
+// A renewal waits for the library lock a page transaction holds. An attempt
+// that runs out of time while the lease was confirmed within ttl is retried
+// rather than failing the scan: the database still fences every page and
+// completion, so a lease that did lapse fails the scan there or on a later
+// attempt. Any other failure, or a timeout once ttl has passed without a
+// confirmation, stops the scan.
+func startStorageRenewal(ctx context.Context, cancel context.CancelCauseFunc, interval, ttl time.Duration, renew func(context.Context) error) (stop, confirm func()) {
+	renewalCtx, stopRenewal := context.WithCancelCause(ctx)
+	var confirmed atomic.Int64
+	confirm = func() { confirmed.Store(time.Now().UnixNano()) }
+	confirm()
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -607,23 +625,36 @@ func startStorageRenewal(ctx context.Context, cancel context.CancelCauseFunc, in
 				return
 			case <-ticker.C:
 			}
-			bounded, release := context.WithTimeout(renewalCtx, 10*time.Second)
+			bounded, release := context.WithTimeout(renewalCtx, min(storageRenewalAttemptLimit, interval))
 			err := renew(bounded)
 			cause := context.Cause(bounded)
 			release()
-			if err != nil {
-				// Normal Stop only suppresses the cancellation it caused. A real
-				// fence/provider/policy failure must never become full success just
-				// because the caller concurrently finishes its last claim.
-				if cause != errStorageRenewalStopped || !storageRenewalOnlyCanceled(err) { //nolint:errorlint // Only this private Stop cause permits suppression; wrapped or equivalent causes must propagate.
-					cancel(fmt.Errorf("storage scan renewal: %w", err))
-				}
-				return
+			if err == nil {
+				confirm()
+				continue
 			}
+			if storageRenewalAttemptTimedOut(renewalCtx, cause, err) && time.Since(time.Unix(0, confirmed.Load())) < ttl {
+				slog.WarnContext(ctx, "storage scan renewal timed out; retrying while the lease is current", "component", "libraryingest", "error", err)
+				continue
+			}
+			// Normal Stop only suppresses the cancellation it caused. A real
+			// fence/provider/policy failure must never become full success just
+			// because the caller concurrently finishes its last claim.
+			if cause != errStorageRenewalStopped || !storageRenewalOnlyCanceled(err) { //nolint:errorlint // Only this private Stop cause permits suppression; wrapped or equivalent causes must propagate.
+				cancel(fmt.Errorf("storage scan renewal: %w", err))
+			}
+			return
 		}
 	}()
 	var once sync.Once
-	return func() { once.Do(func() { stop(errStorageRenewalStopped); <-done }) }
+	return func() { once.Do(func() { stopRenewal(errStorageRenewalStopped); <-done }) }, confirm
+}
+
+// storageRenewalAttemptTimedOut reports an attempt that ran out of its own
+// time, while the scan continues, without a lease or authority fence.
+func storageRenewalAttemptTimedOut(renewal context.Context, cause, err error) bool {
+	return renewal.Err() == nil && errors.Is(cause, context.DeadlineExceeded) && errors.Is(err, context.DeadlineExceeded) &&
+		!errors.Is(err, storagesource.ErrStaleLease) && !errors.Is(err, resourcetenancy.ErrResourceHidden) && !errors.Is(err, resourcetenancy.ErrAuthorizationStateChanged)
 }
 
 // A child stopped after an internal fence/process failure carries that failure,

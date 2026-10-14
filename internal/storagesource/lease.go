@@ -25,7 +25,7 @@ func (r *Repository) begin(ctx context.Context, sourceKey uuid.UUID, owner strin
 }
 
 func (r *Repository) beginLocation(ctx context.Context, sourceKey uuid.UUID, owner string, ttl time.Duration, authorize BeginAuthorizer, location *Location) (Lease, error) {
-	lease := Lease{SourceKey: sourceKey, Owner: owner}
+	lease := Lease{SourceKey: sourceKey, Owner: owner, TTL: ttl}
 	if sourceKey == uuid.Nil || !validText(owner, 1024, true) || !validTTL(ttl) {
 		return lease, fmt.Errorf("invalid storage scan lease")
 	}

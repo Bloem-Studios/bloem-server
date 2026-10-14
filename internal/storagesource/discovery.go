@@ -127,6 +127,11 @@ func (r *Repository) resetDirectoryFull(ctx context.Context, lease Lease, cp Che
 	if _, err = tx.Exec(ctx, `DELETE FROM bloem_storage_scan_directory_entries WHERE run_id=$1 AND directory_id=$2`, lease.RunID, cp.DirectoryID); err != nil {
 		return err
 	}
+	// The directory's edges no longer count until the full listing observes
+	// them again, so directories reached only through them leave the reach.
+	if err = rebuildLocationReachTx(ctx, tx, lease); err != nil {
+		return err
+	}
 	if _, err = tx.Exec(ctx, `DELETE FROM bloem_storage_change_tokens WHERE location_id=$1 AND directory_id=$2 AND configuration_revision=$3 AND selection_revision=$4`, lease.LocationID, cp.DirectoryID, lease.ConfigurationRevision, lease.SelectionRevision); err != nil {
 		return err
 	}
