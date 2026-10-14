@@ -65,7 +65,13 @@ func canManageHouseholdAs(
 	activeProfileID string,
 	verify func(profileID string) error,
 ) (bool, error) {
+<<<<<<< HEAD
 	if bloemDirectProfileClaims(ctx) {
+=======
+	// A remote-playback handoff never manages the household, even when it is
+	// bound to the primary profile.
+	if apimw.GetClaims(ctx).IsRemotePlayback() {
+>>>>>>> upstream/main
 		return false, nil
 	}
 	if activeProfileID == "" {

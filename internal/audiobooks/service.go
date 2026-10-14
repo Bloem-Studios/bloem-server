@@ -1,0 +1,242 @@
+package audiobooks
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"time"
+
+	"github.com/Silo-Server/silo-server/internal/audiobooks/abs"
+	"github.com/Silo-Server/silo-server/internal/audiobooks/abssocket"
+	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/recommendations"
+	"github.com/Silo-Server/silo-server/internal/scanner"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// SettingsReader is the minimal slice of the server-settings store that
+// the audiobooks service needs. The production implementation is
+// internal/catalog.ServerSettingsRepo (or whatever silo names that helper at
+// wiring time); tests pass a fake.
+type SettingsReader interface {
+	GetString(ctx context.Context, key string) (string, error)
+}
+
+// Service owns the Audiobookshelf compatibility adapters. Native audiobook
+// libraries are normal catalog media_items and do not depend on this service.
+type Service struct {
+	settings   SettingsReader
+	ABSHandler *abs.Handler
+}
+
+// New constructs a Service. The constructor takes the dependencies it
+// will actually use; current sub-plan needs only the settings reader.
+func New(settings SettingsReader) *Service {
+	return &Service{settings: settings}
+}
+
+// ABSHandlerDeps bundles the concrete silo dependencies needed to construct
+// the ABS-compat abs.Handler. Pool, Items, and Files are required — the ABS
+// handler dereferences MediaStore from many request paths and a nil store
+// would panic on the first request. BuildABSHandler validates this at startup.
+type ABSHandlerDeps struct {
+	Pool     *pgxpool.Pool
+	Items    *catalog.ItemRepository
+	Files    *scanner.FileRepository
+	Settings catalog.SettingsStore // encrypting decorator in production
+	// Auth signs ABS clients in and rechecks each token's profile. Nil
+	// leaves standalone login unavailable.
+	Auth           *SiloCredValidator
+	AccessResolver abs.AccessResolver
+	// Recs is the recommendations repository used to power the
+	// /items/{id}/similar endpoint via embedding nearest-neighbor search.
+	// Optional; when nil, ABSRecommender falls back to the shared-genre
+	// SQL path. When the full chain is unwired (Recs and Pool both nil),
+	// the ABS Recommender field stays nil and similar returns empty.
+	Recs *recommendations.Repo
+	// Detail resolves audiobook poster S3 paths into fully-qualified URLs
+	// that ABS clients can fetch. Optional; when nil, /api/items/{id}/cover
+	// 404s rather than redirecting to an unreachable storage path.
+	Detail        *catalog.DetailService
+	SessionMgr    *playback.SessionManager
+	SessionSyncer abs.PlaybackSessionSyncer
+}
+
+// absSocketTokenValidator refuses a Socket.io connection whose access token
+// is revoked or no longer accepted by its profile, the same checks bearerAuth
+// makes on the HTTP routes. A nil verifier skips the profile check.
+func absSocketTokenValidator(tokens abs.TokenStore, verifier abs.ProfileVerifier) abssocket.TokenValidator {
+	return func(ctx context.Context, claims *abs.Claims) (bool, error) {
+		tok, err := tokens.GetTokenByJTI(ctx, claims.JTI)
+		if err != nil {
+			return false, err
+		}
+		if tok.RevokedAt != nil {
+			return true, nil
+		}
+		if verifier != nil {
+			return false, verifier.VerifyTokenProfile(ctx, claims.UserID, claims.ProfileID, claims.PINRevision)
+		}
+		return false, nil
+	}
+}
+
+// BuildABSHandler wires all production adapters and returns a ready-to-mount
+// *abs.Handler. Callers pass the handler to service.ABSHandler and to the
+// HTTP router (via api.Dependencies.ABSHandler).
+func (s *Service) BuildABSHandler(deps ABSHandlerDeps) *abs.Handler {
+	if deps.Items == nil || deps.Files == nil {
+		panic("audiobooks.BuildABSHandler: Items and Files repositories are required")
+	}
+	mediaStore := &ABSMediaStore{
+		Items: deps.Items,
+		Files: deps.Files,
+		Pool:  deps.Pool,
+	}
+
+	var tokenStore abs.TokenStore
+	if deps.Pool != nil {
+		tokenStore = &ABSSessionStore{Pool: deps.Pool}
+	}
+
+	var progressStore abs.ProgressStore
+	if deps.Pool != nil {
+		progressStore = &ABSProgressStore{Pool: deps.Pool}
+	}
+
+	var playbackSessionStore abs.ABSPlaybackSessionStore
+	if deps.Pool != nil {
+		playbackSessionStore = &ABSPlaybackSessionStore{Pool: deps.Pool}
+	}
+
+	var bookmarkStore abs.BookmarkStore
+	if deps.Pool != nil {
+		bookmarkStore = &ABSBookmarkStore{Pool: deps.Pool}
+	}
+
+	var collectionStore abs.CollectionStore
+	if deps.Pool != nil {
+		collectionStore = &ABSCollectionStore{Pool: deps.Pool}
+	}
+
+	var playlistStore abs.PlaylistStore
+	if deps.Pool != nil {
+		playlistStore = &ABSPlaylistStore{Pool: deps.Pool}
+	}
+
+	var smartCollectionStore abs.SmartCollectionStore
+	if deps.Pool != nil {
+		smartCollectionStore = &ABSSmartCollectionStore{Pool: deps.Pool}
+	}
+
+	var rssFeedStore abs.RSSFeedStore
+	if deps.Pool != nil {
+		rssFeedStore = &ABSRSSFeedStore{Pool: deps.Pool}
+	}
+
+	var configProvider abs.ConfigProvider
+	if deps.Settings != nil {
+		configProvider = &ABSConfigProvider{Settings: deps.Settings}
+	}
+
+	// GET /me only has the token's userID; source a resolver from the
+	// SiloCredValidator (which holds the pgx pool) so /me can show the real
+	// display username instead of the numeric id. The same validator signs
+	// clients in and rechecks each token's profile PIN revision. Nil
+	// interface values, not typed nils, when it is absent.
+	var credValidator abs.ProfileCredentialValidator
+	var profileVerifier abs.ProfileVerifier
+	var usernameResolver func(ctx context.Context, userID, profileID string) string
+	if deps.Auth != nil {
+		credValidator = deps.Auth
+		profileVerifier = deps.Auth
+		usernameResolver = deps.Auth.ResolveUsername
+	}
+
+	// Socket.io server: secretFn reads the JWT secret at connection time so
+	// a secret-rotate takes effect without a restart.
+	var socketServer *abssocket.Server
+	if configProvider != nil && tokenStore != nil {
+		secretFn := func() []byte {
+			secret, _ := configProvider.JWTSecret(context.Background())
+			return secret
+		}
+		socketServer = abssocket.New(secretFn, absSocketTokenValidator(tokenStore, profileVerifier), nil, nil)
+	}
+
+	h := abs.New(abs.Dependencies{
+		MediaStore:           mediaStore,
+		TokenStore:           tokenStore,
+		CredValidator:        credValidator,
+		ProfileVerifier:      profileVerifier,
+		AccessResolver:       deps.AccessResolver,
+		UsernameResolver:     usernameResolver,
+		Config:               configProvider,
+		Publisher:            nil, // EventPublisher: no-op stub; Socket.io handles realtime
+		Recommender:          buildABSRecommender(deps),
+		ProgressStore:        progressStore,
+		PlaybackSessionStore: playbackSessionStore,
+		BookmarkStore:        bookmarkStore,
+		CollectionStore:      collectionStore,
+		PlaylistStore:        playlistStore,
+		SmartCollectionStore: smartCollectionStore,
+		RSSFeedStore:         rssFeedStore,
+		SocketIO:             socketServer,
+		NativeSessions:       deps.SessionMgr,
+		NativeSessionSyncer:  deps.SessionSyncer,
+		CoverResolver: func(ctx context.Context, path, variant string) string {
+			if deps.Detail == nil {
+				return ""
+			}
+			return deps.Detail.PresignImageURL(ctx, path, "poster", variant)
+		},
+	})
+	// Keep the audiobook author materialized view fresh in the background so the
+	// /authors endpoint stays a fast indexed read as scans add authors. The
+	// migration populates it initially; this refreshes it on a cadence.
+	if deps.Pool != nil && mediaStore != nil {
+		go func() {
+			ctx := context.Background()
+			time.Sleep(30 * time.Second) // let startup settle before the first refresh
+			if err := mediaStore.RefreshAuthorCounts(ctx); err != nil {
+				slog.Warn("abs: initial author-count refresh failed", "err", err)
+			}
+			ticker := time.NewTicker(15 * time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				if err := mediaStore.RefreshAuthorCounts(ctx); err != nil {
+					slog.Warn("abs: author-count refresh failed", "err", err)
+				}
+			}
+		}()
+	}
+
+	s.ABSHandler = h
+	return h
+}
+
+// buildABSRecommender returns the abs.Recommender adapter when at least one
+// of its data sources is available. Nil result means /items/{id}/similar
+// keeps returning an empty list (the route's documented degradation path).
+func buildABSRecommender(deps ABSHandlerDeps) abs.Recommender {
+	if deps.Pool == nil && deps.Recs == nil {
+		return nil
+	}
+	return &ABSRecommender{Pool: deps.Pool, Recs: deps.Recs}
+}
+
+// ABSCompatEnabled reports whether the Audiobookshelf compatibility listener
+// should be started. Native audiobook libraries intentionally do not read this
+// setting.
+func (s *Service) ABSCompatEnabled(ctx context.Context) (bool, error) {
+	if s == nil || s.settings == nil {
+		return false, nil
+	}
+	value, err := s.settings.GetString(ctx, "audiobookshelf_compat.enabled")
+	if err != nil {
+		return false, fmt.Errorf("read audiobookshelf_compat.enabled: %w", err)
+	}
+	return value == "true", nil
+}

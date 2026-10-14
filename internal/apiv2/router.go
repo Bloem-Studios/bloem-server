@@ -190,6 +190,7 @@ type Dependencies struct {
 	AdminDashboardInsights        AdminDashboardInsightsService
 	AdminNodesRead                AdminNodesReadService
 	AdminNodeCommands             AdminNodeCommandsService
+	AdminNodeDrain                AdminNodeDrainService
 	AdminNodeReload               AdminNodeReloadService
 	AdminNodeConfiguration        AdminNodeConfigurationService
 	AdminServerStatus             AdminServerStatusService
@@ -264,8 +265,10 @@ type Dependencies struct {
 	// HouseholdProfileGate run it after viewer access and fail closed when
 	// it is not wired.
 	HouseholdProfile func(http.Handler) http.Handler
-	// ActingAdmin is the admin-through-primary-profile gate.
-	ActingAdmin func(http.Handler) http.Handler
+	// ActingAdmin decides admin-through-primary-profile. The acting_admin
+	// class gate enforces it, and operations outside that class that widen
+	// what an admin sees read it through apimw.ActingAdmin.
+	ActingAdmin apimw.ActingAdminDecider
 	// PermissionGates maps a permission name (policy.Permission* constants)
 	// to the gate that enforces it.
 	PermissionGates map[string]func(http.Handler) http.Handler
@@ -417,7 +420,6 @@ type Dependencies struct {
 	ArtworkBackend                     string
 	ArtworkSigner                      *artworkurl.Signer
 	ArtworkRepair                      ArtworkRepairService
-	ThemeOverrides                     ThemeOverrideService
 	AdminInviteCodes                   AdminInviteCodeService
 	Invitations                        InvitationService
 	PasswordResets                     PasswordResetService
@@ -490,6 +492,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	r.Use(joinPreconditionFields)
 	r.Use(rejectMalformedDeviceHeader)
 	r.Use(withRequest)
+	if deps.ActingAdmin != nil {
+		r.Use(apimw.ProvideActingAdmin(deps.ActingAdmin))
+	}
 	r.NotFound(notFound)
 
 	api := humachi.New(r, humaConfig())
@@ -1086,6 +1091,7 @@ type CatalogBrowseService interface {
 	Filters(ctx context.Context, v handlers.ItemViewer, req mediacatalog.CatalogRequest, includeTechnical bool) (handlers.CatalogFiltersView, error)
 	SearchFacet(ctx context.Context, v handlers.ItemViewer, req mediacatalog.CatalogRequest, facet, q string, limit int) (handlers.CatalogFacetSearchView, error)
 	AudiobookGroups(ctx context.Context, v handlers.ItemViewer, query mediacatalog.AudiobookGroupsQuery) (handlers.AudiobookGroupsView, error)
+	LetterIndex(ctx context.Context, v handlers.ItemViewer, req mediacatalog.CatalogRequest) (mediacatalog.LetterIndex, error)
 }
 
 // CatalogItemService is the slice of *handlers.CatalogResourceHandler the

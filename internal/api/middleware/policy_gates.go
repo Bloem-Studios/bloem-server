@@ -31,14 +31,10 @@ type PermissionDecider interface {
 // NewPolicyActingAdminMiddleware enforces the acting-admin gate through the
 // policy PDP while preserving RequireActingAdmin's response contract.
 func NewPolicyActingAdminMiddleware(pdp PermissionDecider, primaryChecker PrimaryProfileChecker, household HouseholdProfileRequirement) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			claims := GetClaims(r.Context())
-			if claims == nil {
-				writeUnauthorized(w, "Authentication required", ReasonAuthenticationRequired)
-				return
-			}
+	return RequireActingAdminWith(NewPolicyActingAdminDecider(pdp, primaryChecker, household))
+}
 
+<<<<<<< HEAD
 			if claims.Role != "admin" {
 				writeForbidden(w, "Admin access required")
 				return
@@ -83,7 +79,37 @@ func NewPolicyActingAdminMiddleware(pdp PermissionDecider, primaryChecker Primar
 			}
 
 			next.ServeHTTP(w, r)
+=======
+// NewPolicyActingAdminDecider is the acting-admin decision evaluated by the
+// policy PDP, the one production wires into both the admin route gate and
+// ProvideActingAdmin.
+func NewPolicyActingAdminDecider(pdp PermissionDecider, primaryChecker PrimaryProfileChecker, household HouseholdProfileRequirement) ActingAdminDecider {
+	return func(ctx context.Context, in ActingAdminRequest) (bool, error) {
+		facts, err := resolveActingAdminFactsFor(ctx, in.Claims, in.ProfileID, primaryChecker, household)
+		if err != nil {
+			return false, err
+		}
+		if pdp == nil {
+			return false, errMissingPolicyDecider{}
+		}
+		decision, _, err := pdp.CheckPermission(ctx, policy.PermissionInput{
+			SchemaVersion:            1,
+			UserID:                   in.Claims.UserID,
+			Role:                     in.Claims.Role,
+			UserEnabled:              true,
+			Permission:               policy.PermissionActingAdmin,
+			DeclaredProfileID:        facts.declaredProfileID,
+			ActingAsPrimary:          facts.actingAsPrimary,
+			HouseholdRequiresProfile: facts.householdRequiresProfile,
+			RequestTime:              policyRequestTime(),
+			DeviceID:                 in.DeviceID,
+			ClientIP:                 clientip.FromContext(ctx),
+>>>>>>> upstream/main
 		})
+		if err != nil {
+			return false, err
+		}
+		return decision.Allowed, nil
 	}
 }
 
@@ -340,18 +366,21 @@ type actingAdminFacts struct {
 // a declared profile (profileLessAdminRefused); API keys and non-admins never
 // pay that lookup.
 func resolveActingAdminFacts(r *http.Request, claims *auth.Claims, checkPrimary PrimaryProfileChecker, household HouseholdProfileRequirement) (actingAdminFacts, error) {
-	profileID := declaredProfileID(r)
+	return resolveActingAdminFactsFor(r.Context(), claims, declaredProfileID(r), checkPrimary, household)
+}
+
+func resolveActingAdminFactsFor(ctx context.Context, claims *auth.Claims, profileID string, checkPrimary PrimaryProfileChecker, household HouseholdProfileRequirement) (actingAdminFacts, error) {
 	if profileID == "" {
 		if claims == nil || claims.Role != "admin" {
 			return actingAdminFacts{}, nil
 		}
-		refused, err := profileLessAdminRefused(r.Context(), claims, household)
+		refused, err := profileLessAdminRefused(ctx, claims, household)
 		return actingAdminFacts{householdRequiresProfile: refused}, err
 	}
 	if checkPrimary == nil {
 		return actingAdminFacts{declaredProfileID: profileID, actingAsPrimary: true}, nil
 	}
-	isPrimary, found, err := checkPrimary(r.Context(), claims.UserID, profileID)
+	isPrimary, found, err := checkPrimary(ctx, claims.UserID, profileID)
 	if err != nil {
 		return actingAdminFacts{declaredProfileID: profileID}, err
 	}

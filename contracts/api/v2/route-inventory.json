@@ -83,7 +83,8 @@
         "middleware.Recoverer",
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]"
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)"
       ]
     },
     {
@@ -170,10 +171,84 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "authMiddleware.RequireAuth"
       ]
     },
     {
+<<<<<<< HEAD
+=======
+      "id": 3,
+      "middleware": [
+        "apimw.RequestID",
+        "clientip.Middleware(deps.ClientIPResolver) [when deps.ClientIPResolver != nil]",
+        "netaccess.Middleware(deps.NetworkAccess.Registry) [when deps.NetworkAccess != nil]",
+        "apimw.RequestLogger(deps.NodeID)",
+        "middleware.Recoverer",
+        "apimw.Metrics",
+        "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
+        "authMiddleware.RequireAuth",
+        "demoGuard.Guard [when demoGuard != nil]"
+      ]
+    },
+    {
+      "id": 4,
+      "middleware": [
+        "apimw.RequestID",
+        "clientip.Middleware(deps.ClientIPResolver) [when deps.ClientIPResolver != nil]",
+        "netaccess.Middleware(deps.NetworkAccess.Registry) [when deps.NetworkAccess != nil]",
+        "apimw.RequestLogger(deps.NodeID)",
+        "middleware.Recoverer",
+        "apimw.Metrics",
+        "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
+        "authMiddleware.RequireAuth",
+        "demoGuard.Guard [when demoGuard != nil]",
+        "deps.RateLimitMW.Handler [when deps.RateLimitMW != nil]"
+      ]
+    },
+    {
+      "id": 5,
+      "middleware": [
+        "apimw.RequestID",
+        "clientip.Middleware(deps.ClientIPResolver) [when deps.ClientIPResolver != nil]",
+        "netaccess.Middleware(deps.NetworkAccess.Registry) [when deps.NetworkAccess != nil]",
+        "apimw.RequestLogger(deps.NodeID)",
+        "middleware.Recoverer",
+        "apimw.Metrics",
+        "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
+        "authMiddleware.RequireAuth",
+        "demoGuard.Guard [when demoGuard != nil]",
+        "deps.RateLimitMW.Handler [when deps.RateLimitMW != nil]",
+        "viewerAccessMiddleware.RequireViewerAccess [when viewerAccessMiddleware != nil]"
+      ]
+    },
+    {
+      "id": 6,
+      "middleware": [
+        "apimw.RequestID",
+        "clientip.Middleware(deps.ClientIPResolver) [when deps.ClientIPResolver != nil]",
+        "netaccess.Middleware(deps.NetworkAccess.Registry) [when deps.NetworkAccess != nil]",
+        "apimw.RequestLogger(deps.NodeID)",
+        "middleware.Recoverer",
+        "apimw.Metrics",
+        "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
+        "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
+        "authMiddleware.RequireAuth",
+        "demoGuard.Guard [when demoGuard != nil]",
+        "deps.RateLimitMW.Handler [when deps.RateLimitMW != nil]",
+        "viewerAccessMiddleware.RequireViewerAccess [when viewerAccessMiddleware != nil]",
+        "apimw.RequireProfile"
+      ]
+    },
+    {
+>>>>>>> upstream/main
       "id": 7,
       "middleware": [
         "captureNativeVideoRequest",
@@ -187,6 +262,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "authMiddleware.RequireAuth",
         "apimw.RejectDirectProfileSession"
       ]
@@ -205,6 +281,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "authMiddleware.RequireAuth",
         "apimw.RejectDirectProfileSession",
         "bloemAccountProfileViewer(tenantMiddleware, viewerAccessMiddleware)"
@@ -224,6 +301,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "authMiddleware.RequireAuth",
         "demoGuard.Guard [when demoGuard != nil]",
         "apimw.RejectDirectProfileSession"
@@ -243,6 +321,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "authMiddleware.RequireAuth",
         "demoGuard.Guard [when demoGuard != nil]",
         "deps.RateLimitMW.Handler [when deps.RateLimitMW != nil]",
@@ -263,6 +342,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "authMiddleware.RequireAuth",
         "deviceDecisionMiddlewares",
         "apimw.RejectDirectProfileSession"
@@ -282,6 +362,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "authMiddleware.RequireAuth",
         "optionalLegacyTenant(tenantMiddleware)",
         "optionalProfileViewerAccess(viewerAccessMiddleware)"
@@ -301,6 +382,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "authMiddleware.RequireAuth",
         "optionalLegacyTenant(tenantMiddleware)",
         "viewerAccessMiddleware.RequireViewerAccess",
@@ -321,6 +403,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "authMiddleware.RequireAuth",
         "passwordChangeMiddlewares"
       ]
@@ -339,6 +422,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "authMiddleware.RequireAuth",
         "requireActingAdmin"
       ]
@@ -357,7 +441,11 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+<<<<<<< HEAD
         "authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret) [when deps.Config != nil]",
+=======
+        "apimw.ProvideActingAdmin(actingAdmin)",
+>>>>>>> upstream/main
         "authMiddleware.RequireAuth",
         "optionalLegacyTenant(tenantMiddleware)",
         "demoGuard.Guard [when demoGuard != nil]",
@@ -725,6 +813,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "deps.RateLimitMW.AuthEndpointHandler(\"autoscan_webhook\")"
       ]
     },
@@ -742,6 +831,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "deps.RateLimitMW.AuthEndpointHandler(\"device_lookup\")"
       ]
     },
@@ -759,6 +849,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "deps.RateLimitMW.AuthEndpointHandler(\"device_poll\")"
       ]
     },
@@ -776,6 +867,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "deps.RateLimitMW.AuthEndpointHandler(\"device_start\")"
       ]
     },
@@ -793,6 +885,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "deps.RateLimitMW.AuthEndpointHandler(\"invitation\")"
       ]
     },
@@ -810,6 +903,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "deps.RateLimitMW.AuthEndpointHandler(\"login\")"
       ]
     },
@@ -844,6 +938,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "deps.RateLimitMW.AuthEndpointHandler(\"setup\")"
       ]
     },
@@ -861,6 +956,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "deps.RateLimitMW.AuthEndpointHandler(\"signup\")"
       ]
     },
@@ -878,6 +974,7 @@
         "apimw.Metrics",
         "httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub) [when deps.ActivityLogWriter != nil]",
+        "apimw.ProvideActingAdmin(actingAdmin)",
         "displayMiddlewares"
       ]
     },

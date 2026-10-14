@@ -894,6 +894,19 @@ Three shapes exist:
 position, `can_seek_anywhere` is true when the runtime is known, and
 `seek_restoration` is `player_position` — the client seeks locally.
 
+Source positions count from the start of the file: the container's first
+timestamp is position 0. Most files start at timestamp zero, but MPEG-TS
+recordings and files remuxed from them can start seconds (or more) in. Plan positions, playlist time,
+subtitle tracks, and subtitle windows (`?position=&duration=`) are all on this
+container-relative timeline. Encoded HLS segments can still carry the source's
+own timestamps, so place them by playlist time, not by their PTS.
+A direct-play engine may keep the container's own timestamps instead:
+Chrome does for Matroska, reporting `currentTime` equal to the container start
+time at its first frame. Such a client must subtract that origin as part of its
+timeline offset, or subtitles, seeks, and reported positions drift by it. The
+web player reads the origin from `currentTime` at `loadedmetadata`, before it
+seeks to `player_start`.
+
 **Copy remux over HLS** is served from FFmpeg's live, still-growing playlist,
 which starts at the preceding keyframe selected by FFmpeg's input seek.
 For HEVC HDR copy packaging, the frozen plan also controls the sample entry: a
@@ -994,11 +1007,15 @@ fallback to another media version must remap the selected subtitle. It
 prefers a version with an equivalent track; when none has one, playback
 continues with subtitles off and the plan carries `subtitle_track_unavailable`
 rather than ending in a terminal. A selection the effective file cannot honor
-on a direct start degrades the same way. A replan that would have to drop the
+on a direct start degrades the same way. When the file being planned was
+refused with `subtitle_conversion_unsupported` and the only other versions that
+play drop the subtitle, the server plays that file with subtitles off instead
+of moving to one of them, provided that plan can run; when no other version
+plays, the terminal stands. A replan that would have to drop the
 subtitle to return to the requested version stays on the version already
 playing, unless quality `original` pins the requested version; the requested
-version remains a fallback without the subtitle if no version that keeps it can
-play. Malformed
+version remains a fallback without the subtitle, ahead of any other version
+without it, if no version that keeps it can play. Malformed
 selections (a track identity that does not parse or names another file, or a
 negative index) are still rejected.
 
@@ -1199,6 +1216,20 @@ route, so a direct-play viewer would come back on a transcode. The web player
    the connection was lost and offers to try again. Leaving the player or
    starting other playback cancels the cycle.
 
+Keeping the current route eligible does not mean keeping a dead node. Every
+replan except `seek_reanchor` first asks the session's transcode node and egress
+proxy whether they answer, with a two-second bound. A node that does not answer
+is left out of that replan's plan and route: its capabilities don't count, its
+running transport is not reused even by a `track_change` that changes nothing,
+and the replacement starts elsewhere. A `failure_recovery` or
+`seek_failure_recovery` from such a node doesn't exclude the failed plan's key
+either: the node failed, not the recipe, so the same recipe can run on another
+node. If the dead node was the only proxy a progressive remux could use, the
+remux has no route left and is planned as HLS on a transcode node instead. The
+pool's health flag cannot be trusted for this: it changes only at the next health
+sweep, up to 30 seconds after the node went away, and until then the node still
+looks healthy.
+
 A network failure before a transport's own first frame stays on the ordinary
 failure path, even when an earlier transport of the same viewing played: the
 new route may be one this client cannot reach. If that recovery then cannot
@@ -1240,7 +1271,7 @@ The plan will play, but something the user might notice was given up.
 | `bandwidth_cap_applied` | `bandwidth_cap_kbps` limited the selection |
 | `evidence_insufficient_for_direct` | Evidence tier blocked a direct route |
 | `audio_track_unavailable` | The selected audio track is not on the effective file; its default track plays |
-| `subtitle_track_unavailable` | The selected subtitle has no equivalent on the effective file; playback starts with subtitles off |
+| `subtitle_track_unavailable` | The selected subtitle has no equivalent on the effective file, or is on it but cannot be shown there; playback continues with subtitles off. `message` says which |
 
 ### 7.3 Terminal reasons
 

@@ -141,9 +141,37 @@ func TestGroupStoreResolvePolicyDB(t *testing.T) {
 	if policy == nil || !policy.TranscodeAllowed {
 		t.Fatalf("policy after update = %#v, want transcode_allowed true", policy)
 	}
+<<<<<<< HEAD
 	accountGroup, err := store.GetForAccount(ctx, memberID, group.ID)
 	if err != nil || accountGroup.ID != group.ID || accountGroup.MaxProfiles != 2 {
 		t.Fatalf("GetForAccount() = %#v, %v; want group %d", accountGroup, err, group.ID)
+=======
+	if group.MaxProfiles != DefaultMaxProfiles {
+		t.Fatalf("new group profile limit = %d, want %d", group.MaxProfiles, DefaultMaxProfiles)
+	}
+	before, err := store.Get(ctx, group.ID)
+	if err != nil {
+		t.Fatalf("Get() error: %v", err)
+	}
+	maxProfiles := 2
+	updated, err := store.Update(ctx, group.ID, UpdateGroupInput{MaxProfiles: &maxProfiles})
+	if err != nil {
+		t.Fatalf("Update(max_profiles) error: %v", err)
+	}
+	if updated.MaxProfiles != 2 || updated.Revision == before.Revision {
+		t.Fatalf("group after profile limit update = limit %d revision %d, want 2 and a revision after %d", updated.MaxProfiles, updated.Revision, before.Revision)
+	}
+	policy, err = store.GetPolicyForUser(ctx, memberID)
+	if err != nil {
+		t.Fatalf("GetPolicyForUser(after profile limit update) error: %v", err)
+	}
+	if policy == nil || policy.MaxProfiles != 2 {
+		t.Fatalf("policy after profile limit update = %#v, want max_profiles 2", policy)
+	}
+	policy, err = store.GetPolicyForUser(ctx, noGroupID)
+	if err != nil {
+		t.Fatalf("GetPolicyForUser(no group) error: %v", err)
+>>>>>>> upstream/main
 	}
 	policy, err = store.ResolvePolicy(ctx, GroupSubject{
 		OrganizationID: organizationID,

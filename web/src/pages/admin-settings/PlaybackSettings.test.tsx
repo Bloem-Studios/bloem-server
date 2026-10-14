@@ -132,6 +132,7 @@ describe("PlaybackSettings layout", () => {
     expect(keys).toContain("playback.allow_hevc_encoding");
     expect(keys).toContain("playback.routing.video_transcode_egress");
     expect(keys).toContain("playback.watched_threshold");
+    expect(keys).toContain("playback.copy_keyframe_playlist");
     expect(keys.some((key) => key.startsWith("download."))).toBe(false);
     // Hidden tier: still saved and readable through the API, no UI.
     expect(keys).not.toContain("playback.chapter_thumbnail_node_capacity");
@@ -393,10 +394,14 @@ describe("PlaybackSettings seek-preview node capability", () => {
   it.each([
     [{ capabilities: undefined }, true],
     [{ capabilities: { transport_features: ["chapter_extract_v1"] } }, true],
-    [{ capabilities: { transport_features: ["trickplay_extract_v1"] } }, false],
+    [{ capabilities: { transport_features: ["trickplay_extract_v1"] } }, true],
+    [
+      { capabilities: { transport_features: ["trickplay_extract_v1", "trickplay_extract_v2"] } },
+      false,
+    ],
     [
       {
-        capabilities: { transport_features: ["trickplay_extract_v1"] },
+        capabilities: { transport_features: ["trickplay_extract_v1", "trickplay_extract_v2"] },
         advertised_capabilities_hash: "",
         capabilities_hash: "snapshot",
       },
@@ -404,7 +409,7 @@ describe("PlaybackSettings seek-preview node capability", () => {
     ],
     [
       {
-        capabilities: { transport_features: ["trickplay_extract_v1"] },
+        capabilities: { transport_features: ["trickplay_extract_v1", "trickplay_extract_v2"] },
         advertised_capabilities_hash: "new-snapshot",
         capabilities_hash: "old-snapshot",
       },
@@ -412,14 +417,14 @@ describe("PlaybackSettings seek-preview node capability", () => {
     ],
     [
       {
-        capabilities: { transport_features: ["trickplay_extract_v1"] },
+        capabilities: { transport_features: ["trickplay_extract_v1", "trickplay_extract_v2"] },
         advertised_capabilities_hash: "snapshot",
       },
       true,
     ],
     [
       {
-        capabilities: { transport_features: ["trickplay_extract_v1"] },
+        capabilities: { transport_features: ["trickplay_extract_v1", "trickplay_extract_v2"] },
         advertised_capabilities_hash: "snapshot",
         capabilities_hash: "snapshot",
       },
@@ -441,7 +446,7 @@ describe("PlaybackSettings seek-preview node capability", () => {
     useAdminNodesMock.mockReturnValue({
       data: [
         transcodeNode({
-          capabilities: { transport_features: ["trickplay_extract_v1"] },
+          capabilities: { transport_features: ["trickplay_extract_v1", "trickplay_extract_v2"] },
           advertised_capabilities_hash: "new-snapshot",
           capabilities_hash: "old-snapshot",
         }),

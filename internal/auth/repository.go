@@ -201,8 +201,15 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 	// organization_memberships, so they are inserted there afterwards. A nil
 	// pointer still stores NULL, which means "inherit from the access group".
 	cols := []string{
+<<<<<<< HEAD
 		"email", "username", "password_hash", "local_password_login_enabled", "password_change_required", "role",
 		"max_remote_stream_bitrate_kbps", "max_local_stream_bitrate_kbps",
+=======
+		"email", "username", "password_hash", "local_password_login_enabled", "password_change_required", "role", "permissions",
+		"library_ids", "max_playback_quality", "max_streams", "max_transcodes", "max_remote_stream_bitrate_kbps", "max_local_stream_bitrate_kbps",
+		"transcode_allowed", "audio_transcode_allowed", "max_profiles", "download_allowed", "download_transcode_allowed",
+		"requests_allowed",
+>>>>>>> upstream/main
 	}
 	args := []any{
 		NormalizeEmail(input.Email),
@@ -227,16 +234,20 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 		input.MaxTranscodes,
 		input.TranscodeAllowed,
 		input.AudioTranscodeAllowed,
+		input.MaxProfiles,
 		input.DownloadAllowed,
 		input.DownloadTranscodeAllowed,
 		input.RequestsAllowed,
 	}
 
+<<<<<<< HEAD
 	// Optional columns: nil means use DB default.
 	if input.MaxProfiles != nil {
 		policyCols = append(policyCols, "max_profiles")
 		policyArgs = append(policyArgs, *input.MaxProfiles)
 	}
+=======
+>>>>>>> upstream/main
 	accessGroupID := input.AccessGroupID
 	if input.Role == models.RoleAdmin {
 		accessGroupID = nil
@@ -471,7 +482,7 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 		{column: "max_local_stream_bitrate_kbps", set: input.MaxLocalStreamBitrateKbps.Set, value: input.MaxLocalStreamBitrateKbps.Value},
 		{column: "transcode_allowed", set: input.TranscodeAllowed.Set, value: input.TranscodeAllowed.Value},
 		{column: "audio_transcode_allowed", set: input.AudioTranscodeAllowed.Set, value: input.AudioTranscodeAllowed.Value},
-		{column: "max_profiles", set: input.MaxProfiles != nil, value: input.MaxProfiles},
+		{column: "max_profiles", set: input.MaxProfiles.Set, value: input.MaxProfiles.Value},
 		{column: "download_allowed", set: input.DownloadAllowed.Set, value: input.DownloadAllowed.Value},
 		{column: "download_transcode_allowed", set: input.DownloadTranscodeAllowed.Set, value: input.DownloadTranscodeAllowed.Value},
 		{column: "requests_allowed", set: input.RequestsAllowed.Set, value: input.RequestsAllowed.Value},

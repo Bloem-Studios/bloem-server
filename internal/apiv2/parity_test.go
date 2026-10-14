@@ -39,12 +39,12 @@ type fakeSessions struct{ roles map[string]string }
 
 const storeDownSession = "s-store-down"
 
-func (f fakeSessions) ActiveSessionRole(_ context.Context, id string) (string, bool, error) {
+func (f fakeSessions) ActiveSession(_ context.Context, id string) (auth.SessionAuthority, bool, error) {
 	if id == storeDownSession {
-		return "", false, errors.New("checking session validity: dial tcp: connection refused")
+		return auth.SessionAuthority{}, false, errors.New("checking session validity: dial tcp: connection refused")
 	}
 	role, ok := f.roles[id]
-	return role, ok, nil
+	return auth.SessionAuthority{Role: role, Purpose: models.SessionPurposeAccount}, ok, nil
 }
 
 type fakeUsers struct{ users map[int]*models.User }
@@ -199,18 +199,22 @@ func parityDeps(demo bool) Dependencies {
 		}
 		return false, false, nil
 	}
+<<<<<<< HEAD
 	viewerAccess := apimw.NewViewerAccessMiddleware(fakeResolver{})
 	// Production wires a tenant-aware resolver so a stream-token-only
 	// request (no bearer claims, no tenant middleware) still resolves a real
 	// scope instead of RequireViewerAccess failing closed on every such
 	// request; fakeResolver ignores ctx entirely, so it stands in fine here.
 	viewerAccess.SetTokenResolver(fakeResolver{})
+=======
+	actingAdmin := apimw.NewActingAdminDecider(primary, nil)
+>>>>>>> upstream/main
 	return Dependencies{
 		CursorSecret:     []byte("synthetic-test-cursor-key"),
 		Auth:             fakeAuth(users),
 		ViewerAccess:     viewerAccess,
 		HouseholdProfile: apimw.NewHouseholdProfileGate(fakeHouseholds{}).Require,
-		ActingAdmin:      apimw.RequireActingAdmin(primary, nil),
+		ActingAdmin:      actingAdmin,
 		PermissionGates: map[string]func(http.Handler) http.Handler{
 			"marker_edit": apimw.NewPermissionMiddleware(fakeUsers{users}, nil, primary, nil).RequireMarkerEdit,
 		},

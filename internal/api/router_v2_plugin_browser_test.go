@@ -63,6 +63,23 @@ func TestV2PluginBrowserLaunchPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+<<<<<<< HEAD
+=======
+	schema := fmt.Sprintf("plugin_browser_test_%d", time.Now().UnixNano())
+	cfg.ConnConfig.RuntimeParams["search_path"] = schema
+	pool, err := pgxpool.NewWithConfig(t.Context(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(t.Context(), "CREATE SCHEMA "+schema); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _, _ = pool.Exec(context.Background(), "DROP SCHEMA "+schema+" CASCADE") }()
+	if _, err := pool.Exec(t.Context(), `CREATE TABLE users (id int PRIMARY KEY, role text NOT NULL); INSERT INTO users(id,role) VALUES (1,'user'); CREATE TABLE auth_sessions (id text PRIMARY KEY, user_id int NOT NULL REFERENCES users(id), expires_at timestamptz, revoked_at timestamptz, purpose text NOT NULL DEFAULT 'account', bound_profile_id text); INSERT INTO auth_sessions(id,user_id,expires_at) VALUES ('browser-session',1,now()+interval '1 hour')`); err != nil {
+		t.Fatal(err)
+	}
+>>>>>>> upstream/main
 	sessions := auth.NewSessionRepository(pool)
 	if err := sessions.Create(t.Context(), models.AuthSession{
 		ID: "browser-session", UserID: user.ID, ExpiresAt: time.Now().Add(time.Hour),

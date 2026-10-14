@@ -109,9 +109,12 @@ function serverRoutes() {
     "GET /api/v2/auth/signup": { body: { enabled: false } },
     "GET /api/v2/capabilities/password-reset": { body: { revision: "r", state: "disabled" } },
     "GET /api/v2/theme/branding": { body: {} },
+<<<<<<< HEAD
     "GET /api/v1/theme/branding": { body: {} },
     "GET /api/bloem/v1/capabilities": { body: { features: {}, feature_tokens: [] } },
     "GET /api/v2/theme/admin-css": { body: {} },
+=======
+>>>>>>> upstream/main
     "GET /api/v2/account/me": { body: getCurrentUserOk },
     "GET /api/v2/profiles": { body: listProfilesOk },
     "GET /api/v2/settings/contract/capabilities": { body: getSettingsContractCapabilitiesOk },
@@ -200,12 +203,20 @@ describe("app boot request budget", () => {
     expect(screen.getByTestId("home"), log).toHaveTextContent("2 sections");
     // Includes public Bloem branding and capability discovery; no duplicate reads.
     expect(measureBoot(server.requests), log).toEqual({
+<<<<<<< HEAD
       requestsBeforeHomeLayout: 6,
+=======
+      requestsBeforeHomeLayout: 4,
+>>>>>>> upstream/main
       wavesBeforeHomeLayout: 1,
       unauthorized: 0,
       refreshes: 1,
       duplicateGets: 0,
+<<<<<<< HEAD
       total: 16,
+=======
+      total: 13,
+>>>>>>> upstream/main
     });
     // Home starts loading as soon as the token is back, beside the account read.
     const waveOf = (operation: string) =>
@@ -247,7 +258,11 @@ describe("app boot request budget", () => {
       duplicateGets: 0,
       // Includes the login page's public signup-status and password-reset
       // capability reads.
+<<<<<<< HEAD
       total: 8,
+=======
+      total: 6,
+>>>>>>> upstream/main
     });
     expect(storage.get(storage.KEYS.REFRESH_TOKEN)).toBeNull();
   });
@@ -436,7 +451,11 @@ describe("app boot request budget", () => {
       duplicateGets: 0,
       // Includes the login page's public signup-status and password-reset
       // capability reads.
+<<<<<<< HEAD
       total: 7,
+=======
+      total: 5,
+>>>>>>> upstream/main
     });
   });
 });
