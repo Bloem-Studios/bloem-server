@@ -87,3 +87,37 @@ func (s previewGateSessions) ActiveSessionAuthority(context.Context, string) (st
 func (s previewGateSessions) AccountPreviewOnly(context.Context, int) (bool, error) {
 	return s.preview, nil
 }
+
+type gateGuestSettings struct{}
+
+func (gateGuestSettings) PreviewGuestSettings(context.Context) (auth.PreviewGuestSettings, error) {
+	return auth.PreviewGuestSettings{Enabled: true, Host: "browse.example.test", AccountID: 1}, nil
+}
+
+func TestPreviewGateRefusesPersonalOperationsToGuests(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	serve := func(operationID string, method string) int {
+		r := httptest.NewRequest(http.MethodGet, "/x", nil)
+		r.Host = "browse.example.test"
+		r.Header.Set("Authorization", "Bearer t")
+		sessions := previewGateSessions{preview: true}
+		am := apimw.NewAuthMiddleware(fakeTokens{map[string]*auth.Claims{"t": {UserID: 1, Role: "user", SessionID: "s1", TokenType: auth.TokenTypeAccess, AuthMethod: method}}}, sessions, nil, nil)
+		am.SetPreviewPrincipals(sessions)
+		am.SetPreviewRouteGuard(func(*http.Request) bool { return true })
+		am.SetPreviewGuests(gateGuestSettings{}, nil)
+		w := httptest.NewRecorder()
+		am.RequireAuth(previewGate(operationID)(next)).ServeHTTP(w, r)
+		return w.Code
+	}
+	for _, op := range []string{"listSessions", "deleteSession", "approveDeviceLogin", "denyDeviceLogin", "getLoginSessionCapabilities"} {
+		if code := serve(op, auth.AuthMethodPreviewGuest); code != http.StatusForbidden {
+			t.Errorf("guest %s = %d, want 403", op, code)
+		}
+		if code := serve(op, ""); code != http.StatusNoContent {
+			t.Errorf("personal preview %s = %d, want 204", op, code)
+		}
+	}
+	if code := serve("getCatalogItem", auth.AuthMethodPreviewGuest); code != http.StatusNoContent {
+		t.Errorf("guest browse = %d", code)
+	}
+}

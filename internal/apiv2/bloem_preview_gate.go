@@ -58,7 +58,9 @@ func previewGate(operationID string) func(http.Handler) http.Handler {
 	access := previewOperations[operationID]
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if access != previewDenied || !apimw.IsPreviewPrincipal(r.Context()) {
+			ctx := r.Context()
+			guestRefused := access == previewPersonalOnly && apimw.IsPreviewGuest(ctx)
+			if !apimw.IsPreviewPrincipal(ctx) || (access != previewDenied && !guestRefused) {
 				next.ServeHTTP(w, r)
 				return
 			}
