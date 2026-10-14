@@ -407,3 +407,79 @@ func TestRenewalWaitsBehindPageLibraryLockDB(t *testing.T) {
 		t.Fatalf("renewal after the page: %v", err)
 	}
 }
+
+// Renewal stops before completion, so completion renews the lease for its
+// own work rather than racing what remains of the last renewal.
+func TestCompletionRenewsLeaseForItsWorkDB(t *testing.T) {
+	r, _, l := scopedFixture(t, "root")
+	lease := scopedBegin(t, r, l)
+	cp, _, err := r.NextDirectory(t.Context(), lease)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = r.ApplyPage(t.Context(), lease, cp, &storagev1.ListResponse{Entries: books("book"), Complete: true}, nil); err != nil {
+		t.Fatal(err)
+	}
+	execSQL(t, r.pool, `UPDATE bloem_storage_scan_runs SET lease_until=clock_timestamp()+interval '1 second' WHERE id=$1`, lease.RunID)
+	slow := func(ctx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `SELECT pg_sleep(1.5)`)
+		return err
+	}
+	if err = r.CompleteAuthorized(t.Context(), lease, func(context.Context, pgx.Tx) error { return nil }, slow); err != nil {
+		t.Fatalf("completion outlasting the prior renewal failed: %v", err)
+	}
+}
+
+// Completing an unchanged location rewrites no membership or entry.
+func TestUnchangedCompletionRewritesNothingDB(t *testing.T) {
+	r, _, l := scopedFixture(t, "root")
+	execSQL(t, r.pool, `CREATE TABLE test_completion_writes(n bigint NOT NULL)`)
+	execSQL(t, r.pool, `INSERT INTO test_completion_writes VALUES(0)`)
+	execSQL(t, r.pool, `CREATE FUNCTION test_count_completion_write() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN UPDATE test_completion_writes SET n=n+1; RETURN NULL; END $$`)
+	execSQL(t, r.pool, `CREATE TRIGGER test_count_completion_write AFTER INSERT OR UPDATE ON bloem_storage_file_roots FOR EACH ROW EXECUTE FUNCTION test_count_completion_write()`)
+	execSQL(t, r.pool, `CREATE TRIGGER test_count_completion_write AFTER UPDATE ON bloem_storage_location_entries FOR EACH ROW EXECUTE FUNCTION test_count_completion_write()`)
+	listing := &scriptedListing{full: map[string][][]*storagev1.Entry{
+		"root": {page(dirEntry("sub"), bookEntry("r1")), books("r2", "r3")},
+		"sub":  {books("s1", "s2")},
+	}}
+	client := providerClient(t, listing.list)
+	var calls int
+	publish := scopedPublisher(t, l, &calls)
+	writes := func() int {
+		var n int
+		if err := r.pool.QueryRow(t.Context(), `SELECT n FROM test_completion_writes`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	for round := range 2 {
+		lease := scopedBegin(t, r, l)
+		for {
+			cp, more, err := r.NextDirectory(t.Context(), lease)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !more {
+				break
+			}
+			listed, err := r.FetchPage(t.Context(), lease, cp, client)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = r.ApplyPage(t.Context(), lease, cp, listed, publish); err != nil {
+				t.Fatal(err)
+			}
+		}
+		before := writes()
+		if err := r.Complete(t.Context(), lease); err != nil {
+			t.Fatal(err)
+		}
+		if delta := writes() - before; round == 1 && delta != 0 {
+			t.Fatalf("unchanged completion rewrote %d rows", delta)
+		}
+	}
+	var members int
+	if err := r.pool.QueryRow(t.Context(), `SELECT count(*) FROM bloem_storage_file_roots WHERE location_id=$1 AND enabled`, l.ID).Scan(&members); err != nil || members != 5 {
+		t.Fatalf("memberships=%d err=%v", members, err)
+	}
+}

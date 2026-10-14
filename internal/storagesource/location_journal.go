@@ -304,6 +304,14 @@ const completedLocationReachSQL = `WITH RECURSIVE reach(directory_id,root_id) AS
  WHERE x.configuration_revision=$2
 ) `
 
+// completedMembershipSQL selects each file under every root the completed
+// graph reaches.
+const completedMembershipSQL = `SELECT DISTINCT f.media_file_id,r.root_id FROM reach r
+ JOIN bloem_storage_location_edges e ON e.location_id=$1 AND e.parent_directory_id=r.directory_id
+ JOIN bloem_storage_file_refs f ON f.location_id=e.location_id AND f.entry_id=e.entry_id
+ JOIN bloem_storage_location_entries x ON x.location_id=f.location_id AND x.entry_id=f.entry_id AND x.kind=1 AND x.revision=f.revision AND x.configuration_revision=f.configuration_revision
+ WHERE f.configuration_revision=$2`
+
 func reconcileLocationTx(ctx context.Context, tx pgx.Tx, lease Lease) (int, error) {
 	// Negative evidence from an older configuration or selection cannot confirm
 	// absence under this retained authority. Expired run history is conservative.
@@ -327,21 +335,28 @@ func reconcileLocationTx(ctx context.Context, tx pgx.Tx, lease Lease) (int, erro
  AND NOT EXISTS(SELECT 1 FROM bloem_storage_scan_directory_entries x WHERE x.run_id=$2 AND x.directory_id=e.parent_directory_id AND x.entry_id=e.entry_id AND NOT x.removed)`, lease.LocationID, lease.RunID); err != nil {
 		return 0, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE bloem_storage_file_roots SET enabled=false WHERE location_id=$1`, lease.LocationID); err != nil {
+	// Disable the memberships the completed graph no longer reaches, then
+	// publish the reachable ones that are missing or disabled. The result is
+	// the reachable set exactly, as disabling every membership and enabling
+	// the reachable ones would leave it, without rewriting unchanged rows.
+	args := []any{lease.LocationID, lease.ConfigurationRevision}
+	if _, err := tx.Exec(ctx, completedLocationReachSQL+`, reachable AS (`+completedMembershipSQL+`)
+ UPDATE bloem_storage_file_roots m SET enabled=false WHERE m.location_id=$1 AND m.enabled
+ AND NOT EXISTS(SELECT 1 FROM reachable v WHERE v.media_file_id=m.media_file_id AND v.root_id=m.root_id)`, args...); err != nil {
 		return 0, err
 	}
 	if _, err := tx.Exec(ctx, completedLocationReachSQL+`INSERT INTO bloem_storage_file_roots(location_id,media_file_id,root_id)
- SELECT DISTINCT $1,f.media_file_id,r.root_id FROM reach r
- JOIN bloem_storage_location_edges e ON e.location_id=$1 AND e.parent_directory_id=r.directory_id
- JOIN bloem_storage_file_refs f ON f.location_id=e.location_id AND f.entry_id=e.entry_id
- JOIN bloem_storage_location_entries x ON x.location_id=f.location_id AND x.entry_id=f.entry_id AND x.kind=1 AND x.revision=f.revision AND x.configuration_revision=f.configuration_revision
- WHERE f.configuration_revision=$2
- ON CONFLICT(location_id,media_file_id,root_id) DO UPDATE SET enabled=true`, lease.LocationID, lease.ConfigurationRevision); err != nil {
+ SELECT $1::uuid,v.media_file_id,v.root_id FROM (`+completedMembershipSQL+`) v
+ WHERE NOT EXISTS(SELECT 1 FROM bloem_storage_file_roots m WHERE m.location_id=$1 AND m.media_file_id=v.media_file_id AND m.root_id=v.root_id AND m.enabled)
+ ON CONFLICT(location_id,media_file_id,root_id) DO UPDATE SET enabled=true`, args...); err != nil {
 		return 0, err
 	}
-	if _, err := tx.Exec(ctx, completedLocationReachSQL+`UPDATE bloem_storage_location_entries e SET absence_confirmed_at=CASE WHEN EXISTS(
- SELECT 1 FROM bloem_storage_location_edges edge JOIN reach r ON r.directory_id=edge.parent_directory_id
- WHERE edge.location_id=e.location_id AND edge.entry_id=e.entry_id) THEN NULL ELSE clock_timestamp() END WHERE e.location_id=$1`, lease.LocationID, lease.ConfigurationRevision); err != nil {
+	// Entries still reached keep a NULL confirmation; every absent entry is
+	// stamped with this completion. Present entries already NULL are skipped.
+	const reached = `EXISTS(SELECT 1 FROM bloem_storage_location_edges edge JOIN reach r ON r.directory_id=edge.parent_directory_id
+ WHERE edge.location_id=e.location_id AND edge.entry_id=e.entry_id)`
+	if _, err := tx.Exec(ctx, completedLocationReachSQL+`UPDATE bloem_storage_location_entries e SET absence_confirmed_at=CASE WHEN `+reached+` THEN NULL ELSE clock_timestamp() END
+ WHERE e.location_id=$1 AND (e.absence_confirmed_at IS NOT NULL OR NOT `+reached+`)`, args...); err != nil {
 		return 0, err
 	}
 	tag, err := tx.Exec(ctx, `UPDATE media_files f SET missing_since=COALESCE(f.missing_since,clock_timestamp()) FROM bloem_storage_file_refs x

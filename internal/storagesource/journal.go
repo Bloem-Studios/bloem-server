@@ -162,10 +162,8 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 	// The page retained the scan's authority and verified its lease under the
 	// locks a renewal takes, so its commit renews the lease. Page work holding
 	// the library lock therefore cannot starve the lease of renewals.
-	if lease.TTL > 0 {
-		if _, err = tx.Exec(ctx, `UPDATE bloem_storage_scan_runs SET lease_until=GREATEST(lease_until,clock_timestamp()+($2::bigint*interval '1 millisecond')) WHERE id=$1`, lease.RunID, lease.TTL.Milliseconds()); err != nil {
-			return err
-		}
+	if err = renewLeaseTx(ctx, tx, lease); err != nil {
+		return err
 	}
 	return tx.Commit(ctx)
 }

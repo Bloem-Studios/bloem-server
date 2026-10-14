@@ -198,6 +198,18 @@ func verifyLease(ctx context.Context, tx pgx.Tx, lease Lease) error {
 	return nil
 }
 
+// renewLeaseTx renews the lease from a transaction that has verified it after
+// retaining the scan's authority, the checks and locks a renewal makes. It
+// commits or rolls back with that transaction. A lease without a TTL is left
+// to Renew.
+func renewLeaseTx(ctx context.Context, tx pgx.Tx, lease Lease) error {
+	if lease.TTL <= 0 {
+		return nil
+	}
+	_, err := tx.Exec(ctx, `UPDATE bloem_storage_scan_runs SET lease_until=GREATEST(lease_until,clock_timestamp()+($2::bigint*interval '1 millisecond')) WHERE id=$1`, lease.RunID, lease.TTL.Milliseconds())
+	return err
+}
+
 // Release ends this owner's claim when its scan stops without completing, so a
 // retry resumes the journal at once instead of failing as a stale lease until
 // the claim expires. Only this exact owner and epoch of a running run is
@@ -279,6 +291,11 @@ func (r *Repository) complete(ctx context.Context, lease Lease, authorize Comple
 		}
 	}
 	if err = verifyLease(ctx, tx, lease); err != nil {
+		return err
+	}
+	// Renewal stops before completion, so completion renews the lease for its
+	// own work. The final check below still fails a completion that outlasts it.
+	if err = renewLeaseTx(ctx, tx, lease); err != nil {
 		return err
 	}
 	var pending bool
