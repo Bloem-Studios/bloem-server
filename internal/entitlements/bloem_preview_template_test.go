@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 )
@@ -107,4 +108,23 @@ func TestPreviewCohortCannotBeDerived(t *testing.T) {
 	require.NoError(t, err)
 	_, _, err = fixture.store.DeriveCohortInTx(fixture.ctx, tx, fixture.organizationID, parent.ID, "Loosened preview "+uuid.NewString(), entitlements.PolicyPatch{}, fixture.actorID)
 	require.ErrorIs(t, err, entitlements.ErrProtectedTemplate)
+}
+
+func TestPreviewMembershipResolvesToAPreviewGroupPolicy(t *testing.T) {
+	ctx, pool, store := entitlementTestStore(t)
+	var organizationID uuid.UUID
+	var defaultGroupID int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT o.id,g.id FROM organizations o JOIN access_groups g ON g.organization_id=o.id AND g.is_default WHERE o.is_default`).Scan(&organizationID, &defaultGroupID))
+	accountID := insertDirectEntitlementAccount(t, ctx, pool, organizationID, defaultGroupID, "preview-provider")
+	actorID := insertEntitlementActor(t, ctx, pool)
+
+	before, err := access.NewGroupStore(pool).GetPolicyForUser(ctx, accountID)
+	require.NoError(t, err)
+	require.False(t, before != nil && before.PreviewOnly, "a standard member resolved to preview")
+
+	_, err = store.ApplyDefaultAccountTemplate(ctx, actorID, accountID, accesspolicy.PreviewTemplateKey, 1, false)
+	require.NoError(t, err)
+	after, err := access.NewGroupStore(pool).GetPolicyForUser(ctx, accountID)
+	require.NoError(t, err)
+	require.True(t, after != nil && after.PreviewOnly, "a preview member did not resolve to preview")
 }

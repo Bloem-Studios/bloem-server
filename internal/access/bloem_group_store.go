@@ -320,7 +320,8 @@ func resolveGroupPolicy(ctx context.Context, db interface {
 			SELECT p.access_group_id, g.id, g.library_ids, g.max_playback_quality,
 				g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 				g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
-				g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed
+				g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed,
+			g.managed_template_key IS NOT DISTINCT FROM 'bloem-preview'
 			FROM user_profiles p
 			LEFT JOIN access_groups g
 			  ON g.organization_id = p.organization_id
@@ -336,7 +337,8 @@ func resolveGroupPolicy(ctx context.Context, db interface {
 		SELECT u.access_group_id, g.id, g.library_ids, g.max_playback_quality,
 			g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 			g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
-			g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed
+			g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed,
+			g.managed_template_key IS NOT DISTINCT FROM 'bloem-preview'
 		FROM organization_memberships u
 		JOIN organizations o
 		  ON o.id = $1
@@ -366,6 +368,7 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 		maxLocalBitrate  *int
 		permissions      []string
 		requestsAllowed  *bool
+		previewOnly      bool
 	)
 	if err := row.Scan(
 		&assignedGroupID,
@@ -384,6 +387,7 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 		&maxLocalBitrate,
 		&permissions,
 		&requestsAllowed,
+		&previewOnly,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrGroupNotFound
@@ -412,6 +416,7 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 		MaxLocalStreamBitrateKbps:  *maxLocalBitrate,
 		AllowedPermissions:         permissions,
 		RequestsAllowed:            *requestsAllowed,
+		PreviewOnly:                previewOnly,
 	}, nil
 }
 
@@ -612,7 +617,8 @@ func bloemAccountGroupPolicy(ctx context.Context, db groupQueryRower, accountID 
 		SELECT m.access_group_id, g.id, g.library_ids, g.max_playback_quality,
 			g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 			g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
-			g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed
+			g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed,
+			g.managed_template_key IS NOT DISTINCT FROM 'bloem-preview'
 		FROM organization_memberships m
 		JOIN organizations o
 		  ON o.id = m.organization_id
