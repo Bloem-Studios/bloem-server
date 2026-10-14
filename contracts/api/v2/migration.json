@@ -1658,7 +1658,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 101,
+          "line": 118,
           "types": [
             "AudiobookSetup"
           ],
@@ -1713,7 +1713,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 107,
+          "line": 124,
           "types": [
             "AudiobookIntegration"
           ],
@@ -1762,9 +1762,19 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "unused"
+        "web"
       ],
-      "consumer_call_sites": [],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 131,
+          "types": [
+            "AudiobookIntegration"
+          ],
+          "match": "manual"
+        }
+      ],
       "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
@@ -1778,7 +1788,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision."
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1. Edits a connection in place; saved credentials are kept only while their bound URL is unchanged (docs/architecture/bloem-audiobook-requests.md)."
     },
     {
       "listener": "api",
@@ -1813,7 +1823,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 115,
+          "line": 150,
           "types": [
             "AudiobookIntegration"
           ],
@@ -1862,9 +1872,19 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "unused"
+        "web"
       ],
-      "consumer_call_sites": [],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 138,
+          "types": [
+            "RequestIntegrationTestResult"
+          ],
+          "match": "manual"
+        }
+      ],
       "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
@@ -1878,7 +1898,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR."
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1. Runs the plugin's connection checks; the route takes no request body."
     },
     {
       "listener": "api",
@@ -1913,7 +1933,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 122,
+          "line": 127,
           "types": [
             "BookRequest"
           ],
@@ -1968,7 +1988,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 127,
+          "line": 162,
           "types": [
             "AudiobookAcquisition"
           ],
@@ -2023,7 +2043,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 146,
+          "line": 181,
           "types": [
             "BookRequest"
           ],
@@ -2078,7 +2098,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 133,
+          "line": 168,
           "types": [
             "AudiobookAcquisition"
           ],
@@ -2133,7 +2153,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 134,
+          "line": 139,
           "types": [
             "BookRequest"
           ],
@@ -2188,7 +2208,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 141,
+          "line": 176,
           "types": [
             "BookRequest"
           ],
@@ -2243,7 +2263,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 134,
+          "line": 139,
           "types": [
             "BookRequest"
           ],
@@ -2298,7 +2318,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 134,
+          "line": 139,
           "types": [
             "BookRequest"
           ],
@@ -2353,7 +2373,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 148,
+          "line": 183,
           "types": [
             "BookRequest"
           ],
@@ -2410,7 +2430,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 192,
+          "line": 197,
           "types": [
             "BookRequest"
           ],
@@ -2467,7 +2487,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 206,
+          "line": 211,
           "types": [
             "BookRequest"
           ],
@@ -2524,7 +2544,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 213,
+          "line": 218,
           "types": [
             "BookRequest"
           ],
@@ -2575,9 +2595,19 @@
       "upgrades_websocket": false,
       "capability_endpoint": null,
       "consumers": [
-        "unused"
+        "web"
       ],
-      "consumer_call_sites": [],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 225,
+          "types": [
+            "RequestIntegrationTestResult"
+          ],
+          "match": "manual"
+        }
+      ],
       "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
@@ -2591,7 +2621,7 @@
         "path": null,
         "operation_id": null
       },
-      "notes": "No first-party or internal consumer found. Absence from first-party clients is not proof of disuse: third-party clients exist, and removal needs an affirmative product decision. Inventory media kind is heuristic and unresolved for this row; confirm in the section PR. Conditionally registered: ebooks != nil. v2 registers the operation unconditionally and reports capability state instead."
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance. Runs the plugin's connection test; the route takes no request body."
     },
     {
       "listener": "api",
@@ -2628,7 +2658,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 199,
+          "line": 204,
           "types": [
             "BookRequest"
           ],
@@ -2685,7 +2715,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 173,
+          "line": 178,
           "types": [
             "BookRequest"
           ],
@@ -2742,7 +2772,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 185,
+          "line": 190,
           "types": [
             "BookRequest"
           ],
@@ -2799,7 +2829,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 185,
+          "line": 190,
           "types": [
             "BookRequest"
           ],
@@ -2856,7 +2886,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 185,
+          "line": 190,
           "types": [
             "BookRequest"
           ],
@@ -13491,7 +13521,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 108,
+          "line": 113,
           "types": [
             "BookRequestInput",
             "BookRequest"
@@ -13550,7 +13580,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 98,
+          "line": 103,
           "types": [
             "BookRequestCapability"
           ],
@@ -13608,7 +13638,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 103,
+          "line": 108,
           "types": [
             "BookRequest"
           ],
@@ -13714,7 +13744,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 115,
+          "line": 120,
           "types": [
             "BookRequest"
           ],
@@ -13867,7 +13897,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 159,
+          "line": 164,
           "types": [
             "BookRequest"
           ],
@@ -13927,7 +13957,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 144,
+          "line": 149,
           "types": [
             "BookRequest"
           ],
@@ -13987,7 +14017,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 149,
+          "line": 154,
           "types": [
             "BookRequest"
           ],
@@ -14047,7 +14077,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 154,
+          "line": 159,
           "types": [
             "BookRequest"
           ],
@@ -14107,7 +14137,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 166,
+          "line": 171,
           "types": [
             "BookRequest"
           ],
