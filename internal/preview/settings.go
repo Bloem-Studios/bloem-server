@@ -4,11 +4,13 @@
 package preview
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"sync"
 	"time"
@@ -16,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
@@ -99,6 +102,14 @@ func validate(s Settings) error {
 			return fail("ticket keys must be Ed25519 public keys")
 		}
 	}
+	if len(s.TicketPublicKeys) == 2 && bytes.Equal(s.TicketPublicKeys[0], s.TicketPublicKeys[1]) {
+		return fail("ticket keys must be distinct")
+	}
+	if s.MaturityCeiling != "" {
+		if _, ok := access.AgeForCeiling(s.MaturityCeiling); !ok {
+			return fail("maturity ceiling is not a recognized content rating")
+		}
+	}
 	if len(s.Issuer) > 128 {
 		return fail("issuer is too long")
 	}
@@ -123,6 +134,12 @@ func validate(s Settings) error {
 		if len(value) > 2048 {
 			return fail("%s is too long", name)
 		}
+		if value != "" {
+			u, err := url.Parse(value)
+			if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil {
+				return fail("%s must be an absolute HTTPS URL without credentials", name)
+			}
+		}
 	}
 	return nil
 }
@@ -146,6 +163,9 @@ func (s *Store) Put(ctx context.Context, next Settings) error {
 	previous, err := getSettings(ctx, tx)
 	if err != nil {
 		return err
+	}
+	if previous.Issuer != "" && next.Issuer != previous.Issuer {
+		return fmt.Errorf("%w: the preview belongs to another issuer", ErrInvalidSettings)
 	}
 	if next.AccountID > 0 {
 		var role string
