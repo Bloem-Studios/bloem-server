@@ -109,7 +109,7 @@ func TestPreviewGateRefusesPersonalOperationsToGuests(t *testing.T) {
 		am.RequireAuth(previewGate(operationID)(next)).ServeHTTP(w, r)
 		return w.Code
 	}
-	for _, op := range []string{"listSessions", "deleteSession", "approveDeviceLogin", "denyDeviceLogin", "getLoginSessionCapabilities"} {
+	for _, op := range []string{"listSessions", "deleteSession", "approveDeviceLogin", "denyDeviceLogin", "getLoginSessionCapabilities", "createEventsSocketTicket"} {
 		if code := serve(op, auth.AuthMethodPreviewGuest); code != http.StatusForbidden {
 			t.Errorf("guest %s = %d, want 403", op, code)
 		}

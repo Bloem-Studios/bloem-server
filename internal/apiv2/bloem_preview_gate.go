@@ -45,7 +45,7 @@ var previewOperations = map[string]previewAccess{
 	// Recommendations: global rows only; For You, discover and taste are refused.
 	"listPopular": previewSafe, "listRecentlyAdded": previewSafe, "listSimilar": previewSafe,
 	// Plumbing.
-	"createEventsSocketTicket": previewSafe, "logout": previewSafe,
+	"createEventsSocketTicket": previewPersonalOnly, "logout": previewSafe,
 	// Personal previews only.
 	"listSessions": previewPersonalOnly, "getLoginSessionCapabilities": previewPersonalOnly,
 	"deleteSession": previewPersonalOnly, "approveDeviceLogin": previewPersonalOnly,

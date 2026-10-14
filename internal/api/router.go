@@ -654,6 +654,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 		// Bloem: preview principals browse and nothing else (bloem_preview_routes.go).
 		authMiddleware.SetPreviewPrincipals(sessionRepo)
 		authMiddleware.SetPreviewRouteGuard(newPreviewRouteGuard(r.Match))
+		if source := bloemPreviewReaderSource(deps); source != nil {
+			authMiddleware.SetPreviewGuests(source, apimw.NewPreviewGuestLimiter())
+		}
+
 		if deps.UserStoreProvider != nil {
 			if deps.PolicySystem != nil {
 				viewerResolver = policy.NewViewerResolver(userRepo, deps.UserStoreProvider, profileTokenService, deps.PolicySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))
@@ -4850,6 +4854,9 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 		r.Use(clientip.Middleware(deps.ClientIPResolver))
 	}
 
+	// Bloem: the preview host serves guests only (bloem_preview_host.go).
+	useBloemPreviewHost(r, deps)
+
 	// Ingress token from network access provider plugins: validated and
 	// stripped before anything can log or forward it; an unknown token is
 	// refused outright. Requests without it stay on the default access path.
@@ -4857,7 +4864,7 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 		r.Use(netaccess.Middleware(deps.NetworkAccess.Registry))
 	}
 
-	r.Use(apimw.RequestLogger(deps.NodeID))
+	r.Use(skipGuestLogging(apimw.RequestLogger(deps.NodeID)))
 	r.Use(middleware.Recoverer)
 	r.Use(apimw.Metrics)
 
@@ -4869,7 +4876,7 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 
 	// Activity logging (before auth — captures all requests including failed auth).
 	if deps.ActivityLogWriter != nil {
-		r.Use(activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub))
+		r.Use(skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)))
 	}
 }
 

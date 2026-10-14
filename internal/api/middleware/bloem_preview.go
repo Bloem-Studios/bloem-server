@@ -180,3 +180,6 @@ func (l *PreviewGuestLimiter) Allow(sessionID string) bool {
 	}
 	return l.all.AllowN(now, 1)
 }
+
+// AllowGlobal bounds public guest requests as well as authenticated browsing.
+func (l *PreviewGuestLimiter) AllowGlobal() bool { return l.all.Allow() }

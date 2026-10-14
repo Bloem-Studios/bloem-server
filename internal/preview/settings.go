@@ -273,3 +273,11 @@ func (r *Reader) PreviewGuestSettings(ctx context.Context) (auth.PreviewGuestSet
 	}
 	return auth.PreviewGuestSettings{Enabled: s.Enabled, Host: s.Host, AccountID: s.AccountID}, nil
 }
+
+// CachedAccountID never performs I/O; the host guard refreshes this snapshot
+// before the nonblocking activity writer needs it.
+func (r *Reader) CachedAccountID() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.cached.AccountID
+}
