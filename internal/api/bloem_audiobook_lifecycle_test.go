@@ -89,22 +89,25 @@ func lifecyclePrerequisites(t *testing.T) lifecycleTools {
 	return lifecycleTools{binary: binary, ffmpeg: ffmpeg, ffprobe: ffprobe}
 }
 
-// lifecycleAudio writes seconds of a sine tone. Faststart puts the MP4 movie
-// header first, where the plugin reads durations; MP3 gets an Info frame.
+// lifecycleAudio writes seconds of a sine tone tagged as lifecycleTitle.
+// Faststart puts the MP4 movie header first, where the plugin reads
+// durations; MP3 gets an Info frame.
 func lifecycleAudio(t *testing.T, ffmpeg, file string, seconds int, bitrate string) int64 {
 	t.Helper()
-	return lifecycleAudioLayout(t, ffmpeg, file, seconds, bitrate, true)
+	return lifecycleAudioLayout(t, ffmpeg, file, lifecycleTitle, seconds, bitrate, true)
 }
 
-// lifecycleAudioLayout writes the M4B movie header first (faststart) or, as
-// ffmpeg does by default, after the audio.
-func lifecycleAudioLayout(t *testing.T, ffmpeg, file string, seconds int, bitrate string, faststart bool) int64 {
+// lifecycleAudioLayout writes audio tagged with book as its title and album,
+// as a ripped audiobook is. The plugin compares those tags with the requested
+// title. The M4B movie header goes first (faststart) or, as ffmpeg does by
+// default, after the audio.
+func lifecycleAudioLayout(t *testing.T, ffmpeg, file, book string, seconds int, bitrate string, faststart bool) int64 {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	args := []string{"-v", "error", "-y", "-f", "lavfi", "-i", fmt.Sprintf("sine=frequency=440:sample_rate=44100:duration=%d", seconds), "-ac", "1",
-		"-metadata", "title=" + lifecycleTitle, "-metadata", "artist=" + lifecycleAuthor, "-metadata", "album=" + lifecycleTitle}
+		"-metadata", "title=" + book, "-metadata", "artist=" + lifecycleAuthor, "-metadata", "album=" + book}
 	switch strings.ToLower(filepath.Ext(file)) {
 	case ".m4b":
 		args = append(args, "-c:a", "aac", "-b:a", bitrate)
@@ -257,7 +260,9 @@ type lifecycleTorrentFile struct {
 	Priority int     `json:"priority"`
 }
 
-type lifecycleQBAdd struct{ Magnet, Hash, Category, Tag, SavePath string }
+// Name is the magnet's display name, which qBittorrent shows as the
+// torrent's name.
+type lifecycleQBAdd struct{ Magnet, Hash, Name, Category, Tag, SavePath string }
 
 // lifecycleQBittorrent is a stateful Web API v2 fake with a session cookie.
 // Everything the plugin must never call (delete, pause, recheck, setLocation,
@@ -314,7 +319,7 @@ func (q *lifecycleQBittorrent) serve(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
 		out := []*lifecycleTorrent{}
 		for _, torrent := range q.torrents {
-			if hashes := query.Get("hashes"); hashes != "" && !strings.EqualFold(hashes, torrent.Hash) {
+			if hashes := query.Get("hashes"); hashes != "" && !slices.ContainsFunc(strings.Split(hashes, "|"), func(h string) bool { return strings.EqualFold(h, torrent.Hash) }) {
 				continue
 			}
 			if tag := query.Get("tag"); tag != "" && !slices.Contains(strings.Split(torrent.Tags, ","), tag) {
@@ -343,7 +348,11 @@ func (q *lifecycleQBittorrent) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		q.adds = append(q.adds, add)
-		q.torrents = append(q.torrents, &lifecycleTorrent{Hash: add.Hash, Name: lifecycleTitle, State: "metaDL", Category: add.Category, Tags: add.Tag, SavePath: add.SavePath, AddedOn: time.Now().Unix()})
+		name := add.Name
+		if name == "" {
+			name = add.Hash // qBittorrent's name for a magnet without a display name
+		}
+		q.torrents = append(q.torrents, &lifecycleTorrent{Hash: add.Hash, Name: name, State: "metaDL", Category: add.Category, Tags: add.Tag, SavePath: add.SavePath, AddedOn: time.Now().Unix()})
 		_, _ = io.WriteString(w, "Ok.")
 	default:
 		q.forbidden = append(q.forbidden, r.Method+" "+r.URL.Path)
@@ -375,6 +384,7 @@ func lifecycleParseAdd(r *http.Request) (lifecycleQBAdd, error) {
 		return lifecycleQBAdd{}, errors.New("add needs a magnet")
 	}
 	add.Hash = strings.TrimPrefix(values.Get("xt"), "urn:btih:")
+	add.Name = values.Get("dn")
 	return add, nil
 }
 
@@ -1314,7 +1324,10 @@ func TestAudiobookRequestLifecycleClientOutageRealPlugin(t *testing.T) {
 // The download folder sits inside a scanned library, so a scan can index a
 // finished download before the plugin verifies it. The verifying pass then
 // completes from the scanned item; a multi-disc download that scanned as
-// several books goes to review on that pass instead.
+// several books goes to review on that pass instead. The disc tracks carry
+// the requested title in their names and tags, as a real rip does, so the
+// plugin verifies them and the review is the host's multiple_items, not the
+// plugin's wrong_book.
 func TestAudiobookRequestLifecycleScannedBeforeVerificationRealPlugin(t *testing.T) {
 	tools := lifecyclePrerequisites(t)
 	l := newAudiobookLifecycle(t, tools)
@@ -1325,10 +1338,13 @@ func TestAudiobookRequestLifecycleScannedBeforeVerificationRealPlugin(t *testing
 	staging := t.TempDir()
 	book := filepath.Join(staging, "single", "Synthetic Saga.m4b")
 	size := lifecycleAudio(t, tools.ffmpeg, book, 360, "48k")
-	discs := map[string]string{"CD1/Track 01.mp3": filepath.Join(staging, "disc", "CD1", "Track 01.mp3"), "CD2/Track 01.mp3": filepath.Join(staging, "disc", "CD2", "Track 01.mp3")}
+	const discTitle = "Disc Saga"
+	discs := map[string]string{}
 	var discSize int64
-	for _, file := range discs {
-		discSize += lifecycleAudio(t, tools.ffmpeg, file, 180, "32k")
+	for _, disc := range []string{"CD1", "CD2"} {
+		name := disc + "/" + discTitle + " - " + disc + " - 01.mp3"
+		discs[name] = filepath.Join(staging, "disc", filepath.FromSlash(name))
+		discSize += lifecycleAudioLayout(t, tools.ffmpeg, discs[name], discTitle, 180, "32k", true)
 	}
 	singleHash, discHash := "356a192b7913b04c54574d18c28d46e6395428ab", "da4b9237bacccdf19c0760cab7aec4a8359010b0"
 	l.connect(t, lifecycleTorrentConfig(sources, qb, l.downloads), map[string]string{"qbittorrent_password": lifecycleQBPassword})
@@ -1336,8 +1352,8 @@ func TestAudiobookRequestLifecycleScannedBeforeVerificationRealPlugin(t *testing
 	sources.setPosts(lifecycleABBPost{Slug: "synthetic-saga-test-author", Title: lifecycleTitle + " - " + lifecycleAuthor, Language: "English", Format: "M4B", SizeMB: lifecycleMB(size), Hash: singleHash})
 	single := l.file(t, lifecycleTitle)
 	l.run(t, single.ID, false)
-	sources.setPosts(lifecycleABBPost{Slug: "disc-saga-test-author", Title: "Disc Saga - " + lifecycleAuthor, Language: "English", Format: "MP3", SizeMB: lifecycleMB(discSize), Hash: discHash})
-	disc := l.file(t, "Disc Saga")
+	sources.setPosts(lifecycleABBPost{Slug: "disc-saga-test-author", Title: discTitle + " - " + lifecycleAuthor, Language: "English", Format: "MP3", SizeMB: lifecycleMB(discSize), Hash: discHash})
+	disc := l.file(t, discTitle)
 	l.run(t, disc.ID, false)
 	if adds, _, _ := qb.snapshot(); len(adds) != 2 || adds[0].Hash != singleHash || adds[1].Hash != discHash {
 		t.Fatalf("hand-offs: %+v", adds)
@@ -1399,7 +1415,7 @@ func TestAudiobookRequestLifecycleVerificationGapsRealPlugin(t *testing.T) {
 	mp3 := filepath.Join(staging, "mp3", "Synthetic Saga.mp3")
 	mp3Size := lifecycleAudio(t, tools.ffmpeg, mp3, 120, "128k")
 	m4b := filepath.Join(staging, "m4b", "Trailing Header Saga.m4b")
-	m4bSize := lifecycleAudioLayout(t, tools.ffmpeg, m4b, 120, "128k", false)
+	m4bSize := lifecycleAudioLayout(t, tools.ffmpeg, m4b, "Trailing Header Saga", 120, "128k", false)
 	if mp3Size < 1<<20 || m4bSize < 1<<20 {
 		t.Fatalf("fixtures too small to isolate the duration check: %d %d", mp3Size, m4bSize)
 	}
