@@ -31,4 +31,11 @@ GO
 if (cd "$scratch" && bash gate.sh > /dev/null 2>&1); then echo 'gate accepted removed listener' >&2; exit 1; fi
 rm "$scratch/internal/pluginhost/listener.go"
 (cd "$scratch" && bash gate.sh)
-echo 'PASS: clean tree, removed package/page paths and removed import fixtures'
+# Without ripgrep, or when a search errors, the content checks cannot tell a
+# clean tree from a reintroduction, so the gate must fail rather than pass.
+mkdir -p "$scratch/no-rg" "$scratch/broken-rg"
+if (cd "$scratch" && PATH="$scratch/no-rg" "$BASH" gate.sh > /dev/null 2>&1); then echo 'gate passed without ripgrep' >&2; exit 1; fi
+printf '#!/bin/sh\nexit 2\n' > "$scratch/broken-rg/rg"
+chmod +x "$scratch/broken-rg/rg"
+if (cd "$scratch" && PATH="$scratch/broken-rg:$PATH" bash gate.sh > /dev/null 2>&1); then echo 'gate passed when ripgrep failed' >&2; exit 1; fi
+echo 'PASS: clean tree, removed package/page paths, removed import fixtures and missing or failing ripgrep'
