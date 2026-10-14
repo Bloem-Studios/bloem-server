@@ -76,47 +76,15 @@ func TestBloemPresentationApplicationWiringUsesWorkers(t *testing.T) {
 	t.Setenv("BLOEM_PRESENTATION_PLUGIN_DIR", directory)
 	available := api.Dependencies{}
 	bloemWireServices(ctx, &available, pool, nil, "", nil)
-	cards, err = untilWorkerAnswers(t, func() ([]promotions.Card, error) {
-		cards, _, err := available.Promotions.ActiveHome(t.Context(), viewer)
-		return cards, err
-	}, func(cards []promotions.Card) bool { return len(cards) == 1 && cards[0].ID == campaign.ID })
+	// The wiring starts both workers before it returns, so the first call
+	// after it must answer: a cold start no longer counts against it.
+	cards, _, err = available.Promotions.ActiveHome(t.Context(), viewer)
 	if err != nil || len(cards) != 1 || cards[0].ID != campaign.ID {
 		t.Fatalf("application did not use promotion worker: %+v, %v", cards, err)
 	}
-	packs, err = untilWorkerAnswers(t, func() ([]ambience.Wire, error) {
-		return available.Ambience.ActivePublic(t.Context())
-	}, func(packs []ambience.Wire) bool { return len(packs) == 1 && packs[0].ID == pack.ID })
+	packs, err = available.Ambience.ActivePublic(t.Context())
 	if err != nil || len(packs) != 1 || packs[0].ID != pack.ID {
 		t.Fatalf("application did not use ambience worker: %+v, %v", packs, err)
-	}
-}
-
-// untilWorkerAnswers repeats call until accept takes its result, or returns
-// the last result after 30 seconds. A presentation worker starts on its first
-// call, inside that call's 750 ms budget, and a call that runs out of time
-// stops the worker again; the services then omit presentation rather than
-// fail. On a loaded runner a cold start can miss the budget, so the wiring
-// counts as working once a call reaches the worker. A worker the application
-// never uses still fails at the deadline.
-func untilWorkerAnswers[T any](t *testing.T, call func() (T, error), accept func(T) bool) (T, error) {
-	t.Helper()
-	deadline := time.NewTimer(30 * time.Second)
-	defer deadline.Stop()
-	retry := time.NewTicker(50 * time.Millisecond)
-	defer retry.Stop()
-	for attempt := 1; ; attempt++ {
-		got, err := call()
-		if err == nil && accept(got) {
-			if attempt > 1 {
-				t.Logf("presentation worker answered on attempt %d", attempt)
-			}
-			return got, nil
-		}
-		select {
-		case <-retry.C:
-		case <-deadline.C:
-			return got, err
-		}
 	}
 }
 

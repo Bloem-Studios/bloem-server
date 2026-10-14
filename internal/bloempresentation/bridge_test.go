@@ -87,7 +87,11 @@ func TestWorkerProcess(t *testing.T) {
 		fmt.Println(`{"version":1,"payload":null,"error":"failure"}`)
 	case "hang":
 		_, _ = io.Copy(io.Discard, os.Stdin)
-	case "echo":
+	case "echo", "slow-echo":
+		if os.Args[len(os.Args)-1] == "slow-echo" {
+			// A process start slower than a call's budget.
+			time.Sleep(3 * maxCallDuration)
+		}
 		err := Serve(os.Stdin, os.Stdout, func(operation string, payload json.RawMessage) (any, error) {
 			if operation == "env" {
 				return os.Environ(), nil
@@ -432,5 +436,116 @@ func TestCloseInterruptsRequestEncoding(t *testing.T) {
 	}
 	if launches.Load() != 0 {
 		t.Fatal("closed encoder launched worker")
+	}
+}
+
+func TestServeAnswersReadyWithoutDispatch(t *testing.T) {
+	input := strings.NewReader(`{"version":1,"operation":"` + ReadyOperation + `","payload":null}` + "\n")
+	var output bytes.Buffer
+	dispatched := false
+	if err := Serve(input, &output, func(string, json.RawMessage) (any, error) { dispatched = true; return nil, nil }); err != nil {
+		t.Fatal(err)
+	}
+	if dispatched {
+		t.Fatal("the ready operation reached the dispatch")
+	}
+	if got := strings.TrimSpace(output.String()); got != `{"version":1,"payload":true}` {
+		t.Fatalf("ready response = %s", got)
+	}
+}
+
+// Warm gives a worker whose start outlasts a call's budget the time it needs,
+// and the next call uses that worker within its own budget.
+func TestWarmStartsAWorkerOutsideTheCallBudget(t *testing.T) {
+	client, launches := testClient(t, "slow-echo")
+	if err := client.Warm(context.Background()); err != nil {
+		t.Fatalf("warm: %v", err)
+	}
+	var got int
+	if err := client.Call(context.Background(), "echo", 7, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got != 7 || launches.Load() != 1 {
+		t.Fatalf("result=%d launches=%d", got, launches.Load())
+	}
+}
+
+// After a failed call the replacement starts in the background. A call that
+// arrives while it starts runs out its own budget without stopping it, so a
+// start slower than the budget cannot keep every call failing.
+func TestFailedCallStartsTheReplacementInTheBackground(t *testing.T) {
+	client, launches := testClient(t, "hang", "slow-echo")
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	if err := client.Call(ctx, "echo", 7, nil); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("hung call: %v", err)
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for launches.Load() < 2 {
+		if time.Now().After(deadline) {
+			t.Fatal("no replacement worker started after the failed call")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if err := client.Call(context.Background(), "echo", 8, nil); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("call during the replacement's start: %v", err)
+	}
+	if err := client.Warm(context.Background()); err != nil {
+		t.Fatalf("replacement did not start: %v", err)
+	}
+	var got int
+	if err := client.Call(context.Background(), "echo", 9, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got != 9 || launches.Load() != 2 {
+		t.Fatalf("result=%d launches=%d, want the replacement reused", got, launches.Load())
+	}
+}
+
+// A worker that never answers the ready exchange is stopped when Warm's
+// deadline passes, and is not restarted until a call needs it.
+func TestWarmStopsAWorkerThatDoesNotAnswer(t *testing.T) {
+	client, launches := testClient(t, "hang", "echo")
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	if err := client.Warm(ctx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("warm a hung worker: %v", err)
+	}
+	if launches.Load() != 1 {
+		t.Fatalf("a failed warm-up restarted the worker: launches=%d", launches.Load())
+	}
+	var got int
+	if err := client.Call(context.Background(), "echo", 7, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got != 7 || launches.Load() != 2 {
+		t.Fatalf("result=%d launches=%d", got, launches.Load())
+	}
+}
+
+func TestCloseInterruptsWarmAndPreventsIt(t *testing.T) {
+	client, _ := testClient(t, "hang")
+	result := make(chan error, 1)
+	go func() { result <- client.Warm(context.Background()) }()
+	deadline := time.Now().Add(5 * time.Second)
+	for len(client.gate) != 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("warm never took the worker")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-result:
+		if err == nil {
+			t.Fatal("closed warm-up succeeded")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("close did not interrupt the warm-up")
+	}
+	if err := client.Warm(context.Background()); err == nil {
+		t.Fatal("warm after close succeeded")
 	}
 }
