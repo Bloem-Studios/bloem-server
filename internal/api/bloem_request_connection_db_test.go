@@ -178,6 +178,19 @@ func TestAudiobookConnectionEditRotatesWithoutRebindingSavedSecretsDatabase(t *t
 		t.Fatalf("rotated row %+v %v", rotated, err)
 	}
 
+	// A partial plugin_config is merged: the URL and password it leaves out
+	// are kept, and other saved settings are not reset.
+	if _, err = s.Update(ctx, env.admin, created.ID, handlers.AudiobookRequestConnectionUpdate{PluginConfig: map[string]any{"qbittorrent_username": "renamed"}}); err != nil {
+		t.Fatal(err)
+	}
+	merged, err := env.store.GetIntegration(ctx, created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secrets, _, err = decodeAudiobookCredentials(merged.APIKeyRef); err != nil || secrets["qbittorrent_password"] != "rotated-pass" || merged.PluginConfig["qbittorrent_url"] != "https://client.example.test/qb" || merged.PluginConfig["qbittorrent_username"] != "renamed" {
+		t.Fatalf("partial edit dropped saved state: %+v %v", merged.PluginConfig, err)
+	}
+
 	// A move with the password re-entered binds it to the new URL only.
 	if _, err = s.Update(ctx, env.admin, created.ID, handlers.AudiobookRequestConnectionUpdate{PluginConfig: redirected.PluginConfig, Credentials: map[string]string{"qbittorrent_password": "new-host-pass"}}); err != nil {
 		t.Fatal(err)
@@ -216,6 +229,24 @@ func TestAudiobookConnectionEditRotatesWithoutRebindingSavedSecretsDatabase(t *t
 	work := bookrequests.AudiobookDispatchInput{Request: bookrequests.Request{ID: "request", MediaType: "audiobook", Title: "Synthetic Saga"}, Integration: bookrequests.AudiobookIntegration{ID: created.ID, InstallationID: install, CapabilityID: "audiobooks"}, SubmissionID: "12345678-1234-1234-1234-123456789abc", Attempt: 1}
 	if _, err = dispatch.Fulfill(ctx, work); !errors.Is(err, bookrequests.ErrProviderNotCalled) || !errors.Is(err, bookrequests.ErrConflict) || client.input != nil {
 		t.Fatalf("dispatch sent a credential to a moved URL: %v", err)
+	}
+
+	// Removing a URL with null is an explicit clear: its credential goes too.
+	if _, err = env.pool.Exec(ctx, `UPDATE request_integrations SET plugin_config=jsonb_set(plugin_config,'{qbittorrent_url}','"https://attacker.example.test/qb"') WHERE id=$1`, created.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.Update(ctx, env.admin, created.ID, handlers.AudiobookRequestConnectionUpdate{PluginConfig: map[string]any{"qbittorrent_url": nil}}); err != nil {
+		t.Fatal(err)
+	}
+	cleared, err := env.store.GetIntegration(ctx, created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secrets, _, err = decodeAudiobookCredentials(cleared.APIKeyRef); err != nil || len(secrets) != 0 || cleared.PluginConfig["qbittorrent_username"] != "reader" {
+		t.Fatalf("null URL kept its credential or reset settings: %+v %v", cleared.PluginConfig, err)
+	}
+	if _, present := cleared.PluginConfig["qbittorrent_url"]; present {
+		t.Fatalf("null did not remove the URL: %+v", cleared.PluginConfig)
 	}
 
 	if _, err = s.Test(ctx, env.admin, "missing"); !errors.Is(err, bookrequests.ErrNotFound) {

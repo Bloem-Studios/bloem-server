@@ -459,3 +459,25 @@ it("offers organization admins neither connection tests nor edits", async () => 
   expect(screen.queryByRole("button", { name: "Test connection" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Edit connection" })).not.toBeInTheDocument();
 });
+it("warns before a download client URL change and blocks edits of unread settings", async () => {
+  const unread = { ...savedConnection, id: "connection-b", name: "Unread delivery" };
+  delete (unread as Partial<typeof savedConnection>).plugin_config;
+  mocks.setup.mockResolvedValue({ ...setup, integrations: [savedConnection, unread] });
+  open();
+  fireEvent.click(await screen.findByRole("button", { name: "Edit connection" }));
+  const form = screen.getByRole("form", { name: "Edit audiobook connection" });
+  expect(within(form).queryByText(/fail their status checks/)).not.toBeInTheDocument();
+  fireEvent.change(within(form).getByLabelText(/^qBittorrent URL/), {
+    target: { value: "https://moved.example.test" },
+  });
+  expect(within(form).getByRole("alert")).toHaveTextContent(
+    "Changing the qBittorrent URL makes downloads already handed to the previous client fail their status checks.",
+  );
+  fireEvent.click(within(form).getByRole("button", { name: "Cancel" }));
+  fireEvent.change(screen.getByLabelText("Audiobook connection"), {
+    target: { value: "connection-b" },
+  });
+  expect(screen.getByRole("button", { name: "Edit connection" })).toBeDisabled();
+  expect(screen.getByText(/saved settings could not be read/)).toBeInTheDocument();
+  expect(mocks.updateIntegration).not.toHaveBeenCalled();
+});

@@ -144,6 +144,15 @@ A saved secret is therefore never bound to a host it was not entered for. The
 update runs as a conditional write on the row revision read at the start, so a
 concurrent edit returns 409 instead of reverting a rotation.
 
+The submitted `plugin_config` is a merge patch over the saved settings: a
+submitted key replaces its saved value, `null` removes it, and an omitted key
+keeps it. Clearing a URL, and with it the credentials bound to it, takes an
+explicit `""` or `null`; leaving the key out of a partial edit keeps both.
+In-flight acquisitions survive an edit, but the plugin checks each download
+receipt against the fingerprint of its client URL. Changing `qbittorrent_url` or
+`nzbget_url` therefore makes downloads already handed to the previous client
+fail their status checks; the web editor warns before such a save.
+
 Silo's generic request-integration editor keeps a saved `api_key_ref` whenever
 `base_url` is unchanged. Audiobook connections keep `base_url` empty and their
 URLs in `plugin_config`, so that rule never fires for them. The host refuses

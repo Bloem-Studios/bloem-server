@@ -1658,7 +1658,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 114,
+          "line": 118,
           "types": [
             "AudiobookSetup"
           ],
@@ -1713,7 +1713,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 120,
+          "line": 124,
           "types": [
             "AudiobookIntegration"
           ],
@@ -1768,7 +1768,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 127,
+          "line": 131,
           "types": [
             "AudiobookIntegration"
           ],
@@ -1823,7 +1823,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 146,
+          "line": 150,
           "types": [
             "AudiobookIntegration"
           ],
@@ -1878,7 +1878,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 134,
+          "line": 138,
           "types": [
             "RequestIntegrationTestResult"
           ],
@@ -1988,7 +1988,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 158,
+          "line": 162,
           "types": [
             "AudiobookAcquisition"
           ],
@@ -2043,7 +2043,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 177,
+          "line": 181,
           "types": [
             "BookRequest"
           ],
@@ -2098,7 +2098,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 164,
+          "line": 168,
           "types": [
             "AudiobookAcquisition"
           ],
@@ -2208,7 +2208,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 172,
+          "line": 176,
           "types": [
             "BookRequest"
           ],
@@ -2373,7 +2373,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 179,
+          "line": 183,
           "types": [
             "BookRequest"
           ],

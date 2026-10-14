@@ -190,10 +190,7 @@ func (s bloemAudiobookSetup) Update(ctx context.Context, v bookrequests.Viewer, 
 			return bookrequests.AudiobookIntegrationSummary{}, bookrequests.ErrInvalid
 		}
 	}
-	config := in.PluginConfig
-	if config == nil {
-		config = stored.PluginConfig
-	}
+	config := mergeAudiobookConfig(stored.PluginConfig, in.PluginConfig)
 	if _, exists := config["service_kind"]; exists {
 		return bookrequests.AudiobookIntegrationSummary{}, bookrequests.ErrInvalid
 	}
@@ -210,6 +207,25 @@ func (s bloemAudiobookSetup) Update(ctx context.Context, v bookrequests.Viewer, 
 	}
 	summary.Name = updated.Name
 	return summary, nil
+}
+
+// mergeAudiobookConfig applies an edit's plugin_config to the saved settings
+// as a merge patch: a submitted key replaces its saved value, null removes it,
+// and an omitted key keeps it. A partial edit therefore never clears a URL, or
+// drops the credential bound to it, by leaving the key out.
+func mergeAudiobookConfig(saved, patch map[string]any) map[string]any {
+	config := maps.Clone(saved)
+	if config == nil {
+		config = map[string]any{}
+	}
+	for key, value := range patch {
+		if value == nil {
+			delete(config, key)
+		} else {
+			config[key] = value
+		}
+	}
+	return config
 }
 
 // audiobookUpdateError maps a refused save. The plugin's validation text is

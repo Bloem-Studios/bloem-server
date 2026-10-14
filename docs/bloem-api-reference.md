@@ -3074,10 +3074,15 @@ For a platform administrator context, the setup listing includes each
 connection's saved `plugin_config` and the names of its saved credentials in
 `stored_credentials`; credential values are never returned. An absent
 `plugin_config` means the saved settings could not be read. An organization
-administrator receives neither field. On edit, an omitted `plugin_config` keeps the saved settings. A
+administrator receives neither field.
+
+On edit, `plugin_config` is merged over the saved settings: a submitted key
+replaces its saved value, `null` removes it, and an omitted key keeps it. A
 credential that is omitted or empty keeps its saved value only while the URL it
 is bound to is unchanged; a changed URL returns 400 until the credential is
-entered again, and a cleared URL drops it. Silo's generic
+entered again, and a URL cleared to `""` or removed with `null` drops it.
+Changing `qbittorrent_url` or `nzbget_url` makes downloads already handed to the
+previous client fail their status checks; retry them after the change. Silo's generic
 `/api/v1/admin/request-integrations/{id}` editor and its v2 twin refuse
 audiobook connections. See
 [connection edits and credential rotation](architecture/bloem-audiobook-requests.md#connection-edits-and-credential-rotation).

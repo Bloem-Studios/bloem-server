@@ -37,6 +37,19 @@ function editorFor(integration: AudiobookIntegration): ConnectionEditor {
 function enteredCredentials(credentials: Record<string, string>) {
   return Object.fromEntries(Object.entries(credentials).filter(([, value]) => value !== ""));
 }
+// Download receipts are tied to the client URL they were handed to.
+const downloadClientURLs = [
+  ["qbittorrent_url", "qBittorrent"],
+  ["nzbget_url", "NZBGet"],
+] as const;
+function movedDownloadClients(editor: ConnectionEditor, saved: AudiobookIntegration) {
+  return downloadClientURLs
+    .filter(
+      ([key]) =>
+        String(editor.values[key] ?? "").trim() !== String(saved.plugin_config?.[key] ?? "").trim(),
+    )
+    .map(([, label]) => label);
+}
 export function AudiobookRequestIntegrationPanel() {
   const scope = useAudiobookAdminScope();
   const qc = useQueryClient();
@@ -295,7 +308,7 @@ export function AudiobookRequestIntegrationPanel() {
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={busy || editor?.id === integration.id}
+                  disabled={busy || editor?.id === integration.id || !integration.plugin_config}
                   onClick={() => {
                     setEditor(editorFor(integration));
                     setEditMessage("");
@@ -303,6 +316,11 @@ export function AudiobookRequestIntegrationPanel() {
                 >
                   Edit connection
                 </Button>
+                {!integration.plugin_config && (
+                  <p role="status" className="text-muted-foreground text-sm">
+                    The saved settings could not be read. Reload connections before editing.
+                  </p>
+                )}
                 {tested?.id === integration.id && (
                   <p role={tested.result.ok ? "status" : "alert"} className="text-sm">
                     {tested.result.ok ? "Connection works: " : "Connection test failed: "}
@@ -385,6 +403,13 @@ export function AudiobookRequestIntegrationPanel() {
             credential blank to keep the saved one. Changing a URL requires its credential again,
             and clearing a URL removes its credentials.
           </p>
+          {movedDownloadClients(editor, integration).length > 0 && (
+            <p role="alert" className="text-sm">
+              Changing the {movedDownloadClients(editor, integration).join(" and ")} URL makes
+              downloads already handed to the previous client fail their status checks. Retry those
+              requests after saving.
+            </p>
+          )}
           <label className="grid gap-2 text-sm font-medium sm:max-w-sm">
             Connection name
             <Input

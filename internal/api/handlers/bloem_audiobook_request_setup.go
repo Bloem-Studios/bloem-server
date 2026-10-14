@@ -23,10 +23,11 @@ type AudiobookRequestConnectionInput struct {
 	Credentials    map[string]string `json:"credentials"`
 }
 
-// AudiobookRequestConnectionUpdate edits a saved connection. A nil
-// plugin_config keeps the saved settings. A credential that is absent or empty
-// keeps the saved value only while the URL it is bound to is unchanged; a
-// cleared URL drops its credentials.
+// AudiobookRequestConnectionUpdate edits a saved connection. plugin_config is
+// merged over the saved settings: a submitted key replaces its saved value,
+// null removes it, and an omitted key keeps it. A credential that is absent or
+// empty keeps the saved value only while the URL it is bound to is unchanged;
+// a URL cleared to "" or removed with null drops its credentials.
 type AudiobookRequestConnectionUpdate struct {
 	Name         string            `json:"name,omitempty"`
 	PluginConfig map[string]any    `json:"plugin_config,omitempty"`

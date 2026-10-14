@@ -11,7 +11,10 @@ export interface AudiobookIntegration {
   download_roots: string[];
   binding_revision: number;
   ready: boolean;
-  /** Saved settings, filled by the setup listing only. */
+  /**
+   * Saved settings, filled by the setup listing for a platform administrator
+   * only. Absent there means the saved settings could not be read.
+   */
   plugin_config?: AudiobookConnectionInput["plugin_config"];
   /** Names of the saved credentials; their values are never returned. */
   stored_credentials?: string[];
@@ -30,12 +33,13 @@ export interface AudiobookConnectionInput {
   credentials: Record<string, string>;
 }
 /**
- * Edits a saved connection. An omitted plugin_config keeps the saved settings.
+ * Edits a saved connection. plugin_config is merged over the saved settings:
+ * a submitted key replaces its value, null removes it, an omitted key keeps it.
  * An empty credential keeps its saved value only while its URL is unchanged.
  */
 export interface AudiobookConnectionUpdate {
   name?: string;
-  plugin_config?: AudiobookConnectionInput["plugin_config"];
+  plugin_config?: Record<string, string | number | boolean | string[] | null>;
   credentials?: Record<string, string>;
 }
 export interface AcquisitionCandidate {
