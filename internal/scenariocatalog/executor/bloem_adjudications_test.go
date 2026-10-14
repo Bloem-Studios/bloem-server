@@ -53,8 +53,8 @@ func TestBloemAdjudicatedScenarios(t *testing.T) {
 		t.Skip(DatabaseEnv + " is required for reviewed transport acceptance")
 	}
 	results := runAll(t, selected, env)
-	if len(results) != 82 {
-		t.Fatalf("reviewed packet executed %d transport leaves, want 82", len(results))
+	if len(results) != 84 {
+		t.Fatalf("reviewed packet executed %d transport leaves, want 84", len(results))
 	}
 	for _, result := range results {
 		if !result.Passed() {
