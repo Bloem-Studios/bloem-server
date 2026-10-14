@@ -69,7 +69,10 @@ type AuthMiddleware struct {
 	// request is refused until a guard is installed. A fixture that wants an
 	// unrestricted middleware installs an explicit allow-all guard.
 	directProfileRoutes DirectProfileRouteGuard
-	audienceTickets     auth.AudienceTicketStore
+	// Bloem: preview principals (bloem_preview.go). Nil routes fail closed.
+	previewPrincipals PreviewPrincipals
+	previewRoutes     PreviewRouteGuard
+	audienceTickets   auth.AudienceTicketStore
 }
 
 func (am *AuthMiddleware) SetAudienceTicketStore(store auth.AudienceTicketStore) {
@@ -130,6 +133,7 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 		var claims *auth.Claims
+		var previewOnly bool
 		token, ok := extractBearerToken(r)
 		if !ok {
 			ticket := strings.TrimSpace(r.URL.Query().Get("ticket"))
@@ -184,6 +188,14 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 				writeForbidden(w, "API key scopes do not permit this route")
 				return
 			}
+			if preview, err := am.apiKeyOwnerPreview(r.Context(), user.ID); err != nil {
+				writeCredentialCheckUnavailable(w, r, err)
+				return
+			} else if preview {
+				// A preview principal has no API-key surface.
+				WritePreviewOnly(w)
+				return
+			}
 
 			am.apiKeyLastUsed.Touch(apiKey.ID)
 
@@ -210,7 +222,8 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 				return
 			}
 
-			role, active, err := am.sessionValidator.ActiveSessionRole(r.Context(), claims.SessionID)
+			role, preview, active, err := am.sessionAuthority(r.Context(), claims.SessionID)
+			previewOnly = preview
 			if err != nil {
 				writeCredentialCheckUnavailable(w, r, err)
 				return
@@ -242,6 +255,13 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), claimsKey, claims)
+		if previewOnly {
+			ctx = withPreviewPrincipal(ctx)
+			if am.previewRoutes == nil || !am.previewRoutes(r.WithContext(ctx)) {
+				WritePreviewOnly(w)
+				return
+			}
+		}
 		if claims.AuthMethod == auth.AuthMethodDirectProfile {
 			// Fail closed: with no guard installed, a direct-profile session
 			// reaches nothing. The boundary is default-deny, and "the caller
