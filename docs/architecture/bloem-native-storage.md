@@ -207,7 +207,11 @@ For each selection, `libraryingest.StorageScanner`:
    checkpoints and discovery pointer unchanged. The database clock decides
    lease expiry; each takeover bumps the epoch. Standalone discovery may use
    `Begin` without library authority. A renewal worker extends the lease and
-   rechecks tenancy.
+   rechecks tenancy. Each committed page and the completion transaction also
+   renew it, because they make the same checks under the same locks. A renewal
+   waits for the library lock a page holds; an attempt that runs out of its
+   10-second bound is retried while the lease was renewed within its duration.
+   Any lease or authority fence still stops the scan.
 3. Lists each directory page by page. `ApplyPageAuthorized` checks current
    installation, source, library, owner and entitlement authority inside the
    page transaction, before journal source/run locks. It retains those
@@ -223,8 +227,17 @@ For each selection, `libraryingest.StorageScanner`:
    title-owned extras folders for movies. `.ignore`, `.siloignore` and
    `.nomedia` are not read: honoring them would need a pinned read of each
    ignore file and directory state across listing pages.
+   A page extends the run's root reach (`bloem_storage_scan_directory_roots`)
+   and publishes root memberships (`bloem_storage_file_roots`) only through
+   its own entries and the directories they newly reach. A directory's first
+   page also counts its retained edges, and its completing page publishes
+   files staged by earlier pages. A page that removes or demotes a directory
+   edge, or a listing restarted in full, rebuilds the reach. A page's cost
+   therefore stays independent of the size of the location.
 4. Stops lease renewal, then `CompleteLocationAuthorized` checks current resource
-   authority before journal source/run locks. Its finalizer runs
+   authority before journal source/run locks and renews the lease for its own
+   work. It rebuilds root memberships from the completed graph, writing only
+   memberships and absence stamps that change. Its finalizer runs
    `SweepStorageLocationTx` to reconcile memberships and orphans and sweep
    expired missing files with the existing grace and empty-trash settings.
    Authority stays locked through the single catalog and journal commit;
