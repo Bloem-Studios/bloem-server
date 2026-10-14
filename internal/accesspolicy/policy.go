@@ -17,6 +17,12 @@ const (
 	PlaybackQuality4K       = "2160p"
 )
 
+// PreviewTemplateKey is the reserved, protected entitlement template whose
+// materialized groups make their accounts preview principals: they may browse
+// the catalogue and nothing else. The migration that seeds it also pins its
+// policy with CHECK constraints, so the key alone is the preview signal.
+const PreviewTemplateKey = "bloem-preview"
+
 type GroupSubject struct {
 	OrganizationID uuid.UUID
 	AccountID      int
