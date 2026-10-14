@@ -25,6 +25,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/policy"
+	"github.com/Silo-Server/silo-server/internal/preview"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/remote"
 	"github.com/Silo-Server/silo-server/internal/serverid"
@@ -78,6 +79,10 @@ func wireBloemAuthService(authService *auth.Service, profileCredentials *auth.Pr
 	authService.SetProfileCredentialService(profileCredentials)
 	authService.SetOwnershipBootstrapper(deps.OwnershipBootstrapper)
 	authService.SetMembershipProvisioner(deps.MembershipProvisioner)
+	if reader := bloemPreviewReader(deps); reader != nil {
+		authService.EnablePreviewGuests(deps.DB, reader)
+	}
+
 }
 
 // wireBloemViewerTokenResolver gives the viewer-access middleware a resolver
@@ -567,4 +572,17 @@ func optionalLegacyTenant(tenant *apimw.TenantMiddleware) func(http.Handler) htt
 			withTenant.ServeHTTP(w, r)
 		})
 	}
+}
+
+// bloemPreviewHandler builds the public preview endpoints. Nil without a
+// database or a signing secret.
+func bloemPreviewHandler(deps Dependencies) *handlers.BloemPreviewHandler {
+	reader := bloemPreviewReader(deps)
+	if reader == nil || deps.Config == nil || deps.Config.Auth.JWTSecret == "" {
+		return nil
+	}
+	jwt := auth.NewJWTService(deps.Config.Auth.JWTSecret, deps.Config.Auth.AccessTokenExpiry, deps.Config.Auth.RefreshTokenExpiry)
+	guests := auth.NewPreviewGuests(deps.DB, jwt, reader)
+	buckets := preview.NewClientBucketsWithSecret(deps.Config.Auth.JWTSecret)
+	return handlers.NewBloemPreviewHandler(preview.NewExchanger(deps.DB, guests, bloemServerIdentity(deps), buckets), reader, buckets)
 }

@@ -151,6 +151,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	}
 	mountBloemRoutes(r, system, session, authMW, adminMW,
 		bloemRouteSurfaces{
+			Preview:  bloemPreviewHandler(deps),
 			Client:   newBloemClientSurface(deps, authMW, tenantMW, searchProvider, liveTVAdmin),
 			Platform: platformHandler, People: peopleHandler, Organization: organizationHandler,
 			Explain:     explainHandler,
@@ -169,6 +170,7 @@ const NativeAPIPrefix = handlers.NativeAPIPrefix
 
 // bloemRouteSurfaces lists optional route groups; nil handlers leave their routes unmounted.
 type bloemRouteSurfaces struct {
+	Preview                *handlers.BloemPreviewHandler
 	ListCollections        *handlers.BloemListCollectionsHandler
 	BookRequests           *handlers.BloemBookRequestsHandler
 	Client                 bloemClientSurface
@@ -197,6 +199,12 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 	client := surfaces.Client
 	r.Route("/api/bloem/v1", func(r chi.Router) {
 		r.Get("/capabilities", system.HandleCapabilities)
+		if surfaces.Preview != nil {
+			// Public: a ticket or nothing authenticates these (bloem_preview_host.go).
+			r.Post("/preview/sessions", surfaces.Preview.HandleCreateSession)
+			r.Get("/preview/status", surfaces.Preview.HandleStatus)
+		}
+
 		client.mount(r)
 		mountBloemSeasonalViewer(r, surfaces.SeasonalViewer, client, system)
 		mountBloemBookRequests(r, surfaces.BookRequests, client, system)

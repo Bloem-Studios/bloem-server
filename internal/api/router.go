@@ -2573,7 +2573,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// a typed nil must not become a non-nil interface, so each is set only
 	// when the v1 handler exists.
 	if authHandler != nil {
-		v2deps.Accounts = authHandler
+		v2deps.Accounts = bloemPreviewAccounts(authHandler)
 		v2deps.Devices = authHandler
 		v2deps.Sessions = authHandler
 		v2deps.PluginLaunch = authHandler
