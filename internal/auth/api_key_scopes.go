@@ -51,7 +51,7 @@ type APIKeyScope struct {
 // It is the single source of truth behind both scope validation and the
 // GET /api/v1/api-keys/scopes feature-detection endpoint.
 func APIKeyScopeCatalog() []APIKeyScope {
-	return []APIKeyScope{
+	return append([]APIKeyScope{
 		{Name: ScopeAdminSessionsSummaryRead, Description: "Read live playback summaries without diagnostic details or session control."},
 		{Name: ScopeLibrariesRead, Description: "Discover libraries visible to the account or selected profile, without storage metadata."},
 		{
@@ -71,7 +71,7 @@ func APIKeyScopeCatalog() []APIKeyScope {
 			Name:        ScopeAdminEntitlementsAccounts,
 			Description: "Read entitlement templates and preview and apply a template to one account. Cannot create or change templates.",
 		},
-	}
+	}, bloemPreviewAPIKeyScopes()...)
 }
 
 // UnknownAPIKeyScopeError names a requested scope that the catalog being

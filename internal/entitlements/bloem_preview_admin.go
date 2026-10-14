@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 )
 
 // RevisePreviewLibrariesInTransaction only changes the library selection of

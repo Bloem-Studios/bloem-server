@@ -46,9 +46,15 @@ func (a *Admin) UpdateSettings(ctx context.Context, actor int, p SettingsPatch, 
 		}
 	}
 	if p.SessionTTLSeconds != nil {
+		if *p.SessionTTLSeconds < 300 || *p.SessionTTLSeconds > 86400 {
+			return ErrInvalidSettings
+		}
 		s.SessionTTL = time.Duration(*p.SessionTTLSeconds) * time.Second
 	}
 	if p.IdleTTLSeconds != nil {
+		if *p.IdleTTLSeconds < 60 || *p.IdleTTLSeconds > 7200 {
+			return ErrInvalidSettings
+		}
 		s.IdleTTL = time.Duration(*p.IdleTTLSeconds) * time.Second
 	}
 	if p.MaxConcurrent != nil {

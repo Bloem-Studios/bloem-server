@@ -28,13 +28,14 @@ var ErrForbidden = errors.New("preview: platform administrator required")
 // Admin owns the preview control plane; every operation rechecks durable
 // platform authority, and writes serialize with guest exchange and shutdown.
 type Admin struct {
-	pool     *pgxpool.Pool
-	serverID ServerID
-	store    *Store
+	pool        *pgxpool.Pool
+	serverID    ServerID
+	store       *Store
+	servedHosts []string
 }
 
-func NewAdmin(pool *pgxpool.Pool, serverID ServerID) *Admin {
-	return &Admin{pool: pool, serverID: serverID, store: NewStore(pool)}
+func NewAdmin(pool *pgxpool.Pool, serverID ServerID, servedHosts ...string) *Admin {
+	return &Admin{pool: pool, serverID: serverID, store: NewStore(pool), servedHosts: servedHosts}
 }
 
 func (a *Admin) begin(ctx context.Context, actor int, issuer string) (pgx.Tx, Settings, error) {
@@ -167,6 +168,14 @@ func (a *Admin) configureInTransaction(ctx context.Context, tx pgx.Tx, next Sett
 	if next.Host != "" && (next.Host == canonicalHost || next.Host == auth.HostOnly(servedHost)) {
 		return fmt.Errorf("%w: preview host already serves the application", ErrInvalidSettings)
 	}
+	for _, configured := range a.servedHosts {
+		if u, err := url.Parse(configured); err == nil && u.Host != "" {
+			configured = u.Host
+		}
+		if next.Host != "" && next.Host == auth.HostOnly(configured) {
+			return fmt.Errorf("%w: preview host already serves the application", ErrInvalidSettings)
+		}
+	}
 	return a.store.putInTransaction(ctx, tx, next)
 }
 
@@ -211,6 +220,14 @@ type Capacity struct {
 	Maximum      int  `json:"maximum"`
 }
 
+const sharedAccountReadySQL = `EXISTS(SELECT 1 FROM users u
+ JOIN organization_memberships m ON m.account_id=u.id AND m.status='active'
+ JOIN organizations o ON o.id=m.organization_id AND o.is_default
+ JOIN access_groups g ON g.id=m.access_group_id AND g.organization_id=m.organization_id
+ JOIN user_profiles p ON p.user_id=u.id AND p.organization_id=m.organization_id AND p.access_group_id=g.id AND p.is_primary
+ WHERE u.id=$1 AND u.enabled AND u.role='user' AND NOT u.local_password_login_enabled
+ AND g.managed_template_key='bloem-preview' AND g.library_ids IS NOT NULL)`
+
 func (a *Admin) Capacity(ctx context.Context, actor int) (Capacity, error) {
 	tx, s, err := a.begin(ctx, actor, "")
 	if err != nil {
@@ -218,7 +235,7 @@ func (a *Admin) Capacity(ctx context.Context, actor int) (Capacity, error) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	out := Capacity{Enabled: s.Enabled, Maximum: s.MaxConcurrent}
-	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users u JOIN user_profiles p ON p.user_id=u.id WHERE u.id=$1 AND u.enabled AND u.role='user' AND NOT u.local_password_login_enabled AND p.is_primary), (SELECT count(*) FROM auth_sessions s JOIN bloem_preview_guest_sessions g ON g.session_id=s.id WHERE s.user_id=$1 AND s.revoked_at IS NULL AND s.expires_at>now() AND COALESCE(s.last_seen_at,s.created_at)>now()-make_interval(secs=>g.idle_ttl_seconds))`, s.AccountID).Scan(&out.AccountReady, &out.Active); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT `+sharedAccountReadySQL+`, (SELECT count(*) FROM auth_sessions s JOIN bloem_preview_guest_sessions g ON g.session_id=s.id WHERE s.user_id=$1 AND s.revoked_at IS NULL AND s.expires_at>now() AND COALESCE(s.last_seen_at,s.created_at)>now()-make_interval(secs=>g.idle_ttl_seconds))`, s.AccountID).Scan(&out.AccountReady, &out.Active); err != nil {
 		return Capacity{}, err
 	}
 	return out, nil
@@ -238,7 +255,7 @@ func (a *Admin) Verify(ctx context.Context, actor int, raw string) (Ticket, erro
 		return Ticket{}, ErrUnavailable
 	}
 	var eligible bool
-	if err = tx.QueryRow(ctx, `SELECT enabled AND role='user' AND NOT local_password_login_enabled FROM users WHERE id=$1`, s.AccountID).Scan(&eligible); err != nil {
+	if err = tx.QueryRow(ctx, `SELECT `+sharedAccountReadySQL, s.AccountID).Scan(&eligible); err != nil {
 		return Ticket{}, err
 	}
 	if !eligible {

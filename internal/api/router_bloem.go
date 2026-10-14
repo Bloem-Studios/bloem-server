@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -151,9 +150,10 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	}
 	mountBloemRoutes(r, system, session, authMW, adminMW,
 		bloemRouteSurfaces{
-			Preview:  bloemPreviewHandler(deps),
-			Client:   newBloemClientSurface(deps, authMW, tenantMW, searchProvider, liveTVAdmin),
-			Platform: platformHandler, People: peopleHandler, Organization: organizationHandler,
+			Preview:      bloemPreviewHandler(deps),
+			PreviewAdmin: bloemPreviewAdminHandler(deps),
+			Client:       newBloemClientSurface(deps, authMW, tenantMW, searchProvider, liveTVAdmin),
+			Platform:     platformHandler, People: peopleHandler, Organization: organizationHandler,
 			Explain:     explainHandler,
 			Entitlement: entitlementHandler, AccountPolicy: accountPolicyHandler,
 			Promotions: handlers.NewAdminPromotionsHandler(deps.Promotions), Ambience: handlers.NewAmbienceHandler(deps.Ambience),
@@ -171,6 +171,7 @@ const NativeAPIPrefix = handlers.NativeAPIPrefix
 // bloemRouteSurfaces lists optional route groups; nil handlers leave their routes unmounted.
 type bloemRouteSurfaces struct {
 	Preview                *handlers.BloemPreviewHandler
+	PreviewAdmin           *handlers.BloemPreviewAdminHandler
 	ListCollections        *handlers.BloemListCollectionsHandler
 	BookRequests           *handlers.BloemBookRequestsHandler
 	Client                 bloemClientSurface
@@ -199,6 +200,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 	client := surfaces.Client
 	r.Route("/api/bloem/v1", func(r chi.Router) {
 		r.Get("/capabilities", system.HandleCapabilities)
+		mountBloemPreviewAdmin(r, surfaces.PreviewAdmin, authMW, adminMW)
 		if surfaces.Preview != nil {
 			// Public: a ticket or nothing authenticates these (bloem_preview_host.go).
 			r.Post("/preview/sessions", surfaces.Preview.HandleCreateSession)
@@ -347,18 +349,7 @@ func mountPlatformEntitlementScopedRoutes(r chi.Router, handler *handlers.AdminH
 	if authMW == nil || adminMW == nil {
 		return
 	}
-	eitherPlatformCredential := func(next http.Handler) http.Handler {
-		admin := adminMW.Require(next)
-		apiKey := authMW.RequireAuth(next)
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			parts := strings.Fields(r.Header.Get("Authorization"))
-			if len(parts) == 2 && strings.EqualFold(parts[0], "bearer") && strings.HasPrefix(parts[1], "sa_") {
-				apiKey.ServeHTTP(w, r)
-				return
-			}
-			admin.ServeHTTP(w, r)
-		})
-	}
+	eitherPlatformCredential := bloemEitherPlatformCredential(authMW, adminMW)
 	if entitlement != nil {
 		// A storefront provisions accounts on templates with its API key: it reads
 		// the enabled catalog and previews and applies one template per account.

@@ -3,12 +3,15 @@ package preview_test
 import (
 	"crypto/ed25519"
 	"errors"
-	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/preview"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+
+	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/preview"
 )
 
 func TestPreviewAdminEnsureIsAtomicAndIdempotent(t *testing.T) {
@@ -42,6 +45,41 @@ func TestPreviewAdminEnsureIsAtomicAndIdempotent(t *testing.T) {
 	}
 	if _, err := admin.EnsureAccount(ctx, id, "operator-test"); err == nil {
 		t.Fatal("preview account administered itself")
+	}
+}
+
+func TestPreviewAdminConcurrentIssuersCannotTakeOver(t *testing.T) {
+	ctx, pool := previewTestDB(t)
+	actor := insertAccount(t, ctx, pool, "admin")
+	a := preview.NewAdmin(pool, staticServerID("server-test"))
+	t.Cleanup(func() {
+		_, _ = pool.Exec(ctx, `UPDATE bloem_preview_settings SET enabled=false,account_id=NULL; DELETE FROM users WHERE username='bloem-preview'`)
+	})
+	start := make(chan struct{})
+	result := make(chan error, 2)
+	var wg sync.WaitGroup
+	for _, issuer := range []string{"first-operator", "second-operator"} {
+		wg.Go(func() { <-start; _, err := a.EnsureAccount(ctx, actor, issuer); result <- err })
+	}
+	close(start)
+	wg.Wait()
+	close(result)
+	success, conflict := 0, 0
+	for err := range result {
+		if err == nil {
+			success++
+		} else if errors.Is(err, preview.ErrInvalidSettings) {
+			conflict++
+		} else {
+			t.Fatal(err)
+		}
+	}
+	if success != 1 || conflict != 1 {
+		t.Fatalf("concurrent ownership: %d success, %d conflict", success, conflict)
+	}
+	var accounts int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE username='bloem-preview'`).Scan(&accounts); err != nil || accounts != 1 {
+		t.Fatalf("duplicate shared accounts: %d %v", accounts, err)
 	}
 }
 
@@ -144,6 +182,12 @@ func TestPreviewAdminProbeDoesNotConsumeAndCapacityIgnoresIdleGuests(t *testing.
 	cap, err = a.Capacity(ctx, actor)
 	if err != nil || cap.Active != 0 {
 		t.Fatalf("revoke left guests: %+v %v", cap, err)
+	}
+	if _, err = pool.Exec(ctx, `DELETE FROM user_profiles WHERE user_id=$1`, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = a.Verify(ctx, actor, raw); !errors.Is(err, preview.ErrUnavailable) {
+		t.Fatalf("probe reported readiness without a primary profile: %v", err)
 	}
 }
 

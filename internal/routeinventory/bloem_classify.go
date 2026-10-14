@@ -100,6 +100,8 @@ var bloemInfrastructureMiddleware = []string{
 	// It runs after the route's own auth gates and only ever subtracts, so it
 	// adds no authority to classify.
 	"bloemListMutationMiddleware",
+	// These only refuse preview credentials/hosts; route auth stays authoritative.
+	"previewHostGuard", "previewAccountLoginGuard",
 }
 
 func init() {
