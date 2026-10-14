@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -137,5 +138,93 @@ func TestRequireAuthRechecksPreviewForAnExistingAudienceTicket(t *testing.T) {
 		} else if !called || w.Code != http.StatusNoContent {
 			t.Fatalf("standard ticket refused: %d", w.Code)
 		}
+	}
+}
+
+type guestSettings struct{ s auth.PreviewGuestSettings }
+
+func (g guestSettings) PreviewGuestSettings(context.Context) (auth.PreviewGuestSettings, error) {
+	return g.s, nil
+}
+
+func guestMiddleware(settings auth.PreviewGuestSettings, preview bool) *AuthMiddleware {
+	sessions := previewSessions{preview: map[string]bool{"s-guest": preview}}
+	tokens := previewTokens{"guest": {UserID: 7, Role: "user", TokenType: auth.TokenTypeAccess, SessionID: "s-guest", AuthMethod: auth.AuthMethodPreviewGuest}}
+	am := NewAuthMiddleware(tokens, sessions, nil, nil)
+	am.SetPreviewPrincipals(sessions)
+	am.SetPreviewRouteGuard(func(*http.Request) bool { return true })
+	am.SetPreviewGuests(guestSettings{settings}, NewPreviewGuestLimiter())
+	return am
+}
+
+func serveGuest(am *AuthMiddleware, host string, header http.Header) (*httptest.ResponseRecorder, bool, bool) {
+	var preview, guest bool
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		preview, guest = IsPreviewPrincipal(r.Context()), IsPreviewGuest(r.Context())
+		w.WriteHeader(http.StatusNoContent)
+	})
+	r := httptest.NewRequest(http.MethodGet, "/x", nil)
+	r.Host = host
+	for k, v := range header {
+		r.Header[k] = v
+	}
+	r.Header.Set("Authorization", "Bearer guest")
+	w := httptest.NewRecorder()
+	am.RequireAuth(next).ServeHTTP(w, r)
+	return w, preview, guest
+}
+
+func TestRequireAuthBindsGuestsToThePreviewHost(t *testing.T) {
+	on := auth.PreviewGuestSettings{Enabled: true, Host: "browse.example.test", AccountID: 7}
+	am := guestMiddleware(on, true)
+	if w, preview, guest := serveGuest(am, "browse.example.test", nil); w.Code != http.StatusNoContent || !preview || !guest {
+		t.Fatalf("preview host: %d preview=%v guest=%v", w.Code, preview, guest)
+	}
+	if w, _, _ := serveGuest(am, "Browse.Example.Test:443", nil); w.Code != http.StatusNoContent {
+		t.Fatalf("preview host with port and case: %d", w.Code)
+	}
+	if w, _, _ := serveGuest(am, "lib.example.test", http.Header{"X-Forwarded-Host": {"browse.example.test"}}); w.Code != http.StatusUnauthorized {
+		t.Fatalf("normal host claiming the preview host by X-Forwarded-Host: %d", w.Code)
+	}
+	off := on
+	off.Enabled = false
+	if w, _, _ := serveGuest(guestMiddleware(off, true), "browse.example.test", nil); w.Code != http.StatusUnauthorized {
+		t.Fatalf("kill switch: %d", w.Code)
+	}
+	other := on
+	other.AccountID = 8
+	if w, _, _ := serveGuest(guestMiddleware(other, true), "browse.example.test", nil); w.Code != http.StatusUnauthorized {
+		t.Fatalf("guest of another account: %d", w.Code)
+	}
+}
+
+func TestGuestIsPreviewOnlyWhateverItsGroup(t *testing.T) {
+	// The shared account's group no longer says preview (an admin swapped it):
+	// a guest stays a preview principal.
+	am := guestMiddleware(auth.PreviewGuestSettings{Enabled: true, Host: "browse.example.test", AccountID: 7}, false)
+	if w, preview, _ := serveGuest(am, "browse.example.test", nil); w.Code != http.StatusNoContent || !preview {
+		t.Fatalf("%d preview=%v", w.Code, preview)
+	}
+}
+
+func TestPreviewGuestLimiterCapsOneGuestAndAllGuests(t *testing.T) {
+	l := NewPreviewGuestLimiter()
+	allowed := 0
+	for range 100 {
+		if l.Allow("one") {
+			allowed++
+		}
+	}
+	if allowed < 20 || allowed > 40 {
+		t.Fatalf("one guest got %d of 100 immediate requests, want about its burst of 30", allowed)
+	}
+	total := 0
+	for i := range 400 {
+		if l.Allow(fmt.Sprintf("guest-%d", i)) {
+			total++
+		}
+	}
+	if total > 140 {
+		t.Fatalf("all guests together got %d immediate requests, want about the burst of 120", total)
 	}
 }

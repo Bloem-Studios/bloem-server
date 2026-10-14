@@ -26,7 +26,10 @@ func (r *SessionRepository) ActiveSessionAuthority(ctx context.Context, id strin
 	query := `SELECT CASE WHEN s.profile_id IS NOT NULL THEN 'user' ELSE u.role END, ` + previewAccountSQL + `
 		FROM auth_sessions s
 		JOIN users u ON u.id = s.user_id
-		WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > NOW()`
+		WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > NOW()
+		  AND (s.auth_method <> 'preview_guest' OR EXISTS (
+			SELECT 1 FROM bloem_preview_guest_sessions g
+			WHERE g.session_id = s.id AND ` + liveGuestCondition + `))`
 	err = r.pool.QueryRow(ctx, query, id).Scan(&role, &previewOnly)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", false, false, nil

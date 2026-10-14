@@ -72,7 +72,10 @@ type AuthMiddleware struct {
 	// Bloem: preview principals (bloem_preview.go). Nil routes fail closed.
 	previewPrincipals PreviewPrincipals
 	previewRoutes     PreviewRouteGuard
-	audienceTickets   auth.AudienceTicketStore
+	previewGuests     auth.PreviewGuestSettingsSource
+	previewGuestLimit *PreviewGuestLimiter
+
+	audienceTickets auth.AudienceTicketStore
 }
 
 func (am *AuthMiddleware) SetAudienceTicketStore(store auth.AudienceTicketStore) {
@@ -246,6 +249,13 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 				writeUnauthorized(w, "The account's role changed; refresh the access token", ReasonTokenRefreshRequired)
 				return
 			}
+			if claims.AuthMethod == auth.AuthMethodPreviewGuest {
+				// Bloem: a guest is preview-only and bound to the preview host.
+				if !am.admitPreviewGuest(w, r, claims) {
+					return
+				}
+				previewOnly = true
+			}
 			am.sessionLastSeen.Touch(claims.SessionID)
 		}
 
@@ -267,6 +277,10 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), claimsKey, claims)
 		if previewOnly {
 			ctx = withPreviewPrincipal(ctx)
+			if claims.AuthMethod == auth.AuthMethodPreviewGuest {
+				ctx = withPreviewGuest(ctx)
+			}
+
 			if am.previewRoutes == nil || !am.previewRoutes(r.WithContext(ctx)) {
 				WritePreviewOnly(w)
 				return

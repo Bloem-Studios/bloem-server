@@ -2,7 +2,11 @@ package middleware
 
 import (
 	"context"
+	"github.com/Silo-Server/silo-server/internal/auth"
+	"golang.org/x/time/rate"
 	"net/http"
+	"sync"
+	"time"
 )
 
 // CodePreviewOnly is the refusal code a preview principal receives, in the
@@ -71,4 +75,108 @@ func (am *AuthMiddleware) accountPreview(ctx context.Context, accountID int) (bo
 		return false, nil
 	}
 	return am.previewPrincipals.AccountPreviewOnly(ctx, accountID)
+}
+
+// CodePreviewSessionInvalid refuses a guest token that is not valid here:
+// another host, the preview is off, or the session belongs to another account.
+const CodePreviewSessionInvalid = "preview_session_invalid"
+
+// SetPreviewGuests installs what guest admission needs. Without it a guest
+// token is refused.
+func (am *AuthMiddleware) SetPreviewGuests(settings auth.PreviewGuestSettingsSource, limiter *PreviewGuestLimiter) {
+	am.previewGuests, am.previewGuestLimit = settings, limiter
+}
+
+type previewGuestKey struct{}
+
+// IsPreviewGuest reports whether RequireAuth admitted a guest session.
+func IsPreviewGuest(ctx context.Context) bool {
+	marked, _ := ctx.Value(previewGuestKey{}).(bool)
+	return marked
+}
+
+func withPreviewGuest(ctx context.Context) context.Context {
+	return context.WithValue(ctx, previewGuestKey{}, true)
+}
+
+// admitPreviewGuest checks a guest token against the current preview: on,
+// on its host (r.Host, never X-Forwarded-Host), for the shared account, and
+// within the guest traffic cap. It writes the refusal itself.
+func (am *AuthMiddleware) admitPreviewGuest(w http.ResponseWriter, r *http.Request, claims *auth.Claims) bool {
+	if am.previewGuests == nil {
+		writeUnauthorized(w, "Preview sessions are not available", CodePreviewSessionInvalid)
+		return false
+	}
+	settings, err := am.previewGuests.PreviewGuestSettings(r.Context())
+	if err != nil {
+		writeCredentialCheckUnavailable(w, r, err)
+		return false
+	}
+	if !settings.Enabled || settings.AccountID != claims.UserID || auth.HostOnly(r.Host) != settings.Host {
+		writeUnauthorized(w, "This preview session is not valid here", CodePreviewSessionInvalid)
+		return false
+	}
+	if am.previewGuestLimit != nil && !am.previewGuestLimit.Allow(claims.SessionID) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Retry-After", "1")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":"rate_limited","code":"preview_busy","message":"The preview is busy; try again in a moment."}`))
+		return false
+	}
+	return true
+}
+
+// PreviewGuestLimiter caps guest traffic: each guest, and all guests
+// together, so guests take a bounded share of the server's budget.
+type PreviewGuestLimiter struct {
+	all      *rate.Limiter
+	mu       sync.Mutex
+	sessions map[string]*guestBucket
+	pruneAt  time.Time
+	now      func() time.Time
+}
+
+type guestBucket struct {
+	limiter *rate.Limiter
+	seen    time.Time
+}
+
+const (
+	previewGuestsPerSecond = 60
+	previewGuestsBurst     = 120
+	previewGuestPerSecond  = 10
+	previewGuestBurst      = 30
+)
+
+func NewPreviewGuestLimiter() *PreviewGuestLimiter {
+	return &PreviewGuestLimiter{
+		all:      rate.NewLimiter(previewGuestsPerSecond, previewGuestsBurst),
+		sessions: make(map[string]*guestBucket),
+		now:      time.Now,
+	}
+}
+
+// Allow spends one request for a guest session, or reports that it must wait.
+func (l *PreviewGuestLimiter) Allow(sessionID string) bool {
+	now := l.now()
+	l.mu.Lock()
+	if now.After(l.pruneAt) {
+		for id, b := range l.sessions {
+			if now.Sub(b.seen) > 30*time.Minute {
+				delete(l.sessions, id)
+			}
+		}
+		l.pruneAt = now.Add(time.Minute)
+	}
+	b := l.sessions[sessionID]
+	if b == nil {
+		b = &guestBucket{limiter: rate.NewLimiter(previewGuestPerSecond, previewGuestBurst)}
+		l.sessions[sessionID] = b
+	}
+	b.seen = now
+	l.mu.Unlock()
+	if !b.limiter.AllowN(now, 1) {
+		return false
+	}
+	return l.all.AllowN(now, 1)
 }

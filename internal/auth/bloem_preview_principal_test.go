@@ -106,3 +106,37 @@ func TestPreviewAccountSQLNamesTheTemplateKey(t *testing.T) {
 		t.Fatal("previewAccountSQL does not name accesspolicy.PreviewTemplateKey")
 	}
 }
+
+func TestActiveSessionAuthorityEndsAnIdleGuest(t *testing.T) {
+	ctx := context.Background()
+	pool := NewBloemAuthTestDatabase(t)
+	user, err := NewUserRepository(pool).Create(ctx, models.CreateUserInput{Username: "idle-guest", Email: "idle-guest@example.test", Password: "synthetic-password", Role: "user"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE bloem_preview_settings SET account_id=$1`, user.ID); err != nil {
+		t.Fatal(err)
+	}
+	guests := NewPreviewGuests(pool, NewJWTService("s", time.Hour, time.Hour), nil)
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pair, err := guests.CreateInTx(ctx, tx, NewPreviewGuest{AccountID: user.ID, ExpiresAt: time.Now().Add(time.Hour), IdleTTL: 20 * time.Minute, ClientBucket: "b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	repo := NewSessionRepository(pool)
+	if _, _, active, err := repo.ActiveSessionAuthority(ctx, pair.SessionID); err != nil || !active {
+		t.Fatalf("fresh guest active=%v err=%v", active, err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE auth_sessions SET last_seen_at = now() - interval '21 minutes', created_at = now() - interval '40 minutes' WHERE id=$1`, pair.SessionID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, active, err := repo.ActiveSessionAuthority(ctx, pair.SessionID); err != nil || active {
+		t.Fatalf("idle guest active=%v err=%v", active, err)
+	}
+}
