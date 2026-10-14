@@ -3155,3 +3155,24 @@ authoritative audio type; the opaque path can leave plan MIME as
 `application/octet-stream`. Recovery starts a fresh attempt for the same track.
 
 See [publication and playback invariants](architecture/bloem-native-audio-playback.md).
+
+
+## Preview guest sessions
+
+These public native extensions are mounted when a database and signing secret
+are available. See [guest-session invariants](architecture/bloem-browse-only-content-policy.md#guest-preview-sessions).
+
+| Method and path | Request | Response |
+| --- | --- | --- |
+| `POST /api/bloem/v1/preview/sessions` | `{ticket, refresh_token?}` on the preview host | `201 {access_token, refresh_token, token_type, expires_in, expires_at, item}` |
+| `GET /api/bloem/v1/preview/status` | No credential required | `{enabled}`; on the preview host, also `brand`, `storefront_url`, `launch_url`, `cta_url`, `cta_label` |
+
+`item` comes only from the verified launch ticket. `expires_at` is UTC RFC3339;
+`expires_in` is the access-token lifetime in seconds. A live guest refresh token
+reuses its session without extending expiry. Successful tickets are single-use.
+Session responses and status are not cacheable; status exposes no capacity.
+
+Exchange errors are `400 invalid_request`, `403 preview_ticket_invalid`,
+`404 preview_unavailable`, `429 rate_limited` or `503 preview_busy`. Rate and
+capacity refusals include `Retry-After`. Guest traffic remains host-bound and
+cannot obtain ordinary sessions, account-management authority or audience tickets.
