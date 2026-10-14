@@ -259,3 +259,22 @@ func TestBloemOrganizationsFailsClosedOnStoreError(t *testing.T) {
 		t.Fatalf("response = %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestBloemBookRequestCapabilityTokensTrackWiring(t *testing.T) {
+	for _, tc := range []struct{ ebooks, connectionAdmin bool }{{false, false}, {true, false}, {false, true}, {true, true}} {
+		h := NewBloemSystemHandler(nil)
+		h.SetEbookRequestsAvailable(tc.ebooks)
+		h.SetBookRequestConnectionAdminAvailable(tc.connectionAdmin)
+		rec := httptest.NewRecorder()
+		h.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
+		var body struct {
+			FeatureTokens []string `json:"feature_tokens"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if slices.Contains(body.FeatureTokens, "ebook_requests_v1") != tc.ebooks || slices.Contains(body.FeatureTokens, "ebook_requests_direct_profile_v1") != tc.ebooks || slices.Contains(body.FeatureTokens, "book_request_connection_admin_v1") != tc.connectionAdmin {
+			t.Fatalf("%+v: %v", tc, body.FeatureTokens)
+		}
+	}
+}

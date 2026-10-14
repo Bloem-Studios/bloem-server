@@ -7,10 +7,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/bookrequests"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 )
 
 type ebookSetupStub struct {
@@ -18,6 +20,7 @@ type ebookSetupStub struct {
 	v       bookrequests.Viewer
 	enabled bool
 	in      EbookRequestConnectionInput
+	tested  string
 }
 
 func (s *ebookSetupStub) List(context.Context, bookrequests.Viewer) (EbookRequestSetup, error) {
@@ -41,6 +44,12 @@ func (s *ebookSetupStub) SetEnabled(_ context.Context, v bookrequests.Viewer, en
 	s.enabled = enabled
 	return nil
 }
+func (s *ebookSetupStub) Test(_ context.Context, v bookrequests.Viewer, id string) (RequestIntegrationTestResult, error) {
+	s.calls++
+	s.v = v
+	s.tested = id
+	return RequestIntegrationTestResult{OK: true, Message: "Bookwarehouse monitoring API authenticated."}, nil
+}
 func ebookSetupRequest(method, body, authority string, defaultOrg bool) *http.Request {
 	r := organizationRequest(method, "/organization/ebook-request-policy", body, uuid.New(), 1, nil)
 	tenant, _ := tenancy.FromContext(r.Context())
@@ -62,7 +71,7 @@ func TestBloemEbookRequestSetupRequiresPlatformAuthorityInDefaultOrganization(t 
 	}{{"organization_admin", true}, {"platform_admin", false}} {
 		s := &ebookSetupStub{}
 		h := ebookSetupHandler(s)
-		for _, handle := range []http.HandlerFunc{h.HandleEbookRequestPolicy, h.HandleEbookIntegrationCreate, h.HandleEbookIntegrationLibrary} {
+		for _, handle := range []http.HandlerFunc{h.HandleEbookRequestPolicy, h.HandleEbookIntegrationCreate, h.HandleEbookIntegrationLibrary, h.HandleEbookIntegrationTest} {
 			w := httptest.NewRecorder()
 			handle(w, ebookSetupRequest(http.MethodPut, `{"enabled":true}`, tc.authority, tc.defaultOrg))
 			if w.Code != http.StatusForbidden || s.calls != 0 {
@@ -113,5 +122,18 @@ func TestBloemEbookRequestSetupConnectionUsesBoundAuthority(t *testing.T) {
 		if w.Code != http.StatusBadRequest || s.calls != before {
 			t.Fatalf("unsupported connection authority reached setup: %d %s", w.Code, w.Body.String())
 		}
+	}
+}
+
+func TestBloemEbookRequestConnectionTestUsesPathAndBoundAuthority(t *testing.T) {
+	s := &ebookSetupStub{}
+	r := ebookSetupRequest(http.MethodPost, "", "platform_admin", true)
+	routeCtx := chi.NewRouteContext()
+	routeCtx.URLParams.Add("id", "100123")
+	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, routeCtx))
+	w := httptest.NewRecorder()
+	ebookSetupHandler(s).HandleEbookIntegrationTest(w, r)
+	if w.Code != http.StatusOK || s.calls != 1 || s.tested != "100123" || s.v.UserID != 7 || !s.v.Admin || w.Header().Get("Cache-Control") != "private, no-store" || !strings.Contains(w.Body.String(), `"ok":true`) {
+		t.Fatalf("connection test: %d %s %+v", w.Code, w.Body.String(), s)
 	}
 }

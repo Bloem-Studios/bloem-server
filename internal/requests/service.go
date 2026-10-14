@@ -1555,6 +1555,9 @@ func (s *Service) UpdateIntegration(ctx context.Context, viewer Viewer, in Integ
 	if strings.TrimSpace(in.ID) == "" {
 		return nil, fmt.Errorf("%w: integration id required", ErrInvalidInput)
 	}
+	if err := s.guardBloemLaneIntegration(ctx, in, true); err != nil { // Bloem: bloem_lane_integration_guard.go
+		return nil, err
+	}
 	if err := validateInstance(&in); err != nil {
 		return nil, err
 	}
@@ -1679,6 +1682,9 @@ func (s *Service) LoadIntegrationOptions(ctx context.Context, viewer Viewer, int
 		return nil, ErrForbidden
 	}
 	if err := s.requirePlatformAuthority(ctx, viewer); err != nil {
+		return nil, err
+	}
+	if err := s.guardBloemLaneIntegration(ctx, integration, false); err != nil { // Bloem: bloem_lane_integration_guard.go
 		return nil, err
 	}
 	// For a saved instance the request body carries only the path id (no creds and

@@ -89,6 +89,10 @@ func registerBloemEbookRequestsDocument(reg *Registry) {
 	binding.Description = authority + " library_id=0 clears the binding. Existing dispatched work retains its original library and configuration identity."
 	bloemDocumentErrors[BloemNativeError](reg, &binding, errors)
 	registerBloemChiDocument[BloemEbookRequestLibraryInput, BloemEbookRequestIntegrationOutput](reg, binding)
+	test := bloemChiDocumentOp(reg, "POST", "/admin/organization/ebook-request-integrations/{id}/test", "testBloemEbookRequestIntegration", "requests", "Run the Bookwarehouse plugin's connection test for a saved connection.", "adminContextAuth", 200)
+	test.Description = authority + " The request has no body. A failed test is HTTP 200 with ok=false. A plugin message that repeats the saved API key is withheld."
+	bloemDocumentErrors[BloemNativeError](reg, &test, errors)
+	registerBloemChiDocument[BloemRequestIntegrationTestInput, BloemRequestIntegrationTestOutput](reg, test)
 	policy := bloemChiDocumentOp(reg, "PUT", "/admin/organization/ebook-request-policy", "setBloemEbookRequestPolicy", "requests", "Explicitly enable or disable ebook request admission and dispatch.", "adminContextAuth", 200)
 	policy.Description = authority + " The default is false. Disabling prevents new requests and new provider work; work already submitted may continue at Bookwarehouse. History and local cancellation remain available."
 	bloemDocumentErrors[BloemNativeError](reg, &policy, errors)

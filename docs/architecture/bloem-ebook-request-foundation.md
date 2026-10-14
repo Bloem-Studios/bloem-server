@@ -40,6 +40,13 @@ separate mutations. Connections default to EPUB and HTTPS; trusted local HTTP
 requires explicit opt-in. PDF requires an explicit connection configuration
 opt-in. Responses never contain connection credentials.
 
+`POST .../ebook-request-integrations/{id}/test` runs the plugin's
+`TestConnection` against a saved connection the lane can use, for a platform
+administrator. It returns `{ok, message}` with HTTP 200 whether or not the test
+passed. Transport errors become fixed text, and a plugin message that repeats
+the saved API key is withheld. A test is a provider read; it does not touch
+dispatch state.
+
 Each connection must be linked to an enabled native Bookwarehouse ebook library
 accessible to the default organization. Approved requests remain awaiting
 fulfillment when no eligible bound connection exists. Dispatch freezes a
@@ -68,6 +75,15 @@ receipt-free started claim. Generic transport errors remain uncertain and
 recover only through reads. The library loader carries the storage location's
 selection revision into its authority check.
 
+The requester-visible reason follows that distinction. An uncertain outcome
+reads "Submission outcome is unknown; checking the backend without submitting
+again." A proven non-submission reads "The submission did not reach the
+backend; it will be submitted again." That covers a plugin refusal and a host
+failure before the call, such as an unavailable plugin or a failed
+revalidation. After five failures the request is
+`failed`: a non-submission says that an administrator retry submits again, and
+an uncertain one says that retry checks the existing submission.
+
 Cancellation affects Bloem only. Bookwarehouse may continue work already
 started. Disabling acquisition blocks new provider work; it does not promise
 provider cancellation. Provider errors exposed to clients exclude credentials
@@ -92,7 +108,13 @@ and retries durably. No tenant book titles go to deployment-wide broadcasts.
 
 `ebook_requests_v1` advertises the mounted API, while its per-profile capability
 reports opt-in and current policy. This increment supports embedded web/admin
-flows. Ebook request adoption in Bloem Apple and Android is deferred; ebook
-routes are not added to the direct-profile session allowlist. Jellyfin and
-Audiobookshelf do not expose this Bloem request API. Automatic audiobook
-acquisition remains deferred.
+flows. Ebook request adoption in Bloem Apple and Android is deferred. Ebook
+requests are open to any user of Bloem, so the five viewer routes (capability,
+history, filing, read and withdrawal) are in the direct-profile session
+allowlist, as the audiobook viewer routes are. A bound profile files and
+withdraws as itself under the same default-organization and profile checks;
+approval, retry and setup stay administrative. `ebook_requests_direct_profile_v1`
+is advertised alongside `ebook_requests_v1`, so a client can tell this admission
+from an older server's 403. Jellyfin and Audiobookshelf do
+not expose this Bloem request API. Automatic audiobook acquisition uses its own
+lane.

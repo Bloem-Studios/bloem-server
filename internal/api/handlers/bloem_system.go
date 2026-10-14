@@ -29,6 +29,7 @@ type BloemSystemHandler struct {
 	seasonalViewer              bool
 	bookRequests                bool
 	ebookRequests               bool
+	bookRequestConnectionAdmin  bool
 	nativeAudioReadiness        func(context.Context) bool
 	lifecyclePhase              func(context.Context) (lifecycleidempotency.Phase, error)
 }
@@ -49,6 +50,12 @@ func (h *BloemSystemHandler) SetProfileCredentialManagementAvailable(available b
 func (h *BloemSystemHandler) SetBookRequestsAvailable(available bool) { h.bookRequests = available }
 
 func (h *BloemSystemHandler) SetEbookRequestsAvailable(available bool) { h.ebookRequests = available }
+
+// SetBookRequestConnectionAdminAvailable tracks the admin-context connection
+// edit and test routes of the book request lanes.
+func (h *BloemSystemHandler) SetBookRequestConnectionAdminAvailable(available bool) {
+	h.bookRequestConnectionAdmin = available
+}
 
 // SetSeasonalViewerAvailable tracks the authenticated native ambience route.
 func (h *BloemSystemHandler) SetSeasonalViewerAvailable(available bool) {
@@ -175,7 +182,13 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 		featureTokens = append(featureTokens, "audiobook_requests_v1")
 	}
 	if h.ebookRequests {
-		featureTokens = append(featureTokens, "ebook_requests_v1")
+		// The ebook viewer routes admit direct-profile sessions wherever they
+		// are mounted; the second token lets a client tell this server from
+		// one that answers those sessions with 403.
+		featureTokens = append(featureTokens, "ebook_requests_v1", "ebook_requests_direct_profile_v1")
+	}
+	if h.bookRequestConnectionAdmin {
+		featureTokens = append(featureTokens, "book_request_connection_admin_v1")
 	}
 	if h.seasonalViewer {
 		featureTokens = append(featureTokens, "seasonal_viewer_v1")

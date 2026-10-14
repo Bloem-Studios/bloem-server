@@ -118,6 +118,11 @@ BLOEM_PLATFORM = {
 
 # /api/bloem/v1/<a>[/admin/<b>] -> section
 BLOEM_ADMIN = {"organization": "bloem-admin-organization"}
+# Book request lane administration under /admin/organization/<a>.
+BLOEM_BOOK_REQUEST_ADMIN = (
+    "book-requests", "ebook-requests", "ebook-request-integrations",
+    "ebook-request-policy", "audiobook-request-integrations",
+)
 BLOEM_TOP = {
     "livetv": "bloem-livetv",
     "music": "bloem-native", "notifications": "bloem-native", "watch": "bloem-native",
@@ -157,7 +162,7 @@ def bloem_section(parts, entry):
             if table is None:
                 raise SystemExit(f"unmapped bloem platform route: {entry['method']} {entry['path']}")
             return table.get(_first_static(rest[2:]), table[None])
-        if rest[0] == "organization" and _first_static(rest[1:]) == "book-requests":
+        if rest[0] == "organization" and _first_static(rest[1:]) in BLOEM_BOOK_REQUEST_ADMIN:
             return "bloem-book-requests"
         if rest[0] in BLOEM_ADMIN:
             return BLOEM_ADMIN[rest[0]]

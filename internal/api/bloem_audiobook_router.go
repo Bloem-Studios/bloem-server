@@ -42,6 +42,13 @@ func (a bloemAudiobookRouter) connection(ctx context.Context, in bookrequests.Au
 	if _, exists := c.PluginConfig["service_kind"]; exists {
 		return nil, bookrequests.ErrInvalid
 	}
+	// Every saved credential must still be bound to the URL it was entered
+	// for. Bloem's own editor keeps that true, but Silo's generic editor (in
+	// the mirrored switching phase) or a direct SQL edit can move a URL under
+	// a saved composite; the host refuses rather than relying on the plugin.
+	if _, refusal := boundAudiobookCredentials(c.APIKeyRef, c.PluginConfig); refusal != "" {
+		return nil, bookrequests.ErrConflict
+	}
 	config, err := structpb.NewStruct(c.PluginConfig)
 	if err != nil {
 		return nil, bookrequests.ErrInvalid

@@ -74,12 +74,20 @@ const (
 // directProfileAllowedRoutes admits exact routes: every mutation, plus the
 // reads that sit outside a read-only subtree.
 var directProfileAllowedRoutes = map[string][]string{
-	// Bloem audiobook requests carry strict account/profile/organization attribution.
-	"/api/bloem/v1/book-requests/capability":  {http.MethodGet},
-	"/api/bloem/v1/book-requests/mine":        {http.MethodGet},
-	"/api/bloem/v1/book-requests":             {http.MethodPost},
-	"/api/bloem/v1/book-requests/{id}":        {http.MethodGet},
-	"/api/bloem/v1/book-requests/{id}/cancel": {http.MethodPost},
+	// Bloem audiobook and ebook requests carry strict account/profile/
+	// organization attribution: each is filed, read and withdrawn as the bound
+	// profile, and a bound profile is a user of Bloem like any other. Approval,
+	// retry and setup stay administrative and are absent.
+	"/api/bloem/v1/book-requests/capability":   {http.MethodGet},
+	"/api/bloem/v1/book-requests/mine":         {http.MethodGet},
+	"/api/bloem/v1/book-requests":              {http.MethodPost},
+	"/api/bloem/v1/book-requests/{id}":         {http.MethodGet},
+	"/api/bloem/v1/book-requests/{id}/cancel":  {http.MethodPost},
+	"/api/bloem/v1/ebook-requests/capability":  {http.MethodGet},
+	"/api/bloem/v1/ebook-requests/mine":        {http.MethodGet},
+	"/api/bloem/v1/ebook-requests":             {http.MethodPost},
+	"/api/bloem/v1/ebook-requests/{id}":        {http.MethodGet},
+	"/api/bloem/v1/ebook-requests/{id}/cancel": {http.MethodPost},
 	// Ending the session.
 	"/api/v1/auth/logout": {http.MethodPost},
 

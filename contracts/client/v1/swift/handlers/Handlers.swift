@@ -58,6 +58,43 @@ public enum Handlers {
         }
     }
 
+    /// Wire type `internal/api/handlers.AudiobookRequestConnectionUpdate`. Direction: request. Dialect: bloem. Gate: audiobook_requests_v1. Registered root.
+    public struct AudiobookRequestConnectionUpdate: Codable, Hashable, Sendable {
+        public let name: String
+        public let pluginConfig: [String: BloemJSONValue]
+        public let credentials: [String: String]
+
+        public enum CodingKeys: String, CodingKey {
+            case name = "name"
+            case pluginConfig = "plugin_config"
+            case credentials = "credentials"
+        }
+
+        public init(
+            name: String = "",
+            pluginConfig: [String: BloemJSONValue] = [:],
+            credentials: [String: String] = [:]
+        ) {
+            self.name = name
+            self.pluginConfig = pluginConfig
+            self.credentials = credentials
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+            self.pluginConfig = try container.decodeIfPresent([String: BloemJSONValue].self, forKey: .pluginConfig) ?? [:]
+            self.credentials = try container.decodeIfPresent([String: String].self, forKey: .credentials) ?? [:]
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.name, forKey: .name)
+            try container.encode(self.pluginConfig, forKey: .pluginConfig)
+            try container.encode(self.credentials, forKey: .credentials)
+        }
+    }
+
     /// Wire type `internal/api/handlers.AudiobookRequestSetup`. Direction: response. Dialect: bloem. Gate: audiobook_requests_v1. Registered root.
     public struct AudiobookRequestSetup: Codable, Hashable, Sendable {
         public let available: Bool
@@ -1288,6 +1325,37 @@ public enum Handlers {
             try container.encode(self.maxPlaybackQuality, forKey: .maxPlaybackQuality)
             try container.encode(self.createdAt, forKey: .createdAt)
             try container.encode(self.updatedAt, forKey: .updatedAt)
+        }
+    }
+
+    /// Wire type `internal/api/handlers.RequestIntegrationTestResult`. Direction: response. Dialect: bloem. Registered root.
+    public struct RequestIntegrationTestResult: Codable, Hashable, Sendable {
+        public let ok: Bool
+        public let message: String
+
+        public enum CodingKeys: String, CodingKey {
+            case ok = "ok"
+            case message = "message"
+        }
+
+        public init(
+            ok: Bool = false,
+            message: String = ""
+        ) {
+            self.ok = ok
+            self.message = message
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.ok = try container.decodeIfPresent(Bool.self, forKey: .ok) ?? false
+            self.message = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.ok, forKey: .ok)
+            try container.encode(self.message, forKey: .message)
         }
     }
 
