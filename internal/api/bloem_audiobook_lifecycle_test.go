@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -56,7 +57,8 @@ import (
 // launch checks of that path are not covered here.
 //
 // Requirements: SILO_TEST_DATABASE_URL, the plugin binary, ffmpeg and
-// ffprobe. Each missing prerequisite skips with its reason.
+// ffprobe. Without the plugin binary the tests skip; once it is set, a missing
+// ffmpeg or ffprobe fails them.
 
 const (
 	lifecycleTitle      = "Synthetic Saga"
@@ -78,11 +80,11 @@ func lifecyclePrerequisites(t *testing.T) lifecycleTools {
 	}
 	ffmpeg, err := exec.LookPath("ffmpeg")
 	if err != nil {
-		t.Skip("ffmpeg unavailable; the lifecycle acceptance generates real audio")
+		t.Fatal("ffmpeg unavailable; the lifecycle acceptance generates real audio")
 	}
 	ffprobe, err := exec.LookPath("ffprobe")
 	if err != nil {
-		t.Skip("ffprobe unavailable; the scanner probes the downloaded audio")
+		t.Fatal("ffprobe unavailable; the scanner probes the downloaded audio")
 	}
 	return lifecycleTools{binary: binary, ffmpeg: ffmpeg, ffprobe: ffprobe}
 }
@@ -91,6 +93,13 @@ func lifecyclePrerequisites(t *testing.T) lifecycleTools {
 // header first, where the plugin reads durations; MP3 gets an Info frame.
 func lifecycleAudio(t *testing.T, ffmpeg, file string, seconds int, bitrate string) int64 {
 	t.Helper()
+	return lifecycleAudioLayout(t, ffmpeg, file, seconds, bitrate, true)
+}
+
+// lifecycleAudioLayout writes the M4B movie header first (faststart) or, as
+// ffmpeg does by default, after the audio.
+func lifecycleAudioLayout(t *testing.T, ffmpeg, file string, seconds int, bitrate string, faststart bool) int64 {
+	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +107,11 @@ func lifecycleAudio(t *testing.T, ffmpeg, file string, seconds int, bitrate stri
 		"-metadata", "title=" + lifecycleTitle, "-metadata", "artist=" + lifecycleAuthor, "-metadata", "album=" + lifecycleTitle}
 	switch strings.ToLower(filepath.Ext(file)) {
 	case ".m4b":
-		args = append(args, "-c:a", "aac", "-b:a", bitrate, "-movflags", "+faststart", "-f", "mp4", file)
+		args = append(args, "-c:a", "aac", "-b:a", bitrate)
+		if faststart {
+			args = append(args, "-movflags", "+faststart")
+		}
+		args = append(args, "-f", "mp4", file)
 	case ".mp3":
 		args = append(args, "-c:a", "libmp3lame", "-b:a", bitrate, "-write_xing", "1", file)
 	default:
@@ -196,6 +209,13 @@ func (s *lifecycleSources) serve(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// setPosts replaces the AudiobookBay listing between hand-offs.
+func (s *lifecycleSources) setPosts(posts ...lifecycleABBPost) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.posts = posts
+}
+
 func (s *lifecycleSources) seen() ([]string, []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -252,6 +272,8 @@ type lifecycleQBittorrent struct {
 	forbidden []string
 	// addFails makes the next add answer 503 without recording it.
 	addFails bool
+	// down answers 503 to every call, the login included.
+	down bool
 }
 
 func newLifecycleQBittorrent(t *testing.T, localRoot string) *lifecycleQBittorrent {
@@ -265,6 +287,10 @@ func newLifecycleQBittorrent(t *testing.T, localRoot string) *lifecycleQBittorre
 func (q *lifecycleQBittorrent) serve(w http.ResponseWriter, r *http.Request) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	if q.down {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+		return
+	}
 	if r.URL.Path == "/api/v2/auth/login" {
 		if r.Method != http.MethodPost || r.ParseForm() != nil || r.PostForm.Get("username") != "bloem" || r.PostForm.Get("password") != lifecycleQBPassword {
 			_, _ = io.WriteString(w, "Fails.")
@@ -390,6 +416,35 @@ func (q *lifecycleQBittorrent) finish(t *testing.T, hash string, write func(dir 
 	for _, f := range files {
 		torrent.Size += f.Size
 	}
+}
+
+func (q *lifecycleQBittorrent) setDown(down bool) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.down = down
+}
+
+// lifecycleCopy copies staged files, keyed by their path inside the
+// download, into dir and lists them as qBittorrent would.
+func lifecycleCopy(t *testing.T, dir string, staged map[string]string) []lifecycleTorrentFile {
+	t.Helper()
+	names := slices.Sorted(maps.Keys(staged))
+	files := make([]lifecycleTorrentFile, 0, len(names))
+	for _, name := range names {
+		data, err := os.ReadFile(staged[name])
+		if err != nil {
+			t.Fatal(err)
+		}
+		target := filepath.Join(dir, filepath.FromSlash(name))
+		if err = os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err = os.WriteFile(target, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, lifecycleTorrentFile{Name: name, Size: int64(len(data)), Progress: 1, Priority: 1})
+	}
+	return files
 }
 
 func (q *lifecycleQBittorrent) remove(t *testing.T, hash string) {
@@ -1190,5 +1245,193 @@ func TestAudiobookRequestLifecycleLostAndAmbiguousHandoffRealPlugin(t *testing.T
 	}
 	if adds, _, _ = qb.snapshot(); len(adds) != 1 {
 		t.Fatalf("lost download was added again: %+v", adds)
+	}
+}
+
+// An unreachable download client does not fail an in-flight download. The
+// request keeps its state through more checks than the lost limit, an outage
+// longer than an hour shows in the stuck view, and the download completes
+// once the client is back, with one add and no admin notice.
+func TestAudiobookRequestLifecycleClientOutageRealPlugin(t *testing.T) {
+	tools := lifecyclePrerequisites(t)
+	l := newAudiobookLifecycle(t, tools)
+	sources := newLifecycleSources(t)
+	qb := newLifecycleQBittorrent(t, l.downloads)
+	sources.trustSources(t)
+	l.startPlugin(t)
+	book := filepath.Join(t.TempDir(), "Synthetic Saga.m4b")
+	size := lifecycleAudio(t, tools.ffmpeg, book, 360, "48k")
+	hash := "7c4a8d09ca3762af61e59520943dc26494f8941b"
+	sources.setPosts(lifecycleABBPost{Slug: "synthetic-saga-test-author", Title: lifecycleTitle + " - " + lifecycleAuthor, Language: "English", Format: "M4B", SizeMB: lifecycleMB(size), Hash: hash})
+	l.connect(t, lifecycleTorrentConfig(sources, qb, l.downloads), map[string]string{"qbittorrent_password": lifecycleQBPassword})
+
+	r := l.file(t, lifecycleTitle)
+	l.run(t, r.ID, false)
+	qb.setProgress(t, hash, "downloading", 0.3)
+	if got := l.run(t, r.ID, true); lifecycleFulfillment(got) != "downloading" {
+		t.Fatalf("before the outage: %+v", got)
+	}
+
+	qb.setDown(true)
+	for pass := 1; pass <= 6; pass++ {
+		got, a := l.run(t, r.ID, true), l.acquisition(t, r.ID)
+		if got.Status != "approved" || lifecycleFulfillment(got) != "downloading" || a.ProviderStatus != "downloading" || a.ExternalStatus != "unknown" || a.FailureCount != 0 || a.Stuck {
+			t.Fatalf("outage pass %d: request=%+v acquisition=%+v", pass, got, a)
+		}
+	}
+	if _, err := l.pool.Exec(t.Context(), `UPDATE bloem_audiobook_request_acquisitions SET updated_at=now()-interval '2 hours' WHERE request_id=$1`, r.ID); err != nil {
+		t.Fatal(err)
+	}
+	l.run(t, r.ID, true)
+	if a := l.acquisition(t, r.ID); a.StuckReason != "unreachable" {
+		t.Fatalf("a two-hour outage is not surfaced: %+v", a)
+	}
+
+	qb.setDown(false)
+	qb.finish(t, hash, func(dir string) []lifecycleTorrentFile {
+		return lifecycleCopy(t, dir, map[string]string{"Synthetic Saga.m4b": book})
+	})
+	if got := l.run(t, r.ID, true); lifecycleFulfillment(got) != "awaiting_library" {
+		t.Fatalf("after the outage: %+v %+v", got, l.acquisition(t, r.ID))
+	}
+	if a := l.acquisition(t, r.ID); a.Stuck {
+		t.Fatalf("a readable client is still stuck: %+v", a)
+	}
+	l.scan(t)
+	content, _ := l.scannedItem(t, filepath.Join(l.downloads, lifecycleMarkerFolder(r, 1)))
+	if got := l.run(t, r.ID, true); got.Status != "completed" || got.LibraryContentID != content {
+		t.Fatalf("after scan: %+v want %s", got, content)
+	}
+	l.run(t, r.ID, false)
+	if _, fulfilled, attention := l.notices.snapshot(); !slices.Equal(fulfilled, []string{r.ID}) || len(attention) != 0 {
+		t.Fatalf("notices: fulfilled=%v attention=%v", fulfilled, attention)
+	}
+	if adds, forbidden, _ := qb.snapshot(); len(adds) != 1 || len(forbidden) != 0 {
+		t.Fatalf("qBittorrent after the outage: adds=%+v forbidden=%v", adds, forbidden)
+	}
+}
+
+// The download folder sits inside a scanned library, so a scan can index a
+// finished download before the plugin verifies it. The verifying pass then
+// completes from the scanned item; a multi-disc download that scanned as
+// several books goes to review on that pass instead.
+func TestAudiobookRequestLifecycleScannedBeforeVerificationRealPlugin(t *testing.T) {
+	tools := lifecyclePrerequisites(t)
+	l := newAudiobookLifecycle(t, tools)
+	sources := newLifecycleSources(t)
+	qb := newLifecycleQBittorrent(t, l.downloads)
+	sources.trustSources(t)
+	l.startPlugin(t)
+	staging := t.TempDir()
+	book := filepath.Join(staging, "single", "Synthetic Saga.m4b")
+	size := lifecycleAudio(t, tools.ffmpeg, book, 360, "48k")
+	discs := map[string]string{"CD1/Track 01.mp3": filepath.Join(staging, "disc", "CD1", "Track 01.mp3"), "CD2/Track 01.mp3": filepath.Join(staging, "disc", "CD2", "Track 01.mp3")}
+	var discSize int64
+	for _, file := range discs {
+		discSize += lifecycleAudio(t, tools.ffmpeg, file, 180, "32k")
+	}
+	singleHash, discHash := "356a192b7913b04c54574d18c28d46e6395428ab", "da4b9237bacccdf19c0760cab7aec4a8359010b0"
+	l.connect(t, lifecycleTorrentConfig(sources, qb, l.downloads), map[string]string{"qbittorrent_password": lifecycleQBPassword})
+
+	sources.setPosts(lifecycleABBPost{Slug: "synthetic-saga-test-author", Title: lifecycleTitle + " - " + lifecycleAuthor, Language: "English", Format: "M4B", SizeMB: lifecycleMB(size), Hash: singleHash})
+	single := l.file(t, lifecycleTitle)
+	l.run(t, single.ID, false)
+	sources.setPosts(lifecycleABBPost{Slug: "disc-saga-test-author", Title: "Disc Saga - " + lifecycleAuthor, Language: "English", Format: "MP3", SizeMB: lifecycleMB(discSize), Hash: discHash})
+	disc := l.file(t, "Disc Saga")
+	l.run(t, disc.ID, false)
+	if adds, _, _ := qb.snapshot(); len(adds) != 2 || adds[0].Hash != singleHash || adds[1].Hash != discHash {
+		t.Fatalf("hand-offs: %+v", adds)
+	}
+	qb.finish(t, singleHash, func(dir string) []lifecycleTorrentFile {
+		return lifecycleCopy(t, dir, map[string]string{"Synthetic Saga.m4b": book})
+	})
+	qb.finish(t, discHash, func(dir string) []lifecycleTorrentFile { return lifecycleCopy(t, dir, discs) })
+	l.scan(t)
+
+	content, _ := l.scannedItem(t, filepath.Join(l.downloads, lifecycleMarkerFolder(single, 1)))
+	got := l.run(t, single.ID, true)
+	if got.Status != "completed" || lifecycleFulfillment(got) != "library" || got.LibraryContentID != content {
+		t.Fatalf("the verifying pass did not complete from the scanned item: %+v want %s", got, content)
+	}
+	if verification := lifecycleDecision(t, l.acquisition(t, single.ID), "verify"); verification.Outcome != "verified" {
+		t.Fatalf("plugin verification: %+v", verification)
+	}
+
+	got = l.run(t, disc.ID, true)
+	a := l.acquisition(t, disc.ID)
+	if got.Status != "approved" || lifecycleFulfillment(got) != "review" || a.ProviderStatus != "review" || a.ReviewKind != "verification" {
+		t.Fatalf("a multi-disc download must go to review: request=%+v acquisition=%+v", got, a)
+	}
+	outcomes := []string{}
+	for _, record := range a.Decisions {
+		if record.Decision.Phase == "verify" {
+			outcomes = append(outcomes, record.Decision.Outcome+":"+strings.Join(record.Decision.Issues, ","))
+		}
+	}
+	if !slices.Contains(outcomes, "verified:") || !slices.Contains(outcomes, "review:multiple_items") {
+		t.Fatalf("verify decisions: %v", outcomes)
+	}
+	for range 2 {
+		l.run(t, disc.ID, true)
+	}
+	_, fulfilled, attention := l.notices.snapshot()
+	if !slices.Equal(fulfilled, []string{single.ID}) || !slices.Equal(attention, []string{disc.ID + ":1"}) {
+		t.Fatalf("notices: fulfilled=%v attention=%v", fulfilled, attention)
+	}
+	if got = l.run(t, disc.ID, true); lifecycleFulfillment(got) != "review" {
+		t.Fatalf("review released without an administrator: %+v", got)
+	}
+}
+
+// The plugin's verification floor on duration, with real files. A too-short
+// MP3 goes to review from its parsed duration. A too-short M4B whose movie
+// header follows the audio is the recorded gap: the plugin reads MP4
+// durations only from the first 64 KiB, so it verifies that file on size.
+func TestAudiobookRequestLifecycleVerificationGapsRealPlugin(t *testing.T) {
+	tools := lifecyclePrerequisites(t)
+	l := newAudiobookLifecycle(t, tools)
+	sources := newLifecycleSources(t)
+	qb := newLifecycleQBittorrent(t, l.downloads)
+	sources.trustSources(t)
+	l.startPlugin(t)
+	staging := t.TempDir()
+	// Two minutes at a high bitrate: over the 1 MB floor, under five minutes.
+	mp3 := filepath.Join(staging, "mp3", "Synthetic Saga.mp3")
+	mp3Size := lifecycleAudio(t, tools.ffmpeg, mp3, 120, "128k")
+	m4b := filepath.Join(staging, "m4b", "Trailing Header Saga.m4b")
+	m4bSize := lifecycleAudioLayout(t, tools.ffmpeg, m4b, 120, "128k", false)
+	if mp3Size < 1<<20 || m4bSize < 1<<20 {
+		t.Fatalf("fixtures too small to isolate the duration check: %d %d", mp3Size, m4bSize)
+	}
+	mp3Hash, m4bHash := "77de68daecd823babbb58edb1c8e14d7106e83bb", "1b6453892473a467d07372d45eb05abc2031647a"
+	l.connect(t, lifecycleTorrentConfig(sources, qb, l.downloads), map[string]string{"qbittorrent_password": lifecycleQBPassword})
+
+	sources.setPosts(lifecycleABBPost{Slug: "synthetic-saga-test-author", Title: lifecycleTitle + " - " + lifecycleAuthor, Language: "English", Format: "MP3", SizeMB: lifecycleMB(mp3Size), Hash: mp3Hash})
+	short := l.file(t, lifecycleTitle)
+	l.run(t, short.ID, false)
+	sources.setPosts(lifecycleABBPost{Slug: "trailing-header-saga-test-author", Title: "Trailing Header Saga - " + lifecycleAuthor, Language: "English", Format: "M4B", SizeMB: lifecycleMB(m4bSize), Hash: m4bHash})
+	trailing := l.file(t, "Trailing Header Saga")
+	l.run(t, trailing.ID, false)
+	qb.finish(t, mp3Hash, func(dir string) []lifecycleTorrentFile {
+		return lifecycleCopy(t, dir, map[string]string{"Synthetic Saga.mp3": mp3})
+	})
+	qb.finish(t, m4bHash, func(dir string) []lifecycleTorrentFile {
+		return lifecycleCopy(t, dir, map[string]string{"Trailing Header Saga.m4b": m4b})
+	})
+
+	got := l.run(t, short.ID, true)
+	a := l.acquisition(t, short.ID)
+	verification := lifecycleDecision(t, a, "verify")
+	if verification.Outcome != "review" || !slices.Contains(verification.Issues, "too_short") || slices.Contains(verification.Issues, "too_small") ||
+		lifecycleFulfillment(got) != "review" || a.ReviewKind != "verification" {
+		t.Fatalf("a too-short MP3 must go to review: verification=%+v request=%+v acquisition=%+v", verification, got, a)
+	}
+
+	got = l.run(t, trailing.ID, true)
+	verification = lifecycleDecision(t, l.acquisition(t, trailing.ID), "verify")
+	// Plugin follow-up: read a trailing MP4 movie header. This assertion then
+	// fails; expect a too_short review here instead.
+	if verification.Outcome != "verified" || slices.Contains(verification.Issues, "too_short") || lifecycleFulfillment(got) != "awaiting_library" {
+		t.Fatalf("the trailing movie header gap changed; if the plugin now reads it, expect a too_short review: verification=%+v request=%+v", verification, got)
 	}
 }

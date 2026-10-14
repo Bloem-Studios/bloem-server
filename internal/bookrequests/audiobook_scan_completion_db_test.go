@@ -6,11 +6,32 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 )
+
+// audioTools finds ffmpeg and ffprobe. A missing tool skips the test unless
+// BLOEM_REQUIRE_FFMPEG=1, which CI sets once it installs them, so a broken
+// install cannot pass by running nothing.
+func audioTools(t *testing.T) (string, string) {
+	t.Helper()
+	missing := t.Skip
+	if os.Getenv("BLOEM_REQUIRE_FFMPEG") == "1" {
+		missing = t.Fatal
+	}
+	ffmpeg, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		missing("ffmpeg unavailable; this test scans generated audio")
+	}
+	ffprobe, err := exec.LookPath("ffprobe")
+	if err != nil {
+		missing("ffprobe unavailable; the scanner probes the generated audio")
+	}
+	return ffmpeg, ffprobe
+}
 
 // scannedAudio writes seconds of generated audio for the real scanner.
 func scannedAudio(t *testing.T, ffmpeg, file string, seconds int) {
@@ -36,14 +57,7 @@ func scannedAudio(t *testing.T, ffmpeg, file string, seconds int) {
 // the request with one disc.
 func TestAudiobookScannedDownloadCompletionDatabase(t *testing.T) {
 	_, v, pool := databaseFixture(t)
-	ffmpeg, err := exec.LookPath("ffmpeg")
-	if err != nil {
-		t.Skip("ffmpeg unavailable; this test scans generated audio")
-	}
-	ffprobe, err := exec.LookPath("ffprobe")
-	if err != nil {
-		t.Skip("ffprobe unavailable; the scanner probes the generated audio")
-	}
+	ffmpeg, ffprobe := audioTools(t)
 	notices := &audiobookNoticeSpy{}
 	fake := &audiobookFake{}
 	s := NewService(pool, notices)
@@ -53,11 +67,11 @@ func TestAudiobookScannedDownloadCompletionDatabase(t *testing.T) {
 	integration, _ := audiobookIntegrationRow(t, pool, "Audiobooks")
 	library := filepath.Join(t.TempDir(), "audiobooks")
 	downloads := filepath.Join(library, "requests")
-	if err = os.MkdirAll(downloads, 0o755); err != nil {
+	if err := os.MkdirAll(downloads, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	folder := audiobookFolder(t, pool, v.OrganizationID, "Audio Books", "audiobooks", library)
-	if _, err = s.SetAudiobookIntegrationLibrary(t.Context(), admin, integration, folder, []string{downloads}); err != nil {
+	if _, err := s.SetAudiobookIntegrationLibrary(t.Context(), admin, integration, folder, []string{downloads}); err != nil {
 		t.Fatal(err)
 	}
 	fake.fulfill = func(_ context.Context, in AudiobookDispatchInput) (AudiobookOutcome, error) {
@@ -106,7 +120,7 @@ func TestAudiobookScannedDownloadCompletionDatabase(t *testing.T) {
 	// A download in another attempt's marker folder is not evidence.
 	scannedAudio(t, ffmpeg, filepath.Join(downloads, "Single File Saga ["+AudiobookMarker(requests[0].ID, 2)+"]", "other.m4b"), 3)
 	sc := scanner.NewScanner(scanner.NewFileRepository(pool), ffprobe, nil, 2, false, 0)
-	if err = sc.ScanAudiobookFolder(t.Context(), &models.MediaFolder{ID: folder, Type: "audiobooks", Name: "Audio Books", Paths: []string{library}, Enabled: true}, true); err != nil {
+	if err := sc.ScanAudiobookFolder(t.Context(), &models.MediaFolder{ID: folder, Type: "audiobooks", Name: "Audio Books", Paths: []string{library}, Enabled: true}, true); err != nil {
 		t.Fatal(err)
 	}
 	reconcile()
@@ -132,24 +146,37 @@ func TestAudiobookScannedDownloadCompletionDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("multi-disc download: status=%s fulfilment=%s", disc.Status, disc.Fulfilment)
+	completed := []string{requests[0].ID, requests[1].ID}
 	switch {
 	case disc.Status == "completed" && itemFiles(disc.LibraryContentID) == len(layouts[2].files):
 		// A scanner that groups disc folders into one book may complete it.
+		completed = append(completed, disc.ID)
 	case disc.Status == "approved" && disc.Fulfilment == "review":
 		acquisition, err := s.AudiobookAcquisition(t.Context(), admin, disc.ID)
 		if err != nil || acquisition.ReviewKind != "verification" {
 			t.Fatalf("multi-disc review: %+v %v", acquisition, err)
 		}
+		// Provisional, pending the multi-disc decision: accepting a download
+		// that scanned as several books is refused today, so the admin can
+		// only fulfill it manually. A plugin flag or disc-merging scanner
+		// would change this.
 		if _, err = s.AcceptAudiobookDownload(t.Context(), admin, disc.ID, ActionInput{ExpectedRevision: disc.Revision}); err == nil {
 			t.Fatal("accept-download allowed for a download that scanned as several books")
 		}
 	default:
 		t.Fatalf("multi-disc download must not complete with one disc: %+v", disc)
 	}
-	if _, err = s.Reconcile(t.Context(), 100); err != nil {
-		t.Fatal(err)
+	// Two notification passes: each completed request is announced once.
+	for range 2 {
+		if _, err = s.Reconcile(t.Context(), 100); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if len(notices.fulfilled) < 2 {
-		t.Fatalf("fulfilled notices: %v", notices.fulfilled)
+	notices.mu.Lock()
+	fulfilled := slices.Sorted(slices.Values(notices.fulfilled))
+	notices.mu.Unlock()
+	slices.Sort(completed)
+	if !slices.Equal(fulfilled, completed) {
+		t.Fatalf("fulfilled notices: %v, want one each for %v", fulfilled, completed)
 	}
 }
