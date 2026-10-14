@@ -203,6 +203,13 @@ func TestAudiobookConnectionEditRotatesWithoutRebindingSavedSecretsDatabase(t *t
 	if err != nil || result.OK || len(env.router.tests) != 2 {
 		t.Fatalf("mismatched binding reached the plugin: %+v %v", result, err)
 	}
+	// Dispatch reads the same saved row and refuses before resolving a plugin.
+	client := &audiobookRouterClientFixture{}
+	dispatch := bloemAudiobookRouter{integrations: env.store, resolver: ebookResolverFixture{client}, validator: audiobookValidatorFixture{}}
+	work := bookrequests.AudiobookDispatchInput{Request: bookrequests.Request{ID: "request", MediaType: "audiobook", Title: "Synthetic Saga"}, Integration: bookrequests.AudiobookIntegration{ID: created.ID, InstallationID: install, CapabilityID: "audiobooks"}, SubmissionID: "12345678-1234-1234-1234-123456789abc", Attempt: 1}
+	if _, err = dispatch.Fulfill(ctx, work); !errors.Is(err, bookrequests.ErrProviderNotCalled) || !errors.Is(err, bookrequests.ErrConflict) || client.input != nil {
+		t.Fatalf("dispatch sent a credential to a moved URL: %v", err)
+	}
 
 	if _, err = s.Test(ctx, env.admin, "missing"); !errors.Is(err, bookrequests.ErrNotFound) {
 		t.Fatalf("unknown connection: %v", err)

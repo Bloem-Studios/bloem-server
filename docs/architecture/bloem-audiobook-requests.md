@@ -154,6 +154,13 @@ refusal is a form validation error naming Bloem's audiobook setup. Generic
 creation stays open because it carries the caller's own credentials. This guard
 does not depend on the plugin's own binding check.
 
+Upstream Silo's generic editor has no such guard, so in the mirrored switching
+phase it, or a direct SQL edit, can still move a URL under a saved composite.
+Dispatch therefore checks every saved credential against its URL binding when it
+reads the connection, before it resolves the plugin. A mismatch or an unreadable
+composite is a conflict and the plugin is not contacted: a submission is treated
+as not sent and tried again later, and a status check counts as a failed check.
+
 `POST .../audiobook-request-integrations/{id}/test` runs the plugin's
 `TestConnection` against the saved connection for a platform administrator. The
 host first checks every saved credential against its URL binding and answers
