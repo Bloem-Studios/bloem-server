@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/Silo-Server/silo-server/internal/accesspolicy"
+	"github.com/Silo-Server/silo-server/internal/entitlements"
 )
 
 func requireCheckViolation(t *testing.T, err error, constraint string) {
@@ -48,4 +49,61 @@ func TestPreviewInvariantChecksRejectLooseningInTheDatabase(t *testing.T) {
 		SELECT id, $1, 'preview invariant probe', false, 'bloem-preview', 1, true
 		FROM organizations WHERE is_default`, "Preview probe "+uuid.NewString())
 	requireCheckViolation(t, err, "access_groups_preview_invariant")
+}
+
+func TestPreviewTemplateRefusesEveryLoosening(t *testing.T) {
+	ctx, _, store := entitlementTestStore(t)
+	key := accesspolicy.PreviewTemplateKey
+	current, err := store.Latest(ctx, key)
+	require.NoError(t, err)
+	for name, loosen := range map[string]func(*entitlements.Policy){
+		"playback":           func(p *entitlements.Policy) { p.PlaybackAllowed = true },
+		"streams":            func(p *entitlements.Policy) { p.MaxStreams = 1 },
+		"profiles":           func(p *entitlements.Policy) { p.MaxProfiles = 1 },
+		"transcode":          func(p *entitlements.Policy) { p.TranscodeAllowed = true },
+		"transcodes":         func(p *entitlements.Policy) { p.MaxTranscodes = 1 },
+		"downloads":          func(p *entitlements.Policy) { p.DownloadAllowed = true },
+		"download transcode": func(p *entitlements.Policy) { p.DownloadAllowed, p.DownloadTranscodeAllowed = true, true },
+		"requests":           func(p *entitlements.Policy) { p.RequestsAllowed = true },
+		"quality":            func(p *entitlements.Policy) { p.MaxPlaybackQuality = "1080p" },
+		"a permission":       func(p *entitlements.Policy) { p.AllowedPermissions = []string{"marker_edit"} },
+		"all permissions":    func(p *entitlements.Policy) { p.AllowedPermissions = nil },
+	} {
+		policy := current.Policy
+		policy.AllowedPermissions = []string{}
+		loosen(&policy)
+		_, err := store.Revise(ctx, key, current.Revision, entitlements.ReviseTemplateInput{Name: current.Name, Enabled: true, Policy: policy})
+		require.ErrorIs(t, err, entitlements.ErrProtectedTemplate, name)
+	}
+	_, err = store.Revise(ctx, key, current.Revision, entitlements.ReviseTemplateInput{Name: current.Name, Enabled: false, Policy: current.Policy})
+	require.ErrorIs(t, err, entitlements.ErrProtectedTemplate, "disable")
+	_, err = store.Archive(ctx, key, current.Revision)
+	require.ErrorIs(t, err, entitlements.ErrProtectedTemplate, "archive")
+	_, err = store.Create(ctx, entitlements.CreateTemplateInput{Key: key, Name: "Shadow", Enabled: true, Policy: current.Policy})
+	require.ErrorIs(t, err, entitlements.ErrProtectedTemplate, "re-create")
+}
+
+func TestPreviewTemplateAcceptsLibraryCuration(t *testing.T) {
+	ctx, pool, store := entitlementTestStore(t)
+	key := accesspolicy.PreviewTemplateKey
+	current, err := store.Latest(ctx, key)
+	require.NoError(t, err)
+	libraryID := insertEntitlementLibrary(t, ctx, pool, "Preview curation "+uuid.NewString(), true)
+	policy := current.Policy
+	policy.LibraryIDs = []int{libraryID}
+	revised, err := store.Revise(ctx, key, current.Revision, entitlements.ReviseTemplateInput{Name: current.Name, Enabled: true, Policy: policy})
+	require.NoError(t, err)
+	require.Equal(t, current.Revision+1, revised.Revision)
+	require.ElementsMatch(t, []int{libraryID}, revised.Policy.LibraryIDs)
+}
+
+func TestPreviewCohortCannotBeDerived(t *testing.T) {
+	fixture := newCohortFixture(t)
+	tx, err := fixture.pool.Begin(fixture.ctx)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback(fixture.ctx) }()
+	parent, _, err := fixture.store.EnsureExactCohortInTx(fixture.ctx, tx, fixture.organizationID, accesspolicy.PreviewTemplateKey, 1, fixture.actorID)
+	require.NoError(t, err)
+	_, _, err = fixture.store.DeriveCohortInTx(fixture.ctx, tx, fixture.organizationID, parent.ID, "Loosened preview "+uuid.NewString(), entitlements.PolicyPatch{}, fixture.actorID)
+	require.ErrorIs(t, err, entitlements.ErrProtectedTemplate)
 }

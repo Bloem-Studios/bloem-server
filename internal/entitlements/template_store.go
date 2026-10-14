@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/database/pglock"
 )
 
@@ -713,6 +714,18 @@ func ValidatePolicy(policy Policy) error {
 	return nil
 }
 
+// previewPolicyLoosened reports whether a policy grants anything the preview
+// template may not: every capability off, no limits above zero, and an
+// explicit empty permission set. Library curation is the one permitted change.
+// Judge the caller's policy before normalizePolicy, which folds an empty
+// permission set into nil (unrestricted).
+func previewPolicyLoosened(p Policy) bool {
+	return p.PlaybackAllowed || p.MaxStreams != 0 || p.MaxProfiles != 0 ||
+		p.TranscodeAllowed || p.MaxTranscodes != 0 || p.DownloadAllowed ||
+		p.DownloadTranscodeAllowed || p.RequestsAllowed || p.MaxPlaybackQuality != "" ||
+		p.AllowedPermissions == nil || len(p.AllowedPermissions) != 0
+}
+
 func normalizePolicy(policy Policy) (Policy, error) {
 	if err := ValidatePolicy(policy); err != nil {
 		return Policy{}, err
@@ -750,6 +763,9 @@ func normalizePolicy(policy Policy) (Policy, error) {
 func (s *Store) Create(ctx context.Context, input CreateTemplateInput) (template Template, err error) {
 	input.Key = strings.TrimSpace(input.Key)
 	input.Name = strings.TrimSpace(input.Name)
+	if input.Key == accesspolicy.PreviewTemplateKey {
+		return Template{}, ErrProtectedTemplate
+	}
 	if !templateKeyPattern.MatchString(input.Key) || input.Name == "" {
 		return Template{}, fmt.Errorf("%w: key and name are required", ErrInvalidPolicy)
 	}
@@ -881,9 +897,17 @@ func (s *Store) Revise(ctx context.Context, key string, expectedRevision int64, 
 	if input.Name == "" || expectedRevision <= 0 {
 		return Template{}, fmt.Errorf("%w: name and expected revision are required", ErrInvalidPolicy)
 	}
+	preview := key == accesspolicy.PreviewTemplateKey
+	if preview && (!input.Enabled || previewPolicyLoosened(input.Policy)) {
+		return Template{}, ErrProtectedTemplate
+	}
 	input.Policy, err = normalizePolicy(input.Policy)
 	if err != nil {
 		return Template{}, err
+	}
+	if preview {
+		// normalizePolicy folded the explicit empty permission set into nil.
+		input.Policy.AllowedPermissions = []string{}
 	}
 	if key == "browse-only" && input.Policy.PlaybackAllowed {
 		return Template{}, ErrProtectedTemplate
@@ -948,7 +972,7 @@ func (s *Store) Clone(ctx context.Context, sourceKey string, sourceRevision int6
 // Archive makes a template unavailable without deleting its history.
 func (s *Store) Archive(ctx context.Context, key string, expectedRevision int64) (Template, error) {
 	key = strings.TrimSpace(key)
-	if key == "browse-only" {
+	if key == "browse-only" || key == accesspolicy.PreviewTemplateKey {
 		return Template{}, ErrProtectedTemplate
 	}
 	tx, err := s.pool.Begin(ctx)
