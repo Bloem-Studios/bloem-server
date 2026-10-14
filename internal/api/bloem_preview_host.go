@@ -143,6 +143,7 @@ func useBloemPreviewHost(r chi.Router, deps Dependencies) {
 		return
 	}
 	r.Use(previewHostGuard(reader, previewHostTokens{JWTService: auth.NewJWTService(deps.Config.Auth.JWTSecret, time.Hour, time.Hour), privacyKey: []byte(deps.Config.Auth.JWTSecret)}))
+	r.Use(previewAccountLoginGuard(deps.DB))
 }
 
 // Signature-only verification is used solely to suppress identifying logs,

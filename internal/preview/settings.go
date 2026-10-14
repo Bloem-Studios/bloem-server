@@ -157,6 +157,16 @@ func (s *Store) Put(ctx context.Context, next Settings) error {
 		return fmt.Errorf("writing preview settings: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if err := s.putInTransaction(ctx, tx, next); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (s *Store) putInTransaction(ctx context.Context, tx pgx.Tx, next Settings) error {
+	if err := validate(next); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, settingsLockKey); err != nil {
 		return fmt.Errorf("writing preview settings: %w", err)
 	}
@@ -209,7 +219,7 @@ func (s *Store) Put(ctx context.Context, next Settings) error {
 		next.StorefrontURL, next.LaunchURL, next.MaturityCeiling); err != nil {
 		return fmt.Errorf("writing preview settings: %w", err)
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 // Disable is the kill switch: the preview turns off and every guest session

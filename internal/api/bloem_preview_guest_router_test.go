@@ -159,10 +159,9 @@ func TestPreviewGuestJourneyThroughTheRouter(t *testing.T) {
 		t.Fatalf("password login on the preview host: %d", w.Code)
 	}
 	// ...and the shared account cannot sign in anywhere else either: the
-	// trigger refuses the session, whatever status the login handler maps
-	// that to.
-	if w := do("lib.example.test", "POST", "/api/v2/auth/login", "", map[string]string{"username": "preview-shared", "password": "synthetic-password"}); w.Code == http.StatusOK {
-		t.Fatalf("shared account signed in with a password on the normal host: %s", w.Body)
+	// early guard returns a named refusal before any session insert.
+	if w := do("lib.example.test", "POST", "/api/v2/auth/login", "", map[string]string{"username": "preview-shared", "password": "synthetic-password"}); w.Code != http.StatusForbidden || !bytes.Contains(w.Body.Bytes(), []byte(`"code":"preview_account"`)) {
+		t.Fatalf("shared account login needs an explicit refusal: %d %s", w.Code, w.Body)
 	}
 	var nonGuest int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM auth_sessions WHERE user_id=$1 AND auth_method <> 'preview_guest'`, shared.ID).Scan(&nonGuest); err != nil || nonGuest != 0 {
