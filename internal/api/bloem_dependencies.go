@@ -23,8 +23,6 @@ import (
 //
 //	api.Dependencies{DB: pool, BloemDependencies: api.BloemDependencies{LiveTV: svc}}
 type BloemDependencies struct {
-	PastimeListOrigin string
-	ListCollections   *ListCollectionRuntime
 	// NativeMovieScannerReady witnesses startup assembly of the scan reader,
 	// trusted probe and publication coordinator. It is not backend health proof
 	// or viewer playback authority, and no request/config setting may change it.

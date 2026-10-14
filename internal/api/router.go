@@ -1005,7 +1005,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if lifecycle := notifications.NewRequestLifecycleNotifier(deps.Notifications); lifecycle != nil {
 			requestSvc.SetLifecycleNotifier(lifecycle)
 		}
-		configureListCollectionRequests(deps, requestSvc)
 		requestHandler = handlers.NewRequestsHandler(requestSvc)
 
 		// Onboarding tour manifest: gates consult live state at request time
@@ -1964,7 +1963,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if deps.DB != nil {
 			sectionFetcher.RecommendationRepo = recommendations.NewRepo(deps.DB)
 			if ratingsRepo != nil {
-				sectionFetcher.RecommendationReader = wrapManagedRecommendationReader(recommendations.NewReader(sectionFetcher.RecommendationRepo, ratingsRepo, deps.RecWorker, deps.UserStoreProvider), deps.DB)
+				sectionFetcher.RecommendationReader = recommendations.NewReader(sectionFetcher.RecommendationRepo, ratingsRepo, deps.RecWorker, deps.UserStoreProvider)
 			}
 		}
 		sections.InstallRecipeDelegate(sectionFetcher)
@@ -2172,7 +2171,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			recsRepo = recommendations.NewRepo(deps.DB)
 			recsReader = recommendations.NewReader(recsRepo, ratingsRepo, deps.RecWorker, deps.UserStoreProvider)
 		}
-		recsHandler = handlers.NewRecommendationsHandler(deps.Recommender, wrapManagedRecommendationReader(recsReader, deps.DB), deps.UserStoreProvider, ratingsRepo, recsRepo, deps.Recommender != nil)
+		recsHandler = handlers.NewRecommendationsHandler(deps.Recommender, recsReader, deps.UserStoreProvider, ratingsRepo, recsRepo, deps.Recommender != nil)
 		if deps.DB != nil {
 			recsFetcher := sections.NewFetcher(deps.DB)
 			recsFetcher.StoreProvider = deps.UserStoreProvider
@@ -3057,7 +3056,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.BrandingService != nil {
 		v2deps.AdminBrandingAssets = handlers.NewBrandingHandler(deps.BrandingService)
 	}
-	wireBloemListMutationGuards(&v2deps, deps.DB)
 	if deps.v2Wiring != nil {
 		deps.v2Wiring(v2deps)
 	}
@@ -3756,7 +3754,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 				if collectionHandler != nil {
 					r.Route("/collections", func(r chi.Router) {
 						r.Use(apimw.RequireProfile)
-						r.Use(bloemListMutationMiddleware(deps.DB, "personal"))
 						r.Get("/", collectionHandler.HandleListCollections)
 						r.Get("/capabilities", collectionHandler.HandleCapabilities)
 						r.Put("/sort-preference", collectionHandler.HandleSetCollectionSortPreference)
@@ -4559,7 +4556,6 @@ func newChiRouter(deps Dependencies) chi.Router {
 							if libraryCollectionHandler != nil {
 								collectionTemplateHandler := handlers.NewCollectionTemplateHandler(nil)
 								r.Route("/collections", func(r chi.Router) {
-									r.Use(bloemListMutationMiddleware(deps.DB, "server"))
 									r.Get("/", libraryCollectionHandler.HandleListAdminCollections)
 									r.Get("/templates", collectionTemplateHandler.HandleListTemplates)
 									r.Get("/template-bundles", libraryCollectionHandler.HandleListTemplateBundles)

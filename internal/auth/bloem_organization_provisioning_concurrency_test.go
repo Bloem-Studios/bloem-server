@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,7 +22,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/invitations"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/secret"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -136,33 +134,31 @@ func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 	}
 }
 
-// Every account insert publishes through the managed-tracking identity lock,
-// so default-organization provisioning admits one account at a time: the second
-// caller waits at its account insert while the first holds its seeded
-// membership, which rules out the two-insert organization-lock deadlock. The
-// waiting caller's repeatable-read snapshot predates the first publication, so
-// the lifecycle store reruns it once on a fresh snapshot.
 func TestBloemDefaultOrganizationProvisioningConcurrent(t *testing.T) {
 	pool := bloemAccountTransactionDatabase(t)
 	tenants, organizationID, _ := bloemConcurrentOrganization(t, pool, false)
 	memberships := newBloemSeededMembershipBarrier(tenants, organizationID)
 	accounts := auth.NewAccountProvisioner(auth.NewUserRepository(pool), pgstore.NewPostgresProvider(pool))
 	accounts.SetMembershipProvisioner(memberships)
-	lifecycle := lifecycleidempotency.NewPostgresStore(pool)
 	emails := [2]string{"first-account@example.test", "second-account@example.test"}
-	var attempts [2]atomic.Int32
-	seeds, outcomes := bloemRunAdmissionSerializedProvisioningPair(t, pool, memberships, func(ctx context.Context, i int) bloemProvisioningOutcome {
+	seeds, outcomes := bloemRunSeededProvisioningPair(t, memberships, func(ctx context.Context, i int) bloemProvisioningOutcome {
 		outcome := bloemProvisioningOutcome{index: i}
-		outcome.err = lifecycle.InTransaction(ctx, func(ctx context.Context, tx pgx.Tx) error {
-			attempts[i].Add(1)
-			created, err := accounts.CreateAccountWithMembershipInTransaction(ctx, tx, auth.CreateAccountInput{
-				User: models.CreateUserInput{Username: emails[i], Email: emails[i], Password: "concurrent-account-password", Role: models.RoleUser},
-			})
-			if err == nil {
-				outcome.accountID = created.User.ID
-			}
-			return err
+		tx, err := pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+		if err != nil {
+			outcome.err = err
+			return outcome
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		created, err := accounts.CreateAccountWithMembershipInTransaction(ctx, tx, auth.CreateAccountInput{
+			User: models.CreateUserInput{Username: emails[i], Email: emails[i], Password: "concurrent-account-password", Role: models.RoleUser},
 		})
+		if err == nil {
+			// Commit each caller immediately; waiting for its peer before commit
+			// would itself deadlock the correctly serialized organization locks.
+			err = tx.Commit(ctx)
+			outcome.accountID = created.User.ID
+		}
+		outcome.err = err
 		return outcome
 	})
 	for _, outcome := range outcomes {
@@ -170,9 +166,6 @@ func TestBloemDefaultOrganizationProvisioningConcurrent(t *testing.T) {
 			t.Fatalf("default account %d: %s", outcome.index, bloemProvisioningError(outcome.err))
 		}
 		bloemAssertProvisionedAccount(t, pool, emails[outcome.index], organizationID, seeds[outcome.accountID])
-	}
-	if first, second := attempts[0].Load(), attempts[1].Load(); first+second != 3 || min(first, second) != 1 {
-		t.Fatalf("attempts = %d/%d, want the admitted caller once and the waiting caller rerun once", first, second)
 	}
 }
 
@@ -251,6 +244,46 @@ type bloemProvisioningOutcome struct {
 	err                      error
 }
 
+func bloemRunSeededProvisioningPair(t *testing.T, barrier *bloemSeededMembershipBarrier, run func(context.Context, int) bloemProvisioningOutcome) (map[int]bloemMembershipSeed, [2]bloemProvisioningOutcome) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	var workers sync.WaitGroup
+	defer func() { cancel(); workers.Wait() }()
+	results := make(chan bloemProvisioningOutcome, 2)
+	for i := range 2 {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			results <- run(ctx, i)
+		}()
+	}
+	seeds := make(map[int]bloemMembershipSeed, 2)
+	var previous bloemMembershipSeed
+	for range 2 {
+		select {
+		case seed := <-barrier.arrived:
+			if seed.accountID == previous.accountID || seed.membershipID == previous.membershipID || seed.backendPID == previous.backendPID {
+				t.Fatal("barrier must observe distinct accounts, memberships and database connections")
+			}
+			seeds[seed.accountID], previous = seed, seed
+		case early := <-results:
+			t.Fatalf("caller %d finished before both memberships were seeded: status=%d error=%s", early.index, early.status, bloemProvisioningError(early.err))
+		case <-ctx.Done():
+			t.Fatal("two seeded memberships did not reach the organization provisioning barrier")
+		}
+	}
+	close(barrier.release)
+	var outcomes [2]bloemProvisioningOutcome
+	for i := range outcomes {
+		select {
+		case outcomes[i] = <-results:
+		case <-ctx.Done():
+			t.Fatal("concurrent organization provisioning did not finish")
+		}
+	}
+	return seeds, outcomes
+}
+
 func bloemConcurrentOrganization(t *testing.T, pool *pgxpool.Pool, nonDefault bool) (*tenancy.Store, uuid.UUID, int) {
 	t.Helper()
 	ctx := t.Context()
@@ -310,73 +343,9 @@ func bloemProvisioningError(err error) string {
 	return fmt.Sprintf("%T", err)
 }
 
-// bloemRunAdmissionSerializedProvisioningPair holds the first caller at the
-// barrier with its membership seeded and requires the second to be waiting on
-// the managed-tracking identity lock, not seeded beside it, before releasing.
-func bloemRunAdmissionSerializedProvisioningPair(t *testing.T, pool *pgxpool.Pool, barrier *bloemSeededMembershipBarrier, run func(context.Context, int) bloemProvisioningOutcome) (map[int]bloemMembershipSeed, [2]bloemProvisioningOutcome) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
-	var workers sync.WaitGroup
-	defer func() { cancel(); workers.Wait() }()
-	results := make(chan bloemProvisioningOutcome, 2)
-	for i := range 2 {
-		workers.Add(1)
-		go func() { defer workers.Done(); results <- run(ctx, i) }()
-	}
-	seeds := make(map[int]bloemMembershipSeed, 2)
-	var admitted bloemMembershipSeed
-	select {
-	case admitted = <-barrier.arrived:
-		seeds[admitted.accountID] = admitted
-	case early := <-results:
-		t.Fatalf("caller %d finished before any membership was seeded: status=%d error=%s", early.index, early.status, bloemProvisioningError(early.err))
-	case <-ctx.Done():
-		t.Fatal("no seeded membership reached the organization provisioning barrier")
-	}
-	poll := time.NewTicker(10 * time.Millisecond)
-	defer poll.Stop()
-	for waiting := false; !waiting; {
-		select {
-		case <-barrier.arrived:
-			t.Fatal("a second account was seeded while the first still held managed-tracking admission")
-		case early := <-results:
-			t.Fatalf("caller %d finished while the first account held admission: status=%d error=%s", early.index, early.status, bloemProvisioningError(early.err))
-		case <-ctx.Done():
-			t.Fatal("the second caller never waited on the managed-tracking identity lock")
-		case <-poll.C:
-			if err := pool.QueryRow(ctx, `SELECT EXISTS(
-				SELECT 1 FROM pg_locks l, hashtextextended('bloem.managed_identity',0) AS k
-				WHERE l.locktype='advisory' AND NOT l.granted AND l.pid<>$1
-				  AND l.database=(SELECT oid FROM pg_database WHERE datname=current_database())
-				  AND l.classid::bigint=(k>>32)&4294967295 AND l.objid::bigint=k&4294967295 AND l.objsubid=1)`,
-				admitted.backendPID).Scan(&waiting); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-	close(barrier.release)
-	var outcomes [2]bloemProvisioningOutcome
-	for i := range outcomes {
-		select {
-		case outcomes[i] = <-results:
-		case <-ctx.Done():
-			t.Fatal("serialized organization provisioning did not finish")
-		}
-	}
-	select {
-	case seed := <-barrier.arrived:
-		if seed.accountID == admitted.accountID || seed.membershipID == admitted.membershipID {
-			t.Fatal("barrier must observe distinct accounts and memberships")
-		}
-		seeds[seed.accountID] = seed
-	default:
-		t.Fatal("the waiting caller's membership was never seeded")
-	}
-	return seeds, outcomes
-}
-
 // Invitation acceptance holds the server-settings admission lock, so the
 // callers overlap at the API but intentionally serialize before provisioning.
+// The default-account test above retains the two-insert deadlock barrier.
 func bloemRunPolicySerializedProvisioningPair(t *testing.T, barrier *bloemSeededMembershipBarrier, run func(context.Context, int) bloemProvisioningOutcome) (map[int]bloemMembershipSeed, [2]bloemProvisioningOutcome) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)

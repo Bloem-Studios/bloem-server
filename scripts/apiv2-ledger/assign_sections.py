@@ -125,7 +125,7 @@ BLOEM_TOP = {
     "server": "bloem-native", "sync": "bloem-native",
     "ambience": "bloem-native", "profile-credentials": "bloem-native",
     "catalog": "bloem-native", "book-requests": "bloem-book-requests",
-    "ebook-requests": "bloem-book-requests", "list-collections": "bloem-native",
+    "ebook-requests": "bloem-book-requests",
 }
 
 # /api/internal/compat/v1/<a> -> section

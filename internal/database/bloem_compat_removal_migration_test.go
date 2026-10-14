@@ -36,7 +36,9 @@ func TestBloemCompatibilityTablesRemovedOnFreshInstall(t *testing.T) {
 }
 
 // compatibilityBaselineFS preserves the historical migration chain for tests
-// of the old data-copy migrations and the pre-removal upgrade boundary.
+// of the old data-copy migrations and the pre-removal upgrade boundary. Both
+// forward-only removals are left out, because rollback tests cross every later
+// migration's Down.
 func compatibilityBaselineFS(t *testing.T) fs.FS {
 	t.Helper()
 	out := fstest.MapFS{}
@@ -44,7 +46,8 @@ func compatibilityBaselineFS(t *testing.T) fs.FS {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || strings.HasSuffix(path, "_remove_bloem_compatibility.sql") {
+		if d.IsDir() || strings.HasSuffix(path, "_remove_bloem_compatibility.sql") ||
+			strings.HasSuffix(path, "_remove_pastime_managed_tracking.sql") {
 			return nil
 		}
 		data, err := migrations.FS.ReadFile(path)
