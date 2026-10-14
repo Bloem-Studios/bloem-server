@@ -203,7 +203,44 @@ keys stay in bounded process memory for rate limiting: one event per ten seconds
 with burst three, and an aggregate five per second with burst twenty per process.
 Retries increment again; clients should treat telemetry as best effort.
 
-Public showcase readiness still requires the preview-aware web client and Garden
-launch/configuration integration. Bloem Android and Apple preview banners, CTA and
-personal-control suppression remain the separate native-client milestone. Their
-existing denied-operation behavior continues to enforce server policy.
+## Web preview presentation
+
+The web client derives preview mode from the authenticated account presentation.
+Guest entry additionally discovers the dedicated host through the public preview
+status; visiting a preview route on the normal host cannot change subscriber
+credential storage. Guest refresh tokens and their display/attribution metadata
+live under the tab-scoped `bloem-preview-session` key. Ordinary subscriber refresh
+and profile storage remain separate. Ticket fragments are cleared before exchange,
+and one launch shares one exchange across React's development remounts. Only the
+verified server response supplies the initial item and affiliate referral.
+
+Expiry clears guest credentials and retains the operator's launch/trial metadata
+across reload. Guest expiry opens the session-ended choices instead of login;
+personal end dates remain display facts. Guest exit revokes the session, clears
+its local credentials and returns to the configured storefront. CTA destinations
+accept HTTP(S) URLs only, add `src=preview` and the selected item, and add `ref`
+only from the verified guest exchange. No preview referral is invented.
+
+A route boundary runs before protected pages mount. Playback and reader routes,
+Live TV, rooms, onboarding, personal recommendations, account/settings/profile
+pages, notifications, requests and collection editing redirect to an item or home
+CTA. Reader return links are restricted to local item paths. Playback controllers
+also intercept direct video, route-sync and audiobook starts before player state
+is created. Catalogue search scope remains a tab-local choice without a settings
+write. Guest and personal previews bypass onboarding/taste prompts and suppress
+realtime connections, theme grants, translation, subtitle searches and persisted
+library preferences. Read-only version/audio/subtitle metadata stays available.
+External trailers and catalogue artwork continue through the existing components.
+
+Bloem's Vite module resolver decorates exact presentation module boundaries with
+preview adapters. An adapter can import its original module without decorating
+itself again. The same resolver runs in development, production builds and tests;
+subscriber branches retain the original components and hooks. Preview-specific
+logic stays in `web/src/bloem/preview`, with existing shared app/auth/playback
+integration points and no new seam entries. The UI is presentation and defence in
+depth; it grants no authority beyond the server's preview gate.
+
+Public showcase readiness still requires Garden launch/configuration integration.
+Bloem Android and Apple preview banners, CTA and personal-control suppression
+remain the separate native-client milestone. Their existing denied-operation
+behavior continues to enforce server policy.

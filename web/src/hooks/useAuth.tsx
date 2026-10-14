@@ -1,3 +1,10 @@
+import { discoverPreviewHost } from "@/bloem/preview/api";
+import {
+  guestHost,
+  guestRefreshToken,
+  endGuestSession,
+  previewForUser,
+} from "@/bloem/preview/session";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { endSessionWithProvider } from "@/api/v2/providerLogout";
 import { clearSignedOut, markSignedOut, markSessionEnded } from "@/lib/externalSignIn";
@@ -319,6 +326,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [account]);
 
   const restoreProfile = useCallback(() => {
+    if (guestHost()) return;
     const savedProfile = storage.get(storage.KEYS.CURRENT_PROFILE);
     if (!savedProfile) {
       return;
@@ -337,7 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearProfile = useCallback(() => {
     setProfileId(null);
     setProfileToken(null);
-    storage.remove(storage.KEYS.CURRENT_PROFILE);
+    if (!guestHost()) storage.remove(storage.KEYS.CURRENT_PROFILE);
     setProfile(null);
   }, []);
 
@@ -359,9 +367,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSessionRestoreUnavailable(false);
       clearSignedOut();
       if (!options.preserveStoredImpersonationAdminSession) {
-        clearStoredImpersonationAdminSession();
+        if (!guestHost()) clearStoredImpersonationAdminSession();
       }
-      endProfileEpoch();
+      if (!guestHost()) endProfileEpoch();
       clearProfile();
       setUser(data.user);
       setSetupRequired(false);
@@ -373,7 +381,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(null);
     setRefreshToken(null);
     setSessionRestoreUnavailable(false);
-    endProfileEpoch();
+    if (!guestHost()) endProfileEpoch();
     clearProfile();
     queryClient.clear();
     setUser(null);
@@ -382,7 +390,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearAuthState = useCallback(() => {
     clearActiveAuthState();
-    clearStoredImpersonationAdminSession();
+    if (!guestHost()) clearStoredImpersonationAdminSession();
   }, [clearActiveAuthState]);
 
   const restoreAdminUser = useCallback(
@@ -393,12 +401,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const restoredSession = await restoreUserSession(storedSession);
       // A sign-in that replaced the session during the exchange keeps it.
       if (!isCurrent()) return false;
-      endProfileEpoch();
+      if (!guestHost()) endProfileEpoch();
       clearProfile();
       queryClient.clear();
       setAccessToken(restoredSession.accessToken);
       setRefreshToken(restoredSession.refreshToken);
-      clearStoredImpersonationAdminSession();
+      if (!guestHost()) clearStoredImpersonationAdminSession();
       setUser(restoredSession.user);
       setSetupRequired(false);
       return true;
@@ -408,6 +416,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const recoverPreservedAdminSession = useCallback(
     async (isCurrent?: () => boolean) => {
+      if (guestHost()) return false;
       const storedSession = loadStoredImpersonationAdminSession();
       if (!storedSession) {
         return false;
@@ -430,7 +439,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           returnPath,
         });
       } else {
-        clearStoredImpersonationAdminSession();
+        if (!guestHost()) clearStoredImpersonationAdminSession();
       }
 
       queryClient.clear();
@@ -475,7 +484,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void endSessionWithProvider(accessToken, undefined, { withProvider });
       }
       clearAuthState();
-      void refreshSignInProviders();
+      if (!guestHost()) void refreshSignInProviders();
     },
     [clearAuthState, refreshSignInProviders],
   );
@@ -487,7 +496,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearLoginSession = useCallback(() => {
     markSessionEnded("signed-out");
     clearAuthState();
-    void refreshSignInProviders();
+    if (!guestHost()) void refreshSignInProviders();
   }, [clearAuthState, refreshSignInProviders]);
 
   const verifyProfilePin = useCallback(
@@ -530,6 +539,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } | null>(null);
   useEffect(() => {
     onSessionRejected(() => {
+      if (guestHost()) {
+        endGuestSession();
+        clearActiveAuthState();
+        return;
+      }
       const inFlight = sessionRejectionRef.current;
       if (inFlight && isSessionIdentityCurrent(inFlight.session)) return;
       const session = captureSessionIdentity();
@@ -560,6 +574,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function loadSetupStatus() {
       try {
+        if (guestHost()) {
+          await discoverPreviewHost();
+          if (guestHost()) return;
+        }
+        if (!storage.get(storage.KEYS.REFRESH_TOKEN)) void discoverPreviewHost();
         // Independent reads: a failed provider list must not blank the setup
         // status, or an admin visiting /setup during that outage would see
         // the finished wizard again.
@@ -585,6 +604,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function restoreSession() {
+      if (guestHost() || !storage.get(storage.KEYS.REFRESH_TOKEN)) await discoverPreviewHost();
       // A sign-in on another path (the OAuth completion page, a login,
       // impersonation) or a sign-out can replace the session while this
       // restore waits on the network. From then on the restore speaks for a
@@ -595,8 +615,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let providerOutage = false;
       try {
         await initializeAuthSession({
-          refreshToken: storage.get(storage.KEYS.REFRESH_TOKEN),
-          hasStoredImpersonationAdminSession: Boolean(loadStoredImpersonationAdminSession()),
+          refreshToken: guestHost() ? guestRefreshToken() : storage.get(storage.KEYS.REFRESH_TOKEN),
+          hasStoredImpersonationAdminSession:
+            !guestHost() && Boolean(loadStoredImpersonationAdminSession()),
           bootstrapAccessToken: async () => {
             const restored = await bootstrapAccessToken();
             // Installing the restored token starts the session the rest of
@@ -642,6 +663,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (superseded()) {
               return;
             }
+            if (guestHost()) endGuestSession();
             setAccessToken(null);
             setRefreshToken(null);
           },
@@ -677,7 +699,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || previewForUser(user)) {
       soleProfileBootstrapRef.current = null;
       return;
     }

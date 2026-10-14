@@ -1,3 +1,5 @@
+import PreviewSidebar from "@/bloem/preview/PreviewSidebarBoundary";
+import { usePreviewMode } from "@/bloem/preview/usePreviewMode";
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Link, useLocation, useParams } from "react-router";
@@ -189,7 +191,11 @@ interface ResolvedPrimaryMenuLink {
   icon: ReactNode;
 }
 
-export default function AppSidebar({ onNavigate, collapsed = false }: AppSidebarProps) {
+export default function AppSidebar(props: AppSidebarProps) {
+  return usePreviewMode().active ? <PreviewSidebar {...props} /> : <SubscriberSidebar {...props} />;
+}
+
+function SubscriberSidebar({ onNavigate, collapsed = false }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useViewTransitionNavigate();
   const params = useParams<{ libraryId: string }>();

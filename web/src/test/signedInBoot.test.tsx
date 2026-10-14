@@ -435,8 +435,8 @@ describe("app boot request budget", () => {
       refreshes: 0,
       duplicateGets: 0,
       // Includes the login page's public signup-status and password-reset
-      // capability reads.
-      total: 7,
+      // capability reads and public preview-host discovery.
+      total: 8,
     });
   });
 });

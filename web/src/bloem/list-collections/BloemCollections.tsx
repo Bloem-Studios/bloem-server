@@ -1,3 +1,5 @@
+import { usePreviewMode } from "@/bloem/preview/usePreviewMode";
+import PreviewCollections from "@/bloem/preview/PreviewCollections";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Collections from "@/pages/Collections";
@@ -47,6 +49,9 @@ function SourceAction({ scope }: { scope: "personal" | "server" }) {
   );
 }
 export default function BloemCollections() {
+  return usePreviewMode().active ? <PreviewCollections /> : <SubscriberCollections />;
+}
+function SubscriberCollections() {
   return (
     <>
       <SourceAction scope="personal" />

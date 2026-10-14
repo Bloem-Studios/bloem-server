@@ -80,6 +80,7 @@ func (h *BloemPreviewHandler) HandleCreateSession(w http.ResponseWriter, r *http
 		"expires_in":    result.Tokens.ExpiresIn,
 		"expires_at":    result.ExpiresAt.UTC().Format(time.RFC3339),
 		"item":          result.Item,
+		"ref":           result.Ref,
 	})
 }
 

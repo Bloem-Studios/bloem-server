@@ -3193,7 +3193,7 @@ limits to both keyword and provider lookup. They return no file data or grants.
 
 | Method and path | Request | Response |
 | --- | --- | --- |
-| `POST /api/bloem/v1/preview/sessions` | `{ticket, refresh_token?}` on the preview host | `201 {access_token, refresh_token, token_type, expires_in, expires_at, item}` |
+| `POST /api/bloem/v1/preview/sessions` | `{ticket, refresh_token?}` on the preview host | `201 {access_token, refresh_token, token_type, expires_in, expires_at, item, ref}` |
 | `GET /api/bloem/v1/preview/status` | No credential required | `{enabled}`; on the preview host, also `brand`, `storefront_url`, `launch_url`, `cta_url`, `cta_label` |
 | `POST /api/bloem/v1/preview/events` | Preview session and exactly `{event:"cta_shown"|"cta_clicked"|"session_ended"}` | `204`; increments a UTC daily counter |
 

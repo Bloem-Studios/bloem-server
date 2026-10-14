@@ -1,3 +1,4 @@
+import { usePreviewMode } from "../preview/usePreviewMode";
 import { useEffect, useMemo, type ReactElement } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -29,6 +30,7 @@ import { useAudiobookPresentationChoice } from "./useAudiobookPresentationChoice
  * route adds no request.
  */
 export default function BloemAudiobookItemRoute({ itemDetail }: { itemDetail: ReactElement }) {
+  const preview = usePreviewMode().active;
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const libraryId = parseOptionalLibraryId(searchParams.get("libraryId"));
@@ -40,7 +42,7 @@ export default function BloemAudiobookItemRoute({ itemDetail }: { itemDetail: Re
     [item],
   );
 
-  if (isLoading || !detailsReady || !item || !owned) {
+  if (preview || isLoading || !detailsReady || !item || !owned) {
     return itemDetail;
   }
   return <PresentationItemDetail item={item} libraryId={libraryId} error={error} />;

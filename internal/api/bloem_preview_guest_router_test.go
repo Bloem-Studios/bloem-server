@@ -64,7 +64,7 @@ func TestPreviewGuestJourneyThroughTheRouter(t *testing.T) {
 	ticket := func() string {
 		now := time.Now()
 		raw, err := jwt.NewWithClaims(jwt.SigningMethodEdDSA, jwt.MapClaims{"iss": "garden-1", "aud": serverID, "host": "browse.example.test",
-			"jti": uuid.NewString()[:22], "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "item": "movie:1"}).SignedString(priv)
+			"jti": uuid.NewString()[:22], "iat": now.Unix(), "exp": now.Add(time.Minute).Unix(), "item": "movie:1", "ref": "signed-affiliate"}).SignedString(priv)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -99,8 +99,9 @@ func TestPreviewGuestJourneyThroughTheRouter(t *testing.T) {
 		AccessToken  string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
 		Item         string `json:"item"`
+		Ref          string `json:"ref"`
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &session); err != nil || session.AccessToken == "" || session.Item != "movie:1" {
+	if err := json.Unmarshal(w.Body.Bytes(), &session); err != nil || session.AccessToken == "" || session.Item != "movie:1" || session.Ref != "signed-affiliate" {
 		t.Fatalf("exchange body %s (%v)", w.Body, err)
 	}
 
