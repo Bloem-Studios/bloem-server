@@ -189,13 +189,18 @@ func TestAudiobookConnectionEditRotatesWithoutRebindingSavedSecretsDatabase(t *t
 	if err != nil || result.OK || strings.Contains(result.Message, "new-host-pass") || len(env.router.tests) != 1 || env.router.tests[0].APIKey != moved.APIKeyRef || env.router.tests[0].Config["qbittorrent_url"] != "https://attacker.example.test/qb" {
 		t.Fatalf("connection test %+v %v %+v", result, err, env.router.tests)
 	}
+	// An echo of the saved composite is withheld too: it decodes to the password.
+	env.router.message = "unreadable credentials " + moved.APIKeyRef
+	if result, err = s.Test(ctx, env.admin, created.ID); err != nil || strings.Contains(result.Message, "abk1.") || len(env.router.tests) != 2 {
+		t.Fatalf("composite echo shown: %+v %v", result, err)
+	}
 
 	// A binding that no longer matches its URL is refused before the plugin.
 	if _, err = env.pool.Exec(ctx, `UPDATE request_integrations SET plugin_config=jsonb_set(plugin_config,'{qbittorrent_url}','"https://elsewhere.example.test"') WHERE id=$1`, created.ID); err != nil {
 		t.Fatal(err)
 	}
 	result, err = s.Test(ctx, env.admin, created.ID)
-	if err != nil || result.OK || len(env.router.tests) != 1 {
+	if err != nil || result.OK || len(env.router.tests) != 2 {
 		t.Fatalf("mismatched binding reached the plugin: %+v %v", result, err)
 	}
 

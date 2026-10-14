@@ -132,4 +132,30 @@ func TestConnectionTestMessagesWithholdCredentials(t *testing.T) {
 	if len([]rune(long)) != maxConnectionTestMessage+1 {
 		t.Fatalf("long message length = %d", len([]rune(long)))
 	}
+
+	// Collapsing whitespace for display must not let a credential that
+	// contains whitespace through, in either direction.
+	const withheld = "The plugin's message was withheld because it contained a saved credential."
+	for _, tc := range []struct{ message, secret string }{
+		{"login failed for password correct  horse\tbattery", "correct  horse\tbattery"},
+		{"login failed for password correct horse battery", "correct  horse\tbattery"},
+		{"login failed for password correct\n\nhorse battery", "correct horse battery"},
+	} {
+		if got := pluginMessage(tc.message, []string{tc.secret}); got != withheld {
+			t.Errorf("pluginMessage(%q, %q) = %q", tc.message, tc.secret, got)
+		}
+	}
+	if got := pluginMessage("credential check failed", []string{"\x01"}); got != "credential check failed" {
+		t.Errorf("a control-only credential withheld every message: %q", got)
+	}
+
+	// The audiobook composite decodes to every credential it carries, so an
+	// echo of the composite is withheld like an echo of a credential.
+	composite, err := audiobookCredentialBundle(map[string]string{"qbittorrent_password": "synthetic-pass"}, map[string]any{"qbittorrent_url": "https://client.example.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := connectionTestMessage(false, "cannot parse "+composite, []string{"synthetic-pass", composite}); got != withheld {
+		t.Fatalf("composite echo shown: %q", got)
+	}
 }

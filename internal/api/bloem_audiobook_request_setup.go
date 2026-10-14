@@ -195,8 +195,10 @@ func (s bloemAudiobookSetup) Update(ctx context.Context, v bookrequests.Viewer, 
 	}
 	updated, err := s.requests.UpdateIntegrationConditional(requests.WithBloemLaneIntegrationWriter(ctx), requests.Viewer{UserID: v.UserID, IsAdmin: true}, requests.Integration{ID: stored.ID, Name: name, Enabled: stored.Enabled, InstallationID: stored.InstallationID, CapabilityID: stored.CapabilityID, SupportedMediaTypes: []string{"audiobook"}, APIKeyRef: credentials, PluginConfig: config}, stored.Revision)
 	if err != nil {
+		// The filter also covers the composite itself: its base64 body
+		// decodes to every credential it carries.
 		secrets, _, _ := decodeAudiobookCredentials(credentials)
-		return bookrequests.AudiobookIntegrationSummary{}, audiobookUpdateError(err, slices.Collect(maps.Values(secrets)))
+		return bookrequests.AudiobookIntegrationSummary{}, audiobookUpdateError(err, append(slices.Collect(maps.Values(secrets)), credentials, stored.APIKeyRef))
 	}
 	summary.Name = updated.Name
 	return summary, nil
@@ -243,7 +245,8 @@ func (s bloemAudiobookSetup) Test(ctx context.Context, v bookrequests.Viewer, id
 	if refusal != "" {
 		return handlers.RequestIntegrationTestResult{OK: false, Message: refusal}, nil
 	}
-	return checkRequestConnection(ctx, s.router, *stored, secrets)
+	// The plugin receives the composite, so an echo of it is withheld too.
+	return checkRequestConnection(ctx, s.router, *stored, append(secrets, stored.APIKeyRef))
 }
 
 // boundAudiobookCredentials returns a saved bundle's credential values when

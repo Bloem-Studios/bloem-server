@@ -62,19 +62,31 @@ func connectionTestMessage(ok bool, message string, secrets []string) string {
 }
 
 // pluginMessage makes plugin-authored text safe to show an administrator: one
-// line, bounded, and withheld entirely if it repeats a saved credential.
+// line, bounded, and withheld entirely if it repeats a saved credential. Each
+// credential is matched against the raw text and, with runs of space and
+// control characters collapsed on both sides, against the shown line, so a
+// credential containing whitespace cannot pass through the collapsing.
 func pluginMessage(message string, secrets []string) string {
-	message = strings.Join(strings.FieldsFunc(message, func(r rune) bool { return unicode.IsControl(r) || unicode.IsSpace(r) }), " ")
-	if !utf8.ValidString(message) {
+	shown := oneLine(message)
+	if !utf8.ValidString(shown) {
 		return ""
 	}
 	for _, secret := range secrets {
-		if secret = strings.TrimSpace(secret); secret != "" && strings.Contains(message, secret) {
+		secret = strings.TrimSpace(secret)
+		if secret == "" {
+			continue
+		}
+		if collapsed := oneLine(secret); strings.Contains(message, secret) || collapsed != "" && strings.Contains(shown, collapsed) {
 			return "The plugin's message was withheld because it contained a saved credential."
 		}
 	}
-	if runes := []rune(message); len(runes) > maxConnectionTestMessage {
-		message = string(runes[:maxConnectionTestMessage]) + "…"
+	if runes := []rune(shown); len(runes) > maxConnectionTestMessage {
+		shown = string(runes[:maxConnectionTestMessage]) + "…"
 	}
-	return message
+	return shown
+}
+
+// oneLine collapses each run of space and control characters to one space.
+func oneLine(s string) string {
+	return strings.Join(strings.FieldsFunc(s, func(r rune) bool { return unicode.IsControl(r) || unicode.IsSpace(r) }), " ")
 }
