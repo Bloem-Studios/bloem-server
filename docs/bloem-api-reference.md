@@ -3177,6 +3177,7 @@ are refused. Responses use `Cache-Control: no-store`.
 | `DELETE /sessions` | `{issuer}` | `204`; revokes guests without disabling the preview |
 | `POST /verify` | `{ticket}` | `{valid, account_ready, item, expires_at}`; does not consume the ticket |
 | `GET /capacity` | None | `{enabled, account_ready, active, maximum}` |
+| `PUT /accounts/{account_id}/presentation` | `{issuer, ends_at}`; RFC3339 or null | `204`; current personal preview accounts only; display metadata, no expiration change |
 | `GET /catalog` | `query` and/or `provider=tmdb|imdb|tvdb&provider_id=...` | `{items:[{content_id, kind, title, year, overview}]}`; at most 50 visible items |
 
 Configuration requires setup first. The settings write accepts only the listed
@@ -3194,6 +3195,7 @@ limits to both keyword and provider lookup. They return no file data or grants.
 | --- | --- | --- |
 | `POST /api/bloem/v1/preview/sessions` | `{ticket, refresh_token?}` on the preview host | `201 {access_token, refresh_token, token_type, expires_in, expires_at, item}` |
 | `GET /api/bloem/v1/preview/status` | No credential required | `{enabled}`; on the preview host, also `brand`, `storefront_url`, `launch_url`, `cta_url`, `cta_label` |
+| `POST /api/bloem/v1/preview/events` | Preview session and exactly `{event:"cta_shown"|"cta_clicked"|"session_ended"}` | `204`; increments a UTC daily counter |
 
 `item` comes only from the verified launch ticket. `expires_at` is UTC RFC3339;
 `expires_in` is the access-token lifetime in seconds. A live guest refresh token
@@ -3204,3 +3206,22 @@ Exchange errors are `400 invalid_request`, `403 preview_ticket_invalid`,
 `404 preview_unavailable`, `429 rate_limited` or `503 preview_busy`. Rate and
 capacity refusals include `Retry-After`. Guest traffic remains host-bound and
 cannot obtain ordinary sessions, account-management authority or audience tickets.
+
+### Preview account and capability fields
+
+V2 `GET /api/v2/account/me` adds `playback_allowed` and
+`preview: {kind:"guest"|"personal", ends_at, cta_url, cta_label, storefront_url, launch_url}`.
+Ordinary accounts receive `preview:null`. `ends_at` is the absolute session expiry
+for guests and the provisioned personal date, or null until provided. The label
+uses the configured value, then "Subscribe to <Brand>", then "Subscribe"; the CTA
+URL uses the configured value or storefront URL.
+
+`GET /api/v2/playback/capabilities` reports effective policy; preview principals
+receive `allowed:false` with `denial:{code:"preview_only", cta_url, cta_label}`.
+Capability revisions and validators include these fields.
+
+The event body is capped at 1 KiB and extra fields or invalid event names return
+`400 invalid_request`. Anonymous callers receive `401`, ordinary accounts `403`.
+Per-session and aggregate rate limits return `429 rate_limited` with `Retry-After`.
+Counter failures return `503 preview_unavailable`. Only day, event name and count
+are persisted. Duplicate requests increment again.

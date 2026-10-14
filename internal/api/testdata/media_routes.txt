@@ -1137,6 +1137,7 @@ POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-sn
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
 TRACE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
 POST /api/bloem/v1/admin/platform/preview/account	non-media
+PUT /api/bloem/v1/admin/platform/preview/accounts/{account_id}/presentation	non-media
 GET /api/bloem/v1/admin/platform/preview/capacity	non-media
 GET /api/bloem/v1/admin/platform/preview/catalog	non-media
 PUT /api/bloem/v1/admin/platform/preview/keys	non-media

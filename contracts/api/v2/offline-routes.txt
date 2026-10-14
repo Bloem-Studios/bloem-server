@@ -566,6 +566,7 @@ PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bul
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots
+PUT /api/bloem/v1/admin/platform/preview/accounts/{account_id}/presentation
 PUT /api/bloem/v1/admin/platform/preview/keys
 PUT /api/bloem/v1/admin/platform/preview/libraries
 PUT /api/bloem/v1/admin/platform/preview/settings

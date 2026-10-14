@@ -81,6 +81,7 @@ func bloemOp(method, path, id, tag, summary string) huma.Operation {
 // state this whole file exists to end.
 func registerBloemAll(reg *Registry) {
 	registerBloemPreviewAdminDocument(reg)
+	registerBloemPreviewEventsDocument(reg)
 	registerBloemCapabilities(reg)
 	registerBloemLiveTV(reg)
 	registerBloemXtreamDocument(reg)

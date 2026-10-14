@@ -163,6 +163,47 @@ only. They do not invoke providers, prepare files or mint grants. Probe
 verification checks a ticket without consuming it; capacity information stays
 behind admin authority.
 
-This control plane does not complete public showcase readiness. App preview
-metadata, personal/social row filtering, response hygiene and file-derived
-artwork and detail-work protections remain in the server presentation milestone.
+## Preview presentation
+
+Authenticated preview catalogue scope intersects the current protected template's
+selected enabled libraries with the host's resolved viewer scope, keeping empty
+intersections explicit. The settings maturity ceiling only tightens host limits.
+Playback, downloads and Live TV remain denied. Authority lookup failures fail closed.
+
+Home and library layouts filter personalized and social recipes before row lookup.
+Continue Watching, Next Up, Favorites and Watchlist are excluded explicitly because
+the recipe gallery categorizes them as library staples. Profile-owned collection
+rows are excluded too; hidden row IDs cannot be read through section queries.
+Preview catalogue and native Watch search delegate to PostgreSQL keyword retrieval
+without calling the configured external or semantic provider.
+
+Preview detail uses request-local readers without probe repair, copy-safety racing,
+chapter extraction, marker population or watchlist promotion. Metadata refresh
+queueing remains. Artwork resolution refuses file frames and manga chapter covers
+before signing, including cached variants. Item covers and external trailers remain.
+
+Preview JSON responses are bounded to 8 MiB and scrub nested filenames, release
+names, paths and chapter artwork. Invalid, oversized or excessively nested output
+returns `503 preview_response_unavailable`. Preview responses are not cacheable;
+subscriber response handling keeps its original writer and body.
+
+The additive v2 account projection carries nullable preview display facts and
+`playback_allowed`. Guest end dates come from absolute session expiry. Personal
+end dates live in a separate Bloem table and are display metadata: Garden retains
+account-expiration authority. Conversion removes preview facts on the next request,
+even when an old display-date row remains. Playback capability permission and CTA
+denial participate in the host's normal capability revision and validator hashing.
+The original Account and PlaybackCapabilities schema names remain stable. The
+properties are additive and optional in the contract. With no presentation
+extension installed, the host retains its original projections and response bytes.
+
+Authenticated preview events accept only `cta_shown`, `cta_clicked` and
+`session_ended`. Persistence contains UTC day, event name and count only. Session
+keys stay in bounded process memory for rate limiting: one event per ten seconds
+with burst three, and an aggregate five per second with burst twenty per process.
+Retries increment again; clients should treat telemetry as best effort.
+
+Public showcase readiness still requires the preview-aware web client and Garden
+launch/configuration integration. Bloem Android and Apple preview banners, CTA and
+personal-control suppression remain the separate native-client milestone. Their
+existing denied-operation behavior continues to enforce server policy.

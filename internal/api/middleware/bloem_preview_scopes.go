@@ -9,6 +9,7 @@ import (
 // ordinary user, entitlement, library or server-settings administration.
 func bloemPreviewScopeRoutes() []scopeRoute {
 	return []scopeRoute{
+		{http.MethodPut, regexp.MustCompile(`^/api/bloem/v1/admin/platform/preview/accounts/[1-9][0-9]*/presentation$`)},
 		{http.MethodPost, regexp.MustCompile(`^/api/bloem/v1/admin/platform/preview/account$`)},
 		{http.MethodGet, regexp.MustCompile(`^/api/bloem/v1/admin/platform/preview/settings$`)},
 		{http.MethodPut, regexp.MustCompile(`^/api/bloem/v1/admin/platform/preview/settings$`)},

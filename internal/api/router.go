@@ -398,6 +398,7 @@ func NewRouter(deps Dependencies) http.Handler {
 // reachable from its body.
 func newChiRouter(deps Dependencies) chi.Router {
 	deps = nativeStorageDependencies(deps)
+	deps.ImageResolver = catalog.BloemPreviewImages(deps.ImageResolver, deps.DB)
 	declareNativeMediaRoutes()
 	r := chi.NewRouter()
 	r.Use(captureNativeVideoRequest)
@@ -2350,7 +2351,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	wireBloemRouter(r, deps, tenantMiddleware, bloemLifecycleTargets{
 		auth: authHandler, requests: requestHandler, profiles: profileHandler,
 		settingValues: settingValuesHandler, admin: adminHandler, tenants: adminTenantsHandler, members: adminTenantMembersHandler,
-	}, authMiddleware, catalogSearchService.Provider(), requireActingAdmin)
+	}, authMiddleware, catalog.BloemPreviewSearch(catalogSearchService.Provider(), itemRepo), requireActingAdmin)
 
 	// The native v2 API. The subtree is handed to the sealed apiv2 listener
 	// with a single wildcard registration the route inventory records as a
@@ -2574,6 +2575,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// when the v1 handler exists.
 	if authHandler != nil {
 		v2deps.Accounts = bloemPreviewAccounts(authHandler)
+		if deps.DB != nil && viewerResolver != nil {
+			v2deps.PreviewPresentation = bloemPreviewPresentation{pool: deps.DB, viewer: viewerResolver}
+		}
 		v2deps.Devices = authHandler
 		v2deps.Sessions = authHandler
 		v2deps.PluginLaunch = authHandler
@@ -2943,10 +2947,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.CatalogAccess = itemsHandler
 	}
 	if catalogHandler != nil {
-		v2deps.CatalogBrowse = catalogHandler
+		v2deps.CatalogBrowse = handlers.BloemPreviewBrowse{CatalogHandler: catalogHandler}
 	}
 	if catalogResourceHandler != nil {
-		v2deps.CatalogItems = catalogResourceHandler
+		v2deps.CatalogItems = handlers.BloemPreviewCatalog{CatalogResourceHandler: catalogResourceHandler}
 	}
 	if shuffleService != nil {
 		v2deps.Shuffles = shuffleService

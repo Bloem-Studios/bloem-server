@@ -584,5 +584,7 @@ func bloemPreviewHandler(deps Dependencies) *handlers.BloemPreviewHandler {
 	jwt := auth.NewJWTService(deps.Config.Auth.JWTSecret, deps.Config.Auth.AccessTokenExpiry, deps.Config.Auth.RefreshTokenExpiry)
 	guests := auth.NewPreviewGuests(deps.DB, jwt, reader)
 	buckets := preview.NewClientBucketsWithSecret(deps.Config.Auth.JWTSecret)
-	return handlers.NewBloemPreviewHandler(preview.NewExchanger(deps.DB, guests, bloemServerIdentity(deps), buckets), reader, buckets)
+	handler := handlers.NewBloemPreviewHandler(preview.NewExchanger(deps.DB, guests, bloemServerIdentity(deps), buckets), reader, buckets)
+	handler.SetEvents(preview.NewEvents(deps.DB))
+	return handler
 }

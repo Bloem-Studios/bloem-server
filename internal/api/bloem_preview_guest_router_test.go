@@ -110,12 +110,35 @@ func TestPreviewGuestJourneyThroughTheRouter(t *testing.T) {
 	}
 	meResponse := do("browse.example.test", "GET", "/api/v2/account/me", session.AccessToken, nil)
 	var me struct {
-		Email           string   `json:"email"`
-		Permissions     []string `json:"permissions"`
-		DownloadAllowed bool     `json:"download_allowed"`
+		Email           string                `json:"email"`
+		Permissions     []string              `json:"permissions"`
+		DownloadAllowed bool                  `json:"download_allowed"`
+		PlaybackAllowed *bool                 `json:"playback_allowed"`
+		Preview         *preview.Presentation `json:"preview"`
 	}
 	if err := json.Unmarshal(meResponse.Body.Bytes(), &me); err != nil {
 		t.Fatal(err)
+	}
+	if me.Preview == nil || me.Preview.Kind != "guest" || me.Preview.EndsAt == nil || me.PlaybackAllowed == nil || *me.PlaybackAllowed {
+		t.Fatalf("missing guest presentation: %s", meResponse.Body)
+	}
+	var absolute time.Time
+	if err := pool.QueryRow(ctx, `SELECT expires_at FROM auth_sessions WHERE auth_method='preview_guest' ORDER BY created_at DESC LIMIT 1`).Scan(&absolute); err != nil || !absolute.Equal(*me.Preview.EndsAt) {
+		t.Fatal("guest end date is not absolute session expiry")
+	}
+	capability := do("browse.example.test", "GET", "/api/v2/playback/capabilities", session.AccessToken, nil)
+	var caps struct {
+		Allowed *bool `json:"allowed"`
+		Denial  struct {
+			Code     string `json:"code"`
+			CTALabel string `json:"cta_label"`
+		} `json:"denial"`
+	}
+	if err := json.Unmarshal(capability.Body.Bytes(), &caps); err != nil || capability.Code != 200 || caps.Allowed == nil || *caps.Allowed || caps.Denial.Code != "preview_only" || caps.Denial.CTALabel != "Subscribe to Example" {
+		t.Fatalf("guest capabilities: %d %s", capability.Code, capability.Body)
+	}
+	if w := do("browse.example.test", "POST", "/api/bloem/v1/preview/events", session.AccessToken, map[string]string{"event": "cta_shown"}); w.Code != 204 {
+		t.Fatalf("guest event: %d %s", w.Code, w.Body)
 	}
 	if me.Email != "" || len(me.Permissions) != 0 || me.DownloadAllowed {
 		t.Fatalf("guest account/me is not minimized: %+v", me)

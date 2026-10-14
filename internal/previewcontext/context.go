@@ -1,5 +1,5 @@
 // Package previewcontext carries Bloem's preview presentation boundary without
-// coupling catalogue and artwork services to HTTP authentication.
+// coupling catalog and artwork services to HTTP authentication.
 package previewcontext
 
 import "context"

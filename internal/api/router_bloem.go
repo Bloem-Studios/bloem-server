@@ -205,6 +205,9 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 			// Public: a ticket or nothing authenticates these (bloem_preview_host.go).
 			r.Post("/preview/sessions", surfaces.Preview.HandleCreateSession)
 			r.Get("/preview/status", surfaces.Preview.HandleStatus)
+			if authMW != nil {
+				r.Group(func(r chi.Router) { r.Use(authMW.RequireAuth); r.Post("/preview/events", surfaces.Preview.HandleEvent) })
+			}
 		}
 
 		client.mount(r)

@@ -55,5 +55,6 @@ func mountBloemPreviewAdmin(r chi.Router, h *handlers.BloemPreviewAdminHandler, 
 		r.Post("/admin/platform/preview/verify", h.HandleVerifyTicket)
 		r.Get("/admin/platform/preview/capacity", h.HandleCapacity)
 		r.Get("/admin/platform/preview/catalog", h.HandleCatalog)
+		r.Put("/admin/platform/preview/accounts/{account_id}/presentation", h.HandlePersonalPresentation)
 	})
 }

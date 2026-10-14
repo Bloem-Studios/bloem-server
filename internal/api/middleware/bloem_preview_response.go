@@ -12,11 +12,14 @@ import (
 const maxPreviewResponseBytes = 8 << 20
 
 type previewResponse struct {
+	writer   http.ResponseWriter
 	header   http.Header
 	status   int
 	body     bytes.Buffer
 	overflow bool
 }
+
+func (w *previewResponse) Unwrap() http.ResponseWriter { return w.writer }
 
 func (w *previewResponse) Header() http.Header { return w.header }
 func (w *previewResponse) WriteHeader(status int) {
@@ -48,7 +51,7 @@ func servePreviewResponse(next http.Handler, w http.ResponseWriter, r *http.Requ
 		next.ServeHTTP(w, r)
 		return
 	}
-	captured := &previewResponse{header: w.Header().Clone()}
+	captured := &previewResponse{writer: w, header: w.Header().Clone()}
 	next.ServeHTTP(captured, r)
 	status := captured.status
 	if status == 0 {
@@ -77,7 +80,7 @@ func servePreviewResponse(next http.Handler, w http.ResponseWriter, r *http.Requ
 		}
 		var err error
 		body, err = json.Marshal(value)
-		if err != nil {
+		if err != nil || len(body) > maxPreviewResponseBytes {
 			writePreviewResponseUnavailable(w)
 			return
 		}
@@ -104,6 +107,13 @@ func scrubPreviewJSON(value any, depth int) error {
 	switch v := value.(type) {
 	case map[string]any:
 		for key, child := range v {
+			if strings.EqualFold(key, "chapters") {
+				scrubPreviewChapterCovers(child)
+			}
+			if kind, _ := v["type"].(string); kind == "manga_chapter" {
+				delete(v, "poster_url")
+				delete(v, "poster_thumbhash")
+			}
 			lower := strings.ToLower(key)
 			if lower == "file_name" || lower == "filename" || lower == "release_name" || lower == "path" || lower == "paths" || strings.HasSuffix(lower, "_path") || strings.HasSuffix(lower, "_paths") || lower == "thumbnail_url" || lower == "thumbnail_thumbhash" {
 				delete(v, key)
@@ -130,4 +140,16 @@ func writePreviewResponseUnavailable(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusServiceUnavailable)
 	_, _ = w.Write([]byte(`{"error":"preview_response_unavailable","message":"This preview response is unavailable."}`))
+}
+
+func scrubPreviewChapterCovers(value any) {
+	switch v := value.(type) {
+	case []any:
+		for _, child := range v {
+			scrubPreviewChapterCovers(child)
+		}
+	case map[string]any:
+		delete(v, "poster_url")
+		delete(v, "poster_thumbhash")
+	}
 }

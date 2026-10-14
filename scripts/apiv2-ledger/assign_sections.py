@@ -114,7 +114,7 @@ BLOEM_PLATFORM = {
     "ambience": {None: "bloem-platform-engagement"},
     "promotions": {None: "bloem-platform-engagement"},
     "native-storage": {None: "bloem-native-storage"},
-    "preview": {None: "bloem-native"},
+    "preview": {None: "bloem-preview"},
 }
 
 # /api/bloem/v1/<a>[/admin/<b>] -> section
@@ -123,7 +123,7 @@ BLOEM_TOP = {
     "livetv": "bloem-livetv",
     "music": "bloem-native", "notifications": "bloem-native", "watch": "bloem-native",
     "organizations": "bloem-native", "capabilities": "bloem-native", "persons": "bloem-native",
-    "server": "bloem-native", "sync": "bloem-native", "preview": "bloem-native",
+    "server": "bloem-native", "sync": "bloem-native", "preview": "bloem-preview",
     "ambience": "bloem-native", "profile-credentials": "bloem-native",
     "catalog": "bloem-native", "book-requests": "bloem-book-requests",
     "ebook-requests": "bloem-book-requests", "list-collections": "bloem-native",

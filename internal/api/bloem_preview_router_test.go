@@ -126,6 +126,8 @@ func TestPreviewPrincipalRouterBoundary(t *testing.T) {
 	// Must deny: minting, bytes, writes, recommendations that personalise, Live TV.
 	for _, tc := range []struct{ method, path string }{
 		{"POST", "/api/v2/playback/start"},
+		{"GET", "/api/v2/watch/movie:missing"},
+		{"GET", "/api/v1/catalog/items/movie:missing"},
 		{"GET", "/api/v2/recommendations/for-you/main"},
 		{"GET", "/api/v2/recommendations/discover"},
 		{"POST", "/api/v2/recommendations/taste-seed"},

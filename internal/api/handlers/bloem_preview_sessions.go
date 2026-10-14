@@ -26,10 +26,12 @@ type PreviewSettingsReader interface {
 
 // BloemPreviewHandler serves the public preview endpoints.
 type BloemPreviewHandler struct {
-	exchange PreviewExchanger
-	settings PreviewSettingsReader
-	buckets  *preview.ClientBuckets
-	limiter  *preview.HourlyLimiter
+	events     *preview.Events
+	eventLimit *preview.EventLimiter
+	exchange   PreviewExchanger
+	settings   PreviewSettingsReader
+	buckets    *preview.ClientBuckets
+	limiter    *preview.HourlyLimiter
 }
 
 func NewBloemPreviewHandler(exchange PreviewExchanger, settings PreviewSettingsReader, buckets *preview.ClientBuckets) *BloemPreviewHandler {

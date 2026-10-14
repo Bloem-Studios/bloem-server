@@ -88,6 +88,9 @@ func previewAdminDocumentOp(reg *Registry, method, suffix, id, summary string, s
 }
 
 func registerBloemPreviewAdminDocument(reg *Registry) {
+	presentation := previewAdminDocumentOp(reg, "PUT", "accounts/{account_id}/presentation", "setBloemPreviewPersonalPresentation", "Set the personal preview end date for display.", 204)
+	presentation.Description += " Only current personal preview accounts can be targeted. This metadata does not expire an account; the storefront owns expiration. A null ends_at clears the date."
+	registerBloemChiDocument[BloemPreviewPersonalPresentationInput, struct{}](reg, presentation)
 	account := previewAdminDocumentOp(reg, "POST", "account", "ensureBloemPreviewAccount", "Ensure the issuer's shared preview account and primary profile.", 201)
 	account.Description += " Setup is atomic and idempotent. A reserved name collision or second issuer is refused. Password sign-in is disabled and the protected preview template is applied."
 	registerBloemChiDocument[BloemPreviewIssuerInput, BloemPreviewAccountOutput](reg, account)
@@ -110,4 +113,12 @@ func registerBloemPreviewAdminDocument(reg *Registry) {
 	search := previewAdminDocumentOp(reg, "GET", "catalog", "searchBloemPreviewCatalog", "Find metadata visible to the preview for a showcase picker.", 200)
 	search.Description += " Keyword and provider-ID lookup apply the selected enabled libraries and maturity ceiling. Provider and provider_id must appear together. No external calls, file preparation or grants are involved."
 	registerBloemChiDocument[BloemPreviewCatalogInput, BloemPreviewCatalogOutput](reg, search)
+}
+
+type BloemPreviewPersonalPresentationInput struct {
+	AccountID int `path:"account_id" minimum:"1"`
+	Body      struct {
+		Issuer string     `json:"issuer" minLength:"1" maxLength:"128"`
+		EndsAt *time.Time `json:"ends_at" nullable:"true"`
+	}
 }

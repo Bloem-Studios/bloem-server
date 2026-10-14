@@ -16,6 +16,7 @@ const previewCapabilitiesPath = "/api/bloem/v1/capabilities"
 // refused, including every write, every byte route and /livetv/**. v2
 // operations are judged by apiv2's preview gate instead.
 var previewAllowedRoutes = map[string][]string{
+	"/api/bloem/v1/preview/events":                         {http.MethodPost},
 	previewCapabilitiesPath:                                {http.MethodGet},
 	"/api/bloem/v1/ambience":                               {http.MethodGet},
 	"/api/bloem/v1/persons/{person_id}":                    {http.MethodGet},
