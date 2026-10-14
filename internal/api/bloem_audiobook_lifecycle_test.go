@@ -45,10 +45,15 @@ import (
 
 // The audiobook request lifecycle acceptance drives the real plugin
 // executable (BLOEM_AUDIOBOOK_REQUEST_PLUGIN_BINARY) through the production
-// composition: the platform-admin setup, the encrypted request integration,
-// the scheduled reconcile task, the real scanner and PostgreSQL. Release
-// sources and download clients are in-process fakes; the downloads are real
-// audio files generated with ffmpeg and probed by the scanner.
+// acquisition adapters (composeBloemBookFulfillment), the platform-admin
+// setup, the encrypted request integration, the scheduled reconcile task, the
+// real scanner and PostgreSQL. Release sources and download clients are
+// in-process fakes; the downloads are real audio files generated with ffmpeg
+// and probed by the scanner.
+//
+// Routers resolve from the test's own plugin host, not through plugins.Service
+// (PluginRequestRouterAdapter): the installation, installed-manifest and
+// launch checks of that path are not covered here.
 //
 // Requirements: SILO_TEST_DATABASE_URL, the plugin binary, ffmpeg and
 // ffprobe. Each missing prerequisite skips with its reason.
@@ -699,8 +704,8 @@ func newAudiobookLifecycle(t *testing.T, tools lifecycleTools) *audiobookLifecyc
 	l.host = pluginhost.NewHost(pluginhost.Config{Logger: hclog.NewNullLogger()})
 	t.Cleanup(func() { _ = l.host.Shutdown(context.Background()) })
 
-	// The production composition (BuildBloemBookRequestsService and
-	// newBloemBookRequests) with the plugin host as the router resolver.
+	// The production adapters (composeBloemBookFulfillment) and setup types
+	// (newBloemBookRequests), with the plugin host as the router resolver.
 	cipher, err := secret.New([]byte(strings.Repeat("synthetic-lifecycle-key", 3)))
 	if err != nil {
 		t.Fatal(err)
@@ -711,7 +716,7 @@ func newAudiobookLifecycle(t *testing.T, tools lifecycleTools) *audiobookLifecyc
 	connections.SetTenantScopeResolver(tenancy.NewStore(pool))
 	connections.SetRouterProvider(requests.NewPluginRouterProvider(resolver))
 	l.books = bookrequests.NewService(pool, l.notices)
-	l.books.SetAudiobookFulfillment(bloemAudiobookRouter{integrations: repository, resolver: resolver, validator: l.books})
+	composeBloemBookFulfillment(l.books, repository, resolver)
 	l.setup = bloemAudiobookSetup{pool: pool, books: l.books, requests: connections, platform: auth.NewPlatformAdminAuthorizer(auth.NewUserRepository(pool))}
 	l.task = tasks.NewBookRequestsTask(l.books)
 	return l
