@@ -77,8 +77,10 @@ selection revision into its authority check.
 
 The requester-visible reason follows that distinction. An uncertain outcome
 reads "Submission outcome is unknown; checking the backend without submitting
-again." A proven non-submission reads "The backend did not accept the
-submission; it will be submitted again." After five failures the request is
+again." A proven non-submission reads "The submission did not reach the
+backend; it will be submitted again." That covers a plugin refusal and a host
+failure before the call, such as an unavailable plugin or a failed
+revalidation. After five failures the request is
 `failed`: a non-submission says that an administrator retry submits again, and
 an uncertain one says that retry checks the existing submission.
 

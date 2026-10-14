@@ -433,7 +433,7 @@ func (s *Service) finishEbook(ctx context.Context, work *ebookWork, status Provi
 		if notSent {
 			// The adapter proved nothing reached the backend (for example the
 			// plugin refused its preflight), so the next attempt submits again.
-			reason = "The backend did not accept the submission; it will be submitted again."
+			reason = "The submission did not reach the backend; it will be submitted again."
 		}
 		providerStatus = "unknown"
 	} else {

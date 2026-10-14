@@ -621,7 +621,7 @@ func TestEbookPreRPCFailureDoesNotPoisonSubmissionDatabase(t *testing.T) {
 	}
 	// The requester must not be told the outcome is unknown: nothing was
 	// sent, and the next attempt submits again.
-	if got, err := s.GetEbook(t.Context(), v, r.ID); err != nil || got.Fulfilment != "retrying" || got.OutcomeReason != "The backend did not accept the submission; it will be submitted again." {
+	if got, err := s.GetEbook(t.Context(), v, r.ID); err != nil || got.Fulfilment != "retrying" || got.OutcomeReason != "The submission did not reach the backend; it will be submitted again." {
 		t.Fatalf("unsent retry reason: %+v %v", got, err)
 	}
 	dueEbook(t, pool, r.ID)
