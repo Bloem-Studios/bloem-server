@@ -12,7 +12,7 @@ public object GeneratedContract {
     public const val SERVER_REVISION: String = "f1e6f1ab50f964516e680150779cefb5167b662e"
     public const val GENERATOR_VERSION: Int = 1
     /** Digest of the normalised type graph; changes only when a wire shape changes. */
-    public const val CONTRACT_DIGEST: String = "sha256:74b090e685b02497422d635dbf419d3329efa863ea8307698a3b319ead87c026"
+    public const val CONTRACT_DIGEST: String = "sha256:7887d34cc21920b27cc43dcc3c26a1250a7033c26db66016b25ef6fcfbcc3b7a"
     /** Fully qualified class name → direction (request, response or both). */
     public val DIRECTION: Map<String, String> = mapOf(
         "org.bloemserver.bloem.contract.ambience.Assets" to "response",
@@ -714,6 +714,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.events.EventsSubscribeMessage" to "request",
         "org.bloemserver.bloem.contract.events.EventsSubscribedMessage" to "response",
         "org.bloemserver.bloem.contract.handlers.AudiobookRequestConnectionInput" to "request",
+        "org.bloemserver.bloem.contract.handlers.AudiobookRequestConnectionUpdate" to "request",
         "org.bloemserver.bloem.contract.handlers.AudiobookRequestSetup" to "response",
         "org.bloemserver.bloem.contract.handlers.BloemLibraryCreateOptions" to "request",
         "org.bloemserver.bloem.contract.handlers.BloemLibraryLocationsCreateRequest" to "request",
@@ -730,6 +731,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.handlers.ProfileListView" to "response",
         "org.bloemserver.bloem.contract.handlers.ProfileUpdateRequest" to "request",
         "org.bloemserver.bloem.contract.handlers.ProfileView" to "response",
+        "org.bloemserver.bloem.contract.handlers.RequestIntegrationTestResult" to "response",
         "org.bloemserver.bloem.contract.handlers.SectionOverrideWrite" to "request",
         "org.bloemserver.bloem.contract.handlers.SubtitleProviderStatusView" to "response",
         "org.bloemserver.bloem.contract.handlers.SubtitleProviderTestView" to "response",
@@ -1793,6 +1795,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.events.EventsSubscribeMessage" to "bloem",
         "org.bloemserver.bloem.contract.events.EventsSubscribedMessage" to "bloem",
         "org.bloemserver.bloem.contract.handlers.AudiobookRequestConnectionInput" to "bloem",
+        "org.bloemserver.bloem.contract.handlers.AudiobookRequestConnectionUpdate" to "bloem",
         "org.bloemserver.bloem.contract.handlers.AudiobookRequestSetup" to "bloem",
         "org.bloemserver.bloem.contract.handlers.BloemLibraryCreateOptions" to "bloem",
         "org.bloemserver.bloem.contract.handlers.BloemLibraryLocationsCreateRequest" to "bloem",
@@ -1809,6 +1812,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.handlers.ProfileListView" to "upstream-compat",
         "org.bloemserver.bloem.contract.handlers.ProfileUpdateRequest" to "upstream-compat",
         "org.bloemserver.bloem.contract.handlers.ProfileView" to "upstream-compat",
+        "org.bloemserver.bloem.contract.handlers.RequestIntegrationTestResult" to "bloem",
         "org.bloemserver.bloem.contract.handlers.SectionOverrideWrite" to "upstream-compat",
         "org.bloemserver.bloem.contract.handlers.SubtitleProviderStatusView" to "upstream-compat",
         "org.bloemserver.bloem.contract.handlers.SubtitleProviderTestView" to "upstream-compat",
@@ -2199,6 +2203,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.bookrequests.ListResponse" to "audiobook_requests_v1",
         "org.bloemserver.bloem.contract.bookrequests.Request" to "audiobook_requests_v1",
         "org.bloemserver.bloem.contract.handlers.AudiobookRequestConnectionInput" to "audiobook_requests_v1",
+        "org.bloemserver.bloem.contract.handlers.AudiobookRequestConnectionUpdate" to "audiobook_requests_v1",
         "org.bloemserver.bloem.contract.handlers.AudiobookRequestSetup" to "audiobook_requests_v1",
         "org.bloemserver.bloem.contract.handlers.BloemLibraryCreateOptions" to "native_storage.library_location_atomic_editing",
         "org.bloemserver.bloem.contract.handlers.BloemLibraryLocationsCreateRequest" to "native_storage.library_location_atomic_editing",

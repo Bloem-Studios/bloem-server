@@ -452,8 +452,18 @@
           "name": {
             "type": "string"
           },
+          "plugin_config": {
+            "additionalProperties": {},
+            "type": "object"
+          },
           "ready": {
             "type": "boolean"
+          },
+          "stored_credentials": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "required": [
@@ -527,6 +537,25 @@
           "plugin_config",
           "credentials"
         ],
+        "type": "object"
+      },
+      "AudiobookRequestConnectionUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "credentials": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "plugin_config": {
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
         "type": "object"
       },
       "AudiobookRequestSetup": {
@@ -4211,6 +4240,22 @@
         ],
         "type": "object"
       },
+      "RequestIntegrationTestResult": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "message"
+        ],
+        "type": "object"
+      },
       "RootSelection": {
         "additionalProperties": false,
         "properties": {
@@ -4719,7 +4764,7 @@
     },
     "/api/bloem/v1/admin/organization/audiobook-request-integrations": {
       "get": {
-        "description": "Requires an organization administrative-context token. Creating connections and changing bindings additionally require platform administrator authority. Credentials are encrypted by the host and never included in responses. Responses use Cache-Control: private, no-store.",
+        "description": "Requires an organization administrative-context token. Creating connections and changing bindings additionally require platform administrator authority. Credentials are encrypted by the host and never included in responses. Responses use Cache-Control: private, no-store. Each connection's saved plugin_config and the names of its saved credentials (stored_credentials) are returned only to a platform administrator context; an absent plugin_config then means the saved settings could not be read. Organization administrators receive each connection's identity, binding and readiness.",
         "operationId": "getBloemAudiobookRequestSetup",
         "responses": {
           "200": {
@@ -4933,6 +4978,132 @@
         ]
       }
     },
+    "/api/bloem/v1/admin/organization/audiobook-request-integrations/{id}": {
+      "put": {
+        "description": "Requires an organization administrative-context token. Creating connections and changing bindings additionally require platform administrator authority. Credentials are encrypted by the host and never included in responses. Responses use Cache-Control: private, no-store. The connection keeps its ID, library binding and in-flight acquisitions. plugin_config is merged over the saved settings: a submitted key replaces its saved value, null removes it, and an omitted key keeps it. A credential that is omitted or empty keeps its saved value only while the URL it is bound to is unchanged; a changed URL requires the credential again, and a URL cleared to an empty string or removed with null drops it. Changing qbittorrent_url or nzbget_url makes downloads already handed to the previous client fail their status checks. Silo's generic request-integration editor refuses audiobook connections. Unknown JSON fields and extra bodies are rejected.",
+        "operationId": "updateBloemAudiobookRequestIntegration",
+        "parameters": [
+          {
+            "description": "Opaque request integration ID, often a decimal Sonyflake string.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Opaque request integration ID, often a decimal Sonyflake string.",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudiobookRequestConnectionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudiobookIntegrationSummary"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, request identity, query, expected_revision, candidate or integration binding."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization or authority does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: request absent or outside the selected organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_state_changed: stale expected_revision, invalid transition or changed acquisition identity."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the acquisition operation could not be completed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "adminContextAuth": []
+          }
+        ],
+        "summary": "Edit an audiobook acquisition connection and rotate its credentials.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
     "/api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/library": {
       "put": {
         "description": "Requires an organization administrative-context token. Creating connections and changing bindings additionally require platform administrator authority. Credentials are encrypted by the host and never included in responses. Responses use Cache-Control: private, no-store. library_id=0 clears the binding. Download roots must be valid local directories inside the selected library's filesystem paths. Existing dispatched work retains its original library, roots and configuration identity. Unknown JSON fields and extra bodies are rejected.",
@@ -5054,6 +5225,122 @@
           }
         ],
         "summary": "Bind an acquisition connection to a local audiobook library and download directories.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/test": {
+      "post": {
+        "description": "Requires an organization administrative-context token. Creating connections and changing bindings additionally require platform administrator authority. Credentials are encrypted by the host and never included in responses. Responses use Cache-Control: private, no-store. The request has no body. A failed check is HTTP 200 with ok=false. The host refuses before calling the plugin when a saved credential no longer matches its URL, and withholds a plugin message that repeats a credential.",
+        "operationId": "testBloemAudiobookRequestIntegration",
+        "parameters": [
+          {
+            "description": "Opaque request integration ID, often a decimal Sonyflake string.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Opaque request integration ID, often a decimal Sonyflake string.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestIntegrationTestResult"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid JSON, request identity, query, expected_revision, candidate or integration binding."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization or authority does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: request absent or outside the selected organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_state_changed: stale expected_revision, invalid transition or changed acquisition identity."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the acquisition operation could not be completed."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "adminContextAuth": []
+          }
+        ],
+        "summary": "Run the audiobook plugin's connection checks for a saved connection.",
         "tags": [
           "requests"
         ]
@@ -6535,6 +6822,122 @@
           }
         ],
         "summary": "Bind a connection to an eligible native Bookwarehouse ebook library.",
+        "tags": [
+          "requests"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/ebook-request-integrations/{id}/test": {
+      "post": {
+        "description": "Mutations require platform administrator authority within an organization administrative context for the durable default organization. Platform-only contexts and hosted organizations cannot configure this lane. Connection credentials are encrypted by the host and never included in responses. The request has no body. A failed test is HTTP 200 with ok=false. A plugin message that repeats the saved API key is withheld.",
+        "operationId": "testBloemEbookRequestIntegration",
+        "parameters": [
+          {
+            "description": "Opaque request integration ID, often a decimal Sonyflake string.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Opaque request integration ID, often a decimal Sonyflake string.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestIntegrationTestResult"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: invalid body, ISBN, key or action."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_forbidden or requests_disabled: current organization/identity/policy does not permit this operation."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: absent or outside this profile/organization."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "already_requested or request_state_changed: duplicate active identity, changed retry payload, stale revision or invalid transition."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "request_quota_exceeded: independent ebook quota exhausted, or rate_limit_exceeded."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "adminContextAuth": []
+          }
+        ],
+        "summary": "Run the Bookwarehouse plugin's connection test for a saved connection.",
         "tags": [
           "requests"
         ]

@@ -12,7 +12,7 @@ public enum GeneratedContract {
     public static let SERVER_REVISION: String = "f1e6f1ab50f964516e680150779cefb5167b662e"
     public static let GENERATOR_VERSION: Int = 1
     /// Digest of the normalised type graph; changes only when a wire shape changes.
-    public static let CONTRACT_DIGEST: String = "sha256:74b090e685b02497422d635dbf419d3329efa863ea8307698a3b319ead87c026"
+    public static let CONTRACT_DIGEST: String = "sha256:7887d34cc21920b27cc43dcc3c26a1250a7033c26db66016b25ef6fcfbcc3b7a"
     /// Qualified type name → direction (request, response or both).
     public static let DIRECTION: [String: String] = [
         "Ambience.Assets": "response",
@@ -714,6 +714,7 @@ public enum GeneratedContract {
         "Events.EventsSubscribeMessage": "request",
         "Events.EventsSubscribedMessage": "response",
         "Handlers.AudiobookRequestConnectionInput": "request",
+        "Handlers.AudiobookRequestConnectionUpdate": "request",
         "Handlers.AudiobookRequestSetup": "response",
         "Handlers.BloemLibraryCreateOptions": "request",
         "Handlers.BloemLibraryLocationsCreateRequest": "request",
@@ -730,6 +731,7 @@ public enum GeneratedContract {
         "Handlers.ProfileListView": "response",
         "Handlers.ProfileUpdateRequest": "request",
         "Handlers.ProfileView": "response",
+        "Handlers.RequestIntegrationTestResult": "response",
         "Handlers.SectionOverrideWrite": "request",
         "Handlers.SubtitleProviderStatusView": "response",
         "Handlers.SubtitleProviderTestView": "response",
@@ -1793,6 +1795,7 @@ public enum GeneratedContract {
         "Events.EventsSubscribeMessage": "bloem",
         "Events.EventsSubscribedMessage": "bloem",
         "Handlers.AudiobookRequestConnectionInput": "bloem",
+        "Handlers.AudiobookRequestConnectionUpdate": "bloem",
         "Handlers.AudiobookRequestSetup": "bloem",
         "Handlers.BloemLibraryCreateOptions": "bloem",
         "Handlers.BloemLibraryLocationsCreateRequest": "bloem",
@@ -1809,6 +1812,7 @@ public enum GeneratedContract {
         "Handlers.ProfileListView": "upstream-compat",
         "Handlers.ProfileUpdateRequest": "upstream-compat",
         "Handlers.ProfileView": "upstream-compat",
+        "Handlers.RequestIntegrationTestResult": "bloem",
         "Handlers.SectionOverrideWrite": "upstream-compat",
         "Handlers.SubtitleProviderStatusView": "upstream-compat",
         "Handlers.SubtitleProviderTestView": "upstream-compat",
@@ -2199,6 +2203,7 @@ public enum GeneratedContract {
         "Bookrequests.ListResponse": "audiobook_requests_v1",
         "Bookrequests.Request": "audiobook_requests_v1",
         "Handlers.AudiobookRequestConnectionInput": "audiobook_requests_v1",
+        "Handlers.AudiobookRequestConnectionUpdate": "audiobook_requests_v1",
         "Handlers.AudiobookRequestSetup": "audiobook_requests_v1",
         "Handlers.BloemLibraryCreateOptions": "native_storage.library_location_atomic_editing",
         "Handlers.BloemLibraryLocationsCreateRequest": "native_storage.library_location_atomic_editing",
