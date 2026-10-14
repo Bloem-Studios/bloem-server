@@ -651,6 +651,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		// place claims are resolved, so a route is out of reach until
 		// directProfileAllowedRoutes names it.
 		authMiddleware.SetDirectProfileRouteGuard(newDirectProfileRouteGuard(r.Match))
+		// Bloem: preview principals browse and nothing else (bloem_preview_routes.go).
+		authMiddleware.SetPreviewPrincipals(sessionRepo)
+		authMiddleware.SetPreviewRouteGuard(newPreviewRouteGuard(r.Match))
 		if deps.UserStoreProvider != nil {
 			if deps.PolicySystem != nil {
 				viewerResolver = policy.NewViewerResolver(userRepo, deps.UserStoreProvider, profileTokenService, deps.PolicySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))
