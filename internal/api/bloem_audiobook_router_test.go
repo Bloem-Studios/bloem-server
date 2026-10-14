@@ -88,7 +88,7 @@ func TestAudiobookRouterRefusesCredentialsBoundToAnotherURL(t *testing.T) {
 			moved.APIKeyRef, moved.PluginConfig = stored.key, stored.config
 			a.integrations = ebookConnectionFixture{&moved}
 			if _, err := a.Fulfill(t.Context(), in); !errors.Is(err, bookrequests.ErrProviderNotCalled) || !errors.Is(err, bookrequests.ErrConflict) || c.input != nil {
-				t.Fatalf("fulfil with an unbound credential: %v", err)
+				t.Fatalf("fulfill with an unbound credential: %v", err)
 			}
 			// The fixture client has no CheckStatus, so reaching it panics.
 			if _, err := a.CheckStatus(t.Context(), in, bookrequests.RecoveryReceipt(in.SubmissionID, in.Attempt)); !errors.Is(err, bookrequests.ErrConflict) {
