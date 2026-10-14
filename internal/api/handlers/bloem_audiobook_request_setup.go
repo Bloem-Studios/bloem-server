@@ -49,6 +49,13 @@ func (h *BloemBookRequestsHandler) SetAudiobookRequestSetup(s BloemAudiobookRequ
 		h.audiobookSetup = s
 	}
 }
+
+// ConnectionAdminAvailable reports whether the connection edit and test routes
+// have setups behind them: the audiobook setup, and the ebook setup when the
+// ebook lane is mounted.
+func (h *BloemBookRequestsHandler) ConnectionAdminAvailable() bool {
+	return h != nil && h.audiobookSetup != nil && (h.ebooks == nil || h.ebooks.ebookSetup != nil)
+}
 func (h *BloemBookRequestsHandler) audiobookSetupViewer(w http.ResponseWriter, r *http.Request, write bool) (bookrequests.Viewer, bool) {
 	t, ok := requireBloemOrganizationContext(w, r)
 	if !ok {

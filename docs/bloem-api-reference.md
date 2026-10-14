@@ -2985,6 +2985,8 @@ Only the durable default organization can file; hosted organizations cannot.
 Authentication, current membership and profile/PIN checks match the audiobook
 viewer boundary. The five viewer routes are in the direct-profile allowlist: a
 session bound to one profile files, reads and withdraws as that profile.
+`ebook_requests_direct_profile_v1` is advertised with `ebook_requests_v1` by
+servers that admit those sessions; an older server answers them with 403.
 
 All paths below have the `/api/bloem/v1` prefix.
 
@@ -3069,6 +3071,11 @@ carry `Cache-Control: private, no-store`.
 | `PUT` | `/admin/organization/audiobook-request-integrations/{id}` | Platform-authorized edit with optional `name`, `plugin_config` and `credentials`; keeps the connection's ID, binding and in-flight work. |
 | `PUT` | `/admin/organization/audiobook-request-integrations/{id}/library` | Platform-authorized binding with `library_id` and one to four `download_roots`; zero unbinds. |
 | `POST` | `/admin/organization/audiobook-request-integrations/{id}/test` | Platform-authorized plugin connection checks on a saved connection; returns `{ok, message}`. |
+
+`book_request_connection_admin_v1` advertises the connection edit route above
+and the connection test routes of both lanes; the ebook test route exists only
+where `ebook_requests_v1` is advertised. It requires mounted admin-context routes
+and wired request setups. An older server answers those paths with 404.
 
 For a platform administrator context, the setup listing includes each
 connection's saved `plugin_config` and the names of its saved credentials in

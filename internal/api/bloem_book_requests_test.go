@@ -61,7 +61,7 @@ func TestBloemBookRequestAdminPatternsAndDirectProfileBoundary(t *testing.T) {
 	router := chi.NewRouter()
 	h := handlers.NewBloemBookRequestsHandler(bookrequests.NewService(nil, nil), nil)
 	h.SetEbookRequests(bookrequests.NewService(nil, nil))
-	mountBloemAdminBookRequests(router, h)
+	mountBloemAdminBookRequests(router, h, nil)
 	routes := walkRoutes(t, router)
 	for _, pair := range []string{
 		"GET /organization/book-requests", "POST /organization/book-requests/{id}/approve", "POST /organization/book-requests/{id}/decline", "POST /organization/book-requests/{id}/fulfil",
@@ -88,5 +88,32 @@ func TestBloemBookRequestAdminPatternsAndDirectProfileBoundary(t *testing.T) {
 		if directProfileRouteAllowed(http.MethodDelete, NativeAPIPrefix+prefix+"/{id}") || directProfileRouteAllowed(http.MethodPost, NativeAPIPrefix+prefix+"/{id}/approve") {
 			t.Fatalf("direct-profile %s mutations expanded beyond filing and withdrawal", prefix)
 		}
+	}
+}
+
+func TestBloemBookRequestConnectionAdminCapabilityTracksSetups(t *testing.T) {
+	for _, wired := range []bool{false, true} {
+		h := handlers.NewBloemBookRequestsHandler(bookrequests.NewService(nil, nil), nil)
+		h.SetEbookRequests(bookrequests.NewService(nil, nil))
+		if wired {
+			h.SetAudiobookRequestSetup(bloemAudiobookSetup{})
+			h.SetEbookRequestSetup(bloemEbookSetup{})
+		}
+		system := handlers.NewBloemSystemHandler(nil)
+		router := chi.NewRouter()
+		router.Get(NativeAPIPrefix+"/capabilities", system.HandleCapabilities)
+		mountBloemAdminBookRequests(router, h, system)
+		probe := httptest.NewRecorder()
+		router.ServeHTTP(probe, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
+		if strings.Contains(probe.Body.String(), "book_request_connection_admin_v1") != wired {
+			t.Fatalf("wired=%v: %s", wired, probe.Body.String())
+		}
+	}
+	// Only the audiobook setup: the ebook test route has nothing behind it.
+	h := handlers.NewBloemBookRequestsHandler(bookrequests.NewService(nil, nil), nil)
+	h.SetEbookRequests(bookrequests.NewService(nil, nil))
+	h.SetAudiobookRequestSetup(bloemAudiobookSetup{})
+	if h.ConnectionAdminAvailable() {
+		t.Fatal("connection administration advertised without the ebook setup")
 	}
 }

@@ -94,7 +94,7 @@ func mountedBookRequestOperations(t *testing.T) map[string]struct{} {
 	router := chi.NewRouter()
 	router.Route(apiv2.BloemPrefix, func(r chi.Router) {
 		mountBloemBookRequests(r, h, client, nil)
-		r.Route("/admin", func(r chi.Router) { mountBloemAdminBookRequests(r, h) })
+		r.Route("/admin", func(r chi.Router) { mountBloemAdminBookRequests(r, h, nil) })
 	})
 	operations := map[string]struct{}{}
 	if err := chi.Walk(router, func(method, path string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {

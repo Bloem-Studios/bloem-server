@@ -236,7 +236,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 		mountPlatformEntitlementScopedRoutes(r, accountPolicyHandler, entitlementHandler, authMW, adminMW)
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(adminMW.Require)
-			mountBloemAdminBookRequests(r, surfaces.BookRequests)
+			mountBloemAdminBookRequests(r, surfaces.BookRequests, system)
 			mountBloemNativeStorageManagement(r, surfaces.NativeStorage)
 			mountBloemEngagementRoutes(r, surfaces.Promotions, surfaces.Ambience)
 			if entitlementHandler != nil {

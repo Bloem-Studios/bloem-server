@@ -177,6 +177,11 @@ host first checks every saved credential against its URL binding and answers
 `{ok, message}`; transport errors become fixed text, and a plugin message that
 repeats a saved credential is withheld. A failed test is HTTP 200.
 
+`book_request_connection_admin_v1` advertises the edit route and the connection
+test routes of both lanes. The server sets it when the admin-context routes are
+mounted and the audiobook setup, and the ebook setup where that lane is mounted,
+are wired.
+
 No-match searches wait six hours and stop after seven days; unavailable sources
 wait thirty minutes. Uncertain checks back off and stop after five failures.
 Selections or downloads needing review wait for an administrator. An approved

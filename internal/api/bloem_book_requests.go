@@ -91,9 +91,12 @@ func mountBloemBookRequests(r chi.Router, h *handlers.BloemBookRequestsHandler, 
 		}
 	})
 }
-func mountBloemAdminBookRequests(r chi.Router, h *handlers.BloemBookRequestsHandler) {
+func mountBloemAdminBookRequests(r chi.Router, h *handlers.BloemBookRequestsHandler, system *handlers.BloemSystemHandler) {
 	if h == nil {
 		return
+	}
+	if system != nil {
+		system.SetBookRequestConnectionAdminAvailable(h.ConnectionAdminAvailable())
 	}
 	r.Get("/organization/book-requests", h.HandleAdminList)
 	r.Get("/organization/book-requests/acquisitions", h.HandleAudiobookAcquisitionList)
