@@ -321,7 +321,7 @@ func resolveGroupPolicy(ctx context.Context, db interface {
 				g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 				g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
 				g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed,
-			g.managed_template_key IS NOT DISTINCT FROM 'bloem-preview'
+				g.managed_template_key IS NOT DISTINCT FROM 'bloem-preview'
 			FROM user_profiles p
 			LEFT JOIN access_groups g
 			  ON g.organization_id = p.organization_id

@@ -151,7 +151,7 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			if !ok {
 				return
 			}
-			preview, err := am.apiKeyOwnerPreview(r.Context(), claims.UserID)
+			preview, err := am.accountPreview(r.Context(), claims.UserID)
 			if err != nil {
 				writeCredentialCheckUnavailable(w, r, err)
 				return
@@ -198,7 +198,7 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 				writeForbidden(w, "API key scopes do not permit this route")
 				return
 			}
-			if preview, err := am.apiKeyOwnerPreview(r.Context(), user.ID); err != nil {
+			if preview, err := am.accountPreview(r.Context(), user.ID); err != nil {
 				writeCredentialCheckUnavailable(w, r, err)
 				return
 			} else if preview {

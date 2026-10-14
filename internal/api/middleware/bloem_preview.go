@@ -64,8 +64,9 @@ func (am *AuthMiddleware) sessionAuthority(ctx context.Context, sessionID string
 	return role, false, active, err
 }
 
-// apiKeyOwnerPreview reports whether an API key's owner is a preview principal.
-func (am *AuthMiddleware) apiKeyOwnerPreview(ctx context.Context, accountID int) (bool, error) {
+// accountPreview reports whether an account is a preview principal, for the
+// credentials that carry no session: API keys and audience tickets.
+func (am *AuthMiddleware) accountPreview(ctx context.Context, accountID int) (bool, error) {
 	if am.previewPrincipals == nil {
 		return false, nil
 	}
