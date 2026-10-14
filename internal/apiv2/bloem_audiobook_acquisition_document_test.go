@@ -16,6 +16,8 @@ func TestBloemAudiobookAcquisitionDocumentContract(t *testing.T) {
 		{"/admin/organization/audiobook-request-integrations", "get", "200", "AudiobookRequestSetup"},
 		{"/admin/organization/audiobook-request-integrations", "post", "201", "AudiobookIntegrationSummary"},
 		{"/admin/organization/audiobook-request-integrations/{id}/library", "put", "200", "AudiobookIntegrationSummary"},
+		{"/admin/organization/audiobook-request-integrations/{id}", "put", "200", "AudiobookIntegrationSummary"},
+		{"/admin/organization/audiobook-request-integrations/{id}/test", "post", "200", "RequestIntegrationTestResult"},
 	} {
 		t.Run(tc.method+tc.path, func(t *testing.T) {
 			op := bloemDocObject(t, doc, "paths", BloemPrefix+tc.path, tc.method)
@@ -56,7 +58,10 @@ func TestBloemAudiobookAcquisitionDocumentContract(t *testing.T) {
 	body := bloemDocObject(t, binding, "requestBody", "content", "application/json", "schema")
 	bloemDocFields(t, bloemDocSchema(t, doc, body), "library_id", "download_roots")
 	summary := bloemDocObject(t, doc, "components", "schemas", "AudiobookIntegrationSummary")
-	bloemDocFields(t, summary, "id", "name", "installation_id", "capability_id", "library_id", "library_name", "download_roots", "binding_revision", "ready")
+	bloemDocFields(t, summary, "id", "name", "installation_id", "capability_id", "library_id", "library_name", "download_roots", "binding_revision", "ready", "plugin_config", "stored_credentials")
+	update := bloemDocObject(t, doc, "paths", BloemPrefix+"/admin/organization/audiobook-request-integrations/{id}", "put", "requestBody", "content", "application/json", "schema")
+	bloemDocFields(t, bloemDocSchema(t, doc, update), "name", "plugin_config", "credentials")
+	bloemDocFields(t, bloemDocObject(t, doc, "components", "schemas", "RequestIntegrationTestResult"), "ok", "message")
 	list := bloemDocObject(t, doc, "paths", BloemPrefix+"/admin/organization/book-requests/acquisitions", "get")
 	params := map[string]map[string]any{}
 	for _, v := range list["parameters"].([]any) {

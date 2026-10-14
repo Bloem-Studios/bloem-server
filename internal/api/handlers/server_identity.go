@@ -51,13 +51,12 @@ type SetupStateReporter interface {
 // other would either make the capability probe fallible or make the identity
 // fields silently absent — the ambiguity this endpoint exists to remove.
 //
-// Relationship to GET /api/v1/health: none. Health keeps exactly the fields it
-// has and exactly the source it has — server_name and server_id there come from
-// the Jellyfin-compatibility configuration and stay omitted when that
-// configuration is absent. Nothing reads the identity setting into health,
-// because clients (Jellyfin-protocol clients especially) already depend on the
-// values health returns today, and the v1 rules forbid repurposing them. Scope
-// keying uses this endpoint instead, which is why it exists.
+// Relationship to GET /api/v1/health: health keeps the fields it has and the
+// values clients already stored from it. Its server_id is the preserved
+// Jellyfin-compatibility server ID (BloemHealthHandler), which is not this
+// endpoint's server_id on an upgraded Silo database; the v1 rules forbid
+// repurposing it. Scope keying uses this endpoint instead, which is why it
+// exists.
 type ServerIdentityHandler struct {
 	identity *serverid.Resolver
 	branding *branding.Service

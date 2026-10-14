@@ -79,9 +79,10 @@ ordinary account bearer token and an `X-Profile-Id` header:
   `GET /api/bloem/v1/music/artists/{id}`, and `GET /api/bloem/v1/music/albums/{id}`
 
 Music artist and album reads additionally require an allowed positive
-`library_id`. Direct-profile sessions are not admitted to `/api/bloem/v1`: the
-router's direct-profile allowlist contains only `/api/v1` routes, so
-authentication rejects them before `RequireProfile` runs. The
+`library_id`. Direct-profile sessions are admitted to `/api/bloem/v1` only for
+the audiobook and ebook request viewer routes (capability, history, filing,
+read and withdrawal). Authentication rejects them on every other native route
+before `RequireProfile` runs. The
 `direct_profile_login` capability field reports whether `POST /api/v1/auth/profile-login`
 is wired; it does not advertise a native direct-profile session mode.
 
@@ -2982,7 +2983,10 @@ of storage files are not supported.
 capability reports the current default-off policy and an independent quota.
 Only the durable default organization can file; hosted organizations cannot.
 Authentication, current membership and profile/PIN checks match the audiobook
-viewer boundary. These routes are not part of the direct-profile allowlist.
+viewer boundary. The five viewer routes are in the direct-profile allowlist: a
+session bound to one profile files, reads and withdraws as that profile.
+`ebook_requests_direct_profile_v1` is advertised with `ebook_requests_v1` by
+servers that admit those sessions; an older server answers them with 403.
 
 All paths below have the `/api/bloem/v1` prefix.
 
@@ -3000,6 +3004,7 @@ All paths below have the `/api/bloem/v1` prefix.
 | `GET` | `/admin/organization/ebook-request-integrations` | Read `{available, enabled, integrations, libraries, installations}`. |
 | `POST` | `/admin/organization/ebook-request-integrations` | Add an explicit EPUB Bookwarehouse request connection. |
 | `PUT` | `/admin/organization/ebook-request-integrations/{id}/library` | Bind `{library_id}` to an eligible native ebook library; zero clears it. |
+| `POST` | `/admin/organization/ebook-request-integrations/{id}/test` | Run the plugin's connection test on a saved connection; returns `{ok, message}`. |
 | `PUT` | `/admin/organization/ebook-request-policy` | Persist explicit `{enabled: boolean}`. |
 
 Filing accepts `{title, author?, isbn, note?}`. ISBN-10 normalizes to ISBN-13;
@@ -3063,7 +3068,31 @@ carry `Cache-Control: private, no-store`.
 | `POST` | `/admin/organization/book-requests/{id}/accept-download` | Accept verification review with `expected_revision`; still await catalog presence. |
 | `GET` | `/admin/organization/audiobook-request-integrations` | Read `{available, integrations, libraries, installations}` without credentials. |
 | `POST` | `/admin/organization/audiobook-request-integrations` | Platform-authorized connection creation with name, installation, capability, `plugin_config` and `credentials`. |
+| `PUT` | `/admin/organization/audiobook-request-integrations/{id}` | Platform-authorized edit with optional `name`, `plugin_config` and `credentials`; keeps the connection's ID, binding and in-flight work. |
 | `PUT` | `/admin/organization/audiobook-request-integrations/{id}/library` | Platform-authorized binding with `library_id` and one to four `download_roots`; zero unbinds. |
+| `POST` | `/admin/organization/audiobook-request-integrations/{id}/test` | Platform-authorized plugin connection checks on a saved connection; returns `{ok, message}`. |
+
+`book_request_connection_admin_v1` advertises the connection edit route above
+and the connection test routes of both lanes; the ebook test route exists only
+where `ebook_requests_v1` is advertised. It requires mounted admin-context routes
+and wired request setups. An older server answers those paths with 404.
+
+For a platform administrator context, the setup listing includes each
+connection's saved `plugin_config` and the names of its saved credentials in
+`stored_credentials`; credential values are never returned. An absent
+`plugin_config` means the saved settings could not be read. An organization
+administrator receives neither field.
+
+On edit, `plugin_config` is merged over the saved settings: a submitted key
+replaces its saved value, `null` removes it, and an omitted key keeps it. A
+credential that is omitted or empty keeps its saved value only while the URL it
+is bound to is unchanged; a changed URL returns 400 until the credential is
+entered again, and a URL cleared to `""` or removed with `null` drops it.
+Changing `qbittorrent_url` or `nzbget_url` makes downloads already handed to the
+previous client fail their status checks; retry them after the change. Silo's generic
+`/api/v1/admin/request-integrations/{id}` editor and its v2 twin refuse
+audiobook connections. See
+[connection edits and credential rotation](architecture/bloem-audiobook-requests.md#connection-edits-and-credential-rotation).
 
 
 Lists return `{"requests": [...]}` and accept `limit` (1–100, default 100) and

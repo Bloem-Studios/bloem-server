@@ -52,6 +52,13 @@ type AudiobookIntegrationSummary struct {
 	DownloadRoots   []string `json:"download_roots"`
 	BindingRevision int64    `json:"binding_revision"`
 	Ready           bool     `json:"ready"`
+	// PluginConfig and StoredCredentials are filled by the setup listing for
+	// a platform administrator only, so an editor can start from the saved
+	// settings. Credential values are never returned; StoredCredentials names
+	// the ones that are saved. omitzero keeps an empty saved configuration
+	// ({}) distinct from one that was not read (absent).
+	PluginConfig      map[string]any `json:"plugin_config,omitzero"`
+	StoredCredentials []string       `json:"stored_credentials,omitempty"`
 }
 
 // AudiobookLibrary is an eligible library for a binding, with its paths.

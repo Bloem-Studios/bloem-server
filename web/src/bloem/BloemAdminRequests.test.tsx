@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   setLibrary: vi.fn(),
   createIntegration: vi.fn(),
   setPolicy: vi.fn(),
+  testIntegration: vi.fn(),
   list: vi.fn(),
   action: vi.fn(),
   active: null as AdminContextSummary | null,
@@ -56,6 +57,7 @@ vi.mock("@/api/bloemBookRequests", async () => {
       setLibrary: mocks.setLibrary,
       createIntegration: mocks.createIntegration,
       setPolicy: mocks.setPolicy,
+      testIntegration: mocks.testIntegration,
     },
   };
 });
@@ -141,6 +143,9 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ id: "new-connection", name: "New books" });
   mocks.setPolicy.mockReset().mockImplementation(async (enabled: boolean) => ({ enabled }));
+  mocks.testIntegration
+    .mockReset()
+    .mockResolvedValue({ ok: true, message: "Bookwarehouse monitoring API authenticated." });
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -384,6 +389,29 @@ describe("organization ebook queue", () => {
       expect(mocks.integrations.mock.calls.at(-1)?.[0]?.key).toBe("organization:b"),
     );
     expect(screen.getByRole("combobox", { name: "Library" })).toHaveValue("10");
+  });
+  it("tests the selected saved ebook connection and shows the plugin verdict", async () => {
+    mocks.ebookSupported = true;
+    mocks.active = { ...org("a"), authority: "platform_admin" };
+    open("/admin/requests?kind=ebook");
+    fireEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+    await waitFor(() =>
+      expect(mocks.testIntegration).toHaveBeenCalledWith(
+        "connection-a",
+        expect.objectContaining({ key: "organization:a" }),
+      ),
+    );
+    expect(
+      await screen.findByText("Connection works: Bookwarehouse monitoring API authenticated."),
+    ).toBeInTheDocument();
+    mocks.testIntegration.mockResolvedValue({
+      ok: false,
+      message: "Bookwarehouse monitoring authentication or response check failed.",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Connection test failed: Bookwarehouse monitoring authentication or response check failed.",
+    );
   });
   it("shows a hosted restriction without editing a linked library", async () => {
     mocks.ebookSupported = true;

@@ -488,12 +488,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// Health handler advertises the server's identity so multi-server
 	// clients can display a friendly name. Falls back to empty strings
 	// if config is absent (tests, minimal fixtures); JSON omits empties.
-	var healthServerName, healthServerID string
-	if deps.Config != nil {
-		healthServerName = ""
-		healthServerID = ""
-	}
-	healthHandler := handlers.NewHealthHandler(healthServerName, healthServerID)
+	healthHandler := bloemHealthHandler(deps)
 
 	// Build server settings repo if DB is available (needed by auth and admin).
 	// Wrap it in the encrypting decorator so sensitive keys rest as ciphertext

@@ -48,8 +48,10 @@ func TestFixtureLibraryTeardownReleasesOnlyItsEntitlements(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = tx.Exec(ctx, `DELETE FROM media_folders WHERE id=$1`, deletedID)
+	// PostgreSQL 18 reports an ON DELETE RESTRICT violation as
+	// restrict_violation (23001); earlier releases report foreign_key_violation.
 	var constraint *pgconn.PgError
-	if !errors.As(err, &constraint) || constraint.Code != "23503" || constraint.ConstraintName != "organization_entitlements_media_folder_fkey" {
+	if !errors.As(err, &constraint) || (constraint.Code != "23503" && constraint.Code != "23001") || constraint.ConstraintName != "organization_entitlements_media_folder_fkey" {
 		t.Fatalf("compatibility off must retain entitlement restriction: %v", err)
 	}
 	if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT restricted_delete; SET LOCAL bloem.fixture_compat='on'`); err != nil {

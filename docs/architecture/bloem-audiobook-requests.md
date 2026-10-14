@@ -125,6 +125,23 @@ never enter the dispatch descriptor, receipt, decision log or requester view.
 The plugin owns release search, AI selection/verification and downloader calls;
 the host owns policy, identity, attempts and catalog completion.
 
+The plugin answers `CheckStatus` in the host's vocabulary. `review` must carry a
+verify decision with outcome `review` and holds the request for an
+administrator; `completed` must carry external status `verified` and a
+`verified` decision. `unknown` with external status `missing` (a confirmed
+download the client no longer shows) is an uncertain check: it backs off and,
+after five, reports the download lost. `unknown` with `absent` (a hand-off the
+client never showed) is searched again after two absent checks. `unknown` with
+external status `unknown` means the plugin could not read the download client.
+That check keeps the request's state and counters, so a client outage never
+reports a download lost; an outage longer than an hour shows as `unreachable` in
+the admin stuck view. A failed `CheckStatus` call (the plugin itself
+unavailable) is still an uncertain check. Pre-release plugin builds answered
+`queued` for all four cases; the adapter maps those by external status to the
+same states. The cross-process acceptance in
+`internal/api/bloem_audiobook_lifecycle_test.go` runs this contract against the
+real plugin executable when `BLOEM_AUDIOBOOK_REQUEST_PLUGIN_BINARY` is set.
+
 No-match searches wait six hours and stop after seven days; unavailable sources
 wait thirty minutes. Uncertain checks back off and stop after five failures.
 Selections or downloads needing review wait for an administrator. An approved
@@ -141,6 +158,63 @@ an attempt-marker folder. Two matching items require review. The path lookup
 first materializes the library/path index range; it does not search the entire
 catalog. A completed download does not create a scanner schedule or guarantee
 filesystem liveness.
+
+## Connection edits and credential rotation
+
+Bloem's audiobook setup is the only writer of an audiobook connection after
+creation. `PUT .../audiobook-request-integrations/{id}` edits it in place, so the
+connection keeps its ID, binding and in-flight acquisitions. The host decodes the
+saved `abk1.` bundle and recomposes it:
+
+- a new credential value replaces the saved one and is bound to its URL as
+  submitted;
+- a blank credential keeps the saved value only while the fingerprint of its URL
+  (`qbittorrent_url`, `nzbget_url`, `abook_base_url`, `ai_base_url`) still equals
+  the saved binding; a changed URL is refused until the credential is entered
+  again;
+- a cleared URL drops the credentials bound to it.
+
+A saved secret is therefore never bound to a host it was not entered for. The
+update runs as a conditional write on the row revision read at the start, so a
+concurrent edit returns 409 instead of reverting a rotation.
+
+The submitted `plugin_config` is a merge patch over the saved settings: a
+submitted key replaces its saved value, `null` removes it, and an omitted key
+keeps it. Clearing a URL, and with it the credentials bound to it, takes an
+explicit `""` or `null`; leaving the key out of a partial edit keeps both.
+In-flight acquisitions survive an edit, but the plugin checks each download
+receipt against the fingerprint of its client URL. Changing `qbittorrent_url` or
+`nzbget_url` therefore makes downloads already handed to the previous client
+fail their status checks; the web editor warns before such a save.
+
+Silo's generic request-integration editor keeps a saved `api_key_ref` whenever
+`base_url` is unchanged. Audiobook connections keep `base_url` empty and their
+URLs in `plugin_config`, so that rule never fires for them. The host refuses
+generic updates (v1 `PUT /api/v1/admin/request-integrations/{id}` and the v2
+twin) and option probes of any connection whose saved or submitted media types
+include `audiobook`, or whose installation is `bloem.requests.audiobooks`. The
+refusal is a form validation error naming Bloem's audiobook setup. Generic
+creation stays open because it carries the caller's own credentials. This guard
+does not depend on the plugin's own binding check.
+
+Upstream Silo's generic editor has no such guard, so in the mirrored switching
+phase it, or a direct SQL edit, can still move a URL under a saved composite.
+Dispatch therefore checks every saved credential against its URL binding when it
+reads the connection, before it resolves the plugin. A mismatch or an unreadable
+composite is a conflict and the plugin is not contacted: a submission is treated
+as not sent and tried again later, and a status check counts as a failed check.
+
+`POST .../audiobook-request-integrations/{id}/test` runs the plugin's
+`TestConnection` against the saved connection for a platform administrator. The
+host first checks every saved credential against its URL binding and answers
+`ok=false` without calling the plugin on a mismatch. The response is
+`{ok, message}`; transport errors become fixed text, and a plugin message that
+repeats a saved credential is withheld. A failed test is HTTP 200.
+
+`book_request_connection_admin_v1` advertises the edit route and the connection
+test routes of both lanes. The server sets it when the admin-context routes are
+mounted and the audiobook setup, and the ebook setup where that lane is mounted,
+are wired.
 
 ## Native client follow-up
 

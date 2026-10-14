@@ -1,5 +1,5 @@
 import { adminV2Api, type AdminRequestContext } from "./adminV2Client";
-import type { BookRequest } from "./bloemBookRequests";
+import type { BookRequest, RequestIntegrationTestResult } from "./bloemBookRequests";
 
 export interface AudiobookIntegration {
   id: string;
@@ -11,6 +11,13 @@ export interface AudiobookIntegration {
   download_roots: string[];
   binding_revision: number;
   ready: boolean;
+  /**
+   * Saved settings, filled by the setup listing for a platform administrator
+   * only. Absent there means the saved settings could not be read.
+   */
+  plugin_config?: AudiobookConnectionInput["plugin_config"];
+  /** Names of the saved credentials; their values are never returned. */
+  stored_credentials?: string[];
 }
 export interface AudiobookSetup {
   available: boolean;
@@ -24,6 +31,16 @@ export interface AudiobookConnectionInput {
   capability_id: string;
   plugin_config: Record<string, string | number | boolean | string[]>;
   credentials: Record<string, string>;
+}
+/**
+ * Edits a saved connection. plugin_config is merged over the saved settings:
+ * a submitted key replaces its value, null removes it, an omitted key keeps it.
+ * An empty credential keeps its saved value only while its URL is unchanged.
+ */
+export interface AudiobookConnectionUpdate {
+  name?: string;
+  plugin_config?: Record<string, string | number | boolean | string[] | null>;
+  credentials?: Record<string, string>;
 }
 export interface AcquisitionCandidate {
   ref: string;
@@ -105,6 +122,24 @@ export const audiobookAcquisitionsApi = {
     ),
   createIntegration: (input: AudiobookConnectionInput, context: AdminRequestContext | null) =>
     write<AudiobookIntegration>("/organization/audiobook-request-integrations", input, context),
+  updateIntegration: (
+    id: string,
+    input: AudiobookConnectionUpdate,
+    context: AdminRequestContext | null,
+  ) =>
+    write<AudiobookIntegration>(
+      `/organization/audiobook-request-integrations/${encodeURIComponent(id)}`,
+      input,
+      context,
+      "PUT",
+    ),
+  testIntegration: (id: string, context: AdminRequestContext | null) =>
+    adminV2Api<RequestIntegrationTestResult>(
+      `/organization/audiobook-request-integrations/${encodeURIComponent(id)}/test`,
+      { method: "POST" },
+      "none",
+      context,
+    ),
   setLibrary: (
     id: string,
     libraryId: number,

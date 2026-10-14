@@ -619,6 +619,11 @@ func TestEbookPreRPCFailureDoesNotPoisonSubmissionDatabase(t *testing.T) {
 	if err := pool.QueryRow(t.Context(), `SELECT started FROM bloem_ebook_request_dispatches WHERE request_id=$1`, r.ID).Scan(&started); err != nil || started {
 		t.Fatalf("unsent submission left started=%v err=%v", started, err)
 	}
+	// The requester must not be told the outcome is unknown: nothing was
+	// sent, and the next attempt submits again.
+	if got, err := s.GetEbook(t.Context(), v, r.ID); err != nil || got.Fulfilment != "retrying" || got.OutcomeReason != "The submission did not reach the backend; it will be submitted again." {
+		t.Fatalf("unsent retry reason: %+v %v", got, err)
+	}
 	dueEbook(t, pool, r.ID)
 	if _, err := s.ReconcileEbooks(t.Context(), 100); err != nil {
 		t.Fatal(err)
@@ -629,6 +634,35 @@ func TestEbookPreRPCFailureDoesNotPoisonSubmissionDatabase(t *testing.T) {
 	got, err := s.GetEbook(t.Context(), v, r.ID)
 	if err != nil || got.Fulfilment != "queued" {
 		t.Fatalf("request %+v %v", got, err)
+	}
+}
+
+func TestEbookRepeatedPreRPCFailureEndsWithResubmittingRetryDatabase(t *testing.T) {
+	s, v, pool := databaseFixture(t)
+	setEbookOptIn(t, pool, "true")
+	integration, folder, _ := ebookIntegrationFixture(t, pool)
+	admin := v
+	admin.Admin = true
+	if _, err := s.SetEbookIntegrationLibrary(t.Context(), admin, integration, folder); err != nil {
+		t.Fatal(err)
+	}
+	r := approveEbook(t, s, v, "9780306406157")
+	calls := 0
+	s.SetEbookFulfillment(ebookRouterFixture{fulfill: func(context.Context, DispatchInput) (Receipt, error) {
+		calls++
+		return Receipt{}, errors.Join(ErrProviderNotCalled, errors.New("ebook fulfillment configuration rejected"))
+	}, recover: func(context.Context, DispatchInput) (Receipt, error) {
+		return Receipt{}, errors.New("must not recover an unsent request")
+	}})
+	for range ebookMaxFailures {
+		if _, err := s.ReconcileEbooks(t.Context(), 100); err != nil {
+			t.Fatal(err)
+		}
+		dueEbook(t, pool, r.ID)
+	}
+	got, err := s.GetEbook(t.Context(), v, r.ID)
+	if err != nil || calls != ebookMaxFailures || got.Fulfilment != "failed" || got.OutcomeReason != "Submission failed repeatedly before reaching the backend; retry submits it again." {
+		t.Fatalf("calls=%d request %+v %v", calls, got, err)
 	}
 }
 

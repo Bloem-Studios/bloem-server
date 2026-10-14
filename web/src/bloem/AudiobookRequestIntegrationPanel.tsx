@@ -5,7 +5,9 @@ import { AdminV2ClientError } from "@/api/adminV2Client";
 import {
   audiobookAcquisitionsApi,
   type AudiobookConnectionInput,
+  type AudiobookIntegration,
 } from "@/api/bloemAudiobookAcquisitions";
+import type { RequestIntegrationTestResult } from "@/api/bloemBookRequests";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAudiobookAdminScope } from "./useAudiobookAdminScope";
@@ -18,6 +20,36 @@ const credentialFields = [
   ["abook_password", "abook.link password"],
   ["ai_api_key", "AI API key"],
 ] as const;
+interface ConnectionEditor {
+  id: string;
+  name: string;
+  values: AudiobookConnectionInput["plugin_config"];
+  credentials: Record<string, string>;
+}
+function editorFor(integration: AudiobookIntegration): ConnectionEditor {
+  return {
+    id: integration.id,
+    name: integration.name,
+    values: { ...audiobookConfigDefaults(), ...integration.plugin_config },
+    credentials: {},
+  };
+}
+function enteredCredentials(credentials: Record<string, string>) {
+  return Object.fromEntries(Object.entries(credentials).filter(([, value]) => value !== ""));
+}
+// Download receipts are tied to the client URL they were handed to.
+const downloadClientURLs = [
+  ["qbittorrent_url", "qBittorrent"],
+  ["nzbget_url", "NZBGet"],
+] as const;
+function movedDownloadClients(editor: ConnectionEditor, saved: AudiobookIntegration) {
+  return downloadClientURLs
+    .filter(
+      ([key]) =>
+        String(editor.values[key] ?? "").trim() !== String(saved.plugin_config?.[key] ?? "").trim(),
+    )
+    .map(([, label]) => label);
+}
 export function AudiobookRequestIntegrationPanel() {
   const scope = useAudiobookAdminScope();
   const qc = useQueryClient();
@@ -39,6 +71,12 @@ export function AudiobookRequestIntegrationPanel() {
   const [blocked, setBlocked] = useState(false);
   const [unknownCreate, setUnknownCreate] = useState(false);
   const [message, setMessage] = useState("");
+  const [editor, setEditor] = useState<ConnectionEditor | null>(null);
+  const [editMessage, setEditMessage] = useState("");
+  const [tested, setTested] = useState<{
+    id: string;
+    result: RequestIntegrationTestResult;
+  } | null>(null);
   const integration =
     list.data?.integrations.find((row) => row.id === selected) ?? list.data?.integrations[0];
   const plugin =
@@ -118,10 +156,68 @@ export function AudiobookRequestIntegrationPanel() {
     },
     onError: (error) => onError(error),
   });
-  const busy = create.isPending || binding.isPending || scope.switching || list.isError || blocked;
+  const update = useMutation({
+    retry: false,
+    gcTime: 0,
+    mutationFn: () => {
+      if (!scope.editing || !scope.current() || !editor || blocked)
+        throw new Error("Reload connections before saving a connection.");
+      return audiobookAcquisitionsApi.updateIntegration(
+        editor.id,
+        {
+          name: editor.name,
+          plugin_config: editor.values,
+          credentials: enteredCredentials(editor.credentials),
+        },
+        scope.context,
+      );
+    },
+    onSuccess: () => {
+      if (!scope.current()) return;
+      setEditor(null);
+      setEditMessage("");
+      setTested(null);
+      setMessage("Audiobook connection saved.");
+      void qc.invalidateQueries({ queryKey });
+    },
+    onError: (error) => {
+      if (!scope.current()) return;
+      // A refused edit changed nothing, so it stays in the editor.
+      if (error instanceof AdminV2ClientError && error.status === 400)
+        setEditMessage(error.message);
+      else onError(error);
+    },
+    onSettled: () => {
+      if (scope.current())
+        setEditor((current) => (current ? { ...current, credentials: {} } : current));
+    },
+  });
+  const test = useMutation({
+    retry: false,
+    mutationFn: (id: string) => {
+      if (!scope.editing || !scope.current() || blocked)
+        throw new Error("Reload connections before testing a connection.");
+      return audiobookAcquisitionsApi.testIntegration(id, scope.context);
+    },
+    onMutate: () => setTested(null),
+    onSuccess: (result, id) => {
+      if (scope.current()) setTested({ id, result });
+    },
+  });
+  const busy =
+    create.isPending ||
+    binding.isPending ||
+    update.isPending ||
+    test.isPending ||
+    scope.switching ||
+    list.isError ||
+    blocked;
   const createBusy = busy || unknownCreate;
   const refresh = async () => {
     setCredentials({});
+    setEditor(null);
+    setEditMessage("");
+    setTested(null);
     const result = await list.refetch();
     if (!scope.current() || result.isError) return;
     setBlocked(false);
@@ -139,7 +235,7 @@ export function AudiobookRequestIntegrationPanel() {
         <Button
           variant="outline"
           size="sm"
-          disabled={list.isFetching || create.isPending || binding.isPending}
+          disabled={list.isFetching || create.isPending || binding.isPending || update.isPending}
           onClick={() => void refresh()}
         >
           Reload connections
@@ -176,11 +272,14 @@ export function AudiobookRequestIntegrationPanel() {
               <select
                 className="border-input h-9 min-w-0 rounded-md border bg-transparent px-3"
                 value={integration.id}
-                disabled={create.isPending || binding.isPending}
+                disabled={create.isPending || binding.isPending || update.isPending}
                 onChange={(event) => {
                   setSelected(event.target.value);
                   setLibraryDraft(null);
                   setRootsDraft(null);
+                  setEditor(null);
+                  setEditMessage("");
+                  test.reset();
                 }}
               >
                 {list.data.integrations.map((row) => (
@@ -196,6 +295,41 @@ export function AudiobookRequestIntegrationPanel() {
                 ? ` · ${integration.library_name}`
                 : " · Library binding required"}
             </p>
+            {scope.editing && (
+              <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => test.mutate(integration.id)}
+                >
+                  {test.isPending ? "Testing connection…" : "Test connection"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy || editor?.id === integration.id || !integration.plugin_config}
+                  onClick={() => {
+                    setEditor(editorFor(integration));
+                    setEditMessage("");
+                  }}
+                >
+                  Edit connection
+                </Button>
+                {!integration.plugin_config && (
+                  <p role="status" className="text-muted-foreground text-sm">
+                    The saved settings could not be read. Reload connections before editing.
+                  </p>
+                )}
+                {tested?.id === integration.id && (
+                  <p role={tested.result.ok ? "status" : "alert"} className="text-sm">
+                    {tested.result.ok ? "Connection works: " : "Connection test failed: "}
+                    {tested.result.message}
+                  </p>
+                )}
+                {test.isError && <p role="alert">{test.error.message}</p>}
+              </div>
+            )}
             {scope.editing ? (
               <>
                 <label className="grid gap-2 text-sm font-medium">
@@ -254,8 +388,94 @@ export function AudiobookRequestIntegrationPanel() {
         ) : (
           <p role="status">No audiobook connections are configured.</p>
         ))}
+      {scope.editing && list.data?.available && integration && editor?.id === integration.id && (
+        <form
+          className="space-y-4 border-t pt-4"
+          aria-label="Edit audiobook connection"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!busy) update.mutate();
+          }}
+        >
+          <h3 className="font-semibold">Edit {integration.name}</h3>
+          <p className="text-muted-foreground text-sm">
+            The connection keeps its library binding and any acquisitions in progress. Leave a
+            credential blank to keep the saved one. Changing a URL requires its credential again,
+            and clearing a URL removes its credentials.
+          </p>
+          {movedDownloadClients(editor, integration).length > 0 && (
+            <p role="alert" className="text-sm">
+              Changing the {movedDownloadClients(editor, integration).join(" and ")} URL makes
+              downloads already handed to the previous client fail their status checks. Retry those
+              requests after saving.
+            </p>
+          )}
+          <label className="grid gap-2 text-sm font-medium sm:max-w-sm">
+            Connection name
+            <Input
+              value={editor.name}
+              required
+              maxLength={255}
+              disabled={busy}
+              onChange={(event) => setEditor({ ...editor, name: event.target.value })}
+            />
+          </label>
+          <AudiobookRequestConfigForm
+            values={editor.values}
+            setValues={(values) => setEditor({ ...editor, values })}
+            disabled={busy}
+          />
+          <fieldset className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
+            <legend className="px-2 font-medium">Credentials</legend>
+            {credentialFields.map(([key, label]) => (
+              <label key={key} className="grid gap-2 text-sm font-medium">
+                {label}
+                <Input
+                  type="password"
+                  autoComplete="off"
+                  placeholder={
+                    integration.stored_credentials?.includes(key)
+                      ? "Saved; leave blank to keep"
+                      : "Not set"
+                  }
+                  value={editor.credentials[key] ?? ""}
+                  maxLength={1024}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setEditor({
+                      ...editor,
+                      credentials: { ...editor.credentials, [key]: event.target.value },
+                    })
+                  }
+                />
+              </label>
+            ))}
+            <p className="text-muted-foreground text-xs sm:col-span-2">
+              Saved credentials are never shown. New values are cleared after submission.
+            </p>
+          </fieldset>
+          {editMessage && <p role="alert">{editMessage}</p>}
+          <div className="flex flex-wrap gap-3">
+            <Button type="submit" disabled={busy || !editor.name.trim()}>
+              {update.isPending ? "Saving connection…" : "Save connection"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={update.isPending}
+              onClick={() => {
+                setEditor(null);
+                setEditMessage("");
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
       {scope.editing &&
         list.data?.available &&
+        !editor &&
         (plugin ? (
           <form
             className="space-y-4 border-t pt-4"

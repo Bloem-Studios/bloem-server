@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -77,5 +79,75 @@ func TestAudiobookRouterRealPluginAdoptsWithoutSubmitting(t *testing.T) {
 	status, err := adapter.CheckStatus(ctx, in, out.Receipt)
 	if err != nil || status.Kind != bookrequests.AudiobookStatus || status.ProviderStatus != "downloading" || mutations.Load() != 0 {
 		t.Fatalf("status %+v mutations=%d %v", status, mutations.Load(), err)
+	}
+}
+
+// The same optional gate checks that a credential composite built by the host
+// is accepted by the real plugin at its bound URL, and that the host refuses a
+// moved URL before the plugin is reached.
+func TestAudiobookRouterRealPluginUsesHostComposedCredentialsOnlyAtTheirURL(t *testing.T) {
+	binary := os.Getenv("BLOEM_AUDIOBOOK_REQUEST_PLUGIN_BINARY")
+	if binary == "" {
+		t.Skip("BLOEM_AUDIOBOOK_REQUEST_PLUGIN_BINARY not set")
+	}
+	submission := "12345678-1234-1234-1234-123456789abc"
+	var logins, calls atomic.Int32
+	var password atomic.Value
+	downloader := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		switch r.URL.Path {
+		case "/api/v2/auth/login":
+			logins.Add(1)
+			password.Store(r.FormValue("password"))
+			_, _ = w.Write([]byte("Ok."))
+		case "/api/v2/app/webapiVersion":
+			_, _ = w.Write([]byte("2.11.0"))
+		case "/api/v2/torrents/info":
+			_ = json.NewEncoder(w).Encode([]map[string]any{{"hash": "0123456789012345678901234567890123456789", "name": "Synthetic Saga", "state": "downloading", "tags": "bloem-" + submission + "-a1", "progress": 0.5, "size": 100000000, "total_size": 100000000, "save_path": "/downloads", "category": "bloem-audiobooks"}})
+		default:
+			http.Error(w, "unexpected downloader operation", http.StatusInternalServerError)
+		}
+	}))
+	defer downloader.Close()
+	host := pluginhost.NewHost(pluginhost.Config{Logger: hclog.NewNullLogger()})
+	defer func() { _ = host.Shutdown(context.Background()) }()
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	manifestJSON, err := exec.CommandContext(ctx, binary, "manifest").Output()
+	if err != nil {
+		t.Fatalf("read acceptance plugin manifest: %v", err)
+	}
+	manifest := &pluginv1.PluginManifest{}
+	if err = protojson.Unmarshal(manifestJSON, manifest); err != nil {
+		t.Fatal(err)
+	}
+	process, err := host.Start(ctx, pluginhost.StartRequest{InstallationID: 7, BinaryPath: binary, Manifest: manifest})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := process.RequestRouter("audiobooks")
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := map[string]any{"qbittorrent_url": downloader.URL, "qbittorrent_username": "reader", "qbittorrent_save_root": "/downloads", "allow_http_download_clients": true, "allow_loopback_targets": true, "nzbking_enabled": false}
+	bundle, err := audiobookCredentialBundle(map[string]string{"qbittorrent_password": "synthetic-pass"}, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	installation := 7
+	saved := &requests.Integration{ID: "connection", Enabled: true, InstallationID: &installation, CapabilityID: "audiobooks", SupportedMediaTypes: []string{"audiobook"}, APIKeyRef: bundle, PluginConfig: config}
+	adapter := bloemAudiobookRouter{integrations: ebookConnectionFixture{saved}, resolver: ebookResolverFixture{client}, validator: audiobookValidatorFixture{}}
+	in := bookrequests.AudiobookDispatchInput{Request: bookrequests.Request{ID: submission, MediaType: "audiobook", Title: "Synthetic Saga", Author: "Test Author"}, Integration: bookrequests.AudiobookIntegration{ID: "connection", InstallationID: installation, CapabilityID: "audiobooks", Language: "en"}, SubmissionID: submission, Attempt: 1, SearchPass: 1}
+	out, err := adapter.Fulfill(ctx, in)
+	if err != nil || out.Kind != bookrequests.AudiobookHandedOff || logins.Load() == 0 || password.Load() != "synthetic-pass" {
+		t.Fatalf("plugin refused a host-composed composite: %+v %v logins=%d", out, err, logins.Load())
+	}
+	moved := *saved
+	moved.PluginConfig = maps.Clone(config)
+	moved.PluginConfig["qbittorrent_url"] = downloader.URL + "/elsewhere"
+	adapter.integrations = ebookConnectionFixture{&moved}
+	before := calls.Load()
+	if _, err = adapter.Fulfill(ctx, in); !errors.Is(err, bookrequests.ErrProviderNotCalled) || calls.Load() != before {
+		t.Fatalf("moved URL reached the downloader: %v", err)
 	}
 }

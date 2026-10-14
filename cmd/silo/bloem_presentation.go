@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/Silo-Server/silo-server/internal/bloempresentation"
 )
@@ -44,9 +45,16 @@ func bloemPresentationPluginPath(directory, feature string) (string, error) {
 	}
 }
 
+// bloemPresentationRunners builds both runners, starting their workers in
+// parallel (see bloemPresentationRunner).
 func bloemPresentationRunners(ctx context.Context) (bloempresentation.Runner, bloempresentation.Runner) {
 	directory := os.Getenv("BLOEM_PRESENTATION_PLUGIN_DIR")
-	return bloemPresentationRunner(ctx, directory, "promotions"), bloemPresentationRunner(ctx, directory, "ambience")
+	var promotionRunner, ambienceRunner bloempresentation.Runner
+	var started sync.WaitGroup
+	started.Go(func() { promotionRunner = bloemPresentationRunner(ctx, directory, "promotions") })
+	started.Go(func() { ambienceRunner = bloemPresentationRunner(ctx, directory, "ambience") })
+	started.Wait()
+	return promotionRunner, ambienceRunner
 }
 
 func bloemPresentationRunner(ctx context.Context, directory, feature string) bloempresentation.Runner {
@@ -67,5 +75,11 @@ func bloemPresentationRunner(ctx context.Context, directory, feature string) blo
 			slog.WarnContext(ctx, "closing presentation plugin", "feature", feature, "error", err)
 		}
 	}()
+	// Start the worker now rather than inside the first request's call
+	// budget, which a cold process start on a loaded host can exceed. A worker
+	// that does not start is left to the first call, which starts it again.
+	if err := client.Warm(ctx); err != nil && ctx.Err() == nil {
+		slog.WarnContext(ctx, "presentation plugin did not start", "feature", feature, "error", err)
+	}
 	return runner
 }

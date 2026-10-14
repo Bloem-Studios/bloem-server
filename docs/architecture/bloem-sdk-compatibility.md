@@ -120,9 +120,17 @@ that an acquisition provider is configured or ready. Provider receipts and froze
 dispatch identities remain internal and are explained in the coverage allowlist.
 Browse and selection roots retain their native-storage capability gates.
 
+The October 14 refresh adds the audiobook connection edit body
+(`AudiobookRequestConnectionUpdate`, `audiobook_requests_v1` gate) and the
+ungated `RequestIntegrationTestResult` shared by the ebook and audiobook
+connection tests. `AudiobookIntegrationSummary` gains the optional
+`plugin_config` and `stored_credentials` fields, which only the setup listing
+fills, and only for a platform administrator; credential values never appear on
+the wire.
+
 The latest generated source revision is
-`888a54b2a2803d37c88baa57a2cb32aa4aa52faa`, with normalized graph digest
-`sha256:11d8a85cdac9be866e4db5a3566d1253b134e5179c6be09e7ee68d457efafd42`.
+`60f2f86061ecf235248582646e40e22f56767bef`, with normalized graph digest
+`sha256:9cd33a20a983489852344d08aed94680c7063576e6f1ab97bb2c456a80b5cf69`.
 Each client records the committed artifact revision separately from that source
 stamp. Its checked-in bundle manifest and server pin are the authority for the
 adopted bytes; a later documentation-only server commit does not change the graph.

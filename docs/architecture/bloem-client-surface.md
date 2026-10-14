@@ -55,8 +55,9 @@ or sibling-client provider administration is supplied. See
 [deployed revision and acceptance limits](../operations/2026-10-07-native-storage-deployment.md).
 
 The viewer routes use ordinary account sessions and require `X-Profile-Id`.
-Direct-profile sessions are limited by the router's `/api/v1` allowlist and
-are rejected before native viewer middleware runs. The browser's Silo v2 calls are also
+Direct-profile sessions are limited by the router's allowlist, which admits
+`/api/v1` routes plus only the audiobook and ebook request viewer routes under
+`/api/bloem/v1`; everything else is rejected before native viewer middleware runs. The browser's Silo v2 calls are also
 outside that allowlist: credential management does not imply direct-profile browser login.
 
 `feature_tokens` describe additive capabilities — including

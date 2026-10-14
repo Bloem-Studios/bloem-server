@@ -72,8 +72,12 @@ work again when Bloem serves it.
 The reverse holds for Silo's Jellyfin and Audiobookshelf compatibility. Bloem
 removed both protocols, but their tables, the author-count view and their
 settings (including `jellyfin_compat.server_id`, the server identity Silo's
-clients recognise) stay in the database for Silo. Bloem neither reads nor
-writes them. Drop them only when Silo switching ends for good.
+clients recognise) stay in the database for Silo. Bloem writes none of them.
+It reads only `jellyfin_compat.server_id`, as the `server_id` on
+`GET /api/v1/health`, so both backends answer the same health identity. A
+database Bloem created has no such row until Silo first starts on it, so its
+health `server_id` changes from the deployment identity to Silo's value at that
+point. Drop them only when Silo switching ends for good.
 
 ## Operating rules
 

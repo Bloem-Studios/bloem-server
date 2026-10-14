@@ -166,7 +166,10 @@ func newNativeAcceptance(t *testing.T, container string, hdr ...bool) *nativeAcc
 	path := filepath.Join(t.TempDir(), "synthetic."+container)
 	args := []string{"-v", "error", "-f", "lavfi", "-i", "color=c=blue:s=1280x720:r=24", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "8", "-c:v", "libx264", "-profile:v", "high", "-level:v", "4.1", "-threads", "1", "-g", "24", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ac", "2"}
 	if len(hdr) > 0 && hdr[0] {
-		args = []string{"-v", "error", "-f", "lavfi", "-i", "color=c=blue:s=1280x720:r=24", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "8", "-c:v", "libx265", "-preset", "ultrafast", "-threads", "1", "-g", "24", "-pix_fmt", "yuv420p10le", "-color_primaries", "bt2020", "-color_trc", "smpte2084", "-colorspace", "bt2020nc", "-x265-params", "pools=1:frame-threads=1:wpp=0:log-level=error:hdr10=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,50):max-cll=1000,400", "-c:a", "aac", "-ac", "2"}
+		// FFmpeg 8 tags the encoded stream from the filtered frames' color
+		// properties, not from -color_trc and friends, so setparams marks
+		// the frames as PQ BT.2020. Older builds accept either.
+		args = []string{"-v", "error", "-f", "lavfi", "-i", "color=c=blue:s=1280x720:r=24", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "8", "-vf", "setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc", "-c:v", "libx265", "-preset", "ultrafast", "-threads", "1", "-g", "24", "-pix_fmt", "yuv420p10le", "-color_primaries", "bt2020", "-color_trc", "smpte2084", "-colorspace", "bt2020nc", "-x265-params", "pools=1:frame-threads=1:wpp=0:log-level=error:hdr10=1:repeat-headers=1:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,50):max-cll=1000,400", "-c:a", "aac", "-ac", "2"}
 	}
 	if container == "mp4" {
 		args = append(args, "-movflags", "+faststart")

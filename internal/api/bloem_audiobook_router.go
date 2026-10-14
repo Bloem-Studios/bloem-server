@@ -42,6 +42,13 @@ func (a bloemAudiobookRouter) connection(ctx context.Context, in bookrequests.Au
 	if _, exists := c.PluginConfig["service_kind"]; exists {
 		return nil, bookrequests.ErrInvalid
 	}
+	// Every saved credential must still be bound to the URL it was entered
+	// for. Bloem's own editor keeps that true, but Silo's generic editor (in
+	// the mirrored switching phase) or a direct SQL edit can move a URL under
+	// a saved composite; the host refuses rather than relying on the plugin.
+	if _, refusal := boundAudiobookCredentials(c.APIKeyRef, c.PluginConfig); refusal != "" {
+		return nil, bookrequests.ErrConflict
+	}
 	config, err := structpb.NewStruct(c.PluginConfig)
 	if err != nil {
 		return nil, bookrequests.ErrInvalid
@@ -144,7 +151,7 @@ func (a bloemAudiobookRouter) CheckStatus(ctx context.Context, in bookrequests.A
 	if t == nil || t.ConnectionId != connection.Id || t.Quality != "audiobook" || !bookrequests.ValidAudiobookExternalStatus(t.ExternalStatus) || !slices.Contains([]string{"queued", "downloading", "completed", "review", "failed", "unknown"}, t.Status) {
 		return bookrequests.AudiobookOutcome{}, bookrequests.ErrInvalid
 	}
-	out := bookrequests.AudiobookOutcome{Kind: bookrequests.AudiobookStatus, ProviderStatus: t.Status, ExternalStatus: t.ExternalStatus}
+	out := bookrequests.AudiobookOutcome{Kind: bookrequests.AudiobookStatus, ProviderStatus: audiobookProviderStatus(t.Status, t.ExternalStatus), ExternalStatus: t.ExternalStatus}
 	if t.Message != "" {
 		out.Decision, err = bookrequests.ParseAcquisitionDecision(t.Message)
 		if err != nil || out.Decision.Phase != "verify" {
@@ -154,5 +161,29 @@ func (a bloemAudiobookRouter) CheckStatus(ctx context.Context, in bookrequests.A
 	if t.Status == "completed" && (t.ExternalStatus != "verified" || out.Decision == nil || out.Decision.Outcome != "verified") {
 		return bookrequests.AudiobookOutcome{}, bookrequests.ErrInvalid
 	}
+	if t.ExternalStatus == "review" && (out.Decision == nil || out.Decision.Outcome != "review") {
+		return bookrequests.AudiobookOutcome{}, bookrequests.ErrInvalid
+	}
 	return out, nil
+}
+
+// audiobookProviderStatus maps the plugin's CheckStatus answer onto the
+// dispatch states. Release builds answer in the host's vocabulary: "review",
+// and "unknown" with external status "missing", "absent" or "unknown".
+// Pre-release builds answered "queued" for all of these, so a queued answer is
+// also mapped by its external status. External status "unknown" means the
+// plugin could not read the download client; that check never counts toward
+// a lost download.
+func audiobookProviderStatus(status, external string) string {
+	switch {
+	case external == "unknown" && (status == "queued" || status == "unknown"):
+		return bookrequests.AudiobookProviderUnreadable
+	case status != "queued":
+		return status
+	case external == "review":
+		return "review"
+	case external == "missing" || external == "absent":
+		return "unknown"
+	}
+	return status
 }

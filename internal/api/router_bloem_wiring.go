@@ -19,6 +19,7 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/branding"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/invitations"
@@ -44,6 +45,24 @@ func bloemServerIdentity(deps Dependencies) *serverid.Resolver {
 		store = catalog.NewServerSettingsRepo(deps.DB)
 	}
 	return serverid.FromService(serveridentity.New(store))
+}
+
+// bloemHealthHandler serves GET /api/v1/health. Upstream builds it from the
+// Jellyfin-compatibility configuration, which Bloem removed; this reads the
+// same identity from the database instead (see BloemHealthHandler), so
+// clients that enrolled against health keep the server ID they stored.
+// Without a database health carries no identity, as upstream does without
+// configuration.
+func bloemHealthHandler(deps Dependencies) http.Handler {
+	if deps.DB == nil {
+		return handlers.NewHealthHandler("", "")
+	}
+	settings := catalog.NewServerSettingsRepo(deps.DB)
+	names := deps.BrandingService
+	if names == nil {
+		names = branding.NewService(settings, nil)
+	}
+	return handlers.NewBloemHealthHandler(settings, names, serveridentity.New(settings))
 }
 
 // bloemAudienceTickets returns the audience-ticket store every websocket

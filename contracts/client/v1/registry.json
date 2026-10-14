@@ -789,6 +789,17 @@
           "direction": "request",
           "dialect": "bloem",
           "gate": "audiobook_requests_v1"
+        },
+        {
+          "type": "AudiobookRequestConnectionUpdate",
+          "direction": "request",
+          "dialect": "bloem",
+          "gate": "audiobook_requests_v1"
+        },
+        {
+          "type": "RequestIntegrationTestResult",
+          "direction": "response",
+          "dialect": "bloem"
         }
       ]
     },

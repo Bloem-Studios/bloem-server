@@ -22,16 +22,39 @@ type AudiobookRequestConnectionInput struct {
 	PluginConfig   map[string]any    `json:"plugin_config"`
 	Credentials    map[string]string `json:"credentials"`
 }
+
+// AudiobookRequestConnectionUpdate edits a saved connection. plugin_config is
+// merged over the saved settings: a submitted key replaces its saved value,
+// null removes it, and an omitted key keeps it. A credential that is absent or
+// empty keeps the saved value only while the URL it is bound to is unchanged;
+// a URL cleared to "" or removed with null drops its credentials.
+type AudiobookRequestConnectionUpdate struct {
+	Name         string            `json:"name,omitempty"`
+	PluginConfig map[string]any    `json:"plugin_config,omitempty"`
+	Credentials  map[string]string `json:"credentials,omitempty"`
+}
 type BloemAudiobookRequestSetup interface {
-	List(context.Context, bookrequests.Viewer) (AudiobookRequestSetup, error)
+	// List reads the setup. editor asks for each connection's saved
+	// plugin_config and credential names; the setup returns them only when
+	// the viewer also holds platform administrator authority.
+	List(ctx context.Context, v bookrequests.Viewer, editor bool) (AudiobookRequestSetup, error)
 	Create(context.Context, bookrequests.Viewer, AudiobookRequestConnectionInput) (bookrequests.AudiobookIntegrationSummary, error)
+	Update(context.Context, bookrequests.Viewer, string, AudiobookRequestConnectionUpdate) (bookrequests.AudiobookIntegrationSummary, error)
 	SetLibrary(context.Context, bookrequests.Viewer, string, int, []string) (bookrequests.AudiobookIntegrationSummary, error)
+	Test(context.Context, bookrequests.Viewer, string) (RequestIntegrationTestResult, error)
 }
 
 func (h *BloemBookRequestsHandler) SetAudiobookRequestSetup(s BloemAudiobookRequestSetup) {
 	if h != nil {
 		h.audiobookSetup = s
 	}
+}
+
+// ConnectionAdminAvailable reports whether the connection edit and test routes
+// have setups behind them: the audiobook setup, and the ebook setup when the
+// ebook lane is mounted.
+func (h *BloemBookRequestsHandler) ConnectionAdminAvailable() bool {
+	return h != nil && h.audiobookSetup != nil && (h.ebooks == nil || h.ebooks.ebookSetup != nil)
 }
 func (h *BloemBookRequestsHandler) audiobookSetupViewer(w http.ResponseWriter, r *http.Request, write bool) (bookrequests.Viewer, bool) {
 	t, ok := requireBloemOrganizationContext(w, r)
@@ -52,12 +75,17 @@ func (h *BloemBookRequestsHandler) audiobookSetupViewer(w http.ResponseWriter, r
 	}
 	return bookrequests.Viewer{UserID: t.AccountID, OrganizationID: t.OrganizationID, Admin: true}, true
 }
+
+// HandleAudiobookIntegrationList answers any organization administrator.
+// Saved settings and credential names are editor state: they are requested
+// only for a platform administrator context, which alone may edit.
 func (h *BloemBookRequestsHandler) HandleAudiobookIntegrationList(w http.ResponseWriter, r *http.Request) {
 	v, ok := h.audiobookSetupViewer(w, r, false)
 	if !ok {
 		return
 	}
-	out, err := h.audiobookSetup.List(r.Context(), v)
+	c, valid := apimw.GetAdminContextClaims(r.Context())
+	out, err := h.audiobookSetup.List(r.Context(), v, valid && c.EffectiveAuthority == "platform_admin")
 	if err != nil {
 		h.writeRequestError(w, err)
 		return
@@ -93,6 +121,38 @@ func (h *BloemBookRequestsHandler) HandleAudiobookIntegrationLibrary(w http.Resp
 		return
 	}
 	out, err := h.audiobookSetup.SetLibrary(r.Context(), v, chi.URLParam(r, "id"), in.LibraryID, in.DownloadRoots)
+	if err != nil {
+		h.writeRequestError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+func (h *BloemBookRequestsHandler) HandleAudiobookIntegrationUpdate(w http.ResponseWriter, r *http.Request) {
+	v, ok := h.audiobookSetupViewer(w, r, true)
+	if !ok {
+		return
+	}
+	var in AudiobookRequestConnectionUpdate
+	if !readBookRequestBody(w, r, &in) {
+		return
+	}
+	out, err := h.audiobookSetup.Update(r.Context(), v, chi.URLParam(r, "id"), in)
+	if err != nil {
+		h.writeRequestError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// HandleAudiobookIntegrationTest runs the plugin's connection checks against
+// the saved connection. It sends stored credentials to their bound services,
+// so it needs platform administrator authority like any other write.
+func (h *BloemBookRequestsHandler) HandleAudiobookIntegrationTest(w http.ResponseWriter, r *http.Request) {
+	v, ok := h.audiobookSetupViewer(w, r, true)
+	if !ok {
+		return
+	}
+	out, err := h.audiobookSetup.Test(r.Context(), v, chi.URLParam(r, "id"))
 	if err != nil {
 		h.writeRequestError(w, err)
 		return

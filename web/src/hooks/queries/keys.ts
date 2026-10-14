@@ -172,8 +172,6 @@ export const profileKeys = {
   householdSessions: () => ["profiles", "household", "sessions"] as const,
 };
 
-
-
 export const personKeys = {
   all: ["people"] as const,
   searchCapabilities: () => ["people", "search-capabilities"] as const,
