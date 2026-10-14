@@ -31,6 +31,13 @@ Dockerfile's `JELLYFIN_FFMPEG_VERSION`). The gap is deliberate:
 - That parser is Silo-owned code. The fix is a one-line change upstream (accept
   both spellings). Once it is merged, move the CI pin to the Dockerfile's
   version.
+- This is a production bug, not only a CI gap: the shipped image runs FFmpeg 8,
+  so rotated video gets wrong trickplay tiles in production until the parser
+  is fixed.
+- `TestBloemCIFFmpegPinTracksTheDisplayMatrixParse` in `internal/mediasample`
+  ties the pin to that reason. While the parser misses FFmpeg 8's spelling it
+  skips and names the bug. Once the parser reads both spellings it fails until
+  the install script's FFmpeg major matches the Dockerfile's.
 
 Everything else that uses FFmpeg passes on 8.1.3 too, including the HDR
 software tone-map acceptance test. Its fixture tags frames through `setparams`,
