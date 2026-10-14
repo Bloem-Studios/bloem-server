@@ -11,6 +11,9 @@ libvips:
 - **Go contract checks:** ripgrep. `scripts/verify-no-compat.sh` searches with
   `rg`. It refuses to run without it and fails on any `rg` error, so a missing
   tool can no longer pass the compatibility-removal gate unchecked.
+  It reads every file under the searched paths, including hidden directories
+  and files that ignore rules or a `RIPGREP_CONFIG_PATH` configuration would
+  skip.
 - **Go test:** FFmpeg and ripgrep. The native audio and video tests generate
   fixtures with real FFmpeg; the two native audiobook tests fail without it, and
   about twenty other packages' FFmpeg tests skip.

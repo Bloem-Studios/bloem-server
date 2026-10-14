@@ -9,11 +9,13 @@ if ! command -v rg > /dev/null 2>&1; then
 fi
 # forbid MESSAGE RG_ARGS...: fail when rg finds a match. rg exits 0 on a match,
 # 1 on none and 2 or more on an error; only "none" passes, so a broken search
-# fails closed.
+# fails closed. Every file under the searched paths is read: ignore files
+# (.gitignore, .ignore, .rgignore), hidden paths and a RIPGREP_CONFIG_PATH
+# configuration cannot hide a reintroduction.
 forbid() {
  local message=$1 status=0
  shift
- rg -n "$@" || status=$?
+ rg --no-config --no-ignore --hidden -n "$@" || status=$?
  case $status in
  0) echo "$message" >&2; exit 1 ;;
  1) ;;
