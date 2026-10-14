@@ -63,6 +63,17 @@ public data class AudiobookRequestConnectionInput(
     public val credentials: Map<String, String>,
 )
 
+/** Wire type `internal/api/handlers.AudiobookRequestConnectionUpdate`. Direction: request. Dialect: bloem. Gate: audiobook_requests_v1. Registered root. */
+@Serializable
+public data class AudiobookRequestConnectionUpdate(
+    @SerialName("name")
+    public val name: String = "",
+    @SerialName("plugin_config")
+    public val pluginConfig: Map<String, JsonElement> = emptyMap(),
+    @SerialName("credentials")
+    public val credentials: Map<String, String> = emptyMap(),
+)
+
 /** Wire type `internal/api/handlers.AudiobookRequestSetup`. Direction: response. Dialect: bloem. Gate: audiobook_requests_v1. Registered root. */
 @Serializable
 public data class AudiobookRequestSetup(
@@ -444,6 +455,15 @@ public data class ProfileView(
     public val createdAt: String = "",
     @SerialName("updated_at")
     public val updatedAt: String = "",
+)
+
+/** Wire type `internal/api/handlers.RequestIntegrationTestResult`. Direction: response. Dialect: bloem. Registered root. */
+@Serializable
+public data class RequestIntegrationTestResult(
+    @SerialName("ok")
+    public val ok: Boolean = false,
+    @SerialName("message")
+    public val message: String = "",
 )
 
 /** Wire type `internal/api/handlers.SectionOverrideWrite`. Direction: request. Dialect: upstream-compat. */

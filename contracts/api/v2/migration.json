@@ -10,7 +10,7 @@
   "consumer_method": "Client call sites were extracted by scripts/apiv2-ledger/extract_consumers.py from web/src (this repo) and the origin/main trees of silo-apple and silo-android at the commits pinned in source_trees (re-resolve a sibling site with git show <sha>:<file> in that repo, never against a moving branch): path literals and templates passed to HTTP/WebSocket calls, plus paths built by helper functions that return a template, templates rooted at the API base URL, Kotlin buildString/const val builders, and Swift let/static let path bindings, with interpolations normalized to a wildcard and matched against inventory paths by method (scripts/apiv2-ledger/match_consumers.py). scripts/apiv2-ledger/sweep_uncredited.py then greps the last two static segments of every inventory path across all three trees and every hit not within four lines of a credited site was resolved by hand. Server-internal and compat consumers are Go URL builders and callers in this repo. Sites marked match=manual were resolved by hand where the path is assembled from variables the scripts cannot follow. Call-site files are repository-root-relative for their repo (web: src/... under web/; apple: iosApp/...; android: shared/, android-shared/, androidApp/, androidTvApp/; server: this repository root). Absence of a first-party consumer is not proof of disuse.",
   "field_reference": "internal/contractledger validates this file against migration.schema.json and reconciles it against the route inventory: listener, namespace, method, path, registration_index, handler, handler_kind, source_file, route_group, middleware_chain, auth_class, auth_traits, conditional, conditions, delegates_to (inventory empty string is null here), request_kind, response_media_kind, streams, and upgrades_websocket are copied from the inventory row and must match it, except that dynamic_plugin_proxy rows record both media kinds as dynamic_proxy; profile_required and admin_required are derived from auth_traits. Every other field is curated by hand and preserved when scripts/apiv2-ledger/build_ledger.py merges a regenerated inventory into this file.",
   "totals": {
-    "entries": 1163
+    "entries": 1166
   },
   "entries": [
     {
@@ -1658,14 +1658,14 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 101,
+          "line": 114,
           "types": [
             "AudiobookSetup"
           ],
           "match": "manual"
         }
       ],
-      "section": "bloem-admin-organization",
+      "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
       "disposition": "ported",
@@ -1713,14 +1713,14 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 107,
+          "line": 120,
           "types": [
             "AudiobookIntegration"
           ],
           "match": "manual"
         }
       ],
-      "section": "bloem-admin-organization",
+      "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
       "disposition": "ported",
@@ -1734,6 +1734,61 @@
         "operation_id": null
       },
       "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
+      "path": "/api/bloem/v1/admin/organization/audiobook-request-integrations/{id}",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookIntegrationUpdate",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": false,
+      "conditions": [],
+      "delegates_to": null,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 127,
+          "types": [
+            "AudiobookIntegration"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1. Edits a connection in place; saved credentials are kept only while their bound URL is unchanged (docs/architecture/bloem-audiobook-requests.md)."
     },
     {
       "listener": "api",
@@ -1768,14 +1823,14 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 115,
+          "line": 146,
           "types": [
             "AudiobookIntegration"
           ],
           "match": "manual"
         }
       ],
-      "section": "bloem-admin-organization",
+      "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
       "disposition": "ported",
@@ -1789,6 +1844,61 @@
         "operation_id": null
       },
       "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/test",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookIntegrationTest",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": false,
+      "conditions": [],
+      "delegates_to": null,
+      "request_kind": "unknown",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemAudiobookAcquisitions.ts",
+          "line": 134,
+          "types": [
+            "RequestIntegrationTestResult"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned acquisition administration retained at this path; no Silo /api/v2 alias is introduced. The seeded disposition remains proposed. The web call site was verified in this repository; sibling consumer evidence was not refreshed. Capability: audiobook_requests_v1. Runs the plugin's connection checks; the route takes no request body."
     },
     {
       "listener": "api",
@@ -1823,7 +1933,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 122,
+          "line": 127,
           "types": [
             "BookRequest"
           ],
@@ -1878,7 +1988,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 127,
+          "line": 158,
           "types": [
             "AudiobookAcquisition"
           ],
@@ -1933,7 +2043,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 146,
+          "line": 177,
           "types": [
             "BookRequest"
           ],
@@ -1988,7 +2098,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 133,
+          "line": 164,
           "types": [
             "AudiobookAcquisition"
           ],
@@ -2043,7 +2153,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 134,
+          "line": 139,
           "types": [
             "BookRequest"
           ],
@@ -2098,7 +2208,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 141,
+          "line": 172,
           "types": [
             "BookRequest"
           ],
@@ -2153,7 +2263,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 134,
+          "line": 139,
           "types": [
             "BookRequest"
           ],
@@ -2208,7 +2318,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 134,
+          "line": 139,
           "types": [
             "BookRequest"
           ],
@@ -2263,7 +2373,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemAudiobookAcquisitions.ts",
-          "line": 148,
+          "line": 179,
           "types": [
             "BookRequest"
           ],
@@ -2320,14 +2430,14 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 192,
+          "line": 197,
           "types": [
             "BookRequest"
           ],
           "match": "manual"
         }
       ],
-      "section": "bloem-admin-organization",
+      "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
       "disposition": "ported",
@@ -2377,14 +2487,14 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 206,
+          "line": 211,
           "types": [
             "BookRequest"
           ],
           "match": "manual"
         }
       ],
-      "section": "bloem-admin-organization",
+      "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
       "disposition": "ported",
@@ -2434,14 +2544,14 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 213,
+          "line": 218,
           "types": [
             "BookRequest"
           ],
           "match": "manual"
         }
       ],
-      "section": "bloem-admin-organization",
+      "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
       "disposition": "ported",
@@ -2455,6 +2565,63 @@
         "operation_id": null
       },
       "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance."
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/ebook-request-integrations/{id}/test",
+      "registration_index": 0,
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleEbookIntegrationTest",
+      "handler_kind": "method",
+      "source_file": "internal/api/bloem_book_requests.go",
+      "route_group": "/api/bloem/v1/admin",
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "profile_required": false,
+      "admin_required": true,
+      "conditional": true,
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "delegates_to": null,
+      "request_kind": "unknown",
+      "response_media_kind": "json",
+      "streams": false,
+      "upgrades_websocket": false,
+      "capability_endpoint": null,
+      "consumers": [
+        "web"
+      ],
+      "consumer_call_sites": [
+        {
+          "repo": "web",
+          "file": "src/api/bloemBookRequests.ts",
+          "line": 225,
+          "types": [
+            "RequestIntegrationTestResult"
+          ],
+          "match": "manual"
+        }
+      ],
+      "section": "bloem-book-requests",
+      "release_flow": "other_admin",
+      "tier": 2,
+      "disposition": "ported",
+      "disposition_rule": "default_ported",
+      "disposition_rationale": "No exclusion, removal, or ratified redesign applies; port to v2 in its section PR.",
+      "owner": null,
+      "review_state": "proposed",
+      "v2": {
+        "method": null,
+        "path": null,
+        "operation_id": null
+      },
+      "notes": "Bloem-owned default-off web/admin ebook requests, documented in docs/architecture/bloem-ebook-request-foundation.md. Native Apple and Android adoption is deferred. Provider completion requires an exact linked-library scan; this row does not assert live provider or native client acceptance. Runs the plugin's connection test; the route takes no request body."
     },
     {
       "listener": "api",
@@ -2491,14 +2658,14 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 199,
+          "line": 204,
           "types": [
             "BookRequest"
           ],
           "match": "manual"
         }
       ],
-      "section": "bloem-admin-organization",
+      "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
       "disposition": "ported",
@@ -2548,14 +2715,14 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 173,
+          "line": 178,
           "types": [
             "BookRequest"
           ],
           "match": "manual"
         }
       ],
-      "section": "bloem-admin-organization",
+      "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
       "disposition": "ported",
@@ -2605,14 +2772,14 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 185,
+          "line": 190,
           "types": [
             "BookRequest"
           ],
           "match": "manual"
         }
       ],
-      "section": "bloem-admin-organization",
+      "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
       "disposition": "ported",
@@ -2662,14 +2829,14 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 185,
+          "line": 190,
           "types": [
             "BookRequest"
           ],
           "match": "manual"
         }
       ],
-      "section": "bloem-admin-organization",
+      "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
       "disposition": "ported",
@@ -2719,14 +2886,14 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 185,
+          "line": 190,
           "types": [
             "BookRequest"
           ],
           "match": "manual"
         }
       ],
-      "section": "bloem-admin-organization",
+      "section": "bloem-book-requests",
       "release_flow": "other_admin",
       "tier": 2,
       "disposition": "ported",
@@ -13354,7 +13521,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 108,
+          "line": 113,
           "types": [
             "BookRequestInput",
             "BookRequest"
@@ -13413,7 +13580,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 98,
+          "line": 103,
           "types": [
             "BookRequestCapability"
           ],
@@ -13471,7 +13638,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 103,
+          "line": 108,
           "types": [
             "BookRequest"
           ],
@@ -13577,7 +13744,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 115,
+          "line": 120,
           "types": [
             "BookRequest"
           ],
@@ -13730,7 +13897,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 159,
+          "line": 164,
           "types": [
             "BookRequest"
           ],
@@ -13790,7 +13957,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 144,
+          "line": 149,
           "types": [
             "BookRequest"
           ],
@@ -13850,7 +14017,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 149,
+          "line": 154,
           "types": [
             "BookRequest"
           ],
@@ -13910,7 +14077,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 154,
+          "line": 159,
           "types": [
             "BookRequest"
           ],
@@ -13970,7 +14137,7 @@
         {
           "repo": "web",
           "file": "src/api/bloemBookRequests.ts",
-          "line": 166,
+          "line": 171,
           "types": [
             "BookRequest"
           ],

@@ -29,11 +29,20 @@ type EbookRequestConnectionInput struct {
 	CapabilityID   string `json:"capability_id"`
 	AllowHTTP      bool   `json:"allow_http,omitempty"`
 }
+
+// RequestIntegrationTestResult is a request plugin's connection test verdict.
+// A failed test is still a 200 response: the test ran and reported failure.
+// The message is plugin or host text with credentials withheld.
+type RequestIntegrationTestResult struct {
+	OK      bool   `json:"ok"`
+	Message string `json:"message"`
+}
 type BloemEbookRequestSetup interface {
 	List(context.Context, bookrequests.Viewer) (EbookRequestSetup, error)
 	Create(context.Context, bookrequests.Viewer, EbookRequestConnectionInput) (bookrequests.EbookIntegration, error)
 	SetLibrary(context.Context, bookrequests.Viewer, string, int) (bookrequests.EbookIntegration, error)
 	SetEnabled(context.Context, bookrequests.Viewer, bool) error
+	Test(context.Context, bookrequests.Viewer, string) (RequestIntegrationTestResult, error)
 }
 
 type EbookRequestPolicy struct {
@@ -141,6 +150,22 @@ func (h *BloemBookRequestsHandler) HandleEbookIntegrationLibrary(w http.Response
 		return
 	}
 	out, err := h.ebookSetup.SetLibrary(r.Context(), v, chi.URLParam(r, "id"), in.LibraryID)
+	if err != nil {
+		h.writeRequestError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// HandleEbookIntegrationTest runs the plugin's connection test against the
+// saved connection. The request has no body; credentials never leave the host
+// except to the plugin, and never appear in the response.
+func (h *BloemBookRequestsHandler) HandleEbookIntegrationTest(w http.ResponseWriter, r *http.Request) {
+	v, ok := h.ebookSetupViewer(w, r)
+	if !ok {
+		return
+	}
+	out, err := h.ebookSetup.Test(r.Context(), v, chi.URLParam(r, "id"))
 	if err != nil {
 		h.writeRequestError(w, err)
 		return

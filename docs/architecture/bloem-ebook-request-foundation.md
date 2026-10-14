@@ -40,6 +40,13 @@ separate mutations. Connections default to EPUB and HTTPS; trusted local HTTP
 requires explicit opt-in. PDF requires an explicit connection configuration
 opt-in. Responses never contain connection credentials.
 
+`POST .../ebook-request-integrations/{id}/test` runs the plugin's
+`TestConnection` against a saved connection the lane can use, for a platform
+administrator. It returns `{ok, message}` with HTTP 200 whether or not the test
+passed. Transport errors become fixed text, and a plugin message that repeats
+the saved API key is withheld. A test is a provider read; it does not touch
+dispatch state.
+
 Each connection must be linked to an enabled native Bookwarehouse ebook library
 accessible to the default organization. Approved requests remain awaiting
 fulfillment when no eligible bound connection exists. Dispatch freezes a

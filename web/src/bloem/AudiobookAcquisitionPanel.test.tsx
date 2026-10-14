@@ -1,15 +1,21 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AdminContextSummary } from "@/api/bloemTypes";
-import { activateAdminV2Context, clearAdminV2Context } from "@/api/adminV2Client";
+import {
+  AdminV2ClientError,
+  activateAdminV2Context,
+  clearAdminV2Context,
+} from "@/api/adminV2Client";
 import { setAccessToken } from "@/api/client";
 const mocks = vi.hoisted(() => ({
   setup: vi.fn(),
   list: vi.fn(),
   detail: vi.fn(),
   createIntegration: vi.fn(),
+  updateIntegration: vi.fn(),
+  testIntegration: vi.fn(),
   setLibrary: vi.fn(),
   approveCandidate: vi.fn(),
   acceptDownload: vi.fn(),
@@ -345,4 +351,111 @@ it("clears unsaved binding drafts when creation selects a different connection",
   expect(screen.getByLabelText(/Download roots \(one per line\)/)).toHaveValue("");
   expect(screen.getByRole("button", { name: "Save audiobook library and roots" })).toBeDisabled();
   expect(mocks.setLibrary).not.toHaveBeenCalled();
+});
+const savedConnection = {
+  id: "connection-a",
+  name: "Audio delivery",
+  installation_id: 4,
+  capability_id: "audiobooks",
+  library_id: 3,
+  library_name: "Audio",
+  download_roots: ["/synthetic/audio/incoming"],
+  binding_revision: 2,
+  ready: true,
+  plugin_config: { qbittorrent_url: "https://client.example.test", qbittorrent_username: "reader" },
+  stored_credentials: ["qbittorrent_password"],
+};
+it("edits a saved connection in place and sends only re-entered credentials", async () => {
+  mocks.setup.mockResolvedValue({ ...setup, integrations: [savedConnection] });
+  mocks.updateIntegration.mockResolvedValue({ ...savedConnection, name: "Renamed delivery" });
+  open();
+  fireEvent.click(await screen.findByRole("button", { name: "Edit connection" }));
+  const form = screen.getByRole("form", { name: "Edit audiobook connection" });
+  expect(within(form).getByLabelText(/^qBittorrent URL/)).toHaveValue(
+    "https://client.example.test",
+  );
+  expect(within(form).getByLabelText("qBittorrent password")).toHaveAttribute(
+    "placeholder",
+    "Saved; leave blank to keep",
+  );
+  expect(within(form).getByLabelText("NZBGet password")).toHaveAttribute("placeholder", "Not set");
+  // The create form is hidden while editing, so no label is ambiguous.
+  expect(
+    screen.queryByRole("button", { name: "Add audiobook connection" }),
+  ).not.toBeInTheDocument();
+  fireEvent.change(within(form).getByLabelText("Connection name"), {
+    target: { value: "Renamed delivery" },
+  });
+  fireEvent.change(within(form).getByLabelText("qBittorrent password"), {
+    target: { value: "synthetic-rotated" },
+  });
+  fireEvent.click(within(form).getByRole("button", { name: "Save connection" }));
+  await waitFor(() =>
+    expect(mocks.updateIntegration).toHaveBeenCalledWith(
+      "connection-a",
+      {
+        name: "Renamed delivery",
+        plugin_config: expect.objectContaining({
+          qbittorrent_url: "https://client.example.test",
+          qbittorrent_username: "reader",
+          qbittorrent_category: "bloem-audiobooks",
+        }),
+        credentials: { qbittorrent_password: "synthetic-rotated" },
+      },
+      expect.objectContaining({ key: "organization:a" }),
+    ),
+  );
+  expect(await screen.findByText("Audiobook connection saved.")).toBeInTheDocument();
+  expect(screen.queryByRole("form", { name: "Edit audiobook connection" })).not.toBeInTheDocument();
+});
+it("keeps a refused edit open without the typed secret or a reload block", async () => {
+  mocks.setup.mockResolvedValue({ ...setup, integrations: [savedConnection] });
+  mocks.updateIntegration.mockRejectedValue(
+    new AdminV2ClientError(
+      400,
+      "invalid_request",
+      "invalid book request: enter the qBittorrent password again because its URL changed",
+    ),
+  );
+  open();
+  fireEvent.click(await screen.findByRole("button", { name: "Edit connection" }));
+  const form = screen.getByRole("form", { name: "Edit audiobook connection" });
+  fireEvent.change(within(form).getByLabelText(/^qBittorrent URL/), {
+    target: { value: "https://moved.example.test" },
+  });
+  fireEvent.change(within(form).getByLabelText("NZBGet password"), {
+    target: { value: "synthetic-nzb" },
+  });
+  fireEvent.click(within(form).getByRole("button", { name: "Save connection" }));
+  expect(await within(form).findByText(/because its URL changed/)).toBeInTheDocument();
+  expect(within(form).getByLabelText("NZBGet password")).toHaveValue("");
+  expect(within(form).getByLabelText(/^qBittorrent URL/)).toHaveValue("https://moved.example.test");
+  expect(within(form).getByRole("button", { name: "Save connection" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Test connection" })).toBeEnabled();
+});
+it("reports the plugin's connection test verdict for the selected connection", async () => {
+  mocks.setup.mockResolvedValue({ ...setup, integrations: [savedConnection] });
+  mocks.testIntegration.mockResolvedValue({
+    ok: false,
+    message: "One or more connection checks failed.",
+  });
+  open();
+  fireEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+  await waitFor(() =>
+    expect(mocks.testIntegration).toHaveBeenCalledWith(
+      "connection-a",
+      expect.objectContaining({ key: "organization:a" }),
+    ),
+  );
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Connection test failed: One or more connection checks failed.",
+  );
+});
+it("offers organization admins neither connection tests nor edits", async () => {
+  mocks.active = org("a", "organization_admin");
+  mocks.setup.mockResolvedValue({ ...setup, integrations: [savedConnection] });
+  open();
+  expect(await screen.findByText(/Download roots:/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Test connection" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Edit connection" })).not.toBeInTheDocument();
 });

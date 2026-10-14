@@ -2,7 +2,11 @@ import { useId, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Link } from "react-router";
-import { ebookRequestsApi, type EbookRequestIntegrations } from "@/api/bloemBookRequests";
+import {
+  ebookRequestsApi,
+  type EbookRequestIntegrations,
+  type RequestIntegrationTestResult,
+} from "@/api/bloemBookRequests";
 import { captureSessionIdentity } from "@/api/client";
 import { captureAdminRequestContext } from "@/api/adminV2Client";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
@@ -108,7 +112,17 @@ export function EbookRequestIntegrationPanel() {
       toast.success("Ebook fulfillment connection added");
     },
   });
-  const busy = save.isPending || create.isPending || policy.isPending || switching;
+  const [tested, setTested] = useState<{
+    id: string;
+    result: RequestIntegrationTestResult;
+  } | null>(null);
+  const test = useMutation({
+    mutationFn: (id: string) => ebookRequestsApi.testIntegration(id, context),
+    onMutate: () => setTested(null),
+    onSuccess: (result, id) => setTested({ id, result }),
+  });
+  const busy =
+    save.isPending || create.isPending || policy.isPending || test.isPending || switching;
   if (!allowed) return null;
   return (
     <section className="space-y-4 rounded-xl border p-5" aria-label="Ebook fulfillment setup">
@@ -168,7 +182,10 @@ export function EbookRequestIntegrationPanel() {
                 className="border-input h-9 rounded-md border bg-transparent px-3"
                 value={integration.id}
                 disabled={busy}
-                onChange={(event) => setSelected(event.target.value)}
+                onChange={(event) => {
+                  setSelected(event.target.value);
+                  test.reset();
+                }}
               >
                 {list.data.integrations.map((row) => (
                   <option key={row.id} value={row.id}>
@@ -200,7 +217,22 @@ export function EbookRequestIntegrationPanel() {
             >
               {save.isPending ? "Saving…" : "Save library"}
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => test.mutate(integration.id)}
+            >
+              {test.isPending ? "Testing connection…" : "Test connection"}
+            </Button>
             {save.isError && <p role="alert">{save.error.message}</p>}
+            {tested?.id === integration.id && (
+              <p role={tested.result.ok ? "status" : "alert"} className="text-sm">
+                {tested.result.ok ? "Connection works: " : "Connection test failed: "}
+                {tested.result.message}
+              </p>
+            )}
+            {test.isError && <p role="alert">{test.error.message}</p>}
             {list.data.libraries.length === 0 && (
               <p role="status" className="text-muted-foreground text-sm">
                 No eligible ebook libraries are available.

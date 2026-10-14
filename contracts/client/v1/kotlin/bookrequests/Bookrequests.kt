@@ -9,6 +9,7 @@ package org.bloemserver.bloem.contract.bookrequests
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 /** Wire type `internal/bookrequests.AcquisitionDecision`. Direction: response. Dialect: bloem. Gate: audiobook_requests_v1. */
 @Serializable
@@ -153,6 +154,10 @@ public data class AudiobookIntegrationSummary(
     public val bindingRevision: Long = 0L,
     @SerialName("ready")
     public val ready: Boolean = false,
+    @SerialName("plugin_config")
+    public val pluginConfig: Map<String, JsonElement> = emptyMap(),
+    @SerialName("stored_credentials")
+    public val storedCredentials: List<String> = emptyList(),
 )
 
 /** Wire type `internal/bookrequests.AudiobookLibrary`. Direction: response. Dialect: bloem. Gate: audiobook_requests_v1. */

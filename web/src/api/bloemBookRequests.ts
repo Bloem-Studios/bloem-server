@@ -52,6 +52,11 @@ export interface EbookRequestIntegrations {
   libraries: { id: number; name: string }[];
   installations: { id: number; name: string; capability_id: string }[];
 }
+/** A request plugin's connection test verdict; a failed test is not an HTTP error. */
+export interface RequestIntegrationTestResult {
+  ok: boolean;
+  message: string;
+}
 export interface EbookRequestIntegrationInput {
   name: string;
   base_url: string;
@@ -212,6 +217,13 @@ export const ebookRequestsApi = {
     adminV2Api<void>(
       `/organization/ebook-request-integrations/${encodeURIComponent(id)}/library`,
       { method: "PUT", body: JSON.stringify({ library_id: libraryId }) },
+      "none",
+      context,
+    ),
+  testIntegration: (id: string, context: AdminRequestContext | null) =>
+    adminV2Api<RequestIntegrationTestResult>(
+      `/organization/ebook-request-integrations/${encodeURIComponent(id)}/test`,
+      { method: "POST" },
       "none",
       context,
     ),

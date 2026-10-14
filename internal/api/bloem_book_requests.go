@@ -49,8 +49,9 @@ func newBloemBookRequests(deps Dependencies) *handlers.BloemBookRequestsHandler 
 		if platform == nil {
 			platform = auth.NewPlatformAdminAuthorizer(auth.NewUserRepository(deps.DB))
 		}
-		setup = bloemEbookSetup{pool: deps.DB, books: service, requests: connections, platform: platform}
-		audiobookSetup = bloemAudiobookSetup{pool: deps.DB, books: service, requests: connections, platform: platform}
+		router := requests.NewPluginRouterProvider(PluginRequestRouterAdapter{Svc: deps.PluginService})
+		setup = bloemEbookSetup{pool: deps.DB, books: service, requests: connections, platform: platform, store: repository, router: router}
+		audiobookSetup = bloemAudiobookSetup{pool: deps.DB, books: service, requests: connections, platform: platform, store: repository, router: router}
 	}
 	h := handlers.NewBloemBookRequestsHandler(service, tenancy.NewStore(deps.DB))
 	h.SetEbookRequests(service)
@@ -105,7 +106,9 @@ func mountBloemAdminBookRequests(r chi.Router, h *handlers.BloemBookRequestsHand
 	})
 	r.Get("/organization/audiobook-request-integrations", h.HandleAudiobookIntegrationList)
 	r.Post("/organization/audiobook-request-integrations", h.HandleAudiobookIntegrationCreate)
+	r.Put("/organization/audiobook-request-integrations/{id}", h.HandleAudiobookIntegrationUpdate)
 	r.Put("/organization/audiobook-request-integrations/{id}/library", h.HandleAudiobookIntegrationLibrary)
+	r.Post("/organization/audiobook-request-integrations/{id}/test", h.HandleAudiobookIntegrationTest)
 
 	// Each route stays literal for contract and authority inventories.
 	r.Post("/organization/book-requests/{id}/approve", func(w http.ResponseWriter, r *http.Request) {
@@ -125,6 +128,7 @@ func mountBloemAdminBookRequests(r chi.Router, h *handlers.BloemBookRequestsHand
 		r.Get("/organization/ebook-request-integrations", ebooks.HandleEbookIntegrationList)
 		r.Post("/organization/ebook-request-integrations", ebooks.HandleEbookIntegrationCreate)
 		r.Put("/organization/ebook-request-integrations/{id}/library", ebooks.HandleEbookIntegrationLibrary)
+		r.Post("/organization/ebook-request-integrations/{id}/test", ebooks.HandleEbookIntegrationTest)
 		r.Put("/organization/ebook-request-policy", ebooks.HandleEbookRequestPolicy)
 		r.Post("/organization/ebook-requests/{id}/approve", func(w http.ResponseWriter, r *http.Request) {
 			chi.RouteContext(r.Context()).URLParams.Add("action", "approve")

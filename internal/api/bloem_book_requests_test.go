@@ -59,9 +59,15 @@ func TestBloemBookRequestMountRequiresAuthorityResolversAndCapabilityIsTruthful(
 
 func TestBloemBookRequestAdminPatternsAndDirectProfileBoundary(t *testing.T) {
 	router := chi.NewRouter()
-	mountBloemAdminBookRequests(router, handlers.NewBloemBookRequestsHandler(bookrequests.NewService(nil, nil), nil))
+	h := handlers.NewBloemBookRequestsHandler(bookrequests.NewService(nil, nil), nil)
+	h.SetEbookRequests(bookrequests.NewService(nil, nil))
+	mountBloemAdminBookRequests(router, h)
 	routes := walkRoutes(t, router)
-	for _, pair := range []string{"GET /organization/book-requests", "POST /organization/book-requests/{id}/approve", "POST /organization/book-requests/{id}/decline", "POST /organization/book-requests/{id}/fulfil"} {
+	for _, pair := range []string{
+		"GET /organization/book-requests", "POST /organization/book-requests/{id}/approve", "POST /organization/book-requests/{id}/decline", "POST /organization/book-requests/{id}/fulfil",
+		"PUT /organization/audiobook-request-integrations/{id}", "POST /organization/audiobook-request-integrations/{id}/test",
+		"POST /organization/ebook-request-integrations/{id}/test", "POST /organization/ebook-requests/{id}/retry", "PUT /organization/ebook-request-policy",
+	} {
 		if !slices.Contains(routes, pair) {
 			t.Fatalf("missing admin route %s: %v", pair, routes)
 		}
@@ -70,13 +76,17 @@ func TestBloemBookRequestAdminPatternsAndDirectProfileBoundary(t *testing.T) {
 			t.Fatalf("direct profile admitted admin action: %s", pair)
 		}
 	}
-	for _, pair := range []string{"GET /book-requests/capability", "GET /book-requests/mine", "POST /book-requests", "GET /book-requests/{id}", "POST /book-requests/{id}/cancel"} {
-		method, path := splitRoute(pair)
-		if !directProfileRouteAllowed(method, NativeAPIPrefix+path) {
-			t.Fatalf("bound profile cannot use owned request route: %s", pair)
+	// Ebook requests are open to any user of Bloem, including a session bound
+	// to one profile: filing, history and withdrawal act as that profile.
+	for _, prefix := range []string{"/book-requests", "/ebook-requests"} {
+		for _, pair := range []string{"GET /capability", "GET /mine", "POST ", "GET /{id}", "POST /{id}/cancel"} {
+			method, path := splitRoute(pair)
+			if !directProfileRouteAllowed(method, NativeAPIPrefix+prefix+path) {
+				t.Fatalf("bound profile cannot use owned request route: %s %s%s", method, prefix, path)
+			}
 		}
-	}
-	if directProfileRouteAllowed(http.MethodDelete, NativeAPIPrefix+"/book-requests/{id}") || directProfileRouteAllowed(http.MethodPost, NativeAPIPrefix+"/book-requests/{id}/approve") {
-		t.Fatal("direct-profile request mutations expanded beyond filing and withdrawal")
+		if directProfileRouteAllowed(http.MethodDelete, NativeAPIPrefix+prefix+"/{id}") || directProfileRouteAllowed(http.MethodPost, NativeAPIPrefix+prefix+"/{id}/approve") {
+			t.Fatalf("direct-profile %s mutations expanded beyond filing and withdrawal", prefix)
+		}
 	}
 }

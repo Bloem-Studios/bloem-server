@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,10 @@ type bloemEbookSetup struct {
 	books    *bookrequests.Service
 	requests *requests.Service
 	platform auth.PlatformAdminAuthorizer
+	// store reads saved connections with decrypted credentials; router runs
+	// plugin connection tests. Both stay inside the host.
+	store  ebookIntegrationReader
+	router requests.RequestRouterProvider
 }
 
 func (s bloemEbookSetup) installations(ctx context.Context, v bookrequests.Viewer) ([]handlers.EbookRequestInstallation, error) {
@@ -143,4 +148,34 @@ func (s bloemEbookSetup) SetLibrary(ctx context.Context, v bookrequests.Viewer, 
 		return bookrequests.EbookIntegration{}, err
 	}
 	return s.books.SetEbookIntegrationLibrary(ctx, v, id, libraryID)
+}
+
+// Test runs the Bookwarehouse plugin's connection test against a saved
+// connection that this organization's ebook lane can use.
+func (s bloemEbookSetup) Test(ctx context.Context, v bookrequests.Viewer, id string) (handlers.RequestIntegrationTestResult, error) {
+	if err := s.requirePlatform(ctx, v); err != nil {
+		return handlers.RequestIntegrationTestResult{}, err
+	}
+	if s.store == nil {
+		return handlers.RequestIntegrationTestResult{}, errors.New("ebook fulfillment connections unavailable")
+	}
+	integrations, err := s.books.GetEbookIntegrationLibraries(ctx, v)
+	if err != nil {
+		return handlers.RequestIntegrationTestResult{}, err
+	}
+	index := slices.IndexFunc(integrations, func(row bookrequests.EbookIntegration) bool { return row.ID == id })
+	if index < 0 {
+		return handlers.RequestIntegrationTestResult{}, bookrequests.ErrNotFound
+	}
+	stored, err := s.store.GetIntegration(ctx, id)
+	if errors.Is(err, requests.ErrNotFound) {
+		return handlers.RequestIntegrationTestResult{}, bookrequests.ErrNotFound
+	}
+	if err != nil || stored == nil {
+		return handlers.RequestIntegrationTestResult{}, errors.New("ebook fulfillment connection unavailable")
+	}
+	if stored.InstallationID == nil || *stored.InstallationID != integrations[index].InstallationID || stored.CapabilityID != integrations[index].CapabilityID {
+		return handlers.RequestIntegrationTestResult{}, bookrequests.ErrConflict
+	}
+	return checkRequestConnection(ctx, s.router, *stored, []string{stored.APIKeyRef})
 }

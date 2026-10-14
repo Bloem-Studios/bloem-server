@@ -38,7 +38,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1082
+      "route_count": 1085
     },
     {
       "id": "api_v2",
@@ -60,8 +60,8 @@
     }
   ],
   "totals": {
-    "routes": 1253,
-    "conditional_routes": 885,
+    "routes": 1256,
+    "conditional_routes": 886,
     "streaming_routes": 44,
     "websocket_routes": 4
   },
@@ -4217,6 +4217,34 @@
       "listener": "api",
       "namespace": "legacy_unversioned",
       "method": "PUT",
+      "path": "/api/bloem/v1/admin/organization/audiobook-request-integrations/{id}",
+      "route_group": "/api/bloem/v1/admin",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookIntegrationUpdate",
+      "handler_expr": "h.HandleAudiobookIntegrationUpdate",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
       "path": "/api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/library",
       "route_group": "/api/bloem/v1/admin",
       "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookIntegrationLibrary",
@@ -4232,6 +4260,34 @@
       "conditions": [],
       "conditional": false,
       "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/test",
+      "route_group": "/api/bloem/v1/admin",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleAudiobookIntegrationTest",
+      "handler_expr": "h.HandleAudiobookIntegrationTest",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "unknown",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,
@@ -4574,6 +4630,36 @@
       ],
       "conditional": true,
       "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/bloem_book_requests.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/organization/ebook-request-integrations/{id}/test",
+      "route_group": "/api/bloem/v1/admin",
+      "handler": "(*internal/api/handlers.BloemBookRequestsHandler).HandleEbookIntegrationTest",
+      "handler_expr": "ebooks.HandleEbookIntegrationTest",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 2,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context"
+      ],
+      "conditions": [
+        "ebooks != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,

@@ -902,7 +902,9 @@ TRACE /api/bloem/v1/admin/*	non-media
 GET /api/bloem/v1/admin/organization/activity	non-media
 GET /api/bloem/v1/admin/organization/audiobook-request-integrations	non-media
 POST /api/bloem/v1/admin/organization/audiobook-request-integrations	non-media
+PUT /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}	non-media
 PUT /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/library	non-media
+POST /api/bloem/v1/admin/organization/audiobook-request-integrations/{id}/test	non-media
 GET /api/bloem/v1/admin/organization/book-requests	non-media
 GET /api/bloem/v1/admin/organization/book-requests/acquisitions	non-media
 POST /api/bloem/v1/admin/organization/book-requests/{id}/accept-download	non-media
@@ -915,6 +917,7 @@ POST /api/bloem/v1/admin/organization/book-requests/{id}/retry	non-media
 GET /api/bloem/v1/admin/organization/ebook-request-integrations	non-media
 POST /api/bloem/v1/admin/organization/ebook-request-integrations	non-media
 PUT /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/library	non-media
+POST /api/bloem/v1/admin/organization/ebook-request-integrations/{id}/test	non-media
 PUT /api/bloem/v1/admin/organization/ebook-request-policy	non-media
 GET /api/bloem/v1/admin/organization/ebook-requests	non-media
 POST /api/bloem/v1/admin/organization/ebook-requests/{id}/approve	non-media

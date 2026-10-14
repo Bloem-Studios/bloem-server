@@ -410,6 +410,8 @@ public enum Bookrequests {
         public let downloadRoots: [String]
         public let bindingRevision: Int64
         public let ready: Bool
+        public let pluginConfig: [String: BloemJSONValue]
+        public let storedCredentials: [String]
 
         public enum CodingKeys: String, CodingKey {
             case id = "id"
@@ -421,6 +423,8 @@ public enum Bookrequests {
             case downloadRoots = "download_roots"
             case bindingRevision = "binding_revision"
             case ready = "ready"
+            case pluginConfig = "plugin_config"
+            case storedCredentials = "stored_credentials"
         }
 
         public init(
@@ -432,7 +436,9 @@ public enum Bookrequests {
             libraryName: String = "",
             downloadRoots: [String] = [],
             bindingRevision: Int64 = 0,
-            ready: Bool = false
+            ready: Bool = false,
+            pluginConfig: [String: BloemJSONValue] = [:],
+            storedCredentials: [String] = []
         ) {
             self.id = id
             self.name = name
@@ -443,6 +449,8 @@ public enum Bookrequests {
             self.downloadRoots = downloadRoots
             self.bindingRevision = bindingRevision
             self.ready = ready
+            self.pluginConfig = pluginConfig
+            self.storedCredentials = storedCredentials
         }
 
         public init(from decoder: any Decoder) throws {
@@ -456,6 +464,8 @@ public enum Bookrequests {
             self.downloadRoots = try container.decodeIfPresent([String].self, forKey: .downloadRoots) ?? []
             self.bindingRevision = try container.decodeIfPresent(Int64.self, forKey: .bindingRevision) ?? 0
             self.ready = try container.decodeIfPresent(Bool.self, forKey: .ready) ?? false
+            self.pluginConfig = try container.decodeIfPresent([String: BloemJSONValue].self, forKey: .pluginConfig) ?? [:]
+            self.storedCredentials = try container.decodeIfPresent([String].self, forKey: .storedCredentials) ?? []
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -469,6 +479,8 @@ public enum Bookrequests {
             try container.encode(self.downloadRoots, forKey: .downloadRoots)
             try container.encode(self.bindingRevision, forKey: .bindingRevision)
             try container.encode(self.ready, forKey: .ready)
+            try container.encode(self.pluginConfig, forKey: .pluginConfig)
+            try container.encode(self.storedCredentials, forKey: .storedCredentials)
         }
     }
 

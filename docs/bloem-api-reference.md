@@ -3002,6 +3002,7 @@ All paths below have the `/api/bloem/v1` prefix.
 | `GET` | `/admin/organization/ebook-request-integrations` | Read `{available, enabled, integrations, libraries, installations}`. |
 | `POST` | `/admin/organization/ebook-request-integrations` | Add an explicit EPUB Bookwarehouse request connection. |
 | `PUT` | `/admin/organization/ebook-request-integrations/{id}/library` | Bind `{library_id}` to an eligible native ebook library; zero clears it. |
+| `POST` | `/admin/organization/ebook-request-integrations/{id}/test` | Run the plugin's connection test on a saved connection; returns `{ok, message}`. |
 | `PUT` | `/admin/organization/ebook-request-policy` | Persist explicit `{enabled: boolean}`. |
 
 Filing accepts `{title, author?, isbn, note?}`. ISBN-10 normalizes to ISBN-13;
@@ -3065,7 +3066,19 @@ carry `Cache-Control: private, no-store`.
 | `POST` | `/admin/organization/book-requests/{id}/accept-download` | Accept verification review with `expected_revision`; still await catalog presence. |
 | `GET` | `/admin/organization/audiobook-request-integrations` | Read `{available, integrations, libraries, installations}` without credentials. |
 | `POST` | `/admin/organization/audiobook-request-integrations` | Platform-authorized connection creation with name, installation, capability, `plugin_config` and `credentials`. |
+| `PUT` | `/admin/organization/audiobook-request-integrations/{id}` | Platform-authorized edit with optional `name`, `plugin_config` and `credentials`; keeps the connection's ID, binding and in-flight work. |
 | `PUT` | `/admin/organization/audiobook-request-integrations/{id}/library` | Platform-authorized binding with `library_id` and one to four `download_roots`; zero unbinds. |
+| `POST` | `/admin/organization/audiobook-request-integrations/{id}/test` | Platform-authorized plugin connection checks on a saved connection; returns `{ok, message}`. |
+
+The setup listing includes each connection's saved `plugin_config` and the names
+of its saved credentials in `stored_credentials`; credential values are never
+returned. On edit, an omitted `plugin_config` keeps the saved settings. A
+credential that is omitted or empty keeps its saved value only while the URL it
+is bound to is unchanged; a changed URL returns 400 until the credential is
+entered again, and a cleared URL drops it. Silo's generic
+`/api/v1/admin/request-integrations/{id}` editor and its v2 twin refuse
+audiobook connections. See
+[connection edits and credential rotation](architecture/bloem-audiobook-requests.md#connection-edits-and-credential-rotation).
 
 
 Lists return `{"requests": [...]}` and accept `limit` (1–100, default 100) and

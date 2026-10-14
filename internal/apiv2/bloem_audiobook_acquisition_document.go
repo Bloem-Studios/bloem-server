@@ -36,6 +36,17 @@ type BloemAudiobookRequestIntegrationOutput struct {
 	CacheControl string `header:"Cache-Control"`
 	Body         bookrequests.AudiobookIntegrationSummary
 }
+type BloemAudiobookRequestUpdateInput struct {
+	ID   string `path:"id" doc:"Opaque request integration ID, often a decimal Sonyflake string."`
+	Body handlers.AudiobookRequestConnectionUpdate
+}
+type BloemRequestIntegrationTestInput struct {
+	ID string `path:"id" doc:"Opaque request integration ID, often a decimal Sonyflake string."`
+}
+type BloemRequestIntegrationTestOutput struct {
+	CacheControl string `header:"Cache-Control"`
+	Body         handlers.RequestIntegrationTestResult
+}
 type BloemAudiobookRequestLibraryInput struct {
 	ID   string `path:"id" doc:"Opaque request integration ID, often a decimal Sonyflake string."`
 	Body struct {
@@ -84,6 +95,14 @@ func registerBloemAudiobookAcquisitionDocument(reg *Registry) {
 	create.Description = setupAuthority + " The installation and capability must be an eligible ordinary audiobook request plugin. Supported media types are fixed to audiobook. Unknown JSON fields and extra bodies are rejected."
 	bloemDocumentErrors[BloemNativeError](reg, &create, errors)
 	registerBloemChiDocument[BloemAudiobookRequestConnectionInput, BloemAudiobookRequestIntegrationOutput](reg, create)
+	update := bloemChiDocumentOp(reg, "PUT", "/admin/organization/audiobook-request-integrations/{id}", "updateBloemAudiobookRequestIntegration", "requests", "Edit an audiobook acquisition connection and rotate its credentials.", "adminContextAuth", 200)
+	update.Description = setupAuthority + " The connection keeps its ID, library binding and in-flight acquisitions. An omitted plugin_config keeps the saved settings. A credential that is omitted or empty keeps its saved value only while the URL it is bound to is unchanged; a changed URL requires the credential again, and a cleared URL drops it. Silo's generic request-integration editor refuses audiobook connections. Unknown JSON fields and extra bodies are rejected."
+	bloemDocumentErrors[BloemNativeError](reg, &update, errors)
+	registerBloemChiDocument[BloemAudiobookRequestUpdateInput, BloemAudiobookRequestIntegrationOutput](reg, update)
+	test := bloemChiDocumentOp(reg, "POST", "/admin/organization/audiobook-request-integrations/{id}/test", "testBloemAudiobookRequestIntegration", "requests", "Run the audiobook plugin's connection checks for a saved connection.", "adminContextAuth", 200)
+	test.Description = setupAuthority + " The request has no body. A failed check is HTTP 200 with ok=false. The host refuses before calling the plugin when a saved credential no longer matches its URL, and withholds a plugin message that repeats a credential."
+	bloemDocumentErrors[BloemNativeError](reg, &test, errors)
+	registerBloemChiDocument[BloemRequestIntegrationTestInput, BloemRequestIntegrationTestOutput](reg, test)
 	binding := bloemChiDocumentOp(reg, "PUT", "/admin/organization/audiobook-request-integrations/{id}/library", "setBloemAudiobookRequestIntegrationLibrary", "requests", "Bind an acquisition connection to a local audiobook library and download directories.", "adminContextAuth", 200)
 	binding.Description = setupAuthority + " library_id=0 clears the binding. Download roots must be valid local directories inside the selected library's filesystem paths. Existing dispatched work retains its original library, roots and configuration identity. Unknown JSON fields and extra bodies are rejected."
 	bloemDocumentErrors[BloemNativeError](reg, &binding, errors)
