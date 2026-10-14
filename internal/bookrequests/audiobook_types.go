@@ -64,6 +64,12 @@ const (
 	AudiobookUncertain      = "uncertain"
 )
 
+// AudiobookProviderUnreadable is the status-check answer for a backend that
+// could not read its download client. It is never stored: the dispatch keeps
+// the request's state and counters, so a client outage never counts toward a
+// lost download.
+const AudiobookProviderUnreadable = "unreadable"
+
 // AudiobookOutcome is the validated result of one provider call.
 type AudiobookOutcome struct {
 	Kind           string

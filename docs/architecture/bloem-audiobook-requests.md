@@ -125,6 +125,40 @@ never enter the dispatch descriptor, receipt, decision log or requester view.
 The plugin owns release search, AI selection/verification and downloader calls;
 the host owns policy, identity, attempts and catalog completion.
 
+The plugin answers `CheckStatus` in the host's vocabulary. `review` must carry a
+verify decision with outcome `review` and holds the request for an
+administrator; `completed` must carry external status `verified` and a
+`verified` decision. `unknown` with external status `missing` (a confirmed
+download the client no longer shows) is an uncertain check: it backs off and,
+after five, reports the download lost. `unknown` with `absent` (a hand-off the
+client never showed) is searched again after two absent checks. `unknown` with
+external status `unknown` means the plugin could not read the download client.
+That check keeps the request's state and counters, so a client outage never
+reports a download lost; an outage longer than an hour shows as `unreachable` in
+the admin stuck view. A failed `CheckStatus` call (the plugin itself
+unavailable) is still an uncertain check. Pre-release plugin builds answered
+`queued` for all four cases; the adapter maps those by external status to the
+same states. The cross-process acceptance in
+`internal/api/bloem_audiobook_lifecycle_test.go` runs this contract against the
+real plugin executable when `BLOEM_AUDIOBOOK_REQUEST_PLUGIN_BINARY` is set.
+
+No-match searches wait six hours and stop after seven days; unavailable sources
+wait thirty minutes. Uncertain checks back off and stop after five failures.
+Selections or downloads needing review wait for an administrator. An approved
+candidate starts a fresh attempt; accepting a download permits catalog matching
+without marking the request fulfilled. Manual fulfilment remains available.
+Review/failure notices go only to current organization administrators and use
+stable attempt-scoped delivery identities. The admin view retains the newest
+50 validated decisions; requesters receive only safe progress and reason text.
+
+Provider verification moves a request to `awaiting_library`. Completion still
+requires a catalog item: either all supplied stable IDs match, or exactly one
+nonmissing audiobook item exists below the retained dedicated download roots in
+an attempt-marker folder. Two matching items require review. The path lookup
+first materializes the library/path index range; it does not search the entire
+catalog. A completed download does not create a scanner schedule or guarantee
+filesystem liveness.
+
 ## Connection edits and credential rotation
 
 Bloem's audiobook setup is the only writer of an audiobook connection after
@@ -181,23 +215,6 @@ repeats a saved credential is withheld. A failed test is HTTP 200.
 test routes of both lanes. The server sets it when the admin-context routes are
 mounted and the audiobook setup, and the ebook setup where that lane is mounted,
 are wired.
-
-No-match searches wait six hours and stop after seven days; unavailable sources
-wait thirty minutes. Uncertain checks back off and stop after five failures.
-Selections or downloads needing review wait for an administrator. An approved
-candidate starts a fresh attempt; accepting a download permits catalog matching
-without marking the request fulfilled. Manual fulfilment remains available.
-Review/failure notices go only to current organization administrators and use
-stable attempt-scoped delivery identities. The admin view retains the newest
-50 validated decisions; requesters receive only safe progress and reason text.
-
-Provider verification moves a request to `awaiting_library`. Completion still
-requires a catalog item: either all supplied stable IDs match, or exactly one
-nonmissing audiobook item exists below the retained dedicated download roots in
-an attempt-marker folder. Two matching items require review. The path lookup
-first materializes the library/path index range; it does not search the entire
-catalog. A completed download does not create a scanner schedule or guarantee
-filesystem liveness.
 
 ## Native client follow-up
 

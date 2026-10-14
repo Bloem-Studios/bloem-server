@@ -105,3 +105,64 @@ func TestAudiobookRouterRefusesCredentialsBoundToAnotherURL(t *testing.T) {
 		t.Fatalf("bound credential refused: %v", err)
 	}
 }
+
+type audiobookStatusClientFixture struct {
+	requests.RouterClient
+	status *pluginv1.TargetStatus
+}
+
+func (f *audiobookStatusClientFixture) CheckStatus(context.Context, *pluginv1.CheckStatusRequest) (*pluginv1.CheckStatusResponse, error) {
+	return &pluginv1.CheckStatusResponse{Statuses: []*pluginv1.TargetStatus{f.status}}, nil
+}
+
+// Release plugin builds answer in the host's vocabulary; pre-release builds
+// answered "queued" for a verification hold, a lost download and an
+// unreadable client. Both map onto the same dispatch states: a review reaches
+// an administrator, a lost or never-added download is retried and searched
+// again, and an unreadable client waits without counting toward lost. A
+// completed answer needs a verified external status and decision.
+func TestAudiobookRouterMapsPluginStatusVocabulary(t *testing.T) {
+	a, in, fulfill := audiobookAdapterFixture()
+	receipt := fulfill.response.Targets[0].ExternalId
+	envelope := func(outcome string) string {
+		raw, _ := json.Marshal(bookrequests.AcquisitionDecision{V: 1, Phase: "verify", Outcome: outcome, Issues: []string{"too_short"}})
+		return "abd1." + base64.RawURLEncoding.EncodeToString(raw)
+	}
+	for _, tc := range []struct {
+		status, external, message, want string
+	}{
+		{"queued", "queued", "", "queued"},
+		{"downloading", "stalled", "", "downloading"},
+		{"review", "review", envelope("review"), "review"},
+		{"unknown", "missing", "", "unknown"},
+		{"unknown", "absent", "", "unknown"},
+		{"unknown", "unknown", "", bookrequests.AudiobookProviderUnreadable},
+		{"completed", "verified", envelope("verified"), "completed"},
+		{"failed", "client_changed", "", "failed"},
+		// Pre-release answers.
+		{"queued", "review", envelope("review"), "review"},
+		{"queued", "missing", "", "unknown"},
+		{"queued", "absent", "", "unknown"},
+		{"queued", "unknown", "", bookrequests.AudiobookProviderUnreadable},
+		// Rejected answers.
+		{"queued", "review", "", ""},
+		{"queued", "review", envelope("verified"), ""},
+		{"review", "review", "", ""},
+		{"completed", "verified", "", ""},
+		{"completed", "verified", envelope("review"), ""},
+		{"completed", "downloading", envelope("verified"), ""},
+	} {
+		client := &audiobookStatusClientFixture{status: &pluginv1.TargetStatus{Quality: "audiobook", ConnectionId: "connection", Status: tc.status, ExternalStatus: tc.external, Message: tc.message}}
+		a.resolver = ebookResolverFixture{client}
+		out, err := a.CheckStatus(t.Context(), in, bookrequests.Receipt{ExternalID: receipt, Status: "queued"})
+		if tc.want == "" {
+			if !errors.Is(err, bookrequests.ErrInvalid) {
+				t.Fatalf("%s/%s with message %q accepted: %+v %v", tc.status, tc.external, tc.message, out, err)
+			}
+			continue
+		}
+		if err != nil || out.Kind != bookrequests.AudiobookStatus || out.ProviderStatus != tc.want || out.ExternalStatus != tc.external {
+			t.Fatalf("%s/%s: %+v %v, want provider status %s", tc.status, tc.external, out, err, tc.want)
+		}
+	}
+}

@@ -25,12 +25,17 @@ func BuildBloemBookRequestsService(deps Dependencies) *bookrequests.Service {
 	}
 	service := bookrequests.NewService(deps.DB, notifier)
 	if deps.PluginService != nil && deps.SecretCipher != nil {
-		repository := requests.NewRepository(deps.DB, deps.SecretCipher)
-		resolver := PluginRequestRouterAdapter{Svc: deps.PluginService}
-		service.SetEbookFulfillment(bloemEbookRouter{integrations: repository, resolver: resolver, validator: service})
-		service.SetAudiobookFulfillment(bloemAudiobookRouter{integrations: repository, resolver: resolver, validator: service})
+		composeBloemBookFulfillment(service, requests.NewRepository(deps.DB, deps.SecretCipher), PluginRequestRouterAdapter{Svc: deps.PluginService})
 	}
 	return service
+}
+
+// composeBloemBookFulfillment attaches the ebook and audiobook acquisition
+// adapters. Production resolves routers through the plugin service; the
+// cross-process acceptance resolves them from its plugin host.
+func composeBloemBookFulfillment(service *bookrequests.Service, repository *requests.Repository, resolver requests.RouterClientResolver) {
+	service.SetEbookFulfillment(bloemEbookRouter{integrations: repository, resolver: resolver, validator: service})
+	service.SetAudiobookFulfillment(bloemAudiobookRouter{integrations: repository, resolver: resolver, validator: service})
 }
 
 func newBloemBookRequests(deps Dependencies) *handlers.BloemBookRequestsHandler {
