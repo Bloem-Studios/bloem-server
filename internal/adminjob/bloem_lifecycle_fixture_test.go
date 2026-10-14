@@ -112,3 +112,41 @@ func bloemLifecycleActor(t *testing.T, r *Repository) int {
 	}
 	return id
 }
+
+// requeueAfterRunnerStop proves that a stopped runner no longer heartbeats
+// jobID, then runs stale-job recovery as a restarted server would and expects
+// it to requeue the job.
+//
+// Runner.Stop closes the heartbeat loops' stop channel without waiting for
+// them, so one heartbeat already in flight can still land after the test
+// backdates the job. The job only counts as abandoned once a backdated
+// heartbeat survives several heartbeat intervals; a loop that kept running
+// after Stop fails at the deadline instead of racing the recovery query.
+func requeueAfterRunnerStop(t *testing.T, r *Repository, jobID string, interval time.Duration) {
+	t.Helper()
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	quiet := time.NewTicker(3 * interval)
+	defer quiet.Stop()
+	for {
+		if _, err := r.pool.Exec(t.Context(), `UPDATE admin_jobs SET heartbeat_at=NOW()-INTERVAL '1 hour' WHERE id=$1`, jobID); err != nil {
+			t.Fatal(err)
+		}
+		quiet.Reset(3 * interval)
+		select {
+		case <-quiet.C:
+		case <-deadline.C:
+			t.Fatal("uncertain transition kept heartbeating after its runner stopped")
+		}
+		var fresh bool
+		if err := r.pool.QueryRow(t.Context(), `SELECT heartbeat_at > NOW()-INTERVAL '1 minute' FROM admin_jobs WHERE id=$1`, jobID).Scan(&fresh); err != nil {
+			t.Fatal(err)
+		}
+		if !fresh {
+			break
+		}
+	}
+	if requeued, err := r.RequeueStaleRunning(t.Context(), time.Now().Add(-time.Minute)); err != nil || requeued != 1 {
+		t.Fatalf("uncertain transition after restart requeued=%d err=%v", requeued, err)
+	}
+}
