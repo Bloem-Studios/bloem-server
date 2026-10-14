@@ -9,12 +9,14 @@ import (
 	"github.com/Silo-Server/silo-server/internal/apiv2"
 )
 
+const previewCapabilitiesPath = "/api/bloem/v1/capabilities"
+
 // previewAllowedRoutes is everything a preview principal may call on v1 and
 // the native surface, by exact method and route pattern. Everything else is
 // refused, including every write, every byte route and /livetv/**. v2
 // operations are judged by apiv2's preview gate instead.
 var previewAllowedRoutes = map[string][]string{
-	"/api/bloem/v1/capabilities":                           {http.MethodGet},
+	previewCapabilitiesPath:                                {http.MethodGet},
 	"/api/bloem/v1/ambience":                               {http.MethodGet},
 	"/api/bloem/v1/persons/{person_id}":                    {http.MethodGet},
 	"/api/bloem/v1/catalog/items/{content_id}/collections": {http.MethodGet},

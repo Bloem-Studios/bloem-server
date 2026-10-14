@@ -32,7 +32,7 @@ var previewOperations = map[string]previewAccess{
 	"getEbookCapability": previewSafe, "getTrailersCapability": previewSafe,
 	"getRatingsCapability": previewSafe, "getThemeSongsCapability": previewSafe,
 	"getImageCapabilities": previewSafe, "getOnboardingCapabilities": previewSafe,
-	// Catalogue.
+	// Catalog.
 	"queryCatalogItems": previewSafe, "getCatalogFilters": previewSafe, "searchCatalogFacet": previewSafe,
 	"getHomeLayout": previewSafe, "listHomeSections": previewSafe, "getHomeSectionItems": previewSafe,
 	"listLibrarySections": previewSafe, "getLibrarySectionItems": previewSafe,

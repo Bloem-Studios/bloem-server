@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
@@ -19,7 +21,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
-	"github.com/google/uuid"
 )
 
 func TestPreviewPrincipalRouterBoundary(t *testing.T) {
@@ -72,6 +73,9 @@ func TestPreviewPrincipalRouterBoundary(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(fixture.dir, "page.html"), []byte("<html>plugin bytes</html>"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(fixture.dir, "app.js"), []byte("window.pluginLoaded = true;"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	router := NewRouter(Dependencies{
 		DB:                pool,
 		FolderRepo:        catalog.NewFolderRepository(pool),
@@ -113,9 +117,9 @@ func TestPreviewPrincipalRouterBoundary(t *testing.T) {
 		{"GET", "/api/v2/user/libraries"},
 		{"GET", "/api/v2/home/sections"},
 		{"GET", "/api/v2/catalog/items/movie:missing"},
-		{"GET", "/api/bloem/v1/capabilities"},
+		{"GET", previewCapabilitiesPath},
 	} {
-		if w := serve(tc.method, tc.path, "bearer"); w.Code != http.StatusOK && !(strings.Contains(tc.path, "movie:missing") && w.Code == http.StatusNotFound) {
+		if w := serve(tc.method, tc.path, "bearer"); w.Code != http.StatusOK && (!strings.Contains(tc.path, "movie:missing") || w.Code != http.StatusNotFound) {
 			t.Errorf("must allow %s %s: %d %s", tc.method, tc.path, w.Code, w.Body)
 		}
 	}
@@ -161,7 +165,7 @@ func TestPreviewPrincipalRouterBoundary(t *testing.T) {
 	}
 	// Plugin content treats every preview credential as anonymous.
 	for _, credential := range []string{"bearer", "query", "cookie", "api-key"} {
-		for _, path := range []string{"/api/v1/plugins/1/", plugins.ContentPrefix + "/plugins/1/"} {
+		for _, path := range []string{"/api/v1/plugins/1/", "/api/v1/plugin-assets/1/app.js", plugins.ContentPrefix + "/plugins/1/", plugins.ContentPrefix + "/plugin-assets/1/app.js"} {
 			if w := serve("GET", path, credential); w.Code == http.StatusOK || w.Code == http.StatusPartialContent {
 				t.Errorf("plugin %s via %s served bytes to a preview principal: %d", path, credential, w.Code)
 			}

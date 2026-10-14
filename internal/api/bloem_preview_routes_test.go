@@ -18,7 +18,7 @@ func TestPreviewRouteAllowedIsAnExactAllowlist(t *testing.T) {
 		method, pattern string
 		want            bool
 	}{
-		{http.MethodGet, "/api/bloem/v1/capabilities", true},
+		{http.MethodGet, previewCapabilitiesPath, true},
 		{http.MethodGet, "/api/bloem/v1/persons/{person_id}", true},
 		{http.MethodGet, "/api/bloem/v1/watch/items/{content_id}", true},
 		{http.MethodPost, "/api/bloem/v1/sync/progress", false},
@@ -37,21 +37,21 @@ func TestPreviewRouteGuardDefersOnlyDelegatedV2(t *testing.T) {
 	root := chi.NewRouter()
 	root.Handle(apiv2.DelegationPattern, http.NotFoundHandler())
 	root.Get("/api/v2/stream/{id}", http.NotFoundHandler().ServeHTTP)
-	root.Get("/api/bloem/v1/capabilities", http.NotFoundHandler().ServeHTTP)
+	root.Get(previewCapabilitiesPath, http.NotFoundHandler().ServeHTTP)
 	guard := newPreviewRouteGuard(root.Match)
 	for _, tc := range []struct {
 		path string
 		want bool
 	}{
-		{"/api/v2/catalog/items/x", true},  // delegated: the v2 preview gate decides
-		{"/api/v2/stream/42", false},       // chi-served under /api/v2: judged here
-		{"/api/bloem/v1/capabilities", true},
+		{"/api/v2/catalog/items/x", true}, // delegated: the v2 preview gate decides
+		{"/api/v2/stream/42", false},      // chi-served under /api/v2: judged here
+		{previewCapabilitiesPath, true},
 	} {
 		if got := guard(httptest.NewRequest(http.MethodGet, tc.path, nil)); got != tc.want {
 			t.Errorf("%s = %v, want %v", tc.path, got, tc.want)
 		}
 	}
-	if newPreviewRouteGuard(nil)(httptest.NewRequest(http.MethodGet, "/api/bloem/v1/capabilities", nil)) {
+	if newPreviewRouteGuard(nil)(httptest.NewRequest(http.MethodGet, previewCapabilitiesPath, nil)) {
 		t.Fatal("a guard without a router allowed a request")
 	}
 }
