@@ -22,10 +22,11 @@
 -- collection updates.
 --
 -- Locks: DROP TRIGGER and DROP TABLE take ACCESS EXCLUSIVE locks on users and
--- the other formerly triggered Silo tables and hold them until commit. A short
--- lock_timeout makes the step give up and roll back whole instead of queueing
--- every login and playback write behind a long-running transaction; the next
--- start retries it.
+-- the other formerly triggered Silo tables and hold each until commit. The
+-- lock_timeout caps each lock wait at 5 s, not the whole step: behind a
+-- longer-running transaction the step rolls back whole and the next start
+-- retries it, but locks already taken stay held through every later wait.
+-- Run it with no other database clients.
 -- +goose StatementBegin
 SET LOCAL lock_timeout = '5s';
 

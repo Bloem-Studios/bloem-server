@@ -26,9 +26,12 @@ user-removable watch-sync rows for the plugin installation that owns provider
 linked itself. While that installation is disabled no provider serves the key,
 so Silo's watch sync sends nothing for these connections (a scheduled sync
 records a failed run): pending history exports stay pending, and plays
-finished meanwhile stay in Silo's watch history with no export row. Once a
-version with watched export serves the key again, its scheduled sync
-reconciles each connection's completed history and queues the missing plays.
+finished meanwhile stay in Silo's watch history with no export row. Favorite,
+watchlist, rating and dropped-show changes are not queued either, and no
+scrobble session is written. Once a version with watched export serves the key
+again, its scheduled sync reconciles each connection's completed history and
+queues the missing plays; list and rating changes made meanwhile depend on its
+full list and rating sync.
 
 Collections a list binding published keep their items; the
 `bloem_list_binding` marker leaves `source_config`, and a synced native
@@ -53,11 +56,20 @@ compatibility removal (`compatibilityBaselineFS`, `opaCompatibilityBaselineFS`).
   delete watch-provider connections, so its rows would be left for a provider
   no installation serves.
 - The migration takes `ACCESS EXCLUSIVE` locks on `users` and the other
-  formerly triggered Silo tables and holds them until commit. It sets a 5 s
-  `lock_timeout`: behind a longer-running transaction on any of those tables it
-  rolls back whole and the next start retries, instead of blocking logins and
-  playback writes while it queues. Run it with no other database clients so it
-  is not blocked at all.
+  formerly triggered Silo tables and holds each until commit. Its 5 s
+  `lock_timeout` caps each lock wait, not the whole step: behind a
+  longer-running transaction on any of those tables it rolls back whole and the
+  next start retries, but the locks it already holds stay held through every
+  later wait, so staggered blockers can hold up logins for several waits. Run it
+  with no other database clients, for example as `silo --migrate-only` while
+  the server is stopped.
+- A binary from before the removal does not refuse the migrated database: the
+  migration runner allows out-of-order versions and ignores applied versions it
+  does not know, so it starts and then fails at runtime on the dropped tables.
+  Decide a rollback on whether `goose_db_version` has 20261013231500 applied,
+  never on whether a server started. Once it is applied, going back means
+  recreating the dropped objects from a pre-removal backup (and deleting that
+  version row) or restoring the whole database.
 
 ## Host boundary
 
