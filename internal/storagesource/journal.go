@@ -86,6 +86,10 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 		if savedCursor != checkpoint.Cursor || !bytes.Equal(savedDigest, digest[:]) {
 			return ErrCheckpointConflict
 		}
+		// A replayed page verified the lease like any other page.
+		if err = renewLeaseTx(ctx, tx, lease); err != nil {
+			return err
+		}
 		return tx.Commit(ctx)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -105,7 +109,7 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 			return err
 		}
 	}
-	files, err := applyLocationEntries(ctx, tx, lease, checkpoint, page, skip)
+	files, shrunk, err := applyLocationEntries(ctx, tx, lease, checkpoint, page, skip)
 	if err != nil {
 		return err
 	}
@@ -126,9 +130,6 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 				return err
 			}
 		}
-	}
-	if err = propagateLocationRootsTx(ctx, tx, lease); err != nil {
-		return err
 	}
 	if page.GetComplete() && page.GetChangeToken() != "" {
 		if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_change_tokens(source_key,directory_id,token,configuration_revision,issued_at,location_id,selection_revision)
@@ -152,10 +153,20 @@ func (r *Repository) applyPage(ctx context.Context, lease Lease, checkpoint Chec
 			return err
 		}
 	}
-	if err = propagateLocationRootsTx(ctx, tx, lease); err != nil {
+	listed := make([]string, 0, len(page.GetEntries()))
+	for _, e := range page.GetEntries() {
+		listed = append(listed, e.GetId())
+	}
+	if err = propagatePageRootsTx(ctx, tx, lease, pageReach{directoryID: checkpoint.DirectoryID, entries: listed, opened: checkpoint.Cursor == "", closed: page.GetComplete(), shrunk: shrunk}); err != nil {
 		return err
 	}
 	if err = verifyLease(ctx, tx, lease); err != nil {
+		return err
+	}
+	// The page retained the scan's authority and verified its lease under the
+	// locks a renewal takes, so its commit renews the lease. Page work holding
+	// the library lock therefore cannot starve the lease of renewals.
+	if err = renewLeaseTx(ctx, tx, lease); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

@@ -25,7 +25,7 @@ func (r *Repository) begin(ctx context.Context, sourceKey uuid.UUID, owner strin
 }
 
 func (r *Repository) beginLocation(ctx context.Context, sourceKey uuid.UUID, owner string, ttl time.Duration, authorize BeginAuthorizer, location *Location) (Lease, error) {
-	lease := Lease{SourceKey: sourceKey, Owner: owner}
+	lease := Lease{SourceKey: sourceKey, Owner: owner, TTL: ttl}
 	if sourceKey == uuid.Nil || !validText(owner, 1024, true) || !validTTL(ttl) {
 		return lease, fmt.Errorf("invalid storage scan lease")
 	}
@@ -198,6 +198,18 @@ func verifyLease(ctx context.Context, tx pgx.Tx, lease Lease) error {
 	return nil
 }
 
+// renewLeaseTx renews the lease from a transaction that has verified it after
+// retaining the scan's authority, the checks and locks a renewal makes. It
+// commits or rolls back with that transaction. A lease without a TTL is left
+// to Renew.
+func renewLeaseTx(ctx context.Context, tx pgx.Tx, lease Lease) error {
+	if lease.TTL <= 0 {
+		return nil
+	}
+	_, err := tx.Exec(ctx, `UPDATE bloem_storage_scan_runs SET lease_until=GREATEST(lease_until,clock_timestamp()+($2::bigint*interval '1 millisecond')) WHERE id=$1`, lease.RunID, lease.TTL.Milliseconds())
+	return err
+}
+
 // Release ends this owner's claim when its scan stops without completing, so a
 // retry resumes the journal at once instead of failing as a stale lease until
 // the claim expires. Only this exact owner and epoch of a running run is
@@ -281,6 +293,11 @@ func (r *Repository) complete(ctx context.Context, lease Lease, authorize Comple
 	if err = verifyLease(ctx, tx, lease); err != nil {
 		return err
 	}
+	// Renewal stops before completion, so completion renews the lease for its
+	// own work. The final check below still fails a completion that outlasts it.
+	if err = renewLeaseTx(ctx, tx, lease); err != nil {
+		return err
+	}
 	var pending bool
 	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM bloem_storage_scan_directories WHERE run_id=$1 AND NOT complete AND EXISTS(SELECT 1 FROM bloem_storage_scan_directory_roots dr WHERE dr.run_id=bloem_storage_scan_directories.run_id AND dr.directory_id=bloem_storage_scan_directories.directory_id))`, lease.RunID).Scan(&pending); err != nil {
 		return err
@@ -294,6 +311,15 @@ func (r *Repository) complete(ctx context.Context, lease Lease, authorize Comple
 	}
 	if missing != nil {
 		*missing = newMissing
+	}
+	// Reconciliation and the finalizer each get the lease's full duration.
+	// This transaction holds the run row and the source, so no other owner
+	// can take the run over between them; the lease must still be current.
+	if err = verifyLease(ctx, tx, lease); err != nil {
+		return err
+	}
+	if err = renewLeaseTx(ctx, tx, lease); err != nil {
+		return err
 	}
 	if finalize != nil {
 		if err = finalize(ctx, tx); err != nil {

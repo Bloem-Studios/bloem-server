@@ -5,6 +5,7 @@ package storagesource
 import (
 	"errors"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -50,6 +51,9 @@ type Lease struct {
 	SelectionRevision            int64
 	ConfigurationRevision, Epoch int64
 	Owner                        string
+	// TTL is the claim's duration. Each committed page renews the claim by
+	// it; zero leaves renewal to Renew alone.
+	TTL time.Duration
 }
 type Checkpoint struct {
 	DirectoryID, Cursor string
