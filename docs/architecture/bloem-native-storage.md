@@ -229,11 +229,13 @@ For each selection, `libraryingest.StorageScanner`:
    ignore file and directory state across listing pages.
    A page extends the run's root reach (`bloem_storage_scan_directory_roots`)
    and publishes root memberships (`bloem_storage_file_roots`) only through
-   its own entries and the directories they newly reach. A directory's first
-   page also counts its retained edges, and its completing page publishes
-   files staged by earlier pages. A page that removes or demotes a directory
-   edge, or a listing restarted in full, rebuilds the reach. A page's cost
-   therefore stays independent of the size of the location.
+   its own entries and the directories they newly reach, so a page costs its
+   own entries and those directories. A directory's first page also counts
+   its retained edges, and its completing page publishes files staged by
+   earlier pages; both visit that directory's children. A page that removes,
+   demotes or skips a directory edge, or a listing restarted in full,
+   rebuilds the whole reach and republishes its memberships, at a cost that
+   grows with the location.
 4. Stops lease renewal, then `CompleteLocationAuthorized` checks current resource
    authority before journal source/run locks and renews the lease for its own
    work. It rebuilds root memberships from the completed graph, writing only
