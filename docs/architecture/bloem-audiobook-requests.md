@@ -125,6 +125,17 @@ never enter the dispatch descriptor, receipt, decision log or requester view.
 The plugin owns release search, AI selection/verification and downloader calls;
 the host owns policy, identity, attempts and catalog completion.
 
+The plugin's normalized `CheckStatus` status stays `queued` for a verification
+hold and for a download the client no longer shows. The host adapter maps these
+by `external_status`: `review` becomes a verification review and must carry a
+verify decision with outcome `review`; `missing` and `absent` become uncertain
+checks. A confirmed download that disappears is therefore retried with back-off
+and then reported lost, and an unconfirmed hand-off that never appears is
+searched again after two absent checks. Any other `queued` status keeps waiting,
+including an unreachable client. The cross-process acceptance in
+`internal/api/bloem_audiobook_lifecycle_test.go` runs this contract against the
+real plugin executable when `BLOEM_AUDIOBOOK_REQUEST_PLUGIN_BINARY` is set.
+
 No-match searches wait six hours and stop after seven days; unavailable sources
 wait thirty minutes. Uncertain checks back off and stop after five failures.
 Selections or downloads needing review wait for an administrator. An approved

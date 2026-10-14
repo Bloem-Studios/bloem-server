@@ -67,3 +67,54 @@ func TestAudiobookRouterPreRPCFailureAndRecoveryNeverSubmit(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+type audiobookStatusClientFixture struct {
+	requests.RouterClient
+	status *pluginv1.TargetStatus
+}
+
+func (f *audiobookStatusClientFixture) CheckStatus(context.Context, *pluginv1.CheckStatusRequest) (*pluginv1.CheckStatusResponse, error) {
+	return &pluginv1.CheckStatusResponse{Statuses: []*pluginv1.TargetStatus{f.status}}, nil
+}
+
+// The plugin keeps the normalized status "queued" for a verification hold
+// and for a download the client no longer shows (README: "review returns
+// queued"). The adapter maps them onto the review and unknown dispatch
+// states, so the review reaches an administrator and a lost or never-added
+// download is retried and searched again instead of waiting forever.
+func TestAudiobookRouterMapsPluginStatusVocabulary(t *testing.T) {
+	a, in, fulfill := audiobookAdapterFixture()
+	receipt := fulfill.response.Targets[0].ExternalId
+	envelope := func(outcome string) string {
+		raw, _ := json.Marshal(bookrequests.AcquisitionDecision{V: 1, Phase: "verify", Outcome: outcome, Issues: []string{"too_short"}})
+		return "abd1." + base64.RawURLEncoding.EncodeToString(raw)
+	}
+	for _, tc := range []struct {
+		status, external, message, want string
+	}{
+		{"queued", "queued", "", "queued"},
+		{"queued", "unknown", "", "queued"},
+		{"downloading", "stalled", "", "downloading"},
+		{"queued", "review", envelope("review"), "review"},
+		{"review", "review", envelope("review"), "review"},
+		{"queued", "missing", "", "unknown"},
+		{"queued", "absent", "", "unknown"},
+		{"completed", "verified", envelope("verified"), "completed"},
+		{"failed", "client_changed", "", "failed"},
+		{"queued", "review", "", ""},
+		{"queued", "review", envelope("verified"), ""},
+	} {
+		client := &audiobookStatusClientFixture{status: &pluginv1.TargetStatus{Quality: "audiobook", ConnectionId: "connection", Status: tc.status, ExternalStatus: tc.external, Message: tc.message}}
+		a.resolver = ebookResolverFixture{client}
+		out, err := a.CheckStatus(t.Context(), in, bookrequests.Receipt{ExternalID: receipt, Status: "queued"})
+		if tc.want == "" {
+			if !errors.Is(err, bookrequests.ErrInvalid) {
+				t.Fatalf("%s/%s with message %q accepted: %+v %v", tc.status, tc.external, tc.message, out, err)
+			}
+			continue
+		}
+		if err != nil || out.Kind != bookrequests.AudiobookStatus || out.ProviderStatus != tc.want || out.ExternalStatus != tc.external {
+			t.Fatalf("%s/%s: %+v %v, want provider status %s", tc.status, tc.external, out, err, tc.want)
+		}
+	}
+}

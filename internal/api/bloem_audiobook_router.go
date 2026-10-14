@@ -144,7 +144,7 @@ func (a bloemAudiobookRouter) CheckStatus(ctx context.Context, in bookrequests.A
 	if t == nil || t.ConnectionId != connection.Id || t.Quality != "audiobook" || !bookrequests.ValidAudiobookExternalStatus(t.ExternalStatus) || !slices.Contains([]string{"queued", "downloading", "completed", "review", "failed", "unknown"}, t.Status) {
 		return bookrequests.AudiobookOutcome{}, bookrequests.ErrInvalid
 	}
-	out := bookrequests.AudiobookOutcome{Kind: bookrequests.AudiobookStatus, ProviderStatus: t.Status, ExternalStatus: t.ExternalStatus}
+	out := bookrequests.AudiobookOutcome{Kind: bookrequests.AudiobookStatus, ProviderStatus: audiobookProviderStatus(t.Status, t.ExternalStatus), ExternalStatus: t.ExternalStatus}
 	if t.Message != "" {
 		out.Decision, err = bookrequests.ParseAcquisitionDecision(t.Message)
 		if err != nil || out.Decision.Phase != "verify" {
@@ -154,5 +154,25 @@ func (a bloemAudiobookRouter) CheckStatus(ctx context.Context, in bookrequests.A
 	if t.Status == "completed" && (t.ExternalStatus != "verified" || out.Decision == nil || out.Decision.Outcome != "verified") {
 		return bookrequests.AudiobookOutcome{}, bookrequests.ErrInvalid
 	}
+	if t.ExternalStatus == "review" && (out.Decision == nil || out.Decision.Outcome != "review") {
+		return bookrequests.AudiobookOutcome{}, bookrequests.ErrInvalid
+	}
 	return out, nil
+}
+
+// audiobookProviderStatus maps the plugin's normalized status onto the
+// dispatch states. The plugin reports a verification hold and a download it
+// cannot find with the normalized status "queued"; only the external status
+// separates them from a download that is still waiting.
+func audiobookProviderStatus(status, external string) string {
+	if status != "queued" {
+		return status
+	}
+	switch external {
+	case "review":
+		return "review"
+	case "missing", "absent":
+		return "unknown"
+	}
+	return status
 }
