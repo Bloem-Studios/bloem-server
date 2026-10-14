@@ -50,7 +50,11 @@ func (s bloemAudiobookSetup) installations(ctx context.Context, v bookrequests.V
 	}
 	return out, rows.Err()
 }
-func (s bloemAudiobookSetup) List(ctx context.Context, v bookrequests.Viewer) (handlers.AudiobookRequestSetup, error) {
+
+// List returns the setup. Saved settings and credential names are added only
+// for an editor that also holds platform administrator authority now; an
+// organization administrator sees each connection's identity and binding.
+func (s bloemAudiobookSetup) List(ctx context.Context, v bookrequests.Viewer, editor bool) (handlers.AudiobookRequestSetup, error) {
 	integrations, err := s.books.ListAudiobookIntegrations(ctx, v)
 	if err != nil {
 		return handlers.AudiobookRequestSetup{}, err
@@ -63,15 +67,19 @@ func (s bloemAudiobookSetup) List(ctx context.Context, v bookrequests.Viewer) (h
 	if err != nil {
 		return handlers.AudiobookRequestSetup{}, err
 	}
-	if s.store != nil {
+	if editor && s.store != nil && s.requirePlatform(ctx, v) == nil {
 		for i := range integrations {
 			stored, err := s.store.GetIntegration(ctx, integrations[i].ID)
 			if err != nil || stored == nil {
 				// The binding view stays usable when one row cannot be
-				// decrypted; its editor then starts from defaults.
+				// decrypted. Its plugin_config stays absent, which tells
+				// the editor the saved settings are unknown.
 				continue
 			}
 			integrations[i].PluginConfig = stored.PluginConfig
+			if integrations[i].PluginConfig == nil {
+				integrations[i].PluginConfig = map[string]any{}
+			}
 			secrets, _, _ := decodeAudiobookCredentials(stored.APIKeyRef)
 			integrations[i].StoredCredentials = slices.Sorted(maps.Keys(secrets))
 		}

@@ -125,7 +125,8 @@ The October 14 refresh adds the audiobook connection edit body
 ungated `RequestIntegrationTestResult` shared by the ebook and audiobook
 connection tests. `AudiobookIntegrationSummary` gains the optional
 `plugin_config` and `stored_credentials` fields, which only the setup listing
-fills; credential values never appear on the wire.
+fills, and only for a platform administrator; credential values never appear on
+the wire.
 
 The latest generated source revision is
 `60f2f86061ecf235248582646e40e22f56767bef`, with normalized graph digest

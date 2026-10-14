@@ -124,7 +124,7 @@ func TestAudiobookConnectionEditRotatesWithoutRebindingSavedSecretsDatabase(t *t
 		t.Fatal(err)
 	}
 
-	setup, err := s.List(ctx, env.admin)
+	setup, err := s.List(ctx, env.admin, true)
 	if err != nil || len(setup.Integrations) != 1 {
 		t.Fatalf("setup %+v %v", setup, err)
 	}
@@ -132,6 +132,13 @@ func TestAudiobookConnectionEditRotatesWithoutRebindingSavedSecretsDatabase(t *t
 	body, _ := json.Marshal(setup)
 	if !slices.Equal(listed.StoredCredentials, []string{"qbittorrent_password"}) || listed.PluginConfig["qbittorrent_url"] != "https://client.example.test/qb" || strings.Contains(string(body), "saved-pass") || strings.Contains(string(body), "abk1.") {
 		t.Fatalf("setup listing exposes or omits editor state: %s", body)
+	}
+	// Without an editor context the listing carries identity and binding only.
+	if setup, err = s.List(ctx, env.admin, false); err != nil || len(setup.Integrations) != 1 {
+		t.Fatalf("setup %+v %v", setup, err)
+	}
+	if body, _ = json.Marshal(setup); strings.Contains(string(body), "plugin_config") || strings.Contains(string(body), "stored_credentials") {
+		t.Fatalf("non-editor listing exposes editor state: %s", body)
 	}
 
 	// Silo's generic editor cannot repoint the saved password.
@@ -223,6 +230,15 @@ func TestAudiobookConnectionEditRotatesWithoutRebindingSavedSecretsDatabase(t *t
 	if _, err = s.Update(ctx, env.admin, created.ID, handlers.AudiobookRequestConnectionUpdate{Name: "x"}); !errors.Is(err, bookrequests.ErrForbidden) {
 		t.Fatalf("update without platform authority: %v", err)
 	}
+	// An organization administrator without platform authority reads the
+	// binding view but not the saved settings, even when it asks for them.
+	setup, err = s.List(ctx, env.admin, true)
+	if err != nil || len(setup.Integrations) != 1 || setup.Integrations[0].ID != created.ID {
+		t.Fatalf("organization administrator listing %+v %v", setup, err)
+	}
+	if body, _ = json.Marshal(setup); strings.Contains(string(body), "plugin_config") || strings.Contains(string(body), "stored_credentials") || strings.Contains(string(body), "example.test") {
+		t.Fatalf("organization administrator saw editor state: %s", body)
+	}
 }
 
 func TestEbookConnectionTestUsesSavedConnectionDatabase(t *testing.T) {
@@ -241,9 +257,16 @@ func TestEbookConnectionTestUsesSavedConnectionDatabase(t *testing.T) {
 	}
 	// An audiobook connection is not an ebook connection.
 	audiobook := env.installation(t, bookrequests.AudiobookRequestPluginID, "audiobooks")
-	other, err := (bloemAudiobookSetup{pool: env.pool, books: env.books, requests: env.conns, platform: env.platform(), store: env.store}).Create(ctx, env.admin, handlers.AudiobookRequestConnectionInput{Name: "Audio", InstallationID: audiobook, CapabilityID: "audiobooks", PluginConfig: map[string]any{}})
+	audio := bloemAudiobookSetup{pool: env.pool, books: env.books, requests: env.conns, platform: env.platform(), store: env.store}
+	other, err := audio.Create(ctx, env.admin, handlers.AudiobookRequestConnectionInput{Name: "Audio", InstallationID: audiobook, CapabilityID: "audiobooks", PluginConfig: map[string]any{}})
 	if err != nil {
 		t.Fatal(err)
+	}
+	// An empty saved configuration is listed as {}, not omitted: absence
+	// means the saved settings could not be read.
+	setup, err := audio.List(ctx, env.admin, true)
+	if body, _ := json.Marshal(setup); err != nil || !strings.Contains(string(body), `"plugin_config":{}`) {
+		t.Fatalf("empty saved configuration not listed: %s %v", body, err)
 	}
 	if _, err = s.Test(ctx, env.admin, other.ID); !errors.Is(err, bookrequests.ErrNotFound) {
 		t.Fatalf("ebook test reached an audiobook connection: %v", err)

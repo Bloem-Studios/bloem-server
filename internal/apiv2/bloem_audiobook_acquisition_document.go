@@ -88,7 +88,7 @@ func registerBloemAudiobookAcquisitionDocument(reg *Registry) {
 	}
 	const setupAuthority = "Requires an organization administrative-context token. Creating connections and changing bindings additionally require platform administrator authority. Credentials are encrypted by the host and never included in responses. Responses use Cache-Control: private, no-store."
 	setup := bloemChiDocumentOp(reg, "GET", "/admin/organization/audiobook-request-integrations", "getBloemAudiobookRequestSetup", "requests", "Read audiobook acquisition connections and eligible libraries/installations.", "adminContextAuth", 200)
-	setup.Description = setupAuthority
+	setup.Description = setupAuthority + " Each connection's saved plugin_config and the names of its saved credentials (stored_credentials) are returned only to a platform administrator context; an absent plugin_config then means the saved settings could not be read. Organization administrators receive each connection's identity, binding and readiness."
 	bloemDocumentErrors[BloemNativeError](reg, &setup, errors)
 	registerBloemChiDocument[struct{}, BloemAudiobookRequestSetupOutput](reg, setup)
 	create := bloemChiDocumentOp(reg, "POST", "/admin/organization/audiobook-request-integrations", "createBloemAudiobookRequestIntegration", "requests", "Create an audiobook acquisition connection.", "adminContextAuth", 201)

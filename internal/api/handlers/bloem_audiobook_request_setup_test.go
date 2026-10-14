@@ -17,10 +17,12 @@ type audiobookSetupStub struct {
 	id     string
 	v      bookrequests.Viewer
 	update AudiobookRequestConnectionUpdate
+	editor bool
 }
 
-func (s *audiobookSetupStub) List(context.Context, bookrequests.Viewer) (AudiobookRequestSetup, error) {
+func (s *audiobookSetupStub) List(_ context.Context, v bookrequests.Viewer, editor bool) (AudiobookRequestSetup, error) {
 	s.calls++
+	s.v, s.editor = v, editor
 	return AudiobookRequestSetup{Available: true}, nil
 }
 func (s *audiobookSetupStub) Create(context.Context, bookrequests.Viewer, AudiobookRequestConnectionInput) (bookrequests.AudiobookIntegrationSummary, error) {
@@ -77,5 +79,18 @@ func TestBloemAudiobookConnectionEditAndTestRequirePlatformAuthority(t *testing.
 	h.HandleAudiobookIntegrationTest(w, audiobookSetupRequest(http.MethodPost, "", "platform_admin"))
 	if w.Code != http.StatusOK || s.id != "200456" || w.Header().Get("Cache-Control") != "private, no-store" || !strings.Contains(w.Body.String(), `"ok":false`) {
 		t.Fatalf("test: %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestBloemAudiobookSetupListAsksForEditorStateOnlyForPlatformAuthority(t *testing.T) {
+	for authority, editor := range map[string]bool{"organization_admin": false, "platform_admin": true} {
+		s := &audiobookSetupStub{editor: !editor}
+		h := NewBloemBookRequestsHandler(&bookRequestsServiceStub{}, nil)
+		h.SetAudiobookRequestSetup(s)
+		w := httptest.NewRecorder()
+		h.HandleAudiobookIntegrationList(w, audiobookSetupRequest(http.MethodGet, "", authority))
+		if w.Code != http.StatusOK || s.calls != 1 || s.editor != editor || s.v.UserID != 7 {
+			t.Fatalf("%s: %d editor=%v %s", authority, w.Code, s.editor, w.Body.String())
+		}
 	}
 }

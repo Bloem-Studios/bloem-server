@@ -5064,7 +5064,7 @@
     },
     "/api/bloem/v1/admin/organization/audiobook-request-integrations": {
       "get": {
-        "description": "Requires an organization administrative-context token. Creating connections and changing bindings additionally require platform administrator authority. Credentials are encrypted by the host and never included in responses. Responses use Cache-Control: private, no-store.",
+        "description": "Requires an organization administrative-context token. Creating connections and changing bindings additionally require platform administrator authority. Credentials are encrypted by the host and never included in responses. Responses use Cache-Control: private, no-store. Each connection's saved plugin_config and the names of its saved credentials (stored_credentials) are returned only to a platform administrator context; an absent plugin_config then means the saved settings could not be read. Organization administrators receive each connection's identity, binding and readiness.",
         "operationId": "getBloemAudiobookRequestSetup",
         "responses": {
           "200": {

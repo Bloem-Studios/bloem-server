@@ -3070,9 +3070,11 @@ carry `Cache-Control: private, no-store`.
 | `PUT` | `/admin/organization/audiobook-request-integrations/{id}/library` | Platform-authorized binding with `library_id` and one to four `download_roots`; zero unbinds. |
 | `POST` | `/admin/organization/audiobook-request-integrations/{id}/test` | Platform-authorized plugin connection checks on a saved connection; returns `{ok, message}`. |
 
-The setup listing includes each connection's saved `plugin_config` and the names
-of its saved credentials in `stored_credentials`; credential values are never
-returned. On edit, an omitted `plugin_config` keeps the saved settings. A
+For a platform administrator context, the setup listing includes each
+connection's saved `plugin_config` and the names of its saved credentials in
+`stored_credentials`; credential values are never returned. An absent
+`plugin_config` means the saved settings could not be read. An organization
+administrator receives neither field. On edit, an omitted `plugin_config` keeps the saved settings. A
 credential that is omitted or empty keeps its saved value only while the URL it
 is bound to is unchanged; a changed URL returns 400 until the credential is
 entered again, and a cleared URL drops it. Silo's generic

@@ -33,7 +33,10 @@ type AudiobookRequestConnectionUpdate struct {
 	Credentials  map[string]string `json:"credentials,omitempty"`
 }
 type BloemAudiobookRequestSetup interface {
-	List(context.Context, bookrequests.Viewer) (AudiobookRequestSetup, error)
+	// List reads the setup. editor asks for each connection's saved
+	// plugin_config and credential names; the setup returns them only when
+	// the viewer also holds platform administrator authority.
+	List(ctx context.Context, v bookrequests.Viewer, editor bool) (AudiobookRequestSetup, error)
 	Create(context.Context, bookrequests.Viewer, AudiobookRequestConnectionInput) (bookrequests.AudiobookIntegrationSummary, error)
 	Update(context.Context, bookrequests.Viewer, string, AudiobookRequestConnectionUpdate) (bookrequests.AudiobookIntegrationSummary, error)
 	SetLibrary(context.Context, bookrequests.Viewer, string, int, []string) (bookrequests.AudiobookIntegrationSummary, error)
@@ -64,12 +67,17 @@ func (h *BloemBookRequestsHandler) audiobookSetupViewer(w http.ResponseWriter, r
 	}
 	return bookrequests.Viewer{UserID: t.AccountID, OrganizationID: t.OrganizationID, Admin: true}, true
 }
+
+// HandleAudiobookIntegrationList answers any organization administrator.
+// Saved settings and credential names are editor state: they are requested
+// only for a platform administrator context, which alone may edit.
 func (h *BloemBookRequestsHandler) HandleAudiobookIntegrationList(w http.ResponseWriter, r *http.Request) {
 	v, ok := h.audiobookSetupViewer(w, r, false)
 	if !ok {
 		return
 	}
-	out, err := h.audiobookSetup.List(r.Context(), v)
+	c, valid := apimw.GetAdminContextClaims(r.Context())
+	out, err := h.audiobookSetup.List(r.Context(), v, valid && c.EffectiveAuthority == "platform_admin")
 	if err != nil {
 		h.writeRequestError(w, err)
 		return
