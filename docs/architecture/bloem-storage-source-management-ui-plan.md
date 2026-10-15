@@ -62,7 +62,7 @@ Web:
 
 Other repos: `bloem-storage-s3` regression tests (Task 11), `bloem-plugins` `plugins.json` (Task 13).
 
-All Go commands run from the worktree root `/home/jimcole/.t3/worktrees/bloem-server/storage-source-ui-20261015`; web commands from `web/`.
+All Go commands run from the repository root of the bloem-server worktree; web commands from `web/`.
 
 ---
 
@@ -1309,7 +1309,7 @@ Ensure the `StorageSource` type used by this component (`./types`) exposes optio
 
 ### Task 11: Plugin regression tests (separate repo)
 
-**Files:** in a fresh worktree of `Bloem-Studios/bloem-storage-s3` (`git -C /home/jimcole/projects/bloem/worktrees/bloem-storage-s3-release-20261011 worktree add ../bloem-storage-s3-empty-root-20261015 -b test/empty-root-20261015 origin/main`): create `empty_root_test.go`.
+**Files:** in a fresh worktree of `Bloem-Studios/bloem-storage-s3` (`git worktree add ../bloem-storage-s3-empty-root-20261015 -b test/empty-root-20261015 origin/main`, run from an existing checkout of that repository): create `empty_root_test.go`.
 
 - [ ] **Step 1:** Read `browse_test.go` `TestDirectoryOnlyRootNestedAndEmptyLeaf` and `fake_s3_test.go` to reuse the fake backend constructor and the request helper. Write `TestMovieLayoutBrowsesUnderEveryPrefix` using the same fake with keys `movies/10s/a.mkv`, `movies/10s/b.mkv`, `movies/20s/c.mkv`, `movies/README.txt`. For prefixes `""`, `"movies/"` and `"movies/10s/"` assert directory-only `List` of the source root returns, respectively: `[movies/]`, `[10s/, 20s/]`, and **no entries** (the leaf case that produces "No subfolders" in the picker). Add `TestFilesystemGatewayMarkersStillListFolders` with the same keys plus explicit marker objects `movies/`, `movies/10s/`, `movies/20s/` and no `CommonPrefixes`, asserting `10s/` and `20s/` are still returned for prefix `movies/`.
 - [ ] **Step 2:** `go test ./... -run 'MovieLayout|FilesystemGatewayMarkers' -count=1`. Expected: PASS; if the marker-only case FAILS, that is the production defect: fix `delimitedChildren` in `provider.go` so markers without `CommonPrefixes` produce directories, rerun `go test ./... -count=1`, and note the change for a patch release.
