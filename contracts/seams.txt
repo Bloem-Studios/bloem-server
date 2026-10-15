@@ -865,7 +865,6 @@ internal/notifications/push_test_send_db_test.go # supply real active tenant pro
 
 migrations/prune_deleted_library_access_test.go # run Silo account-policy assertions on an isolated mirrored database
 
-contracts/api/v2/breaking-approvals.json # exact pre-lock fingerprints for accepted Silo PRs 1801 and 2413 against the prior Bloem baseline
 
 internal/jellycompat/displayprefs/displayprefs.go # deleted: removed protocol layer
 
