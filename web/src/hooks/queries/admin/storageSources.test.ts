@@ -7,10 +7,14 @@ import { AdminV2ClientError } from "@/api/adminV2Client";
 import {
   discoverBody,
   rotateBody,
+  s3BucketsBody,
+  s3FoldersBody,
   useConfigureStorageSource,
   useDiscoverStorageSource,
   useDisableStorageSource,
   useInstallStorageSource,
+  useListS3Buckets,
+  useListS3Folders,
   useRemoveStorageSource,
   useReplaceStorageConfiguration,
   useRotateStorageCredentials,
@@ -19,13 +23,16 @@ import {
 } from "./storageSources";
 
 const adminV2Api = vi.hoisted(() => vi.fn());
+const adminContext = vi.hoisted(() => ({ scope: "platform" as "platform" | "organization" }));
 
 vi.mock("@/api/adminV2Client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/adminV2Client")>()),
   adminV2Api,
 }));
 vi.mock("@/contexts/AdminContextProvider", () => ({
-  useOptionalAdminContext: () => ({ active: { scope: "platform", key: "platform" } }),
+  useOptionalAdminContext: () => ({
+    active: { scope: adminContext.scope, key: adminContext.scope },
+  }),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -76,9 +83,172 @@ describe("storage source request bodies", () => {
   });
 });
 
+describe("S3 browse request bodies", () => {
+  const connection = {
+    endpoint: "https://s3.example.com",
+    region: "us-east-1",
+    accessKey: "AK",
+    secretKey: "SK",
+  };
+  it("buckets sends snake_case connection fields and omits an empty session token", () => {
+    expect(s3BucketsBody({ ...connection, sessionToken: "" })).toEqual({
+      endpoint: "https://s3.example.com",
+      region: "us-east-1",
+      access_key: "AK",
+      secret_key: "SK",
+    });
+    expect(s3BucketsBody({ ...connection, sessionToken: "   " })).not.toHaveProperty(
+      "session_token",
+    );
+    expect(s3BucketsBody(connection)).not.toHaveProperty("session_token");
+    expect(s3BucketsBody({ ...connection, sessionToken: "T" })).toHaveProperty(
+      "session_token",
+      "T",
+    );
+  });
+  it("folders adds the bucket and only a non-empty prefix and cursor", () => {
+    expect(s3FoldersBody({ ...connection, bucket: "media" })).toEqual({
+      endpoint: "https://s3.example.com",
+      region: "us-east-1",
+      access_key: "AK",
+      secret_key: "SK",
+      bucket: "media",
+    });
+    expect(
+      s3FoldersBody({ ...connection, bucket: "media", prefix: "", cursor: "", sessionToken: "" }),
+    ).toEqual(s3FoldersBody({ ...connection, bucket: "media" }));
+    expect(
+      s3FoldersBody({ ...connection, bucket: "media", prefix: "movies/", cursor: "c1" }),
+    ).toMatchObject({ bucket: "media", prefix: "movies/", cursor: "c1" });
+  });
+});
+
 describe("storage source mutations", () => {
   beforeEach(() => {
     adminV2Api.mockReset();
+    adminContext.scope = "platform";
+  });
+
+  it("lists buckets from the active scope and returns only the names", async () => {
+    adminV2Api.mockResolvedValue({ buckets: [{ name: "movies" }, { name: "television" }] });
+    const { result } = renderHook(() => useListS3Buckets(), { wrapper });
+    const names = await result.current.mutateAsync({
+      endpoint: "https://s3.example.com",
+      region: "us-east-1",
+      accessKey: "AK",
+      secretKey: "SK",
+    });
+    expect(names).toEqual(["movies", "television"]);
+    const [path, init] = adminV2Api.mock.calls[0] as [string, RequestInit];
+    expect(path).toBe("/platform/native-storage/s3/buckets");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({
+      endpoint: "https://s3.example.com",
+      region: "us-east-1",
+      access_key: "AK",
+      secret_key: "SK",
+    });
+  });
+
+  it("builds the browse URLs from the organization scope too", async () => {
+    adminContext.scope = "organization";
+    adminV2Api.mockResolvedValue({ buckets: [], prefix: "", folders: [], next_cursor: "" });
+    const buckets = renderHook(() => useListS3Buckets(), { wrapper });
+    await buckets.result.current.mutateAsync({
+      endpoint: "https://s3.example.com",
+      region: "r",
+      accessKey: "AK",
+      secretKey: "SK",
+    });
+    const folders = renderHook(() => useListS3Folders(), { wrapper });
+    await folders.result.current.mutateAsync({
+      endpoint: "https://s3.example.com",
+      region: "r",
+      accessKey: "AK",
+      secretKey: "SK",
+      bucket: "media",
+    });
+    expect(adminV2Api.mock.calls[0]?.[0]).toBe("/organization/native-storage/s3/buckets");
+    expect(adminV2Api.mock.calls[1]?.[0]).toBe("/organization/native-storage/s3/folders");
+  });
+
+  it("lists one level of folders and maps the cursor to camelCase", async () => {
+    adminV2Api.mockResolvedValue({
+      prefix: "movies/",
+      folders: [{ name: "10s", prefix: "movies/10s/" }],
+      next_cursor: "more",
+    });
+    const { result } = renderHook(() => useListS3Folders(), { wrapper });
+    const page = await result.current.mutateAsync({
+      endpoint: "https://s3.example.com",
+      region: "us-east-1",
+      accessKey: "AK",
+      secretKey: "SK",
+      bucket: "media",
+      prefix: "movies/",
+    });
+    expect(page).toEqual({
+      prefix: "movies/",
+      folders: [{ name: "10s", prefix: "movies/10s/" }],
+      nextCursor: "more",
+    });
+    const [path, init] = adminV2Api.mock.calls[0] as [string, RequestInit];
+    expect(path).toBe("/platform/native-storage/s3/folders");
+    expect(JSON.parse(String(init.body))).toMatchObject({ bucket: "media", prefix: "movies/" });
+  });
+
+  it("tolerates a response without the optional parts", async () => {
+    adminV2Api.mockResolvedValue({});
+    const buckets = renderHook(() => useListS3Buckets(), { wrapper });
+    await expect(
+      buckets.result.current.mutateAsync({
+        endpoint: "https://e",
+        region: "r",
+        accessKey: "a",
+        secretKey: "s",
+      }),
+    ).resolves.toEqual([]);
+    const folders = renderHook(() => useListS3Folders(), { wrapper });
+    await expect(
+      folders.result.current.mutateAsync({
+        endpoint: "https://e",
+        region: "r",
+        accessKey: "a",
+        secretKey: "s",
+        bucket: "b",
+      }),
+    ).resolves.toEqual({ prefix: "", folders: [], nextCursor: "" });
+  });
+
+  it.each([
+    ["buckets", () => useListS3Buckets()],
+    ["folders", () => useListS3Folders()],
+  ] as const)("%s keeps the server error code and status and raises no toast", async (_n, use) => {
+    adminV2Api.mockImplementation(async () => {
+      throw new AdminV2ClientError(422, "s3_access_denied", "The S3 backend denied access");
+    });
+    const { result } = renderHook(
+      () =>
+        use() as unknown as {
+          mutate: (v: unknown) => void;
+          isError: boolean;
+          error: unknown;
+        },
+      { wrapper },
+    );
+    result.current.mutate({
+      endpoint: "https://e",
+      region: "r",
+      accessKey: "a",
+      secretKey: "s",
+      bucket: "b",
+    });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(AdminV2ClientError);
+    expect((result.current.error as AdminV2ClientError).code).toBe("s3_access_denied");
+    expect((result.current.error as AdminV2ClientError).status).toBe(422);
+    const { toast } = await import("sonner");
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it("replaces configuration with the loaded revision", async () => {
@@ -204,6 +374,29 @@ describe("storage source mutations holding credentials", () => {
       "rotate credentials",
       () => useRotateStorageCredentials(),
       { source, accessKey: "AK", secretKey: SECRET, sessionToken: SECRET },
+    ],
+    [
+      "list S3 buckets",
+      () => useListS3Buckets(),
+      {
+        endpoint: "https://e",
+        region: "r",
+        accessKey: SECRET,
+        secretKey: SECRET,
+        sessionToken: SECRET,
+      },
+    ],
+    [
+      "list S3 folders",
+      () => useListS3Folders(),
+      {
+        endpoint: "https://e",
+        region: "r",
+        accessKey: SECRET,
+        secretKey: SECRET,
+        sessionToken: SECRET,
+        bucket: "b",
+      },
     ],
     [
       "configure bookwarehouse",

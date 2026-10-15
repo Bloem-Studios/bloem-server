@@ -263,6 +263,94 @@ export function useDiscoverStorageSource() {
   });
 }
 
+/** What the S3 browse calls need to reach a backend; never stored by the server. */
+export interface S3ConnectionInput {
+  endpoint: string;
+  region: string;
+  accessKey: string;
+  secretKey: string;
+  sessionToken?: string;
+}
+
+export interface ListS3FoldersInput extends S3ConnectionInput {
+  bucket: string;
+  /** Empty or slash-terminated. */
+  prefix?: string;
+  cursor?: string;
+}
+
+/** One level of child folders; `nextCursor` is empty when there are no more. */
+export interface S3FolderPage {
+  prefix: string;
+  folders: { name: string; prefix: string }[];
+  nextCursor: string;
+}
+
+/** The bucket-listing request body: snake_case, and no session token unless one was given. */
+export function s3BucketsBody(input: S3ConnectionInput) {
+  return {
+    endpoint: input.endpoint,
+    region: input.region,
+    access_key: input.accessKey,
+    secret_key: input.secretKey,
+    ...(input.sessionToken?.trim() ? { session_token: input.sessionToken } : {}),
+  };
+}
+
+/** The folder-listing request body: the bucket-listing body plus bucket, prefix and cursor when set. */
+export function s3FoldersBody(input: ListS3FoldersInput) {
+  return {
+    ...s3BucketsBody(input),
+    bucket: input.bucket,
+    ...(input.prefix ? { prefix: input.prefix } : {}),
+    ...(input.cursor ? { cursor: input.cursor } : {}),
+  };
+}
+
+/**
+ * Lists the buckets one set of S3 credentials can see. The credentials travel
+ * in the request body only. Failures reject with the `AdminV2ClientError`
+ * (`code`, `status`) and raise no toast: the caller words the message itself.
+ */
+export function useListS3Buckets() {
+  const { scope } = useStorageScope();
+  return useMutation({
+    // Variables hold credentials; keep them out of the mutation cache.
+    gcTime: 0,
+    mutationFn: async (input: S3ConnectionInput): Promise<string[]> => {
+      const response = await adminV2Api<{ buckets?: { name: string }[] }>(
+        `/${scope}/native-storage/s3/buckets`,
+        { method: "POST", body: JSON.stringify(s3BucketsBody(input)) },
+      );
+      return (response.buckets ?? []).map((bucket) => bucket.name);
+    },
+  });
+}
+
+/** Lists the child folders of one bucket prefix, a page at a time. Same rules as `useListS3Buckets`. */
+export function useListS3Folders() {
+  const { scope } = useStorageScope();
+  return useMutation({
+    // Variables hold credentials; keep them out of the mutation cache.
+    gcTime: 0,
+    mutationFn: async (input: ListS3FoldersInput): Promise<S3FolderPage> => {
+      const response = await adminV2Api<{
+        prefix?: string;
+        folders?: { name: string; prefix: string }[];
+        next_cursor?: string;
+      }>(`/${scope}/native-storage/s3/folders`, {
+        method: "POST",
+        body: JSON.stringify(s3FoldersBody(input)),
+      });
+      return {
+        prefix: response.prefix ?? "",
+        folders: response.folders ?? [],
+        nextCursor: response.next_cursor ?? "",
+      };
+    },
+  });
+}
+
 export interface ReplaceStorageConfigurationInput {
   source: StorageSource;
   config: StorageConfig;
