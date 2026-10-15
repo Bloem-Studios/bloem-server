@@ -198,6 +198,203 @@
         ],
         "type": "object"
       },
+      "AdminFormConditionView": {
+        "additionalProperties": false,
+        "properties": {
+          "equals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "field": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "equals"
+        ],
+        "type": "object"
+      },
+      "AdminFormFieldView": {
+        "additionalProperties": false,
+        "properties": {
+          "control": {
+            "type": "string"
+          },
+          "default_value": {},
+          "description": {
+            "type": "string"
+          },
+          "dynamic_options": {
+            "type": "boolean"
+          },
+          "exclusive_group_field": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "multiline": {
+            "type": "boolean"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFormOptionView"
+            },
+            "type": "array"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "rows": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "secret": {
+            "type": "boolean"
+          },
+          "show_when": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFormConditionView"
+            },
+            "type": "array"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/AdminFormValidationView"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "control",
+          "required",
+          "secret",
+          "multiline"
+        ],
+        "type": "object"
+      },
+      "AdminFormOptionView": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "type": "object"
+      },
+      "AdminFormSectionView": {
+        "additionalProperties": false,
+        "properties": {
+          "collapsed_default": {
+            "type": "boolean"
+          },
+          "collapsible": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "field_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "key": {
+            "type": "string"
+          },
+          "show_when": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFormConditionView"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "collapsible",
+          "collapsed_default",
+          "field_keys"
+        ],
+        "type": "object"
+      },
+      "AdminFormValidationView": {
+        "additionalProperties": false,
+        "properties": {
+          "has_max": {
+            "type": "boolean"
+          },
+          "has_min": {
+            "type": "boolean"
+          },
+          "max": {
+            "format": "double",
+            "type": "number"
+          },
+          "max_length": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "min": {
+            "format": "double",
+            "type": "number"
+          },
+          "min_length": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pattern": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AdminFormView": {
+        "additionalProperties": false,
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFormFieldView"
+            },
+            "type": "array"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFormSectionView"
+            },
+            "type": "array"
+          },
+          "submit_label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fields"
+        ],
+        "type": "object"
+      },
       "AdminGroupRef": {
         "additionalProperties": false,
         "properties": {
@@ -2604,7 +2801,7 @@
         "properties": {
           "artifacts": {
             "items": {
-              "$ref": "#/components/schemas/NativeStorageArtifactView"
+              "$ref": "#/components/schemas/NativeStorageArtifactResponse"
             },
             "type": "array"
           }
@@ -2627,6 +2824,10 @@
             "type": "boolean"
           },
           "configuration_replace_unbound": {
+            "type": "boolean"
+          },
+          "credential_rotation_in_use": {
+            "description": "Credential rotation is composed and works on a source that backs a library. It overlays only access key, secret key and session token and needs an enabled source and its current revision.",
             "type": "boolean"
           },
           "disable": {
@@ -2688,6 +2889,10 @@
             ],
             "type": "boolean"
           },
+          "s3_catalog_discovery": {
+            "description": "Platform administrators can add an S3 source from a catalog release whose digest the host has pre-approved, discovering its root without a manual upload.",
+            "type": "boolean"
+          },
           "s3_checked_etag_reads": {
             "description": "Explicit checked-etag admission is supported for approved S3 source configuration. This does not enable a source or prove immutable bytes.",
             "type": "boolean"
@@ -2733,7 +2938,9 @@
           "disable",
           "uninstall",
           "upgrade",
+          "credential_rotation_in_use",
           "s3_initial_root_discovery",
+          "s3_catalog_discovery",
           "s3_checked_etag_reads",
           "native_movie_libraries",
           "native_video_playback",
@@ -2785,6 +2992,40 @@
         "required": [
           "expected_revision",
           "config"
+        ],
+        "type": "object"
+      },
+      "BloemNativeStorageCredentialsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "access_key": {
+            "description": "Replacement S3 access key id. No control characters. Encrypted at rest, never returned.",
+            "minLength": 1,
+            "type": "string",
+            "writeOnly": true
+          },
+          "expected_revision": {
+            "description": "Current source configuration revision. The source must be enabled.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "secret_key": {
+            "description": "Replacement S3 secret access key. No control characters. Encrypted at rest, never returned.",
+            "minLength": 1,
+            "type": "string",
+            "writeOnly": true
+          },
+          "session_token": {
+            "description": "Optional replacement session token; omitted or empty clears any stored token. Encrypted at rest, never returned.",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "expected_revision",
+          "access_key",
+          "secret_key"
         ],
         "type": "object"
       },
@@ -5629,6 +5870,37 @@
         ],
         "type": "object"
       },
+      "ConfigSchemaView": {
+        "additionalProperties": false,
+        "properties": {
+          "admin_form": {
+            "$ref": "#/components/schemas/AdminFormView"
+          },
+          "description": {
+            "type": "string"
+          },
+          "json_schema": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "description",
+          "json_schema",
+          "required"
+        ],
+        "type": "object"
+      },
       "CreateInput": {
         "additionalProperties": false,
         "properties": {
@@ -6908,7 +7180,7 @@
         ],
         "type": "object"
       },
-      "NativeStorageArtifactView": {
+      "NativeStorageArtifactResponse": {
         "additionalProperties": false,
         "properties": {
           "arch": {
@@ -6919,6 +7191,12 @@
           },
           "catalog": {
             "type": "boolean"
+          },
+          "config_schema": {
+            "items": {
+              "$ref": "#/components/schemas/ConfigSchemaView"
+            },
+            "type": "array"
           },
           "os": {
             "type": "string"
@@ -6931,6 +7209,7 @@
           }
         },
         "required": [
+          "config_schema",
           "artifact_key",
           "plugin_id",
           "version",
@@ -14146,6 +14425,223 @@
         ]
       }
     },
+    "/api/bloem/v1/admin/organization/native-storage/catalog/installations/discover": {
+      "post": {
+        "description": "Experimental native EPUB/PDF storage sources. A library uses a source as its storage location through the ordinary library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Native-storage mutations are outside shared lifecycle idempotency; reconcile unknown outcomes instead of automatically replaying.",
+        "operationId": "catalogDiscoverInstallBloemOrganizationNativeStorage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemNativeStorageDiscoverInstallBody"
+              }
+            }
+          },
+          "description": "Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageSource"
+                }
+              }
+            },
+            "description": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. Platform administrators only; the organization scope returns not_found.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request: malformed or unsupported body/query/fields.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_revision. Other fixed codes include source_attached, configuration_namespace_unverified and retained_namespace_unverified.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON, binary or total multipart limit exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable: dependencies or state cannot establish readiness. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. Platform administrators only; the organization scope returns not_found.",
+        "tags": [
+          "native-storage"
+        ]
+      }
+    },
     "/api/bloem/v1/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade": {
       "post": {
         "description": "Experimental native EPUB/PDF storage sources. A library uses a source as its storage location through the ordinary library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Native-storage mutations are outside shared lifecycle idempotency; reconcile unknown outcomes instead of automatically replaying.",
@@ -16305,6 +16801,213 @@
           }
         ],
         "summary": "Replace complete configuration only while the source namespace is empty.",
+        "tags": [
+          "native-storage"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/organization/native-storage/sources/{source_key}/credentials": {
+      "post": {
+        "description": "Experimental native EPUB/PDF storage sources. A library uses a source as its storage location through the ordinary library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Native-storage mutations are outside shared lifecycle idempotency; reconcile unknown outcomes instead of automatically replaying.",
+        "operationId": "rotateCredentialsBloemOrganizationNativeStorage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemNativeStorageCredentialsBody"
+              }
+            }
+          },
+          "description": "Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageConfiguration"
+                }
+              }
+            },
+            "description": "Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request: malformed or unsupported body/query/fields.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_revision. Other fixed codes include source_attached, configuration_namespace_unverified and retained_namespace_unverified.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON, binary or total multipart limit exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable: dependencies or state cannot establish readiness. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned.",
         "tags": [
           "native-storage"
         ]
@@ -21247,6 +21950,223 @@
         ]
       }
     },
+    "/api/bloem/v1/admin/platform/native-storage/catalog/installations/discover": {
+      "post": {
+        "description": "Experimental native EPUB/PDF storage sources. A library uses a source as its storage location through the ordinary library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Native-storage mutations are outside shared lifecycle idempotency; reconcile unknown outcomes instead of automatically replaying.",
+        "operationId": "catalogDiscoverInstallBloemPlatformNativeStorage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemNativeStorageDiscoverInstallBody"
+              }
+            }
+          },
+          "description": "Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageSource"
+                }
+              }
+            },
+            "description": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. Platform administrators only; the organization scope returns not_found.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request: malformed or unsupported body/query/fields.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_revision. Other fixed codes include source_attached, configuration_namespace_unverified and retained_namespace_unverified.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON, binary or total multipart limit exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable: dependencies or state cannot establish readiness. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. Platform administrators only; the organization scope returns not_found.",
+        "tags": [
+          "native-storage"
+        ]
+      }
+    },
     "/api/bloem/v1/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade": {
       "post": {
         "description": "Experimental native EPUB/PDF storage sources. A library uses a source as its storage location through the ordinary library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Native-storage mutations are outside shared lifecycle idempotency; reconcile unknown outcomes instead of automatically replaying.",
@@ -23406,6 +24326,213 @@
           }
         ],
         "summary": "Replace complete configuration only while the source namespace is empty.",
+        "tags": [
+          "native-storage"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/native-storage/sources/{source_key}/credentials": {
+      "post": {
+        "description": "Experimental native EPUB/PDF storage sources. A library uses a source as its storage location through the ordinary library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Native-storage mutations are outside shared lifecycle idempotency; reconcile unknown outcomes instead of automatically replaying.",
+        "operationId": "rotateCredentialsBloemPlatformNativeStorage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemNativeStorageCredentialsBody"
+              }
+            }
+          },
+          "description": "Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageConfiguration"
+                }
+              }
+            },
+            "description": "Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request: malformed or unsupported body/query/fields.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_revision. Other fixed codes include source_attached, configuration_namespace_unverified and retained_namespace_unverified.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: JSON, binary or total multipart limit exceeded.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable: dependencies or state cannot establish readiness. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned.",
         "tags": [
           "native-storage"
         ]

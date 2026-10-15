@@ -13,6 +13,10 @@ type nativeStorageArtifactResponse struct {
 	ConfigSchema []PluginConfigSchemaView `json:"config_schema"`
 }
 
+// NativeStorageArtifactResponse is the exported name of the artifact wire shape
+// so the OpenAPI document declares the real response type.
+type NativeStorageArtifactResponse = nativeStorageArtifactResponse
+
 type nativeStorageArtifactsResponse struct {
 	Artifacts []nativeStorageArtifactResponse `json:"artifacts"`
 }

@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
-	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 )
@@ -38,7 +38,9 @@ type BloemNativeStorageCapabilities struct {
 	Disable                     bool `json:"disable"`
 	Uninstall                   bool `json:"uninstall"`
 	Upgrade                     bool `json:"upgrade"`
+	CredentialRotationInUse     bool `json:"credential_rotation_in_use" doc:"Credential rotation is composed and works on a source that backs a library. It overlays only access key, secret key and session token and needs an enabled source and its current revision."`
 	S3InitialRootDiscovery      bool `json:"s3_initial_root_discovery"`
+	S3CatalogDiscovery          bool `json:"s3_catalog_discovery" doc:"Platform administrators can add an S3 source from a catalog release whose digest the host has pre-approved, discovering its root without a manual upload."`
 	S3CheckedETagReads          bool `json:"s3_checked_etag_reads" doc:"Explicit checked-etag admission is supported for approved S3 source configuration. This does not enable a source or prove immutable bytes."`
 	NativeMovieLibraries        bool `json:"native_movie_libraries" doc:"Movie attachment and scanning are composed with native video playback; individual sources still require admission under their retained read policy."`
 	NativeVideoPlayback         bool `json:"native_video_playback" doc:"Native API video playback is composed; this does not certify a backend or client runtime."`
@@ -51,7 +53,7 @@ type BloemNativeStorageCapabilities struct {
 }
 
 type BloemNativeStorageArtifacts struct {
-	Artifacts []plugins.NativeStorageArtifactView `json:"artifacts" nullable:"false"`
+	Artifacts []handlers.NativeStorageArtifactResponse `json:"artifacts" nullable:"false"`
 }
 
 type BloemNativeStorageSource struct {
@@ -78,6 +80,13 @@ type BloemNativeStorageDiscoverInstallBody struct {
 	ProviderSourceID string                    `json:"provider_source_id" minLength:"1" doc:"Exact opaque provider source to select from a fresh Describe, at most 1024 UTF-8 bytes. Its root is discovered, never supplied by the caller."`
 	Enabled          bool                      `json:"enabled" doc:"Committed enabled state. Even false requires a configured temporary discovery process."`
 	Config           map[string]map[string]any `json:"config" writeOnly:"true" doc:"Complete configuration for discovery. Caller state_path is forbidden. Encrypted at rest, never returned."`
+}
+
+type BloemNativeStorageCredentialsBody struct {
+	ExpectedRevision int64  `json:"expected_revision" minimum:"1" doc:"Current source configuration revision. The source must be enabled."`
+	AccessKey        string `json:"access_key" minLength:"1" writeOnly:"true" doc:"Replacement S3 access key id. No control characters. Encrypted at rest, never returned."`
+	SecretKey        string `json:"secret_key" minLength:"1" writeOnly:"true" doc:"Replacement S3 secret access key. No control characters. Encrypted at rest, never returned."`
+	SessionToken     string `json:"session_token,omitempty" writeOnly:"true" doc:"Optional replacement session token; omitted or empty clears any stored token. Encrypted at rest, never returned."`
 }
 
 type BloemNativeStoragePlatformDiscoverInstallBody struct {
@@ -190,7 +199,7 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 			413: "request_too_large: JSON, binary or total multipart limit exceeded.",
 		})
 	}
-	if path == "/installations" || path == "/installations/discover" || strings.HasSuffix(path, "/upgrade") {
+	if path == "/installations" || path == "/installations/discover" || path == "/catalog/installations/discover" || strings.HasSuffix(path, "/upgrade") {
 		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{422: "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact."})
 	}
 	op.Responses[strconv.Itoa(status)] = &huma.Response{Description: summary}
@@ -221,8 +230,10 @@ func registerBloemNativeStorageDocument(reg *Registry) {
 			catalogInstall = bloemNativeStorageJSONBody[BloemNativeStoragePlatformInstallBody](reg)
 		}
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations", "catalogInstall", "Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload.", 201, catalogInstall, false)
+		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations/discover", "catalogDiscoverInstall", "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. Platform administrators only; the organization scope returns not_found.", 201, bloemNativeStorageJSONBody[BloemNativeStorageDiscoverInstallBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations/{installation_id}/upgrade", "catalogUpgrade", "Download and verify a catalog upgrade, retaining configuration and library.", 200, bloemNativeStorageJSONBody[BloemNativeStorageUpgradeBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageConfiguration](reg, scope, "PUT", "/sources/{source_key}/configuration", "replaceConfiguration", "Replace complete configuration only while the source namespace is empty.", 200, bloemNativeStorageJSONBody[BloemNativeStorageConfigurationBody](reg), false)
+		bloemNativeStorageDocument[BloemNativeStorageConfiguration](reg, scope, "POST", "/sources/{source_key}/credentials", "rotateCredentials", "Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned.", 200, bloemNativeStorageJSONBody[BloemNativeStorageCredentialsBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/installations/{installation_id}/upgrade", "upgrade", "Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept.", 200, bloemNativeStorageMultipart[BloemNativeStorageUpgradeBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageRemoval](reg, scope, "POST", "/installations/{installation_id}/disable", "disable", "Disable and detach the source; its library, catalog and reading progress are retained.", 200, bloemNativeStorageJSONBody[BloemNativeStorageRemoveBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageRemoval](reg, scope, "DELETE", "/installations/{installation_id}", "uninstall", "Uninstall and detach the source; its library, catalog and reading progress are retained.", 200, bloemNativeStorageJSONBody[BloemNativeStorageRemoveBody](reg), false)

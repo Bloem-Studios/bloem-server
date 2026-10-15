@@ -2054,6 +2054,10 @@
       "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
     },
     {
+      "type": "internal/apiv2.BloemNativeStorageCredentialsBody",
+      "reason": "OpenAPI-only native-storage documentation shape for credential rotation; the request is write-only and strictly decoded by the handler, and the response reuses the documented configuration response."
+    },
+    {
       "type": "internal/apiv2.BloemNativeStorageConfiguration",
       "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
     },

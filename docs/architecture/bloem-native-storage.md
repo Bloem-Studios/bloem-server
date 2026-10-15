@@ -468,6 +468,9 @@ replacement rule; it is not an in-place toggle for attached libraries.
 ## Operations
 
 - Bookwarehouse catalog artifacts are verified automatically and cached privately under the native installation root. The cache retains verified releases across restarts; runtime still checks installed archive integrity.
+- Catalog installs of S3 sources (`POST .../catalog/installations/discover`) are platform-only. The host downloads the release itself and admits it only when its SHA-256 digest matches a pre-approved pin; unpinned S3 releases are never listed or installed. Root discovery then runs as for manual installs.
+- Credential rotation (`POST .../sources/{source_key}/credentials`) overlays only the access key, secret key and session token onto the stored configuration. It works on a source that backs a library, requires an enabled source and its current `expected_revision`, and never returns credentials.
+- Source documents carry `connection_summary`, a non-secret allowlisted projection (never null) for display. `GET /artifacts` adds `catalog` and `config_schema` so a client can render an install form. Capabilities report `s3_catalog_discovery` and `credential_rotation_in_use`.
 - `BLOEM_NATIVE_STORAGE_APPROVALS` remains optional for manually supplied additional artifacts, outside the normal catalog flow.
 - Migration `20261007181737_library_storage_locations` replaced the native
   onboarding schema and resets an unpublished native catalog; it refuses to run
