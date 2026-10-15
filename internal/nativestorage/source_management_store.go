@@ -50,7 +50,20 @@ func nativeSourceRevision(actual, expected int64) error {
 func sourceView(source storagesource.SourceConfig, owner resourcetenancy.Owner, state string, configured bool) SourceView {
 	return SourceView{SourceKey: source.Key, OwnerKind: owner.Kind, OrganizationID: owner.OrganizationID, InstallationID: source.InstallationID,
 		PluginID: source.PluginID, ProviderSourceID: source.ProviderSourceID, RootEntryID: source.RootEntryID, ConfigurationRevision: source.ConfigurationRevision,
-		Enabled: source.Enabled, State: state, Configured: configured}
+		Enabled: source.Enabled, State: state, Configured: configured, ConnectionSummary: map[string]string{}}
+}
+
+// withConnectionSummary fills the allowlisted, non-secret connection summary of
+// an attached source. The stored config is decrypted host-side only; a failed
+// read leaves the empty summary rather than failing the whole view.
+func (s *SourceManagement) withConnectionSummary(ctx context.Context, view SourceView) SourceView {
+	if view.InstallationID == nil || s.registry == nil {
+		return view
+	}
+	if cfg, err := s.registry.ConnectionConfig(ctx, int(*view.InstallationID)); err == nil {
+		view.ConnectionSummary = ConnectionSummary(view.PluginID, cfg)
+	}
+	return view
 }
 func (s *SourceManagement) GetSource(ctx context.Context, actor auth.AdminContextClaims, key uuid.UUID) (SourceView, error) {
 	if key == uuid.Nil {
@@ -100,7 +113,7 @@ func (s *SourceManagement) sourceViewTx(ctx context.Context, tx pgx.Tx, actor au
 			state = "disabled"
 		}
 	}
-	return sourceView(source, owner, state, configured), nil
+	return s.withConnectionSummary(ctx, sourceView(source, owner, state, configured)), nil
 }
 
 // This predicate is applied in SQL before the keyset LIMIT. Resource locks and

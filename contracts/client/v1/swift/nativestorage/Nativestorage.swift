@@ -568,6 +568,7 @@ public enum Nativestorage {
         public let enabled: Bool
         public let state: String
         public let configured: Bool
+        public let connectionSummary: [String: String]
 
         public enum CodingKeys: String, CodingKey {
             case sourceKey = "source_key"
@@ -581,6 +582,7 @@ public enum Nativestorage {
             case enabled = "enabled"
             case state = "state"
             case configured = "configured"
+            case connectionSummary = "connection_summary"
         }
 
         public init(
@@ -594,7 +596,8 @@ public enum Nativestorage {
             configurationRevision: Int64 = 0,
             enabled: Bool = false,
             state: String = "",
-            configured: Bool = false
+            configured: Bool = false,
+            connectionSummary: [String: String] = [:]
         ) {
             self.sourceKey = sourceKey
             self.ownerKind = ownerKind
@@ -607,6 +610,7 @@ public enum Nativestorage {
             self.enabled = enabled
             self.state = state
             self.configured = configured
+            self.connectionSummary = connectionSummary
         }
 
         public init(from decoder: any Decoder) throws {
@@ -622,6 +626,7 @@ public enum Nativestorage {
             self.enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
             self.state = try container.decodeIfPresent(String.self, forKey: .state) ?? ""
             self.configured = try container.decodeIfPresent(Bool.self, forKey: .configured) ?? false
+            self.connectionSummary = try container.decodeIfPresent([String: String].self, forKey: .connectionSummary) ?? [:]
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -637,6 +642,7 @@ public enum Nativestorage {
             try container.encode(self.enabled, forKey: .enabled)
             try container.encode(self.state, forKey: .state)
             try container.encode(self.configured, forKey: .configured)
+            try container.encode(self.connectionSummary, forKey: .connectionSummary)
         }
     }
 

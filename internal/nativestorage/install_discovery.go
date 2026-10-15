@@ -184,5 +184,5 @@ func (s *SourceManagement) DiscoverInstall(ctx context.Context, actor auth.Admin
 	if !published.Source.Enabled || !published.Installation.Enabled {
 		state = "disabled"
 	}
-	return sourceView(published.Source, owner, state, true), nil
+	return s.withConnectionSummary(ctx, sourceView(published.Source, owner, state, true)), nil
 }

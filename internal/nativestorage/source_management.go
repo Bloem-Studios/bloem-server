@@ -30,6 +30,9 @@ type SourceView struct {
 	Enabled               bool                      `json:"enabled"`
 	State                 string                    `json:"state"`
 	Configured            bool                      `json:"configured"`
+	// ConnectionSummary is a per-plugin allowlist of display-safe connection
+	// fields. It never carries credentials and is never nil.
+	ConnectionSummary map[string]string `json:"connection_summary"`
 }
 type SourcePage struct {
 	Sources   []SourceView `json:"sources"`
@@ -184,7 +187,7 @@ func (s *SourceManagement) Install(ctx context.Context, actor auth.AdminContextC
 	if !snapshot.Source.Enabled || !snapshot.Installation.Enabled {
 		state = "disabled"
 	}
-	return sourceView(snapshot.Source, owner, state, len(cmd.Config) > 0), nil
+	return s.withConnectionSummary(ctx, sourceView(snapshot.Source, owner, state, len(cmd.Config) > 0)), nil
 }
 func (s *SourceManagement) ReplaceConfiguration(ctx context.Context, actor auth.AdminContextClaims, key uuid.UUID, expected int64, config map[string]map[string]any) (int64, error) {
 	if key == uuid.Nil || expected <= 0 {

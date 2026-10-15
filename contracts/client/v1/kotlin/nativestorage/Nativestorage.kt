@@ -203,6 +203,8 @@ public data class SourceView(
     public val state: String = "",
     @SerialName("configured")
     public val configured: Boolean = false,
+    @SerialName("connection_summary")
+    public val connectionSummary: Map<String, String> = emptyMap(),
 )
 
 /** Wire type `internal/nativestorage.UpgradeCommand`. Direction: request. Dialect: bloem. Gate: native_storage.source_management. Registered root. */

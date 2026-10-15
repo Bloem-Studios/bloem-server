@@ -161,7 +161,7 @@ func anySlice(value any) []any { result, _ := value.([]any); return result }
 func TestBloemNativeStorageDocumentNullableResponses(t *testing.T) {
 	doc := bloemWebDocument(t)
 	key := uuid.MustParse("19b3c8a5-44e4-4334-8133-a2f8b8ee0f90")
-	source := nativestorage.SourceView{SourceKey: key, OwnerKind: "platform", PluginID: "storage", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, State: "detached"}
+	source := nativestorage.SourceView{SourceKey: key, OwnerKind: "platform", PluginID: "storage", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, State: "detached", ConnectionSummary: map[string]string{}}
 	for _, tc := range []struct {
 		path string
 		body any

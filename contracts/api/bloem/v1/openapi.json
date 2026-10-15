@@ -8459,6 +8459,12 @@
           "configured": {
             "type": "boolean"
           },
+          "connection_summary": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "enabled": {
             "type": "boolean"
           },
@@ -8505,7 +8511,8 @@
           "configuration_revision",
           "enabled",
           "state",
-          "configured"
+          "configured",
+          "connection_summary"
         ],
         "type": "object"
       },
