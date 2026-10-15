@@ -6917,6 +6917,9 @@
           "artifact_key": {
             "type": "string"
           },
+          "catalog": {
+            "type": "boolean"
+          },
           "os": {
             "type": "string"
           },
@@ -6932,7 +6935,8 @@
           "plugin_id",
           "version",
           "os",
-          "arch"
+          "arch",
+          "catalog"
         ],
         "type": "object"
       },

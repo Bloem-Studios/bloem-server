@@ -16,6 +16,7 @@ public enum Plugins {
         public let version: String
         public let os: String
         public let arch: String
+        public let catalog: Bool
 
         public enum CodingKeys: String, CodingKey {
             case artifactKey = "artifact_key"
@@ -23,6 +24,7 @@ public enum Plugins {
             case version = "version"
             case os = "os"
             case arch = "arch"
+            case catalog = "catalog"
         }
 
         public init(
@@ -30,13 +32,15 @@ public enum Plugins {
             pluginId: String = "",
             version: String = "",
             os: String = "",
-            arch: String = ""
+            arch: String = "",
+            catalog: Bool = false
         ) {
             self.artifactKey = artifactKey
             self.pluginId = pluginId
             self.version = version
             self.os = os
             self.arch = arch
+            self.catalog = catalog
         }
 
         public init(from decoder: any Decoder) throws {
@@ -46,6 +50,7 @@ public enum Plugins {
             self.version = try container.decodeIfPresent(String.self, forKey: .version) ?? ""
             self.os = try container.decodeIfPresent(String.self, forKey: .os) ?? ""
             self.arch = try container.decodeIfPresent(String.self, forKey: .arch) ?? ""
+            self.catalog = try container.decodeIfPresent(Bool.self, forKey: .catalog) ?? false
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -55,6 +60,7 @@ public enum Plugins {
             try container.encode(self.version, forKey: .version)
             try container.encode(self.os, forKey: .os)
             try container.encode(self.arch, forKey: .arch)
+            try container.encode(self.catalog, forKey: .catalog)
         }
     }
 }

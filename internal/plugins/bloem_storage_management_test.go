@@ -84,15 +84,15 @@ func TestNativeOnboardingSourceApprovalProjection(t *testing.T) {
 	if err = json.Unmarshal(encoded, &fields); err != nil {
 		t.Fatal(err)
 	}
-	if len(fields) != 5 {
+	if len(fields) != 6 {
 		t.Fatal("approval projection exposed extra artifact data")
 	}
-	for _, field := range []string{"artifact_key", "plugin_id", "version", "os", "arch"} {
+	for _, field := range []string{"artifact_key", "plugin_id", "version", "os", "arch", "catalog"} {
 		if fields[field] == nil {
 			t.Fatal("approval projection omitted declared field")
 		}
 	}
-	// ArtifactKey/PluginID/Version/OS/Arch is exactly five sanitized fields.
+	// ArtifactKey/PluginID/Version/OS/Arch/Catalog is exactly six sanitized fields.
 	views[0].PluginID = "caller-mutated"
 	if registry.ApprovedArtifacts()[0].PluginID == "caller-mutated" {
 		t.Fatal("approval projection aliases caller data")

@@ -23,4 +23,6 @@ public data class NativeStorageArtifactView(
     public val os: String = "",
     @SerialName("arch")
     public val arch: String = "",
+    @SerialName("catalog")
+    public val catalog: Boolean = false,
 )

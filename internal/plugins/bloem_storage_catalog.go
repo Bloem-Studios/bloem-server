@@ -20,7 +20,27 @@ import (
 )
 
 const nativeCatalogURL = "https://raw.githubusercontent.com/Bloem-Studios/bloem-plugins/main/plugins.json"
-const nativeCatalogPlugin = "bloem.storage.bookwarehouse"
+
+type nativeCatalogSpec struct {
+	PluginID      string
+	KeyPrefix     string
+	ReleaseTag    string // release tag prefix; the tag is ReleaseTag + version
+	RequirePinned bool   // admit only digests already in the host's static approvals
+}
+
+var nativeCatalogSpecs = []nativeCatalogSpec{
+	{PluginID: "bloem.storage.bookwarehouse", KeyPrefix: "bookwarehouse", ReleaseTag: "bookwarehouse-v"},
+	{PluginID: "bloem.storage.s3", KeyPrefix: "s3", ReleaseTag: "s3-v", RequirePinned: true},
+}
+
+func nativeCatalogSpecFor(pluginID string) (nativeCatalogSpec, bool) {
+	for _, s := range nativeCatalogSpecs {
+		if s.PluginID == pluginID {
+			return s, true
+		}
+	}
+	return nativeCatalogSpec{}, false
+}
 
 type storageCatalogRecord struct {
 	Manifest json.RawMessage `json:"manifest"`
@@ -38,12 +58,12 @@ type storageCatalogRelease struct {
 	} `json:"binaries"`
 }
 
-func storageCatalogURL(raw, version, file string) bool {
+func storageCatalogURL(spec nativeCatalogSpec, raw, version, file string) bool {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" || u.Host != "github.com" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
 		return false
 	}
-	return u.Path == "/Bloem-Studios/bloem-plugins/releases/download/bookwarehouse-v"+version+"/"+file && version != "" && !strings.ContainsAny(version, "/\\?#")
+	return u.Path == "/Bloem-Studios/bloem-plugins/releases/download/"+spec.ReleaseTag+version+"/"+file && version != "" && !strings.ContainsAny(version, "/\\?#")
 }
 func (r *NativeStorageRegistry) catalogFile() string {
 	return filepath.Join(r.baseDir, "native-catalog.json")
@@ -70,7 +90,17 @@ func (r *NativeStorageRegistry) loadCatalog() error {
 	}
 	for key, record := range records {
 		m := new(publicv1.PluginManifest)
-		if protojson.Unmarshal(record.Manifest, m) != nil || m.GetPluginId() != nativeCatalogPlugin || key != catalogArtifactKey(m.GetVersion(), record.Checksum) || !storageCatalogURL(record.URL, m.GetVersion(), "plugin-"+record.OS+"-"+record.Arch) {
+		if protojson.Unmarshal(record.Manifest, m) != nil {
+			return errors.New("invalid native catalog release")
+		}
+		spec, ok := nativeCatalogSpecFor(m.GetPluginId())
+		if !ok {
+			return errors.New("invalid native catalog release")
+		}
+		if spec.RequirePinned && !r.pinned[record.Checksum] {
+			continue
+		}
+		if key != catalogArtifactKey(spec, m.GetVersion(), record.Checksum) || !storageCatalogURL(spec, record.URL, m.GetVersion(), "plugin-"+record.OS+"-"+record.Arch) {
 			return errors.New("invalid native catalog release")
 		}
 		a := NativeStorageArtifact{Manifest: m, Checksum: record.Checksum, OS: record.OS, Arch: record.Arch}
@@ -82,8 +112,8 @@ func (r *NativeStorageRegistry) loadCatalog() error {
 	r.catalogRecords = records
 	return nil
 }
-func catalogArtifactKey(version, checksum string) string {
-	return "bookwarehouse-" + version + "-" + runtime.GOOS + "-" + runtime.GOARCH + "-" + checksum
+func catalogArtifactKey(spec nativeCatalogSpec, version, checksum string) string {
+	return spec.KeyPrefix + "-" + version + "-" + runtime.GOOS + "-" + runtime.GOARCH + "-" + checksum
 }
 func (r *NativeStorageRegistry) artifact(key string) (NativeStorageArtifact, bool) {
 	r.catalogMu.RLock()
@@ -163,20 +193,24 @@ func (r *NativeStorageRegistry) RefreshCatalog(ctx context.Context) error {
 	r.catalogMu.RUnlock()
 	artifacts := make(map[string]NativeStorageArtifact)
 	for _, release := range feed.Plugins {
-		if release.ID != nativeCatalogPlugin {
-			continue
-		}
-		binary, ok := release.Binaries[runtime.GOOS+"/"+runtime.GOARCH]
+		spec, ok := nativeCatalogSpecFor(release.ID)
 		if !ok {
 			continue
 		}
-		if !storageCatalogURL(binary.URL, release.Version, "plugin-"+runtime.GOOS+"-"+runtime.GOARCH) {
+		binary, found := release.Binaries[runtime.GOOS+"/"+runtime.GOARCH]
+		if !found {
+			continue
+		}
+		if !storageCatalogURL(spec, binary.URL, release.Version, "plugin-"+runtime.GOOS+"-"+runtime.GOARCH) {
 			return errors.New("invalid native catalog URL")
 		}
 		if b, e := hex.DecodeString(binary.Checksum); e != nil || len(b) != sha256.Size || strings.ToLower(binary.Checksum) != binary.Checksum {
 			return errors.New("invalid native catalog checksum")
 		}
-		manifestURL := "https://github.com/Bloem-Studios/bloem-plugins/releases/download/bookwarehouse-v" + release.Version + "/manifest.json"
+		if spec.RequirePinned && !r.pinned[binary.Checksum] {
+			continue
+		}
+		manifestURL := "https://github.com/Bloem-Studios/bloem-plugins/releases/download/" + spec.ReleaseTag + release.Version + "/manifest.json"
 		b, e := r.catalogRead(ctx, manifestURL, 1<<20)
 		if e != nil {
 			return e
@@ -190,7 +224,7 @@ func (r *NativeStorageRegistry) RefreshCatalog(ctx context.Context) error {
 		if err := validateNativeStorageArtifact(a); err != nil {
 			return err
 		}
-		key := catalogArtifactKey(release.Version, binary.Checksum)
+		key := catalogArtifactKey(spec, release.Version, binary.Checksum)
 		raw, _ := protojson.Marshal(m)
 		records[key] = storageCatalogRecord{Manifest: raw, Checksum: binary.Checksum, OS: runtime.GOOS, Arch: runtime.GOARCH, URL: binary.URL}
 		artifacts[key] = a
