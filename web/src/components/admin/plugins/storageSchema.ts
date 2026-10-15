@@ -1,4 +1,5 @@
 import type { PluginConfigSchema } from "@/api/types";
+import { randomUUID } from "@/lib/uuid";
 
 /**
  * Removes fields from a config schema, in both the JSON schema and the admin
@@ -64,5 +65,5 @@ export function validateS3Connection(value: Record<string, unknown>): Record<str
 
 /** A new provider source id matching the plugin's `<kind>_<32 hex>` pattern. */
 export function newProviderSourceId(prefix: string): string {
-  return `${prefix}_${crypto.randomUUID().replaceAll("-", "")}`;
+  return `${prefix}_${randomUUID().replaceAll("-", "")}`;
 }

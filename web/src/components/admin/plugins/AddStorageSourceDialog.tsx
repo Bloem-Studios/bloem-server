@@ -17,6 +17,7 @@ import {
   useInstallStorageSource,
   useStorageScope,
 } from "@/hooks/queries/admin/storageSources";
+import { randomUUID } from "@/lib/uuid";
 
 import { newProviderSourceId, pruneConfigSchema, validateS3Connection } from "./storageSchema";
 
@@ -77,7 +78,7 @@ function BookwarehouseRow({ artifact, onDone }: { artifact: StorageArtifact; onD
           install.mutate(
             {
               artifactKey: artifact.artifact_key,
-              providerSourceId: `bookwarehouse_${crypto.randomUUID().replaceAll("-", "")}`,
+              providerSourceId: `bookwarehouse_${randomUUID().replaceAll("-", "")}`,
               rootEntryId: "root",
               config: {},
             },
@@ -94,6 +95,14 @@ function BookwarehouseRow({ artifact, onDone }: { artifact: StorageArtifact; onD
 /** What a new entry may carry: an emptied optional field is simply left out. */
 function withoutEmpty(value: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== "" && v !== null));
+}
+
+/** The typed name, or the bucket (with the prefix, when set) so a source is never shown by its id. */
+function sourceName(value: Record<string, unknown>): string {
+  const text = (k: string) => (typeof value[k] === "string" ? (value[k] as string) : "");
+  return (
+    text("source_name").trim() || `${text("bucket")}${text("prefix") ? `/${text("prefix")}` : ""}`
+  );
 }
 
 function S3AddForm({
@@ -151,7 +160,9 @@ function S3AddForm({
       {
         artifactKey: artifact.artifact_key,
         providerSourceId: id,
-        config: { [key]: { ...withoutEmpty(value), source_id: id } },
+        config: {
+          [key]: { ...withoutEmpty(value), source_name: sourceName(value), source_id: id },
+        },
       },
       {
         onSuccess: () => {

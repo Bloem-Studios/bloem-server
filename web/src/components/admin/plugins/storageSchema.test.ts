@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { pruneConfigSchema, validateS3Connection, newProviderSourceId } from "./storageSchema";
 
 const schema = {
@@ -87,7 +87,17 @@ describe("validateS3Connection", () => {
 });
 
 describe("newProviderSourceId", () => {
+  afterEach(() => vi.unstubAllGlobals());
   it("matches the plugin source id pattern", () => {
     expect(newProviderSourceId("s3")).toMatch(/^s3_[a-f0-9]{32}$/);
+  });
+  it("still works where crypto.randomUUID is unavailable (plain HTTP)", () => {
+    vi.stubGlobal("crypto", { getRandomValues: globalThis.crypto.getRandomValues.bind(crypto) });
+    try {
+      expect(globalThis.crypto.randomUUID).toBeUndefined();
+      expect(newProviderSourceId("s3")).toMatch(/^s3_[a-f0-9]{32}$/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

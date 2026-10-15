@@ -181,6 +181,32 @@ describe("AddStorageSourceDialog", () => {
     expect(screen.getByLabelText("Secret key")).toHaveValue("");
   });
 
+  describe("source name", () => {
+    function saveWith(prefix: string, name?: string) {
+      open();
+      fireEvent.click(screen.getByRole("button", { name: /^S3$/ }));
+      fill("Bucket", "media");
+      if (prefix) fill("Prefix", prefix);
+      if (name !== undefined) fill("Source name", name);
+      fill("Access key", "AK");
+      fill("Secret key", "SK");
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      const input = discover.mock.calls[0]![0] as {
+        config: { connection: Record<string, unknown> };
+      };
+      return input.config.connection.source_name;
+    }
+    it("defaults a blank name to the bucket", () => {
+      expect(saveWith("")).toBe("media");
+    });
+    it("defaults a blank name to bucket/prefix when a prefix is set", () => {
+      expect(saveWith("movies/", "   ")).toBe("media/movies/");
+    });
+    it("uses a typed name, trimmed", () => {
+      expect(saveWith("movies/", " Movies ")).toBe("Movies");
+    });
+  });
+
   it("warns about a duplicate bucket and prefix but still allows saving", () => {
     const existing = {
       ...({} as StorageSource),
