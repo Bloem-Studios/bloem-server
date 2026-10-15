@@ -2890,7 +2890,7 @@
             "type": "boolean"
           },
           "s3_catalog_discovery": {
-            "description": "Platform administrators can add an S3 source from a catalog release whose digest the host has pre-approved, discovering its root without a manual upload.",
+            "description": "Platform administrators can add an S3 source from a catalog release whose digest the host has pre-approved, discovering its root without a manual upload. Always false in organization scope, where the route does not exist.",
             "type": "boolean"
           },
           "s3_checked_etag_reads": {

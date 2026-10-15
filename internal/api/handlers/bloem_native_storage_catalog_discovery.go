@@ -40,6 +40,13 @@ func (h *BloemNativeStorageManagementHandler) HandleCatalogDiscoverInstall(w htt
 	if !ok {
 		return
 	}
+	// The route does not exist for organization administrators. Answer before
+	// the query or body is inspected, so a malformed or oversized body cannot
+	// distinguish this route from an absent one.
+	if actor.Scope != auth.AdminScopePlatform {
+		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "not_found"}, true)
+		return
+	}
 	var cmd nativestorage.DiscoverInstallCommand
 	fields, ok := h.command(w, r, &cmd)
 	if !ok {

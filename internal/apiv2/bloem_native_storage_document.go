@@ -40,7 +40,7 @@ type BloemNativeStorageCapabilities struct {
 	Upgrade                     bool `json:"upgrade"`
 	CredentialRotationInUse     bool `json:"credential_rotation_in_use" doc:"Credential rotation is composed and works on a source that backs a library. It overlays only access key, secret key and session token and needs an enabled source and its current revision."`
 	S3InitialRootDiscovery      bool `json:"s3_initial_root_discovery"`
-	S3CatalogDiscovery          bool `json:"s3_catalog_discovery" doc:"Platform administrators can add an S3 source from a catalog release whose digest the host has pre-approved, discovering its root without a manual upload."`
+	S3CatalogDiscovery          bool `json:"s3_catalog_discovery" doc:"Platform administrators can add an S3 source from a catalog release whose digest the host has pre-approved, discovering its root without a manual upload. Always false in organization scope, where the route does not exist."`
 	S3CheckedETagReads          bool `json:"s3_checked_etag_reads" doc:"Explicit checked-etag admission is supported for approved S3 source configuration. This does not enable a source or prove immutable bytes."`
 	NativeMovieLibraries        bool `json:"native_movie_libraries" doc:"Movie attachment and scanning are composed with native video playback; individual sources still require admission under their retained read policy."`
 	NativeVideoPlayback         bool `json:"native_video_playback" doc:"Native API video playback is composed; this does not certify a backend or client runtime."`

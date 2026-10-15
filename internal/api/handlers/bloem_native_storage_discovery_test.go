@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
+	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 )
@@ -192,6 +194,38 @@ func TestNativeStorageDiscoveryHandlerStrictRequestBeforeService(t *testing.T) {
 			w := httptest.NewRecorder()
 			h.HandleDiscoverInstall(w, r)
 			assertNativeError(t, w, tc.status, tc.code)
+		})
+	}
+}
+
+type catalogDiscoveryCapabilityFixture struct{}
+
+func (catalogDiscoveryCapabilityFixture) NativeStorageReady(context.Context) bool        { return true }
+func (catalogDiscoveryCapabilityFixture) InitialRootDiscoveryReady(context.Context) bool { return true }
+
+// The catalog discovery route is platform-only, so the capability must not be
+// advertised in organization scope even when everything else is composed.
+func TestNativeStorageCatalogDiscoveryCapabilityIsPlatformScoped(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		scope    auth.AdminScope
+		registry *plugins.NativeStorageRegistry
+		want     bool
+	}{
+		{"platform_composed", auth.AdminScopePlatform, &plugins.NativeStorageRegistry{}, true},
+		{"platform_without_registry", auth.AdminScopePlatform, nil, false},
+		{"organization_composed", auth.AdminScopeOrganization, &plugins.NativeStorageRegistry{}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := &BloemNativeStorageManagementHandler{Capabilities: catalogDiscoveryCapabilityFixture{}, Registry: tc.registry}
+			h = h.ForAdminScope(tc.scope)
+			body := h.nativeStorageCapabilities(t.Context())
+			if body["s3_catalog_discovery"] != tc.want {
+				t.Fatalf("s3_catalog_discovery = %v, want %v", body["s3_catalog_discovery"], tc.want)
+			}
+			if body["s3_initial_root_discovery"] != true || body["credential_rotation_in_use"] != true {
+				t.Fatalf("scope changed unrelated capabilities: %+v", body)
+			}
 		})
 	}
 }
