@@ -5,17 +5,14 @@ import (
 	"net/http"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 )
 
 // nativeStorageCatalogDiscoverRequest validates the JSON body of a catalog
-// discovery. Only platform administrators may add an S3 source this way, and
-// the body never selects an owner, root, source key or revision.
+// discovery. Platform and organization administrators may add an S3 source
+// this way. The body never selects an owner, root, source key or revision:
+// the owner is the actor's (the platform, or the actor's own organization).
 func nativeStorageCatalogDiscoverRequest(cmd *nativestorage.DiscoverInstallCommand, fields map[string]json.RawMessage, scope auth.AdminScope) error {
-	if scope != auth.AdminScopePlatform {
-		return &catalog.NativeOnboardingError{Code: "not_found"}
-	}
 	for field := range fields {
 		switch field {
 		case "artifact_key", "provider_source_id", "enabled", "config":
@@ -35,16 +32,11 @@ func nativeStorageCatalogDiscoverRequest(cmd *nativestorage.DiscoverInstallComma
 
 // HandleCatalogDiscoverInstall installs a catalog artifact the host downloads
 // itself and discovers the new source's opaque root, as the manual discover does.
+// Organization administrators create a source owned by their organization;
+// SourceManagement.DiscoverInstall re-establishes that authority.
 func (h *BloemNativeStorageManagementHandler) HandleCatalogDiscoverInstall(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.actor(w, r)
 	if !ok {
-		return
-	}
-	// The route does not exist for organization administrators. Answer before
-	// the query or body is inspected, so a malformed or oversized body cannot
-	// distinguish this route from an absent one.
-	if actor.Scope != auth.AdminScopePlatform {
-		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "not_found"}, true)
 		return
 	}
 	var cmd nativestorage.DiscoverInstallCommand
@@ -52,7 +44,11 @@ func (h *BloemNativeStorageManagementHandler) HandleCatalogDiscoverInstall(w htt
 	if !ok {
 		return
 	}
-	if err := nativeStorageCatalogDiscoverRequest(&cmd, fields, actor.Scope); err != nil {
+	err := nativeStorageCatalogDiscoverRequest(&cmd, fields, actor.Scope)
+	if err == nil {
+		err = nativeStorageOrganizationConnectionGuard(r.Context(), actor.Scope, cmd.Config)
+	}
+	if err != nil {
 		writeNativeStorageError(w, err, true)
 		return
 	}

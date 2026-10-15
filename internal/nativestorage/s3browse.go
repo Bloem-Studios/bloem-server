@@ -310,6 +310,23 @@ func s3BrowseOrganizationPort(port int) bool {
 	return false
 }
 
+// CheckS3SourceEndpoint applies the browse endpoint guard (shape, optional
+// port restriction, every resolved address) to the endpoint of an S3 source
+// configuration before a plugin process is started with it. An empty endpoint
+// selects the AWS default and is allowed. This is a pre-check only: the plugin
+// process resolves and dials by itself, so its connection cannot be pinned.
+func CheckS3SourceEndpoint(ctx context.Context, raw string, restrictPorts bool) error {
+	if raw == "" {
+		return nil
+	}
+	endpoint, err := ParseS3BrowseEndpoint(raw, restrictPorts)
+	if err != nil {
+		return err
+	}
+	_, err = (&S3Browser{resolver: net.DefaultResolver}).resolveS3BrowseTarget(ctx, endpoint)
+	return err
+}
+
 // s3BrowseTarget is an endpoint whose addresses were all checked.
 type s3BrowseTarget struct {
 	S3BrowseEndpoint

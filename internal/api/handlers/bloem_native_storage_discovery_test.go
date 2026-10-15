@@ -203,9 +203,9 @@ type catalogDiscoveryCapabilityFixture struct{}
 func (catalogDiscoveryCapabilityFixture) NativeStorageReady(context.Context) bool        { return true }
 func (catalogDiscoveryCapabilityFixture) InitialRootDiscoveryReady(context.Context) bool { return true }
 
-// The catalog discovery route is platform-only, so the capability must not be
-// advertised in organization scope even when everything else is composed.
-func TestNativeStorageCatalogDiscoveryCapabilityIsPlatformScoped(t *testing.T) {
+// Catalog discovery is served in both scopes, so the capability follows
+// composition alone.
+func TestNativeStorageCatalogDiscoveryCapabilityFollowsComposition(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		scope    auth.AdminScope
@@ -214,7 +214,8 @@ func TestNativeStorageCatalogDiscoveryCapabilityIsPlatformScoped(t *testing.T) {
 	}{
 		{"platform_composed", auth.AdminScopePlatform, &plugins.NativeStorageRegistry{}, true},
 		{"platform_without_registry", auth.AdminScopePlatform, nil, false},
-		{"organization_composed", auth.AdminScopeOrganization, &plugins.NativeStorageRegistry{}, false},
+		{"organization_composed", auth.AdminScopeOrganization, &plugins.NativeStorageRegistry{}, true},
+		{"organization_without_registry", auth.AdminScopeOrganization, nil, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := &BloemNativeStorageManagementHandler{Capabilities: catalogDiscoveryCapabilityFixture{}, Registry: tc.registry}

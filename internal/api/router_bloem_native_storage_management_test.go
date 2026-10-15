@@ -22,6 +22,7 @@ func TestNativeOnboardingHTTPProtectedRouteRefusal(t *testing.T) {
 		{"GET", "/capabilities"}, {"GET", "/artifacts"}, {"GET", "/sources"}, {"GET", "/sources/" + key},
 		{"POST", "/installations"}, {"POST", "/installations/discover"}, {"PUT", "/sources/" + key + "/configuration"}, {"POST", "/installations/7/disable"},
 		{"DELETE", "/installations/7"}, {"POST", "/catalog/installations/discover"}, {"POST", "/sources/" + key + "/credentials"},
+		{"POST", "/s3/buckets"}, {"POST", "/s3/folders"},
 	}
 	for _, scope := range []string{"platform", "organization"} {
 		for _, tt := range cases {

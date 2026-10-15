@@ -57,6 +57,9 @@ func (h *BloemNativeStorageManagementHandler) HandleDiscoverInstall(w http.Respo
 	if err == nil {
 		err = nativeStorageDiscoverInstallRequest(&cmd, fields, actor.Scope)
 	}
+	if err == nil {
+		err = nativeStorageOrganizationConnectionGuard(r.Context(), actor.Scope, cmd.Config)
+	}
 	if err != nil {
 		writeNativeStorageError(w, err, true)
 		return

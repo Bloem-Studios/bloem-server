@@ -65,6 +65,10 @@ func (h *BloemNativeStorageManagementHandler) HandleCatalogInstall(w http.Respon
 		writeNativeStorageError(w, err, true)
 		return
 	}
+	if err := nativeStorageOrganizationConnectionGuard(r.Context(), actor.Scope, cmd.Config); err != nil {
+		writeNativeStorageError(w, err, true)
+		return
+	}
 	if !h.sourceAvailable(w) {
 		return
 	}
