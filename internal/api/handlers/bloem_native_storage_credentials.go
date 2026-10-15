@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"bytes"
-	"encoding/json"
 	"net/http"
 	"unicode"
 
@@ -19,24 +17,20 @@ type nativeStorageCredentialsCommand struct {
 	SessionToken     string `json:"session_token"`
 }
 
-func nativeStorageCredentialsDecode(data []byte) (nativeStorageCredentialsCommand, error) {
-	var cmd nativeStorageCredentialsCommand
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&cmd); err != nil || dec.More() {
-		return cmd, nativeStorageInvalid()
-	}
+// validateNativeStorageCredentials checks an already-decoded body. Unknown and
+// duplicate fields are rejected earlier, by h.command, before this runs.
+func validateNativeStorageCredentials(cmd nativeStorageCredentialsCommand) error {
 	if cmd.ExpectedRevision <= 0 || cmd.AccessKey == "" || cmd.SecretKey == "" {
-		return cmd, nativeStorageInvalid()
+		return nativeStorageInvalid()
 	}
 	for _, v := range []string{cmd.AccessKey, cmd.SecretKey, cmd.SessionToken} {
 		for _, r := range v {
 			if unicode.IsControl(r) {
-				return cmd, nativeStorageInvalid()
+				return nativeStorageInvalid()
 			}
 		}
 	}
-	return cmd, nil
+	return nil
 }
 
 // HandleRotateCredentials replaces only the stored S3 credentials of a source,
@@ -51,12 +45,11 @@ func (h *BloemNativeStorageManagementHandler) HandleRotateCredentials(w http.Res
 	if !ok {
 		return
 	}
-	var raw nativeStorageCredentialsCommand
-	if _, ok = h.command(w, r, &raw); !ok {
+	var cmd nativeStorageCredentialsCommand
+	if _, ok = h.command(w, r, &cmd); !ok {
 		return
 	}
-	cmd, err := nativeStorageCredentialsDecode(mustJSON(raw))
-	if err != nil {
+	if err := validateNativeStorageCredentials(cmd); err != nil {
 		writeNativeStorageError(w, err, true)
 		return
 	}
@@ -70,5 +63,3 @@ func (h *BloemNativeStorageManagementHandler) HandleRotateCredentials(w http.Res
 	}
 	nativeStorageWrite(w, 200, nativeStorageConfigurationResponse{SourceKey: key, Revision: revision})
 }
-
-func mustJSON(v any) []byte { b, _ := json.Marshal(v); return b }
