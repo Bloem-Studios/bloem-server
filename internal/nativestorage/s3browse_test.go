@@ -651,42 +651,47 @@ func TestS3BrowseListFoldersValidatesInput(t *testing.T) {
 	}
 }
 
+func orgActor(id int) S3BrowseOptions { return S3BrowseOptions{Actor: fmt.Sprintf("account:%d", id)} }
+func platformActor(id int) S3BrowseOptions {
+	return S3BrowseOptions{Actor: fmt.Sprintf("account:%d", id), Platform: true}
+}
+
 func TestS3BrowseRateLimitTripsAndRecovers(t *testing.T) {
 	browser := NewS3Browser()
 	now := time.Unix(1_700_000_000, 0)
-	browser.now = func() time.Time { return now }
+	browser.limiter.now = func() time.Time { return now }
 	for i := 0; i < s3BrowseRateBurst; i++ {
-		release, err := browser.admit("account:1")
+		release, err := browser.admit(orgActor(1))
 		if err != nil {
 			t.Fatalf("request %d refused", i)
 		}
 		release()
 	}
-	_, err := browser.admit("account:1")
+	_, err := browser.admit(orgActor(1))
 	if !errors.Is(err, ErrS3BrowseBusy) || nativeCode(err) != "native_storage_unavailable" {
 		t.Fatalf("burst not limited: %v", err)
 	}
 	// Another administrator is not affected.
-	release, err := browser.admit("account:2")
+	release, err := browser.admit(orgActor(2))
 	if err != nil {
 		t.Fatal("other actor limited")
 	}
 	release()
 	// 30 per minute: one token every two seconds.
 	now = now.Add(2 * time.Second)
-	release, err = browser.admit("account:1")
+	release, err = browser.admit(orgActor(1))
 	if err != nil {
 		t.Fatal("limit did not recover")
 	}
 	release()
-	if _, err = browser.admit("account:1"); !errors.Is(err, ErrS3BrowseBusy) {
+	if _, err = browser.admit(orgActor(1)); !errors.Is(err, ErrS3BrowseBusy) {
 		t.Fatal("recovered more than one token")
 	}
 	// Steady state over a minute stays at 30.
 	allowed := 0
 	for i := 0; i < 120; i++ {
 		now = now.Add(500 * time.Millisecond)
-		if release, err := browser.admit("account:1"); err == nil {
+		if release, err := browser.admit(orgActor(1)); err == nil {
 			allowed++
 			release()
 		}
@@ -694,38 +699,151 @@ func TestS3BrowseRateLimitTripsAndRecovers(t *testing.T) {
 	if allowed != 30 {
 		t.Fatalf("allowed %d in one minute, want 30", allowed)
 	}
-	// Idle actors are swept.
+	// Idle actors are swept, but never one with a request in flight.
+	held, err := browser.admit(orgActor(4))
+	if err != nil {
+		t.Fatal(err)
+	}
 	now = now.Add(s3BrowseRateIdle + 2*time.Minute)
-	release, _ = browser.admit("account:3")
+	release, _ = browser.admit(orgActor(3))
 	release()
-	browser.mu.Lock()
-	_, stale := browser.actors["account:1"]
-	browser.mu.Unlock()
-	if stale {
-		t.Fatal("idle actor not swept")
+	browser.limiter.mu.Lock()
+	_, stale := browser.limiter.actors["account:1"]
+	_, busy := browser.limiter.actors["account:4"]
+	browser.limiter.mu.Unlock()
+	if stale || !busy {
+		t.Fatalf("sweep: idle kept=%v in-flight kept=%v", stale, busy)
+	}
+	held()
+	held() // release is idempotent
+	browser.limiter.mu.Lock()
+	defer browser.limiter.mu.Unlock()
+	if browser.total != 0 || browser.organization != 0 {
+		t.Fatalf("counters leaked: total %d organization %d", browser.total, browser.organization)
 	}
 }
 
-func TestS3BrowseConcurrencyCap(t *testing.T) {
+func TestS3BrowseConcurrencyCaps(t *testing.T) {
 	browser := NewS3Browser()
-	var releases []func()
-	for i := 0; i < s3BrowseConcurrency; i++ {
-		release, err := browser.admit(fmt.Sprintf("account:%d", i))
-		if err != nil {
-			t.Fatalf("slot %d refused", i)
-		}
-		releases = append(releases, release)
+	// One administrator holds at most two slots.
+	a1, err1 := browser.admit(orgActor(1))
+	a2, err2 := browser.admit(orgActor(1))
+	if err1 != nil || err2 != nil {
+		t.Fatal("first two slots refused")
 	}
-	if _, err := browser.admit("account:99"); !errors.Is(err, ErrS3BrowseBusy) {
-		t.Fatal("concurrency cap not enforced")
+	if _, err := browser.admit(orgActor(1)); !errors.Is(err, ErrS3BrowseBusy) {
+		t.Fatal("per-actor in-flight cap not enforced")
 	}
-	releases[0]()
-	release, err := browser.admit("account:99")
+	// Organization actors together hold at most three; the fourth is reserved.
+	b1, err := browser.admit(orgActor(2))
 	if err != nil {
-		t.Fatal("slot not returned")
+		t.Fatal("third organization slot refused")
 	}
-	release()
-	for _, r := range releases[1:] {
+	if _, err := browser.admit(orgActor(3)); !errors.Is(err, ErrS3BrowseBusy) {
+		t.Fatal("organization actors took the platform reserve")
+	}
+	p1, err := browser.admit(platformActor(9))
+	if err != nil {
+		t.Fatal("platform reserve unavailable")
+	}
+	// Server-wide cap of four.
+	if _, err := browser.admit(platformActor(10)); !errors.Is(err, ErrS3BrowseBusy) {
+		t.Fatal("global cap not enforced")
+	}
+	// Refusals by a cap consume no token: release and the same actor proceeds.
+	a1()
+	a3, err := browser.admit(orgActor(1))
+	if err != nil {
+		t.Fatal("slot not returned to actor")
+	}
+	for _, r := range []func(){a2, a3, b1, p1} {
 		r()
+	}
+	// Platform actors may use every slot, subject to their own cap of two each.
+	var all []func()
+	for i := 0; i < s3BrowseConcurrency; i++ {
+		r, err := browser.admit(platformActor(20 + i/2))
+		if err != nil {
+			t.Fatalf("platform slot %d refused", i)
+		}
+		all = append(all, r)
+	}
+	for _, r := range all {
+		r()
+	}
+}
+
+func TestActorRateLimiter(t *testing.T) {
+	limiter := NewActorRateLimiter(10, 3)
+	now := time.Unix(1_700_000_000, 0)
+	limiter.now = func() time.Time { return now }
+	for i := 0; i < 3; i++ {
+		if !limiter.Allow("account:1") {
+			t.Fatalf("burst request %d refused", i)
+		}
+	}
+	if limiter.Allow("account:1") || !limiter.Allow("account:2") {
+		t.Fatal("limit not per actor")
+	}
+	now = now.Add(6 * time.Second) // 10 per minute: one token every six seconds
+	if !limiter.Allow("account:1") || limiter.Allow("account:1") {
+		t.Fatal("limit did not recover by exactly one token")
+	}
+	var nilLimiter *ActorRateLimiter
+	if nilLimiter.Allow("x") {
+		t.Fatal("nil limiter must refuse")
+	}
+}
+
+func TestS3BrowseExtendedBlocklistAndHostAddresses(t *testing.T) {
+	for _, ip := range []string{"2001::1", "2001:0:4136:e378:8000:63bf:3fff:fdd2", "::ffff:0:a00:1", "fec0::1", "192.88.99.1",
+		"198.18.0.1", "100::1", "2001:db8::1", "192.0.2.1", "198.51.100.1", "203.0.113.1"} {
+		if !S3BrowseAddressBlocked(netip.MustParseAddr(ip)) {
+			t.Fatalf("%s not blocked", ip)
+		}
+	}
+	for addr := range s3BrowseHostAddrs() {
+		if !S3BrowseAddressBlocked(addr) {
+			t.Fatalf("host interface address %s not blocked", addr)
+		}
+	}
+	if len(s3BrowseHostAddrs()) == 0 {
+		t.Skip("no interface addresses visible")
+	}
+}
+
+func TestServiceBaseURLGuard(t *testing.T) {
+	for _, tc := range []struct {
+		raw string
+		ok  bool
+	}{
+		{"https://books.example.com/", true},
+		{"https://books.example.com/library/x", true},
+		{"https://93.184.216.34:8443/api", true},
+		{"http://books.example.com", false},
+		{"https://u:p@books.example.com/", false},
+		{"https://books.example.com/?q=1", false},
+		{"https://books.example.com/#f", false},
+		{"https://books.example.com:8080/", false},
+		{"https://10.0.0.140/x", false},
+		{"https://[::ffff:10.0.0.140]/x", false},
+	} {
+		_, err := ParseServiceBaseURL(tc.raw, true)
+		if (err == nil) != tc.ok {
+			t.Fatalf("%s: err=%v want ok=%v", tc.raw, err, tc.ok)
+		}
+	}
+	if _, err := ParseS3BrowseEndpoint("https://books.example.com/library", false); err == nil {
+		t.Fatal("S3 endpoint accepted a path")
+	}
+	resolver := &fakeS3Resolver{answers: map[string][][]netip.Addr{"books.example.com": {addrs(testPublicIPv4)}, "internal.example.com": {addrs(testPublicIPv4, "10.9.9.9")}}}
+	if err := checkGuardedURL(t.Context(), resolver, "https://books.example.com/lib", true, true); err != nil {
+		t.Fatalf("public base URL refused: %v", err)
+	}
+	if err := checkGuardedURL(t.Context(), resolver, "https://internal.example.com/lib", true, true); nativeCode(err) != S3EndpointRejectedCode {
+		t.Fatalf("internal base URL: %q", nativeCode(err))
+	}
+	if err := checkGuardedURL(t.Context(), resolver, "", true, true); err != nil {
+		t.Fatal("empty base URL must be left to the plugin")
 	}
 }

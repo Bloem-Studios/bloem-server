@@ -2739,13 +2739,29 @@ their own organization, after the same administrator, membership, session and
 organization-policy checks as every other source mutation. The JSON body carries
 exactly `artifact_key`, `provider_source_id`, `enabled` and `config`. It does not
 accept `organization_id` (even null), `root_entry_id`, `source_key` or
-`expected_revision`, and `config` must not supply `state_path`. In organization
-scope, a configured `connection.endpoint` must pass the same endpoint guard as
-[browsing](#browsing-buckets-and-folders), including the port restriction, and
-`allow_loopback_http` is refused, both with `422 s3_endpoint_rejected`; the same
-check applies to every organization route that accepts a configuration. The plain
-`POST /catalog/installations` refuses S3 artifacts (S3 must use discovery), and
-S3 catalog upgrades remain platform-only. The host
+`expected_revision`, and `config` must not supply `state_path`. Each
+administrator may start 10 catalog discoveries per minute (burst 3); more return
+`503 native_storage_unavailable` with `Retry-After`. A key that is not an admitted
+(digest-pinned) S3 catalog release returns `422 artifact_rejected` before anything
+is downloaded.
+
+In organization scope every route that accepts a configuration (install,
+discover, catalog install and discover, configuration replacement) checks where
+the plugin will connect: S3 `connection.endpoint` and Bookwarehouse
+`connection.base_url` must pass the same endpoint guard as
+[browsing](#browsing-buckets-and-folders), including the port restriction (a
+base URL may have a path), and `allow_loopback_http` and `allow_insecure_http`
+are refused, all with `422 s3_endpoint_rejected`. A case variant of
+`connection` or of those keys, or two connection keys differing only in case,
+is `400 invalid_request`. The check runs when the configuration is written; the
+plugin resolves the name again when it starts (see the residual risk in the
+[storage architecture](architecture/bloem-native-storage.md)).
+
+The plain `POST /catalog/installations` refuses S3 artifacts (S3 must use
+discovery). S3 catalog upgrades are platform-managed: an organization
+administrator gets `404 not_found`, also for an S3 source their organization
+owns, which a platform administrator or a manual upload of an approved artifact
+upgrades. The host
 downloads the artifact itself, then discovers the root as in manual discovery
 and publishes the installation and source atomically; it creates no library or
 scan. An S3 catalog release is admitted only when its SHA-256 digest matches one
@@ -2800,12 +2816,15 @@ origin without userinfo, path (other than `/`), query or fragment, with a port
 from 1 to 65535; organization administrators may only use ports 443, 7480, 8443,
 9000 and 9443. The host is resolved by the server and refused if any address is
 loopback, private, link-local, unique-local, CGNAT (`100.64.0.0/10`),
-multicast, unspecified, reserved, a cloud metadata address or an IPv6 form
-embedding such an IPv4 address; an IP-literal host is checked the same way. The
+multicast, unspecified, reserved, documentation, a cloud metadata address, one
+of the server's own interface addresses, or an IPv6 form embedding or
+translating IPv4 (mapped, translated, NAT64, 6to4, Teredo) or site-local; an
+IP-literal host is checked the same way. The
 connection is pinned to the checked addresses, redirects are not followed, TLS
 certificates are verified, and each request is limited to 15 seconds and a
 4 MiB response. Each administrator may make 30 browse requests per minute (burst
-10) and at most four run at once on the server; refusals return
+10) with at most two in flight; at most four run at once on the server, of which
+organization administrators together may hold three. Refusals return
 `503 native_storage_unavailable` with `Retry-After`. Every request writes an audit
 log line with the account, scope, organization, endpoint host, bucket and outcome,
 never credentials.

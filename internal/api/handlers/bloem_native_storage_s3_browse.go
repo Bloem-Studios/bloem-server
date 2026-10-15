@@ -105,6 +105,8 @@ func nativeStorageS3Options(actor auth.AdminContextClaims) nativestorage.S3Brows
 		Actor: "account:" + strconv.Itoa(actor.AccountID),
 		// Organization administrators may only reach well-known S3 ports.
 		RestrictPorts: actor.Scope != auth.AdminScopePlatform,
+		// Only platform administrators may use the reserved concurrency slot.
+		Platform: actor.Scope == auth.AdminScopePlatform,
 	}
 }
 

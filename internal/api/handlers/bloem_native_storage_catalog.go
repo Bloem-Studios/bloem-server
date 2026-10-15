@@ -27,11 +27,14 @@ func nativeStorageCatalogPluginID(artifacts []plugins.NativeStorageArtifactView,
 }
 
 // nativeStorageCatalogKeyAllowed decides, before any download, whether a
-// catalog install or upgrade may use a plugin. S3 is platform-only: an
-// organization administrator gets not_found, and a platform administrator
-// must add an S3 source through catalog discovery, which discovers its root,
-// so a plain catalog install of S3 is artifact_rejected. Other plugins keep
-// their existing checks.
+// plain catalog install or a catalog upgrade may use a plugin. S3 sources are
+// added only through catalog discovery, which discovers their root, in both
+// scopes: a plain catalog install of S3 is artifact_rejected for a platform
+// administrator and not_found for an organization administrator. A catalog
+// upgrade of S3 is platform-managed: an organization administrator gets
+// not_found, also for an S3 source their organization owns; such a source is
+// upgraded by a platform administrator or by a manual upload of an approved
+// artifact. Other plugins keep their existing checks.
 func nativeStorageCatalogKeyAllowed(pluginID string, scope auth.AdminScope, install bool) error {
 	if pluginID != nativeStorageS3PluginID {
 		return nil

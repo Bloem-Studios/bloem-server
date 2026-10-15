@@ -106,6 +106,11 @@ func nativeStorageDependencies(deps Dependencies) Dependencies {
 		// shared by both admin scopes.
 		deps.NativeStorageManagement.S3Browse = nativestorage.NewS3Browser()
 	}
+	if deps.NativeStorageManagement.CatalogDiscoverLimit == nil {
+		// Each catalog discovery downloads a plugin and starts a process:
+		// 10 per minute per administrator, burst 3, shared by both scopes.
+		deps.NativeStorageManagement.CatalogDiscoverLimit = nativestorage.NewActorRateLimiter(10, 3)
+	}
 	deps.NativeStorageManagement.Sources.SetInstallDiscoveryHost(deps.NativeStorage)
 	deps.NativeStorageManagement.Capabilities = &nativeStorageCapabilities{deps: deps}
 	return deps

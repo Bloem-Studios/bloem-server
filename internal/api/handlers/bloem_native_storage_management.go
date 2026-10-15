@@ -47,7 +47,9 @@ type BloemNativeStorageManagementHandler struct {
 	Registry *plugins.NativeStorageRegistry
 	// S3Browse lists buckets and folders with caller-supplied credentials.
 	S3Browse NativeStorageS3Browser
-	scope    auth.AdminScope
+	// CatalogDiscoverLimit rate limits catalog discovery per administrator.
+	CatalogDiscoverLimit *nativestorage.ActorRateLimiter
+	scope                auth.AdminScope
 	// Capabilities is the actual router composition, not artifact/backend certification.
 	Capabilities interface{ NativeStorageReady(context.Context) bool }
 }

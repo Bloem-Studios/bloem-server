@@ -65,6 +65,11 @@ const (
 	s3BrowseDialTimeout   = 10 * time.Second
 	s3BrowseResponseLimit = 4 << 20
 	s3BrowseConcurrency   = 4
+	// Organization actors together may hold at most three of the four slots,
+	// so one slot stays available to platform administrators.
+	s3BrowseOrganizationInFlight = 3
+	// One administrator may hold at most two slots.
+	s3BrowsePerActorInFlight = 2
 	// 30 requests per minute per administrator, with a burst of 10.
 	s3BrowseRatePerSecond = 0.5
 	s3BrowseRateBurst     = 10
@@ -127,6 +132,9 @@ type S3BrowseOptions struct {
 	Actor string
 	// RestrictPorts limits the endpoint port to S3BrowseOrganizationPorts.
 	RestrictPorts bool
+	// Platform marks a platform administrator, who may use the reserved
+	// concurrency slot. Anything else counts as an organization actor.
+	Platform bool
 }
 
 // S3BrowseOrganizationPorts are the only endpoint ports allowed when
@@ -163,17 +171,65 @@ type S3Browser struct {
 	dial    func(ctx context.Context, network, address string) (net.Conn, error)
 	rootCAs *x509.CertPool
 	timeout time.Duration
-	now     func() time.Time
 
-	inflight chan struct{}
-	mu       sync.Mutex
-	actors   map[string]*s3BrowseBucket
-	swept    time.Time
+	// limiter keys the per-administrator token bucket and in-flight count;
+	// its mutex also guards total and organization.
+	limiter      *ActorRateLimiter
+	total        int
+	organization int
 }
 
-type s3BrowseBucket struct {
-	limiter *rate.Limiter
-	used    time.Time
+// ActorRateLimiter is an in-memory token bucket per actor key with an
+// in-flight count. Idle entries are swept on access, without a goroutine.
+// Limits are per process.
+type ActorRateLimiter struct {
+	limit  rate.Limit
+	burst  int
+	now    func() time.Time
+	mu     sync.Mutex
+	actors map[string]*actorBucket
+	swept  time.Time
+}
+
+type actorBucket struct {
+	limiter  *rate.Limiter
+	used     time.Time
+	inflight int
+}
+
+// NewActorRateLimiter allows perMinute requests per actor with the given burst.
+func NewActorRateLimiter(perMinute float64, burst int) *ActorRateLimiter {
+	return &ActorRateLimiter{limit: rate.Limit(perMinute / 60), burst: burst, now: time.Now, actors: map[string]*actorBucket{}}
+}
+
+// bucketLocked returns the actor's bucket; l.mu must be held.
+func (l *ActorRateLimiter) bucketLocked(actor string, now time.Time) *actorBucket {
+	if now.Sub(l.swept) > time.Minute {
+		for key, bucket := range l.actors {
+			if bucket.inflight == 0 && now.Sub(bucket.used) > s3BrowseRateIdle {
+				delete(l.actors, key)
+			}
+		}
+		l.swept = now
+	}
+	bucket := l.actors[actor]
+	if bucket == nil {
+		bucket = &actorBucket{limiter: rate.NewLimiter(l.limit, l.burst)}
+		l.actors[actor] = bucket
+	}
+	bucket.used = now
+	return bucket
+}
+
+// Allow takes one token for the actor, or reports that the actor is limited.
+func (l *ActorRateLimiter) Allow(actor string) bool {
+	if l == nil {
+		return false
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := l.now()
+	return l.bucketLocked(actor, now).limiter.AllowN(now, 1)
 }
 
 // NewS3Browser returns a browser using the system resolver and roots.
@@ -183,9 +239,7 @@ func NewS3Browser() *S3Browser {
 		resolver: net.DefaultResolver,
 		dial:     dialer.DialContext,
 		timeout:  s3BrowseTimeout,
-		now:      time.Now,
-		inflight: make(chan struct{}, s3BrowseConcurrency),
-		actors:   map[string]*s3BrowseBucket{},
+		limiter:  NewActorRateLimiter(s3BrowseRatePerSecond*60, s3BrowseRateBurst),
 	}
 }
 
@@ -207,11 +261,16 @@ var s3BrowseBlockedPrefixes = func() []netip.Prefix {
 		"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16",
 		"172.16.0.0/12", "192.0.0.0/24", "192.168.0.0/16", "198.18.0.0/15",
 		"224.0.0.0/4", "240.0.0.0/4",
+		// 6to4 relay anycast and the documentation ranges.
+		"192.88.99.0/24", "192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24",
 		// IPv6
 		"::1/128", "::/128", "fc00::/7", "fe80::/10", "ff00::/8",
 		// IPv6 forms that can embed or translate to an IPv4 address: IPv4-compatible,
 		// NAT64 (well-known and local-use) and 6to4. Refused outright rather than decoded.
 		"::/96", "64:ff9b::/96", "64:ff9b:1::/48", "2002::/16",
+		// Teredo (embeds IPv4), IPv4-translated (SIIT, which Unmap does not
+		// decode), deprecated site-local, discard-only and documentation.
+		"2001::/32", "::ffff:0:0:0/96", "fec0::/10", "100::/64", "2001:db8::/32",
 	} {
 		out = append(out, netip.MustParsePrefix(cidr))
 	}
@@ -230,9 +289,31 @@ func S3BrowseAddressBlocked(addr netip.Addr) bool {
 			return true
 		}
 	}
+	// The host's own addresses, including a public one that could hairpin
+	// past an upstream firewall.
+	if s3BrowseHostAddrs()[addr] {
+		return true
+	}
 	return addr.IsLoopback() || addr.IsPrivate() || addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() ||
 		addr.IsInterfaceLocalMulticast() || addr.IsMulticast() || addr.IsUnspecified()
 }
+
+// s3BrowseHostAddrs lists this host's interface addresses once, at first use.
+var s3BrowseHostAddrs = sync.OnceValue(func() map[netip.Addr]bool {
+	out := map[netip.Addr]bool{}
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return out
+	}
+	for _, a := range addrs {
+		if prefix, err := netip.ParsePrefix(a.String()); err == nil {
+			out[prefix.Addr().Unmap()] = true
+		} else if addr, err := netip.ParseAddr(a.String()); err == nil {
+			out[addr.Unmap()] = true
+		}
+	}
+	return out
+})
 
 // S3BrowseEndpoint is a validated endpoint origin.
 type S3BrowseEndpoint struct {
@@ -244,6 +325,16 @@ type S3BrowseEndpoint struct {
 // ParseS3BrowseEndpoint applies the S3 plugin's endpoint shape rules, except
 // that HTTPS is mandatory and the endpoint is required. It does no I/O.
 func ParseS3BrowseEndpoint(raw string, restrictPorts bool) (S3BrowseEndpoint, error) {
+	return parseGuardedURL(raw, restrictPorts, false)
+}
+
+// ParseServiceBaseURL applies the same rules to a service base URL (for
+// example Bookwarehouse base_url), which may carry a path.
+func ParseServiceBaseURL(raw string, restrictPorts bool) (S3BrowseEndpoint, error) {
+	return parseGuardedURL(raw, restrictPorts, true)
+}
+
+func parseGuardedURL(raw string, restrictPorts, allowPath bool) (S3BrowseEndpoint, error) {
 	reject := func(reason string) (S3BrowseEndpoint, error) {
 		return S3BrowseEndpoint{}, s3BrowseError(S3EndpointRejectedCode, reason)
 	}
@@ -253,7 +344,7 @@ func ParseS3BrowseEndpoint(raw string, restrictPorts bool) (S3BrowseEndpoint, er
 	}
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" || u.Opaque != "" || u.Host == "" || u.User != nil || u.ForceQuery ||
-		u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") || u.RawPath != "" {
+		u.RawQuery != "" || u.Fragment != "" || (!allowPath && u.Path != "" && u.Path != "/") || u.RawPath != "" {
 		return reject("shape")
 	}
 	host := u.Hostname()
@@ -316,14 +407,24 @@ func s3BrowseOrganizationPort(port int) bool {
 // selects the AWS default and is allowed. This is a pre-check only: the plugin
 // process resolves and dials by itself, so its connection cannot be pinned.
 func CheckS3SourceEndpoint(ctx context.Context, raw string, restrictPorts bool) error {
+	return checkGuardedURL(ctx, net.DefaultResolver, raw, restrictPorts, false)
+}
+
+// CheckServiceBaseURL is CheckS3SourceEndpoint for a service base URL that may
+// carry a path (Bookwarehouse base_url). An empty value is left to the plugin.
+func CheckServiceBaseURL(ctx context.Context, raw string, restrictPorts bool) error {
+	return checkGuardedURL(ctx, net.DefaultResolver, raw, restrictPorts, true)
+}
+
+func checkGuardedURL(ctx context.Context, resolver s3BrowseResolver, raw string, restrictPorts, allowPath bool) error {
 	if raw == "" {
 		return nil
 	}
-	endpoint, err := ParseS3BrowseEndpoint(raw, restrictPorts)
+	endpoint, err := parseGuardedURL(raw, restrictPorts, allowPath)
 	if err != nil {
 		return err
 	}
-	_, err = (&S3Browser{resolver: net.DefaultResolver}).resolveS3BrowseTarget(ctx, endpoint)
+	_, err = (&S3Browser{resolver: resolver}).resolveS3BrowseTarget(ctx, endpoint)
 	return err
 }
 
@@ -468,40 +569,45 @@ func (b *S3Browser) client(target s3BrowseTarget, conn S3BrowseConnection) (*s3.
 	return client, transport.CloseIdleConnections
 }
 
-// admit applies the per-administrator rate limit and the server-wide cap.
-func (b *S3Browser) admit(actor string) (func(), error) {
-	now := b.now()
-	b.mu.Lock()
-	if now.Sub(b.swept) > time.Minute {
-		for key, bucket := range b.actors {
-			if now.Sub(bucket.used) > s3BrowseRateIdle {
-				delete(b.actors, key)
+// admit applies, in order, the per-administrator in-flight cap (2), the
+// server-wide cap (4, of which organization actors may hold 3) and the
+// per-administrator token bucket. A refusal by a cap consumes no token.
+func (b *S3Browser) admit(opts S3BrowseOptions) (func(), error) {
+	busy := &catalog.NativeOnboardingError{Code: "native_storage_unavailable", Cause: ErrS3BrowseBusy}
+	l := b.limiter
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := l.now()
+	bucket := l.bucketLocked(opts.Actor, now)
+	if bucket.inflight >= s3BrowsePerActorInFlight || b.total >= s3BrowseConcurrency ||
+		(!opts.Platform && b.organization >= s3BrowseOrganizationInFlight) {
+		return nil, busy
+	}
+	if !bucket.limiter.AllowN(now, 1) {
+		return nil, busy
+	}
+	bucket.inflight++
+	b.total++
+	if !opts.Platform {
+		b.organization++
+	}
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			l.mu.Lock()
+			defer l.mu.Unlock()
+			bucket.inflight--
+			b.total--
+			if !opts.Platform {
+				b.organization--
 			}
-		}
-		b.swept = now
-	}
-	bucket := b.actors[actor]
-	if bucket == nil {
-		bucket = &s3BrowseBucket{limiter: rate.NewLimiter(rate.Limit(s3BrowseRatePerSecond), s3BrowseRateBurst)}
-		b.actors[actor] = bucket
-	}
-	bucket.used = now
-	allowed := bucket.limiter.AllowN(now, 1)
-	b.mu.Unlock()
-	if !allowed {
-		return nil, &catalog.NativeOnboardingError{Code: "native_storage_unavailable", Cause: ErrS3BrowseBusy}
-	}
-	select {
-	case b.inflight <- struct{}{}:
-		return func() { <-b.inflight }, nil
-	default:
-		return nil, &catalog.NativeOnboardingError{Code: "native_storage_unavailable", Cause: ErrS3BrowseBusy}
-	}
+		})
+	}, nil
 }
 
 // prepare validates, admits and resolves; the caller must call release.
 func (b *S3Browser) prepare(ctx context.Context, opts S3BrowseOptions, conn S3BrowseConnection) (*s3.Client, context.Context, func(), error) {
-	if b == nil || b.resolver == nil || b.dial == nil || b.inflight == nil {
+	if b == nil || b.resolver == nil || b.dial == nil || b.limiter == nil {
 		return nil, nil, nil, &catalog.NativeOnboardingError{Code: "native_storage_unavailable"}
 	}
 	if err := ValidateS3BrowseCredentials(conn); err != nil {
@@ -511,7 +617,7 @@ func (b *S3Browser) prepare(ctx context.Context, opts S3BrowseOptions, conn S3Br
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	release, err := b.admit(opts.Actor)
+	release, err := b.admit(opts)
 	if err != nil {
 		return nil, nil, nil, err
 	}

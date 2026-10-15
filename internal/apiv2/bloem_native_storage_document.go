@@ -232,14 +232,14 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 			413: "request_too_large: JSON, binary or total multipart limit exceeded.",
 		})
 	}
-	const endpointGuard = "In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set."
+	const endpointGuard = "In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request."
 	switch {
 	case browse:
 		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{
 			413: "request_too_large: the JSON body exceeds 1 MiB.",
 			422: "s3_endpoint_rejected: the endpoint is not an https origin, has userinfo, a path, query or fragment, an invalid or (organization scope) non-S3 port, a host resolving to any loopback, private, link-local, unique-local, CGNAT, multicast, unspecified or metadata address, or a host that does not resolve. s3_access_denied: the backend refused the credentials.",
 			502: "s3_backend_error: the backend failed, timed out, redirected or returned a malformed or oversized response. Messages are fixed and never quote the backend.",
-			503: "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute) or the server-wide concurrency cap refused the request; Retry-After is set for the latter two.",
+			503: "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute), the per-administrator cap of two concurrent requests or the server-wide cap of four (one reserved for platform administrators) refused the request; Retry-After is set for the latter.",
 		})
 	case path == "/installations" || path == "/installations/discover" || path == "/catalog/installations" || path == "/catalog/installations/discover":
 		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{422: "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. " + endpointGuard})
@@ -276,7 +276,7 @@ func registerBloemNativeStorageDocument(reg *Registry) {
 			catalogInstall = bloemNativeStorageJSONBody[BloemNativeStoragePlatformInstallBody](reg)
 		}
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations", "catalogInstall", "Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload.", 201, catalogInstall, false)
-		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations/discover", "catalogDiscoverInstall", "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected.", 201, bloemNativeStorageJSONBody[BloemNativeStorageDiscoverInstallBody](reg), false)
+		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations/discover", "catalogDiscoverInstall", "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download.", 201, bloemNativeStorageJSONBody[BloemNativeStorageDiscoverInstallBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations/{installation_id}/upgrade", "catalogUpgrade", "Download and verify a catalog upgrade, retaining configuration and library.", 200, bloemNativeStorageJSONBody[BloemNativeStorageUpgradeBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageConfiguration](reg, scope, "PUT", "/sources/{source_key}/configuration", "replaceConfiguration", "Replace complete configuration only while the source namespace is empty.", 200, bloemNativeStorageJSONBody[BloemNativeStorageConfigurationBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageConfiguration](reg, scope, "POST", "/sources/{source_key}/credentials", "rotateCredentials", "Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned.", 200, bloemNativeStorageJSONBody[BloemNativeStorageCredentialsBody](reg), false)

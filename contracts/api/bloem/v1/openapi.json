@@ -14570,7 +14570,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set.",
+            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14640,7 +14640,7 @@
                 }
               }
             },
-            "description": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected.",
+            "description": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14787,7 +14787,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set.",
+            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14827,7 +14827,7 @@
             "bloemOrganizationContext": []
           }
         ],
-        "summary": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected.",
+        "summary": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download.",
         "tags": [
           "native-storage"
         ]
@@ -15256,7 +15256,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set.",
+            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -15497,7 +15497,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set.",
+            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -16401,7 +16401,7 @@
                 }
               }
             },
-            "description": "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute) or the server-wide concurrency cap refused the request; Retry-After is set for the latter two.",
+            "description": "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute), the per-administrator cap of two concurrent requests or the server-wide cap of four (one reserved for platform administrators) refused the request; Retry-After is set for the latter.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -16618,7 +16618,7 @@
                 }
               }
             },
-            "description": "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute) or the server-wide concurrency cap refused the request; Retry-After is set for the latter two.",
+            "description": "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute), the per-administrator cap of two concurrent requests or the server-wide cap of four (one reserved for platform administrators) refused the request; Retry-After is set for the latter.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -17406,7 +17406,7 @@
                 }
               }
             },
-            "description": "In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set.",
+            "description": "In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -22571,7 +22571,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set.",
+            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -22641,7 +22641,7 @@
                 }
               }
             },
-            "description": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected.",
+            "description": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -22788,7 +22788,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set.",
+            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -22828,7 +22828,7 @@
             "bloemPlatformContext": []
           }
         ],
-        "summary": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected.",
+        "summary": "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected. Rate limited to 10 per minute per administrator (503 native_storage_unavailable with Retry-After); a key that is not an admitted S3 catalog release is artifact_rejected before any download.",
         "tags": [
           "native-storage"
         ]
@@ -23257,7 +23257,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set.",
+            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -23498,7 +23498,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set.",
+            "description": "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -24402,7 +24402,7 @@
                 }
               }
             },
-            "description": "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute) or the server-wide concurrency cap refused the request; Retry-After is set for the latter two.",
+            "description": "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute), the per-administrator cap of two concurrent requests or the server-wide cap of four (one reserved for platform administrators) refused the request; Retry-After is set for the latter.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -24619,7 +24619,7 @@
                 }
               }
             },
-            "description": "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute) or the server-wide concurrency cap refused the request; Retry-After is set for the latter two.",
+            "description": "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute), the per-administrator cap of two concurrent requests or the server-wide cap of four (one reserved for platform administrators) refused the request; Retry-After is set for the latter.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -25407,7 +25407,7 @@
                 }
               }
             },
-            "description": "In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set.",
+            "description": "In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
