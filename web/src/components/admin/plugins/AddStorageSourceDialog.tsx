@@ -19,7 +19,13 @@ import {
 } from "@/hooks/queries/admin/storageSources";
 import { randomUUID } from "@/lib/uuid";
 
-import { newProviderSourceId, pruneConfigSchema, validateS3Connection } from "./storageSchema";
+import {
+  newProviderSourceId,
+  pruneConfigSchema,
+  sourceName,
+  validateS3Connection,
+  withoutEmpty,
+} from "./storageSchema";
 
 const S3_PLUGIN = "bloem.storage.s3";
 const BOOKWAREHOUSE_PLUGIN = "bloem.storage.bookwarehouse";
@@ -92,19 +98,6 @@ function BookwarehouseRow({ artifact, onDone }: { artifact: StorageArtifact; onD
   );
 }
 
-/** What a new entry may carry: an emptied optional field is simply left out. */
-function withoutEmpty(value: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== "" && v !== null));
-}
-
-/** The typed name, or the bucket (with the prefix, when set) so a source is never shown by its id. */
-function sourceName(value: Record<string, unknown>): string {
-  const text = (k: string) => (typeof value[k] === "string" ? (value[k] as string) : "");
-  return (
-    text("source_name").trim() || `${text("bucket")}${text("prefix") ? `/${text("prefix")}` : ""}`
-  );
-}
-
 function S3AddForm({
   artifact,
   sources,
@@ -150,6 +143,10 @@ function S3AddForm({
 
   function handleSave(key: string, value: Record<string, unknown>) {
     const problems = validateS3Connection(value);
+    // A new source cannot be reached without its keys, so ask before calling the API.
+    const filled = (k: string) => typeof value[k] === "string" && value[k] !== "";
+    if (!filled("access_key")) problems.access_key = "Enter the access key.";
+    if (!filled("secret_key")) problems.secret_key = "Enter the secret key.";
     const messages = Object.entries(problems).map(
       ([field, message]) => `${labels.get(field) ?? field}: ${message}`,
     );
@@ -220,12 +217,14 @@ function DialogBody({
   sources,
   error,
   onRetry,
+  isRetrying = false,
   onClose,
 }: {
   artifacts?: StorageArtifact[];
   sources: StorageSource[];
   error?: unknown;
   onRetry?: () => void;
+  isRetrying?: boolean;
   onClose: () => void;
 }) {
   const { scope } = useStorageScope();
@@ -239,8 +238,14 @@ function DialogBody({
             Plugin catalog unavailable. The list of storage plugins could not be loaded.
           </p>
           {onRetry ? (
-            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-              Retry
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isRetrying}
+              onClick={onRetry}
+            >
+              {isRetrying ? "Retrying…" : "Retry"}
             </Button>
           ) : null}
         </div>
@@ -289,6 +294,7 @@ export function AddStorageSourceDialog({
   onOpenChange,
   error,
   onRetry,
+  isRetrying,
 }: {
   artifacts?: StorageArtifact[];
   sources: StorageSource[];
@@ -296,6 +302,8 @@ export function AddStorageSourceDialog({
   onOpenChange: (open: boolean) => void;
   error?: unknown;
   onRetry?: () => void;
+  /** True while the catalog is being refetched after Retry. */
+  isRetrying?: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -311,6 +319,7 @@ export function AddStorageSourceDialog({
           sources={sources}
           error={error}
           onRetry={onRetry}
+          isRetrying={isRetrying}
           onClose={() => onOpenChange(false)}
         />
       </DialogContent>

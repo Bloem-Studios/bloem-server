@@ -84,6 +84,28 @@ describe("validateS3Connection", () => {
     expect(validateS3Connection({}).bucket).toBeTruthy();
     expect(validateS3Connection({ bucket: "A_B" }).bucket).toBeTruthy();
   });
+  it("rejects bucket names with consecutive dots", () => {
+    expect(validateS3Connection({ bucket: "my..media" }).bucket).toMatch(/consecutive dots/);
+    expect(validateS3Connection({ bucket: "my.media" })).toEqual({});
+  });
+  it("rejects bucket names that look like an IPv4 address", () => {
+    expect(validateS3Connection({ bucket: "192.168.1.10" }).bucket).toMatch(/IP address/);
+    expect(validateS3Connection({ bucket: "192.168.1.example" })).toEqual({});
+  });
+  it("flags a query string or fragment in the endpoint", () => {
+    expect(
+      validateS3Connection({ bucket: "media", endpoint: "https://s3.example.com?x=1" }).endpoint,
+    ).toMatch(/query or fragment/);
+    expect(
+      validateS3Connection({ bucket: "media", endpoint: "https://s3.example.com/#frag" }).endpoint,
+    ).toMatch(/query or fragment/);
+    expect(
+      validateS3Connection({ bucket: "media", endpoint: "https://s3.example.com/?" }).endpoint,
+    ).toMatch(/query or fragment/);
+    expect(
+      validateS3Connection({ bucket: "media", endpoint: "https://s3.example.com#" }).endpoint,
+    ).toMatch(/query or fragment/);
+  });
 });
 
 describe("newProviderSourceId", () => {

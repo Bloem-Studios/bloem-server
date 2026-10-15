@@ -43,6 +43,9 @@ export function validateS3Connection(value: Record<string, unknown>): Record<str
   if (!bucket) errors.bucket = "Enter the bucket name.";
   else if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(bucket))
     errors.bucket = "Bucket names use 3–63 lowercase letters, digits, dots and hyphens.";
+  else if (bucket.includes("..")) errors.bucket = "Bucket names must not contain consecutive dots.";
+  else if (/^\d+\.\d+\.\d+\.\d+$/.test(bucket))
+    errors.bucket = "Bucket names must not look like an IP address.";
   const prefix = text("prefix");
   if (prefix.startsWith("/")) errors.prefix = "The prefix must not start with a slash.";
   else if (prefix !== "" && !prefix.endsWith("/"))
@@ -52,6 +55,9 @@ export function validateS3Connection(value: Record<string, unknown>): Record<str
     try {
       const u = new URL(endpoint);
       if (u.protocol !== "https:") errors.endpoint = "The endpoint must use https.";
+      // Checked on the raw text: an empty "?" or "#" leaves u.search / u.hash empty.
+      else if (endpoint.includes("?") || endpoint.includes("#"))
+        errors.endpoint = "The endpoint must not include a query or fragment.";
       else if (u.username || u.password)
         errors.endpoint = "The endpoint must not contain credentials.";
       else if (u.pathname !== "/" && u.pathname !== "")

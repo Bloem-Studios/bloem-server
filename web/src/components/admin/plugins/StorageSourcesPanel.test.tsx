@@ -46,9 +46,19 @@ const artifacts: StorageArtifact[] = [
   },
 ];
 
+let artifactsQuery: Record<string, unknown> = {};
+const refetch = vi.fn();
+
 vi.mock("@/hooks/queries/admin/storageSources", () => ({
   useStorageSources: () => ({ data: [source], isSuccess: true, isError: false }),
-  useStorageArtifacts: () => ({ data: artifacts, isSuccess: true, isError: false }),
+  useStorageArtifacts: () => ({
+    data: artifacts,
+    isSuccess: true,
+    isError: false,
+    isFetching: false,
+    refetch,
+    ...artifactsQuery,
+  }),
   useUpgradeStorageSource: () => ({ mutate: upgrade, isPending: false }),
   useInstallStorageSource: () => ({ mutate: install, isPending: false }),
   useConfigureStorageSource: () => ({ mutate: configure, isPending: false }),
@@ -66,6 +76,8 @@ describe("StorageSourcesPanel", () => {
     upgrade.mockReset();
     install.mockReset();
     configure.mockReset();
+    refetch.mockReset();
+    artifactsQuery = {};
     source.configured = true;
   });
 
@@ -98,6 +110,23 @@ describe("StorageSourcesPanel", () => {
       }),
       expect.any(Object),
     );
+  });
+  it("shows the Add dialog's Retry as loading while the catalog refetches", () => {
+    artifactsQuery = {
+      data: undefined,
+      isSuccess: false,
+      isError: true,
+      error: new Error("boom"),
+      isFetching: false,
+    };
+    const { rerender } = render(<StorageSourcesPanel />);
+    fireEvent.click(screen.getByRole("button", { name: /add source/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+
+    artifactsQuery = { ...artifactsQuery, isFetching: true };
+    rerender(<StorageSourcesPanel />);
+    expect(screen.getByRole("button", { name: "Retrying…" })).toBeDisabled();
   });
   it("asks for only URL and key after installation", () => {
     source.configured = false;

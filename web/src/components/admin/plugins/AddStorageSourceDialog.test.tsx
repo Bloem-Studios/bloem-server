@@ -223,11 +223,40 @@ describe("AddStorageSourceDialog", () => {
     expect(screen.getByRole("button", { name: /save/i })).toBeEnabled();
   });
 
+  it("asks for the access key and the secret key before calling the API", () => {
+    open();
+    fireEvent.click(screen.getByRole("button", { name: /^S3$/ }));
+    fill("Bucket", "media");
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Access key: Enter the access key.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Secret key: Enter the secret key.");
+    expect(discover).not.toHaveBeenCalled();
+
+    fill("Access key", "AK");
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(screen.getByRole("alert")).not.toHaveTextContent("Enter the access key.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter the secret key.");
+    expect(discover).not.toHaveBeenCalled();
+
+    fill("Secret key", "SK");
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(discover).toHaveBeenCalledTimes(1);
+  });
+
   it("shows a retryable message when the plugin catalog is unavailable", () => {
     const retry = vi.fn();
     open({ artifacts: undefined, error: new Error("boom"), onRetry: retry });
     expect(screen.getByText(/plugin catalog unavailable/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     expect(retry).toHaveBeenCalled();
+  });
+
+  it("shows a loading state on Retry while the catalog is refetching", () => {
+    const retry = vi.fn();
+    open({ artifacts: undefined, error: new Error("boom"), onRetry: retry, isRetrying: true });
+    const button = screen.getByRole("button", { name: "Retrying…" });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(retry).not.toHaveBeenCalled();
   });
 });

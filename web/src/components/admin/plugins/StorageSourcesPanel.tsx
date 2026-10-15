@@ -69,6 +69,7 @@ export function StorageSourcesPanel() {
         onOpenChange={setAdding}
         error={artifacts.isError ? artifacts.error : undefined}
         onRetry={() => void artifacts.refetch()}
+        isRetrying={artifacts.isFetching}
       />
 
       {sources.data && sources.data.length > 0 ? (
