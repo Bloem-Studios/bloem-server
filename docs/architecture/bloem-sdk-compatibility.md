@@ -6,11 +6,12 @@ that every client feature or storage provider has shipped.
 
 ## Server and public plugin runtime
 
-The [October 7 deployment](../operations/2026-10-07-native-storage-deployment.md)
-runs Bloem `c87b44545228c93f909275c0b5c4fc1d6a289e1b`, including Silo
-`74158b4a8a799192312c13253552b8030af8575c`. Its `go.mod` pins the public
-`github.com/Silo-Server/silo-plugin-sdk` module at `v0.23.0`. Host builds use
-`GOWORK=off`; no private SDK module replacement is required.
+The current source includes Silo through `ea3c10a7f` and pins the public
+`github.com/Silo-Server/silo-plugin-sdk` module at `v0.25.0` in `go.mod`.
+Host builds use `GOWORK=off`; no private SDK module replacement is required.
+The [October 7 deployment record](../operations/2026-10-07-native-storage-deployment.md)
+is a historical checkpoint with an older SDK pin. Source contracts and live
+application revisions must be checked separately.
 
 Native storage uses the separate `bloem.plugin.v1.StorageProvider` protocol.
 The host owns generated bindings under `internal/storageproto/bloem/plugin/v1`
@@ -34,19 +35,17 @@ pinned public SDK, while retaining private storage registration and Bloem plugin
 identity restrictions. Public-runtime currency alone does not publish a storage
 provider or approve an executable artifact on a server.
 
-The current plugin-author release is
-[`v0.26.0`](https://github.com/Bloem-Studios/bloem-plugin-sdk/releases/tag/v0.26.0),
-from commit `b205ad895caadf14b2fb28b7ac9ed907cedc97b0`. It synchronizes the
-public protocols with Silo SDK `v0.24.0`, the version the server's `go.mod`
-pins. The preceding `v0.25.0` (commit `770fd01d5366b06fb171a22644e542886d931ba6`)
-added the storage schema now shared with the host: `Entry.ebook` with
-`EbookMetadata` (including on-demand cover entry references), and incremental
-listing through `ListRequest.changes_since`, `ListResponse.change_token` and
-`ListResponse.removed_entry_ids`. Both release workflows passed, and an ordinary
-`go mod download` resolves the public tagged module.
+The plugin-author release verified on October 15 is
+[`v0.27.0`](https://github.com/Bloem-Studios/bloem-plugin-sdk/releases/tag/v0.27.0).
+It adds private audiobook/audio metadata and directory-only listing declarations.
+The earlier `v0.26.0` synchronized public protocols with Silo SDK `v0.24.0`,
+while `v0.25.0` introduced ebook metadata and incremental listing. The host
+now uses Silo SDK `v0.25.0`; a release number alone does not prove all optional
+public services match. Check descriptors and host runtime assembly for the
+services a plugin uses.
 
 ```sh
-go get github.com/Bloem-Studios/bloem-plugin-sdk@v0.26.0
+go get github.com/Bloem-Studios/bloem-plugin-sdk@v0.27.0
 ```
 
 The server does not import the plugin-author SDK, so its `go.mod` does not list
@@ -82,19 +81,20 @@ requires inventing a public storage capability or using `ebook_backend.v1`, whic
 has no SDK service implementation. See the SDK's
 [storage-provider authoring guide](https://github.com/Bloem-Studios/bloem-plugin-sdk/blob/v0.26.0/docs/storage-provider.md).
 
-The current host admits only EPUB/PDF ebook libraries through this path. A
-storage plugin exposing video or music bytes does not add the required host
-scanner, playback and delivery integrations. The separate S3 provider has not
-passed production backend admission and currently advertises
-`revision_pinned_reads: false`.
+The current host supports native ebook, movie and audiobook workflows when
+its respective scanner, probe and delivery services are composed and ready.
+Libraries can combine local paths and multiple source selections. The
+[storage architecture](bloem-native-storage.md),
+[video boundary](bloem-native-video-playback.md) and
+[audiobook boundary](bloem-native-audio-playback.md) describe admission and
+publication holds. Provider artifact verification, immutable revision reads,
+source configuration and client playback acceptance remain separate checks.
+Do not infer provider readiness from SDK metadata or range support alone.
 
-Bookwarehouse provides authenticated ebook listing, metadata and downloads with
-single byte-range support. Check the API version exposed by the target deployment.
-Its current download path does not pin reads to a requested immutable revision;
-byte ranges and a metadata `file_hash` alone do not establish that guarantee.
-A plugin must supply and validate an immutable-read strategy before advertising
-it. This documentation does not claim that a Bookwarehouse provider is
-implemented or admitted.
+Bookwarehouse catalog artifacts follow host-controlled automatic verification;
+installation and source configuration are exposed through protected server UI/API
+controls. Backend-specific revision guarantees still belong in the provider,
+and credential values must not appear in catalogue responses or generated contracts.
 
 ## Kotlin and Swift client contracts
 
@@ -128,12 +128,17 @@ connection tests. `AudiobookIntegrationSummary` gains the optional
 fills, and only for a platform administrator; credential values never appear on
 the wire.
 
-The latest generated source revision is
-`60f2f86061ecf235248582646e40e22f56767bef`, with normalized graph digest
-`sha256:9cd33a20a983489852344d08aed94680c7063576e6f1ab97bb2c456a80b5cf69`.
-Each client records the committed artifact revision separately from that source
-stamp. Its checked-in bundle manifest and server pin are the authority for the
-adopted bytes; a later documentation-only server commit does not change the graph.
+The October 14 integration artifacts carry source revision
+`294df15ea03dd58ee3adc509aecb23452e30f176` and normalized graph digest
+`sha256:9d096c83e1a0e9e38aca1eaa48696732191e05f1a8975932e60db513a2a421f4`.
+`contracts/client/v1/digest.txt` and the generated Kotlin/Swift headers are the
+authority. A later documentation-only commit does not require a new graph digest
+or a new source stamp.
+
+The merged DTO graph adopts nullable account `max_profiles` and removal of the
+upstream administrator styling fields. Both native client releases still need
+explicit bundle adoption and runtime checks. See the
+[contract transition](bloem-contract-adjudications.md).
 
 ### Reproduce and verify
 
@@ -151,11 +156,12 @@ GOWORK=off make verify-client-digest verify-client-dtos verify-client-coverage
 GOWORK=off make verify-settings-bindings verify-bloem-openapi verify-apiv2-openapi
 ```
 
-The native-storage OpenAPI path/method check walks the actual production route
-registrar and covers all 32 operations. The older shared route inventory does not
-include that group. Its generator currently stops at the existing `NewRouter`
-seal invariant; that snapshot and generator are preserved, not treated as fresh
-native-storage evidence.
+The native-storage path/method check walks the production registrar and covers
+all 32 operations. Book-request and other conditional groups also have focused
+mount checks. Generate the route inventory after router changes, then consult
+[API coverage](../bloem/api-catalogue.md): the inventory includes dispatchers,
+and typed native coverage remains incomplete. No single route count certifies
+all optional groups or provider readiness.
 
 Inspect generated changes rather than replacing a digest alone. The contract
 stamp identifies the source used for generation; it is not necessarily the latest

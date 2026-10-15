@@ -49,8 +49,7 @@ operation and is not part of this target -- it needs the sibling client trees at
 
 ## Bloem native storage and generated contracts
 
-The October 7 source baseline, Bloem
-`c87b44545228c93f909275c0b5c4fc1d6a289e1b` with Silo through `74158b4a8`, keeps
+The October 14 source integration, including Silo through `ea3c10a7f`, keeps
 `/api/v2` separate from `/api/bloem/v1`. Native-storage administration is a
 Bloem-owned protected platform/organization surface. Its route and wire
 reference is [Native Storage Administration](../../../bloem-api-reference.md#native-storage-administration),
@@ -62,13 +61,15 @@ schema never promotes artifact approval or synthetic provider tests to
 `backend_verified`.
 
 Storage-source libraries use ordinary v1/v2 library operations. The v2
-`createLibrary` adds `storage_source`, and the library view reports it; the
+`createLibrary` supports native source selection; local paths and multiple source
+locations can coexist. Source roots retain opaque identities. The
 [storage architecture](../../../architecture/bloem-native-storage.md) records
-the limits, such as no downloads or conversion of storage files.
+the publication, scanner and delivery readiness limits. Downloads and conversion
+require their own supported delivery path; configuring a source does not grant them.
 
 Generated OpenAPI/DTO agreement establishes a contract snapshot, not whether
 an optional handler is mounted, an authenticated workflow passed against a
 production server, or a native client uses it. Feature detection remains
 required. The public plugin SDK version, private `StorageProvider` wire schema
 and native-client API artifacts are separate compatibility surfaces; see
-[protocol ownership](../../../architecture/bloem-native-storage.md#ownership-and-protocol).
+[protocol ownership](../../../architecture/bloem-native-storage.md#protocol).

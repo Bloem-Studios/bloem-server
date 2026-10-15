@@ -179,27 +179,20 @@ another service. The container listeners are fixed.
 | Variable | Default | Purpose |
 | --- | ---: | --- |
 | `PORT` | `8090` | Main web application and API |
-| `JF_PORT` | `8096` | Jellyfin/Emby compatibility listener |
-| `ABS_PORT` | `13378` | Audiobookshelf compatibility listener |
 | `PROXY_PORT` | `8083` | Commented standalone proxy example |
 | `TRANSCODE_PORT` | `8082` | Commented standalone transcode example |
 
-The Jellyfin/Emby and Audiobookshelf protocols are available through the
-compatibility gateway on the main `PORT` by default. Dedicated `8096` and
-`13378` listeners are opt-in: enable `jellyfin_compat.listen` or
-`audiobookshelf_compat.listen` in **Admin > Settings**, uncomment the matching
-port mapping in `docker-compose.yml`, set `JF_PORT` or `ABS_PORT`, and recreate
-the application service.
-
-Audiobookshelf compatibility is a beta feature: it keeps working as-is on 1.0
-builds but is outside the 1.0 support promise and certification, until a later
-consolidated Books effort replaces it.
+The main listener serves the web app and supported native APIs. Jellyfin/Emby
+and Audiobookshelf protocol gateways, companion enrollment and dedicated
+listeners are removed. Legacy `JF_PORT`, `ABS_PORT` and protocol settings do not
+enable them; see [protocol removal](../../../../architecture/bloem-compatibility-removal.md).
+Native audiobook and ebook support remains separate.
 
 > [!WARNING]
-> The application and compatibility port mappings listen on all host interfaces
+> The application port mapping listen on all host interfaces
 > by default and do not provide TLS themselves. Before allowing access beyond a
 > trusted local network, use a correctly configured HTTPS reverse proxy and
-> firewall, then configure the Silo public URL and trusted proxies in the admin
+> firewall, then configure the operator public URL and trusted proxies in the admin
 > settings for that
 > deployment. Do not expose PostgreSQL or Redis publicly.
 

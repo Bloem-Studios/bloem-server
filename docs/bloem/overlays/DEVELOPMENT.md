@@ -85,7 +85,8 @@ historical Silo selectors keep their original expectations.
 
 `make test-go` sets a 20-minute per-package timeout. The
 [October 7 deployment record](../../operations/2026-10-07-native-storage-deployment.md#outstanding-validation)
-separates current focused checks from remaining backend/client acceptance. Older
+records historical focused checks and remaining backend/client acceptance. Use
+the [integration changelog](../CHANGELOG.md) for the newer source milestones. Older
 interrupted or failed broad runs remain historical failures. Check the
 [SDK guide](../../architecture/bloem-sdk-compatibility.md) for reproducible
 contract generation and consumer adoption; a generated file alone is not a client feature.
@@ -124,3 +125,10 @@ Before running or deploying a new binary, verify its platform and `go version -m
 VCS revision/dirty flag against the checkout that supplied the source. A successful
 build or a healthy older process does not establish that the new artifact was tested.
 In worktrees, check for parent-checkout VCS metadata before trusting the stamp.
+
+## Documentation and API generation
+
+Use the [documentation workflow](../documentation-workflow.md) for ownership,
+Swagger/OpenAPI generation, native route coverage, settings/client bindings and
+focused verification. The [API catalogue](../api-catalogue.md) identifies typed
+operations and unresolved documentation gaps after the Silo integration.

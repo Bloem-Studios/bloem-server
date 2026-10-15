@@ -1,7 +1,7 @@
 ---
 title: Bloem Server Admin Guide
 description: Everything a person running a Bloem Server needs, from a blank machine to a household streaming their own library, written for someone doing it for the first time.
-summary: Install, first-run setup, libraries, users and profiles, playback and transcoding, access policy, notifications, compatibility with other apps, maintenance, and what to do when something breaks.
+summary: Install, first-run setup, libraries, users and profiles, playback and transcoding, access policy, notifications, native clients, maintenance, and what to do when something breaks.
 tags:
   - admin
   - operator
@@ -9,7 +9,7 @@ tags:
   - deployment
 audience:
   - operator
-last_reviewed: 2026-09-30
+last_reviewed: 2026-10-15
 related:
   - ../bloem/overlays/wiki/deployment/docker.md
   - ../architecture/media-naming.md
@@ -50,8 +50,7 @@ Three things it does that matter to how you set it up:
   is the one thing that needs real processing power, and it is why the GPU section below exists.
 - **It has households.** One login can have several *profiles* — one per family member — each with
   its own watch history, its own recommendations and its own parental limits.
-- **It talks other apps' languages.** Apps built for Jellyfin, Emby or Audiobookshelf can connect to a
-  Bloem Server without knowing it is Bloem.
+- **It serves native clients.** Use the embedded web app or a Bloem/Silo-native client whose API contract matches the server.
 
 Bloem Server is a public tracking fork of Silo Server. That matters to you in one way: a handful of
 technical names — environment variables like `SILO_DATA_ROOT`, the Docker service called `silo` — keep
@@ -229,15 +228,20 @@ choose *Identify*, and pick the right match; the fix sticks across rescans. Loca
 files are honoured too: [Local NFO Metadata](../architecture/local-nfo-metadata.md) explains which fields, and
 how they merge with what the providers say.
 
-**Ebooks from a storage source.** An ebook library can read its books from an
-installed storage plugin, such as Bookwarehouse, instead of folders. When you
-add an ebook library, choose *Storage source* and pick the source. The library
-keeps that source: it never gains folders, and the source backs only that
-library. Books publish from the source's own metadata without being
-downloaded, covers arrive in the background, and later scans list only what
-changed. Storage sources are installed and configured through the protected
-[native storage API](../bloem-api-reference.md#native-storage-administration);
-see the [storage architecture](../architecture/bloem-native-storage.md).
+**Libraries with local and remote folders.** A library can combine filesystem
+paths with several storage-plugin locations. In the folder picker, open a configured
+S3 or Bookwarehouse source, browse into nested directories and add the required
+roots. Review the whole selection before saving. Removing one selected root does
+not discard the others, and reopening the picker preserves existing selections.
+A library location keeps its source identity when its selected roots change.
+
+Native storage supports ebook, movie and audiobook workflows only when the
+corresponding scanner and delivery services are ready. Configure credentials
+through the protected source controls; do not paste provider URLs into media paths.
+Provider installation, source configuration, library admission and actual playback
+are separate checks. An unavailable source can be retained for recovery without
+publishing unverified media. See [native storage](../architecture/bloem-native-storage.md)
+and its [API reference](../bloem-api-reference.md#native-storage-administration).
 
 ### 2.3 Autoscan
 
@@ -253,6 +257,12 @@ delivery time. Overlapping scans wait for the active scan instead of silently
 skipping the requested work.
 
 ### 2.4 Users and Devices
+
+**Inherited profile limits.** An unset account `max_profiles` inherits the access
+group's limit; it is not an unlimited allowance. An explicit account value takes
+precedence for ordinary accounts. Managed Bloem entitlements keep their assigned
+ceiling. Review the effective policy before changing a household's profile count.
+
 
 **Users** lists every account: its role (administrator or viewer), its profiles, its access groups,
 and what it is entitled to. From a user's page you can reset a password, disable the account, change
@@ -317,7 +327,7 @@ on the organisation or account page choose the exact revision → **Preview** �
 | **Downloads** | Whether viewers can download for offline use, and limits. |
 | **Security & access** | Password rules, invitations and invite codes, API keys, session lifetimes. |
 | **Notifications** | What the server tells people about — new episodes, request updates — and through which channels (in-app, email, Discord, generic webhooks). |
-| **Compatibility** | The Jellyfin/Emby and Audiobookshelf surfaces (2.12). |
+| **Native clients** | Supported client APIs and retired protocols (2.12). |
 | **Watch sync** | Syncing watch state to and from outside services. |
 | **Infrastructure** | Search (Meilisearch), object storage for artwork and downloads (S3, MinIO, Cloudflare R2 — [S3 storage setup](../bloem/overlays/s3-storage-setup.md)), the distributed roles (2.14). |
 | **AI** | Optional AI-assisted features such as description translation, each with its own provider key. |
@@ -417,20 +427,17 @@ is installed, lets you enable and disable each one, and holds each plugin's own 
 are installed by the person with access to the host, not from inside the web app — that is a
 deliberate security boundary.
 
-### 2.12 Compatibility with other apps (Jellyfin, Emby, Audiobookshelf)
+### 2.12 Native clients and retired protocols
 
-Bloem answers the Jellyfin/Emby API and the Audiobookshelf API in the same process, on the same
-address, with nothing extra to run. That means apps built for those servers — Infuse, VidHub,
-Findroid, Audiobookshelf's own apps — can connect to your Bloem Server by entering its address as if
-it were one of them.
+The web app and native client APIs share the main server address. Use a native
+client release with matching server contracts. Jellyfin, Emby and Audiobookshelf
+protocol apps cannot sign in to this fork: their gateways, settings, auxiliary
+listeners and companion enrollment were removed. Setting `JF_PORT` or `ABS_PORT`
+does not restore them. Native audiobook and ebook features remain available.
 
-- Turn each surface on or off in **Admin → Settings → Compatibility**. Off simply makes those
-  paths answer "unavailable"; nothing is stopped or removed.
-- If your reverse-proxy setup expects those servers on their usual ports, you can also give them a
-  dedicated port: set `JF_PORT` and/or `ABS_PORT` in `.env` and uncomment the matching port lines in
-  `docker-compose.yml`. The same-address path keeps working regardless.
-
-Full details and troubleshooting: [Jellyfin/Emby and Audiobookshelf Compatibility](../operations/compatibility-applications.md).
+See [protocol removal](../architecture/bloem-compatibility-removal.md) for
+migration and restoration boundaries, and [client contracts](../architecture/bloem-sdk-compatibility.md)
+for the distinction between generated types and a tested app release.
 
 ### 2.13 Tasks, Logs, Diagnostics, Maintenance, Stats
 
@@ -542,7 +549,7 @@ startup migrations; do not perform a rolling upgrade across that boundary.
 | An item has the wrong artwork or title | Open it, choose *Identify*, pick the right match. |
 | Playback stutters or buffers | **Playback history** — is it transcoding? If so, does the machine have a GPU, and is hardware acceleration set to *auto*? |
 | "Cannot load libcuda" in the logs | The NVIDIA driver is not visible to the container. Check the container toolkit; Bloem has fallen back to software. |
-| A Jellyfin/Emby app cannot connect | **Settings → Compatibility** — is that surface enabled? |
+| A Jellyfin/Emby/Audiobookshelf app cannot connect | Use the web app or a supported native client; those protocols are retired. |
 | Nobody can log in | Check the server address in **Settings → General** matches what people are typing, including `http` vs `https`. |
 | The web app is slow to search | Enable Meilisearch under **Settings → Infrastructure** — [Optional Meilisearch](../bloem/overlays/wiki/deployment/docker.md#optional-meilisearch). |
 | The database container will not start after an update | Look at `docker compose logs postgres`; auto-tuning may have written a setting that needs a restart — `docker compose restart postgres`. |
@@ -575,7 +582,7 @@ screenshots of the log; it contains what is needed and nothing secret.
 
 - [Bloem README](../../.github/README.md) — highlights, configuration, server modes, PostgreSQL auto-tuning
 - [Docker deployment](../bloem/overlays/wiki/deployment/docker.md) — the deployment reference this guide summarises
-- `docs/operations/compatibility-applications.md`
+- `docs/architecture/bloem-compatibility-removal.md`
 - `docs/architecture/invitations-onboarding.md`
 - `docs/architecture/notifications.md`
 - `docs/livetv-tuner-discovery.md`, `docs/s3-storage-setup.md`

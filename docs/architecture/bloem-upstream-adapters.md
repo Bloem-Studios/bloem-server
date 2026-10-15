@@ -86,10 +86,9 @@ versioned marker so filtered filesystems cannot apply an adapter twice.
 - Original-file downloads also preserve Silo's `ServeDirect` and
   `ResolveDirectFile` signatures. Owned `ServeDirectForProfile` and
   `ResolveDirectFileForProfile` methods bind the verified subject before
-  delegation. The compatibility listener uses an owned route entry point for
-  early playback/download denial and an owned service adapter that resolves
-  the current session account, profile and tenant. Both listeners share the
-  same download service, quality ceiling and bandwidth limiters.
+  delegation. Current native HTTP composition resolves the account, profile
+  and tenant before applying the download service, quality ceiling and
+  bandwidth limiters. The former protocol listener adapters are retired.
 - [`NewProfilePrepareAgainService`](../../internal/downloads/bloem_reprepare.go)
   is mandatory in Bloem HTTP retry composition. It checks the requesting
   profile's download and transcode authority before calling Silo's unchanged
@@ -152,10 +151,10 @@ These are compatibility semantics, not new optional plugin behavior.
 
 ## Owned startup helpers
 
-[`cmd/silo/bloem_main.go`](../../cmd/silo/bloem_main.go) owns compatibility handler
-construction, gateway configuration and shared-worker shutdown plumbing. The
-shared entry point retains the real gateway constructor, listener ownership,
-route registration and shutdown call order. Worker fencing precedes joins, and
+[`cmd/silo/bloem_main.go`](../../cmd/silo/bloem_main.go) owns native service
+composition and shared-worker shutdown plumbing. The shared entry point retains
+listener ownership, route registration and shutdown call order. Retired protocol
+gateway constructors are not part of the current composition. Worker fencing precedes joins, and
 cleanup follows only successful shutdown. Concrete nil pointers are normalized
 before interface conversion. Tenant, authentication and quota enforcement remain
 host authority, regardless of optional presentation workers.
@@ -230,15 +229,11 @@ the account-creation transaction, retaining an administrator recovery path when
 local password sign-in is disabled. Provider identity and refresh-chain fields coexist with Bloem's
 device, profile, credential revision, and authentication-method bindings.
 
-Account-wide compatibility revocation uses Bloem's owned
-[`SessionRepository.DeleteByUserID`](../../internal/jellycompat/bloem_session_repository.go)
-before upstream `SessionStore.EvictUser`. The eviction generation prevents a
-persistent read already in flight from repopulating the revoked cache. A
-zero-row delete succeeds because upstream may have deleted the rows in the
-sign-out transaction; a durable failure returns before eviction and
-publication. Post-commit invalidation runs under the bounded detached context from
-`sessioninvalidation.Run`, then publishes the existing account eviction event
-for other replicas. Profile-only deletion keeps its separate scoped boundary.
+Account invalidation retains the host's durable login-session revocation,
+cache eviction and cross-replica notification boundaries. Post-commit work uses
+the bounded detached context from `sessioninvalidation.Run`; profile-only
+deletion keeps its scoped boundary. The former compatibility session repository
+and its account-revocation adapter were removed with the protocol runtime.
 
 Both invitation acceptance paths preserve the organization stored on the
 invitation. Link invitations can receive an email at acceptance; supersession of
@@ -293,9 +288,9 @@ generation alone does not establish that clients expose those controls.
 Bloem operators use `.env.bloem.example`, linked by the maintained Docker guide.
 The upstream `.env.example` remains unchanged and selects the upstream image.
 Moving the sample does not change a deployed environment or encrypted settings.
-Audiobookshelf public route-prefix constants live in `bloem_types.go`; the shared
-`types.go` is unchanged. Both transfers retire upstream file modifications while
-preserving Bloem's configuration and compatibility behavior.
+Protocol route-prefix constants and listener controls from the retired runtime
+are not active configuration. Preserve compatibility environment names used by
+the native server, without restoring removed protocol settings.
 
 ## Preparing Silo contributions
 
@@ -330,10 +325,12 @@ Removing URL authentication without replacing every media loader caused subtitle
 and attached-font requests to fail with 401. Follow upstream here rather than
 adding a second subtitle transport.
 
-## Audiobookshelf native audiobook filtering
+## Native audiobook boundary after protocol removal
 
-Six calls in `internal/audiobooks/media_store.go` delegate to the owned
-`bloem_native_audio_filter.go`: item get/batch, item access predicates, file
-get/list and presentation runtime. Native-only items and native files remain
-absent from ABS; mixed items retain local files and local runtime. The unchanged
-materialized author-count path can include native-only books.
+Native audiobook scanning and direct playback remain in the host. The former
+Audiobookshelf REST/Socket.IO services, media-store filtering adapter and
+compatibility session repository are retired; they are not extension points for
+new providers. Historical protocol tables may remain for Silo switching, as
+specified by [protocol removal](bloem-compatibility-removal.md). Current native
+publication and playback invariants are in
+[bloem-native-audio-playback.md](bloem-native-audio-playback.md).

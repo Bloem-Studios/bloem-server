@@ -49,7 +49,11 @@ func bloemHumaConfig() huma.Config {
 	cfg.OpenAPI.Info = &huma.Info{
 		Title:       "Bloem Native API",
 		Version:     fmt.Sprintf("%d", bloemAPIMajor),
-		Description: "Bloem's own surface: features Silo does not have and will not gain, plus the tenancy and entitlement model Bloem adds on top of it.",
+		Description: "Bloem extensions alongside the separate Silo native /api/v2 contract. Account, profile, organization and platform authority are distinct; follow each operation's security declaration. This document describes registered operations; additional chi-handler routes remain in the native wire reference and API coverage catalogue. Generated schemas do not establish provider readiness, client adoption or live deployment.",
+	}
+	cfg.OpenAPI.ExternalDocs = &huma.ExternalDocs{
+		Description: "Native wire reference and documentation index",
+		URL:         "https://github.com/Bloem-Studios/bloem-server/blob/main/docs/bloem-api-reference.md",
 	}
 	cfg.Components.SecuritySchemes["bloemAccountSession"] = &huma.SecurityScheme{
 		Type: "http", Scheme: "bearer",

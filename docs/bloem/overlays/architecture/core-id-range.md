@@ -4,78 +4,43 @@ Bloem additions and overrides for the upstream Silo document [`docs/architecture
 The upstream file is kept verbatim so Silo merges stay clean; where the two
 disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../../README.md).
 
-**Location:** section “Core database ID ranges”, after the paragraph beginning “This is parent-column standardization. It does not make every application…”. **Bloem adds:**
+## Current policy-library representation
 
-Bloem's policy-library arrays are an exception to those retained child limits.
-Migration `20260919095615_bloem_policy_library_ids_bigint` widens access-group,
-invitation, membership, template-revision and cohort-revision library arrays,
-including both rollback snapshots and the users compatibility/rollback projection.
-Dynamic policies discover existing libraries automatically: encountering a valid
-bigint library ID must not prevent an ordinary tenant from being created. NULL
-(inheritance), an empty array (explicit denial where supported), values and array
-bounds retain their meanings. This is not general wide-ID workflow support.
+The October 14 integration follows Silo: policy-library arrays use PostgreSQL
+32-bit `integer[]`, including membership authority, entitlement/cohort revisions,
+rollback snapshots and the users projection. Parent identifiers retain exactly
+the types Silo defines; a bigint parent does not imply wide-ID support in every
+policy or client workflow.
 
----
+Migration `20261014233826_bloem_silo_policy_alignment.sql` aligns the
+arrays after validating the integer range. Any out-of-range value or bound
+refuses the transaction before a partial conversion. NULL inheritance, empty
+arrays, selected values and array bounds retain their existing meanings.
+Membership and entitlement writers must use the aligned types rather than
+reintroducing a fork-only bigint array assumption. See
+[upstream adapters](../../../architecture/bloem-upstream-adapters.md).
 
-**Location:** section “Core database ID ranges”. **Bloem replaces** the corresponding upstream passage with:
+Historical SQL stays byte-identical. `migrations.BloemFS` adapts ordering and
+schema differences, including Silo-first databases and finalized/mirrored
+membership projections. Switching acceptance must use the pinned Silo source or
+image that the Bloem source actually includes; a wider historical schema alone
+does not prove either server can write it.
 
-- Account references in profiles, login sessions, settings, progress, downloads,
-  notifications, and playback admission state.
-- Library references in catalog memberships, scanner state, collection scopes,
-  setting values and search documents.
-- File references in downloads, subtitle state, matching queues, reader state,
-  playback history, and watch progress.
-- `page_section_scope_revisions.library_id` and
-  `library_collection_order_revisions.library_id`. These revision tables retain
-  the integer limit even where the visible section row uses bigint.
-- Integer parameters in `refresh_episode_catalog_entry` and
-  `refresh_audiobook_item_file_stats`, and integer locals in their trigger paths.
-- Account advisory-lock keys in preference/device settings, setting mutations,
-  imported progress, diagnostics, requests, and subtitle AI. The two-integer
-  lock form and `int32(userID)` conversions need coordinated replacement before
-  wide account IDs can be used.
+## Historical widening evidence
 
----
+The September 19 deployment of `418a18b7d` applied
+`20260919095615_bloem_policy_library_ids_bigint`, widening eight policy arrays.
+Its [deployment record](../../../operations/2026-09-19-xtream-deployment.md#database-and-recovery-evidence)
+records the backup, restored-backup rehearsal, row hashes, bounds and trigger
+checks. Those facts remain historical evidence. They do not describe the current
+aligned array width or authorize rerunning the old migration as an upgrade step.
 
-**Location:** section “Core database ID ranges”. **Bloem replaces** the corresponding upstream passage with:
+## Client and rollout boundary
 
-Input predicates against widened IDs need bigint parameters, including arrays.
-This matters even when a query matches no rows: pgx encodes the parameter before
-PostgreSQL executes the query. Output scans from integer children and array
-columns remain integer-width until those columns change. Artwork reconciliation
-uses a 64-bit numeric cursor for library IDs.
-
----
-
-**Location:** section “Core database ID ranges”, after the paragraph beginning “The v2 catalog, account, and playback wire contracts retain decimal-string…”. **Bloem adds:**
-
-## Deployment evidence
-
-The policy-array migration was applied in the
-[September 19 deployment](../../../operations/2026-09-19-xtream-deployment.md#database-and-recovery-evidence)
-of `418a18b7d`, after a fresh full backup and a scoped restored-backup rehearsal.
-Production checks preserved selected row hashes, array bounds and policy triggers;
-all eight arrays widened and no invalid indexes remained. Writers were quiesced
-and application pools recycled. This establishes that deployment's migration
-result, not general wide-ID workflow support or a full-catalog recovery-time claim.
-The precautions below still apply to other installations.
-
----
-
-**Location:** section “Apply and rollback”, after the paragraph beginning “The Up and Down each run in one transaction. Down…”. **Bloem adds:**
-
-The Bloem policy-array migration also rewrites tables, including users and
-invitations. Quiesce writers, provide copy space and recycle application pools
-before resuming traffic. It locks the users projection before selecting its
-compatibility or finalized column name. Column-dependent triggers are recreated
-inside the same locked transaction with their original definitions, deferral and
-enabled modes; policy authority, guards, digests and security revisions do not
-change. Down checks every array, including rollback snapshots, before narrowing
-any column and refuses either out-of-range bound without losing data. Image
-rollback should retain this schema; it does not make older narrow query casts
-support wide policies.
-
-No wire format or client capability changes with this repair. Apple, Android and
-legacy-number precision limits above remain separate. The shared Audiobookshelf
-runtime predicate accepts wide library filters without admitting a different
-library or treating an empty allowlist as unrestricted.
+Keep upstream decimal-string IDs, numeric precision limits and nullable field
+semantics. A successful schema conversion is not device acceptance. Review
+[contract transition requirements](../../../architecture/bloem-contract-adjudications.md)
+and [Silo switching](../../../architecture/silo-backend-switching.md) before
+rollout. Writer quiescence, copy space, pool recycling and recovery planning are
+operator responsibilities for table-rewriting migrations. The retired
+Audiobookshelf runtime is not a policy-array consumer in this fork.

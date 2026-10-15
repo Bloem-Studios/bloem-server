@@ -11,10 +11,13 @@ and frozen alpha `/api/v1`; its extensions are not Silo-compatible or externally
 The native API evolves with Bloem; clients must use capability tokens for
 optional behavior and ignore additive response fields they do not understand.
 
-The October 7 integration at Bloem `c87b44545228c93f909275c0b5c4fc1d6a289e1b`
-includes Silo through `74158b4a8` and preserves these namespace boundaries.
-It includes experimental storage-source ebook libraries, session-store outage
-handling and durable overlapping-scan semantics.
+The October 14 source integration includes Silo through `ea3c10a7f` and
+preserves these namespace boundaries. It includes mixed filesystem/plugin library
+locations, native ebook/movie/audiobook delivery and inherited profile limits.
+The [API catalogue](bloem/api-catalogue.md) maps typed native operations and
+identifies inventory entries whose schemas still need conversion. Swagger/OpenAPI
+coverage is generated; this prose reference also covers native chi handlers.
+
 Silo's password-reset, request-policy, bitrate and library-monitoring contracts
 remain in their upstream API surfaces. Server ownership (`is_owner`), an
 organization's owner and a household's primary profile are separate concepts.
@@ -51,8 +54,7 @@ clients depend on"), and splits into two genuinely different surfaces:
   native mobile/TV clients actually call.
 - **Admin** (operations under `/api/bloem/v1/admin`, except the account-session exchange) — a multi-tenant administration
   surface: per-organization admin (groups, entitlements, invitations, policy-decision audit),
-  cross-organization platform admin (organization lifecycle, memberships), compatibility-app
-  lifecycle management (Jellyfin/Audiobookshelf-protocol companion services), and org-wide people
+  cross-organization platform admin (organization lifecycle, memberships), and org-wide people
   administration (bulk account/profile operations via async jobs). The embedded web console
   consumes this surface. Earlier native-client review found no Admin callers; this server/web
   update does not establish delivery in either native app.
@@ -61,7 +63,7 @@ clients depend on"), and splits into two genuinely different surfaces:
 
 1. [System & Client](#system--client-native-apibloemv1)
 2. [Organization Administration](#organization-administration-native-apibloemv1admin)
-3. [Platform Administration & Compatibility](#platform-administration--compatibility-native-apibloemv1admin)
+3. [Platform Administration](#platform-administration-native-apibloemv1admin)
 4. [People Administration](#people-administration-native-apibloemv1adminorganizationpeople)
 5. [Native Storage Administration](#native-storage-administration) — experimental storage source routes, request fields and errors.
 
@@ -448,7 +450,7 @@ is the admin-elevation surface for the tenant/admin web UI, not the TV/phone Wat
 **Purpose.** The public, unauthenticated "which server is this, and can I log into it yet" probe a
 client calls before it holds any credentials — the first request of server discovery/pairing, and
 distinct in both scope and source from `GET /api/v1/health` (health's `server_name`/`server_id`
-come from Jellyfin-compatibility configuration and are deliberately left untouched by this
+retain the persisted server identity as described by [protocol removal](architecture/bloem-compatibility-removal.md), and are deliberately left untouched by this
 endpoint; the two must not be conflated even though both can carry a "server name"). Mounted
 unconditionally, even when no database is configured — see Errors for why the failure mode is
 `503`, never `404`, in that case.
@@ -1458,11 +1460,11 @@ Note the sampling caveat: whether a given real request produced a row here at al
 
 ---
 
-## Platform Administration & Compatibility (native /api/bloem/v1/admin)
+## Platform Administration (native /api/bloem/v1/admin)
 
-Source: `internal/api/router_bloem.go` (`mountBloem` / `mountBloemRoutes`, routes ~line 153-227),
-`internal/api/handlers/bloem_admin_platform.go`, `internal/api/handlers/bloem_admin_compatibility.go`,
-`internal/tenancy/types.go` + `internal/tenancy/admin_store.go`, `internal/compatapp/types.go`.
+Source: `internal/api/router_bloem.go`,
+`internal/api/handlers/bloem_admin_platform.go`, `internal/tenancy/types.go`
+and `internal/tenancy/admin_store.go`.
 
 This is a native `/api/bloem/v1` surface — it is not part of the `/api/v1` Silo-compatible projection and
 carries none of that surface's additive-only contract rules. Everything under `/api/bloem/v1/admin` is
@@ -1479,8 +1481,7 @@ distinguishes them at more than one layer:
    admin-context token. Reachable by an organization's own `admin`-role member.
 2. **Platform admin** (`/api/bloem/v1/admin/platform/*`, this document) — cross-organization. It can
    list, create, suspend, reactivate, and transfer ownership of *any* organization on the
-   installation, and it administers the Compatibility Applications surface, which is also
-   installation-wide rather than tenant-scoped.
+   installation. Protocol companion administration has been removed.
 
 The distinction is not just routing sugar. Getting an admin-context token at all requires calling
 `POST /api/bloem/v1/admin/session` (`internal/api/handlers/bloem_admin_session.go`) with a body naming a
@@ -1496,7 +1497,7 @@ The distinction is not just routing sugar. Getting an admin-context token at all
 - `{"scope":"organization","organization_id":"<uuid>"}` — resolves a specific membership; its
   `effective_authority` claim is `"organization_admin"` normally, or `"platform_admin"` if the same
   account also happens to be a platform admin. **This upgraded `effective_authority` string does
-  not matter to the Platform/Compatibility handlers below** — they check `claims.Scope`, not
+  not matter to the Platform handlers below** — they check `claims.Scope`, not
   `claims.EffectiveAuthority`. An organization-scoped token, even one minted for a platform admin
   with `effective_authority: "platform_admin"`, is rejected by every endpoint in this document with
   `403 insufficient_platform_authority`. A caller who is a platform admin and wants to use these
@@ -1504,9 +1505,7 @@ The distinction is not just routing sugar. Getting an admin-context token at all
   types are not interchangeable, and having both open at once (each is a distinct 15-minute JWT
   from `POST /admin/session`) is normal.
 
-Both `BloemAdminPlatformHandler` (`requirePlatform`/`requirePlatformMutation`) and
-`BloemAdminCompatibilityHandler` (`requirePlatformScope`/`requirePlatformMutation`) enforce this the
-same way: pull `auth.AdminContextClaims` out of the request context (already validated once by
+`BloemAdminPlatformHandler` (`requirePlatform`/`requirePlatformMutation`) enforces this: pull `auth.AdminContextClaims` out of the request context (already validated once by
 `AdminContextMiddleware.Require`, which itself re-checks `IsPlatformAdmin` against the *current*
 account state on every request for platform-scope tokens) and require
 `claims.Scope == auth.AdminScopePlatform && claims.AccountID > 0`. Any other scope, or a missing
@@ -1545,7 +1544,7 @@ account's ordinary login access token.
 The caller is expected to re-fetch (`GET .../organizations/{id}` or the equivalent list/detail
 call), read the fresh revision, and retry with it as the new `expected_revision`.
 
-**Request body limit / strict decoding**: every mutating Platform and Compatibility endpoint reads
+**Request body limit / strict decoding**: every mutating Platform endpoint reads
 its body through `decodeAdminPlatformJSON` — max 32 KiB, `DisallowUnknownFields()` (an unknown JSON
 field is a `400 invalid_request`, not silently ignored), and a trailing-data check (a second JSON
 value in the body, e.g. NDJSON, is also `400 invalid_request`).
@@ -1982,253 +1981,14 @@ left without an eligible admin via this path.
 
 ---
 
-### Compatibility Applications
+### Retired compatibility applications
 
-Handler: `handlers.BloemAdminCompatibilityHandler`, built from `deps.CompatApplications`
-(`handlers.CompatibilityApplicationService`) and `deps.PublicURL`. Mounted only when
-`deps.CompatApplications != nil`.
-
-**What this actually is.** A "compatibility application" is *not* a Radarr/Sonarr-style third-party
-metadata integration, and it is not a plugin in the `silo-plugin-sdk` sense. Per
-`internal/compatapp/types.go`'s package doc: it is one of two specific, reviewed **companion
-services** — `bloem-jellyfin` and `bloem-audiobookshelf` (`compatapp.KindJellyfin` /
-`compatapp.KindAudiobookshelf`, run as separate Docker containers alongside the main server, per
-the `docker-compose.<kind>.yml` overlay files `operatorCommands` references) — that speak a
-*third-party client's native wire protocol* (Jellyfin's API, Audiobookshelf's API) on the front end
-so existing Jellyfin/Audiobookshelf apps can point at a Bloem-managed library, while talking to
-Bloem itself on the back end through a separate, closed, versioned **private compatibility API**
-(`contracts/compat/v1/openapi.yaml`) authenticated with its own enrollment/credential system (this
-package, `internal/compatapp`). This admin surface is the control plane for that trust
-relationship: which companion instances exist, what capability slices of the private API each was
-granted, and whether each is currently enabled, healthy, or revoked. It never touches an
-application/media table directly and never talks to Docker — per the router's own mount comment,
-"the handler consumes the lifecycle service; it never writes application tables and never touches
-Docker," and per `operatorCommands`' comment, Bloem only *displays* the exact Docker/Compose
-commands an operator (or their deployment controller) should run — install/update/rollback/remove —
-it has no Docker socket and performs no container mutation itself.
-
-**Mounted by default in real deployments.** `cmd/silo/main.go` wires
-`deps.CompatApplications = handlers.NewCompatApplicationService(compatapp.NewService(pool))`
-whenever the database connection pool (`pool`) is non-nil — i.e. in essentially every running
-deployment with a database configured, the same condition most of the rest of the admin API depends
-on. It is unmounted (all six routes below 404 through the generic `/admin/*` catch-all) only when
-the server has no database pool at all — a degraded/no-DB boot mode, not a normal operational
-toggle.
-
-Only reachable by clients: **no** — same grep as Platform, above, found zero references to
-`platform/compatibility` in either `bloem-android` or `bloem-apple`.
-
-**Two reviewed kinds only**: `"jellyfin"` and `"audiobookshelf"` (`compatibilityKinds` map in the
-handler, mirroring `compatapp.knownKinds`). Any other value is rejected before the lifecycle
-service is even called.
-
-**Six reviewed capabilities only** (`compatapp.Capability`, granted per enrollment, not
-enumerated/validated by the admin handler itself beyond passing them through — the lifecycle
-service enforces the closed set and rejects an unknown capability with
-`ErrCompatibilityCapabilityUnknown`): `identity` (credential exchange, device trust, profile
-discovery, PIN verification, profile switching), `catalog` (libraries/browse/search/detail/
-metadata/artwork), `state` (progress, watched state, favorites, bookmarks, collections, playlists,
-downloads), `playback` (playback planning, stream auth, cancellation, recovery, session/device
-reporting), `livetv` (channels, guide, tuner availability, stream auth, DVR rules, recordings),
-`events` (subject-filtered events with resumable cursors). A capability named `"service"`
-(enrollment/renewal/health) is implicit to every enrolled application and deliberately not
-independently grantable.
-
-#### `CompatibilityApplication` (wire shape used throughout)
-```json
-{
-  "instance_id": "string",
-  "kind": "jellyfin | audiobookshelf",
-  "state": "string",
-  "enabled": true,
-  "revoked": false,
-  "healthy": true,
-  "version": "string",
-  "image_digest": "string",
-  "api_range": { "min": "string", "max": "string" },
-  "last_contact_at": "RFC3339 timestamp or null",
-  "active_sessions": 0,
-  "capabilities": ["identity", "catalog", "..."],
-  "revision": 0
-}
-```
-`revision` is the optimistic-concurrency token every mutating endpoint below takes as
-`expected_revision`. The list/detail views returned by this handler additionally wrap every
-application as:
-```json
-{
-  "instance_id": "string", "kind": "jellyfin", "state": "string",
-  "enabled": true, "revoked": false, "healthy": true,
-  "version": "string", "image_digest": "string",
-  "api_range": { "min": "string", "max": "string" },
-  "last_contact_at": null, "active_sessions": 0,
-  "capabilities": ["identity"], "revision": 0,
-  "canonical_url": "string",
-  "commands": {
-    "install": "docker compose -f docker-compose.yml -f docker-compose.<kind>.yml up -d",
-    "update": "docker compose ... pull bloem-<kind> && docker compose ... up -d bloem-<kind>",
-    "rollback": "Pin the previous image digest for bloem-<kind> in docker-compose.<kind>.yml, then run: docker compose ... up -d bloem-<kind>",
-    "remove": "docker compose ... rm -sf bloem-<kind>  # discard its disposable protocol state: docker volume ls -q --filter name='_bloem-<kind>-state$' | xargs -r docker volume rm"
-  }
-}
-```
-`canonical_url` is `{PublicURL}/audiobookshelf` for the Audiobookshelf companion, or bare
-`{PublicURL}/` for Jellyfin (falls back to `https://bloem.example` if `PublicURL` is unset).
-`commands` is purely informational text for an operator to copy/paste or for a deployment
-controller to run — the server never executes any of it.
-
----
-
-#### `GET /api/bloem/v1/admin/platform/compatibility/applications`
-- Purpose: list every enrolled compatibility application instance and its current lifecycle state.
-- Auth required: platform admin-context token (`scope: "platform"` — same check as the Platform
-  section, `requirePlatformScope`, independent of the Platform handler's own check).
-- Response body (200):
-```json
-{ "applications": [ /* compatibilityApplicationView, see above */ ] }
-```
-- Errors: `403 insufficient_platform_authority`, `503 compatibility_admin_unavailable` (lifecycle
-  service errored or the handler/service is nil).
-- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
-  Native-client adoption is outside this update.
-
-#### `POST /api/bloem/v1/admin/platform/compatibility/enrollments`
-- Purpose: mint a one-time enrollment secret for a new companion instance, carrying a reviewed
-  capability grant. The companion redeems this secret exactly once, at first boot, to obtain its
-  permanent application identity and a renewable service credential.
-- Auth required: platform admin-context token.
-- Request body:
-```json
-{
-  "kind": "jellyfin | audiobookshelf",
-  "capabilities": ["identity", "catalog", "..."]
-}
-```
-`kind` must be exactly `"jellyfin"` or `"audiobookshelf"`; anything else is rejected before the
-service is called. `capabilities` is passed through to the lifecycle service, which validates each
-name against the closed six-capability set (see above) and rejects an empty or unknown list.
-- Response body (201) — **the only time the raw secret is ever returned**; response carries
-  `Cache-Control: no-store`:
-```json
-{
-  "enrollment": {
-    "kind": "jellyfin",
-    "secret": "string (one-time, never retrievable again)",
-    "expires_at": "RFC3339 timestamp"
-  }
-}
-```
-The secret expires 15 minutes after issuance (`compatapp.EnrollmentTTL`) if never redeemed.
-- Errors: `422 validation_failed` with `fields.kind` = "must be jellyfin or audiobookshelf" (bad or
-  missing `kind`), `422 validation_failed` with `fields.capabilities` = "must name reviewed
-  capabilities" (`ErrCompatibilityCapabilityUnknown` — an unrecognized or empty capability list),
-  `403 insufficient_platform_authority`, `503 compatibility_admin_unavailable`.
-- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
-  Native-client adoption is outside this update.
-
-#### `POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/enable`
-- Purpose: turn an application instance on (it starts/continues serving its private-API traffic).
-- Auth required: platform admin-context token.
-- Path params: `instance_id` (the companion's self-reported instance identifier — a string, not a
-  UUID path param the router validates; an unknown value reaches the service and comes back as
-  `ErrCompatibilityApplicationNotFound`).
-- Request body:
-```json
-{ "expected_revision": 0 }
-```
-Required, `> 0`, checked against the application's current `revision`.
-- Response body (200):
-```json
-{ "application": { /* CompatibilityApplication, see above; enabled: true */ } }
-```
-- Errors: `422 validation_failed` with `fields.expected_revision` = "must be a positive revision",
-  `404 not_found` (unknown `instance_id`), `409 authorization_state_changed` (revision mismatch;
-  response includes `current_revision`), `403 insufficient_platform_authority`,
-  `503 compatibility_admin_unavailable`.
-- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
-  Native-client adoption is outside this update.
-
-#### `POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/disable`
-- Purpose: turn an application instance off — same handler as enable
-  (`handleSetEnabled`), parameterized `enabled=false`. A disabled application's requests against the
-  private compatibility API are refused (`compatapp.ErrApplicationDisabled`), but its trust record
-  and credential remain intact — this is reversible via `enable`, unlike revoke.
-- Auth required: platform admin-context token.
-- Path params: `instance_id`.
-- Request body: `{ "expected_revision": 0 }` — same validation as enable.
-- Response body (200): `{ "application": { /* CompatibilityApplication; enabled: false */ } }`.
-- Errors: identical set to enable, above.
-- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
-  Native-client adoption is outside this update.
-
-#### `POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/rotate-credential`
-- Purpose: force-issue a fresh service credential for an application instance, invalidating its
-  previous one. Sets `credential_rotated_at` on the underlying application record (companion
-  self-renewal on normal use does not set this field — only an administrator-forced rotation does).
-- Auth required: platform admin-context token.
-- Path params: `instance_id`.
-- Request body:
-```json
-{ "expected_revision": 0 }
-```
-Required, `> 0`, checked against `revision`.
-- Response body (200) — **the only time the raw rotated secret is ever returned**; response
-  carries `Cache-Control: no-store`:
-```json
-{
-  "credential": {
-    "secret": "string (one-time, never retrievable again)",
-    "expires_at": "RFC3339 timestamp"
-  },
-  "application": { /* CompatibilityApplication, see above */ }
-}
-```
-The credential is valid 15 minutes past its last successful use (`compatapp.CredentialTTL`) and
-renews on each authenticated call; forced rotation immediately invalidates whatever credential the
-running companion instance was using, so the operator is expected to redeploy/restart the companion
-with the new secret promptly.
-- Errors: `422 validation_failed` with `fields.expected_revision` = "must be a positive revision",
-  `404 not_found`, `409 authorization_state_changed`, `403 insufficient_platform_authority`,
-  `503 compatibility_admin_unavailable`.
-- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
-  Native-client adoption is outside this update.
-
-#### `POST /api/bloem/v1/admin/platform/compatibility/applications/{instance_id}/revoke`
-- Purpose: permanently withdraw trust from an application instance. Unlike disable, this is
-  terminal — a revoked application cannot be re-enabled; the operator must enroll a new instance
-  (a fresh `POST .../enrollments` + companion re-registration) to reconnect. The most destructive
-  Compatibility endpoint, which is why it requires explicit confirmation in the body (though, unlike
-  ownership transfer in the Platform section, it does **not** require password re-authentication).
-- Auth required: platform admin-context token.
-- Path params: `instance_id`.
-- Request body:
-```json
-{
-  "expected_revision": 0,
-  "confirmed": true
-}
-```
-`expected_revision` required `> 0`. `confirmed` must be `true` — omitted or `false` fails
-validation before the lifecycle service is called.
-- Response body (200):
-```json
-{ "application": { /* CompatibilityApplication, see above; revoked: true, enabled: false */ } }
-```
-- Errors: `422 validation_failed` (`expected_revision` missing/non-positive, and/or `confirmed` not
-  `true` — both can appear together in `fields`), `404 not_found`, `409
-  authorization_state_changed`, `403 insufficient_platform_authority`,
-  `503 compatibility_admin_unavailable`. A revoke retried against an application that is *already*
-  revoked (`compatapp.ErrApplicationRevoked`, from `internal/api/handlers/compatapp_adapter.go`'s
-  `mapCompatApplicationError`) is deliberately folded into the same `409
-  authorization_state_changed` conflict channel as a plain revision mismatch, carrying the
-  application's current revision — "reload and retry" is the correct instruction either way,
-  since the reloaded row shows `revoked: true` and the control is simply gone. It is not
-  distinguished from a stale-revision conflict by error code; a client must inspect the reloaded
-  application body (`revoked`) to tell the two apart.
-- Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
-  Native-client adoption is outside this update.
-
----
+Jellyfin/Audiobookshelf companion enrollment, credential exchange, gateway routing
+and their platform administration routes are removed. They are not native-client
+integration options. Older documents or generated bundles listing
+`/admin/platform/compatibility/*` describe the pre-removal implementation.
+See [protocol removal](architecture/bloem-compatibility-removal.md) for preserved
+historical SQL, forward-only cleanup and restoration boundaries.
 
 ### Platform entitlement cohorts and bulk policy
 
@@ -2310,10 +2070,7 @@ request-ID middleware, falling back to an `X-Request-ID` header). The `tenancy` 
 `adminMutationActor` helper rejects a call with `tenancy.ErrAdminAuditRequired` if any of those
 three fixed fields don't match exactly — every Platform mutation is guaranteed to carry a
 consistent, attributable actor into `internal/tenancy`'s audit log
-(`recordOrganizationAudit`/`recordMembershipAudit`). The `CompatibilityApplicationService`
-interface's doc comment states implementations should read the same actor via
-`tenancy.AdminMutationActorFromContext`, though the compatibility handler itself does not enforce
-that the way the tenancy store enforces it for Platform routes.
+(`recordOrganizationAudit`/`recordMembershipAudit`).
 
 ---
 
@@ -2808,8 +2565,10 @@ under both:
 - `/api/bloem/v1/admin/platform/native-storage`
 - `/api/bloem/v1/admin/organization/native-storage`
 
-A library uses a source through the ordinary v2 `createLibrary`, with
-`storage_source` instead of `paths`; these routes create no libraries.
+Ordinary v2 `createLibrary` retains its single-source `storage_source` input.
+For selected directory roots or mixed local/remote paths, use the scoped native
+`library-locations` routes below. Source installation and library creation remain
+separate operations.
 
 The routes require the signed administrative context returned by the
 [admin-session exchange](#post-apibloemv1adminsession), with current account,
@@ -2823,7 +2582,7 @@ Source: `internal/api/router_bloem_native_storage_management.go`,
 `internal/api/handlers/bloem_native_storage_management.go` and
 `internal/nativestorage/source_management.go`. The
 [storage architecture](architecture/bloem-native-storage.md) describes
-locations, scanning, covers and reading. These 24 scope-specific operations are
+locations, scanning, covers and reading. These 32 scope-specific storage, browse and library-location operations are
 also in the [native OpenAPI artifact](../contracts/api/bloem/v1/openapi.json),
 generated by document-only declarations in
 `internal/apiv2/bloem_native_storage_document.go`.
@@ -2856,13 +2615,14 @@ between checks, including when a gateway ignores `If-Match`. Configuration
 replacement still requires an empty namespace. These additive booleans
 preserve `schema: 2`.
 
-Installation, discovery and upgrade use multipart uploads. Other mutation bodies require `application/json` and are
+Manual installation, discovery and upgrade use multipart uploads. Catalog install/upgrade use JSON and host-downloaded verified artifacts. Other mutation bodies require `application/json` and are
 limited to 1 MiB. Field names are exact; unknown or duplicate fields, trailing
 JSON and invalid UTF-8 are rejected. Revisions are positive integers. Read
-routes accept no body. Only `GET /sources` accepts query parameters: `limit`
+routes accept no body. The source-list operation `GET /sources` accepts query parameters: `limit`
 (default 50, maximum 100) and `after` (a source UUID). The response's
 `next_after` is the next cursor or null. Unknown, repeated or empty query
-parameters are invalid. Invalid path IDs return `404 not_found`.
+parameters are invalid. Invalid path IDs return `404 not_found`. The separate
+source browser accepts only `directory_ref`, `cursor` and `limit`, as described below.
 
 ### Operations
 
@@ -2875,6 +2635,9 @@ Paths below are relative to either scope prefix. S denotes the source's
 | `GET /artifacts` | None | `200 {artifacts: [...]}`; each artifact has `artifact_key`, `plugin_id`, `version`, `os`, `arch` |
 | `GET /sources` | Optional `after`, `limit` | `200 {sources: [...], next_after}` |
 | `GET /sources/{source_key}` | None | `200 {source: ...}` |
+| `POST /catalog/installations` | JSON explicit-root installation fields; host downloads the verified catalog artifact | `201 {source: ...}` |
+| `POST /catalog/installations/{installation_id}/upgrade` | `artifact_key`, `source_key`, `expected_revision: S` | `200 {source: ...}` |
+| `GET /sources/{source_key}/browse` | Optional `directory_ref`, `cursor`, `limit` | `200` bounded directory page; no file bytes |
 | `POST /installations` | Multipart `request` JSON and `binary`; fields below | `201 {source: ...}`; creates no library |
 | `POST /installations/discover` | Multipart `request` JSON (`artifact_key`, `provider_source_id`, `enabled`, `config`, platform-only optional `organization_id`) and `binary` | `201 {source: ...}`; discovers the root of a new approved S3 source |
 | `POST /installations/{installation_id}/upgrade` | Multipart `request` JSON (`artifact_key`, `source_key`, `expected_revision: S`) and `binary` | `200 {source: ...}`; keeps the source, configuration and library |
@@ -2962,20 +2725,53 @@ idempotency registry.
 Unknown outcomes include `operation_id`, `operation` and any authorized known
 `source_key`. Never infer rollback from an unknown outcome.
 
-### Libraries and reading
+### Library locations and reading
 
-`createLibrary` with `storage_source` answers `422` (`body.storage_source`) for
-an unknown, disabled or unentitled source or an unsupported library kind, and `409
-storage_source_in_use` when the source already backs a library. Storage
-libraries scan only as a whole library; their published EPUB/PDF files use the
-existing authenticated ebook reader operations, including GET/HEAD and byte
-ranges. Movies also require startup scanner/playback readiness and use the
-ordinary native v2 playback plan and HTTP stream URLs. The
-[video execution contract](architecture/bloem-native-video-playback.md)
-records container, routing and recovery limits. Downloads and Jellyfin
-attachment paths refuse storage files
-through their existing not-found conventions; conversion and offline downloads
-of storage files are not supported.
+The following paths are relative to `/api/bloem/v1/admin/{scope}`, where scope
+is `platform` or `organization`, and require the corresponding signed admin context.
+Inspect `library_location_browsing`, `library_location_atomic_editing` and
+`library_location_mixing` in native-storage capabilities first.
+
+| Method and path | Request | Success |
+| --- | --- | --- |
+| `POST /library-locations` | `{library, selections}`; platform may also name `organization_id` | `201 {library, locations}` |
+| `GET /library-locations/{library_id}` | No body | `200` selection with `revision`, `edit_token`, `paths`, `selections`, retained `locations` |
+| `PUT /library-locations/{library_id}` | `{paths, selections, expected_revision, expected_edit_token}` | `200` replacement selection |
+
+Creation reuses ordinary library options/defaults but rejects legacy
+`library.storage_source`. At least one filesystem path or selected plugin root
+is required. `selections` contains `{source_key, configuration_revision,
+selection_ref}` objects, at most 128 roots across 16 plugin sources. When mixing
+is unavailable, the lifetime shape remains local paths or one retained source;
+other shapes answer `422 location_mixing_unavailable`.
+
+Browse `/native-storage/sources/{source_key}/browse` without a directory reference
+to start at the configured root. `directory_ref` and `cursor` are opaque host
+references, not provider paths. `limit` defaults to 50 and is at most 100;
+combined encoded query length is bounded to 6,144 bytes. Repeated, unknown or
+empty query fields are invalid. The page's `current` directory is separate from
+its ancestor `breadcrumbs`; at the source root, the breadcrumb list is empty.
+Keep selected roots while navigating and use the selection references returned
+by the host rather than constructing them from labels.
+
+Replacement requires both arrays, present and nonnull, plus the revision and
+expiring actor-bound edit token from GET. Concurrent path or selection changes
+require reloading. A conflict returns `current_library_revision`; invalid or
+expired browse references require browsing again. Disabled/unavailable locations
+remain visible for removal even when no current `selection_ref` is available.
+Removal retains location/root/catalog identity and never deletes provider files.
+Confirmed filesystem path changes queue the ordinary path-change scan.
+`mutation_outcome_unknown` requires readback/reconciliation using the authorized
+`library_id`, never automatic replay.
+
+Published EPUB/PDF files use the authenticated reader operations, including
+GET/HEAD and byte ranges. Movies and audiobooks additionally require their
+complete scanner/catalog/playback composition; source configuration alone
+cannot publish playable content. See [storage](architecture/bloem-native-storage.md),
+[video execution](architecture/bloem-native-video-playback.md) and
+[audiobook delivery](architecture/bloem-native-audio-playback.md). Native offline
+conversion/downloads are not implied. Retired protocol routes provide no
+alternate file-delivery path.
 
 ## Ebook requests
 

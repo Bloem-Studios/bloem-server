@@ -16,7 +16,7 @@ tags:
 audience:
   - end-user
   - operator
-last_reviewed: 2026-09-30
+last_reviewed: 2026-10-15
 related: []
 ---
 
@@ -34,8 +34,7 @@ rewriting.
   own library: install, first run, libraries, users and profiles, playback, access policy,
   maintenance, and troubleshooting, written for a first-time operator.
 - [Bloem User Guide](../../../wiki/user-guide.md) - The viewer's guide: signing in, profiles, finding and playing
-  things, downloads, requests, notifications, and using Jellyfin/Emby/Audiobookshelf apps with a
-  Bloem server.
+  things, downloads, requests, notifications, and connecting supported native apps.
 
 ## Features
 
@@ -71,7 +70,8 @@ rewriting.
 
 - [Deploy Bloem with Docker](deployment/docker.md) - Install and operate Bloem with Docker Compose,
   including storage, GPU acceleration, search, distributed roles, tuning, backups, and updates.
-- [October 7 native storage deployment](../../../operations/2026-10-07-native-storage-deployment.md) - Current documented revision, migration checks and remaining verification.
+- [Integration changelog](../../CHANGELOG.md) - Current source integration, with deployment records kept separately.
+- [October 7 native storage deployment](../../../operations/2026-10-07-native-storage-deployment.md) - Historical revision, migration checks and remaining verification.
 - [September 30 upstream deployment](../../../operations/2026-09-30-upstream-deployment.md) - Historical membership migration and integration evidence.
 - [September 19 deployment record](../../../operations/2026-09-19-xtream-deployment.md) - Applied
   migrations, operational smoke results, approved CI-timeout exception and rollback boundaries.
@@ -79,7 +79,8 @@ rewriting.
 ## Troubleshooting
 
 - [Operator troubleshooting](../../../wiki/admin-guide.md#33-when-something-is-wrong) - Startup, media paths, playback and storage.
-- [Upgrade validation](../../../operations/2026-10-07-native-storage-deployment.md#outstanding-validation) - Current provider/client acceptance limits, distinct from live health.
+- [Contract transition](../../../architecture/bloem-contract-adjudications.md) - Native-client adoption checks before rollout.
+- [Upgrade validation](../../../operations/2026-10-07-native-storage-deployment.md#outstanding-validation) - Historical provider/client acceptance limits, distinct from live health.
 
 ## Editing Rules
 

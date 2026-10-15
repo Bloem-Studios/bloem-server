@@ -31,7 +31,22 @@ for forks.
 > and the operator steps in the
 > [Docker guide](../docs/bloem/overlays/wiki/deployment/docker.md#switching-between-silo-and-bloem).
 
-## Deployed integration checkpoint — October 7, 2026
+## Source integration and deployment records
+
+The current source integrates Silo through `ea3c10a7f` (October 14, 2026),
+including inherited household profile limits, node draining, signed worker
+requests, metadata updates and reorganized settings. Bloem retains native
+storage, multi-organization policy, Live TV and branding. Jellyfin and
+Audiobookshelf protocols and companion enrollment are removed from this fork.
+See the [integration changelog](../docs/bloem/CHANGELOG.md) and
+[API catalogue](../docs/bloem/api-catalogue.md).
+
+This is a source checkpoint. It does not establish the revision running on a
+particular server or native-client adoption. Before rolling out the profile-limit
+and administrator-styling changes, complete the
+[client contract transition](../docs/architecture/bloem-contract-adjudications.md).
+
+### Historical deployment checkpoint — October 7, 2026
 
 Bloem **`c87b44545`** includes all 27 Silo commits through **`74158b4a8`**, with
 **407 declared upstream-file seams**. Native EPUB/PDF onboarding, authorized
@@ -74,8 +89,8 @@ latency hardening, both upstream Silo features.
 
 ## What Bloem adds on top of Silo
 
-The overview below describes Bloem's additions alongside Silo upstream
-`74158b4a8`, included on October 7, 2026. The
+The overview below describes Bloem's additions alongside the Silo source
+through `ea3c10a7f`, integrated on October 14, 2026. The
 [web coverage matrix](../docs/architecture/bloem-web-feature-coverage.md) separates
 implemented workflows from bounded acceptance evidence. Upstream features remain
 credited to Silo; a server endpoint does not imply support in every client.
@@ -136,7 +151,7 @@ in the [completion handoff](../docs/architecture/bloem-web-completion-handoff.md
   replayed after an uncertain response. See the
   [native API reference](../docs/bloem-api-reference.md#shared-lifecycle-mutation-idempotency-compatible-and-native-surfaces).
 
-### Live TV and compatibility applications
+### Live TV and DVR
 
 - **Live TV, OTA/DVR and programme guides:** an attributed adaptation of
   [Prairie Server](https://github.com/Prairie-Server/prairie-server), with
@@ -150,24 +165,16 @@ in the [completion handoff](../docs/architecture/bloem-web-completion-handoff.md
   See [Xtream setup and limits](../docs/architecture/xtream-live-tv.md).
 - **Viewer-specific Live TV access:** a separate `watch_live_tv` permission,
   native capability discovery, web navigation and playback gates, tuner-session
-  heartbeat/release handling, and matching Jellyfin-compatible guide, DVR and
-  playback authorization. See [Live TV client access](../docs/architecture/live-tv-client-access.md)
+  heartbeat/release handling and current profile/tenant authorization. See [Live TV client access](../docs/architecture/live-tv-client-access.md)
   for adapter coverage and remaining client integration requirements.
 - **Web DVR workflows:** schedule from the guide or by channel/time, create recurring
   series rules and cancel recordings. Writes require readback; failed readback blocks
   further recording actions until explicit reload succeeds. Automatic catalog import, enforced retention
   and rule editing are not implemented. Actual tuner, Safari and replica owner-loss
   playback remain separate acceptance work.
-- **Compatibility on the main server address:** Jellyfin/Emby and
-  Audiobookshelf-compatible services are mounted on Bloem's public listener by
-  default, with optional dedicated ports and operator controls. Bloem adds
-  profile/tenant isolation and streaming-deadline handling to this integration;
-  the underlying compatibility protocols are inherited from Silo. See
-  [compatibility applications](../docs/operations/compatibility-applications.md).
-- **Companion application gateway:** private companion enrollment, revocable
-  service trust, fixed-path gateway routing and revision-guarded administration,
-  with default-deny deployment and identity checks. This is separate from the
-  embedded compatibility listeners.
+- **Native client access:** use the embedded web app or a client that speaks
+  the supported native APIs. The [protocol removal contract](../docs/architecture/bloem-compatibility-removal.md)
+  records retired gateways, companion enrollment and migration boundaries.
 
 ### Native apps, catalog and contracts
 
@@ -311,7 +318,7 @@ Everything below is described in more depth in the
 **Compatibility and clients**
 
 - **Web app included** — a full-featured web client and admin interface ship with the server.
-- **Works with apps you already use** — a Jellyfin/Emby-compatible API supports clients such as VidHub, Findroid, and Infuse, and an Audiobookshelf-compatible API supports Audiobookshelf-protocol clients for audiobook/podcast playback, progress sync, bookmarks, and RSS feeds. Both are enabled by default and reachable on Bloem's own address — no extra ports to open. Both can be turned off in Admin > Settings, and an operator who wants a dedicated listener on a fixed port (`JF_PORT`/`ABS_PORT`, `8096`/`13378`) can still opt into one there.
+- **Native API integrations** — the Silo native `/api/v2` surface and Bloem-specific `/api/bloem/v1` extensions support clients with matching contracts. Jellyfin/Emby and Audiobookshelf protocol apps cannot connect to this fork.
 - **Native Bloem apps** for phone, tablet and TV, served by the native client API described above.
 - **Watch sync** to and from outside services, and optional **AI-assisted features** such as description translation, each with its own provider key.
 - **Presentation and accessibility** — operator-managed campaign and seasonal artwork, profile ambience, larger text, reduced motion and high contrast. The former web profile theme editor has been retired.
@@ -393,7 +400,7 @@ the Compose override name for upstream-configuration compatibility.
    docker compose up -d
    ```
 
-   This starts PostgreSQL, Redis, and the integrated Bloem server. The app is available at `http://localhost:8090`. Jellyfin/Emby-compatible app support and Audiobookshelf-compatible app support are both enabled by default, reachable on that same address — no extra ports needed. Either can be turned off from Admin > Settings if you don't need it, and an operator who wants a dedicated listener on a fixed port instead can opt into one there too.
+   This starts PostgreSQL, Redis and Bloem Server. Open the web app at `http://localhost:8090`. Native client APIs use that same address. Retired protocol listeners are not available.
 
    For existing PostgreSQL or Redis infrastructure, use a Compose override that replaces the service URLs and bundled dependencies. Setting those URLs only in `.env` does not override the default stack. See [external services](../docs/bloem/overlays/wiki/deployment/docker.md#external-postgresql-and-redis).
 
@@ -586,7 +593,7 @@ move fully to a custom `postgresql.conf`.
 
 If you prefer running Bloem without Docker:
 
-1. **Install prerequisites**: Go 1.26.8+, Node.js 22+ for the frontend, pnpm 10.32.1, a C compiler and libvips development libraries for CGO, PostgreSQL 18 with pgvector, Redis, and FFmpeg. The container supplies Node.js 24 for its Jellyfin web runtime.
+1. **Install prerequisites**: Go 1.26.9+, Node.js 22+ for the frontend, pnpm 10.32.1, a C compiler and libvips development libraries for CGO, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
 
 2. **Configure the source process**
 
@@ -624,12 +631,12 @@ If you prefer running Bloem without Docker:
 - [Embedded-web coverage](../docs/architecture/bloem-web-feature-coverage.md) — implemented screens, authority boundaries, verification and remaining product limits; [completion handoff](../docs/architecture/bloem-web-completion-handoff.md) for the exact continuation steps.
 - [Bloem native API](../docs/bloem-api-reference.md) — `/api/bloem/v1` extensions, distinct from upstream `/api/v2`; [client surface](../docs/architecture/bloem-client-surface.md) and [security foundation](../docs/architecture/bloem-security-foundation.md).
 - [Admin guide](../docs/wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback and transcoding, access policy, Live TV, maintenance and troubleshooting.
-- [User guide](../docs/wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests, notifications, and using Jellyfin/Emby/Audiobookshelf apps with a Bloem server.
+- [User guide](../docs/wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests, notifications, and connecting native clients.
 - [Wiki index](../docs/bloem/overlays/wiki/index.md) — every operator- and viewer-facing page, including [Deploy Bloem with Docker](../docs/bloem/overlays/wiki/deployment/docker.md), [Entitlement Templates](../docs/wiki/admin/entitlement-templates.md), [Supported Media Folder Structures and Naming](../docs/architecture/media-naming.md), [Collection Templates](../docs/architecture/collection-templates.md), [Local NFO Metadata](../docs/architecture/local-nfo-metadata.md) and [Monitoring Stream Nodes](../docs/architecture/observability.md).
 - [Bloem documentation index](../docs/bloem/README.md) — every Bloem-owned document, including Bloem editions of and overlays on upstream Silo documents.
 - [Bloem development guide](../docs/bloem/overlays/DEVELOPMENT.md) — building from source, tests, migrations and project layout; [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations.
 - [FORK.md](../FORK.md) — provenance, deliberate divergence from upstream and the protected-remote setup; [TRADEMARK.md](../TRADEMARK.md) and [LICENSE](../LICENSE).
-- `docs/architecture/` and `docs/operations/` — design notes and operator runbooks, including the [Bloem v1 compatibility policy](../docs/bloem/overlays/architecture/v1-scope.md), [entitlement-template operations](../docs/operations/entitlement-templates.md), [bulk policy cohorts](../docs/operations/bulk-policy-cohorts.md), [compatibility applications](../docs/operations/compatibility-applications.md) and the [Canonical Settings API guide](../docs/settings-api.md).
+- `docs/architecture/` and `docs/operations/` — design notes and operator runbooks, including the [Bloem v1 compatibility policy](../docs/bloem/overlays/architecture/v1-scope.md), [entitlement-template operations](../docs/operations/entitlement-templates.md), [bulk policy cohorts](../docs/operations/bulk-policy-cohorts.md), [protocol removal](../docs/architecture/bloem-compatibility-removal.md) and the [Canonical Settings API guide](../docs/settings-api.md).
 - [Apple Push Display Token](../docs/notifications-push-api.md) — notification enrichment contract.
 
 ## Reporting Issues

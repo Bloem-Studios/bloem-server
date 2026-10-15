@@ -26,13 +26,10 @@ silently starts another encoder for the same HLS session. If the owner dies,
 the client must open a new Live TV session; existing stale-session cleanup
 releases the dead tuner allocation. Forwarding is routing, not encoder failover.
 
-Jellyfin compatibility stream IDs live in PostgreSQL alongside the native
-session. Only a SHA-256 digest of the opening compatibility token is stored.
-Fetch, reuse and close on another replica require that opener plus the current
-native session's account/profile ownership. The tuner URL is resolved from the
-native channel state, not accepted from the client. Released sessions cannot be
-reused even while their compatibility mapping awaits bounded cleanup. Raw
-MPEG-TS viewing renews the native tuner lease without opening an HLS bridge.
+The former Jellyfin compatibility stream mapping and opener-token path are
+removed. Native session ownership remains the authority for retained Live TV
+routes; historical protocol tables do not provide an alternate content path.
+See [protocol removal](bloem-compatibility-removal.md).
 
 Apply the cluster-route migration before deploying the new binary. Sessions
 opened by an older binary have no process owner and retain local-only routing;
@@ -45,7 +42,7 @@ encoder survive its owner process.
 physical provider stream opened by raw delivery, HLS or DVR. UUID fencing, 60-second
 expiry and 15-second renewal share the provider budget across replicas. Failed
 renewal stops the input; an expired owner cannot renew or release its replacement.
-A physical reopen, including Jellyfin reconnects, must claim capacity again.
+Every physical reopen must claim capacity again.
 
 Credentials are resolved server-side from encrypted storage only when opening the
 provider. Encoder processes receive an owned MPEG-TS pipe, never an authenticated
@@ -80,6 +77,6 @@ outage delays reconciliation rather than guessing that a session has stopped.
 Silo's existing stream-deny and progress-stop checks remain in force.
 
 No native Apple/Android protocol change is required: clients retain their
-existing stream URLs, stop calls and status handling. Jellyfin parity is covered
-by shared open/fetch/close tests. These changes neither add a new endpoint nor
-alter the successful response schema.
+existing native stream URLs, stop calls and status handling. Removed protocol
+parity tests do not establish native acceptance. These changes neither add a new
+endpoint nor alter the successful response schema.

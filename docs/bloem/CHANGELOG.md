@@ -3,6 +3,28 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 15, 2026 — documentation refresh
+
+Developer references and the portable operator/viewer guides now follow the
+October 14 source integration. Removed protocol services are no longer offered
+as installation or client choices. The profile-inheritance, 32-bit policy-array,
+mixed library-location, SDK and generated-contract references match that source.
+Historical deployment records retain their original evidence.
+
+Both OpenAPI artifacts, web API types, settings bindings, route inventory and
+client DTOs were regenerated or checked against their source registries. The
+native OpenAPI metadata links to the wire reference and identifies its coverage
+boundary. The new [API catalogue](api-catalogue.md) inventories typed operations
+and exposes remaining native schema debt instead of treating chi dispatchers as
+operations. `make verify-bloem-api-catalogue` checks reproducibility and its
+method-dispatch regressions.
+
+The [documentation workflow](documentation-workflow.md) records the reviewed
+Silo manual structure and Bloem's adaptation: developer invariants, API references,
+task-based operator/viewer guides, generated contracts and dated deployment
+records. This documentation refresh neither publishes a manual site nor deploys
+a server or adopts contracts into a native client release.
+
 ## October 14, 2026
 
 Local source integration: all 120 Silo commits after `1747a126b` through

@@ -71,10 +71,11 @@ connection. Cover authority follows the same full-composition gate; cached bytes
 
 ## Compatibility and limits
 
-Audiobookshelf filters native files and native-only items; mixed items retain
-local tracks and local presentation runtime. Jellyfin and download guards retain
-their existing native-file refusals. ABS libraries remain listed, and its
-materialized author counts can still include native-only books.
+Native content remains behind current host publication and playback authority.
+Audiobookshelf/Jellyfin protocol delivery and their former native-file filtering
+adapters are removed. Persisted upstream tables retained for switching do not
+mount a content service. Download/conversion support requires its own admitted
+path and is not implied by direct audiobook playback.
 
 Catalog aggregate durations can sum recordings, and duplicate-recording checks
 use truncated duration. S3 does not publish embedded covers. Disc directories

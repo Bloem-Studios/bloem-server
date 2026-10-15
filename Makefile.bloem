@@ -6,6 +6,14 @@
 # the tree (or in the sibling client repositories).
 export PYTHONDONTWRITEBYTECODE := 1
 
+.PHONY: bloem-api-catalogue verify-bloem-api-catalogue
+bloem-api-catalogue:
+	python3 scripts/bloem-api-catalogue.py
+
+verify-bloem-api-catalogue:
+	python3 scripts/bloem-api-catalogue_test.py
+	python3 scripts/bloem-api-catalogue.py --check
+
 # Keep the scenario executor in its dedicated test-scenarios target.
 GO_TEST_PACKAGES = $(shell go list ./... | grep -v '/internal/scenariocatalog/executor$$')
 

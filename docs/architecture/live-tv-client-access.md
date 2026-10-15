@@ -64,16 +64,11 @@ uses the embedded web; sibling native-client provider administration is not impl
 
 ## Integration status
 
-The Jellyfin-compatible adapter resolves the same current account/profile scope
-for guide, channel, DVR, tuning, playback negotiation and stream delivery. Its
-user policy and synthetic Live TV library are viewer-specific. Missing resolver
-wiring and resolver failures deny access. Closing an owned stream remains
-available after revocation. Existing connections are not forcibly terminated.
-
-The internal compatibility gateway has no production Live TV service wired in
-this checkout; those routes remain unavailable. Any future service adapter must
-resolve the subject's effective Live TV grant before returning data or tuning.
-Do not infer adapter coverage from the shared service alone.
+Native Live TV uses freshly resolved account/profile authority. Jellyfin and
+Audiobookshelf adapters, compatibility streams and gateway services are removed;
+their former tests or synthetic libraries do not establish native coverage. See
+[protocol removal](bloem-compatibility-removal.md). Native delivery still requires
+both effective Live TV and playback permission, including after revocation.
 
 The web viewer consumes the native capability for its sidebar and guide/watch
 route gates. Profile-bound requests discard late results after a profile switch.

@@ -6,6 +6,9 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 
 ## Start here
 
+- [Documentation workflow](documentation-workflow.md) — Silo's manual/reference model, Bloem ownership, generation and verification.
+- [API catalogue](api-catalogue.md) — generated typed operations and explicit native documentation gaps.
+
 - [Protocol compatibility removal](../architecture/bloem-compatibility-removal.md) — native-only runtime, persistence cleanup and upstream merge invariant.
 - [Pastime managed-tracking removal](../architecture/bloem-pastime-removal.md) — forward-only cleanup migration and the rule that Pastime returns only as an ordinary plugin.
 
@@ -125,7 +128,7 @@ same path. Read the upstream document together with its overlay.
 - [Bloem Xtream deployment — 2026-09-19](../operations/2026-09-19-xtream-deployment.md)
 - [Bulk policy cohorts release and canary runbook](../operations/bulk-policy-cohorts-runbook.md)
 - [Bulk policy cohorts](../operations/bulk-policy-cohorts.md)
-- [Jellyfin/Emby and Audiobookshelf Compatibility](../operations/compatibility-applications.md)
+- [Protocol removal and restoration boundary](../architecture/bloem-compatibility-removal.md)
 - [Entitlement templates](../operations/entitlement-templates.md)
 - [Header-Authenticated Media Rollout Handoff](../operations/header-authenticated-media-rollout-handoff.md)
 

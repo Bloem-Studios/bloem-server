@@ -78,10 +78,10 @@ providers or recordings have since been created.
 Covered: arr (Requests + Autoscan) API keys, S3 keys, all sensitive
 `server_settings`, watch-sync tokens, webhook-sync `access_token`,
 history-import admin/session tokens and temporary server-list credentials,
-subtitle provider `api_key`/`password`,
-the Jellyfin-compat session's bridged Silo access/refresh tokens
-(`jellycompat_sessions.streamapp_access_token` / `streamapp_refresh_token`), and
-the ABS signing key. Bloem also encrypts Xtream username/password envelopes with
+and subtitle provider `api_key`/`password`. Historical upstream protocol settings
+and ciphertext may remain for Silo switching; the removed Jellyfin/ABS runtime
+is not an active reader/writer. The retained health identity read does not
+restore protocol credential handling. Bloem also encrypts Xtream username/password envelopes with
 tuner/origin binding and no plaintext fallback. Plugin runtime configuration is
 encrypted as one opaque row-bound envelope rather than by manifest field. Consequently, runtime code
 must use `RuntimeConfigStore`; database JSON-member queries and indexes are not

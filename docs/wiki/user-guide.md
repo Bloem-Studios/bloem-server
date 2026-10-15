@@ -1,6 +1,6 @@
 ---
 title: Bloem User Guide
-description: How to watch, listen and read with Bloem once someone has given you a login — signing in, profiles, finding things, playing them, downloading, requesting, and using other apps with your Bloem server.
+description: How to watch, listen and read with Bloem once someone has given you a login — signing in, profiles, finding things, playing them, downloading, requesting, and connecting supported native clients.
 summary: The viewer's guide to Bloem, written for someone opening it for the first time.
 tags:
   - end-user
@@ -9,10 +9,10 @@ tags:
   - profiles
 audience:
   - end-user
-last_reviewed: 2026-09-30
+last_reviewed: 2026-10-15
 related:
   - admin-guide.md
-  - ../operations/compatibility-applications.md
+  - ../architecture/bloem-compatibility-removal.md
 ---
 
 # Bloem User Guide
@@ -198,8 +198,8 @@ settings button.
 
 Provider-backed native EPUB/PDF reading is experimental and requires an enabled,
 authorized source. Disabling or uninstalling that source prevents access while
-retaining library and reading-progress identities. Native offline downloads,
-conversion and generic Jellyfin attachment delivery are not supported; an online
+retaining library and reading-progress identities. Native offline downloads and
+conversion are not supported; an online
 reader capability is not an offline-download guarantee.
 
 ### Watching together
@@ -288,18 +288,16 @@ choices and the seasonal off switch are local choices and do not roam to every d
 
 ---
 
-## 9. Using other apps with your Bloem server
+## 9. Connecting a native app
 
-Bloem understands the languages of Jellyfin, Emby and Audiobookshelf, so apps built for those work
-with it. If you already use one of these — Infuse, VidHub, Findroid, Audiobookshelf's own apps and
-players — you can point it at your Bloem server:
+Use the web app or a Bloem/Silo-native app your administrator supports. Enter the
+same server address you use in the browser, then follow that app's sign-in and
+profile selection flow. Use device pairing when the app offers it.
 
-1. In the app, choose to add a Jellyfin or Emby server (or an Audiobookshelf server, for audiobook
-   apps).
-2. Enter your Bloem server address — the same one you use in the browser.
-3. Sign in with your Bloem username and password.
-
-If the app refuses to connect, the administrator may have turned that compatibility off; ask them.
+Jellyfin, Emby and Audiobookshelf protocol apps cannot connect to this fork.
+Their protocol services were removed; changing ports or passwords will not enable
+them. Ask the administrator for a supported native app release. Native listening
+and reading in supported clients are separate from those retired protocols.
 
 ---
 
@@ -331,5 +329,5 @@ If the app refuses to connect, the administrator may have turned that compatibil
 
 - `web/src/pages/` — Home, LibraryBrowse, Collections, Calendar, PersonDetail, Requests,
   Notifications, WatchTogether*, EbookReader, and the `settings/` pages named above
-- `docs/operations/compatibility-applications.md` — how other apps connect
+- `docs/architecture/bloem-compatibility-removal.md` — retired protocol services and native alternatives
 - `docs/architecture/invitations-onboarding.md` — invitations and sign-up
