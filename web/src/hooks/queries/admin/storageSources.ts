@@ -95,6 +95,8 @@ export function useInstallStorageSource() {
   const queryClient = useQueryClient();
   const { scope, key } = useStorageScope();
   return useMutation({
+    // Variables can hold credentials; keep them out of the mutation cache.
+    gcTime: 0,
     mutationFn: (input: InstallStorageSourceInput) =>
       adminV2Api<{ source: StorageSource }>(
         `/${scope}/native-storage/${input.binary ? "installations" : "catalog/installations"}`,
@@ -195,7 +197,7 @@ export function rotateBody(input: {
     expected_revision: input.revision,
     access_key: input.accessKey,
     secret_key: input.secretKey,
-    ...(input.sessionToken ? { session_token: input.sessionToken } : {}),
+    ...(input.sessionToken.trim() ? { session_token: input.sessionToken } : {}),
   };
 }
 
@@ -223,8 +225,11 @@ function installationChangeBody(source: StorageSource): string {
  * `AdminV2ClientError` adminV2Api throws, so `mutation.error.code` carries the
  * server's machine-readable error code (for example
  * `configuration_namespace_unverified`) alongside `.status` and `.message`.
- * Request bodies hold secrets for rotate and replace, so none of them are put
- * in query keys, toasts or logs; toasts show only the server's message.
+ * Request bodies hold secrets for install, discover, replace, rotate and
+ * configure, so none of them are put in query keys, toasts or logs; toasts show
+ * only the server's message. Those mutations also set `gcTime: 0`: React Query
+ * keeps a mutation's `variables` in the MutationCache for `gcTime` after its last
+ * observer unmounts (5 minutes by default), which would retain the secrets.
  */
 
 export interface DiscoverStorageSourceInput {
@@ -238,6 +243,8 @@ export function useDiscoverStorageSource() {
   const queryClient = useQueryClient();
   const { scope, key } = useStorageScope();
   return useMutation({
+    // Variables can hold credentials; keep them out of the mutation cache.
+    gcTime: 0,
     mutationFn: (input: DiscoverStorageSourceInput) =>
       adminV2Api<{ source: StorageSource }>(
         `/${scope}/native-storage/catalog/installations/discover`,
@@ -266,6 +273,8 @@ export function useReplaceStorageConfiguration() {
   const queryClient = useQueryClient();
   const { scope, key } = useStorageScope();
   return useMutation({
+    // Variables can hold credentials; keep them out of the mutation cache.
+    gcTime: 0,
     mutationFn: ({ source, config }: ReplaceStorageConfigurationInput) =>
       adminV2Api<{ source: StorageSource }>(`/${scope}/${sourcePath(source)}/configuration`, {
         method: "PUT",
@@ -293,6 +302,8 @@ export function useRotateStorageCredentials() {
   const queryClient = useQueryClient();
   const { scope, key } = useStorageScope();
   return useMutation({
+    // Variables can hold credentials; keep them out of the mutation cache.
+    gcTime: 0,
     mutationFn: ({ source, accessKey, secretKey, sessionToken }: RotateStorageCredentialsInput) =>
       adminV2Api<{ source: StorageSource }>(`/${scope}/${sourcePath(source)}/credentials`, {
         method: "POST",
@@ -392,6 +403,8 @@ export function useConfigureStorageSource() {
   const queryClient = useQueryClient();
   const { scope, key } = useStorageScope();
   return useMutation({
+    // Variables can hold credentials; keep them out of the mutation cache.
+    gcTime: 0,
     mutationFn: ({ source, url, apiKey }: { source: StorageSource; url: string; apiKey: string }) =>
       adminV2Api(`/${scope}/native-storage/sources/${source.source_key}/configuration`, {
         method: "PUT",

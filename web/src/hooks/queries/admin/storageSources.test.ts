@@ -7,7 +7,10 @@ import { AdminV2ClientError } from "@/api/adminV2Client";
 import {
   discoverBody,
   rotateBody,
+  useConfigureStorageSource,
+  useDiscoverStorageSource,
   useDisableStorageSource,
+  useInstallStorageSource,
   useRemoveStorageSource,
   useReplaceStorageConfiguration,
   useRotateStorageCredentials,
@@ -166,5 +169,79 @@ describe("storage source mutations", () => {
       ok: false,
       message: "Bucket unreachable",
     });
+  });
+});
+
+describe("storage source mutations holding credentials", () => {
+  beforeEach(() => {
+    adminV2Api.mockReset();
+    adminV2Api.mockResolvedValue({ source });
+  });
+
+  const SECRET = "distinctive-secret-value-7f3a";
+  const cases: [string, () => unknown, unknown][] = [
+    [
+      "install",
+      () => useInstallStorageSource(),
+      {
+        artifactKey: "a",
+        providerSourceId: "p",
+        rootEntryId: "r",
+        config: { connection: { secret_key: SECRET } },
+      },
+    ],
+    [
+      "discover",
+      () => useDiscoverStorageSource(),
+      { artifactKey: "a", providerSourceId: "p", config: { connection: { secret_key: SECRET } } },
+    ],
+    [
+      "replace configuration",
+      () => useReplaceStorageConfiguration(),
+      { source, config: { connection: { secret_key: SECRET } } },
+    ],
+    [
+      "rotate credentials",
+      () => useRotateStorageCredentials(),
+      { source, accessKey: "AK", secretKey: SECRET, sessionToken: SECRET },
+    ],
+    [
+      "configure bookwarehouse",
+      () => useConfigureStorageSource(),
+      { source, url: "https://x.invalid", apiKey: SECRET },
+    ],
+  ];
+
+  it.each(cases)(
+    "%s leaves no secret in the mutation cache once settled",
+    async (_name, useHook, input) => {
+      const client = new QueryClient();
+      const clientWrapper = ({ children }: { children: ReactNode }) =>
+        createElement(QueryClientProvider, { client }, children);
+      const { result, unmount } = renderHook(
+        () =>
+          useHook() as {
+            mutate: (v: unknown) => void;
+            isSuccess: boolean;
+          },
+        { wrapper: clientWrapper },
+      );
+      result.current.mutate(input);
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      unmount();
+      await waitFor(() => {
+        const retained = client
+          .getMutationCache()
+          .getAll()
+          .filter((mutation) => JSON.stringify(mutation.state.variables ?? null).includes(SECRET));
+        expect(retained).toEqual([]);
+      });
+    },
+  );
+
+  it("rotate omits a whitespace-only session token", () => {
+    expect(
+      rotateBody({ revision: 1, accessKey: "AK", secretKey: "SK", sessionToken: "   " }),
+    ).not.toHaveProperty("session_token");
   });
 });
