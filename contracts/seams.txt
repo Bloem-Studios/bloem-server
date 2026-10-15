@@ -375,6 +375,7 @@ web/src/hooks/queries/admin/system.ts
 web/src/hooks/queries/catalogRead.test.ts
 web/src/hooks/queries/profiles.ts
 web/src/hooks/useAuth.tsx
+web/src/lib/adminNavigation.test.ts  # covers the organization Storage sources entry
 web/src/lib/adminNavigation.ts
 web/src/lib/adminSettingsSearch.ts
 web/src/lib/documentTitle.ts
