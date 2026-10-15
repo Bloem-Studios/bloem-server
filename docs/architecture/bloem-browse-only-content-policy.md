@@ -56,6 +56,11 @@ its library selection may be revised. Database constraints pin those limits on
 template revisions and materialized access groups; the template cannot be
 archived or used as the parent of a derived cohort.
 
+The seed migration retains template history and its `bloem_preview_seeded`
+provenance marker when rolled back. Reapplying it preserves curated revisions
+and the current revision pointer. A preexisting operator template using the
+reserved key is still rejected; reapplication never adopts or overwrites it.
+
 A non-admin account with a membership or profile group from that template is a
 preview principal. Classification is read with current session authority on each
 request. Per-account and profile overrides cannot restore the denied permissions.

@@ -19,6 +19,9 @@ Kotlin/Swift contracts include the combined surface. See the
 Garden supplies the separately configured launch flow; publishing source does
 not enable a live preview or add native-client preview controls.
 
+The preview seed supports rollback and reapplication without losing curated
+template history, while still refusing an operator-owned reserved-key collision.
+
 The combined production web build measures 317,709 bytes brotli at eager launch,
 with zero cross-origin render-blocking resources. The published upstream-integrated
 build measures 315,164 bytes; preview safeguards add 2,545 bytes (0.8%). The

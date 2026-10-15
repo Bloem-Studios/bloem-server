@@ -3,18 +3,23 @@
 -- accounts preview principals (browse only), so its policy is pinned here as
 -- well as in Go: a CHECK on the template revisions and on the materialized
 -- groups. IS NOT TRUE / IS NOT DISTINCT FROM keep a NULL from passing a CHECK.
+-- Retain seed provenance across Down/Up without adopting an operator-created
+-- reserved key. The column follows its template table through deeper rollbacks.
+ALTER TABLE public.entitlement_templates
+    ADD COLUMN IF NOT EXISTS bloem_preview_seeded boolean NOT NULL DEFAULT false;
 -- +goose StatementBegin
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM public.entitlement_templates WHERE key = 'bloem-preview') THEN
+    IF EXISTS (SELECT 1 FROM public.entitlement_templates WHERE key = 'bloem-preview' AND bloem_preview_seeded IS NOT TRUE) THEN
         RAISE EXCEPTION 'entitlement template key "bloem-preview" is reserved for the preview template; rename the existing template and migrate again';
     END IF;
 END;
 $$;
 -- +goose StatementEnd
 
-INSERT INTO public.entitlement_templates (key, name, current_revision, enabled, archived)
-VALUES ('bloem-preview', 'Preview', 1, true, false);
+INSERT INTO public.entitlement_templates (key, name, current_revision, enabled, archived, bloem_preview_seeded)
+VALUES ('bloem-preview', 'Preview', 1, true, false, true)
+ON CONFLICT (key) DO NOTHING;
 
 INSERT INTO public.entitlement_template_revisions (
     template_key, revision, library_ids, playback_allowed, max_streams,
@@ -22,7 +27,8 @@ INSERT INTO public.entitlement_template_revisions (
     download_transcode_allowed, max_playback_quality, allowed_permissions,
     requests_allowed
 )
-VALUES ('bloem-preview', 1, NULL, false, 0, 0, false, 0, false, false, '', '{}', false);
+VALUES ('bloem-preview', 1, NULL, false, 0, 0, false, 0, false, false, '', '{}', false)
+ON CONFLICT (template_key, revision) DO NOTHING;
 
 ALTER TABLE public.entitlement_template_revisions
     ADD CONSTRAINT entitlement_template_revisions_preview_invariant CHECK (
@@ -53,4 +59,5 @@ ALTER TABLE public.access_groups DROP CONSTRAINT IF EXISTS access_groups_preview
 ALTER TABLE public.entitlement_template_revisions
     DROP CONSTRAINT IF EXISTS entitlement_template_revisions_preview_invariant;
 -- The seeded rows stay: template revisions are immutable history, and a
--- materialized preview group may still reference them.
+-- materialized preview group may still reference them. Their seed-provenance
+-- column also stays so a subsequent Up can distinguish them from a collision.
