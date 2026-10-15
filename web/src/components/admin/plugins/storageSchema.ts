@@ -1,0 +1,68 @@
+import type { PluginConfigSchema } from "@/api/types";
+
+/**
+ * Removes fields from a config schema, in both the JSON schema and the admin
+ * form, so a form built from it never shows them.
+ */
+export function pruneConfigSchema(
+  schema: PluginConfigSchema,
+  hidden: string[],
+): PluginConfigSchema {
+  const drop = new Set(hidden);
+  let jsonSchema = schema.json_schema;
+  try {
+    const parsed = JSON.parse(schema.json_schema) as {
+      properties?: Record<string, unknown>;
+      required?: string[];
+    };
+    if (parsed.properties) {
+      parsed.properties = Object.fromEntries(
+        Object.entries(parsed.properties).filter(([k]) => !drop.has(k)),
+      );
+      if (parsed.required) parsed.required = parsed.required.filter((k) => !drop.has(k));
+      jsonSchema = JSON.stringify(parsed);
+    }
+  } catch {
+    /* keep the original schema text */
+  }
+  return {
+    ...schema,
+    json_schema: jsonSchema,
+    admin_form: schema.admin_form
+      ? { ...schema.admin_form, fields: schema.admin_form.fields.filter((f) => !drop.has(f.key)) }
+      : undefined,
+  };
+}
+
+/** Field-level problems with an S3 connection entry, keyed by field. Empty when it is valid. */
+export function validateS3Connection(value: Record<string, unknown>): Record<string, string> {
+  const errors: Record<string, string> = {};
+  const text = (k: string) => (typeof value[k] === "string" ? (value[k] as string) : "");
+  const bucket = text("bucket");
+  if (!bucket) errors.bucket = "Enter the bucket name.";
+  else if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(bucket))
+    errors.bucket = "Bucket names use 3–63 lowercase letters, digits, dots and hyphens.";
+  const prefix = text("prefix");
+  if (prefix.startsWith("/")) errors.prefix = "The prefix must not start with a slash.";
+  else if (prefix !== "" && !prefix.endsWith("/"))
+    errors.prefix = "The prefix must end with a slash, for example movies/.";
+  const endpoint = text("endpoint");
+  if (endpoint) {
+    try {
+      const u = new URL(endpoint);
+      if (u.protocol !== "https:") errors.endpoint = "The endpoint must use https.";
+      else if (u.username || u.password)
+        errors.endpoint = "The endpoint must not contain credentials.";
+      else if (u.pathname !== "/" && u.pathname !== "")
+        errors.endpoint = "The endpoint must not include a path.";
+    } catch {
+      errors.endpoint = "Enter a full URL such as https://s3.example.com.";
+    }
+  }
+  return errors;
+}
+
+/** A new provider source id matching the plugin's `<kind>_<32 hex>` pattern. */
+export function newProviderSourceId(prefix: string): string {
+  return `${prefix}_${crypto.randomUUID().replaceAll("-", "")}`;
+}

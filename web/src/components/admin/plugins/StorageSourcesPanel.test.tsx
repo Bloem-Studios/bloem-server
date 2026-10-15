@@ -23,6 +23,7 @@ const source: StorageSource = {
   enabled: true,
   state: "attached",
   configured: true,
+  connection_summary: {},
 };
 const artifacts: StorageArtifact[] = [
   {
@@ -31,6 +32,8 @@ const artifacts: StorageArtifact[] = [
     version: "0.2.0",
     os: "linux",
     arch: "amd64",
+    catalog: true,
+    config_schema: [],
   },
   {
     artifact_key: "other-1.0.0",
@@ -38,6 +41,8 @@ const artifacts: StorageArtifact[] = [
     version: "1.0.0",
     os: "linux",
     arch: "amd64",
+    catalog: true,
+    config_schema: [],
   },
 ];
 
@@ -47,6 +52,13 @@ vi.mock("@/hooks/queries/admin/storageSources", () => ({
   useUpgradeStorageSource: () => ({ mutate: upgrade, isPending: false }),
   useInstallStorageSource: () => ({ mutate: install, isPending: false }),
   useConfigureStorageSource: () => ({ mutate: configure, isPending: false }),
+  useDiscoverStorageSource: () => ({ mutate: vi.fn(), isPending: false }),
+  useReplaceStorageConfiguration: () => ({ mutate: vi.fn(), isPending: false }),
+  useRotateStorageCredentials: () => ({ mutate: vi.fn(), isPending: false }),
+  useDisableStorageSource: () => ({ mutate: vi.fn(), isPending: false }),
+  useRemoveStorageSource: () => ({ mutate: vi.fn(), isPending: false }),
+  useTestStorageSource: () => ({ mutate: vi.fn(), isPending: false }),
+  useStorageScope: () => ({ active: {}, scope: "platform", key: "platform" }),
 }));
 
 describe("StorageSourcesPanel", () => {

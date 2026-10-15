@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { ArrowUpCircle, HardDrive, Plus, X } from "lucide-react";
+import { ArrowUpCircle, HardDrive, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,13 @@ import {
 import {
   type StorageArtifact,
   type StorageSource,
-  useInstallStorageSource,
   useConfigureStorageSource,
   useStorageArtifacts,
   useStorageSources,
   useUpgradeStorageSource,
 } from "@/hooks/queries/admin/storageSources";
+
+import { AddStorageSourceDialog } from "./AddStorageSourceDialog";
 
 const PANEL = "rounded-xl border bg-card px-4 py-4";
 
@@ -97,44 +98,6 @@ function UpgradeForm({
   );
 }
 
-function InstallForm({ artifacts, onDone }: { artifacts: StorageArtifact[]; onDone: () => void }) {
-  const install = useInstallStorageSource();
-  const bookwarehouse = artifacts
-    .filter((a) => a.plugin_id === "bloem.storage.bookwarehouse")
-    .sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true }))
-    .at(-1);
-  if (!bookwarehouse)
-    return (
-      <p className="text-muted-foreground mt-3 text-sm">No Bookwarehouse release is available.</p>
-    );
-  return (
-    <div className="mt-3 flex flex-col items-start justify-between gap-3 rounded-lg border p-3 sm:flex-row sm:items-center">
-      <div>
-        <p className="font-medium">Bookwarehouse</p>
-        <p className="text-muted-foreground text-sm">
-          EPUB and PDF books · {bookwarehouse.version}
-        </p>
-      </div>
-      <Button
-        disabled={install.isPending}
-        onClick={() =>
-          install.mutate(
-            {
-              artifactKey: bookwarehouse.artifact_key,
-              providerSourceId: `bookwarehouse_${crypto.randomUUID().replaceAll("-", "")}`,
-              rootEntryId: "root",
-              config: {},
-            },
-            { onSuccess: onDone },
-          )
-        }
-      >
-        {install.isPending ? "Installing..." : "Install Bookwarehouse"}
-      </Button>
-    </div>
-  );
-}
-
 function ConnectionForm({ source }: { source: StorageSource }) {
   const configure = useConfigureStorageSource();
   const [url, setURL] = useState("");
@@ -181,7 +144,7 @@ function ConnectionForm({ source }: { source: StorageSource }) {
 export function StorageSourcesPanel() {
   const sources = useStorageSources(true);
   const artifacts = useStorageArtifacts(true);
-  const [installing, setInstalling] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [upgrading, setUpgrading] = useState<string | null>(null);
   const approved = artifacts.data ?? [];
 
@@ -197,14 +160,9 @@ export function StorageSourcesPanel() {
             you create the library.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setInstalling(!installing)}
-          disabled={approved.length === 0}
-        >
-          {installing ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-          {installing ? "Cancel" : "Add source"}
+        <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
+          <Plus className="h-3.5 w-3.5" />
+          Add source
         </Button>
       </div>
 
@@ -213,7 +171,14 @@ export function StorageSourcesPanel() {
           Failed to load storage sources.
         </p>
       ) : null}
-      {installing && <InstallForm artifacts={approved} onDone={() => setInstalling(false)} />}
+      <AddStorageSourceDialog
+        artifacts={artifacts.data}
+        sources={sources.data ?? []}
+        open={adding}
+        onOpenChange={setAdding}
+        error={artifacts.isError ? artifacts.error : undefined}
+        onRetry={() => void artifacts.refetch()}
+      />
 
       {sources.data && sources.data.length > 0 ? (
         <ul className="mt-2 divide-y">
