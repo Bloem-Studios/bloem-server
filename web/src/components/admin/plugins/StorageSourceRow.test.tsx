@@ -13,9 +13,12 @@ const replaceConfig = vi.fn();
 const rotate = vi.fn();
 const remove = vi.fn();
 const disable = vi.fn();
+const upgrade = vi.fn();
+let scopeValue: "platform" | "organization" = "platform";
 
 vi.mock("@/hooks/queries/admin/storageSources", () => ({
-  useUpgradeStorageSource: () => ({ mutate: vi.fn(), isPending: false }),
+  useStorageScope: () => ({ active: {}, scope: scopeValue, key: scopeValue }),
+  useUpgradeStorageSource: () => ({ mutate: upgrade, isPending: false }),
   useConfigureStorageSource: () => ({ mutate: vi.fn(), isPending: false }),
   useReplaceStorageConfiguration: () => ({ mutate: replaceConfig, isPending: false }),
   useRotateStorageCredentials: () => ({ mutate: rotate, isPending: false }),
@@ -101,6 +104,8 @@ describe("StorageSourceRow", () => {
     rotate.mockReset();
     remove.mockReset();
     disable.mockReset();
+    upgrade.mockReset();
+    scopeValue = "platform";
   });
 
   it("shows the non-secret summary and nothing secret", () => {
@@ -416,30 +421,106 @@ describe("StorageSourceRow", () => {
   });
 
   describe("plain HTTP on loopback", () => {
-    const notice = /allows plain HTTP on loopback; saving keeps it off/i;
+    const loopback = {
+      ...s3Source,
+      connection_summary: { ...s3Source.connection_summary, allow_loopback_http: "true" },
+    } as StorageSource;
 
-    it("tells the admin that saving turns it off when the source had it on", () => {
-      const loopback = {
-        ...s3Source,
-        connection_summary: { ...s3Source.connection_summary, allow_loopback_http: "true" },
-      } as StorageSource;
+    it("locks the whole-configuration edit but keeps the other actions", () => {
       render(
         <ul>
           <StorageSourceRow source={loopback} artifact={s3Artifact} />
         </ul>,
       );
-      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-      expect(screen.getByText(notice)).toHaveTextContent("Re-add the source to change.");
+      expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "This source uses plain HTTP on loopback; only its keys can be changed here.",
+        ),
+      ).toBeInTheDocument();
+      for (const name of ["Test", "Rotate keys", "Disable", "Remove"]) {
+        expect(screen.getByRole("button", { name })).toBeInTheDocument();
+      }
     });
 
-    it("shows no notice otherwise", () => {
+    it("shows no explanation and keeps Edit otherwise", () => {
       render(
         <ul>
           <StorageSourceRow source={s3Source} artifact={s3Artifact} />
         </ul>,
       );
-      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-      expect(screen.queryByText(notice)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+      expect(screen.queryByText(/plain HTTP on loopback/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("which actions are offered", () => {
+    function renderRow(source: StorageSource) {
+      render(
+        <ul>
+          <StorageSourceRow source={source} artifact={s3Artifact} />
+        </ul>,
+      );
+    }
+    const queryAction = (name: string) => screen.queryByRole("button", { name });
+
+    it("hides Edit and Rotate keys for a source that is not manageable", () => {
+      renderRow({ ...s3Source, installation_id: null } as StorageSource);
+      expect(queryAction("Edit")).not.toBeInTheDocument();
+      expect(queryAction("Rotate keys")).not.toBeInTheDocument();
+    });
+
+    it("hides Edit and Rotate keys for a disabled source", () => {
+      renderRow({ ...s3Source, enabled: false, state: "disabled" } as StorageSource);
+      expect(queryAction("Edit")).not.toBeInTheDocument();
+      expect(queryAction("Rotate keys")).not.toBeInTheDocument();
+    });
+
+    it("hides every management action on a platform source in an organization scope", () => {
+      scopeValue = "organization";
+      renderRow(s3Source);
+      for (const name of ["Edit", "Rotate keys", "Disable", "Remove"]) {
+        expect(queryAction(name)).not.toBeInTheDocument();
+      }
+    });
+
+    it("keeps the management actions on an organization source in an organization scope", () => {
+      scopeValue = "organization";
+      renderRow({ ...s3Source, owner_kind: "organization" } as StorageSource);
+      for (const name of ["Edit", "Rotate keys", "Disable", "Remove"]) {
+        expect(queryAction(name)).toBeInTheDocument();
+      }
+    });
+  });
+
+  describe("upgrade", () => {
+    it("offers only catalog releases of the source's own plugin", () => {
+      const staticS3 = {
+        ...s3Artifact,
+        artifact_key: "s3-static-0.3.1",
+        version: "0.3.1",
+        catalog: false,
+      } as StorageArtifact;
+      const other = {
+        ...s3Artifact,
+        artifact_key: "bw-0.9.0",
+        plugin_id: "bloem.storage.bookwarehouse",
+        version: "0.9.0",
+      } as StorageArtifact;
+      render(
+        <ul>
+          <StorageSourceRow
+            source={s3Source}
+            artifact={s3Artifact}
+            artifacts={[staticS3, s3Artifact, other]}
+          />
+        </ul>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Upgrade" }));
+      fireEvent.click(screen.getByRole("combobox", { name: "Release to upgrade to" }));
+      const options = screen.getAllByRole("option");
+      expect(options).toHaveLength(1);
+      expect(options[0]).toHaveTextContent("bloem.storage.s3 0.3.2");
     });
   });
 
@@ -456,13 +537,33 @@ describe("StorageSourceRow", () => {
     expect(remove).toHaveBeenCalledWith({ source: s3Source }, expect.any(Object));
   });
 
-  it("disables the source through the disable call", () => {
+  it("does not disable until the administrator confirms", () => {
     render(
       <ul>
         <StorageSourceRow source={s3Source} artifact={s3Artifact} />
       </ul>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+    expect(
+      screen.getByText(
+        "Disabling detaches this source from its libraries. It cannot be re-enabled from this page.",
+      ),
+    ).toBeInTheDocument();
+    expect(disable).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm disable" }));
+    expect(disable).toHaveBeenCalledTimes(1);
     expect(disable).toHaveBeenCalledWith({ source: s3Source }, expect.any(Object));
+  });
+
+  it("keeps the source when the disable confirmation is dismissed", () => {
+    render(
+      <ul>
+        <StorageSourceRow source={s3Source} artifact={s3Artifact} />
+      </ul>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+    fireEvent.click(screen.getByRole("button", { name: "Keep" }));
+    expect(screen.queryByRole("button", { name: "Confirm disable" })).not.toBeInTheDocument();
+    expect(disable).not.toHaveBeenCalled();
   });
 });

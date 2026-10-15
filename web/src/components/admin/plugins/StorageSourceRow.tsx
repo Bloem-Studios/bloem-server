@@ -21,6 +21,7 @@ import {
   useRemoveStorageSource,
   useReplaceStorageConfiguration,
   useRotateStorageCredentials,
+  useStorageScope,
   useTestStorageSource,
   useUpgradeStorageSource,
 } from "@/hooks/queries/admin/storageSources";
@@ -32,9 +33,10 @@ const BOOKWAREHOUSE_PLUGIN = "bloem.storage.bookwarehouse";
 /** The server refuses a whole-configuration replacement on a source a library uses. */
 const IN_USE_ERROR_CODE = "configuration_namespace_unverified";
 const IN_USE_NOTICE = "This source is used by a library; only the keys can be changed.";
-// The edit form cannot send allow_loopback_http, so a whole-configuration replace turns it off.
-const LOOPBACK_NOTICE =
-  "This source allows plain HTTP on loopback; saving keeps it off. Re-add the source to change.";
+// The connection summary omits the plain-http endpoint of such a source, so a whole-configuration
+// replace built from it would silently re-point the source; only its keys can be changed.
+const LOOPBACK_LOCKED_NOTICE =
+  "This source uses plain HTTP on loopback; only its keys can be changed here.";
 
 // Server-managed or developer-only fields an administrator is never asked for when editing.
 const HIDDEN_EDIT_FIELDS = ["source_id", "state_path", "allow_loopback_http", "session_token"];
@@ -100,7 +102,9 @@ function UpgradeForm({
   onDone: () => void;
 }) {
   const upgrade = useUpgradeStorageSource();
-  const releases = artifacts.filter((a) => a.plugin_id === source.plugin_id);
+  // Only catalog releases of the source's own plugin: a static (uploaded) release of the same
+  // plugin is listed too, but the server refuses to upgrade to it.
+  const releases = artifacts.filter((a) => a.plugin_id === source.plugin_id && a.catalog);
   const [artifactKey, setArtifactKey] = useState("");
 
   function handleSubmit(event: FormEvent) {
@@ -301,9 +305,6 @@ function S3EditForm({
 
   return (
     <div className="mt-3 space-y-3">
-      {summary?.allow_loopback_http === "true" ? (
-        <p className="text-muted-foreground text-[13px]">{LOOPBACK_NOTICE}</p>
-      ) : null}
       <PluginConfigForm
         bare
         idPrefix={`s3-edit-${source.source_key}`}
@@ -356,6 +357,30 @@ function RemoveConfirmation({
   );
 }
 
+function DisableConfirmation({ source, onDone }: { source: StorageSource; onDone: () => void }) {
+  const disable = useDisableStorageSource();
+  return (
+    <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[13px]">
+      <p>
+        Disabling detaches this source from its libraries. It cannot be re-enabled from this page.
+      </p>
+      <div className="flex gap-2">
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={disable.isPending}
+          onClick={() => disable.mutate({ source }, { onSuccess: onDone })}
+        >
+          {disable.isPending ? "Disabling..." : "Confirm disable"}
+        </Button>
+        <Button variant="ghost" size="sm" disabled={disable.isPending} onClick={onDone}>
+          Keep
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function displayName(source: StorageSource): string {
   if (source.plugin_id === BOOKWAREHOUSE_PLUGIN) return "Bookwarehouse";
   return source.connection_summary?.source_name || source.provider_source_id;
@@ -401,8 +426,9 @@ export function StorageSourceRow({
   inUse?: boolean;
 }) {
   const test = useTestStorageSource();
-  const disable = useDisableStorageSource();
+  const { scope } = useStorageScope();
   const [panel, setPanel] = useState<Panel>(null);
+  const [disabling, setDisabling] = useState(false);
   const [serverSaysInUse, setServerSaysInUse] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -413,6 +439,10 @@ export function StorageSourceRow({
   const manageable = source.installation_id !== null;
   const name = displayName(source);
   const sourceDisabled = !source.enabled || source.state === "disabled";
+  // The server refuses to change a platform source from an organization scope.
+  const platformBlocked = scope === "organization" && source.owner_kind === "platform";
+  const canManage = manageable && !sourceDisabled && !platformBlocked;
+  const loopbackLocked = source.connection_summary?.allow_loopback_http === "true";
   const testHintId = `test-hint-${source.source_key}`;
 
   function toggle(next: Exclude<Panel, null>) {
@@ -457,12 +487,12 @@ export function StorageSourceRow({
             ) : null}
           </>
         ) : null}
-        {isS3 && !locked ? (
+        {isS3 && canManage && !locked && !loopbackLocked ? (
           <Button variant="ghost" size="sm" onClick={() => toggle("edit")}>
             {panel === "edit" ? "Cancel" : "Edit"}
           </Button>
         ) : null}
-        {isS3 ? (
+        {isS3 && canManage ? (
           <Button variant="ghost" size="sm" onClick={() => toggle("rotate")}>
             {panel === "rotate" ? "Cancel" : "Rotate keys"}
           </Button>
@@ -473,22 +503,21 @@ export function StorageSourceRow({
             {panel === "upgrade" ? "Cancel" : "Upgrade"}
           </Button>
         ) : null}
-        {manageable && source.enabled ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={disable.isPending}
-            onClick={() => disable.mutate({ source }, { onSuccess: () => setPanel(null) })}
-          >
+        {manageable && source.enabled && !platformBlocked ? (
+          <Button variant="ghost" size="sm" onClick={() => setDisabling(true)} disabled={disabling}>
             Disable
           </Button>
         ) : null}
-        {manageable ? (
+        {manageable && !platformBlocked ? (
           <Button variant="ghost" size="sm" onClick={() => setRemoving(true)} disabled={removing}>
             Remove
           </Button>
         ) : null}
       </div>
+
+      {isS3 && canManage && loopbackLocked ? (
+        <p className="text-muted-foreground mt-1 pl-[26px] text-[13px]">{LOOPBACK_LOCKED_NOTICE}</p>
+      ) : null}
 
       {testResult ? (
         <p
@@ -540,6 +569,16 @@ export function StorageSourceRow({
 
       {panel === "upgrade" ? (
         <UpgradeForm source={source} artifacts={artifacts} onDone={() => setPanel(null)} />
+      ) : null}
+
+      {disabling ? (
+        <DisableConfirmation
+          source={source}
+          onDone={() => {
+            setDisabling(false);
+            setPanel(null);
+          }}
+        />
       ) : null}
 
       {removing ? (
