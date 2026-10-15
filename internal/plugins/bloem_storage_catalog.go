@@ -33,6 +33,25 @@ var nativeCatalogSpecs = []nativeCatalogSpec{
 	{PluginID: "bloem.storage.s3", KeyPrefix: "s3", ReleaseTag: "s3-v", RequirePinned: true},
 }
 
+// pinKey identifies a statically approved artifact by plugin and digest, so one
+// plugin's approval can never pin another plugin's catalog release.
+type pinKey struct {
+	pluginID string
+	checksum string
+}
+
+func newNativeStoragePins(approvals map[string]NativeStorageArtifact) map[pinKey]bool {
+	pins := make(map[pinKey]bool, len(approvals))
+	for _, a := range approvals {
+		pins[pinKey{pluginID: a.Manifest.GetPluginId(), checksum: a.Checksum}] = true
+	}
+	return pins
+}
+
+func (r *NativeStorageRegistry) isPinned(pluginID, checksum string) bool {
+	return r.pinned[pinKey{pluginID: pluginID, checksum: checksum}]
+}
+
 func nativeCatalogSpecFor(pluginID string) (nativeCatalogSpec, bool) {
 	for _, s := range nativeCatalogSpecs {
 		if s.PluginID == pluginID {
@@ -88,6 +107,7 @@ func (r *NativeStorageRegistry) loadCatalog() error {
 	if json.Unmarshal(b, &records) != nil {
 		return errors.New("invalid native catalog cache")
 	}
+	kept := make(map[string]storageCatalogRecord, len(records))
 	for key, record := range records {
 		m := new(publicv1.PluginManifest)
 		if protojson.Unmarshal(record.Manifest, m) != nil {
@@ -97,7 +117,7 @@ func (r *NativeStorageRegistry) loadCatalog() error {
 		if !ok {
 			return errors.New("invalid native catalog release")
 		}
-		if spec.RequirePinned && !r.pinned[record.Checksum] {
+		if spec.RequirePinned && !r.isPinned(m.GetPluginId(), record.Checksum) {
 			continue
 		}
 		if key != catalogArtifactKey(spec, m.GetVersion(), record.Checksum) || !storageCatalogURL(spec, record.URL, m.GetVersion(), "plugin-"+record.OS+"-"+record.Arch) {
@@ -108,8 +128,10 @@ func (r *NativeStorageRegistry) loadCatalog() error {
 			return err
 		}
 		r.approved[key] = a
+		kept[key] = record
 	}
-	r.catalogRecords = records
+	// Records skipped as unpinned are dropped, so a refresh never re-persists them.
+	r.catalogRecords = kept
 	return nil
 }
 func catalogArtifactKey(spec nativeCatalogSpec, version, checksum string) string {
@@ -201,14 +223,16 @@ func (r *NativeStorageRegistry) RefreshCatalog(ctx context.Context) error {
 		if !found {
 			continue
 		}
+		// Skip unpinned rows before any format validation: a malformed row for
+		// a plugin we would not admit anyway must not abort the whole refresh.
+		if spec.RequirePinned && !r.isPinned(release.ID, binary.Checksum) {
+			continue
+		}
 		if !storageCatalogURL(spec, binary.URL, release.Version, "plugin-"+runtime.GOOS+"-"+runtime.GOARCH) {
 			return errors.New("invalid native catalog URL")
 		}
 		if b, e := hex.DecodeString(binary.Checksum); e != nil || len(b) != sha256.Size || strings.ToLower(binary.Checksum) != binary.Checksum {
 			return errors.New("invalid native catalog checksum")
-		}
-		if spec.RequirePinned && !r.pinned[binary.Checksum] {
-			continue
 		}
 		manifestURL := "https://github.com/Bloem-Studios/bloem-plugins/releases/download/" + spec.ReleaseTag + release.Version + "/manifest.json"
 		b, e := r.catalogRead(ctx, manifestURL, 1<<20)

@@ -51,7 +51,7 @@ type NativeStorageRegistry struct {
 	configs          *RuntimeConfigStore
 	baseDir          string
 	approved         map[string]NativeStorageArtifact
-	pinned           map[string]bool // checksums of statically approved artifacts
+	pinned           map[pinKey]bool // (plugin id, checksum) of statically approved artifacts
 	catalogMu        sync.RWMutex
 	catalogRefreshMu sync.Mutex
 	catalogRecords   map[string]storageCatalogRecord
@@ -101,11 +101,7 @@ func NewNativeStorageRegistry(pool *pgxpool.Pool, cipher *secret.Cipher, baseDir
 	if err != nil {
 		return nil, err
 	}
-	pinned := make(map[string]bool, len(approvals))
-	for _, a := range approvals {
-		pinned[a.Checksum] = true
-	}
-	registry := &NativeStorageRegistry{pool: pool, configs: NewRuntimeConfigStore(pool, cipher), baseDir: baseDir, approved: approvals, pinned: pinned}
+	registry := &NativeStorageRegistry{pool: pool, configs: NewRuntimeConfigStore(pool, cipher), baseDir: baseDir, approved: approvals, pinned: newNativeStoragePins(approvals)}
 	if err := registry.loadCatalog(); err != nil {
 		return nil, err
 	}
