@@ -43,3 +43,31 @@ func TestConnectionSummaryEmptyPrefixIsPresentAndUnknownPluginIsEmpty(t *testing
 		t.Fatalf("got %v", got)
 	}
 }
+
+func TestConnectionSummaryS3OmitsUnsafeEndpoint(t *testing.T) {
+	for name, endpoint := range map[string]string{
+		"userinfo":          "https://user:pw@s3.example.com",
+		"userinfo no pw":    "https://token@s3.example.com",
+		"http":              "http://s3.example.com",
+		"no scheme":         "s3.example.com",
+		"unparseable":       "https://s3.example.com:badport/\x7f",
+		"no host":           "https://",
+		"other scheme":      "ftp://s3.example.com",
+		"empty userinfo at": "https://@s3.example.com",
+	} {
+		got := ConnectionSummary("bloem.storage.s3", map[string]any{"bucket": "media", "endpoint": endpoint})
+		if _, present := got["endpoint"]; present {
+			t.Fatalf("%s: unsafe endpoint %q was summarized as %q", name, endpoint, got["endpoint"])
+		}
+		raw, _ := json.Marshal(got)
+		if strings.Contains(string(raw), "pw") || strings.Contains(string(raw), "token@") {
+			t.Fatalf("%s: summary leaked userinfo: %s", name, raw)
+		}
+		if got["bucket"] != "media" {
+			t.Fatalf("%s: other fields must survive, got %v", name, got)
+		}
+	}
+	if got := ConnectionSummary("bloem.storage.s3", map[string]any{"bucket": "media", "endpoint": "https://s3.example.com:9000"}); got["endpoint"] != "https://s3.example.com:9000" {
+		t.Fatalf("valid https endpoint dropped: %v", got)
+	}
+}

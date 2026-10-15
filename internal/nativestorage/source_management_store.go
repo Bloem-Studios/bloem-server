@@ -2,6 +2,7 @@ package nativestorage
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -55,14 +56,26 @@ func sourceView(source storagesource.SourceConfig, owner resourcetenancy.Owner, 
 
 // withConnectionSummary fills the allowlisted, non-secret connection summary of
 // an attached source. The stored config is decrypted host-side only; a failed
-// read leaves the empty summary rather than failing the whole view.
+// read leaves the empty summary rather than failing the whole view. The
+// failure is logged with the installation id only: the error and the config
+// can carry connection details, so neither is ever written to the log.
 func (s *SourceManagement) withConnectionSummary(ctx context.Context, view SourceView) SourceView {
-	if view.InstallationID == nil || s.registry == nil {
+	if view.InstallationID == nil {
 		return view
 	}
-	if cfg, err := s.registry.ConnectionConfig(ctx, int(*view.InstallationID)); err == nil {
-		view.ConnectionSummary = ConnectionSummary(view.PluginID, cfg)
+	read := s.readConnectionConfig
+	if read == nil {
+		if s.registry == nil {
+			return view
+		}
+		read = s.registry.ConnectionConfig
 	}
+	cfg, err := read(ctx, int(*view.InstallationID))
+	if err != nil {
+		slog.WarnContext(context.WithoutCancel(ctx), "native storage connection summary unavailable", "component", "nativestorage", "installation_id", *view.InstallationID)
+		return view
+	}
+	view.ConnectionSummary = ConnectionSummary(view.PluginID, cfg)
 	return view
 }
 func (s *SourceManagement) GetSource(ctx context.Context, actor auth.AdminContextClaims, key uuid.UUID) (SourceView, error) {

@@ -54,6 +54,9 @@ type SourceManagement struct {
 	registry             *plugins.NativeStorageRegistry
 	coordinator          *Coordinator
 	installDiscoveryHost *Host
+	// readConnectionConfig is a test seam for the summary reader; nil reads the
+	// stored connection through the registry.
+	readConnectionConfig func(context.Context, int) (map[string]any, error)
 }
 
 func NewSourceManagement(pool *pgxpool.Pool, registry *plugins.NativeStorageRegistry) *SourceManagement {
