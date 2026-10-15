@@ -4,11 +4,21 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/danielgtaylor/huma/v2"
-	"github.com/google/uuid"
+)
+
+const (
+	bloemPlatformBulkRateLimitError   = "rate_limited: too many bulk entitlement requests; Retry-After: 1."
+	bloemPlatformAuthorityDescription = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+	bloemEntitlementApplyDescription  = " Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper."
+	bloemPlatformStrictJSONError      = "invalid_request: invalid JSON, unknown fields, trailing JSON or body exceeding 1 MiB."
+	bloemPlatformBulkConflictError    = "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled."
+	bloemPlatformBulkDescription      = " Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound."
 )
 
 // Mirror private entitlement/session wire types, not persistence models.
@@ -262,7 +272,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/organizations/", "listBloemPlatformOrganizations", "Page organizations with current summary counts.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		for _, query := range []string{"query", "cursor", "status"} {
 			bloemDocumentQuery(&op, query, "Filter; status is initializing, active or suspended.", "string")
 		}
@@ -273,7 +283,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/organizations/", "createBloemPlatformOrganization", "Create an organization for an existing owner account.", "bloemPlatformContext", 201)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		bloemDocumentLifecycle(reg, &op)
@@ -282,13 +292,13 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/organizations/{id}/", "getBloemPlatformOrganization", "Read an organization summary.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemOrganizationSummaryResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "PATCH", "/admin/platform/organizations/{id}/", "updateBloemPlatformOrganization", "Change organization name or slug.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		op.Description += " At least one of name or slug is required."
@@ -298,7 +308,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/organizations/{id}/suspend", "suspendBloemPlatformOrganization", "Suspend an organization.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		bloemDocumentLifecycle(reg, &op)
@@ -307,7 +317,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/organizations/{id}/reactivate", "reactivateBloemPlatformOrganization", "Reactivate an organization.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		bloemDocumentLifecycle(reg, &op)
@@ -316,7 +326,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/organizations/{id}/transfer-ownership", "transferBloemPlatformOrganizationOwnership", "Transfer ownership after explicit confirmation and reauthentication.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		bloemDocumentLifecycle(reg, &op)
@@ -325,7 +335,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/organizations/{id}/memberships", "listBloemPlatformOrganizationMemberships", "Page an organization membership directory.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentQuery(&op, "cursor", "Opaque page cursor.", "string")
 		bloemDocumentQuery(&op, "limit", "Page size from 1 to 200.", "integer")
 		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "Invalid membership pagination."})
@@ -334,7 +344,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/organizations/{id}/memberships", "createBloemPlatformOrganizationMembership", "Create an organization membership for an existing account.", "bloemPlatformContext", 201)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		bloemDocumentLifecycle(reg, &op)
@@ -343,7 +353,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "PATCH", "/admin/platform/organizations/{id}/memberships/{membership_id}", "updateBloemPlatformOrganizationMembership", "Change a membership role or status.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		op.Description += " At least one of legacy_role or status is required."
@@ -353,7 +363,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/entitlement-templates", "listBloemEntitlementTemplates", "List the entitlement template catalog.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementAccountsKey")
 		bloemDocumentQuery(&op, "include_archived", "Defaults to true; parsed with Go ParseBool.", "string")
 		bloemDocumentQuery(&op, "status", "enabled selects only enabled, unarchived revisions.", "string")
@@ -362,7 +372,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/entitlement-templates", "createBloemEntitlementTemplate", "Create a versioned entitlement template.", "bloemPlatformContext", 201)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		op.Description += " Catalog creation requires a platform context even though catalog reads accept an API key."
@@ -371,7 +381,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/entitlement-templates/{key}", "getBloemEntitlementTemplate", "Read the latest or a selected entitlement template revision.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentQuery(&op, "revision", "Positive revision; omit for latest.", "integer")
 		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "Invalid revision."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemEntitlementTemplateResponse]](reg, op)
@@ -379,19 +389,19 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/entitlement-templates/{key}/revisions", "listBloemEntitlementTemplateRevisions", "List immutable template revisions.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemEntitlementRevisionsResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/entitlement-templates/{key}/history", "listBloemEntitlementTemplateHistory", "List immutable template revisions (history alias).", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemEntitlementRevisionsResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/entitlement-templates/{key}/revisions", "reviseBloemEntitlementTemplate", "Create a new revision or copy a historical policy into a new revision.", "bloemPlatformContext", 201)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemEntitlementTemplateRevise], bloemJSONOutput[BloemEntitlementTemplateResponse]](reg, op)
@@ -399,7 +409,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/entitlement-templates/{key}/clone", "cloneBloemEntitlementTemplate", "Clone a template revision into a disabled new template.", "bloemPlatformContext", 201)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemEntitlementTemplateClone], bloemJSONOutput[BloemEntitlementTemplateResponse]](reg, op)
@@ -407,7 +417,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/entitlement-templates/{key}/archive", "archiveBloemEntitlementTemplate", "Archive a template using its current revision.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemRevisionRequest], bloemJSONOutput[BloemEntitlementTemplateResponse]](reg, op)
@@ -415,163 +425,163 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/organizations/{id}/entitlement", "getBloemPlatformOrganizationEntitlement", "Read the managed organization entitlement.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemOrganizationEntitlementRead]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/organizations/{id}/entitlement/audit", "listBloemPlatformOrganizationEntitlementAudit", "Read organization entitlement audit history.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemEntitlementAuditResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/users/{user_id}/entitlement", "getBloemLegacyAccountEntitlement", "Read the legacy managed account entitlement projection.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		op.Description += " Legacy alias projection; /accounts/{account_id}/entitlement returns the authoritative account and profile policy snapshot instead."
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemLegacyAccountEntitlementRead]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/organizations/{id}/entitlement/dry-run", "previewBloemOrganizationEntitlement", "Preview a pinned entitlement template.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
-		op.Description += " Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper."
+		op.Description += bloemEntitlementApplyDescription
 		registerBloemChiDocument[bloemJSONInput[BloemEntitlementApplyRequest], bloemJSONOutput[BloemEntitlementDryRunResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/organizations/{id}/entitlement/apply", "applyBloemOrganizationEntitlement", "Apply a pinned entitlement template.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
-		op.Description += " Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper."
+		op.Description += bloemEntitlementApplyDescription
 		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemEntitlementApplyRequest], bloemJSONOutput[BloemEntitlementApplyResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/accounts/{account_id}/entitlement/dry-run", "previewBloemAccountEntitlement", "Preview a pinned entitlement template.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementAccountsKey")
-		op.Description += " Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper."
+		op.Description += bloemEntitlementApplyDescription
 		registerBloemChiDocument[bloemJSONInput[BloemEntitlementApplyRequest], bloemJSONOutput[BloemEntitlementDryRunResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/accounts/{account_id}/entitlement/apply", "applyBloemAccountEntitlement", "Apply a pinned entitlement template.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementAccountsKey")
-		op.Description += " Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper."
+		op.Description += bloemEntitlementApplyDescription
 		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemEntitlementApplyRequest], bloemJSONOutput[BloemEntitlementApplyResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/users/{user_id}/entitlement/dry-run", "previewBloemLegacyAccountEntitlement", "Preview a pinned entitlement template.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
-		op.Description += " Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper."
+		op.Description += bloemEntitlementApplyDescription
 		registerBloemChiDocument[bloemJSONInput[BloemEntitlementApplyRequest], bloemJSONOutput[BloemEntitlementDryRunResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/users/{user_id}/entitlement/apply", "applyBloemLegacyAccountEntitlement", "Apply a pinned entitlement template.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
-		op.Description += " Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper."
+		op.Description += bloemEntitlementApplyDescription
 		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemEntitlementApplyRequest], bloemJSONOutput[BloemEntitlementApplyResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/accounts/{account_id}/entitlement", "getBloemDirectAccountPolicy", "Read authoritative account and profile entitlement policies.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
 		registerBloemChiDocument[struct{}, bloemJSONOutput[entitlements.AccountPolicySnapshot]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/accounts/entitlement-snapshots", "readBloemDirectAccountPolicySnapshots", "Read bounded account policy snapshots in one observation.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
 		bloemDocumentValidation(reg, &op)
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request: invalid JSON, unknown fields, trailing JSON or body exceeding 1 MiB."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemPlatformStrictJSONError})
 		op.Description += " Strict JSON body limit is 1 MiB; account_ids contains 1 to 10000 positive account IDs. Per-account failures use items[].error, not an HTTP failure."
 		registerBloemChiDocument[bloemJSONInput[BloemAccountPolicySnapshotsRequest], bloemJSONOutput[BloemAccountPolicySnapshotsResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/accounts/entitlement-bulk/policy-previews", "previewBloemPlatformDirectPolicy", "Create a selection and preview a bulk policy command.", "bloemPlatformContext", 201)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: "rate_limited: too many bulk entitlement requests; Retry-After: 1.", 409: "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled."})
-		op.Description += " Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: bloemPlatformBulkRateLimitError, 409: bloemPlatformBulkConflictError})
+		op.Description += bloemPlatformBulkDescription
 		bloemDocumentValidation(reg, &op)
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request: invalid JSON, unknown fields, trailing JSON or body exceeding 1 MiB."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemPlatformStrictJSONError})
 		registerBloemChiDocument[bloemJSONInput[BloemPlatformPolicyPreviewRequest], bloemJSONOutput[BloemPlatformPolicyPreviewResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/accounts/entitlement-bulk/policy-jobs", "createBloemPlatformDirectPolicyJob", "Enqueue a confirmed bulk entitlement policy job.", "bloemPlatformContext", 201)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: "rate_limited: too many bulk entitlement requests; Retry-After: 1.", 409: "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled."})
-		op.Description += " Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: bloemPlatformBulkRateLimitError, 409: bloemPlatformBulkConflictError})
+		op.Description += bloemPlatformBulkDescription
 		bloemDocumentValidation(reg, &op)
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request: invalid JSON, unknown fields, trailing JSON or body exceeding 1 MiB."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemPlatformStrictJSONError})
 		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPolicyBulkAction], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}", "getBloemPlatformDirectPolicyJob", "Read a bulk entitlement policy job.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: "rate_limited: too many bulk entitlement requests; Retry-After: 1.", 409: "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled."})
-		op.Description += " Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: bloemPlatformBulkRateLimitError, 409: bloemPlatformBulkConflictError})
+		op.Description += bloemPlatformBulkDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel", "cancelBloemPlatformDirectPolicyJob", "Cancel an eligible bulk entitlement policy job.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: "rate_limited: too many bulk entitlement requests; Retry-After: 1.", 409: "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled."})
-		op.Description += " Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: bloemPlatformBulkRateLimitError, 409: bloemPlatformBulkConflictError})
+		op.Description += bloemPlatformBulkDescription
 		bloemDocumentValidation(reg, &op)
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request: invalid JSON, unknown fields, trailing JSON or body exceeding 1 MiB."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemPlatformStrictJSONError})
 		op.Description += " Send an empty JSON object; missing JSON is invalid."
 		registerBloemChiDocument[bloemJSONInput[struct{}], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement", "getBloemOrganizationAccountPolicy", "Read authoritative account and profile entitlement policies.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
 		registerBloemChiDocument[struct{}, bloemJSONOutput[entitlements.AccountPolicySnapshot]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/organizations/{organization_id}/entitlement-snapshots", "readBloemOrganizationAccountPolicySnapshots", "Read bounded account policy snapshots in one observation.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
 		bloemDocumentValidation(reg, &op)
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request: invalid JSON, unknown fields, trailing JSON or body exceeding 1 MiB."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemPlatformStrictJSONError})
 		op.Description += " Strict JSON body limit is 1 MiB; account_ids contains 1 to 10000 positive account IDs. Per-account failures use items[].error, not an HTTP failure."
 		registerBloemChiDocument[bloemJSONInput[BloemAccountPolicySnapshotsRequest], bloemJSONOutput[BloemAccountPolicySnapshotsResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/organizations/{organization_id}/entitlement-cohorts", "listBloemPlatformOrganizationEntitlementCohorts", "List organization entitlement cohorts.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
 		bloemDocumentQuery(&op, "include_archived", "true or false; defaults to false. Other query parameters return 422.", "boolean")
 		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "Invalid query parameters."})
@@ -580,51 +590,51 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}", "getBloemPlatformOrganizationEntitlementCohort", "Read one organization entitlement cohort.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemEntitlementCohortResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews", "previewBloemPlatformOrganizationPolicy", "Create a selection and preview a bulk policy command.", "bloemPlatformContext", 201)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: "rate_limited: too many bulk entitlement requests; Retry-After: 1.", 409: "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled."})
-		op.Description += " Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: bloemPlatformBulkRateLimitError, 409: bloemPlatformBulkConflictError})
+		op.Description += bloemPlatformBulkDescription
 		bloemDocumentValidation(reg, &op)
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request: invalid JSON, unknown fields, trailing JSON or body exceeding 1 MiB."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemPlatformStrictJSONError})
 		registerBloemChiDocument[bloemJSONInput[BloemPlatformPolicyPreviewRequest], bloemJSONOutput[BloemPlatformPolicyPreviewResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs", "createBloemPlatformOrganizationPolicyJob", "Enqueue a confirmed bulk entitlement policy job.", "bloemPlatformContext", 201)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: "rate_limited: too many bulk entitlement requests; Retry-After: 1.", 409: "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled."})
-		op.Description += " Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: bloemPlatformBulkRateLimitError, 409: bloemPlatformBulkConflictError})
+		op.Description += bloemPlatformBulkDescription
 		bloemDocumentValidation(reg, &op)
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request: invalid JSON, unknown fields, trailing JSON or body exceeding 1 MiB."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemPlatformStrictJSONError})
 		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPolicyBulkAction], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}", "getBloemPlatformOrganizationPolicyJob", "Read a bulk entitlement policy job.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: "rate_limited: too many bulk entitlement requests; Retry-After: 1.", 409: "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled."})
-		op.Description += " Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: bloemPlatformBulkRateLimitError, 409: bloemPlatformBulkConflictError})
+		op.Description += bloemPlatformBulkDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel", "cancelBloemPlatformOrganizationPolicyJob", "Cancel an eligible bulk entitlement policy job.", "bloemPlatformContext", 200)
-		op.Description = "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated."
+		op.Description = bloemPlatformAuthorityDescription
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementBulkKey")
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: "rate_limited: too many bulk entitlement requests; Retry-After: 1.", 409: "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled."})
-		op.Description += " Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{429: bloemPlatformBulkRateLimitError, 409: bloemPlatformBulkConflictError})
+		op.Description += bloemPlatformBulkDescription
 		bloemDocumentValidation(reg, &op)
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request: invalid JSON, unknown fields, trailing JSON or body exceeding 1 MiB."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemPlatformStrictJSONError})
 		op.Description += " Send an empty JSON object; missing JSON is invalid."
 		registerBloemChiDocument[bloemJSONInput[struct{}], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}

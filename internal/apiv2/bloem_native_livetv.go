@@ -12,7 +12,7 @@ func registerBloemLiveTV(reg *Registry) {
 	bloemDocumentQuery(&channels, "tuner_id", "Optional tuner filter.", "string")
 	registerBloemChiDocument[struct{}, bloemJSONOutput[livetv.ChannelsResponse]](reg, channels)
 
-	guide := bloemLiveTVDocumentOp(reg, "GET", "/livetv/guide", "getBloemLiveTVGuide", "Programme guide for a window.", 200, false)
+	guide := bloemLiveTVDocumentOp(reg, "GET", "/livetv/guide", "getBloemLiveTVGuide", "Program guide for a window.", 200, false)
 	bloemDocumentQuery(&guide, "start", "RFC3339; defaults to now.", "string")
 	bloemDocumentQuery(&guide, "end", "RFC3339; defaults to start plus twelve hours.", "string")
 	bloemDocumentQuery(&guide, "channels", "Comma-separated channel IDs.", "string")

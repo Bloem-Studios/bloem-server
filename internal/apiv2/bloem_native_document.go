@@ -48,9 +48,9 @@ func bloemHumaConfig() huma.Config {
 	cfg.OpenAPI.Info = &huma.Info{
 		Title:       "Bloem Native API",
 		Version:     fmt.Sprintf("%d", bloemAPIMajor),
-		Description: "Bloem extensions alongside the separate Silo native /api/v2 contract. Account, profile, organization and platform authority are distinct; follow each operation's security declaration. This document describes registered operations, including document-only chi declarations. The API coverage catalogue compares them with inventoried methods and production mount tests cover optional groups. Generated schemas do not establish provider readiness, client adoption or live deployment.",
+		Description: "Bloem extensions alongside the separate Silo native /api/v2 contract. Account, profile, organization and platform authority are distinct; follow each operation's security declaration. This document describes registered operations, including document-only chi declarations. The API coverage catalog compares them with inventoried methods and production mount tests cover optional groups. Generated schemas do not establish provider readiness, client adoption or live deployment.",
 	}
-	cfg.OpenAPI.ExternalDocs = &huma.ExternalDocs{
+	cfg.ExternalDocs = &huma.ExternalDocs{
 		Description: "Native wire reference and documentation index",
 		URL:         "https://github.com/Bloem-Studios/bloem-server/blob/main/docs/bloem-api-reference.md",
 	}

@@ -4,10 +4,11 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+
 	"github.com/Silo-Server/silo-server/internal/livetv"
 	"github.com/Silo-Server/silo-server/internal/livetv/gracenote"
 	"github.com/Silo-Server/silo-server/internal/livetv/schedulesdirect"
-	"github.com/danielgtaylor/huma/v2"
 )
 
 // Mirrors the actual client JSON, including custom LiveSession serialization.

@@ -4,14 +4,19 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/danielgtaylor/huma/v2"
-	"github.com/google/uuid"
+)
+
+const (
+	bloemOrganizationAuthorityDescription = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
 )
 
 // Private handler wire records are mirrored here; exported records are reused.
@@ -215,25 +220,25 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/overview", "getBloemOrganizationOverview", "Read the selected organization overview.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemOrganizationSummaryResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/groups/", "listBloemOrganizationGroups", "List access groups in the selected organization.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemOrganizationGroupsResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/groups/{id}", "getBloemOrganizationGroup", "Read one organization access group.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemOrganizationGroupResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/groups/", "createBloemOrganizationGroup", "Create an organization access group.", "bloemOrganizationContext", 201)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request for invalid JSON, or bad_request for an invalid name, quality, library ID, permission or stream/transcode cap."})
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationGroupCreate], bloemJSONOutput[BloemOrganizationGroupMutationResponse]](reg, op)
@@ -241,7 +246,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "PUT", "/admin/organization/groups/{id}", "updateBloemOrganizationGroup", "Update an organization access group.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request for invalid JSON, or bad_request for an invalid name, quality, library ID, permission or stream/transcode cap."})
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationGroupUpdate], bloemJSONOutput[BloemOrganizationGroupMutationResponse]](reg, op)
@@ -249,20 +254,20 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "DELETE", "/admin/organization/groups/{id}", "deleteBloemOrganizationGroup", "Delete an organization access group and report its impact.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemRevisionRequest], bloemJSONOutput[access.GroupDeletionImpact]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/libraries", "listBloemOrganizationLibraries", "List the organization library entitlement projection.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemOrganizationLibrariesResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "PUT", "/admin/organization/entitlements/{folder_id}", "updateBloemOrganizationLibraryEntitlement", "Set an organization library entitlement status.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		op.Description += " expected_revision is the entitlement security_revision returned by the libraries projection. On conflict, current_revision contains the organization policy revision; reload the libraries projection for the entitlement revision."
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationEntitlementUpdate], bloemJSONOutput[BloemOrganizationEntitlementResponse]](reg, op)
@@ -270,7 +275,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "DELETE", "/admin/organization/entitlements/{folder_id}", "deleteBloemOrganizationLibraryEntitlement", "Remove an organization library entitlement.", "bloemOrganizationContext", 204)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		op.Description += " expected_revision is the entitlement security_revision returned by the libraries projection. On conflict, current_revision contains the organization policy revision; reload the libraries projection for the entitlement revision."
 		registerBloemChiDocument[bloemJSONInput[BloemRevisionRequest], struct{}](reg, op)
@@ -278,13 +283,13 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/invitations", "listBloemOrganizationInvitations", "List invitation metadata without claim tokens.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemOrganizationInvitationsResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/invitations", "createBloemOrganizationInvitation", "Create a user invitation and disclose its claim token once.", "bloemOrganizationContext", 201)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		op.Description += " Creates role=user only; default expiry is seven days. Returns claim_token once; this operation does not send email or return a claim URL. Do not automatically retry creation."
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationInvitationCreate], bloemJSONOutput[BloemOrganizationInvitationResendResponse]](reg, op)
@@ -292,7 +297,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/entitlement-cohorts", "listBloemOrganizationEntitlementCohorts", "List safe entitlement cohort projections.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemDocumentQuery(&op, "include_archived", "true or false; default false. Other query parameters return 422.", "boolean")
 		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "Invalid query parameter."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemEntitlementCohortsResponse]](reg, op)
@@ -300,13 +305,13 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/entitlement-cohorts/{cohort_id}", "getBloemOrganizationEntitlementCohort", "Read a safe organization cohort projection.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemEntitlementCohortResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/people/", "listBloemOrganizationPeople", "Page organization people and their profiles.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		for _, query := range []string{"query", "sort", "cursor", "active_since"} {
 			bloemDocumentQuery(&op, query, "People filter; active_since uses RFC3339. sort accepts name, email or recent_activity.", "string")
 		}
@@ -320,27 +325,27 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/people/{account_id}/", "getBloemOrganizationPerson", "Read an organization person and profile summary.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPersonResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/selections", "createBloemOrganizationPeopleSelection", "Create an immutable expiring selection from people filters.", "bloemOrganizationContext", 201)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPeopleSelectionRequest], bloemJSONOutput[BloemPeopleSelectionResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/policy-previews", "previewBloemOrganizationPeoplePolicy", "Preview a policy command and obtain a bound confirmation token.", "bloemOrganizationContext", 201)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPeoplePreviewRequest], bloemJSONOutput[BloemPeoplePreviewResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/bulk-jobs", "createBloemOrganizationPeopleBulkJob", "Enqueue a people bulk mutation.", "bloemOrganizationContext", 201)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[adminpeople.BulkAction], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
@@ -348,7 +353,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/policy-jobs", "createBloemOrganizationPeoplePolicyJob", "Enqueue a confirmed people policy command.", "bloemOrganizationContext", 201)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPolicyBulkAction], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
@@ -356,26 +361,26 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/people/bulk-jobs/{job_id}", "getBloemOrganizationPeopleBulkJob", "Read progress and per-record results of a people job.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/people/policy-jobs/{job_id}", "getBloemOrganizationPeoplePolicyJob", "Read progress and per-record results of a people job.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/policy-jobs/{job_id}/cancel", "cancelBloemOrganizationPeoplePolicyJob", "Cancel an eligible people policy job.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{409: "job_not_cancellable: the job cannot be canceled through this endpoint."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "PATCH", "/admin/organization/people/{account_id}/memberships/current", "updateBloemOrganizationPersonMembership", "Change an organization person membership status.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPeopleMembershipUpdate], bloemJSONOutput[BloemPersonResponse]](reg, op)
@@ -383,7 +388,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "PATCH", "/admin/organization/people/{account_id}/profiles/{profile_id}", "updateBloemOrganizationPersonProfile", "Assign an organization person profile to an access group.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPeopleProfileUpdate], bloemJSONOutput[BloemPersonResponse]](reg, op)
@@ -391,7 +396,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/policy-decisions", "listBloemOrganizationPolicyDecisions", "Page sanitized organization policy decision explanations.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		for _, name := range []string{"cursor", "decision_name"} {
 			bloemDocumentQuery(&op, name, "Decision filter or opaque pagination cursor.", "string")
 		}
@@ -402,7 +407,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/policy-decisions/{id}", "getBloemOrganizationPolicyDecision", "Read a sanitized organization policy decision explanation.", "bloemOrganizationContext", 200)
-		op.Description = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+		op.Description = bloemOrganizationAuthorityDescription
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPolicyDecisionResponse]](reg, op)
 	}
 }

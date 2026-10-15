@@ -179,7 +179,7 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v1/livetv/channels` | `listBloemLiveTVChannels` | The channel lineup this viewer may watch. |
 | `PATCH /api/bloem/v1/livetv/channels/{channelId}` | `patchBloemLiveTVChannel` | Change channel enablement, number override or guide mapping. |
 | `POST /api/bloem/v1/livetv/channels/{channelId}/session` | `startBloemLiveTVSession` | Tune a channel and take a tuner lease. |
-| `GET /api/bloem/v1/livetv/guide` | `getBloemLiveTVGuide` | Programme guide for a window. |
+| `GET /api/bloem/v1/livetv/guide` | `getBloemLiveTVGuide` | Program guide for a window. |
 | `GET /api/bloem/v1/livetv/guide-sources` | `listBloemLiveTVGuideSources` | List configured guide sources. |
 | `POST /api/bloem/v1/livetv/guide-sources` | `createBloemLiveTVGuideSource` | Create a guide source. |
 | `POST /api/bloem/v1/livetv/guide-sources/schedules-direct/lineups` | `lookupBloemLiveTVSchedulesDirectLineups` | Look up Schedules Direct lineups by postal code. |
