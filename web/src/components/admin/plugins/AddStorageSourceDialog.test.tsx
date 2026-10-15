@@ -13,13 +13,24 @@ const discover = vi.fn();
 const install = vi.fn();
 const listBuckets = vi.fn();
 const listFolders = vi.fn();
+const resetDiscover = vi.fn();
+const resetBuckets = vi.fn();
+const resetFolders = vi.fn();
+const toastSuccess = vi.hoisted(() => vi.fn());
+const toastError = vi.hoisted(() => vi.fn());
+
+vi.mock("sonner", () => ({ toast: { success: toastSuccess, error: toastError } }));
 let scope: "platform" | "organization" = "platform";
 
 vi.mock("@/hooks/queries/admin/storageSources", () => ({
-  useDiscoverStorageSource: () => ({ mutateAsync: discover, isPending: false }),
+  useDiscoverStorageSource: () => ({
+    mutateAsync: discover,
+    reset: resetDiscover,
+    isPending: false,
+  }),
   useInstallStorageSource: () => ({ mutate: install, isPending: false }),
-  useListS3Buckets: () => ({ mutateAsync: listBuckets, isPending: false }),
-  useListS3Folders: () => ({ mutateAsync: listFolders, isPending: false }),
+  useListS3Buckets: () => ({ mutateAsync: listBuckets, reset: resetBuckets, isPending: false }),
+  useListS3Folders: () => ({ mutateAsync: listFolders, reset: resetFolders, isPending: false }),
   useStorageScope: () => ({ active: {}, scope, key: scope }),
 }));
 
@@ -167,6 +178,11 @@ describe("AddStorageSourceDialog", () => {
     install.mockReset();
     listBuckets.mockReset();
     listFolders.mockReset();
+    resetDiscover.mockReset();
+    resetBuckets.mockReset();
+    resetFolders.mockReset();
+    toastSuccess.mockReset();
+    toastError.mockReset();
     scope = "platform";
   });
 
@@ -321,10 +337,31 @@ Whitelisted IP: Not configured`;
 
     it("leaves the region blank and picks strict versioning for amazonaws.com", () => {
       openS3();
-      fill("S3 endpoint", "https://s3.eu-west-1.amazonaws.com");
+      fill("S3 endpoint", "https://s3.amazonaws.com");
       advanced();
       expect(screen.getByLabelText("Region")).toHaveValue("");
       expect(screen.getByLabelText("Revision mode")).toHaveValue("strict");
+    });
+
+    it("takes the region from an Amazon address that names one", () => {
+      openS3();
+      fill("S3 endpoint", "https://s3.eu-west-1.amazonaws.com");
+      advanced();
+      expect(screen.getByLabelText("Region")).toHaveValue("eu-west-1");
+      expect(screen.getByLabelText("Revision mode")).toHaveValue("strict");
+    });
+
+    it("falls back to the region in the address when the region was cleared", async () => {
+      listBuckets.mockResolvedValue(["media"]);
+      openS3();
+      fillConnection("https://s3.ap-southeast-2.amazonaws.com");
+      advanced();
+      fill("Region", "");
+      click("Connect");
+      await screen.findByText("Buckets");
+      expect(listBuckets).toHaveBeenCalledWith(
+        expect.objectContaining({ region: "ap-southeast-2" }),
+      );
     });
 
     it("follows the endpoint back to the gateway defaults", () => {
@@ -440,8 +477,12 @@ Whitelisted IP: Not configured`;
 
     it("says so when the account has no buckets", async () => {
       await connected([]);
-      expect(screen.getByText("No buckets were found for these keys.")).toBeInTheDocument();
+      expect(screen.getByText(/No buckets were found for these keys/)).toBeInTheDocument();
+      // Keys limited to one bucket cannot list buckets: typing is offered right here, not only in Advanced.
+      expect(screen.queryByRole("button", { name: "Advanced options", expanded: true })).toBeNull();
       expect(screen.getByRole("button", { name: "Add source" })).toBeDisabled();
+      click("Type a bucket name instead");
+      expect(screen.getByLabelText("Bucket")).toBeInTheDocument();
     });
 
     it("drops the list when the keys change afterwards", async () => {
@@ -477,7 +518,7 @@ Whitelisted IP: Not configured`;
         "s3_access_denied",
         422,
         "The S3 backend denied access",
-        "The provider rejected these keys. Check the access key and secret key. Some providers also only allow connections from approved IP addresses — if yours does, ask them to approve this server.",
+        "These keys can't list buckets. If your provider gave you a specific bucket name, type it instead.",
       ],
       [
         "s3_backend_error",
@@ -611,13 +652,21 @@ Whitelisted IP: Not configured`;
       expect(discoverCall(0).config.connection).toHaveProperty("session_token", "TOKEN");
     });
 
-    it("blocks a prefix without a trailing slash before calling the API", async () => {
+    it("adds the trailing slash of a prefix itself and blocks only a leading slash", async () => {
       await connected(["media"]);
       advanced();
       fill("Prefix", "movies");
       click("Add source");
-      expect(screen.getByRole("alert")).toHaveTextContent(/end with a slash/);
-      expect(discover).not.toHaveBeenCalled();
+      await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
+      expect(discoverCall(0).config.connection).toMatchObject({
+        prefix: "movies/",
+        source_name: "media/movies/",
+      });
+    });
+
+    it("blocks a prefix with a leading slash before calling the API", async () => {
+      await connected(["media"]);
+      advanced();
       fill("Prefix", "/movies/");
       click("Add source");
       expect(screen.getByRole("alert")).toHaveTextContent(/must not start with a slash/);
@@ -627,7 +676,7 @@ Whitelisted IP: Not configured`;
     it("opens Advanced to show a prefix problem", async () => {
       await connected(["media"]);
       advanced();
-      fill("Prefix", "movies");
+      fill("Prefix", "/movies/");
       advanced();
       expect(screen.queryByLabelText("Prefix")).not.toBeInTheDocument();
       click("Add source");
@@ -773,7 +822,7 @@ Whitelisted IP: Not configured`;
       await selectTwo();
       fireEvent.click(checkbox("music"));
       click("Add 3 sources");
-      await screen.findByText("television: failed — Bucket not found");
+      await screen.findByText(/television: failed — This storage plugin release can't be used/);
       expect(discover).toHaveBeenCalledTimes(3);
       expect(screen.getByText("movies: added")).toBeInTheDocument();
       expect(screen.getByText("music: added")).toBeInTheDocument();
@@ -781,6 +830,7 @@ Whitelisted IP: Not configured`;
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(checkbox("movies")).toBeDisabled();
       expect(checkbox("movies")).toBeChecked();
+      expect(document.body.textContent).not.toContain("Bucket not found");
       const failedId = discoverCall(1).providerSourceId;
 
       discover.mockReset();
@@ -789,8 +839,9 @@ Whitelisted IP: Not configured`;
       await screen.findByText(/Added 3 sources: movies, television, music/);
       expect(discover).toHaveBeenCalledTimes(1);
       expect(discoverCall(0).config.connection.bucket).toBe("television");
-      // The retry keeps the id, so an attempt the server could not confirm is not duplicated.
-      expect(discoverCall(0).providerSourceId).toBe(failedId);
+      // The server does not recognise a repeated id, so every attempt gets a fresh one.
+      expect(discoverCall(0).providerSourceId).not.toBe(failedId);
+      expect(discoverCall(0).providerSourceId).toMatch(/^s3_[a-f0-9]{32}$/);
     });
 
     it("does not warn that a bucket added a moment ago already exists", async () => {
@@ -805,7 +856,7 @@ Whitelisted IP: Not configured`;
       const { rerender } = await connected(["movies", "television"]);
       click("Select all");
       click("Add 2 sources");
-      await screen.findByText("television: failed — nope");
+      await screen.findByText(/television: failed/);
       // The sources list refreshes after the first bucket was added.
       rerender({ sources: [added] });
       expect(screen.queryByText(/already exists/)).not.toBeInTheDocument();
@@ -936,7 +987,7 @@ Whitelisted IP: Not configured`;
       await connected(["media"]);
       click("Browse folders");
       const alert = await screen.findByRole("alert");
-      expect(alert).toHaveTextContent(/The provider rejected these keys/);
+      expect(alert).toHaveTextContent(/These keys can't list folders here/);
       expect(alert).not.toHaveTextContent(SECRET);
       click("Try again");
       await screen.findByRole("button", { name: "movies" });
@@ -1004,6 +1055,397 @@ Whitelisted IP: Not configured`;
       expect(screen.getByLabelText("Secret key")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
       expect(screen.queryByText("Buckets")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("failed saves", () => {
+    it("shows fixed text, never the server's, and raises one summary toast for a batch", async () => {
+      discover
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(
+          new AdminV2ClientError(422, "s3_access_denied", `raw text ${SECRET} from the backend`),
+        );
+      await connected(["movies", "television"]);
+      click("Select all");
+      click("Add 2 sources");
+      await screen.findByText(
+        /television: failed — The provider rejected these keys for this bucket/,
+      );
+      expect(document.body.textContent).not.toContain("raw text");
+      expect(document.body.textContent).not.toContain(SECRET);
+      // Reported inline by the form; the hook is asked for no toast of its own.
+      for (const call of discover.mock.calls) {
+        expect(call[0]).toMatchObject({ silent: true });
+      }
+      expect(toastSuccess).not.toHaveBeenCalled();
+      expect(toastError).toHaveBeenCalledTimes(1);
+      expect(toastError).toHaveBeenCalledWith("1 of 2 storage sources couldn't be added");
+    });
+
+    it("raises a single success toast for a whole batch", async () => {
+      discover.mockResolvedValue(undefined);
+      await connected(["movies", "television"]);
+      click("Select all");
+      click("Add 2 sources");
+      await screen.findByText(/Added 2 sources/);
+      expect(toastSuccess).toHaveBeenCalledTimes(1);
+      expect(toastSuccess).toHaveBeenCalledWith("Added 2 storage sources");
+      expect(toastError).not.toHaveBeenCalled();
+    });
+
+    it("keeps the single-source toast text and fixed error text", async () => {
+      discover.mockRejectedValueOnce(new AdminV2ClientError(500, "internal", "database exploded"));
+      await connected(["media"]);
+      click("Add source");
+      await screen.findByText(/media: failed — Couldn't add this bucket. Try again./);
+      expect(toastError).toHaveBeenCalledWith("Couldn't add the storage source");
+      discover.mockResolvedValueOnce(undefined);
+      click("Retry failed (1)");
+      await screen.findByText(/Added 1 source: media/);
+      expect(toastSuccess).toHaveBeenCalledWith("Storage source added");
+    });
+
+    it("holds back a bucket that may have been created and lets the administrator retry it", async () => {
+      discover
+        .mockRejectedValueOnce(
+          new AdminV2ClientError(500, "mutation_outcome_unknown", "unknown outcome"),
+        )
+        .mockRejectedValueOnce(new AdminV2ClientError(422, "artifact_rejected", "x"));
+      await connected(["movies", "television"]);
+      click("Select all");
+      click("Add 2 sources");
+      await screen.findByText(/television: failed/);
+      expect(
+        screen.getByText(/movies: May have been created — check the source list before retrying/),
+      ).toBeInTheDocument();
+      // Only the plainly failed bucket is retried.
+      expect(screen.getByRole("button", { name: "Retry failed (1)" })).toBeEnabled();
+      discover.mockReset();
+      discover.mockResolvedValue(undefined);
+      click("Retry failed (1)");
+      await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
+      expect(discoverCall(0).config.connection.bucket).toBe("television");
+      expect(screen.queryByText(/Added/)).not.toBeInTheDocument();
+      // Nothing else is tried until the administrator says so.
+      expect(screen.getByRole("button", { name: "Add source" })).toBeDisabled();
+      click("Retry movies anyway");
+      discover.mockClear();
+      click("Retry failed (1)");
+      await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
+      expect(discoverCall(0).config.connection.bucket).toBe("movies");
+      await screen.findByText(/Added 2 sources/);
+    });
+
+    it("treats a request that got no answer as possibly created", async () => {
+      discover.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+      await connected(["media"]);
+      click("Add source");
+      await screen.findByText(/May have been created/);
+      expect(screen.getByRole("button", { name: "Add source" })).toBeDisabled();
+    });
+
+    it("sends a fresh id for every attempt", async () => {
+      discover.mockRejectedValueOnce(new AdminV2ClientError(500, "internal", "x"));
+      discover.mockRejectedValueOnce(new AdminV2ClientError(500, "internal", "x"));
+      await connected(["media"]);
+      click("Add source");
+      await screen.findByText(/media: failed/);
+      click("Retry failed (1)");
+      await waitFor(() => expect(discover).toHaveBeenCalledTimes(2));
+      expect(discoverCall(0).providerSourceId).not.toBe(discoverCall(1).providerSourceId);
+      expect(discoverCall(1).config.connection.source_id).toBe(discoverCall(1).providerSourceId);
+    });
+  });
+
+  describe("entered text is tidied", () => {
+    it("trims the address, keys, token, bucket and prefix before using them", async () => {
+      listBuckets.mockResolvedValue(["media"]);
+      discover.mockResolvedValue(undefined);
+      openS3();
+      fill("S3 endpoint", "  https://s3.example.com \n");
+      fill("Access key", ` ${ACCESS}\n`);
+      fill("Secret key", `\t${SECRET} `);
+      advanced();
+      fill("Session token", " TOKEN ");
+      fill("Region", " us-east-1 ");
+      click("Connect");
+      await screen.findByText("Buckets");
+      expect(listBuckets).toHaveBeenCalledWith({
+        endpoint: "https://s3.example.com",
+        region: "us-east-1",
+        accessKey: ACCESS,
+        secretKey: SECRET,
+        sessionToken: "TOKEN",
+      });
+      fill("Prefix", " movies/ ");
+      click("Add source");
+      await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
+      expect(discoverCall(0).config.connection).toMatchObject({
+        endpoint: "https://s3.example.com",
+        access_key: ACCESS,
+        secret_key: SECRET,
+        session_token: "TOKEN",
+        region: "us-east-1",
+        prefix: "movies/",
+      });
+    });
+
+    it("trims a typed bucket name", async () => {
+      discover.mockResolvedValue(undefined);
+      openS3();
+      fillConnection();
+      advanced();
+      click("Type a bucket name instead");
+      fill("Bucket", "  media  ");
+      click("Add source");
+      await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
+      expect(discoverCall(0).config.connection.bucket).toBe("media");
+    });
+
+    it("adds https:// to an address typed without a scheme", async () => {
+      listBuckets.mockResolvedValue(["media"]);
+      openS3();
+      fill("S3 endpoint", "s3.example.com:9000");
+      fill("Access key", ACCESS);
+      fill("Secret key", SECRET);
+      click("Connect");
+      await screen.findByText("Buckets");
+      expect(listBuckets).toHaveBeenCalledWith(
+        expect.objectContaining({ endpoint: "https://s3.example.com:9000" }),
+      );
+    });
+
+    it("shows the scheme in the field once it is left, and the prefix slash too", () => {
+      openS3();
+      fill("S3 endpoint", "s3.example.com");
+      fireEvent.blur(screen.getByLabelText("S3 endpoint"));
+      expect(screen.getByLabelText("S3 endpoint")).toHaveValue("https://s3.example.com");
+      advanced();
+      fill("Prefix", "movies");
+      fireEvent.blur(screen.getByLabelText("Prefix"));
+      expect(screen.getByLabelText("Prefix")).toHaveValue("movies/");
+    });
+  });
+
+  describe("keys that cannot list buckets", () => {
+    it("offers typing the bucket in plain view after access is denied", async () => {
+      listBuckets.mockRejectedValueOnce(
+        new AdminV2ClientError(422, "s3_access_denied", "The S3 backend denied access"),
+      );
+      openS3();
+      fillConnection();
+      click("Connect");
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(
+        "These keys can't list buckets. If your provider gave you a specific bucket name, type it instead.",
+      );
+      expect(screen.getByRole("button", { name: "Advanced options" })).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
+      expect(
+        within(alert).getByRole("button", { name: "Type a bucket name instead" }),
+      ).toBeInTheDocument();
+    });
+
+    it("still lets the typed bucket's folders be browsed", async () => {
+      listFolders
+        .mockResolvedValueOnce({
+          prefix: "",
+          folders: [{ name: "movies", prefix: "movies/" }],
+          nextCursor: "",
+        })
+        .mockResolvedValueOnce({ prefix: "movies/", folders: [], nextCursor: "" });
+      discover.mockResolvedValue(undefined);
+      openS3();
+      fillConnection();
+      advanced();
+      click("Type a bucket name instead");
+      // Nothing to browse until the bucket is named.
+      expect(screen.queryByRole("button", { name: "Browse folders" })).not.toBeInTheDocument();
+      fill("Bucket", "scoped-bucket");
+      click("Browse folders");
+      fireEvent.click(await screen.findByRole("button", { name: "movies" }));
+      await screen.findByText("No subfolders here.");
+      expect(listFolders.mock.calls[0]![0]).toMatchObject({
+        bucket: "scoped-bucket",
+        endpoint: ENDPOINT,
+        accessKey: ACCESS,
+        secretKey: SECRET,
+      });
+      click("Use this folder");
+      expect(screen.getByLabelText("Prefix")).toHaveValue("movies/");
+      click("Add source");
+      await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
+      expect(discoverCall(0).config.connection).toMatchObject({
+        bucket: "scoped-bucket",
+        prefix: "movies/",
+      });
+    });
+
+    it("closes the folder browser when the typed bucket name changes", async () => {
+      listFolders.mockResolvedValue({ prefix: "", folders: [], nextCursor: "" });
+      openS3();
+      fillConnection();
+      advanced();
+      click("Type a bucket name instead");
+      fill("Bucket", "first-bucket");
+      click("Browse folders");
+      await screen.findByText("No subfolders here.");
+      fill("Bucket", "second-bucket");
+      expect(screen.queryByRole("region", { name: "Folder browser" })).not.toBeInTheDocument();
+      expect(listFolders).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("errors can be found", () => {
+    it("scrolls to the problems and moves focus there", () => {
+      const scroll = vi.fn();
+      window.HTMLElement.prototype.scrollIntoView = scroll;
+      openS3();
+      fillConnection("http://s3.example.com");
+      click("Connect");
+      const alert = screen.getByRole("alert");
+      expect(scroll).toHaveBeenCalledWith({ block: "nearest" });
+      expect(alert.parentElement).toBe(document.activeElement);
+    });
+
+    it("scrolls to and focuses a listing error and a failed result", async () => {
+      const scroll = vi.fn();
+      window.HTMLElement.prototype.scrollIntoView = scroll;
+      listBuckets.mockRejectedValueOnce(new AdminV2ClientError(502, "s3_backend_error", "x"));
+      openS3();
+      fillConnection();
+      click("Connect");
+      const alert = await screen.findByRole("alert");
+      await waitFor(() => expect(alert.parentElement).toBe(document.activeElement));
+      expect(scroll).toHaveBeenCalled();
+
+      scroll.mockClear();
+      listBuckets.mockResolvedValue(["media"]);
+      discover.mockRejectedValueOnce(new AdminV2ClientError(500, "internal", "x"));
+      click("Try again");
+      await screen.findByText("Buckets");
+      click("Add source");
+      await screen.findByText(/media: failed/);
+      await waitFor(() => expect(scroll).toHaveBeenCalled());
+      expect(screen.getByText(/media: failed/).closest("[tabindex='-1']")).toBe(
+        document.activeElement,
+      );
+    });
+
+    it("marks the fields a message is about as invalid and described by the message", async () => {
+      openS3();
+      fill("S3 endpoint", "https://s3.amazonaws.com");
+      fill("Access key", ACCESS);
+      fill("Secret key", SECRET);
+      click("Connect");
+      const region = screen.getByLabelText("Region");
+      expect(region).toHaveAttribute("aria-invalid", "true");
+      const describedBy = region.getAttribute("aria-describedby");
+      expect(describedBy).toBeTruthy();
+      expect(document.getElementById(describedBy!)).toHaveTextContent("Amazon S3 needs a region");
+      expect(screen.getByLabelText("S3 endpoint")).not.toHaveAttribute("aria-invalid");
+      fill("Region", "us-west-2");
+      listBuckets.mockResolvedValue(["media"]);
+      click("Connect");
+      await screen.findByText("Buckets");
+      expect(screen.getByLabelText("Region")).not.toHaveAttribute("aria-invalid");
+      expect(screen.getByLabelText("Region")).not.toHaveAttribute("aria-describedby");
+    });
+  });
+
+  describe("while sources are being added", () => {
+    it("ignores Escape and hides the close button until the batch ends", async () => {
+      const first = deferred();
+      discover.mockReturnValueOnce(first.promise).mockResolvedValue(undefined);
+      const { onOpenChange } = await connected(["movies", "television"]);
+      click("Select all");
+      click("Add 2 sources");
+      await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
+      const dialog = screen.getByRole("dialog");
+      fireEvent.keyDown(dialog, { key: "Escape" });
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect(screen.queryByRole("button", { name: "Close" })).not.toBeInTheDocument();
+      await act(async () => {
+        first.resolve();
+      });
+      await screen.findByText(/Added 2 sources/);
+      expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
+      fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("can be dismissed again after a partial failure", async () => {
+      discover.mockRejectedValueOnce(new AdminV2ClientError(500, "internal", "x"));
+      const { onOpenChange } = await connected(["media"]);
+      click("Add source");
+      await screen.findByText(/media: failed/);
+      await waitFor(() => {
+        fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+        expect(onOpenChange).toHaveBeenCalledWith(false);
+      });
+    });
+  });
+
+  describe("screen reader and keyboard flow", () => {
+    it("moves focus to the bucket list and announces how many were found", async () => {
+      await connected(["a-bucket", "b-bucket", "c-bucket"]);
+      const group = screen.getByRole("group", { name: "Buckets" });
+      expect(group).toBeInTheDocument();
+      expect(document.activeElement).toBe(within(group).getByText("Buckets"));
+      expect(screen.getByText("3 buckets found")).toBeInTheDocument();
+    });
+
+    it("has the live regions mounted before anything is announced in them", () => {
+      openS3();
+      const regions = Array.from(document.querySelectorAll("[role='status']"));
+      // One for the bucket count and one for the per-bucket results.
+      expect(regions.length).toBeGreaterThanOrEqual(2);
+      expect(regions.some((r) => r.getAttribute("aria-live") === "polite")).toBe(true);
+    });
+
+    it("focuses the success block after the sources are added", async () => {
+      discover.mockResolvedValue(undefined);
+      await connected(["media"]);
+      click("Add source");
+      const message = await screen.findByText(/Added 1 source: media/);
+      expect(message.closest("[role='status']")).toBe(document.activeElement);
+    });
+  });
+
+  describe("dropping the keys", () => {
+    it("resets the mutations once the sources are added", async () => {
+      discover.mockResolvedValue(undefined);
+      await connected(["media"]);
+      resetDiscover.mockClear();
+      resetBuckets.mockClear();
+      click("Add source");
+      await screen.findByText(/Added 1 source/);
+      expect(resetDiscover).toHaveBeenCalled();
+      expect(resetBuckets).toHaveBeenCalled();
+    });
+
+    it("resets them when the form is left", () => {
+      openS3();
+      resetDiscover.mockClear();
+      resetBuckets.mockClear();
+      click("Back");
+      expect(resetDiscover).toHaveBeenCalled();
+      expect(resetBuckets).toHaveBeenCalled();
+    });
+
+    it("empties the paste box when connecting, even if nothing in it could be read", async () => {
+      listBuckets.mockResolvedValue(["media"]);
+      openS3();
+      fireEvent.change(screen.getByLabelText("Paste your connection details"), {
+        target: { value: "some notes with a stray token abc123 that were not understood" },
+      });
+      fillConnection();
+      click("Connect");
+      await screen.findByText("Buckets");
+      expect(screen.getByLabelText("Paste your connection details")).toHaveValue("");
+      expect(document.body.textContent).not.toContain("abc123");
     });
   });
 

@@ -86,6 +86,7 @@ function DialogBody({
   onRetry,
   isRetrying = false,
   onClose,
+  onBusyChange,
 }: {
   artifacts?: StorageArtifact[];
   sources: StorageSource[];
@@ -93,6 +94,7 @@ function DialogBody({
   onRetry?: () => void;
   isRetrying?: boolean;
   onClose: () => void;
+  onBusyChange: (busy: boolean) => void;
 }) {
   const [choice, setChoice] = useState<"s3" | null>(null);
 
@@ -127,7 +129,13 @@ function DialogBody({
 
   if (choice === "s3" && s3) {
     return (
-      <S3AddForm artifact={s3} sources={sources} onBack={() => setChoice(null)} onDone={onClose} />
+      <S3AddForm
+        artifact={s3}
+        sources={sources}
+        onBack={() => setChoice(null)}
+        onDone={onClose}
+        onBusyChange={onBusyChange}
+      />
     );
   }
 
@@ -173,9 +181,12 @@ export function AddStorageSourceDialog({
   /** True while the catalog is being refetched after Retry. */
   isRetrying?: boolean;
 }) {
+  const [locked, setLocked] = useState(false);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    // Sources are being added one after another: closing now would leave a half-finished batch
+    // that nobody is watching, so Escape, the overlay and the X are all ignored until it ends.
+    <Dialog open={open} onOpenChange={(next) => (locked && !next ? undefined : onOpenChange(next))}>
+      <DialogContent showCloseButton={!locked}>
         <DialogHeader>
           <DialogTitle>Add storage source</DialogTitle>
           <DialogDescription>
@@ -189,6 +200,7 @@ export function AddStorageSourceDialog({
           onRetry={onRetry}
           isRetrying={isRetrying}
           onClose={() => onOpenChange(false)}
+          onBusyChange={setLocked}
         />
       </DialogContent>
     </Dialog>

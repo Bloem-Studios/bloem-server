@@ -45,7 +45,7 @@ export function S3FolderBrowser({
   onUse: (prefix: string) => void;
   onClose: () => void;
 }) {
-  const { mutateAsync } = useListS3Folders();
+  const { mutateAsync, reset } = useListS3Folders();
   // Held as of opening: the form closes this browser whenever the connection changes.
   const [held] = useState(connection);
   const [view, setView] = useState<View | null>(null);
@@ -71,13 +71,16 @@ export function S3FolderBrowser({
         }));
       } catch (error) {
         if (id !== latest.current) return;
-        setFailure({ message: browseErrorMessage(error), prefix, cursor });
+        setFailure({ message: browseErrorMessage(error, "folders"), prefix, cursor });
       } finally {
         if (id === latest.current) setLoading(false);
       }
     },
     [mutateAsync, held, bucket],
   );
+
+  // The observer keeps the last request, keys included, until it is reset.
+  useEffect(() => reset, [reset]);
 
   useEffect(() => {
     if (started.current) return;
