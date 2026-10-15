@@ -251,6 +251,198 @@ describe("StorageSourceRow", () => {
     expect(screen.queryByLabelText("Access key")).not.toBeInTheDocument();
   });
 
+  describe("failed saves", () => {
+    function openEditAndFillKeys() {
+      render(
+        <ul>
+          <StorageSourceRow source={s3Source} artifact={s3Artifact} />
+        </ul>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      fireEvent.change(screen.getByLabelText("Bucket"), { target: { value: "other-bucket" } });
+      fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK" } });
+      fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    }
+
+    it("keeps the edit form and its values after a revision conflict", () => {
+      replaceConfig.mockImplementation(
+        (_i: unknown, o: { onError?: (e: { code: string }) => void }) =>
+          o.onError?.({ code: "revision_conflict" }),
+      );
+      openEditAndFillKeys();
+      expect(replaceConfig).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText(/used by a library/i)).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Bucket")).toHaveValue("other-bucket");
+      expect(screen.getByLabelText("Access key")).toHaveValue("AK");
+      expect(screen.getByLabelText("Secret key")).toHaveValue("SK");
+      expect(screen.queryByLabelText(/Session token/)).not.toBeInTheDocument();
+    });
+
+    it("keeps the typed keys after any other failed replace", () => {
+      replaceConfig.mockImplementation((_i: unknown, o: { onError?: (e: Error) => void }) =>
+        o.onError?.(new Error("storage backend unavailable")),
+      );
+      openEditAndFillKeys();
+      expect(replaceConfig).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText(/used by a library/i)).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Bucket")).toHaveValue("other-bucket");
+      expect(screen.getByLabelText("Access key")).toHaveValue("AK");
+      expect(screen.getByLabelText("Secret key")).toHaveValue("SK");
+    });
+
+    it("keeps the typed keys when rotating fails and clears them when it succeeds", () => {
+      render(
+        <ul>
+          <StorageSourceRow source={s3Source} artifact={s3Artifact} />
+        </ul>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK2" } });
+      fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK2" } });
+      fireEvent.change(screen.getByLabelText(/Session token/), { target: { value: "TOK" } });
+
+      rotate.mockImplementation((_i: unknown, o: { onError?: (e: Error) => void }) =>
+        o.onError?.(new Error("rotation refused")),
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      expect(rotate).toHaveBeenCalledTimes(1);
+      expect(screen.getByLabelText("Access key")).toHaveValue("AK2");
+      expect(screen.getByLabelText("Secret key")).toHaveValue("SK2");
+      expect(screen.getByLabelText(/Session token/)).toHaveValue("TOK");
+
+      rotate.mockImplementation((_i: unknown, o: { onSuccess?: () => void }) => o.onSuccess?.());
+      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      expect(rotate).toHaveBeenCalledTimes(2);
+      // The form closes on success; reopening it shows empty inputs.
+      expect(screen.queryByLabelText("Access key")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      expect(screen.getByLabelText("Access key")).toHaveValue("");
+      expect(screen.getByLabelText("Secret key")).toHaveValue("");
+      expect(screen.getByLabelText(/Session token/)).toHaveValue("");
+    });
+  });
+
+  describe("test connection", () => {
+    it("shows the failure message in the status region", () => {
+      testSource.mockImplementation(
+        (_s: unknown, o: { onSuccess?: (r: { ok: boolean; message: string }) => void }) =>
+          o.onSuccess?.({ ok: false, message: "Access denied" }),
+      );
+      render(
+        <ul>
+          <StorageSourceRow source={s3Source} artifact={s3Artifact} />
+        </ul>,
+      );
+      expect(() => fireEvent.click(screen.getByRole("button", { name: "Test" }))).not.toThrow();
+      expect(screen.getByRole("status")).toHaveTextContent("Access denied");
+      expect(screen.queryByText("Connection works")).not.toBeInTheDocument();
+    });
+
+    it("disables Test for a disabled source and says why", () => {
+      const disabledSource = { ...s3Source, enabled: false, state: "disabled" } as StorageSource;
+      render(
+        <ul>
+          <StorageSourceRow source={disabledSource} artifact={s3Artifact} />
+        </ul>,
+      );
+      const button = screen.getByRole("button", { name: "Test" });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAccessibleDescription(/enable the source/i);
+      fireEvent.click(button);
+      expect(testSource).not.toHaveBeenCalled();
+    });
+
+    function showTestResult() {
+      testSource.mockImplementation(
+        (_s: unknown, o: { onSuccess?: (r: { ok: boolean; message: string }) => void }) =>
+          o.onSuccess?.({ ok: true, message: "Connection works" }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Test" }));
+      expect(screen.getByRole("status")).toHaveTextContent("Connection works");
+    }
+
+    it("clears a stale test result after a successful edit save", () => {
+      replaceConfig.mockImplementation((_i: unknown, o: { onSuccess?: () => void }) =>
+        o.onSuccess?.(),
+      );
+      render(
+        <ul>
+          <StorageSourceRow source={s3Source} artifact={s3Artifact} />
+        </ul>,
+      );
+      showTestResult();
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK" } });
+      fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(replaceConfig).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("keeps the test result when the edit save fails", () => {
+      replaceConfig.mockImplementation((_i: unknown, o: { onError?: (e: Error) => void }) =>
+        o.onError?.(new Error("nope")),
+      );
+      render(
+        <ul>
+          <StorageSourceRow source={s3Source} artifact={s3Artifact} />
+        </ul>,
+      );
+      showTestResult();
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK" } });
+      fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(screen.getByRole("status")).toHaveTextContent("Connection works");
+    });
+
+    it("clears a stale test result after the keys are rotated", () => {
+      rotate.mockImplementation((_i: unknown, o: { onSuccess?: () => void }) => o.onSuccess?.());
+      render(
+        <ul>
+          <StorageSourceRow source={s3Source} artifact={s3Artifact} />
+        </ul>,
+      );
+      showTestResult();
+      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK2" } });
+      fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK2" } });
+      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      expect(rotate).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("plain HTTP on loopback", () => {
+    const notice = /allows plain HTTP on loopback; saving keeps it off/i;
+
+    it("tells the admin that saving turns it off when the source had it on", () => {
+      const loopback = {
+        ...s3Source,
+        connection_summary: { ...s3Source.connection_summary, allow_loopback_http: "true" },
+      } as StorageSource;
+      render(
+        <ul>
+          <StorageSourceRow source={loopback} artifact={s3Artifact} />
+        </ul>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      expect(screen.getByText(notice)).toHaveTextContent("Re-add the source to change.");
+    });
+
+    it("shows no notice otherwise", () => {
+      render(
+        <ul>
+          <StorageSourceRow source={s3Source} artifact={s3Artifact} />
+        </ul>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      expect(screen.queryByText(notice)).not.toBeInTheDocument();
+    });
+  });
+
   it("confirms before removing and says the source is retained", () => {
     render(
       <ul>

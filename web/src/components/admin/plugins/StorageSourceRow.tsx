@@ -32,6 +32,9 @@ const BOOKWAREHOUSE_PLUGIN = "bloem.storage.bookwarehouse";
 /** The server refuses a whole-configuration replacement on a source a library uses. */
 const IN_USE_ERROR_CODE = "configuration_namespace_unverified";
 const IN_USE_NOTICE = "This source is used by a library; only the keys can be changed.";
+// The edit form cannot send allow_loopback_http, so a whole-configuration replace turns it off.
+const LOOPBACK_NOTICE =
+  "This source allows plain HTTP on loopback; saving keeps it off. Re-add the source to change.";
 
 // Server-managed or developer-only fields an administrator is never asked for when editing.
 const HIDDEN_EDIT_FIELDS = ["source_id", "state_path", "allow_loopback_http", "session_token"];
@@ -298,6 +301,9 @@ function S3EditForm({
 
   return (
     <div className="mt-3 space-y-3">
+      {summary?.allow_loopback_http === "true" ? (
+        <p className="text-muted-foreground text-[13px]">{LOOPBACK_NOTICE}</p>
+      ) : null}
       <PluginConfigForm
         bare
         idPrefix={`s3-edit-${source.source_key}`}
@@ -406,6 +412,8 @@ export function StorageSourceRow({
   const locked = inUse || serverSaysInUse;
   const manageable = source.installation_id !== null;
   const name = displayName(source);
+  const sourceDisabled = !source.enabled || source.state === "disabled";
+  const testHintId = `test-hint-${source.source_key}`;
 
   function toggle(next: Exclude<Panel, null>) {
     setPanel(panel === next ? null : next);
@@ -429,17 +437,25 @@ export function StorageSourceRow({
 
       <div className="mt-1.5 flex flex-wrap gap-1 pl-[26px]">
         {source.configured ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={test.isPending}
-            onClick={() => {
-              setTestResult(null);
-              test.mutate({ source }, { onSuccess: setTestResult });
-            }}
-          >
-            {test.isPending ? "Testing..." : "Test"}
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={test.isPending || sourceDisabled}
+              aria-describedby={sourceDisabled ? testHintId : undefined}
+              onClick={() => {
+                setTestResult(null);
+                test.mutate({ source }, { onSuccess: setTestResult });
+              }}
+            >
+              {test.isPending ? "Testing..." : "Test"}
+            </Button>
+            {sourceDisabled ? (
+              <span id={testHintId} className="sr-only">
+                Enable the source to test its connection.
+              </span>
+            ) : null}
+          </>
         ) : null}
         {isS3 && !locked ? (
           <Button variant="ghost" size="sm" onClick={() => toggle("edit")}>
@@ -490,7 +506,10 @@ export function StorageSourceRow({
           <S3EditForm
             source={source}
             artifact={artifact}
-            onSaved={() => setPanel(null)}
+            onSaved={() => {
+              setTestResult(null);
+              setPanel(null);
+            }}
             onInUse={() => {
               setServerSaysInUse(true);
               setPanel("rotate");
@@ -509,7 +528,13 @@ export function StorageSourceRow({
           {locked ? (
             <p className="text-muted-foreground mt-2 text-[13px]">{IN_USE_NOTICE}</p>
           ) : null}
-          <RotateKeysForm source={source} onDone={() => setPanel(null)} />
+          <RotateKeysForm
+            source={source}
+            onDone={() => {
+              setTestResult(null);
+              setPanel(null);
+            }}
+          />
         </>
       ) : null}
 
