@@ -3,9 +3,11 @@ package plugins
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -20,6 +22,41 @@ func TestPickConnectionConfigPrefersConnectionKey(t *testing.T) {
 	}
 	if pickConnectionConfig(nil) != nil {
 		t.Fatal("expected nil")
+	}
+}
+
+func TestPickConnectionConfigStrictRequiresExplicitConnectionKey(t *testing.T) {
+	configs := []*RuntimeConfig{{Key: "other", Value: map[string]any{"a": 1}}, {Key: "connection", Value: map[string]any{"bucket": "b"}}}
+	if got := pickConnectionConfigStrict(configs); got["bucket"] != "b" {
+		t.Fatalf("got %v", got)
+	}
+	if got := pickConnectionConfigStrict(configs[:1]); got != nil {
+		t.Fatalf("strict pick fell back to the first config: %v", got)
+	}
+	if pickConnectionConfigStrict(nil) != nil || pickConnectionConfigStrict([]*RuntimeConfig{nil}) != nil {
+		t.Fatal("expected nil")
+	}
+}
+
+func TestOverlayFromStrictPickRefusesFirstConfigFallback(t *testing.T) {
+	// A source whose only runtime config is not `connection` must not be rotated.
+	configs := []*RuntimeConfig{{Key: "other", Value: map[string]any{"bucket": "b"}}}
+	if _, err := overlayS3Credentials(pickConnectionConfigStrict(configs), S3Credentials{AccessKey: "A", SecretKey: "B"}); err == nil {
+		t.Fatal("rotation accepted a config that is not the connection")
+	}
+}
+
+func TestRotationLookupErrorMapsOnlyNoRows(t *testing.T) {
+	if err := rotationLookupError(pgx.ErrNoRows); !errors.Is(err, storagesource.ErrSourceUnavailable) {
+		t.Fatalf("no rows must be source unavailable, got %v", err)
+	}
+	if err := rotationLookupError(fmt.Errorf("lookup: %w", pgx.ErrNoRows)); !errors.Is(err, storagesource.ErrSourceUnavailable) {
+		t.Fatalf("wrapped no rows must be source unavailable, got %v", err)
+	}
+	boom := errors.New("connection reset")
+	err := rotationLookupError(boom)
+	if !errors.Is(err, boom) || errors.Is(err, storagesource.ErrSourceUnavailable) {
+		t.Fatalf("other DB errors must pass through unchanged, got %v", err)
 	}
 }
 

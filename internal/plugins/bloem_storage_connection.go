@@ -7,8 +7,12 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
+// pickConnectionConfig is the lenient reader used for summaries: it falls back
+// to the first config when no `connection` key exists. Never use it to decide
+// what a write overlays; see pickConnectionConfigStrict.
 func pickConnectionConfig(configs []*RuntimeConfig) map[string]any {
 	for _, c := range configs {
 		if c != nil && c.Key == "connection" {
@@ -19,6 +23,27 @@ func pickConnectionConfig(configs []*RuntimeConfig) map[string]any {
 		return configs[0].Value
 	}
 	return nil
+}
+
+// pickConnectionConfigStrict returns only the explicit `connection` runtime
+// config, with no fallback. Credential rotation overlays this value, so it must
+// never silently adopt some other config.
+func pickConnectionConfigStrict(configs []*RuntimeConfig) map[string]any {
+	for _, c := range configs {
+		if c != nil && c.Key == "connection" {
+			return c.Value
+		}
+	}
+	return nil
+}
+
+// rotationLookupError maps only "no matching source row" to source
+// unavailable; any other database error stays a server error.
+func rotationLookupError(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return storagesource.ErrSourceUnavailable
+	}
+	return err
 }
 
 // ConnectionConfig returns the decrypted `connection` runtime config of an
@@ -65,13 +90,16 @@ func overlayS3Credentials(current map[string]any, c S3Credentials) (map[string]m
 func (r *NativeStorageRegistry) rotateCredentials(ctx context.Context, key, owner uuid.UUID, c S3Credentials, expected int64, authorize NativeStorageAuthorizeTx) (int64, error) {
 	var installationID int
 	if err := r.pool.QueryRow(ctx, `SELECT installation_id FROM bloem_storage_sources WHERE key=$1 AND owner_id=$2 AND plugin_id=$3 AND installation_id IS NOT NULL`, key, owner, nativeS3PluginID).Scan(&installationID); err != nil {
-		return 0, storagesource.ErrSourceUnavailable
+		return 0, rotationLookupError(err)
 	}
-	current, err := r.ConnectionConfig(ctx, installationID)
+	if r.configs == nil {
+		return 0, nativeManagementUnavailable()
+	}
+	configs, err := r.configs.ListGlobalConfigs(ctx, installationID)
 	if err != nil {
 		return 0, err
 	}
-	next, err := overlayS3Credentials(current, c)
+	next, err := overlayS3Credentials(pickConnectionConfigStrict(configs), c)
 	if err != nil {
 		return 0, &catalog.NativeOnboardingError{Code: "invalid_request"}
 	}
