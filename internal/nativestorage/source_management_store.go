@@ -78,6 +78,18 @@ func (s *SourceManagement) withConnectionSummary(ctx context.Context, view Sourc
 	view.ConnectionSummary = ConnectionSummary(view.PluginID, cfg)
 	return view
 }
+
+// connectionSummaryFor attaches the connection summary only for a platform
+// actor or a source the platform does not own. An organization administrator
+// may read a platform source its organization is entitled to, but that
+// source's bucket, prefix, endpoint, region and probe key stay with the
+// platform, so the view keeps its empty summary.
+func (s *SourceManagement) connectionSummaryFor(ctx context.Context, scope auth.AdminScope, view SourceView) SourceView {
+	if scope != auth.AdminScopePlatform && view.OwnerKind == resourcetenancy.OwnerPlatform {
+		return view
+	}
+	return s.withConnectionSummary(ctx, view)
+}
 func (s *SourceManagement) GetSource(ctx context.Context, actor auth.AdminContextClaims, key uuid.UUID) (SourceView, error) {
 	if key == uuid.Nil {
 		return SourceView{}, nativeDomainError("invalid_request")
@@ -126,7 +138,7 @@ func (s *SourceManagement) sourceViewTx(ctx context.Context, tx pgx.Tx, actor au
 			state = "disabled"
 		}
 	}
-	return s.withConnectionSummary(ctx, sourceView(source, owner, state, configured)), nil
+	return s.connectionSummaryFor(ctx, actor.Scope, sourceView(source, owner, state, configured)), nil
 }
 
 // This predicate is applied in SQL before the keyset LIMIT. Resource locks and
