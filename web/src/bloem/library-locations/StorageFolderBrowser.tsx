@@ -191,7 +191,9 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
             )}
             {page && !loading && !page.directories.length && !page.next_cursor && (
               <p className="text-muted-foreground p-3 text-sm">
-                No subfolders. You can use the current folder.
+                {source.connection_summary?.prefix && !page.breadcrumbs.length
+                  ? `This source starts at ${source.connection_summary.prefix} and has no subfolders. Use the current folder, or edit the source's prefix.`
+                  : "No subfolders. You can use the current folder."}
               </p>
             )}
           </div>

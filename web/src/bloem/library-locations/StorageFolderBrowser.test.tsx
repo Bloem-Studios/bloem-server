@@ -190,3 +190,50 @@ it.each(["bloem.storage.s3", "bloem.storage.bookwarehouse"])(
     ]);
   },
 );
+const emptyRootPage = (): StoragePage => ({
+  current: { name: "", logical_path: "", selection_ref: "root" },
+  breadcrumbs: [],
+  directories: [],
+  next_cursor: "",
+});
+const renderEmpty = (summary: Record<string, string> | undefined, pageValue = emptyRootPage()) => {
+  const browse = vi.fn().mockResolvedValue(pageValue);
+  render(
+    <StorageFolderBrowser
+      open
+      onOpenChange={() => {}}
+      api={{ browse } as unknown as LocationApi}
+      source={{ ...source, connection_summary: summary } as unknown as StorageSource}
+      onSelect={() => {}}
+    />,
+  );
+};
+const prefixMessage =
+  "This source starts at movies/10s/ and has no subfolders. Use the current folder, or edit the source's prefix.";
+const plainMessage = "No subfolders. You can use the current folder.";
+it("names the source prefix when the root has no subfolders", async () => {
+  renderEmpty({ prefix: "movies/10s/", bucket: "media" });
+  expect(await screen.findByText(prefixMessage)).toBeInTheDocument();
+  expect(screen.queryByText(plainMessage)).not.toBeInTheDocument();
+});
+it("keeps the plain empty text for a bucket-root source", async () => {
+  renderEmpty({ prefix: "" });
+  expect(await screen.findByText(plainMessage)).toBeInTheDocument();
+});
+it("keeps the plain empty text when the source has no connection summary", async () => {
+  renderEmpty(undefined);
+  expect(await screen.findByText(plainMessage)).toBeInTheDocument();
+});
+it("keeps the plain empty text for an empty folder below the root", async () => {
+  renderEmpty(
+    { prefix: "movies/10s/" },
+    {
+      current: dir("Leaf"),
+      breadcrumbs: [{ name: "", logical_path: "", selection_ref: "root" }],
+      directories: [],
+      next_cursor: "",
+    },
+  );
+  expect(await screen.findByText(plainMessage)).toBeInTheDocument();
+  expect(screen.queryByText(prefixMessage)).not.toBeInTheDocument();
+});
