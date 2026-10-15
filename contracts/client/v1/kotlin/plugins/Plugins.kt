@@ -9,20 +9,125 @@ package org.bloemserver.bloem.contract.plugins
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
-/** Wire type `internal/plugins.NativeStorageArtifactView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. */
+/** Wire type `internal/plugins.AdminFormConditionView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. */
 @Serializable
-public data class NativeStorageArtifactView(
-    @SerialName("artifact_key")
-    public val artifactKey: String = "",
-    @SerialName("plugin_id")
-    public val pluginId: String = "",
-    @SerialName("version")
-    public val version: String = "",
-    @SerialName("os")
-    public val os: String = "",
-    @SerialName("arch")
-    public val arch: String = "",
-    @SerialName("catalog")
-    public val catalog: Boolean = false,
+public data class AdminFormConditionView(
+    @SerialName("field")
+    public val field: String = "",
+    @SerialName("equals")
+    public val equals: List<String> = emptyList(),
+)
+
+/** Wire type `internal/plugins.AdminFormFieldView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. */
+@Serializable
+public data class AdminFormFieldView(
+    @SerialName("key")
+    public val key: String = "",
+    @SerialName("label")
+    public val label: String = "",
+    @SerialName("description")
+    public val description: String = "",
+    @SerialName("control")
+    public val control: String = "",
+    @SerialName("placeholder")
+    public val placeholder: String = "",
+    @SerialName("required")
+    public val required: Boolean = false,
+    @SerialName("secret")
+    public val secret: Boolean = false,
+    @SerialName("multiline")
+    public val multiline: Boolean = false,
+    @SerialName("default_value")
+    public val defaultValue: JsonElement? = null,
+    @SerialName("options")
+    public val options: List<AdminFormOptionView> = emptyList(),
+    @SerialName("rows")
+    public val rows: Int = 0,
+    @SerialName("dynamic_options")
+    public val dynamicOptions: Boolean = false,
+    @SerialName("show_when")
+    public val showWhen: List<AdminFormConditionView> = emptyList(),
+    @SerialName("validation")
+    public val validation: AdminFormValidationView? = null,
+    @SerialName("exclusive_group_field")
+    public val exclusiveGroupField: String = "",
+)
+
+/** Wire type `internal/plugins.AdminFormOptionView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. */
+@Serializable
+public data class AdminFormOptionView(
+    @SerialName("value")
+    public val value: String = "",
+    @SerialName("label")
+    public val label: String = "",
+    @SerialName("description")
+    public val description: String = "",
+)
+
+/** Wire type `internal/plugins.AdminFormSectionView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. */
+@Serializable
+public data class AdminFormSectionView(
+    @SerialName("key")
+    public val key: String = "",
+    @SerialName("title")
+    public val title: String = "",
+    @SerialName("description")
+    public val description: String = "",
+    @SerialName("collapsible")
+    public val collapsible: Boolean = false,
+    @SerialName("collapsed_default")
+    public val collapsedDefault: Boolean = false,
+    @SerialName("field_keys")
+    public val fieldKeys: List<String> = emptyList(),
+    @SerialName("show_when")
+    public val showWhen: List<AdminFormConditionView> = emptyList(),
+)
+
+/** Wire type `internal/plugins.AdminFormValidationView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. */
+@Serializable
+public data class AdminFormValidationView(
+    @SerialName("has_min")
+    public val hasMin: Boolean = false,
+    @SerialName("min")
+    public val min: Double = 0.0,
+    @SerialName("has_max")
+    public val hasMax: Boolean = false,
+    @SerialName("max")
+    public val max: Double = 0.0,
+    @SerialName("pattern")
+    public val pattern: String = "",
+    @SerialName("min_length")
+    public val minLength: Int = 0,
+    @SerialName("max_length")
+    public val maxLength: Int = 0,
+)
+
+/** Wire type `internal/plugins.AdminFormView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. */
+@Serializable
+public data class AdminFormView(
+    @SerialName("fields")
+    public val fields: List<AdminFormFieldView> = emptyList(),
+    @SerialName("submit_label")
+    public val submitLabel: String = "",
+    @SerialName("sections")
+    public val sections: List<AdminFormSectionView> = emptyList(),
+)
+
+/** Wire type `internal/plugins.ConfigSchemaView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. */
+@Serializable
+public data class ConfigSchemaView(
+    @SerialName("key")
+    public val key: String = "",
+    @SerialName("title")
+    public val title: String = "",
+    @SerialName("description")
+    public val description: String = "",
+    @SerialName("json_schema")
+    public val jsonSchema: String = "",
+    @SerialName("required")
+    public val required: Boolean = false,
+    @SerialName("admin_form")
+    public val adminForm: AdminFormView? = null,
 )

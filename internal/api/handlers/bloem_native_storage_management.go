@@ -721,7 +721,7 @@ func (h *BloemNativeStorageManagementHandler) HandleArtifacts(w http.ResponseWri
 		writeNativeStorageError(w, err, false)
 		return
 	}
-	nativeStorageWrite(w, 200, nativeStorageArtifactsResponse{h.Registry.ApprovedArtifacts()})
+	nativeStorageWrite(w, 200, nativeStorageArtifactsResponse{nativeStorageArtifactResponses(h.Registry.ApprovedArtifacts())})
 }
 func (h *BloemNativeStorageManagementHandler) HandleListSources(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.actor(w, r)

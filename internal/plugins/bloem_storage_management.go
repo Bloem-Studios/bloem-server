@@ -29,6 +29,9 @@ type NativeStorageArtifactView struct {
 	OS          string `json:"os"`
 	Arch        string `json:"arch"`
 	Catalog     bool   `json:"catalog"`
+	// ConfigSchema is the manifest's global configuration form. It is rendered
+	// by the handler layer, so it is excluded from this view's own JSON.
+	ConfigSchema []*publicv1.ConfigSchema `json:"-"`
 }
 
 func (r *NativeStorageRegistry) ApprovedArtifacts() []NativeStorageArtifactView {
@@ -43,7 +46,7 @@ func (r *NativeStorageRegistry) ApprovedArtifacts() []NativeStorageArtifactView 
 	}
 	r.catalogMu.RUnlock()
 	for key, a := range r.artifactSnapshot() {
-		result = append(result, NativeStorageArtifactView{ArtifactKey: key, PluginID: a.Manifest.GetPluginId(), Version: a.Manifest.GetVersion(), OS: a.OS, Arch: a.Arch, Catalog: catalogKeys[key]})
+		result = append(result, NativeStorageArtifactView{ArtifactKey: key, PluginID: a.Manifest.GetPluginId(), Version: a.Manifest.GetVersion(), OS: a.OS, Arch: a.Arch, Catalog: catalogKeys[key], ConfigSchema: a.Manifest.GetGlobalConfigSchema()})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ArtifactKey < result[j].ArtifactKey })
 	return result

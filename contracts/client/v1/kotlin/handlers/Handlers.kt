@@ -26,7 +26,7 @@ import org.bloemserver.bloem.contract.nativestorage.SourceView
 import org.bloemserver.bloem.contract.notifications.DeliveryRowPayload
 import org.bloemserver.bloem.contract.playback.ClientCapabilities
 import org.bloemserver.bloem.contract.playback.CommandName
-import org.bloemserver.bloem.contract.plugins.NativeStorageArtifactView
+import org.bloemserver.bloem.contract.plugins.ConfigSchemaView
 import org.bloemserver.bloem.contract.promotions.Card
 import org.bloemserver.bloem.contract.recommendations.ForYouRow
 import org.bloemserver.bloem.contract.recommendations.ScoredItem
@@ -1466,11 +1466,30 @@ public data class loginResponse(
     public val user: UserView = UserView(),
 )
 
+/** Wire type `internal/api/handlers.nativeStorageArtifactResponse`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. */
+@Serializable
+public data class nativeStorageArtifactResponse(
+    @SerialName("artifact_key")
+    public val artifactKey: String = "",
+    @SerialName("plugin_id")
+    public val pluginId: String = "",
+    @SerialName("version")
+    public val version: String = "",
+    @SerialName("os")
+    public val os: String = "",
+    @SerialName("arch")
+    public val arch: String = "",
+    @SerialName("catalog")
+    public val catalog: Boolean = false,
+    @SerialName("config_schema")
+    public val configSchema: List<ConfigSchemaView> = emptyList(),
+)
+
 /** Wire type `internal/api/handlers.nativeStorageArtifactsResponse`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. Registered root. */
 @Serializable
 public data class nativeStorageArtifactsResponse(
     @SerialName("artifacts")
-    public val artifacts: List<NativeStorageArtifactView> = emptyList(),
+    public val artifacts: List<nativeStorageArtifactResponse> = emptyList(),
 )
 
 /** Wire type `internal/api/handlers.nativeStorageCapabilitiesResponse`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. Registered root. */

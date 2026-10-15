@@ -8,8 +8,25 @@ import (
 
 // Named wire shapes keep the management handlers and generated clients on the
 // same JSON field definitions. Requests retain the strict handler validation.
+type nativeStorageArtifactResponse struct {
+	plugins.NativeStorageArtifactView
+	ConfigSchema []PluginConfigSchemaView `json:"config_schema"`
+}
+
 type nativeStorageArtifactsResponse struct {
-	Artifacts []plugins.NativeStorageArtifactView `json:"artifacts"`
+	Artifacts []nativeStorageArtifactResponse `json:"artifacts"`
+}
+
+func nativeStorageArtifactResponses(in []plugins.NativeStorageArtifactView) []nativeStorageArtifactResponse {
+	out := make([]nativeStorageArtifactResponse, 0, len(in))
+	for _, v := range in {
+		schema := configSchemasToJSON(v.ConfigSchema)
+		if schema == nil {
+			schema = []PluginConfigSchemaView{}
+		}
+		out = append(out, nativeStorageArtifactResponse{NativeStorageArtifactView: v, ConfigSchema: schema})
+	}
+	return out
 }
 
 type nativeStorageSourceResponse struct {

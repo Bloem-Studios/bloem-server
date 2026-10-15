@@ -4593,23 +4593,84 @@ public enum Handlers {
         }
     }
 
+    /// Wire type `internal/api/handlers.nativeStorageArtifactResponse`. Direction: response. Dialect: bloem. Gate: native_storage.source_management.
+    public struct nativeStorageArtifactResponse: Codable, Hashable, Sendable {
+        public let artifactKey: String
+        public let pluginId: String
+        public let version: String
+        public let os: String
+        public let arch: String
+        public let catalog: Bool
+        public let configSchema: [Plugins.ConfigSchemaView]
+
+        public enum CodingKeys: String, CodingKey {
+            case artifactKey = "artifact_key"
+            case pluginId = "plugin_id"
+            case version = "version"
+            case os = "os"
+            case arch = "arch"
+            case catalog = "catalog"
+            case configSchema = "config_schema"
+        }
+
+        public init(
+            artifactKey: String = "",
+            pluginId: String = "",
+            version: String = "",
+            os: String = "",
+            arch: String = "",
+            catalog: Bool = false,
+            configSchema: [Plugins.ConfigSchemaView] = []
+        ) {
+            self.artifactKey = artifactKey
+            self.pluginId = pluginId
+            self.version = version
+            self.os = os
+            self.arch = arch
+            self.catalog = catalog
+            self.configSchema = configSchema
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.artifactKey = try container.decodeIfPresent(String.self, forKey: .artifactKey) ?? ""
+            self.pluginId = try container.decodeIfPresent(String.self, forKey: .pluginId) ?? ""
+            self.version = try container.decodeIfPresent(String.self, forKey: .version) ?? ""
+            self.os = try container.decodeIfPresent(String.self, forKey: .os) ?? ""
+            self.arch = try container.decodeIfPresent(String.self, forKey: .arch) ?? ""
+            self.catalog = try container.decodeIfPresent(Bool.self, forKey: .catalog) ?? false
+            self.configSchema = try container.decodeIfPresent([Plugins.ConfigSchemaView].self, forKey: .configSchema) ?? []
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.artifactKey, forKey: .artifactKey)
+            try container.encode(self.pluginId, forKey: .pluginId)
+            try container.encode(self.version, forKey: .version)
+            try container.encode(self.os, forKey: .os)
+            try container.encode(self.arch, forKey: .arch)
+            try container.encode(self.catalog, forKey: .catalog)
+            try container.encode(self.configSchema, forKey: .configSchema)
+        }
+    }
+
     /// Wire type `internal/api/handlers.nativeStorageArtifactsResponse`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. Registered root.
     public struct nativeStorageArtifactsResponse: Codable, Hashable, Sendable {
-        public let artifacts: [Plugins.NativeStorageArtifactView]
+        public let artifacts: [nativeStorageArtifactResponse]
 
         public enum CodingKeys: String, CodingKey {
             case artifacts = "artifacts"
         }
 
         public init(
-            artifacts: [Plugins.NativeStorageArtifactView] = []
+            artifacts: [nativeStorageArtifactResponse] = []
         ) {
             self.artifacts = artifacts
         }
 
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            self.artifacts = try container.decodeIfPresent([Plugins.NativeStorageArtifactView].self, forKey: .artifacts) ?? []
+            self.artifacts = try container.decodeIfPresent([nativeStorageArtifactResponse].self, forKey: .artifacts) ?? []
         }
 
         public func encode(to encoder: any Encoder) throws {

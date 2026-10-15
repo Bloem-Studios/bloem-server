@@ -9,58 +9,394 @@
 
 /// Wire types of the Go package `internal/plugins`.
 public enum Plugins {
-    /// Wire type `internal/plugins.NativeStorageArtifactView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management.
-    public struct NativeStorageArtifactView: Codable, Hashable, Sendable {
-        public let artifactKey: String
-        public let pluginId: String
-        public let version: String
-        public let os: String
-        public let arch: String
-        public let catalog: Bool
+    /// Wire type `internal/plugins.AdminFormConditionView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management.
+    public struct AdminFormConditionView: Codable, Hashable, Sendable {
+        public let field: String
+        public let equals: [String]
 
         public enum CodingKeys: String, CodingKey {
-            case artifactKey = "artifact_key"
-            case pluginId = "plugin_id"
-            case version = "version"
-            case os = "os"
-            case arch = "arch"
-            case catalog = "catalog"
+            case field = "field"
+            case equals = "equals"
         }
 
         public init(
-            artifactKey: String = "",
-            pluginId: String = "",
-            version: String = "",
-            os: String = "",
-            arch: String = "",
-            catalog: Bool = false
+            field: String = "",
+            equals: [String] = []
         ) {
-            self.artifactKey = artifactKey
-            self.pluginId = pluginId
-            self.version = version
-            self.os = os
-            self.arch = arch
-            self.catalog = catalog
+            self.field = field
+            self.equals = equals
         }
 
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            self.artifactKey = try container.decodeIfPresent(String.self, forKey: .artifactKey) ?? ""
-            self.pluginId = try container.decodeIfPresent(String.self, forKey: .pluginId) ?? ""
-            self.version = try container.decodeIfPresent(String.self, forKey: .version) ?? ""
-            self.os = try container.decodeIfPresent(String.self, forKey: .os) ?? ""
-            self.arch = try container.decodeIfPresent(String.self, forKey: .arch) ?? ""
-            self.catalog = try container.decodeIfPresent(Bool.self, forKey: .catalog) ?? false
+            self.field = try container.decodeIfPresent(String.self, forKey: .field) ?? ""
+            self.equals = try container.decodeIfPresent([String].self, forKey: .equals) ?? []
         }
 
         public func encode(to encoder: any Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(self.artifactKey, forKey: .artifactKey)
-            try container.encode(self.pluginId, forKey: .pluginId)
-            try container.encode(self.version, forKey: .version)
-            try container.encode(self.os, forKey: .os)
-            try container.encode(self.arch, forKey: .arch)
-            try container.encode(self.catalog, forKey: .catalog)
+            try container.encode(self.field, forKey: .field)
+            try container.encode(self.equals, forKey: .equals)
+        }
+    }
+
+    /// Wire type `internal/plugins.AdminFormFieldView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management.
+    public struct AdminFormFieldView: Codable, Hashable, Sendable {
+        public let key: String
+        public let label: String
+        public let description: String
+        public let control: String
+        public let placeholder: String
+        public let required: Bool
+        public let secret: Bool
+        public let multiline: Bool
+        public let defaultValue: BloemJSONValue?
+        public let options: [AdminFormOptionView]
+        public let rows: Int
+        public let dynamicOptions: Bool
+        public let showWhen: [AdminFormConditionView]
+        public let validation: AdminFormValidationView?
+        public let exclusiveGroupField: String
+
+        public enum CodingKeys: String, CodingKey {
+            case key = "key"
+            case label = "label"
+            case description = "description"
+            case control = "control"
+            case placeholder = "placeholder"
+            case required = "required"
+            case secret = "secret"
+            case multiline = "multiline"
+            case defaultValue = "default_value"
+            case options = "options"
+            case rows = "rows"
+            case dynamicOptions = "dynamic_options"
+            case showWhen = "show_when"
+            case validation = "validation"
+            case exclusiveGroupField = "exclusive_group_field"
+        }
+
+        public init(
+            key: String = "",
+            label: String = "",
+            description: String = "",
+            control: String = "",
+            placeholder: String = "",
+            required: Bool = false,
+            secret: Bool = false,
+            multiline: Bool = false,
+            defaultValue: BloemJSONValue? = nil,
+            options: [AdminFormOptionView] = [],
+            rows: Int = 0,
+            dynamicOptions: Bool = false,
+            showWhen: [AdminFormConditionView] = [],
+            validation: AdminFormValidationView? = nil,
+            exclusiveGroupField: String = ""
+        ) {
+            self.key = key
+            self.label = label
+            self.description = description
+            self.control = control
+            self.placeholder = placeholder
+            self.required = required
+            self.secret = secret
+            self.multiline = multiline
+            self.defaultValue = defaultValue
+            self.options = options
+            self.rows = rows
+            self.dynamicOptions = dynamicOptions
+            self.showWhen = showWhen
+            self.validation = validation
+            self.exclusiveGroupField = exclusiveGroupField
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.key = try container.decodeIfPresent(String.self, forKey: .key) ?? ""
+            self.label = try container.decodeIfPresent(String.self, forKey: .label) ?? ""
+            self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+            self.control = try container.decodeIfPresent(String.self, forKey: .control) ?? ""
+            self.placeholder = try container.decodeIfPresent(String.self, forKey: .placeholder) ?? ""
+            self.required = try container.decodeIfPresent(Bool.self, forKey: .required) ?? false
+            self.secret = try container.decodeIfPresent(Bool.self, forKey: .secret) ?? false
+            self.multiline = try container.decodeIfPresent(Bool.self, forKey: .multiline) ?? false
+            self.defaultValue = try container.decodeIfPresent(BloemJSONValue.self, forKey: .defaultValue)
+            self.options = try container.decodeIfPresent([AdminFormOptionView].self, forKey: .options) ?? []
+            self.rows = try container.decodeIfPresent(Int.self, forKey: .rows) ?? 0
+            self.dynamicOptions = try container.decodeIfPresent(Bool.self, forKey: .dynamicOptions) ?? false
+            self.showWhen = try container.decodeIfPresent([AdminFormConditionView].self, forKey: .showWhen) ?? []
+            self.validation = try container.decodeIfPresent(AdminFormValidationView.self, forKey: .validation)
+            self.exclusiveGroupField = try container.decodeIfPresent(String.self, forKey: .exclusiveGroupField) ?? ""
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.key, forKey: .key)
+            try container.encode(self.label, forKey: .label)
+            try container.encode(self.description, forKey: .description)
+            try container.encode(self.control, forKey: .control)
+            try container.encode(self.placeholder, forKey: .placeholder)
+            try container.encode(self.required, forKey: .required)
+            try container.encode(self.secret, forKey: .secret)
+            try container.encode(self.multiline, forKey: .multiline)
+            try container.encodeIfPresent(self.defaultValue, forKey: .defaultValue)
+            try container.encode(self.options, forKey: .options)
+            try container.encode(self.rows, forKey: .rows)
+            try container.encode(self.dynamicOptions, forKey: .dynamicOptions)
+            try container.encode(self.showWhen, forKey: .showWhen)
+            try container.encodeIfPresent(self.validation, forKey: .validation)
+            try container.encode(self.exclusiveGroupField, forKey: .exclusiveGroupField)
+        }
+    }
+
+    /// Wire type `internal/plugins.AdminFormOptionView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management.
+    public struct AdminFormOptionView: Codable, Hashable, Sendable {
+        public let value: String
+        public let label: String
+        public let description: String
+
+        public enum CodingKeys: String, CodingKey {
+            case value = "value"
+            case label = "label"
+            case description = "description"
+        }
+
+        public init(
+            value: String = "",
+            label: String = "",
+            description: String = ""
+        ) {
+            self.value = value
+            self.label = label
+            self.description = description
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.value = try container.decodeIfPresent(String.self, forKey: .value) ?? ""
+            self.label = try container.decodeIfPresent(String.self, forKey: .label) ?? ""
+            self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.value, forKey: .value)
+            try container.encode(self.label, forKey: .label)
+            try container.encode(self.description, forKey: .description)
+        }
+    }
+
+    /// Wire type `internal/plugins.AdminFormSectionView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management.
+    public struct AdminFormSectionView: Codable, Hashable, Sendable {
+        public let key: String
+        public let title: String
+        public let description: String
+        public let collapsible: Bool
+        public let collapsedDefault: Bool
+        public let fieldKeys: [String]
+        public let showWhen: [AdminFormConditionView]
+
+        public enum CodingKeys: String, CodingKey {
+            case key = "key"
+            case title = "title"
+            case description = "description"
+            case collapsible = "collapsible"
+            case collapsedDefault = "collapsed_default"
+            case fieldKeys = "field_keys"
+            case showWhen = "show_when"
+        }
+
+        public init(
+            key: String = "",
+            title: String = "",
+            description: String = "",
+            collapsible: Bool = false,
+            collapsedDefault: Bool = false,
+            fieldKeys: [String] = [],
+            showWhen: [AdminFormConditionView] = []
+        ) {
+            self.key = key
+            self.title = title
+            self.description = description
+            self.collapsible = collapsible
+            self.collapsedDefault = collapsedDefault
+            self.fieldKeys = fieldKeys
+            self.showWhen = showWhen
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.key = try container.decodeIfPresent(String.self, forKey: .key) ?? ""
+            self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+            self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+            self.collapsible = try container.decodeIfPresent(Bool.self, forKey: .collapsible) ?? false
+            self.collapsedDefault = try container.decodeIfPresent(Bool.self, forKey: .collapsedDefault) ?? false
+            self.fieldKeys = try container.decodeIfPresent([String].self, forKey: .fieldKeys) ?? []
+            self.showWhen = try container.decodeIfPresent([AdminFormConditionView].self, forKey: .showWhen) ?? []
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.key, forKey: .key)
+            try container.encode(self.title, forKey: .title)
+            try container.encode(self.description, forKey: .description)
+            try container.encode(self.collapsible, forKey: .collapsible)
+            try container.encode(self.collapsedDefault, forKey: .collapsedDefault)
+            try container.encode(self.fieldKeys, forKey: .fieldKeys)
+            try container.encode(self.showWhen, forKey: .showWhen)
+        }
+    }
+
+    /// Wire type `internal/plugins.AdminFormValidationView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management.
+    public struct AdminFormValidationView: Codable, Hashable, Sendable {
+        public let hasMin: Bool
+        public let min: Double
+        public let hasMax: Bool
+        public let max: Double
+        public let pattern: String
+        public let minLength: Int
+        public let maxLength: Int
+
+        public enum CodingKeys: String, CodingKey {
+            case hasMin = "has_min"
+            case min = "min"
+            case hasMax = "has_max"
+            case max = "max"
+            case pattern = "pattern"
+            case minLength = "min_length"
+            case maxLength = "max_length"
+        }
+
+        public init(
+            hasMin: Bool = false,
+            min: Double = 0.0,
+            hasMax: Bool = false,
+            max: Double = 0.0,
+            pattern: String = "",
+            minLength: Int = 0,
+            maxLength: Int = 0
+        ) {
+            self.hasMin = hasMin
+            self.min = min
+            self.hasMax = hasMax
+            self.max = max
+            self.pattern = pattern
+            self.minLength = minLength
+            self.maxLength = maxLength
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.hasMin = try container.decodeIfPresent(Bool.self, forKey: .hasMin) ?? false
+            self.min = try container.decodeIfPresent(Double.self, forKey: .min) ?? 0.0
+            self.hasMax = try container.decodeIfPresent(Bool.self, forKey: .hasMax) ?? false
+            self.max = try container.decodeIfPresent(Double.self, forKey: .max) ?? 0.0
+            self.pattern = try container.decodeIfPresent(String.self, forKey: .pattern) ?? ""
+            self.minLength = try container.decodeIfPresent(Int.self, forKey: .minLength) ?? 0
+            self.maxLength = try container.decodeIfPresent(Int.self, forKey: .maxLength) ?? 0
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.hasMin, forKey: .hasMin)
+            try container.encode(self.min, forKey: .min)
+            try container.encode(self.hasMax, forKey: .hasMax)
+            try container.encode(self.max, forKey: .max)
+            try container.encode(self.pattern, forKey: .pattern)
+            try container.encode(self.minLength, forKey: .minLength)
+            try container.encode(self.maxLength, forKey: .maxLength)
+        }
+    }
+
+    /// Wire type `internal/plugins.AdminFormView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management.
+    public struct AdminFormView: Codable, Hashable, Sendable {
+        public let fields: [AdminFormFieldView]
+        public let submitLabel: String
+        public let sections: [AdminFormSectionView]
+
+        public enum CodingKeys: String, CodingKey {
+            case fields = "fields"
+            case submitLabel = "submit_label"
+            case sections = "sections"
+        }
+
+        public init(
+            fields: [AdminFormFieldView] = [],
+            submitLabel: String = "",
+            sections: [AdminFormSectionView] = []
+        ) {
+            self.fields = fields
+            self.submitLabel = submitLabel
+            self.sections = sections
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.fields = try container.decodeIfPresent([AdminFormFieldView].self, forKey: .fields) ?? []
+            self.submitLabel = try container.decodeIfPresent(String.self, forKey: .submitLabel) ?? ""
+            self.sections = try container.decodeIfPresent([AdminFormSectionView].self, forKey: .sections) ?? []
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.fields, forKey: .fields)
+            try container.encode(self.submitLabel, forKey: .submitLabel)
+            try container.encode(self.sections, forKey: .sections)
+        }
+    }
+
+    /// Wire type `internal/plugins.ConfigSchemaView`. Direction: response. Dialect: bloem. Gate: native_storage.source_management.
+    public struct ConfigSchemaView: Codable, Hashable, Sendable {
+        public let key: String
+        public let title: String
+        public let description: String
+        public let jsonSchema: String
+        public let required: Bool
+        public let adminForm: AdminFormView?
+
+        public enum CodingKeys: String, CodingKey {
+            case key = "key"
+            case title = "title"
+            case description = "description"
+            case jsonSchema = "json_schema"
+            case required = "required"
+            case adminForm = "admin_form"
+        }
+
+        public init(
+            key: String = "",
+            title: String = "",
+            description: String = "",
+            jsonSchema: String = "",
+            required: Bool = false,
+            adminForm: AdminFormView? = nil
+        ) {
+            self.key = key
+            self.title = title
+            self.description = description
+            self.jsonSchema = jsonSchema
+            self.required = required
+            self.adminForm = adminForm
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.key = try container.decodeIfPresent(String.self, forKey: .key) ?? ""
+            self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+            self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+            self.jsonSchema = try container.decodeIfPresent(String.self, forKey: .jsonSchema) ?? ""
+            self.required = try container.decodeIfPresent(Bool.self, forKey: .required) ?? false
+            self.adminForm = try container.decodeIfPresent(AdminFormView.self, forKey: .adminForm)
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.key, forKey: .key)
+            try container.encode(self.title, forKey: .title)
+            try container.encode(self.description, forKey: .description)
+            try container.encode(self.jsonSchema, forKey: .jsonSchema)
+            try container.encode(self.required, forKey: .required)
+            try container.encodeIfPresent(self.adminForm, forKey: .adminForm)
         }
     }
 }
