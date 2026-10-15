@@ -953,6 +953,8 @@ POST /api/bloem/v1/admin/organization/native-storage/installations/discover	non-
 DELETE /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}	non-media
 POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/disable	non-media
 POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/upgrade	non-media
+POST /api/bloem/v1/admin/organization/native-storage/s3/buckets	non-media
+POST /api/bloem/v1/admin/organization/native-storage/s3/folders	non-media
 GET /api/bloem/v1/admin/organization/native-storage/sources	non-media
 GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}	non-media
 GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/browse	non-media
@@ -1055,6 +1057,8 @@ POST /api/bloem/v1/admin/platform/native-storage/installations/discover	non-medi
 DELETE /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}	non-media
 POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/disable	non-media
 POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/upgrade	non-media
+POST /api/bloem/v1/admin/platform/native-storage/s3/buckets	non-media
+POST /api/bloem/v1/admin/platform/native-storage/s3/folders	non-media
 GET /api/bloem/v1/admin/platform/native-storage/sources	non-media
 GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}	non-media
 GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse	non-media

@@ -15,8 +15,8 @@ configured prefix could not be inspected from the product.
 ## Goals
 
 1. Add, inspect, test, edit, disable, remove and upgrade storage sources of both kinds (S3,
-   Bookwarehouse) from the admin UI. Adding an S3 source is platform-admin only; organization admins
-   keep the existing Bookwarehouse flow and see S3 sources only through the library picker.
+   Bookwarehouse) from the admin UI. Platform and organization admins may add S3 sources; an
+   organization admin's source is owned by their organization.
 2. Support any number of S3 sources, one per bucket/prefix/credential set. Each appears separately in
    the library folder picker, so one library can select `/movies`, or `/movies/10s` and `/movies/20s`,
    from one or several sources.
@@ -35,7 +35,10 @@ configured prefix could not be inspected from the product.
 - Add via catalog install plus discovery (approach A); no binary upload in the form.
 - First version covers full lifecycle (add, edit, test, disable, remove, upgrade).
 - In-use S3 sources may rotate credentials only.
-- S3 add is platform scope only at launch.
+- Platform and organization admins may add S3 sources; an organization admin's source is
+  organization-owned. The Add-source form can browse buckets and folders; organization admins'
+  browse requests are rate limited and restricted to well-known S3 ports. S3 catalog upgrades
+  stay platform-only.
 
 ## Design
 
@@ -46,8 +49,8 @@ configured prefix could not be inspected from the product.
    {`bloem.storage.bookwarehouse`, `bloem.storage.s3`}. Every downloaded artifact is still verified
    against the host's immutable approval map by digest; the allowlist is not an approval.
 2. **Catalog discover.** New `POST /catalog/installations/discover`, JSON body
-   `{artifact_key, provider_source_id, enabled, config}`, served only under the platform scope prefix
-   (organization scope returns `404 not_found`; `organization_id` is not accepted). Validation, errors
+   `{artifact_key, provider_source_id, enabled, config}`, served under both scope prefixes; the owner
+   is the caller's scope (`organization_id` is not accepted). Validation, errors
    (`400 invalid_request`, `422 artifact_rejected`, `503 native_storage_unavailable`,
    `mutation_outcome_unknown`) and atomic publish match the manual `POST /installations/discover`. The
    host downloads the verified artifact instead of receiving a binary. Creates no library, binding or
@@ -83,7 +86,8 @@ configured prefix could not be inspected from the product.
   schema-driven `PluginConfigForm`/`configSchemaAdminForm`. Password fields for keys, `state_path`
   never shown or sent, `source_id` generated, a display name required. Submit calls the catalog
   discover (S3) or catalog install plus connection configure (Bookwarehouse, current behavior). S3 is
-  offered only in the platform admin view.
+  offered in both admin views; its form can browse buckets and folders (`POST .../s3/buckets`,
+  `POST .../s3/folders`).
 - Source list rows show name, kind, connection summary, enabled/ready state, libraries using it, and
   actions: Test, Edit, Disable/Enable, Remove, Upgrade (existing).
 - **Edit.** Unused source: all fields editable, prefilled from `connection_summary`; the keys must be
@@ -139,4 +143,7 @@ explicit approval. Live S3 credentials are entered by Jim through the new form, 
 
 ## Resolved
 
-- Organization admins do not get S3 add at launch (platform scope only), per Jim.
+- Organization admins may add S3 sources owned by their own organization (owner decision,
+  2026-10-15, superseding the earlier platform-only ruling). Browsing is rate limited per
+  administrator and, for organization admins, restricted to well-known S3 ports; S3 catalog
+  upgrades remain platform-only.

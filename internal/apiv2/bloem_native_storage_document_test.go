@@ -23,6 +23,7 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 		{"post", "/installations/{installation_id}/upgrade", "200"},
 		{"post", "/catalog/installations", "201"}, {"post", "/catalog/installations/discover", "201"}, {"post", "/catalog/installations/{installation_id}/upgrade", "200"},
 		{"post", "/sources/{source_key}/credentials", "200"},
+		{"post", "/s3/buckets", "200"}, {"post", "/s3/folders", "200"},
 	}
 	count := 0
 	for path, value := range bloemDocObject(t, doc, "paths") {

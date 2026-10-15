@@ -40,7 +40,8 @@ type BloemNativeStorageCapabilities struct {
 	Upgrade                     bool `json:"upgrade"`
 	CredentialRotationInUse     bool `json:"credential_rotation_in_use" doc:"Credential rotation is composed and works on a source that backs a library. It overlays only access key, secret key and session token and needs an enabled source and its current revision."`
 	S3InitialRootDiscovery      bool `json:"s3_initial_root_discovery"`
-	S3CatalogDiscovery          bool `json:"s3_catalog_discovery" doc:"Platform administrators can add an S3 source from a catalog release whose digest the host has pre-approved, discovering its root without a manual upload. Always false in organization scope, where the route does not exist."`
+	S3CatalogDiscovery          bool `json:"s3_catalog_discovery" doc:"Administrators can add an S3 source from a catalog release whose digest the host has pre-approved, discovering its root without a manual upload. Platform administrators create a platform-owned source and organization administrators one owned by their organization."`
+	S3BucketBrowse              bool `json:"s3_bucket_browse" doc:"The stateless S3 bucket and folder browse operations are composed. Organization administrators are limited to well-known S3 endpoint ports."`
 	S3CheckedETagReads          bool `json:"s3_checked_etag_reads" doc:"Explicit checked-etag admission is supported for approved S3 source configuration. This does not enable a source or prove immutable bytes."`
 	NativeMovieLibraries        bool `json:"native_movie_libraries" doc:"Movie attachment and scanning are composed with native video playback; individual sources still require admission under their retained read policy."`
 	NativeVideoPlayback         bool `json:"native_video_playback" doc:"Native API video playback is composed; this does not certify a backend or client runtime."`
@@ -87,6 +88,31 @@ type BloemNativeStorageCredentialsBody struct {
 	AccessKey        string `json:"access_key" minLength:"1" writeOnly:"true" doc:"Replacement S3 access key id. No control characters. Encrypted at rest, never returned."`
 	SecretKey        string `json:"secret_key" minLength:"1" writeOnly:"true" doc:"Replacement S3 secret access key. No control characters. Encrypted at rest, never returned."`
 	SessionToken     string `json:"session_token,omitempty" writeOnly:"true" doc:"Optional replacement session token; omitted or empty clears any stored token. Encrypted at rest, never returned."`
+}
+
+type BloemNativeStorageS3BucketsBody struct {
+	Endpoint     string `json:"endpoint" minLength:"1" maxLength:"2048" doc:"S3-compatible https origin, for example https://s3.example.com:9000. No userinfo, path, query or fragment. Every resolved address must be public; organization administrators may only use ports 443, 7480, 8443, 9000 and 9443. Trimmed."`
+	Region       string `json:"region" minLength:"1" doc:"Signing region: lowercase letters, digits and hyphens, at most 64. Trimmed."`
+	AccessKey    string `json:"access_key" minLength:"1" writeOnly:"true" doc:"S3 access key id, at most 1024 bytes. Used for this request only; never stored, logged or returned. Trimmed."`
+	SecretKey    string `json:"secret_key" minLength:"1" writeOnly:"true" doc:"S3 secret access key, at most 4096 bytes. Used for this request only; never stored, logged or returned. Trimmed."`
+	SessionToken string `json:"session_token,omitempty" writeOnly:"true" doc:"Optional session token, at most 8192 bytes. Used for this request only; never stored, logged or returned. Trimmed."`
+}
+
+type BloemNativeStorageS3FoldersBody struct {
+	BloemNativeStorageS3BucketsBody
+	Bucket string `json:"bucket" minLength:"1" doc:"Bucket to list, as returned by the bucket listing. Trimmed."`
+	Prefix string `json:"prefix,omitempty" doc:"Folder to list: empty for the bucket root, else a prefix ending in /, as returned in folders[].prefix. UTF-8, at most 1024 bytes, no backslash, control characters or . and .. segments. Not trimmed."`
+	Cursor string `json:"cursor,omitempty" maxLength:"4096" doc:"Opaque next_cursor of the previous page for the same bucket and prefix, at most 4096 bytes; omit for the first page."`
+}
+
+type BloemNativeStorageS3Buckets struct {
+	Buckets []nativestorage.S3Bucket `json:"buckets" nullable:"false" doc:"Bucket names usable as an S3 source, sorted ascending, at most 1000."`
+}
+
+type BloemNativeStorageS3Folders struct {
+	Prefix     string                   `json:"prefix" doc:"The listed prefix."`
+	Folders    []nativestorage.S3Folder `json:"folders" nullable:"false" doc:"Immediate child folders only, at most 200; files are never returned. A page may be empty and still continue."`
+	NextCursor string                   `json:"next_cursor" doc:"Opaque continuation token for the next page; empty when the listing is complete."`
 }
 
 type BloemNativeStoragePlatformDiscoverInstallBody struct {
@@ -147,6 +173,12 @@ func bloemNativeStorageJSONBody[T any](reg *Registry) *huma.RequestBody {
 	}
 }
 
+func bloemNativeStorageS3JSONBody[T any](reg *Registry) *huma.RequestBody {
+	body := bloemNativeStorageJSONBody[T](reg)
+	body.Description = "Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Credentials are write-only and never stored."
+	return body
+}
+
 func bloemNativeStorageMultipart[T any](reg *Registry) *huma.RequestBody {
 	return &huma.RequestBody{
 		Required:    true,
@@ -193,14 +225,28 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 		404: "not_found: invalid path identity, absent resource or hidden authority.",
 		503: "native_storage_unavailable: dependencies or state cannot establish readiness. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback.",
 	})
-	if method != "GET" {
+	browse := strings.HasPrefix(path, "/s3/")
+	if method != "GET" && !browse {
 		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{
 			409: "revision_conflict returns current_revision. Other fixed codes include source_attached, configuration_namespace_unverified and retained_namespace_unverified.",
 			413: "request_too_large: JSON, binary or total multipart limit exceeded.",
 		})
 	}
-	if path == "/installations" || path == "/installations/discover" || path == "/catalog/installations/discover" || strings.HasSuffix(path, "/upgrade") {
+	const endpointGuard = "In organization scope, s3_endpoint_rejected: config connection.endpoint is not an https origin on a well-known S3 port with only public addresses, or allow_loopback_http is set."
+	switch {
+	case browse:
+		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{
+			413: "request_too_large: the JSON body exceeds 1 MiB.",
+			422: "s3_endpoint_rejected: the endpoint is not an https origin, has userinfo, a path, query or fragment, an invalid or (organization scope) non-S3 port, a host resolving to any loopback, private, link-local, unique-local, CGNAT, multicast, unspecified or metadata address, or a host that does not resolve. s3_access_denied: the backend refused the credentials.",
+			502: "s3_backend_error: the backend failed, timed out, redirected or returned a malformed or oversized response. Messages are fixed and never quote the backend.",
+			503: "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute) or the server-wide concurrency cap refused the request; Retry-After is set for the latter two.",
+		})
+	case path == "/installations" || path == "/installations/discover" || path == "/catalog/installations" || path == "/catalog/installations/discover":
+		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{422: "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. " + endpointGuard})
+	case strings.HasSuffix(path, "/upgrade"):
 		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{422: "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact."})
+	case path == "/sources/{source_key}/configuration":
+		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{422: endpointGuard})
 	}
 	op.Responses[strconv.Itoa(status)] = &huma.Response{Description: summary}
 	for _, response := range op.Responses {
@@ -230,12 +276,14 @@ func registerBloemNativeStorageDocument(reg *Registry) {
 			catalogInstall = bloemNativeStorageJSONBody[BloemNativeStoragePlatformInstallBody](reg)
 		}
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations", "catalogInstall", "Download and checksum-verify the trusted catalog plugin, then install without manual approval or binary upload.", 201, catalogInstall, false)
-		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations/discover", "catalogDiscoverInstall", "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. Platform administrators only; the organization scope returns not_found.", 201, bloemNativeStorageJSONBody[BloemNativeStorageDiscoverInstallBody](reg), false)
+		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations/discover", "catalogDiscoverInstall", "Download the trusted catalog plugin (an S3 release must match a pre-approved digest), discover the root of the selected source and publish it atomically without a library or scan. The source is owned by the actor's scope: the platform, or the organization administrator's own organization; organization_id is rejected.", 201, bloemNativeStorageJSONBody[BloemNativeStorageDiscoverInstallBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/catalog/installations/{installation_id}/upgrade", "catalogUpgrade", "Download and verify a catalog upgrade, retaining configuration and library.", 200, bloemNativeStorageJSONBody[BloemNativeStorageUpgradeBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageConfiguration](reg, scope, "PUT", "/sources/{source_key}/configuration", "replaceConfiguration", "Replace complete configuration only while the source namespace is empty.", 200, bloemNativeStorageJSONBody[BloemNativeStorageConfigurationBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageConfiguration](reg, scope, "POST", "/sources/{source_key}/credentials", "rotateCredentials", "Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned.", 200, bloemNativeStorageJSONBody[BloemNativeStorageCredentialsBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/installations/{installation_id}/upgrade", "upgrade", "Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept.", 200, bloemNativeStorageMultipart[BloemNativeStorageUpgradeBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageRemoval](reg, scope, "POST", "/installations/{installation_id}/disable", "disable", "Disable and detach the source; its library, catalog and reading progress are retained.", 200, bloemNativeStorageJSONBody[BloemNativeStorageRemoveBody](reg), false)
+		bloemNativeStorageDocument[BloemNativeStorageS3Buckets](reg, scope, "POST", "/s3/buckets", "listS3Buckets", "List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses.", 200, bloemNativeStorageS3JSONBody[BloemNativeStorageS3BucketsBody](reg), false)
+		bloemNativeStorageDocument[BloemNativeStorageS3Folders](reg, scope, "POST", "/s3/folders", "listS3Folders", "List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing.", 200, bloemNativeStorageS3JSONBody[BloemNativeStorageS3FoldersBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageRemoval](reg, scope, "DELETE", "/installations/{installation_id}", "uninstall", "Uninstall and detach the source; its library, catalog and reading progress are retained.", 200, bloemNativeStorageJSONBody[BloemNativeStorageRemoveBody](reg), false)
 	}
 	bloemNativeStorageDocumentSchemas(reg.api.OpenAPI().Components.Schemas)

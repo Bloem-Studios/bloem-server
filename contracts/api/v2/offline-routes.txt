@@ -401,6 +401,8 @@ POST /api/bloem/v1/admin/organization/native-storage/installations
 POST /api/bloem/v1/admin/organization/native-storage/installations/discover
 POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/disable
 POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/upgrade
+POST /api/bloem/v1/admin/organization/native-storage/s3/buckets
+POST /api/bloem/v1/admin/organization/native-storage/s3/folders
 POST /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/credentials
 POST /api/bloem/v1/admin/organization/people/bulk-jobs
 POST /api/bloem/v1/admin/organization/people/policy-jobs
@@ -430,6 +432,8 @@ POST /api/bloem/v1/admin/platform/native-storage/installations
 POST /api/bloem/v1/admin/platform/native-storage/installations/discover
 POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/disable
 POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/upgrade
+POST /api/bloem/v1/admin/platform/native-storage/s3/buckets
+POST /api/bloem/v1/admin/platform/native-storage/s3/folders
 POST /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/credentials
 POST /api/bloem/v1/admin/platform/organizations/
 POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/apply

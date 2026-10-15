@@ -2058,6 +2058,34 @@
       "reason": "OpenAPI-only native-storage documentation shape for credential rotation; the request is write-only and strictly decoded by the handler, and the response reuses the documented configuration response."
     },
     {
+      "type": "internal/apiv2.BloemNativeStorageS3BucketsBody",
+      "reason": "OpenAPI-only native-storage documentation shape for the stateless S3 browse request used by the web admin Add-source form; credentials are write-only, strictly decoded by the handler and never stored. Mobile clients do not browse S3."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageS3FoldersBody",
+      "reason": "OpenAPI-only native-storage documentation shape for the stateless S3 browse request used by the web admin Add-source form; credentials are write-only, strictly decoded by the handler and never stored. Mobile clients do not browse S3."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageS3Buckets",
+      "reason": "Native-storage S3 browse response decoded only by the web admin Add-source form; mobile clients do not browse S3."
+    },
+    {
+      "type": "internal/apiv2.BloemNativeStorageS3Folders",
+      "reason": "Native-storage S3 browse response decoded only by the web admin Add-source form; mobile clients do not browse S3."
+    },
+    {
+      "type": "internal/nativestorage.S3Bucket",
+      "reason": "Native-storage S3 browse response decoded only by the web admin Add-source form; mobile clients do not browse S3."
+    },
+    {
+      "type": "internal/nativestorage.S3Folder",
+      "reason": "Native-storage S3 browse response decoded only by the web admin Add-source form; mobile clients do not browse S3."
+    },
+    {
+      "type": "internal/nativestorage.S3FolderPage",
+      "reason": "Native-storage S3 browse response decoded only by the web admin Add-source form; mobile clients do not browse S3."
+    },
+    {
       "type": "internal/apiv2.BloemNativeStorageConfiguration",
       "reason": "OpenAPI-only native-storage documentation shape; runtime client DTOs come from handlers and nativestorage registry roots with matching wire-equivalence tests."
     },

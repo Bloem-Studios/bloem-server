@@ -1529,6 +1529,8 @@ public data class nativeStorageCapabilitiesResponse(
     public val s3CatalogDiscovery: Boolean = false,
     @SerialName("s3_checked_etag_reads")
     public val s3CheckedETagReads: Boolean = false,
+    @SerialName("s3_bucket_browse")
+    public val s3BucketBrowse: Boolean = false,
     @SerialName("native_movie_libraries")
     public val nativeMovieLibraries: Boolean = false,
     @SerialName("native_video_playback")
