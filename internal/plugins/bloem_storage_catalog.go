@@ -72,6 +72,19 @@ func nativeCatalogSpecFor(pluginID string) (nativeCatalogSpec, bool) {
 	return nativeCatalogSpec{}, false
 }
 
+// NativeCatalogArtifactPluginID names the plugin a catalog artifact key belongs
+// to from its key prefix alone, so a caller can refuse a catalog key before
+// the catalog has been fetched or the release downloaded. It does not mean the
+// key is admitted.
+func NativeCatalogArtifactPluginID(key string) (string, bool) {
+	for _, s := range nativeCatalogSpecs {
+		if strings.HasPrefix(key, s.KeyPrefix+"-") {
+			return s.PluginID, true
+		}
+	}
+	return "", false
+}
+
 type storageCatalogRecord struct {
 	Manifest json.RawMessage `json:"manifest"`
 	Checksum string          `json:"checksum"`

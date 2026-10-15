@@ -474,3 +474,18 @@ func TestNativeCatalogLoadSkipsInvalidArtifactRecord(t *testing.T) {
 		t.Fatalf("want only the valid record, got %+v", got)
 	}
 }
+
+func TestNativeCatalogArtifactPluginID(t *testing.T) {
+	for key, want := range map[string]string{
+		catalogArtifactKey(s3Spec, "0.3.2", strings.Repeat("a", 64)):            "bloem.storage.s3",
+		catalogArtifactKey(bookwarehouseSpec, "0.3.0", strings.Repeat("a", 64)): "bloem.storage.bookwarehouse",
+		"s3":           "",
+		"s3x-0.3.2":    "",
+		"other-plugin": "",
+		"":             "",
+	} {
+		if got, _ := NativeCatalogArtifactPluginID(key); got != want {
+			t.Errorf("NativeCatalogArtifactPluginID(%q) = %q, want %q", key, got, want)
+		}
+	}
+}
