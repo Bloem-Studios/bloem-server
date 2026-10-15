@@ -1,7 +1,5 @@
-import { useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useState } from "react";
 
-import { PluginConfigForm } from "@/components/admin/plugins/PluginConfigForm";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,31 +11,14 @@ import {
 import {
   type StorageArtifact,
   type StorageSource,
-  useDiscoverStorageSource,
   useInstallStorageSource,
-  useStorageScope,
 } from "@/hooks/queries/admin/storageSources";
 import { randomUUID } from "@/lib/uuid";
 
-import {
-  newProviderSourceId,
-  pruneConfigSchema,
-  sourceName,
-  validateS3Connection,
-  withoutEmpty,
-} from "./storageSchema";
+import { S3AddForm } from "./S3AddForm";
 
 const S3_PLUGIN = "bloem.storage.s3";
 const BOOKWAREHOUSE_PLUGIN = "bloem.storage.bookwarehouse";
-
-// Server-managed or developer-only fields an administrator is never asked for.
-const HIDDEN_S3_FIELDS = [
-  "source_id",
-  "state_path",
-  "probe_key",
-  "allow_loopback_http",
-  "session_token",
-];
 
 function byVersion(a: StorageArtifact, b: StorageArtifact): number {
   return a.version.localeCompare(b.version, undefined, { numeric: true });
@@ -98,120 +79,6 @@ function BookwarehouseRow({ artifact, onDone }: { artifact: StorageArtifact; onD
   );
 }
 
-function S3AddForm({
-  artifact,
-  sources,
-  onBack,
-  onDone,
-}: {
-  artifact: StorageArtifact;
-  sources: StorageSource[];
-  onBack: () => void;
-  onDone: () => void;
-}) {
-  const discover = useDiscoverStorageSource();
-  const [errors, setErrors] = useState<string[]>([]);
-  // Bumped after a save so the form remounts and the entered keys are discarded.
-  const [formKey, setFormKey] = useState(0);
-  // Only the two non-secret fields the duplicate warning compares are kept.
-  const [bucket, setBucket] = useState("");
-  const [prefix, setPrefix] = useState("");
-
-  const source = artifact.config_schema[0];
-  // Memoized: the form resets its values whenever it is handed a new schema.
-  const schema = useMemo(
-    () => (source ? pruneConfigSchema(source, HIDDEN_S3_FIELDS) : undefined),
-    [source],
-  );
-  if (!schema) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        This S3 release does not describe its configuration, so it cannot be added here.
-      </p>
-    );
-  }
-  const labels = new Map((schema.admin_form?.fields ?? []).map((f) => [f.key, f.label || f.key]));
-
-  const duplicate =
-    bucket !== "" &&
-    sources.some(
-      (s) =>
-        s.plugin_id === S3_PLUGIN &&
-        s.connection_summary?.bucket === bucket &&
-        (s.connection_summary?.prefix ?? "") === prefix,
-    );
-
-  function handleSave(key: string, value: Record<string, unknown>) {
-    const problems = validateS3Connection(value);
-    // A new source cannot be reached without its keys, so ask before calling the API.
-    const filled = (k: string) => typeof value[k] === "string" && value[k] !== "";
-    if (!filled("access_key")) problems.access_key = "Enter the access key.";
-    if (!filled("secret_key")) problems.secret_key = "Enter the secret key.";
-    const messages = Object.entries(problems).map(
-      ([field, message]) => `${labels.get(field) ?? field}: ${message}`,
-    );
-    setErrors(messages);
-    if (messages.length > 0) return;
-    const id = newProviderSourceId("s3");
-    discover.mutate(
-      {
-        artifactKey: artifact.artifact_key,
-        providerSourceId: id,
-        config: {
-          [key]: { ...withoutEmpty(value), source_name: sourceName(value), source_id: id },
-        },
-      },
-      {
-        onSuccess: () => {
-          setFormKey((k) => k + 1);
-          setBucket("");
-          setPrefix("");
-          onDone();
-        },
-      },
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={onBack}
-        disabled={discover.isPending}
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back
-      </Button>
-      <PluginConfigForm
-        key={formKey}
-        bare
-        idPrefix="s3-add"
-        schema={schema}
-        isSaving={discover.isPending}
-        onSave={handleSave}
-        onDraftChange={(_key, value) => {
-          setBucket(typeof value.bucket === "string" ? value.bucket : "");
-          setPrefix(typeof value.prefix === "string" ? value.prefix : "");
-        }}
-      />
-      {duplicate ? (
-        <p className="text-sm text-amber-600 dark:text-amber-400">
-          A source with this bucket and prefix already exists. You can still add another.
-        </p>
-      ) : null}
-      {errors.length > 0 ? (
-        <ul role="alert" className="text-destructive list-disc space-y-1 pl-5 text-sm">
-          {errors.map((message) => (
-            <li key={message}>{message}</li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
-
 function DialogBody({
   artifacts,
   sources,
@@ -227,7 +94,6 @@ function DialogBody({
   isRetrying?: boolean;
   onClose: () => void;
 }) {
-  const { scope } = useStorageScope();
   const [choice, setChoice] = useState<"s3" | null>(null);
 
   if (!artifacts) {
@@ -254,7 +120,9 @@ function DialogBody({
     return <p className="text-muted-foreground text-sm">Loading storage plugins...</p>;
   }
 
-  const s3 = scope === "platform" ? latestRelease(artifacts, S3_PLUGIN) : undefined;
+  // Offered in every administrative scope: an organization administrator adds
+  // sources owned by their own organization.
+  const s3 = latestRelease(artifacts, S3_PLUGIN);
   const bookwarehouse = latestRelease(artifacts, BOOKWAREHOUSE_PLUGIN);
 
   if (choice === "s3" && s3) {
@@ -285,7 +153,7 @@ function DialogBody({
 
 /**
  * Adds a storage source. Which plugins are offered, and what an S3 source asks
- * for, comes from the verified catalog; S3 is only offered to platform admins.
+ * for, comes from the verified catalog.
  */
 export function AddStorageSourceDialog({
   artifacts,
