@@ -54,18 +54,22 @@ configured prefix could not be inspected from the product.
    scan. `config` must not contain `state_path`. Capability `s3_catalog_discovery` in
    `GET /capabilities`.
 3. **Connection summary.** Source documents gain `connection_summary`: an allowlist of non-secret
-   plugin fields (S3: `bucket`, `prefix`, `region`, `endpoint_host`, `revision_mode`;
-   Bookwarehouse: `base_url_host`). Credentials and the full config are never serialized. The
+   plugin fields (S3: `source_name`, `bucket`, `prefix`, `region`, `endpoint`, `revision_mode`,
+   `probe_key`, `allow_loopback_http`; Bookwarehouse: `base_url_host`). The S3 endpoint is non-secret
+   because the plugin rejects URLs containing credentials. The summary lets the edit form prefill every
+   non-secret field. Credentials and the full config are never serialized. The
    allowlist is per plugin id in Go, not derived from the manifest.
 4. **Manifest form in artifacts.** `GET /artifacts` entries add `admin_form` and `json_schema` from the
    verified manifest's `global_config_schema` so the UI can render the form without a new fetch.
-5. **Credential-only replacement.** `PUT /sources/{source_key}/configuration` today refuses any
-   source that backs a library or holds entries. Add a narrowly scoped path for S3 sources: when the
-   new config differs from the stored one only in `access_key`, `secret_key` or `session_token`, and
-   `source_id`, `bucket`, `prefix`, `endpoint`, `region`, `revision_mode` are byte-identical, allow it
-   with the usual `expected_revision` check. Any other difference keeps the current refusal. The
-   plugin already preserves entry IDs across credential rotation and invalidates retained cursors.
-   Capability `credential_rotation_in_use`.
+5. **Credential rotation.** `PUT /sources/{source_key}/configuration` replaces the whole config and
+   today refuses any source that backs a library or holds entries. The browser never receives stored
+   config, so it cannot send a whole config for a rotation. Add `POST /sources/{source_key}/credentials`
+   with `{expected_revision, access_key, secret_key, session_token?}` for S3 sources. The server reads the
+   stored `connection` config, overlays only those three fields, and replaces the config through the
+   existing transaction with the empty-namespace check skipped for this operation. Every other field is
+   therefore unchanged by construction. Same authority, enabled-source and `expected_revision` checks as
+   configuration replacement; the plugin already preserves entry IDs across credential rotation and
+   invalidates retained cursors. Capability `credential_rotation_in_use`.
 6. **Test connection.** No new endpoint. "Test" on an existing source calls the existing browse of the
    root; Add is validated by the discovery itself (bad credentials or endpoint fail the install and
    leave nothing behind).
@@ -82,9 +86,10 @@ configured prefix could not be inspected from the product.
   offered only in the platform admin view.
 - Source list rows show name, kind, connection summary, enabled/ready state, libraries using it, and
   actions: Test, Edit, Disable/Enable, Remove, Upgrade (existing).
-- **Edit.** Unused source: all fields editable (whole-config replacement, existing rule). In-use S3
-  source: bucket, prefix, endpoint, region and revision mode are read-only with a one-line reason;
-  credential fields are editable and submitted as credential-only replacement. Bookwarehouse keeps its
+- **Edit.** Unused source: all fields editable, prefilled from `connection_summary`; the keys must be
+  entered again because a whole-config replacement replaces them (existing rule). In-use S3 source:
+  the connection fields are read-only with a one-line reason and a **Rotate keys** form posts to the
+  credentials call. Bookwarehouse keeps its
   current connection form.
 - **Remove** confirms the detach semantics ("retained", existing uninstall behavior) and lists the
   libraries affected.
@@ -115,7 +120,7 @@ configured prefix could not be inspected from the product.
 - Go: catalog allowlist and digest-mismatch rejection; catalog discover success, bad credentials,
   unapproved artifact, organization scope refused, `state_path` rejection, unknown-outcome
   reconciliation; `connection_summary` never contains secrets (property test over fixture configs);
-  credential-only replacement accepts only the three credential fields; OpenAPI contract drift check.
+  credential rotation overlays only the three credential fields and refuses other sources; OpenAPI contract drift check.
 - Web: unit tests for the manifest-driven form, edit locking, summary rendering, empty-picker text;
   one Playwright journey on a fake S3: add two sources, browse each, select `/movies`, then
   `/movies/10s` and `/movies/20s`, save, reopen.
