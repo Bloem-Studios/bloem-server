@@ -2623,9 +2623,11 @@ between checks, including when a gateway ignores `If-Match`. Configuration
 replacement still requires an empty namespace. These additive booleans
 preserve `schema: 2`.
 
-`s3_catalog_discovery` is true when catalog discovery of S3 sources is composed:
-the host can download a pre-approved S3 catalog release and discover the root of
-a new source from it (see [Catalog installs](#catalog-installs)).
+`s3_catalog_discovery` is true when catalog discovery of S3 sources is composed
+and the caller is in platform scope: the host can download a pre-approved S3
+catalog release and discover the root of a new source from it (see [Catalog
+installs](#catalog-installs)). The route is platform-only, so the flag is always
+false in organization scope.
 `credential_rotation_in_use` is true when [credential
 rotation](#credential-rotation) is composed, including for a source that backs
 a library. Neither flag certifies a backend.
@@ -2719,8 +2721,8 @@ plugin (for S3: `prefix`, `source_name`, `bucket`, `region`, `endpoint`,
 `revision_mode`, `probe_key` and `allow_loopback_http`; for Bookwarehouse only
 `base_url_host`) and is empty for other plugins or when nothing is stored.
 Credentials, API keys, tokens and all other configuration values are never
-returned. Its state is `attached`, `disabled` or `detached`. Disabling or uninstalling
-detaches the installation and keeps the source, its library, catalog and
+returned. A source's state is `attached`, `disabled` or `detached`. Disabling or
+uninstalling detaches the installation and keeps the source, its library, catalog and
 reading progress; the library cannot scan or read until a source is attached
 again.
 
@@ -2750,7 +2752,13 @@ overlays those three values onto the stored configuration and leaves the bucket,
 prefix, endpoint and every other setting untouched. Unlike whole-configuration
 replacement it works on a source that backs a library. The source must be
 enabled and `expected_revision` must be its current configuration revision
-(`409 revision_conflict` otherwise). The response is
+(`409 revision_conflict` otherwise). The rotation reads the stored `connection`
+configuration, so a source without one is refused with `400 invalid_request`. An empty or omitted
+`session_token` clears any stored session token rather than keeping it. A
+source that is not an S3 source (for example Bookwarehouse) and an unknown
+source return `404 not_found`. A disabled source has no attached installation
+and returns `503 native_storage_unavailable`; rotate its credentials only while it is attached and enabled.
+The response is
 `{source_key, configuration_revision}` with the new revision; credentials are
 encrypted at rest and never returned.
 
