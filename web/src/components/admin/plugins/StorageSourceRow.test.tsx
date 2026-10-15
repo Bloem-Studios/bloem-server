@@ -25,6 +25,8 @@ vi.mock("@/hooks/queries/admin/storageSources", () => ({
   useDisableStorageSource: () => ({ mutate: disable, isPending: false }),
   useRemoveStorageSource: () => ({ mutate: remove, isPending: false }),
   useTestStorageSource: () => ({ mutate: testSource, isPending: false }),
+  useListS3Buckets: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useListS3Folders: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 const field = (key: string, label: string, control = "TEXT", secret = false) => ({
@@ -51,6 +53,7 @@ const s3Schema = {
       access_key: { type: "string" },
       secret_key: { type: "string" },
       state_path: { type: "string" },
+      probe_key: { type: "string" },
     },
   }),
   admin_form: {
@@ -64,6 +67,7 @@ const s3Schema = {
       field("access_key", "Access key", "PASSWORD", true),
       field("secret_key", "Secret key", "PASSWORD", true),
       field("state_path", "State path"),
+      field("probe_key", "Probe key"),
     ],
   },
 };
@@ -487,9 +491,84 @@ describe("StorageSourceRow", () => {
     it("keeps the management actions on an organization source in an organization scope", () => {
       scopeValue = "organization";
       renderRow({ ...s3Source, owner_kind: "organization" } as StorageSource);
-      for (const name of ["Edit", "Rotate keys", "Disable", "Remove"]) {
-        expect(queryAction(name)).toBeInTheDocument();
+      for (const name of ["Test", "Edit", "Rotate keys", "Disable", "Remove"]) {
+        expect(queryAction(name)).toBeEnabled();
       }
+    });
+
+    it("lets an organization admin use those actions on their own S3 source", () => {
+      scopeValue = "organization";
+      const own = { ...s3Source, owner_kind: "organization" } as StorageSource;
+      renderRow(own);
+      fireEvent.click(screen.getByRole("button", { name: "Test" }));
+      expect(testSource).toHaveBeenCalledWith({ source: own }, expect.any(Object));
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK" } });
+      fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(replaceConfig).toHaveBeenCalledTimes(1);
+      fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+      fireEvent.click(screen.getByRole("button", { name: /confirm remove/i }));
+      expect(remove).toHaveBeenCalledWith({ source: own }, expect.any(Object));
+    });
+
+    it("hides Upgrade for an S3 source in an organization scope but not in the platform scope", () => {
+      scopeValue = "organization";
+      const own = { ...s3Source, owner_kind: "organization" } as StorageSource;
+      const { unmount } = render(
+        <ul>
+          <StorageSourceRow source={own} artifact={s3Artifact} artifacts={[s3Artifact]} />
+        </ul>,
+      );
+      expect(queryAction("Upgrade")).not.toBeInTheDocument();
+      unmount();
+      scopeValue = "platform";
+      renderRow(s3Source);
+      expect(queryAction("Upgrade")).toBeInTheDocument();
+    });
+  });
+
+  describe("probe key", () => {
+    const withProbe = {
+      ...s3Source,
+      connection_summary: { ...s3Source.connection_summary, probe_key: "movies/x.mkv" },
+    } as StorageSource;
+
+    it("is not asked for when editing, even when the summary carries one", () => {
+      render(
+        <ul>
+          <StorageSourceRow source={withProbe} artifact={s3Artifact} />
+        </ul>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      expect(screen.getByLabelText("Bucket")).toHaveValue("media");
+      expect(screen.queryByLabelText("Probe key")).not.toBeInTheDocument();
+    });
+
+    it("is not sent when the whole configuration is replaced", () => {
+      render(
+        <ul>
+          <StorageSourceRow source={withProbe} artifact={s3Artifact} />
+        </ul>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK" } });
+      fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK" } });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      const call = replaceConfig.mock.calls[0]![0] as {
+        config: { connection: Record<string, unknown> };
+      };
+      expect(call.config.connection).not.toHaveProperty("probe_key");
+      expect(JSON.stringify(call.config)).not.toContain("movies/x.mkv");
+    });
+
+    it("leaves the server's summary untouched", () => {
+      render(
+        <ul>
+          <StorageSourceRow source={withProbe} artifact={s3Artifact} />
+        </ul>,
+      );
+      expect(withProbe.connection_summary.probe_key).toBe("movies/x.mkv");
     });
   });
 

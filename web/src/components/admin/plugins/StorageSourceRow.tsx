@@ -39,17 +39,15 @@ const LOOPBACK_LOCKED_NOTICE =
   "This source uses plain HTTP on loopback; only its keys can be changed here.";
 
 // Server-managed or developer-only fields an administrator is never asked for when editing.
-const HIDDEN_EDIT_FIELDS = ["source_id", "state_path", "allow_loopback_http", "session_token"];
-// The non-secret facts the source list returns, which prefill the edit form.
-const SUMMARY_FIELDS = [
-  "source_name",
-  "bucket",
-  "prefix",
-  "region",
-  "endpoint",
-  "revision_mode",
+const HIDDEN_EDIT_FIELDS = [
+  "source_id",
+  "state_path",
   "probe_key",
+  "allow_loopback_http",
+  "session_token",
 ];
+// The non-secret facts the source list returns, which prefill the edit form.
+const SUMMARY_FIELDS = ["source_name", "bucket", "prefix", "region", "endpoint", "revision_mode"];
 
 /** The machine-readable code on an error, whatever class carries it. */
 function errorCode(error: unknown): string | undefined {
@@ -442,6 +440,8 @@ export function StorageSourceRow({
   // The server refuses to change a platform source from an organization scope.
   const platformBlocked = scope === "organization" && source.owner_kind === "platform";
   const canManage = manageable && !sourceDisabled && !platformBlocked;
+  // S3 releases are approved and upgraded by the platform; an organization never upgrades them.
+  const canUpgrade = !platformBlocked && !(isS3 && scope === "organization");
   const loopbackLocked = source.connection_summary?.allow_loopback_http === "true";
   const testHintId = `test-hint-${source.source_key}`;
 
@@ -497,7 +497,7 @@ export function StorageSourceRow({
             {panel === "rotate" ? "Cancel" : "Rotate keys"}
           </Button>
         ) : null}
-        {source.state === "attached" ? (
+        {source.state === "attached" && canUpgrade ? (
           <Button variant="ghost" size="sm" onClick={() => toggle("upgrade")}>
             <ArrowUpCircle className="h-3.5 w-3.5" />
             {panel === "upgrade" ? "Cancel" : "Upgrade"}
