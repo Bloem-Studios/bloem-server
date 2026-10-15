@@ -84,6 +84,7 @@ type nativeStorageCapabilitiesResponse struct {
 	S3InitialRootDiscovery      bool `json:"s3_initial_root_discovery"`
 	S3CatalogDiscovery          bool `json:"s3_catalog_discovery"`
 	S3CheckedETagReads          bool `json:"s3_checked_etag_reads"`
+	S3BucketBrowse              bool `json:"s3_bucket_browse"`
 	NativeMovieLibraries        bool `json:"native_movie_libraries"`
 	NativeVideoPlayback         bool `json:"native_video_playback"`
 	NativeVideoRemoteExecution  bool `json:"native_video_remote_execution"`

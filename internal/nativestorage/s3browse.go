@@ -283,6 +283,24 @@ func ParseS3BrowseEndpoint(raw string, restrictPorts bool) (S3BrowseEndpoint, er
 	return S3BrowseEndpoint{Host: host, Port: port, Base: origin.String()}, nil
 }
 
+// S3BrowseEndpointHost returns the lowercased host of an endpoint for audit
+// logs, even for a refused endpoint, or "" when it is not a plain host name or
+// IP literal. It does no I/O and never returns userinfo, path or query.
+func S3BrowseEndpointHost(raw string) string {
+	if len(raw) > 2048 {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	host := strings.ToLower(u.Hostname())
+	if host == "" || len(host) > 253 || strings.Trim(host, "abcdefghijklmnopqrstuvwxyz0123456789.-:") != "" {
+		return ""
+	}
+	return host
+}
+
 func s3BrowseOrganizationPort(port int) bool {
 	for _, p := range S3BrowseOrganizationPorts {
 		if p == port {

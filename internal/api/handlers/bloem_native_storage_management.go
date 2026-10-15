@@ -45,6 +45,8 @@ type BloemNativeStorageManagementHandler struct {
 	// Registry is the same startup registry used by Sources; only its sanitized
 	// immutable artifact projection is used here.
 	Registry *plugins.NativeStorageRegistry
+	// S3Browse lists buckets and folders with caller-supplied credentials.
+	S3Browse NativeStorageS3Browser
 	scope    auth.AdminScope
 	// Capabilities is the actual router composition, not artifact/backend certification.
 	Capabilities interface{ NativeStorageReady(context.Context) bool }
@@ -143,6 +145,9 @@ func NativeStorageAPIError(err error) *APIError {
 		"native_repair_unsupported":          {409, "Native library repair is unsupported"},
 		"initialization_incomplete":          {503, "Native library initialization is incomplete"},
 		nativeStorageUnavailableCode:         {503, "Native storage unavailable"},
+		"s3_endpoint_rejected":               {422, "The S3 endpoint is not allowed"},
+		"s3_access_denied":                   {422, "The S3 backend denied access"},
+		"s3_backend_error":                   {502, "The S3 backend request failed"},
 	}
 	if mapping, ok := fixed[typed.Code]; ok {
 		result.Status = mapping.status
@@ -697,6 +702,7 @@ func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx cont
 		"s3_initial_root_discovery": discoveryReady,
 		"s3_catalog_discovery":      discoveryReady && h.scope == auth.AdminScopePlatform && h.Registry != nil,
 		"s3_checked_etag_reads":     ready,
+		"s3_bucket_browse":          ready && h.S3Browse != nil,
 		"native_movie_libraries":    movies, "native_video_playback": video, "native_video_remote_execution": remoteVideo,
 		"native_video_downloads": false, "native_video_jellyfin": false,
 		"retained_namespace_reinstall": false, "enable": false, "backend_verified": false}

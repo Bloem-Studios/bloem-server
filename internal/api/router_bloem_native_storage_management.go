@@ -49,6 +49,8 @@ func mountNativeStorageScopeRoutes(r chi.Router, handler *handlers.BloemNativeSt
 	r.Post("/catalog/installations/{installation_id}/upgrade", handler.HandleCatalogUpgrade)
 	r.Put("/sources/{source_key}/configuration", handler.HandleReplaceConfiguration)
 	r.Post("/sources/{source_key}/credentials", handler.HandleRotateCredentials)
+	r.Post("/s3/buckets", handler.HandleS3Buckets)
+	r.Post("/s3/folders", handler.HandleS3Folders)
 	r.Post("/installations/{installation_id}/disable", handler.HandleDisable)
 	r.Post("/installations/{installation_id}/upgrade", handler.HandleUpgrade)
 	r.Delete("/installations/{installation_id}", handler.HandleUninstall)
@@ -98,6 +100,11 @@ func nativeStorageDependencies(deps Dependencies) Dependencies {
 			browser.SetCursorStore(nativestorage.NewRedisBrowseCursorStore(deps.RedisClient))
 			deps.NativeStorageManagement.Browser = browser
 		}
+	}
+	if deps.NativeStorageManagement.S3Browse == nil {
+		// One browser per composition: its rate limit and concurrency cap are
+		// shared by both admin scopes.
+		deps.NativeStorageManagement.S3Browse = nativestorage.NewS3Browser()
 	}
 	deps.NativeStorageManagement.Sources.SetInstallDiscoveryHost(deps.NativeStorage)
 	deps.NativeStorageManagement.Capabilities = &nativeStorageCapabilities{deps: deps}
