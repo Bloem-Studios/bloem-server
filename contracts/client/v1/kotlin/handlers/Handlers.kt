@@ -1515,6 +1515,8 @@ public data class nativeStorageCapabilitiesResponse(
     public val approvedArtifactInstall: Boolean = false,
     @SerialName("configuration_replace_unbound")
     public val configurationReplaceUnbound: Boolean = false,
+    @SerialName("credential_rotation_in_use")
+    public val credentialRotationInUse: Boolean = false,
     @SerialName("disable")
     public val disable: Boolean = false,
     @SerialName("uninstall")

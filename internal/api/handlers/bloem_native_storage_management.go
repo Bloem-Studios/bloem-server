@@ -693,7 +693,7 @@ func (h *BloemNativeStorageManagementHandler) nativeStorageCapabilities(ctx cont
 		combinations = append(combinations, nativeStorageSourceMedia{SourceKind: "s3", MediaKinds: kinds}, nativeStorageSourceMedia{SourceKind: "bookwarehouse", MediaKinds: bookwarehouse})
 	}
 	return map[string]any{"schema": 2, "library_location_browsing": browsing, "library_location_atomic_editing": editing, "library_location_mixing": mixing, "supported_source_media": combinations, "native_audio_libraries": audio, "native_audio_playback": audio, "source_management": ready, "approved_artifact_install": ready,
-		"configuration_replace_unbound": ready, "disable": ready, "uninstall": ready, "upgrade": ready,
+		"configuration_replace_unbound": ready, "credential_rotation_in_use": ready, "disable": ready, "uninstall": ready, "upgrade": ready,
 		"s3_initial_root_discovery": discoveryReady,
 		"s3_catalog_discovery":      discoveryReady && h.Registry != nil,
 		"s3_checked_etag_reads":     ready,

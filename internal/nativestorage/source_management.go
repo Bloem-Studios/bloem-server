@@ -213,6 +213,35 @@ func (s *SourceManagement) ReplaceConfiguration(ctx context.Context, actor auth.
 	})
 	return revision, nativeDomainMap(err)
 }
+
+// RotateCredentials replaces only the stored S3 access key, secret key and
+// session token of a source, including one that backs a library. It carries
+// the same preflight, retained authority, enabled-source and expected-revision
+// checks as ReplaceConfiguration. Credentials are never logged or returned.
+func (s *SourceManagement) RotateCredentials(ctx context.Context, actor auth.AdminContextClaims, key uuid.UUID, expected int64, c plugins.S3Credentials) (int64, error) {
+	if key == uuid.Nil || expected <= 0 {
+		return 0, nativeDomainError("invalid_request")
+	}
+	source, err := s.preflightMutation(ctx, actor, key, nil, expected)
+	if err != nil {
+		return 0, err
+	}
+	if source.InstallationID == nil {
+		return 0, nativeDomainError("native_storage_unavailable")
+	}
+	if s.coordinator == nil || s.coordinator.Runtime == nil {
+		return 0, nativeDomainError("native_storage_unavailable")
+	}
+	installationID := *source.InstallationID
+	authorize := s.sourceMutationAuthorizer(actor, source, &installationID, expected)
+	var revision int64
+	err = s.coordinator.FenceMutation(ctx, int(installationID), func(ctx context.Context) error {
+		var e error
+		revision, e = s.registry.RotateCredentials(ctx, key, source.OwnerID, c, expected, authorize)
+		return e
+	})
+	return revision, nativeDomainMap(err)
+}
 func (s *SourceManagement) Remove(ctx context.Context, actor auth.AdminContextClaims, installationID int, key uuid.UUID, expected int64, uninstall bool) error {
 	if installationID <= 0 || key == uuid.Nil || expected <= 0 {
 		return nativeDomainError("invalid_request")

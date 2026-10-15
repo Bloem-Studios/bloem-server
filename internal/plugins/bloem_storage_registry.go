@@ -542,6 +542,16 @@ func (r *NativeStorageRegistry) ReplaceConfiguration(ctx context.Context, key, o
 	return r.replaceConfiguration(ctx, key, owner, config, nil, nil)
 }
 func (r *NativeStorageRegistry) replaceConfiguration(ctx context.Context, key, owner uuid.UUID, config map[string]map[string]any, expected *int64, authorize NativeStorageAuthorizeTx) (int64, error) {
+	return r.replaceConfigurationMode(ctx, key, owner, config, expected, authorize, false)
+}
+
+// replaceConfigurationMode is the single replacement transaction. rotation is
+// set only by rotateCredentials: it waives the empty-namespace rule for an
+// authorized S3 credential overlay and nothing else.
+func (r *NativeStorageRegistry) replaceConfigurationMode(ctx context.Context, key, owner uuid.UUID, config map[string]map[string]any, expected *int64, authorize NativeStorageAuthorizeTx, rotation bool) (int64, error) {
+	if rotation && authorize == nil {
+		return 0, nativeManagementUnavailable()
+	}
 	var prepared *nativeManagementConfigurationArtifact
 	if authorize != nil {
 		var err error
@@ -595,6 +605,9 @@ func (r *NativeStorageRegistry) replaceConfiguration(ctx context.Context, key, o
 	if !s.Enabled || !installation.Enabled || s.InstallationID == nil || int(*s.InstallationID) != installation.ID || s.PluginID != installation.PluginID {
 		return 0, storagesource.ErrSourceUnavailable
 	}
+	if rotation && installation.PluginID != nativeS3PluginID {
+		return 0, storagesource.ErrSourceUnavailable
+	}
 	if authorize != nil {
 		if err = authorize(ctx, tx); err != nil {
 			return 0, err
@@ -621,8 +634,10 @@ func (r *NativeStorageRegistry) replaceConfiguration(ctx context.Context, key, o
 		if e != nil {
 			return 0, e
 		}
-		if err = nativeManagementEmptyNamespaceTx(ctx, tx, keys, "configuration_namespace_unverified"); err != nil {
-			return 0, err
+		if !rotation {
+			if err = nativeManagementEmptyNamespaceTx(ctx, tx, keys, "configuration_namespace_unverified"); err != nil {
+				return 0, err
+			}
 		}
 		// Retain the archive after the existing resources/siblings. The stored
 		// executable checksum alone is insufficient: compare compressed bytes too.

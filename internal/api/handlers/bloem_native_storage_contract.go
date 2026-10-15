@@ -73,6 +73,7 @@ type nativeStorageCapabilitiesResponse struct {
 	SourceManagement            bool `json:"source_management"`
 	ApprovedArtifactInstall     bool `json:"approved_artifact_install"`
 	ConfigurationReplaceUnbound bool `json:"configuration_replace_unbound"`
+	CredentialRotationInUse     bool `json:"credential_rotation_in_use"`
 	Disable                     bool `json:"disable"`
 	Uninstall                   bool `json:"uninstall"`
 	Upgrade                     bool `json:"upgrade"`

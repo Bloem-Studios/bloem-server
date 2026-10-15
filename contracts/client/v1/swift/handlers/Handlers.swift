@@ -4691,6 +4691,7 @@ public enum Handlers {
         public let sourceManagement: Bool
         public let approvedArtifactInstall: Bool
         public let configurationReplaceUnbound: Bool
+        public let credentialRotationInUse: Bool
         public let disable: Bool
         public let uninstall: Bool
         public let upgrade: Bool
@@ -4717,6 +4718,7 @@ public enum Handlers {
             case sourceManagement = "source_management"
             case approvedArtifactInstall = "approved_artifact_install"
             case configurationReplaceUnbound = "configuration_replace_unbound"
+            case credentialRotationInUse = "credential_rotation_in_use"
             case disable = "disable"
             case uninstall = "uninstall"
             case upgrade = "upgrade"
@@ -4744,6 +4746,7 @@ public enum Handlers {
             sourceManagement: Bool = false,
             approvedArtifactInstall: Bool = false,
             configurationReplaceUnbound: Bool = false,
+            credentialRotationInUse: Bool = false,
             disable: Bool = false,
             uninstall: Bool = false,
             upgrade: Bool = false,
@@ -4769,6 +4772,7 @@ public enum Handlers {
             self.sourceManagement = sourceManagement
             self.approvedArtifactInstall = approvedArtifactInstall
             self.configurationReplaceUnbound = configurationReplaceUnbound
+            self.credentialRotationInUse = credentialRotationInUse
             self.disable = disable
             self.uninstall = uninstall
             self.upgrade = upgrade
@@ -4797,6 +4801,7 @@ public enum Handlers {
             self.sourceManagement = try container.decodeIfPresent(Bool.self, forKey: .sourceManagement) ?? false
             self.approvedArtifactInstall = try container.decodeIfPresent(Bool.self, forKey: .approvedArtifactInstall) ?? false
             self.configurationReplaceUnbound = try container.decodeIfPresent(Bool.self, forKey: .configurationReplaceUnbound) ?? false
+            self.credentialRotationInUse = try container.decodeIfPresent(Bool.self, forKey: .credentialRotationInUse) ?? false
             self.disable = try container.decodeIfPresent(Bool.self, forKey: .disable) ?? false
             self.uninstall = try container.decodeIfPresent(Bool.self, forKey: .uninstall) ?? false
             self.upgrade = try container.decodeIfPresent(Bool.self, forKey: .upgrade) ?? false
@@ -4825,6 +4830,7 @@ public enum Handlers {
             try container.encode(self.sourceManagement, forKey: .sourceManagement)
             try container.encode(self.approvedArtifactInstall, forKey: .approvedArtifactInstall)
             try container.encode(self.configurationReplaceUnbound, forKey: .configurationReplaceUnbound)
+            try container.encode(self.credentialRotationInUse, forKey: .credentialRotationInUse)
             try container.encode(self.disable, forKey: .disable)
             try container.encode(self.uninstall, forKey: .uninstall)
             try container.encode(self.upgrade, forKey: .upgrade)
