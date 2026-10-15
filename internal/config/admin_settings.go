@@ -354,7 +354,6 @@ var adminSettingDefaults = map[string]string{
 	playback.TranscodeThrottleSecondsSettingKey:      strconv.Itoa(playback.DefaultTranscodeThrottleSeconds),
 
 	"recommendations.enabled":                    "false",
-	"recommendations.embedding_provider":         "ollama",
 	"recommendations.embeddings_job_timeout":     "24h",
 	"recommendations.embedding_base_url":         "http://ollama:11434",
 	"recommendations.embedding_model":            "all-minilm",

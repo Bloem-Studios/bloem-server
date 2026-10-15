@@ -40,6 +40,9 @@ vi.mock("@/hooks/queries/admin/libraries", () => ({
   useLibraryRealtimeMonitoring: () => ({ data: undefined }),
 }));
 
+// The translation panel fetches its own status; this file only covers the provider chain.
+vi.mock("./LibraryTranslatePanel", () => ({ LibraryTranslatePanel: () => null }));
+
 beforeEach(() => setChain.mockClear());
 
 function wrapper({children}:{children:ReactNode}) { return <QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}>{children}</QueryClientProvider>; }

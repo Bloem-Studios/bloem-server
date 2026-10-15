@@ -3233,22 +3233,7 @@ func (s *Scanner) processFile(
 		mf.SubtitleTracks = []models.SubtitleTrack{}
 	}
 
-	// Convert external subtitles to model type.
-	modelExternalSubs := make([]models.ExternalSubtitle, len(externalSubs))
-	for i, es := range externalSubs {
-		modelExternalSubs[i] = models.ExternalSubtitle{
-			Path:     es.Path,
-			Language: es.Language,
-			Format:   es.Format,
-			Title:    es.Title,
-			Forced:   es.Forced,
-		}
-	}
-	mf.ExternalSubtitles = modelExternalSubs
-
-	if mf.ExternalSubtitles == nil {
-		mf.ExternalSubtitles = []models.ExternalSubtitle{}
-	}
+	mf.ExternalSubtitles = externalSubtitleModels(externalSubs)
 
 	// Upsert into DB.
 	upserted, upsertErr := s.fileRepo.Upsert(ctx, mf)
@@ -3674,7 +3659,7 @@ func externalSubtitleModels(externalSubs []ExternalSubtitleInfo) []models.Extern
 	for i, es := range externalSubs {
 		result[i] = models.ExternalSubtitle{
 			Path: es.Path, Language: es.Language, Format: es.Format,
-			Title: es.Title, Forced: es.Forced,
+			Title: es.Title, Forced: es.Forced, HearingImpaired: es.HearingImpaired,
 		}
 	}
 	return result
