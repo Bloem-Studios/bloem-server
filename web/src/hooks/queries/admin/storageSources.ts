@@ -236,6 +236,8 @@ export interface DiscoverStorageSourceInput {
   artifactKey: string;
   providerSourceId: string;
   config: StorageConfig;
+  /** The caller reports the outcome itself: no success or error toast. */
+  silent?: boolean;
 }
 
 /** Adds a source from the verified catalog and discovers its root; the server picks the root entry. */
@@ -253,13 +255,15 @@ export function useDiscoverStorageSource() {
           body: JSON.stringify(discoverBody(input)),
         },
       ),
-    onSuccess: () => {
-      toast.success("Storage source added");
+    onSuccess: (_data, variables) => {
+      if (!variables.silent) toast.success("Storage source added");
       void queryClient.invalidateQueries({
         queryKey: adminV2QueryKey(key, "native-storage", "sources"),
       });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Install failed"),
+    onError: (error, variables) => {
+      if (!variables.silent) toast.error(error instanceof Error ? error.message : "Install failed");
+    },
   });
 }
 

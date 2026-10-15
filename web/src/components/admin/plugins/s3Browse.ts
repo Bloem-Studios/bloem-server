@@ -15,8 +15,21 @@ export const BROWSE_UNSUPPORTED_MESSAGE =
 
 const ENDPOINT_REJECTED_MESSAGE =
   "That address can't be used. It must be a public https:// address.";
-const ACCESS_DENIED_MESSAGE =
-  "The provider rejected these keys. Check the access key and secret key. Some providers also only allow connections from approved IP addresses — if yours does, ask them to approve this server.";
+const BUCKETS_DENIED_MESSAGE =
+  "These keys can't list buckets. If your provider gave you a specific bucket name, type it instead.";
+const FOLDERS_DENIED_MESSAGE =
+  "These keys can't list folders here. You can type the folder (prefix) instead.";
+const KEYS_REJECTED_MESSAGE =
+  "The provider rejected these keys for this bucket. Check the access key, the secret key and the bucket name.";
+const NO_PERMISSION_MESSAGE = "You don't have permission to add storage sources.";
+const UNAVAILABLE_MESSAGE = "Storage isn't available on this server right now. Try again later.";
+const PLUGIN_REJECTED_MESSAGE =
+  "This storage plugin release can't be used. Ask your platform administrator.";
+const ADD_FAILED_MESSAGE = "Couldn't add this bucket. Try again.";
+
+/** Shown on a bucket whose add may have succeeded; retrying blindly could create a second source. */
+export const OUTCOME_UNKNOWN_MESSAGE =
+  "May have been created — check the source list before retrying.";
 const UNREACHABLE_MESSAGE = "Couldn't reach the storage service. Check the address and try again.";
 const RATE_LIMITED_MESSAGE = "Too many requests. Wait a minute and try again.";
 const INCOMPLETE_MESSAGE = "Check the address and keys, then try again.";
@@ -40,14 +53,39 @@ export function isAmazonEndpoint(endpoint: string): boolean {
   return hostOf(endpoint).endsWith(".amazonaws.com");
 }
 
-/** Gateways, MinIO and Ceph accept any region name; Amazon S3 must be told the real one. */
+/** The region an Amazon S3 address names, such as eu-west-1 for s3.eu-west-1.amazonaws.com; else "". */
+export function inferAmazonRegion(endpoint: string): string {
+  const host = hostOf(endpoint);
+  return (
+    /(?:^|\.)s3[.-](?:dualstack[.-])?(?:fips[.-])?([a-z]{2}(?:-gov|-iso[a-z]?)?-[a-z]+-\d+)\.amazonaws\.com$/.exec(
+      host,
+    )?.[1] ?? ""
+  );
+}
+
+/**
+ * Gateways, MinIO and Ceph accept any region name. Amazon S3 must be told the
+ * real one: taken from the address when it names one, else left for the user.
+ */
 export function defaultRegionFor(endpoint: string): string {
-  return isAmazonEndpoint(endpoint) ? "" : DEFAULT_REGION;
+  return isAmazonEndpoint(endpoint) ? inferAmazonRegion(endpoint) : DEFAULT_REGION;
 }
 
 /** Only Amazon S3 versions objects; everything else is checked by ETag. */
 export function defaultRevisionModeFor(endpoint: string): RevisionMode {
   return isAmazonEndpoint(endpoint) ? "strict" : "checked-etag";
+}
+
+/** An address typed without a scheme is taken to be https. */
+export function withHttpsScheme(endpoint: string): string {
+  return endpoint === "" || /^[a-z][a-z0-9+.-]*:\/\//i.test(endpoint)
+    ? endpoint
+    : `https://${endpoint}`;
+}
+
+/** A folder prefix typed without its trailing slash gets one; a leading slash is left to be reported. */
+export function withTrailingSlash(prefix: string): string {
+  return prefix === "" || prefix.startsWith("/") || prefix.endsWith("/") ? prefix : `${prefix}/`;
 }
 
 function codeOf(error: unknown): string | undefined {
@@ -71,12 +109,15 @@ function statusOf(error: unknown): number | undefined {
  * from the server's error code and status only; the server's own text and
  * anything the backend said are never shown.
  */
-export function browseErrorMessage(error: unknown): string {
+export function browseErrorMessage(
+  error: unknown,
+  listing: "buckets" | "folders" = "buckets",
+): string {
   switch (codeOf(error)) {
     case "s3_endpoint_rejected":
       return ENDPOINT_REJECTED_MESSAGE;
     case "s3_access_denied":
-      return ACCESS_DENIED_MESSAGE;
+      return listing === "buckets" ? BUCKETS_DENIED_MESSAGE : FOLDERS_DENIED_MESSAGE;
     case "s3_backend_error":
       return UNREACHABLE_MESSAGE;
     case "invalid_request":
@@ -96,4 +137,39 @@ export function isBrowseUnsupported(error: unknown): boolean {
   return (
     browseErrorMessage(error) === BROWSE_UNSUPPORTED_MESSAGE && (status === 404 || status === 405)
   );
+}
+
+/** True when the request may have reached the server and created the source: no answer, or an unconfirmed write. */
+export function isOutcomeUnknown(error: unknown): boolean {
+  return codeOf(error) === "mutation_outcome_unknown" || statusOf(error) === undefined;
+}
+
+/**
+ * What to tell the administrator when adding a source fails. Chosen from the
+ * server's error code and status only; the server's own text is never shown.
+ */
+export function addErrorMessage(error: unknown): string {
+  switch (codeOf(error)) {
+    case "mutation_outcome_unknown":
+      return OUTCOME_UNKNOWN_MESSAGE;
+    case "s3_endpoint_rejected":
+      return ENDPOINT_REJECTED_MESSAGE;
+    case "s3_access_denied":
+      return KEYS_REJECTED_MESSAGE;
+    case "s3_backend_error":
+      return UNREACHABLE_MESSAGE;
+    case "invalid_request":
+      return INCOMPLETE_MESSAGE;
+    case "artifact_rejected":
+      return PLUGIN_REJECTED_MESSAGE;
+    case "native_storage_unavailable":
+      return UNAVAILABLE_MESSAGE;
+  }
+  const status = statusOf(error);
+  if (status === undefined) return OUTCOME_UNKNOWN_MESSAGE;
+  if (status === 429) return RATE_LIMITED_MESSAGE;
+  if (status === 401 || status === 403) return NO_PERMISSION_MESSAGE;
+  if (status === 502 || status === 504) return UNREACHABLE_MESSAGE;
+  if (status === 503) return UNAVAILABLE_MESSAGE;
+  return ADD_FAILED_MESSAGE;
 }

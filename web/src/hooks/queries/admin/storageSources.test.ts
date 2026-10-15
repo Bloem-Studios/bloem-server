@@ -129,6 +129,35 @@ describe("storage source mutations", () => {
     adminContext.scope = "platform";
   });
 
+  it("discover raises no toast when the caller reports the outcome itself", async () => {
+    const { toast } = await import("sonner");
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(toast.error).mockClear();
+    adminV2Api.mockResolvedValue({ source });
+    const quiet = renderHook(() => useDiscoverStorageSource(), { wrapper });
+    await quiet.result.current.mutateAsync({
+      artifactKey: "a",
+      providerSourceId: "p",
+      config: {},
+      silent: true,
+    });
+    adminV2Api.mockRejectedValue(new AdminV2ClientError(500, "internal", "raw server text"));
+    await expect(
+      quiet.result.current.mutateAsync({
+        artifactKey: "a",
+        providerSourceId: "p",
+        config: {},
+        silent: true,
+      }),
+    ).rejects.toBeInstanceOf(AdminV2ClientError);
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+    // Without the flag, the existing behaviour is unchanged.
+    adminV2Api.mockResolvedValue({ source });
+    await quiet.result.current.mutateAsync({ artifactKey: "a", providerSourceId: "p", config: {} });
+    expect(toast.success).toHaveBeenCalledWith("Storage source added");
+  });
+
   it("lists buckets from the active scope and returns only the names", async () => {
     adminV2Api.mockResolvedValue({ buckets: [{ name: "movies" }, { name: "television" }] });
     const { result } = renderHook(() => useListS3Buckets(), { wrapper });
