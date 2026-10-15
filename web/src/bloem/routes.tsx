@@ -16,6 +16,7 @@ import {
   OrganizationOverviewPage,
   PeoplePage,
   PolicyDecisionsPage,
+  StorageSourcesPage,
   DirectAccountPolicyBulkPage,
   DirectAccountsPage,
   EngagementPage,
@@ -74,6 +75,7 @@ export const bloemAdminContextRoutes = (
         }
       />
       <Route path="organization/policy-decisions" element={<PolicyDecisionsPage />} />
+      <Route path="organization/storage" element={<StorageSourcesPage />} />
       <Route path="organization/activity" element={<ActivityAuditPage />} />
       <Route path="organization/*" element={<Navigate to="/admin/organization" replace />} />
     </Route>

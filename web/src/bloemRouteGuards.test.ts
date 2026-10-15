@@ -65,6 +65,12 @@ describe("Bloem administrative route ownership", () => {
   it("places engagement authoring exclusively under platform authority", () => {
     expect(routeGuards().get("platform/engagement")).toEqual(["PlatformContextGuard"]);
   });
+  it("places organization storage sources exclusively under organization authority", () => {
+    expect(routeGuards().get("organization/storage")).toEqual(["OrganizationContextGuard"]);
+  });
+  it("keeps the platform Plugins page under platform authority only", () => {
+    expect(routeGuards().get("plugins")).toEqual(["PlatformContextGuard"]);
+  });
   it("places audit exclusively under organization authority", () => {
     expect(routeGuards().get("organization/activity")).toEqual(["OrganizationContextGuard"]);
   });

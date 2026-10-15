@@ -4,6 +4,7 @@ import {
   CalendarClock,
   FileKey2,
   GitBranch,
+  HardDrive,
   Library,
   Radio,
   ScrollText,
@@ -57,6 +58,13 @@ export const ORGANIZATION_ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
         keywords: ["libraries", "entitlements", "media ceiling"],
         icon: Library,
         href: "/admin/organization/libraries",
+      },
+      {
+        label: "Storage sources",
+        description: "S3-compatible buckets this organization reads its ebooks from.",
+        keywords: ["storage", "s3", "buckets", "sources", "ebooks"],
+        icon: HardDrive,
+        href: "/admin/organization/storage",
       },
       {
         label: "Invitations",

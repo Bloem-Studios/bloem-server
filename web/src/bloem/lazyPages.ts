@@ -20,6 +20,9 @@ export const OrganizationOverviewPage = lazy(
   () => import("@/pages/admin-organization/OrganizationOverviewPage"),
 );
 export const PeoplePage = lazy(() => import("@/pages/admin-organization/PeoplePage"));
+export const StorageSourcesPage = lazy(
+  () => import("@/pages/admin-organization/StorageSourcesPage"),
+);
 export const PolicyDecisionsPage = lazy(
   () => import("@/pages/admin-organization/PolicyDecisionsPage"),
 );
