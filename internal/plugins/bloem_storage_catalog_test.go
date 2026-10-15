@@ -13,6 +13,7 @@ import (
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 type storageCatalogTransport func(*http.Request) (*http.Response, error)
@@ -83,7 +84,7 @@ func TestNativeCatalogS3RequiresPinnedDigest(t *testing.T) {
 
 func TestNativeCatalogAdmitsPinnedS3AndFlagsCatalog(t *testing.T) {
 	checksum := strings.Repeat("c", 64)
-	registry := &NativeStorageRegistry{baseDir: t.TempDir(), approved: make(map[string]NativeStorageArtifact), pinned: map[pinKey]bool{{pluginID: "bloem.storage.s3", checksum: checksum}: true}}
+	registry := &NativeStorageRegistry{baseDir: t.TempDir(), approved: make(map[string]NativeStorageArtifact), pinned: s3Pins(t, "0.3.2", checksum)}
 	registry.catalogClient = catalogFixture(t, s3Spec, "0.3.2", checksum)
 	if err := registry.RefreshCatalog(context.Background()); err != nil {
 		t.Fatal(err)
@@ -111,7 +112,8 @@ type catalogRow struct {
 	spec     nativeCatalogSpec
 	version  string
 	checksum string
-	url      string // overrides the well-formed binary URL when set
+	url      string                   // overrides the well-formed binary URL when set
+	manifest *publicv1.PluginManifest // overrides the served manifest.json when set
 }
 
 func catalogFixtureRows(t *testing.T, rows ...catalogRow) *http.Client {
@@ -119,8 +121,11 @@ func catalogFixtureRows(t *testing.T, rows ...catalogRow) *http.Client {
 	var plugins []any
 	manifests := map[string][]byte{}
 	for _, row := range rows {
-		manifest := &publicv1.PluginManifest{PluginId: row.spec.PluginID, Version: row.version, SiloApiVersion: "v1", Checksum: row.checksum,
-			SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}}
+		manifest := row.manifest
+		if manifest == nil {
+			manifest = &publicv1.PluginManifest{PluginId: row.spec.PluginID, Version: row.version, SiloApiVersion: "v1", Checksum: row.checksum,
+				SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}}
+		}
 		raw, err := protojson.Marshal(manifest)
 		if err != nil {
 			t.Fatal(err)
@@ -176,7 +181,7 @@ func TestNativeCatalogMalformedUnpinnedS3RowDoesNotBlockBookwarehouse(t *testing
 func TestNativeCatalogMalformedPinnedS3RowStillFailsClosed(t *testing.T) {
 	checksum := strings.Repeat("f", 64)
 	registry := &NativeStorageRegistry{baseDir: t.TempDir(), approved: make(map[string]NativeStorageArtifact),
-		pinned: map[pinKey]bool{{pluginID: "bloem.storage.s3", checksum: checksum}: true}}
+		pinned: s3Pins(t, "0.3.2", checksum)}
 	registry.catalogClient = catalogFixtureRows(t, catalogRow{spec: s3Spec, version: "0.3.2", checksum: checksum, url: "https://attacker.example/plugin"})
 	if err := registry.RefreshCatalog(context.Background()); err == nil {
 		t.Fatal("malformed pinned S3 row was accepted")
@@ -220,5 +225,124 @@ func TestNativeCatalogDoesNotRepersistCachedUnpinnedS3Records(t *testing.T) {
 	}
 	if strings.Contains(string(persisted), s3Key) || !strings.Contains(string(persisted), bwKey) {
 		t.Fatalf("refresh re-persisted an unpinned S3 record or lost bookwarehouse: %s", persisted)
+	}
+}
+
+// staticS3Manifest is the manifest a host's static approvals file carries for
+// the S3 plugin; the catalog must reuse it rather than the served manifest.json.
+func staticS3Manifest(version, checksum string) *publicv1.PluginManifest {
+	return &publicv1.PluginManifest{PluginId: "bloem.storage.s3", Version: version, SiloApiVersion: "v1", Checksum: checksum,
+		SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}},
+		GlobalConfigSchema: []*publicv1.ConfigSchema{{Key: "connection", Title: "S3 storage connection", JsonSchema: `{"type":"object"}`}}}
+}
+
+// s3Pins pins one statically approved S3 artifact of the given version.
+func s3Pins(t *testing.T, version, checksum string) map[pinKey]NativeStorageArtifact {
+	t.Helper()
+	return newNativeStoragePins(map[string]NativeStorageArtifact{"s3-static": {Manifest: staticS3Manifest(version, checksum), Checksum: checksum, OS: runtime.GOOS, Arch: runtime.GOARCH}})
+}
+
+// servedS3Manifest differs from the static approval in schema and description,
+// as a later or tampered manifest.json on the catalog repository would.
+func servedS3Manifest(version, checksum string) *publicv1.PluginManifest {
+	m := staticS3Manifest(version, checksum)
+	m.GlobalConfigSchema = []*publicv1.ConfigSchema{
+		{Key: "connection", Title: "S3 storage connection", Description: "served description", JsonSchema: `{"type":"object","properties":{"bucket":{"type":"string"}}}`},
+		{Key: "extra", Title: "Extra", JsonSchema: `{"type":"object"}`},
+	}
+	m.Category = "served"
+	return m
+}
+
+func catalogS3Artifact(t *testing.T, registry *NativeStorageRegistry) NativeStorageArtifact {
+	t.Helper()
+	var found []NativeStorageArtifact
+	for key, a := range registry.artifactSnapshot() {
+		if strings.HasPrefix(key, "s3-0.") {
+			found = append(found, a)
+		}
+	}
+	if len(found) != 1 {
+		t.Fatalf("want exactly one S3 catalog artifact, got %d", len(found))
+	}
+	return found[0]
+}
+
+func TestNativeCatalogPinnedS3UsesStaticApprovalManifest(t *testing.T) {
+	checksum := strings.Repeat("3", 64)
+	root := t.TempDir()
+	registry := &NativeStorageRegistry{baseDir: root, approved: make(map[string]NativeStorageArtifact), pinned: s3Pins(t, "0.3.2", checksum)}
+	registry.catalogClient = catalogFixtureRows(t, catalogRow{spec: s3Spec, version: "0.3.2", checksum: checksum, manifest: servedS3Manifest("0.3.2", checksum)})
+	if err := registry.RefreshCatalog(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	want := staticS3Manifest("0.3.2", checksum)
+	if got := catalogS3Artifact(t, registry); !proto.Equal(got.Manifest, want) {
+		t.Fatalf("catalog S3 artifact took the served manifest:\n got %v\nwant %v", got.Manifest, want)
+	}
+	// The persisted record reloads to the static manifest too.
+	reloaded := &NativeStorageRegistry{baseDir: root, approved: make(map[string]NativeStorageArtifact), pinned: s3Pins(t, "0.3.2", checksum)}
+	if err := reloaded.loadCatalog(); err != nil {
+		t.Fatal(err)
+	}
+	if got := catalogS3Artifact(t, reloaded); !proto.Equal(got.Manifest, want) {
+		t.Fatalf("reloaded catalog S3 artifact differs from the static approval: %v", got.Manifest)
+	}
+}
+
+func TestNativeCatalogLoadSubstitutesStaticManifestForCachedS3Record(t *testing.T) {
+	checksum := strings.Repeat("4", 64)
+	root := t.TempDir()
+	raw, err := protojson.Marshal(servedS3Manifest("0.3.2", checksum))
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := catalogArtifactKey(s3Spec, "0.3.2", checksum)
+	cache, _ := json.Marshal(map[string]storageCatalogRecord{key: {Manifest: raw, Checksum: checksum, OS: runtime.GOOS, Arch: runtime.GOARCH,
+		URL: "https://github.com/Bloem-Studios/bloem-plugins/releases/download/s3-v0.3.2/plugin-" + runtime.GOOS + "-" + runtime.GOARCH}})
+	if err := os.WriteFile(filepath.Join(root, "native-catalog.json"), cache, 0600); err != nil {
+		t.Fatal(err)
+	}
+	registry := &NativeStorageRegistry{baseDir: root, approved: make(map[string]NativeStorageArtifact), pinned: s3Pins(t, "0.3.2", checksum)}
+	if err := registry.loadCatalog(); err != nil {
+		t.Fatal(err)
+	}
+	if got := catalogS3Artifact(t, registry); !proto.Equal(got.Manifest, staticS3Manifest("0.3.2", checksum)) {
+		t.Fatalf("cached S3 record kept its own manifest: %v", got.Manifest)
+	}
+}
+
+func TestNativeCatalogSkipsS3RowWhenStaticApprovalVersionDiffers(t *testing.T) {
+	checksum := strings.Repeat("5", 64)
+	good := strings.Repeat("6", 64)
+	registry := &NativeStorageRegistry{baseDir: t.TempDir(), approved: make(map[string]NativeStorageArtifact), pinned: s3Pins(t, "0.3.1", checksum)}
+	registry.catalogClient = catalogFixtureRows(t,
+		catalogRow{spec: s3Spec, version: "0.3.2", checksum: checksum},
+		catalogRow{spec: bookwarehouseSpec, version: "0.2.2", checksum: good})
+	if err := registry.RefreshCatalog(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	got := registry.ApprovedArtifacts()
+	if len(got) != 1 || got[0].PluginID != "bloem.storage.bookwarehouse" {
+		t.Fatalf("S3 row admitted under a static approval of another version: %+v", got)
+	}
+}
+
+func TestNativeCatalogSkipsS3RowWhenServedManifestIdentityDiffers(t *testing.T) {
+	checksum := strings.Repeat("7", 64)
+	for name, served := range map[string]*publicv1.PluginManifest{
+		"checksum": staticS3Manifest("0.3.2", strings.Repeat("8", 64)),
+		"version":  staticS3Manifest("0.3.3", checksum),
+	} {
+		t.Run(name, func(t *testing.T) {
+			registry := &NativeStorageRegistry{baseDir: t.TempDir(), approved: make(map[string]NativeStorageArtifact), pinned: s3Pins(t, "0.3.2", checksum)}
+			registry.catalogClient = catalogFixtureRows(t, catalogRow{spec: s3Spec, version: "0.3.2", checksum: checksum, manifest: served})
+			if err := registry.RefreshCatalog(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			if got := registry.ApprovedArtifacts(); len(got) != 0 {
+				t.Fatalf("S3 row with a mismatched served manifest was admitted: %+v", got)
+			}
+		})
 	}
 }

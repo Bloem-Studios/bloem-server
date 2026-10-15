@@ -17,6 +17,7 @@ import (
 
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 const nativeCatalogURL = "https://raw.githubusercontent.com/Bloem-Studios/bloem-plugins/main/plugins.json"
@@ -40,16 +41,25 @@ type pinKey struct {
 	checksum string
 }
 
-func newNativeStoragePins(approvals map[string]NativeStorageArtifact) map[pinKey]bool {
-	pins := make(map[pinKey]bool, len(approvals))
+// newNativeStoragePins retains each statically approved artifact under its
+// (plugin id, checksum), so a pinned catalog release reuses the approved
+// manifest rather than the one the catalog repository serves.
+func newNativeStoragePins(approvals map[string]NativeStorageArtifact) map[pinKey]NativeStorageArtifact {
+	pins := make(map[pinKey]NativeStorageArtifact, len(approvals))
 	for _, a := range approvals {
-		pins[pinKey{pluginID: a.Manifest.GetPluginId(), checksum: a.Checksum}] = true
+		pins[pinKey{pluginID: a.Manifest.GetPluginId(), checksum: a.Checksum}] = a
 	}
 	return pins
 }
 
+func (r *NativeStorageRegistry) pinnedArtifact(pluginID, checksum string) (NativeStorageArtifact, bool) {
+	a, ok := r.pinned[pinKey{pluginID: pluginID, checksum: checksum}]
+	return a, ok
+}
+
 func (r *NativeStorageRegistry) isPinned(pluginID, checksum string) bool {
-	return r.pinned[pinKey{pluginID: pluginID, checksum: checksum}]
+	_, ok := r.pinnedArtifact(pluginID, checksum)
+	return ok
 }
 
 func nativeCatalogSpecFor(pluginID string) (nativeCatalogSpec, bool) {
@@ -117,8 +127,19 @@ func (r *NativeStorageRegistry) loadCatalog() error {
 		if !ok {
 			return errors.New("invalid native catalog release")
 		}
-		if spec.RequirePinned && !r.isPinned(m.GetPluginId(), record.Checksum) {
-			continue
+		if spec.RequirePinned {
+			// A pinned record carries the statically approved manifest, whatever
+			// the cache holds, so installed-archive admission never depends on it.
+			pinned, ok := r.pinnedArtifact(m.GetPluginId(), record.Checksum)
+			if !ok || pinned.Manifest.GetVersion() != m.GetVersion() {
+				continue
+			}
+			m = proto.CloneOf(pinned.Manifest)
+			raw, err := protojson.Marshal(m)
+			if err != nil {
+				return err
+			}
+			record.Manifest = raw
 		}
 		if key != catalogArtifactKey(spec, m.GetVersion(), record.Checksum) || !storageCatalogURL(spec, record.URL, m.GetVersion(), "plugin-"+record.OS+"-"+record.Arch) {
 			return errors.New("invalid native catalog release")
@@ -225,8 +246,14 @@ func (r *NativeStorageRegistry) RefreshCatalog(ctx context.Context) error {
 		}
 		// Skip unpinned rows before any format validation: a malformed row for
 		// a plugin we would not admit anyway must not abort the whole refresh.
-		if spec.RequirePinned && !r.isPinned(release.ID, binary.Checksum) {
-			continue
+		// A pin is the statically approved artifact, so its version must be the
+		// row's version too.
+		var pinned NativeStorageArtifact
+		if spec.RequirePinned {
+			var ok bool
+			if pinned, ok = r.pinnedArtifact(release.ID, binary.Checksum); !ok || pinned.Manifest.GetVersion() != release.Version {
+				continue
+			}
 		}
 		if !storageCatalogURL(spec, binary.URL, release.Version, "plugin-"+runtime.GOOS+"-"+runtime.GOARCH) {
 			return errors.New("invalid native catalog URL")
@@ -240,7 +267,17 @@ func (r *NativeStorageRegistry) RefreshCatalog(ctx context.Context) error {
 			return e
 		}
 		m := new(publicv1.PluginManifest)
-		if protojson.Unmarshal(b, m) != nil || m.GetPluginId() != release.ID || m.GetVersion() != release.Version {
+		parseErr := protojson.Unmarshal(b, m)
+		if spec.RequirePinned {
+			// The served manifest is only a sanity check: a pinned release always
+			// uses the statically approved manifest, so the catalog repository can
+			// change neither its schema nor its metadata, and an installed archive
+			// stays admissible without this cache.
+			if parseErr != nil || m.GetPluginId() != release.ID || m.GetVersion() != release.Version || m.GetChecksum() != binary.Checksum {
+				continue
+			}
+			m = proto.CloneOf(pinned.Manifest)
+		} else if parseErr != nil || m.GetPluginId() != release.ID || m.GetVersion() != release.Version {
 			return errors.New("invalid native catalog manifest")
 		}
 		m.Checksum = binary.Checksum

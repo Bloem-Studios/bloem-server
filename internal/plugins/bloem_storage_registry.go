@@ -51,7 +51,7 @@ type NativeStorageRegistry struct {
 	configs          *RuntimeConfigStore
 	baseDir          string
 	approved         map[string]NativeStorageArtifact
-	pinned           map[pinKey]bool // (plugin id, checksum) of statically approved artifacts
+	pinned           map[pinKey]NativeStorageArtifact // statically approved artifacts by (plugin id, checksum)
 	catalogMu        sync.RWMutex
 	catalogRefreshMu sync.Mutex
 	catalogRecords   map[string]storageCatalogRecord
