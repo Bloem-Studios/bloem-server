@@ -33,12 +33,13 @@ type bloemClientSurface struct {
 	// identity answers the public probe. It is separate from the capability
 	// document because it can legitimately be unavailable; see
 	// handlers.ServerIdentityHandler.
-	identity *handlers.ServerIdentityHandler
-	watch    *handlers.WatchHandler
-	progress *handlers.ProgressHandler
-	persons  *handlers.PersonDetailHandler
-	music    *handlers.MusicHandler
-	liveTV   *handlers.LiveTVHandler
+	identity     *handlers.ServerIdentityHandler
+	watch        *handlers.WatchHandler
+	previewWatch *handlers.WatchHandler
+	progress     *handlers.ProgressHandler
+	persons      *handlers.PersonDetailHandler
+	music        *handlers.MusicHandler
+	liveTV       *handlers.LiveTVHandler
 
 	// itemCollections answers "which collections hold this title" for a
 	// detail page's "Part of a collection" row.
@@ -134,6 +135,8 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 			searchProvider,
 		)
 		surface.watch = handlers.NewWatchHandler(watchReader, watchReader)
+		previewReader := watchReader.PreviewReadOnly()
+		surface.previewWatch = handlers.NewWatchHandler(previewReader, previewReader)
 	}
 
 	// The person-detail document needs only the people repository; it does not
@@ -284,9 +287,10 @@ func (s bloemClientSurface) mount(r chi.Router) {
 		}
 		if s.watch != nil {
 			r.Route("/watch", func(r chi.Router) {
-				r.Get("/home", s.watch.HandleWatchHome)
-				r.Get("/items/{content_id}", s.watch.HandleWatchItem)
-				r.Get("/search", s.watch.HandleWatchSearch)
+
+				r.Get("/home", bloemPreviewWatchDocument(s.watch.HandleWatchHome, s.previewWatch.HandleWatchHome))
+				r.Get("/items/{content_id}", bloemPreviewWatchDocument(s.watch.HandleWatchItem, s.previewWatch.HandleWatchItem))
+				r.Get("/search", bloemPreviewWatchDocument(s.watch.HandleWatchSearch, s.previewWatch.HandleWatchSearch))
 			})
 		}
 		if s.progress != nil {
@@ -316,4 +320,14 @@ func denyLiveTVAdmin(http.Handler) http.Handler {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		_, _ = w.Write([]byte("{\"error\":\"admin_unavailable\",\"message\":\"Live TV administration is unavailable\"}\n"))
 	})
+}
+
+func bloemPreviewWatchDocument(ordinary, preview http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if apimw.IsPreviewPrincipal(r.Context()) {
+			preview(w, r)
+			return
+		}
+		ordinary(w, r)
+	}
 }

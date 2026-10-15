@@ -69,6 +69,20 @@
             },
             "type": "array"
           },
+          "playback_allowed": {
+            "description": "Whether the effective account policy permits playback.",
+            "type": "boolean"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BloemPreviewPresentation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "role": {
             "description": "Server-wide role",
             "enum": [
@@ -21074,6 +21088,70 @@
         ],
         "type": "object"
       },
+      "BloemPreviewDenial": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "preview_only"
+            ],
+            "type": "string"
+          },
+          "cta_label": {
+            "type": "string"
+          },
+          "cta_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "cta_url",
+          "cta_label"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewPresentation": {
+        "additionalProperties": false,
+        "properties": {
+          "cta_label": {
+            "type": "string"
+          },
+          "cta_url": {
+            "type": "string"
+          },
+          "ends_at": {
+            "description": "Absolute guest session expiry, or the personal end date supplied by the storefront; null until supplied.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "guest",
+              "personal"
+            ],
+            "type": "string"
+          },
+          "launch_url": {
+            "type": "string"
+          },
+          "storefront_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ends_at",
+          "cta_url",
+          "cta_label",
+          "storefront_url",
+          "launch_url"
+        ],
+        "type": "object"
+      },
       "BrandingCapabilitiesOutputBody": {
         "additionalProperties": false,
         "properties": {
@@ -37708,6 +37786,9 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "denial": {
+            "$ref": "#/components/schemas/BloemPreviewDenial"
           },
           "features": {
             "items": {

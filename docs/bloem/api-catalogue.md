@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 858 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v1` | 196 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v1` | 209 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -154,6 +154,16 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts` | `listBloemPlatformOrganizationEntitlementCohorts` | List organization entitlement cohorts. |
 | `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}` | `getBloemPlatformOrganizationEntitlementCohort` | Read one organization entitlement cohort. |
 | `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots` | `readBloemOrganizationAccountPolicySnapshots` | Read bounded account policy snapshots in one observation. |
+| `POST /api/bloem/v1/admin/platform/preview/account` | `ensureBloemPreviewAccount` | Ensure the issuer's shared preview account and primary profile. |
+| `PUT /api/bloem/v1/admin/platform/preview/accounts/{account_id}/presentation` | `setBloemPreviewPersonalPresentation` | Set the personal preview end date for display. |
+| `GET /api/bloem/v1/admin/platform/preview/capacity` | `getBloemPreviewCapacity` | Read private guest capacity and account readiness. |
+| `GET /api/bloem/v1/admin/platform/preview/catalog` | `searchBloemPreviewCatalog` | Find metadata visible to the preview for a showcase picker. |
+| `PUT /api/bloem/v1/admin/platform/preview/keys` | `rotateBloemPreviewKeys` | Replace the Ed25519 launch-key allowlist. |
+| `PUT /api/bloem/v1/admin/platform/preview/libraries` | `setBloemPreviewLibraries` | Revise the preview library selection and reapply it atomically. |
+| `DELETE /api/bloem/v1/admin/platform/preview/sessions` | `revokeBloemPreviewSessions` | Revoke all guest sessions without disabling the preview. |
+| `GET /api/bloem/v1/admin/platform/preview/settings` | `getBloemPreviewSettings` | Read preview settings and public launch keys. |
+| `PUT /api/bloem/v1/admin/platform/preview/settings` | `updateBloemPreviewSettings` | Merge explicitly supplied preview settings. |
+| `POST /api/bloem/v1/admin/platform/preview/verify` | `verifyBloemPreviewTicket` | Verify a freshly signed launch ticket without consuming it. |
 | `GET /api/bloem/v1/admin/platform/promotions/` | `listBloemPlatformPromotions` | List platform-managed campaigns and supported delivery surfaces. |
 | `POST /api/bloem/v1/admin/platform/promotions/` | `createBloemPlatformPromotion` | Create a registry entry. |
 | `DELETE /api/bloem/v1/admin/platform/promotions/{id}` | `deleteBloemPlatformPromotion` | Delete a registry entry. |
@@ -214,6 +224,9 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v1/notifications/{id}` | `getBloemNotification` | One inbox row. Another profile's row is absent, not forbidden. |
 | `GET /api/bloem/v1/organizations` | `listBloemOrganizations` | The organizations this account belongs to. |
 | `GET /api/bloem/v1/persons/{person_id}` | `getBloemPersonDetail` | One person and their credits, filtered to what this viewer may see. |
+| `POST /api/bloem/v1/preview/events` | `recordBloemPreviewEvent` | Increment a daily aggregate preview counter. |
+| `POST /api/bloem/v1/preview/sessions` | `createBloemPreviewGuestSession` | Exchange a signed launch ticket for a bounded guest session. |
+| `GET /api/bloem/v1/preview/status` | `getBloemPreviewPublicStatus` | Discover preview availability and host-specific presentation. |
 | `DELETE /api/bloem/v1/profile-credentials/{id}` | `clearBloemProfileCredentials` | Clear direct-profile login credentials. |
 | `GET /api/bloem/v1/profile-credentials/{id}` | `getBloemProfileCredentials` | Read direct-profile credential status without exposing a password or hash. |
 | `PUT /api/bloem/v1/profile-credentials/{id}` | `setBloemProfileCredentials` | Set or replace direct-profile login credentials. |

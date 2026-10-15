@@ -314,6 +314,21 @@ The safe workflow, in short: create or pick a template → create a new revision
 on the organisation or account page choose the exact revision → **Preview** → read the diff →
 **Confirm** within ten minutes. The full guide is [Entitlement Templates](admin/entitlement-templates.md).
 
+#### Browse-only previews
+
+The protected **Preview** entitlement lets a prospect browse selected libraries,
+descriptions, series, seasons and episodes. Playback, reading, downloads and
+personal changes are refused. Unlike an ordinary policy with playback disabled,
+the protected preview policy also restricts credentials and catalogue responses.
+
+For a public web preview, configure the companion Garden application's library
+preview integration with a separate preview host. Garden issues short-lived
+launch links; the server exchanges each ticket once for a bounded guest session.
+Keep the normal subscriber host separate. Server setup uses the scoped preview
+administration API; see the [API reference](../bloem-api-reference.md#preview-guest-sessions)
+and the [security contract](../architecture/bloem-browse-only-content-policy.md).
+Source publication alone does not configure hosts or enable the preview.
+
 ### 2.7 Settings
 
 **Admin → Settings** is organised into pages. The ones you will actually touch:

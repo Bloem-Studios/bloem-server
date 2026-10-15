@@ -51,7 +51,11 @@ func (v bloemOrgRevocationViewer) Resolve(ctx context.Context, input access.Reso
 			return access.Scope{}, access.ErrProfileNotFound
 		}
 	}
-	return v.inner.Resolve(ctx, input)
+	scope, err := v.inner.Resolve(ctx, input)
+	if err != nil {
+		return access.Scope{}, err
+	}
+	return narrowBloemPreviewScope(ctx, v.pool, scope)
 }
 
 // sessionProfileOrganizationRevoked reports whether the account-login session

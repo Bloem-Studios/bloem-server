@@ -4444,6 +4444,351 @@
         ],
         "type": "object"
       },
+      "BloemPreviewAccountOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "account_id"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewCatalogOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogItem"
+            },
+            "maxItems": 50,
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewEventInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "event": {
+            "enum": [
+              "cta_shown",
+              "cta_clicked",
+              "session_ended"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "event"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewIssuerInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "issuer": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "issuer"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewKeysInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "issuer": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "public_keys": {
+            "description": "Distinct base64-encoded 32-byte Ed25519 public keys. Replaces the current allowlist; two keys permit overlap during rotation.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 2,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "issuer",
+          "public_keys"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewLibrariesInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "issuer": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "library_ids": {
+            "description": "An empty array grants no libraries. All IDs must exist and be enabled.",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          }
+        },
+        "required": [
+          "issuer",
+          "library_ids"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewLibrariesOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "template_revision": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "template_revision"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewPersonalPresentationInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "ends_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "issuer": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "issuer",
+          "ends_at"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewPublicStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "type": "string"
+          },
+          "cta_label": {
+            "type": "string"
+          },
+          "cta_url": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "launch_url": {
+            "type": "string"
+          },
+          "storefront_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewSession": {
+        "additionalProperties": false,
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expires_in": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "item": {
+            "description": "Initial catalog item verified from the signed launch ticket; empty when absent.",
+            "type": "string"
+          },
+          "ref": {
+            "description": "Referral verified from the signed launch ticket; empty when absent.",
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "token_type": {
+            "enum": [
+              "Bearer"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "refresh_token",
+          "token_type",
+          "expires_in",
+          "expires_at",
+          "item",
+          "ref"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewSessionInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "refresh_token": {
+            "description": "The current guest refresh token, if any. A valid token may reuse its bounded guest session.",
+            "type": "string",
+            "writeOnly": true
+          },
+          "ticket": {
+            "minLength": 1,
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "ticket"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewSettingsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "account_id": {
+            "format": "int64",
+            "readOnly": true,
+            "type": "integer"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "cta_label": {
+            "type": "string"
+          },
+          "cta_url": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "host": {
+            "type": "string"
+          },
+          "idle_ttl_seconds": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "launch_url": {
+            "type": "string"
+          },
+          "maturity_ceiling": {
+            "type": "string"
+          },
+          "max_concurrent": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "session_ttl_seconds": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "storefront_url": {
+            "type": "string"
+          },
+          "ticket_public_keys": {
+            "items": {
+              "type": "string"
+            },
+            "readOnly": true,
+            "type": "array"
+          }
+        },
+        "required": [
+          "enabled",
+          "host",
+          "issuer",
+          "account_id",
+          "ticket_public_keys",
+          "session_ttl_seconds",
+          "idle_ttl_seconds",
+          "max_concurrent",
+          "brand",
+          "cta_url",
+          "cta_label",
+          "storefront_url",
+          "launch_url",
+          "maturity_ceiling"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewVerifyInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "ticket": {
+            "minLength": 1,
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "ticket"
+        ],
+        "type": "object"
+      },
+      "BloemPreviewVerifyOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "account_ready": {
+            "type": "boolean"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "item": {
+            "type": "string"
+          },
+          "valid": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "account_ready",
+          "item",
+          "expires_at"
+        ],
+        "type": "object"
+      },
       "BloemProfileCredentialClearBody": {
         "additionalProperties": false,
         "properties": {
@@ -5125,6 +5470,61 @@
           "allowed",
           "available",
           "heartbeat_interval_seconds"
+        ],
+        "type": "object"
+      },
+      "Capacity": {
+        "additionalProperties": false,
+        "properties": {
+          "account_ready": {
+            "type": "boolean"
+          },
+          "active": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "maximum": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "account_ready",
+          "active",
+          "maximum"
+        ],
+        "type": "object"
+      },
+      "CatalogItem": {
+        "additionalProperties": false,
+        "properties": {
+          "content_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "overview": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "year": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "content_id",
+          "kind",
+          "title",
+          "year",
+          "overview"
         ],
         "type": "object"
       },
@@ -7972,6 +8372,54 @@
         },
         "required": [
           "mode"
+        ],
+        "type": "object"
+      },
+      "SettingsPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "type": "string"
+          },
+          "cta_label": {
+            "type": "string"
+          },
+          "cta_url": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "host": {
+            "type": "string"
+          },
+          "idle_ttl_seconds": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "launch_url": {
+            "type": "string"
+          },
+          "maturity_ceiling": {
+            "type": "string"
+          },
+          "max_concurrent": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "session_ttl_seconds": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "storefront_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "issuer"
         ],
         "type": "object"
       },
@@ -25612,6 +26060,891 @@
         ]
       }
     },
+    "/api/bloem/v1/admin/platform/preview/account": {
+      "post": {
+        "description": "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable. JSON bodies are capped at 16 KiB and unknown fields are refused. Setup is atomic and idempotent. A reserved name collision or second issuer is refused. Password sign-in is disabled and the protected preview template is applied.",
+        "operationId": "ensureBloemPreviewAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemPreviewIssuerInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPreviewAccountOutputBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Invalid preview configuration or payload."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or preview_ticket_invalid."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_setup_conflict or preview_not_configured."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_unavailable: storage or authority unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Ensure the issuer's shared preview account and primary profile.",
+        "tags": [
+          "preview"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/preview/accounts/{account_id}/presentation": {
+      "put": {
+        "description": "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable. JSON bodies are capped at 16 KiB and unknown fields are refused. Only current personal preview accounts can be targeted. This metadata does not expire an account; the storefront owns expiration. A null ends_at clears the date.",
+        "operationId": "setBloemPreviewPersonalPresentation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemPreviewPersonalPresentationInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Invalid preview configuration or payload."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or preview_ticket_invalid."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_setup_conflict or preview_not_configured."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_unavailable: storage or authority unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Set the personal preview end date for display.",
+        "tags": [
+          "preview"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/preview/capacity": {
+      "get": {
+        "description": "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable. JSON bodies are capped at 16 KiB and unknown fields are refused.",
+        "operationId": "getBloemPreviewCapacity",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Capacity"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Invalid preview configuration or payload."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or preview_ticket_invalid."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_setup_conflict or preview_not_configured."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_unavailable: storage or authority unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read private guest capacity and account readiness.",
+        "tags": [
+          "preview"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/preview/catalog": {
+      "get": {
+        "description": "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable. JSON bodies are capped at 16 KiB and unknown fields are refused. Keyword and provider-ID lookup apply the selected enabled libraries and maturity ceiling. Provider and provider_id must appear together. No external calls, file preparation or grants are involved.",
+        "operationId": "searchBloemPreviewCatalog",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "query",
+            "schema": {
+              "maxLength": 256,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "provider",
+            "schema": {
+              "enum": [
+                "tmdb",
+                "imdb",
+                "tvdb"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "provider_id",
+            "schema": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPreviewCatalogOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Invalid preview configuration or payload."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or preview_ticket_invalid."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_setup_conflict or preview_not_configured."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_unavailable: storage or authority unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Find metadata visible to the preview for a showcase picker.",
+        "tags": [
+          "preview"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/preview/keys": {
+      "put": {
+        "description": "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable. JSON bodies are capped at 16 KiB and unknown fields are refused.",
+        "operationId": "rotateBloemPreviewKeys",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemPreviewKeysInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Invalid preview configuration or payload."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or preview_ticket_invalid."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_setup_conflict or preview_not_configured."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_unavailable: storage or authority unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Replace the Ed25519 launch-key allowlist.",
+        "tags": [
+          "preview"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/preview/libraries": {
+      "put": {
+        "description": "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable. JSON bodies are capped at 16 KiB and unknown fields are refused.",
+        "operationId": "setBloemPreviewLibraries",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemPreviewLibrariesInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPreviewLibrariesOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Invalid preview configuration or payload."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or preview_ticket_invalid."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_setup_conflict or preview_not_configured."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_unavailable: storage or authority unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Revise the preview library selection and reapply it atomically.",
+        "tags": [
+          "preview"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/preview/sessions": {
+      "delete": {
+        "description": "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable. JSON bodies are capped at 16 KiB and unknown fields are refused. The issuer JSON body is required even for DELETE.",
+        "operationId": "revokeBloemPreviewSessions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemPreviewIssuerInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Invalid preview configuration or payload."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or preview_ticket_invalid."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_setup_conflict or preview_not_configured."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_unavailable: storage or authority unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Revoke all guest sessions without disabling the preview.",
+        "tags": [
+          "preview"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/preview/settings": {
+      "get": {
+        "description": "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable. JSON bodies are capped at 16 KiB and unknown fields are refused.",
+        "operationId": "getBloemPreviewSettings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPreviewSettingsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Invalid preview configuration or payload."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or preview_ticket_invalid."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_setup_conflict or preview_not_configured."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_unavailable: storage or authority unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read preview settings and public launch keys.",
+        "tags": [
+          "preview"
+        ]
+      },
+      "put": {
+        "description": "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable. JSON bodies are capped at 16 KiB and unknown fields are refused. Account ID and signing keys are read-only here. The existing issuer cannot change. Canonical and served hosts are refused; links require HTTPS without credentials. Turning enabled off revokes guests.",
+        "operationId": "updateBloemPreviewSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Invalid preview configuration or payload."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or preview_ticket_invalid."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_setup_conflict or preview_not_configured."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_unavailable: storage or authority unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Merge explicitly supplied preview settings.",
+        "tags": [
+          "preview"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/preview/verify": {
+      "post": {
+        "description": "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable. JSON bodies are capped at 16 KiB and unknown fields are refused.",
+        "operationId": "verifyBloemPreviewTicket",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemPreviewVerifyInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPreviewVerifyOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Invalid preview configuration or payload."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or preview_ticket_invalid."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_setup_conflict or preview_not_configured."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_unavailable: storage or authority unavailable."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Verify a freshly signed launch ticket without consuming it.",
+        "tags": [
+          "preview"
+        ]
+      }
+    },
     "/api/bloem/v1/admin/platform/promotions/": {
       "get": {
         "description": "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority.",
@@ -33577,6 +34910,238 @@
           "catalog"
         ],
         "x-silo-class": "profile_scoped"
+      }
+    },
+    "/api/bloem/v1/preview/events": {
+      "post": {
+        "description": "Requires an authenticated preview session; ordinary accounts and API keys are refused. Accepts exactly one JSON object with one allowlisted event field, capped at 1 KiB. Counters retain only UTC day, event name and count; no identity or arbitrary payload. Per-process session limit: one per ten seconds, burst three. Aggregate limit: five per second, burst twenty. Retries increment again.",
+        "operationId": "recordBloemPreviewEvent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemPreviewEventInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Invalid event or extra fields."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The authenticated caller lacks the required authority or profile verification."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: preview event budget exhausted.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "The feature or its authority dependencies are unavailable."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Increment a daily aggregate preview counter.",
+        "tags": [
+          "preview"
+        ],
+        "x-silo-retry-safety": "non_retryable"
+      }
+    },
+    "/api/bloem/v1/preview/sessions": {
+      "post": {
+        "description": "Public ticket exchange on the configured preview host only. Accepts a JSON body up to 16 KiB. The Ed25519 ticket must match the issuer, server identity audience and host and be unexpired and unused. Consumes its ticket ID atomically. An existing valid guest refresh token may reuse a session without extending its absolute lifetime. Responses are not cacheable. The per-client exchange budget is twenty per hour; guest capacity and per-client eviction remain server-controlled.",
+        "operationId": "createBloemPreviewGuestSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemPreviewSessionInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPreviewSession"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: a launch ticket is required in a valid bounded JSON body."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_ticket_invalid: the ticket is invalid, expired or already consumed."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_unavailable: preview is disabled or the request used another host."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "rate_limited: too many starts for this client.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the preview session could not start."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "preview_busy: guest capacity is exhausted.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds before retrying.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Exchange a signed launch ticket for a bounded guest session.",
+        "tags": [
+          "preview"
+        ],
+        "x-silo-retry-safety": "non_retryable"
+      }
+    },
+    "/api/bloem/v1/preview/status": {
+      "get": {
+        "description": "Public and not cacheable. Returns enabled on all served hosts. Only the configured preview host receives brand and storefront, launch and subscription links, even when disabled. Never exposes capacity, keys or account identity.",
+        "operationId": "getBloemPreviewPublicStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPreviewPublicStatus"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unavailable: preview status could not be read."
+          }
+        },
+        "security": [],
+        "summary": "Discover preview availability and host-specific presentation.",
+        "tags": [
+          "preview"
+        ]
       }
     },
     "/api/bloem/v1/profile-credentials/{id}": {

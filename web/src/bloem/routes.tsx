@@ -1,8 +1,8 @@
+import PreviewItemCampaigns from "./preview/PreviewItemCampaigns";
 // Bloem routes and route wrappers, spliced into the Silo-owned App.tsx route
 // table at single insertion points so App.tsx stays close to upstream.
 import { Suspense, type ComponentType, type ReactElement, type ReactNode } from "react";
 import { Navigate, Route } from "react-router";
-import { ItemCampaigns } from "@/components/engagement/CampaignPlacements";
 import { OrganizationContextGuard } from "@/contexts/AdminContextProvider";
 import { AdminContextRedirect, AdminContextSelection } from "./BloemAdminShell";
 import {
@@ -96,5 +96,5 @@ export function withDirectProfileCredentials(settings: ReactElement) {
 
 /** Item detail wrapped with engagement campaign placements. */
 export function withItemCampaigns(detail: ReactElement) {
-  return <ItemCampaigns>{detail}</ItemCampaigns>;
+  return <PreviewItemCampaigns>{detail}</PreviewItemCampaigns>;
 }

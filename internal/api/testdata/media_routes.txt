@@ -1142,6 +1142,16 @@ PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-s
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
 TRACE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
+POST /api/bloem/v1/admin/platform/preview/account	non-media
+PUT /api/bloem/v1/admin/platform/preview/accounts/{account_id}/presentation	non-media
+GET /api/bloem/v1/admin/platform/preview/capacity	non-media
+GET /api/bloem/v1/admin/platform/preview/catalog	non-media
+PUT /api/bloem/v1/admin/platform/preview/keys	non-media
+PUT /api/bloem/v1/admin/platform/preview/libraries	non-media
+DELETE /api/bloem/v1/admin/platform/preview/sessions	non-media
+GET /api/bloem/v1/admin/platform/preview/settings	non-media
+PUT /api/bloem/v1/admin/platform/preview/settings	non-media
+POST /api/bloem/v1/admin/platform/preview/verify	non-media
 GET /api/bloem/v1/admin/platform/promotions/	non-media
 POST /api/bloem/v1/admin/platform/promotions/	non-media
 DELETE /api/bloem/v1/admin/platform/promotions/{id}	non-media

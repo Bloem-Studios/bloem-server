@@ -13,6 +13,7 @@ import (
 // Dependencies. Fields are promoted, so callers still set deps.TenantIdentity
 // and deps.StreamTokens directly.
 type bloemDependencies struct {
+	PreviewPresentation PreviewPresentationSource
 	// TenantIdentity revalidates tenant selection after authentication and before policy.
 	TenantIdentity func(http.Handler) http.Handler
 	StreamTokens   func(http.Handler) http.Handler

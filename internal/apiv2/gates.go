@@ -55,6 +55,10 @@ func classGate(deps Dependencies) func(huma.Context, func(huma.Context)) {
 		if attach, _ := op.Metadata[metaAttachSession].(bool); attach && class == ClassPublic && deps.Auth != nil {
 			chain = append(chain, deps.Auth.AttachSession)
 		}
+		if class != ClassPublic && missing == "" {
+			// Bloem: preview principals run listed operations only.
+			chain = append(chain, previewGate(op.OperationID))
+		}
 		r, w := humachi.Unwrap(ctx)
 		if missing != "" {
 			// A gate the class needs is not wired. Fail closed with a typed
@@ -172,6 +176,12 @@ func rateLimiter(deps Dependencies, bucket string) func(http.Handler) http.Handl
 func runChain(ctx huma.Context, next func(huma.Context), chain []func(http.Handler) http.Handler) {
 	r, w := humachi.Unwrap(ctx)
 	var h http.Handler = http.HandlerFunc(func(_ http.ResponseWriter, r2 *http.Request) {
+		if apimw.IsPreviewPrincipal(r2.Context()) {
+			apimw.PreviewResponses(http.HandlerFunc(func(w2 http.ResponseWriter, r3 *http.Request) {
+				next(humachi.NewContext(ctx.Operation(), r3, w2))
+			})).ServeHTTP(w, r2)
+			return
+		}
 		next(huma.WithContext(ctx, r2.Context()))
 	})
 	for i := len(chain) - 1; i >= 0; i-- {
@@ -250,6 +260,10 @@ func (d *denialWriter) Write(p []byte) (int, error) {
 // Retry-After is carried over on 429 and 503; the legacy X-RateLimit-* fields
 // are not part of v2 and are dropped.
 func (d *denialWriter) problem() *Problem {
+	if d.reason == apimw.ReasonPreviewOnly {
+		return NewProblem(TypePermissionDenied, "This is not available in the preview.").
+			WithHeader("X-Bloem-Denial", apimw.CodePreviewOnly)
+	}
 	var legacy struct {
 		Error   string `json:"error"`
 		Message string `json:"message"`

@@ -406,6 +406,7 @@ func NewRouter(deps Dependencies) http.Handler {
 // reachable from its body.
 func newChiRouter(deps Dependencies) chi.Router {
 	deps = nativeStorageDependencies(deps)
+	deps.ImageResolver = catalog.BloemPreviewImages(deps.ImageResolver, deps.DB)
 	declareNativeMediaRoutes()
 	r := chi.NewRouter()
 	r.Use(captureNativeVideoRequest)
@@ -666,6 +667,13 @@ func newChiRouter(deps Dependencies) chi.Router {
 		// place claims are resolved, so a route is out of reach until
 		// directProfileAllowedRoutes names it.
 		authMiddleware.SetDirectProfileRouteGuard(newDirectProfileRouteGuard(r.Match))
+		// Bloem: preview principals browse and nothing else (bloem_preview_routes.go).
+		authMiddleware.SetPreviewPrincipals(sessionRepo)
+		authMiddleware.SetPreviewRouteGuard(newPreviewRouteGuard(r.Match))
+		if source := bloemPreviewReaderSource(deps); source != nil {
+			authMiddleware.SetPreviewGuests(source, apimw.NewPreviewGuestLimiter())
+		}
+
 		if deps.UserStoreProvider != nil {
 			if deps.PolicySystem != nil {
 				viewerResolver = policy.NewViewerResolver(userRepo, deps.UserStoreProvider, profileTokenService, deps.PolicySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))
@@ -2362,7 +2370,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	wireBloemRouter(r, deps, tenantMiddleware, bloemLifecycleTargets{
 		auth: authHandler, requests: requestHandler, profiles: profileHandler,
 		settingValues: settingValuesHandler, admin: adminHandler, tenants: adminTenantsHandler, members: adminTenantMembersHandler,
-	}, authMiddleware, catalogSearchService.Provider(), requireActingAdmin)
+	}, authMiddleware, catalog.BloemPreviewSearch(catalogSearchService.Provider(), itemRepo), requireActingAdmin)
 
 	// The native v2 API. The subtree is handed to the sealed apiv2 listener
 	// with a single wildcard registration the route inventory records as a
@@ -2587,7 +2595,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// a typed nil must not become a non-nil interface, so each is set only
 	// when the v1 handler exists.
 	if authHandler != nil {
-		v2deps.Accounts = authHandler
+		v2deps.Accounts = bloemPreviewAccounts(authHandler)
+		if deps.DB != nil && viewerResolver != nil {
+			v2deps.PreviewPresentation = bloemPreviewPresentation{pool: deps.DB, viewer: viewerResolver}
+		}
 		v2deps.Devices = authHandler
 		v2deps.Sessions = authHandler
 		v2deps.PluginLaunch = authHandler
@@ -2958,10 +2969,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.CatalogAccess = itemsHandler
 	}
 	if catalogHandler != nil {
-		v2deps.CatalogBrowse = catalogHandler
+		v2deps.CatalogBrowse = handlers.BloemPreviewBrowse{CatalogHandler: catalogHandler}
 	}
 	if catalogResourceHandler != nil {
-		v2deps.CatalogItems = catalogResourceHandler
+		v2deps.CatalogItems = handlers.BloemPreviewCatalog{CatalogResourceHandler: catalogResourceHandler}
 	}
 	if shuffleService != nil {
 		v2deps.Shuffles = shuffleService
@@ -4879,6 +4890,9 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 		r.Use(clientip.Middleware(deps.ClientIPResolver))
 	}
 
+	// Bloem: the preview host serves guests only (bloem_preview_host.go).
+	useBloemPreviewHost(r, deps)
+
 	// Ingress token from network access provider plugins: validated and
 	// stripped before anything can log or forward it; an unknown token is
 	// refused outright. Requests without it stay on the default access path.
@@ -4886,7 +4900,7 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 		r.Use(netaccess.Middleware(deps.NetworkAccess.Registry))
 	}
 
-	r.Use(apimw.RequestLogger(deps.NodeID))
+	r.Use(skipGuestLogging(apimw.RequestLogger(deps.NodeID)))
 	r.Use(middleware.Recoverer)
 	r.Use(apimw.Metrics)
 
@@ -4898,7 +4912,7 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 
 	// Activity logging (before auth — captures all requests including failed auth).
 	if deps.ActivityLogWriter != nil {
-		r.Use(activitylog.NewMiddleware(deps.ActivityLogWriter, deps.NodeID, deps.LogStreamHub))
+		r.Use(skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)))
 	}
 }
 
@@ -5043,6 +5057,10 @@ func resolveOptionalPluginAccessUser(
 		if err != nil || !user.Enabled {
 			return false, false, 0, "", false
 		}
+		if preview, err := sessionRepo.AccountPreviewOnly(r.Context(), user.ID); err != nil || preview {
+			// Bloem: preview principals reach plugins only as anonymous.
+			return false, false, 0, "", false
+		}
 		return true, user.Role == adminRole, user.ID, "", false
 	}
 
@@ -5054,8 +5072,8 @@ func resolveOptionalPluginAccessUser(
 	if claims.PasswordChangeRequired {
 		return false, false, 0, "", false
 	}
-	authority, valid, err := sessionRepo.ActiveSession(r.Context(), claims.SessionID)
-	if err != nil || !valid || authority.IsRemotePlayback() {
+	authority, preview, valid, err := sessionRepo.ActivePreviewSession(r.Context(), claims.SessionID)
+	if err != nil || !valid || authority.IsRemotePlayback() || preview {
 		return false, false, 0, "", false
 	}
 	profileBound = claims.AuthMethod == auth.AuthMethodDirectProfile

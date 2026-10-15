@@ -1,3 +1,4 @@
+import { guestHost, guestRefreshToken, setGuestRefreshToken } from "@/bloem/preview/session";
 import type { ApiError } from "./types";
 import type { components } from "./v2/schema";
 import { storage } from "../utils/storage";
@@ -42,8 +43,12 @@ export function onRoleChanged(listener: RoleChangedListener | null) {
 async function unauthorizedProblemId(res: Response): Promise<string | null> {
   if (res.status !== 401) return null;
   try {
-    const body = (await res.clone().json()) as { type?: unknown };
-    return typeof body.type === "string" ? problemId({ type: body.type }) : null;
+    const body = (await res.clone().json()) as { type?: unknown; code?: unknown };
+    return typeof body.type === "string"
+      ? problemId({ type: body.type })
+      : guestHost() && typeof body.code === "string"
+        ? body.code
+        : null;
   } catch {
     return null;
   }
@@ -118,10 +123,14 @@ export function getAccessToken(): string | null {
 }
 
 function getRefreshToken(): string | null {
-  return storage.get(storage.KEYS.REFRESH_TOKEN);
+  return guestHost() ? guestRefreshToken() : storage.get(storage.KEYS.REFRESH_TOKEN);
 }
 
 export function setRefreshToken(token: string | null) {
+  if (guestHost()) {
+    setGuestRefreshToken(token);
+    return;
+  }
   if (token) {
     storage.set(storage.KEYS.REFRESH_TOKEN, token);
   } else {
@@ -130,10 +139,11 @@ export function setRefreshToken(token: string | null) {
 }
 
 function getProfileId(): string | null {
-  return storage.get(storage.KEYS.PROFILE_ID);
+  return guestHost() ? null : storage.get(storage.KEYS.PROFILE_ID);
 }
 
 export function setProfileId(id: string | null) {
+  if (guestHost()) return;
   if (id) {
     storage.set(storage.KEYS.PROFILE_ID, id);
   } else {
@@ -176,6 +186,7 @@ export function getProfileTokenGeneration(): number {
 }
 
 export function setProfileToken(token: string | null) {
+  if (guestHost()) return;
   // Every explicit proof installation or removal starts a new cache generation,
   // including reinstalling the same proof after an intervening removal.
   profileTokenGeneration += 1;
@@ -198,6 +209,7 @@ export function setProfileToken(token: string | null) {
 }
 
 export function getProfileToken(): string | null {
+  if (guestHost()) return null;
   return profileToken;
 }
 

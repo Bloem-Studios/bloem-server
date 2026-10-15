@@ -17,6 +17,12 @@ const (
 	PlaybackQuality4K       = "2160p"
 )
 
+// PreviewTemplateKey is the reserved, protected entitlement template whose
+// materialized groups make their accounts preview principals: they may browse
+// the catalog and nothing else. The migration that seeds it also pins its
+// policy with CHECK constraints, so the key alone is the preview signal.
+const PreviewTemplateKey = "bloem-preview"
+
 type GroupSubject struct {
 	OrganizationID uuid.UUID
 	AccountID      int
@@ -54,6 +60,9 @@ type GroupPolicy struct {
 	AllowedPermissions         []string
 	RequestsAllowed            bool
 	ManagedProfileLimit        bool `json:"-"`
+	// PreviewOnly marks a group materialized from PreviewTemplateKey. Its
+	// accounts browse and nothing else; account overrides do not apply.
+	PreviewOnly bool
 }
 
 type EffectiveUserPolicy struct {
@@ -71,6 +80,9 @@ type EffectiveUserPolicy struct {
 	MaxLocalStreamBitrateKbps  int
 	Permissions                []string
 	RequestsAllowed            bool
+	// PreviewOnly marks a group materialized from PreviewTemplateKey. Its
+	// accounts browse and nothing else; account overrides do not apply.
+	PreviewOnly bool
 }
 
 func ParsePlaybackQualityPreset(value string) (string, bool) {
@@ -141,6 +153,22 @@ func ApplyGroupPolicy(user *models.User, group *GroupPolicy) EffectiveUserPolicy
 	}
 	if group != nil {
 		base = *group
+	}
+	if group != nil && group.PreviewOnly {
+		// A preview principal's policy is the protected template's, whatever
+		// its account says: an override must not widen libraries or switch a
+		// capability back on.
+		var libraries []int
+		if base.LibraryIDs != nil {
+			libraries = sortedUniqueInts(base.LibraryIDs)
+		}
+		return EffectiveUserPolicy{
+			LibraryIDs:         libraries,
+			MaxPlaybackQuality: NormalizePlaybackQuality(base.MaxPlaybackQuality),
+			MaxProfiles:        base.MaxProfiles,
+			Permissions:        []string{},
+			PreviewOnly:        true,
+		}
 	}
 	effective := EffectiveUserPolicy{
 		LibraryIDs:                 inheritLibraryIDs(user.LibraryIDs, base.LibraryIDs),

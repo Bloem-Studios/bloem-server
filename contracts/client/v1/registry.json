@@ -2669,6 +2669,22 @@
         {
           "type": "CatalogLettersQuery",
           "direction": "request"
+        },
+        {
+          "type": "BloemAccount",
+          "direction": "response"
+        },
+        {
+          "type": "BloemPlaybackCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "BloemPreviewSession",
+          "direction": "response"
+        },
+        {
+          "type": "BloemPreviewPublicStatus",
+          "direction": "response"
         }
       ]
     },

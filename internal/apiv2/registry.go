@@ -263,6 +263,9 @@ func (reg *Registry) Declared() []Declared {
 // forbids: registration runs at startup, where a panic is a build failure,
 // not a request failure.
 func Register[I, O any](reg *Registry, op Operation, handler func(context.Context, *I) (*O, error)) {
+	if registerBloemPreviewProjection(reg, op, handler) {
+		return
+	}
 	handler = prepareCapabilityOperation(&op, handler)
 	if err := checkOperation(op); err != nil {
 		panic(fmt.Sprintf("apiv2: %s: %v", op.OperationID, err))

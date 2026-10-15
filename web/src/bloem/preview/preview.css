@@ -1,0 +1,11 @@
+/* The shared mobile header keeps its upstream account shortcut. Remove it
+   from preview layout, including keyboard and accessibility navigation. */
+.bloem-preview a[href="/settings"],
+.bloem-preview a[href^="/settings/"],
+.bloem-preview a[href="/profiles"],
+.bloem-preview a[href="/notifications"],
+.bloem-preview a[href="/recommendations"],
+.bloem-preview a[href="/requests"],
+.bloem-preview a[href^="/rooms"] {
+  display: none;
+}

@@ -1,3 +1,4 @@
+import { usePreviewMode } from "@/bloem/preview/usePreviewMode";
 import { useState } from "react";
 import Home from "./Home";
 import { Button } from "@/components/ui/button";
@@ -5,8 +6,9 @@ import { CampaignRail } from "@/components/engagement/CampaignPlacements";
 import { useCampaigns, useHomeCampaignPreference } from "@/components/engagement/useCampaigns";
 
 export default function BloemHome() {
+  const preview = usePreviewMode().active;
   const preference = useHomeCampaignPreference();
-  const campaigns = useCampaigns("home", "", preference.enabled);
+  const campaigns = useCampaigns("home", "", !preview && preference.enabled);
   const [error, setError] = useState("");
   return (
     <Home
@@ -17,7 +19,7 @@ export default function BloemHome() {
               <CampaignRail cards={campaigns.cards} dismiss={campaigns.dismiss} />
             </div>
           )}
-          {index === total && preference.eligible && (
+          {index === total && !preview && preference.eligible && (
             <div className="page-shell space-y-2">
               <Button
                 variant="ghost"

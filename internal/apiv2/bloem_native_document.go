@@ -96,6 +96,8 @@ func bloemOp(method, path, id, tag, summary string) huma.Operation {
 // mounted on chi but absent here is invisible to the contract, which is the
 // state this whole file exists to end.
 func registerBloemAll(reg *Registry) {
+	registerBloemPreviewAdminDocument(reg)
+	registerBloemPreviewEventsDocument(reg)
 	registerBloemCapabilities(reg)
 	registerBloemLiveTV(reg)
 	registerBloemLiveTVManagementDocument(reg)

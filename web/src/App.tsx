@@ -1,3 +1,5 @@
+import { PreviewRouteBoundary } from "@/bloem/preview/RequireFullAccess";
+import { previewForUser } from "@/bloem/preview/session";
 import {
   lazy,
   Suspense,
@@ -32,7 +34,7 @@ import { useIsActingAdmin } from "@/hooks/useIsActingAdmin";
 import { useNavigationDirection } from "@/hooks/useNavigationDirection";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { DateTimeFormatProvider, useDateTimeFormat } from "@/hooks/useDateTimeFormat";
-import { BrandingProvider } from "@/contexts/BrandingProvider";
+import { BrandingProvider } from "@/bloem/preview/BrandingWithPreview";
 import { UICustomizationProvider } from "@/contexts/UICustomizationProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ImpersonationBanner from "@/components/ImpersonationBanner";
@@ -93,6 +95,7 @@ const AdminDownloadPreparationsRefresh = lazy(
 );
 const SettingsLayout = lazy(() => import("@/pages/SettingsLayout"));
 const SignedInSessions = lazy(() => import("@/pages/settings/SignedInSessions"));
+const PreviewStart = lazy(() => import("@/bloem/preview/PreviewStart"));
 const Login = lazy(() => import("@/pages/Login"));
 const OAuthComplete = lazy(() => import("@/pages/OAuthComplete"));
 const ActivateDevice = lazy(() => import("@/pages/ActivateDevice"));
@@ -286,8 +289,9 @@ function SetupGate({ children }: { children: ReactNode }) {
 }
 
 function RequireProfile({ children }: { children: ReactNode }) {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const location = useLocation();
+  if (previewForUser(user)) return <>{children}</>;
   if (!profile) return <Navigate to={guardRedirectTarget("/profiles", location)} replace />;
   return <>{children}</>;
 }
@@ -454,6 +458,7 @@ function UICustomizedLayout({ children }: { children: ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/preview/start" element={<PreviewStart />} />
       <Route path="/login" element={<Login />} />
       <Route path="/login/oauth-complete" element={<OAuthComplete />} />
       <Route path="/activate" element={<ActivateDevice />} />
@@ -853,7 +858,9 @@ function AppShell() {
                       <AppChrome />
                       <Suspense fallback={null}><SeasonalLayer /></Suspense>
                       <Suspense fallback={<RouteLoading />}>
-                        <Outlet />
+                        <PreviewRouteBoundary>
+                            <Outlet />
+                          </PreviewRouteBoundary>
                       </Suspense>
                       <WatchPlaybackHost />
                       <WatchPlaybackBar />

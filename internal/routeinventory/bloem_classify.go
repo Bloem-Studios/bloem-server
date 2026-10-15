@@ -96,6 +96,8 @@ var bloemInfrastructureMiddleware = []string{
 	// The capture only adds request context and always delegates; the later
 	// credential, viewer and native source gates supply actual authority.
 	"captureNativeVideoRequest",
+	// These only refuse preview credentials/hosts; route auth stays authoritative.
+	"previewHostGuard", "previewAccountLoginGuard",
 }
 
 func init() {

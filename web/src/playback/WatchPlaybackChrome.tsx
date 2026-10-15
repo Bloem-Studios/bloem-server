@@ -1,3 +1,4 @@
+import { usePreviewMode } from "@/bloem/preview/usePreviewMode";
 import { usePlaybackBarHeight } from "@/hooks/usePlaybackBarHeight";
 import { useSeekPreferences } from "@/hooks/queries/seekPreferences";
 import {
@@ -259,6 +260,13 @@ function playbackUnavailableMessage(error: Error): string {
 }
 
 function PlaybackUnavailableScreen({ error, onBack }: { error: Error; onBack: () => void }) {
+  const preview = usePreviewMode();
+  if (preview.active)
+    return (
+      <div className="p-8">
+        <button onClick={() => preview.requestSubscription()}>Subscribe to watch</button>
+      </div>
+    );
   return (
     <div className="bg-background fixed inset-0 z-50 flex items-center justify-center px-6">
       <div className="surface-panel-subtle flex max-w-md flex-col items-center gap-4 rounded-[1.8rem] px-8 py-8 text-center">
@@ -279,6 +287,7 @@ function PlaybackUnavailableScreen({ error, onBack }: { error: Error; onBack: ()
 }
 
 export function WatchPlaybackProvider({ children }: { children: ReactNode }) {
+  const { active: previewOnly, requestSubscription } = usePreviewMode();
   const navigate = useViewTransitionNavigate();
   const [state, dispatch] = useReducer(watchPlaybackReducer, undefined, createEmptyPlaybackState);
   const [snapshotStore] = useState(createWatchPlaybackSnapshotStore);
@@ -313,9 +322,20 @@ export function WatchPlaybackProvider({ children }: { children: ReactNode }) {
     }
   }, [profileId, state.request]);
 
-  const syncRouteRequest = useCallback((request: WatchRouteRequest) => {
-    dispatch({ type: "SYNC_ROUTE_REQUEST", request });
-  }, []);
+  const syncRouteRequest = useCallback(
+    (request: WatchRouteRequest) => {
+      if (previewOnly) {
+        requestSubscription(request.contentId);
+        return;
+      }
+      dispatch({ type: "SYNC_ROUTE_REQUEST", request });
+    },
+    [previewOnly, requestSubscription],
+  );
+
+  useEffect(() => {
+    if (previewOnly) dispatch({ type: "STOP_PLAYBACK" });
+  }, [previewOnly]);
 
   const handleRouteExit = useCallback((requestKey: string) => {
     dispatch({ type: "ROUTE_LEFT", requestKey });
@@ -332,6 +352,10 @@ export function WatchPlaybackProvider({ children }: { children: ReactNode }) {
 
   const startPlayback = useCallback(
     (input: WatchPlaybackStartInput | WatchRouteRequest, trigger: PlaybackStartTrigger) => {
+      if (previewOnly) {
+        requestSubscription(input.contentId);
+        return;
+      }
       const request = normalizeWatchPlaybackRequest(input);
       // Press-play-to-first-frame starts here, before any navigation or
       // Picture-in-Picture exit the viewer also waits for. The route rebuilds
@@ -407,7 +431,7 @@ export function WatchPlaybackProvider({ children }: { children: ReactNode }) {
 
       continueStartPlayback();
     },
-    [navigate],
+    [navigate, previewOnly, requestSubscription],
   );
 
   const stopPlayback = useCallback(() => {

@@ -17,7 +17,7 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 - [SDK compatibility and contract generation](../architecture/bloem-sdk-compatibility.md) — plugin SDK, generated client DTOs and consumer synchronization.
 
 - [Native storage](../architecture/bloem-native-storage.md) — initial S3 root discovery and storage-source ebook/movie/audiobook libraries: locations, scanning, covers and reading.
-- [Browse-only content policy](../architecture/bloem-browse-only-content-policy.md) — native reader, theme, trickplay, Live TV and plugin delivery boundaries.
+- [Browse-only content policy](../architecture/bloem-browse-only-content-policy.md) — protected preview principals, signed guest sessions, catalogue hygiene, web presentation and native content-delivery boundaries.
 - [Native audiobook presentations](../architecture/bloem-native-audio-playback.md) — complete-book publication and pinned direct audio playback.
 - [Native video playback](../architecture/bloem-native-video-playback.md) — source admission, movie publication, execution ownership, worker HLS and supported surfaces.
 - [Native tool input](../architecture/bloem-native-tool-input.md) — bounded pinned reads, trusted-child lifetime and host admission.

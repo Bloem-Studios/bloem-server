@@ -25,6 +25,7 @@ type scopeRoute struct {
 const apiKeyScopeUUIDPattern = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
 
 var apiKeyScopeRoutes = map[string][]scopeRoute{
+	auth.ScopeAdminPreview: bloemPreviewScopeRoutes(),
 	auth.ScopeAdminSessionsSummaryRead: {
 		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/sessions/summary$`)},
 		{http.MethodGet, regexp.MustCompile(`^/api/v2/admin/sessions/capabilities$`)},

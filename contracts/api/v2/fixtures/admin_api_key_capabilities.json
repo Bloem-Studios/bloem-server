@@ -1,5 +1,5 @@
 {
-  "revision": "048d305e6e9b2c5cb050f4e272a8e113bcc398571af0a75f98cf9e53fb8be38d",
+  "revision": "6532601df4e0e59d3f105b6896b8d033b28c0014278974836c064cac20b936fa",
   "state": "available",
   "allowed": true,
   "available": true,
@@ -28,6 +28,10 @@
     {
       "name": "admin:entitlements:accounts",
       "description": "Read entitlement templates and preview and apply a template to one account. Cannot create or change templates."
+    },
+    {
+      "name": "admin:preview",
+      "description": "Configure the read-only preview, its launch keys and curated catalog. Requires a Platform administrator."
     }
   ],
   "rate_tiers": [

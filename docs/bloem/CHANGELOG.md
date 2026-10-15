@@ -3,6 +3,28 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 15, 2026 — preview source integration
+
+The browse-only preview implementation is integrated with the October Silo
+source update. Protected preview policies, signed guest launch tickets, scoped
+administration, catalogue sanitization and the web subscription flow are now
+present together. The combined session lookup preserves remote-playback purpose
+and profile binding, and the current collections page uses a read-only preview
+adapter. Ordinary subscribers retain the upstream collection workflow.
+
+The native OpenAPI, v2 OpenAPI, route inventory, migration ledger and generated
+Kotlin/Swift contracts include the combined surface. See the
+[wire reference](../bloem-api-reference.md) and
+[preview invariants](../architecture/bloem-browse-only-content-policy.md).
+Garden supplies the separately configured launch flow; publishing source does
+not enable a live preview or add native-client preview controls.
+
+The combined production web build measures 317,709 bytes brotli at eager launch,
+with zero cross-origin render-blocking resources. The published upstream-integrated
+build measures 315,164 bytes; preview safeguards add 2,545 bytes (0.8%). The
+measured allowance is regenerated for the combined source rather than retaining
+the older branch's stale measurement.
+
 ## October 15, 2026 — native OpenAPI coverage
 
 The [native OpenAPI artifact](../../contracts/api/bloem/v1/openapi.json) now

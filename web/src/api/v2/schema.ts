@@ -12078,6 +12078,9 @@ export interface components {
        *     ]
        */
       permissions: string[];
+      /** @description Whether the effective account policy permits playback. */
+      playback_allowed?: boolean;
+      preview?: components["schemas"]["BloemPreviewPresentation"] | null;
       /**
        * @description Server-wide role
        * @example user
@@ -19885,6 +19888,25 @@ export interface components {
       label: string;
       preserves_source: boolean;
     };
+    BloemPreviewDenial: {
+      /** @enum {string} */
+      code: "preview_only";
+      cta_label: string;
+      cta_url: string;
+    };
+    BloemPreviewPresentation: {
+      cta_label: string;
+      cta_url: string;
+      /**
+       * Format: date-time
+       * @description Absolute guest session expiry, or the personal end date supplied by the storefront; null until supplied.
+       */
+      ends_at: string | null;
+      /** @enum {string} */
+      kind: "guest" | "personal";
+      launch_url: string;
+      storefront_url: string;
+    };
     BrandingCapabilitiesOutputBody: {
       /** @description Whether the current principal may use the capability */
       allowed?: boolean;
@@ -26514,6 +26536,7 @@ export interface components {
       /** @description Whether the current principal may use the capability */
       allowed: boolean;
       deliveries: string[];
+      denial?: components["schemas"]["BloemPreviewDenial"];
       features: string[];
       /**
        * @description Opaque identifier

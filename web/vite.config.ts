@@ -9,6 +9,7 @@ import path from "path";
 import os from "os";
 import { configDefaults } from "vitest/config";
 import { bloemBrand } from "./bloem-brand-plugin";
+import { bloemPreview } from "./bloem-preview-plugin";
 
 /// <reference types="vitest" />
 
@@ -211,6 +212,7 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       bloemBrand(),
+      bloemPreview(),
       themeBootScript(),
       precompressStaticAssets(),
       moveManifestOutOfDist(),

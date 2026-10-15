@@ -143,8 +143,10 @@ not a substitute for checking documentation accuracy.
   any future ordinary plugin integration has its own contract.
 - Authenticated browse-only content policy does not by itself establish a public
   showcase. Preview principal, guest sessions, catalogue hygiene and Garden launch
-  changes must be present in the actual built branch before documenting them as
-  a usable prospect flow.
+  integration are now implemented in their respective source repositories. Verify
+  both deployed revisions, preview-host configuration and the launch/exchange
+  journey before describing a live prospect flow as enabled. Native preview
+  controls and later showcase presentation remain separate follow-up work.
 
 When finishing, state the source revision, changed docs/artifacts, verification
 scope and remaining gaps. A source refresh alone neither deploys a server nor

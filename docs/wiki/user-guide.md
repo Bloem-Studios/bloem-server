@@ -28,6 +28,18 @@ Nothing here needs you to understand how the server works. If a word is unfamili
 
 ## 1. Getting in
 
+### Browsing a preview
+
+An operator may give you a **Browse the library** link. Open that link in your
+browser to explore descriptions, series, seasons, episodes and collections.
+The preview shows subscription options when you try to watch, listen or read.
+Downloading and personal actions are unavailable in a preview.
+
+A guest preview ends after a limited time. Use **Keep browsing** to return to
+the operator's launch page, or follow its subscription link. Your existing
+subscriber login is kept separately. Native-app preview controls are not part
+of this web flow.
+
 ### Your invitation
 
 You will have received one of:
