@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -344,5 +345,132 @@ func TestNativeCatalogSkipsS3RowWhenServedManifestIdentityDiffers(t *testing.T) 
 				t.Fatalf("S3 row with a mismatched served manifest was admitted: %+v", got)
 			}
 		})
+	}
+}
+
+// writeCatalogCache writes records as the persisted native catalog cache.
+func writeCatalogCache(t *testing.T, root string, records map[string]storageCatalogRecord) {
+	t.Helper()
+	cache, err := json.Marshal(records)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "native-catalog.json"), cache, 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func cachedCatalogRecord(t *testing.T, m *publicv1.PluginManifest, releaseTag string) storageCatalogRecord {
+	t.Helper()
+	raw, err := protojson.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return storageCatalogRecord{Manifest: raw, Checksum: m.GetChecksum(), OS: runtime.GOOS, Arch: runtime.GOARCH,
+		URL: "https://github.com/Bloem-Studios/bloem-plugins/releases/download/" + releaseTag + m.GetVersion() + "/plugin-" + runtime.GOOS + "-" + runtime.GOARCH}
+}
+
+func captureCatalogLog(t *testing.T) *strings.Builder {
+	t.Helper()
+	var buf strings.Builder
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	return &buf
+}
+
+// A cache written by a later build may hold plugins or shapes this build does
+// not know; a rollback must skip them rather than refuse to start.
+func TestNativeCatalogLoadSkipsUnknownPluginRecord(t *testing.T) {
+	root := t.TempDir()
+	bwChecksum := strings.Repeat("9", 64)
+	bw := cachedCatalogRecord(t, &publicv1.PluginManifest{PluginId: "bloem.storage.bookwarehouse", Version: "0.2.2", SiloApiVersion: "v1", Checksum: bwChecksum,
+		SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}}, "bookwarehouse-v")
+	futureChecksum := strings.Repeat("0", 64)
+	future := cachedCatalogRecord(t, &publicv1.PluginManifest{PluginId: "bloem.storage.future", Version: "1.0.0", SiloApiVersion: "v1", Checksum: futureChecksum,
+		SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}},
+		Category:           "future-category-content"}, "future-v")
+	bwKey := catalogArtifactKey(bookwarehouseSpec, "0.2.2", bwChecksum)
+	futureKey := "future-1.0.0-" + runtime.GOOS + "-" + runtime.GOARCH + "-" + futureChecksum
+	writeCatalogCache(t, root, map[string]storageCatalogRecord{bwKey: bw, futureKey: future})
+	logs := captureCatalogLog(t)
+	registry := &NativeStorageRegistry{baseDir: root, approved: make(map[string]NativeStorageArtifact)}
+	if err := registry.loadCatalog(); err != nil {
+		t.Fatalf("an unknown plugin record made the cache fatal: %v", err)
+	}
+	got := registry.ApprovedArtifacts()
+	if len(got) != 1 || got[0].ArtifactKey != bwKey {
+		t.Fatalf("want only the bookwarehouse record, got %+v", got)
+	}
+	if _, kept := registry.catalogRecords[futureKey]; kept {
+		t.Fatal("skipped record was kept for re-persisting")
+	}
+	out := logs.String()
+	if !strings.Contains(out, futureKey) || strings.Contains(out, "future-category-content") {
+		t.Fatalf("want a warning naming only the artifact key, got %q", out)
+	}
+}
+
+func TestNativeCatalogLoadSkipsInvalidS3Record(t *testing.T) {
+	checksum := strings.Repeat("a", 64)
+	bwChecksum := strings.Repeat("b", 64)
+	for name, mutate := range map[string]func(*storageCatalogRecord){
+		"external_url": func(r *storageCatalogRecord) { r.URL = "https://attacker.example/plugin" },
+		"other_platform": func(r *storageCatalogRecord) {
+			r.OS = "plan9"
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			s3 := cachedCatalogRecord(t, staticS3Manifest("0.3.2", checksum), "s3-v")
+			mutate(&s3)
+			bw := cachedCatalogRecord(t, &publicv1.PluginManifest{PluginId: "bloem.storage.bookwarehouse", Version: "0.2.2", SiloApiVersion: "v1", Checksum: bwChecksum,
+				SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}}, "bookwarehouse-v")
+			bwKey := catalogArtifactKey(bookwarehouseSpec, "0.2.2", bwChecksum)
+			writeCatalogCache(t, root, map[string]storageCatalogRecord{catalogArtifactKey(s3Spec, "0.3.2", checksum): s3, bwKey: bw})
+			registry := &NativeStorageRegistry{baseDir: root, approved: make(map[string]NativeStorageArtifact), pinned: s3Pins(t, "0.3.2", checksum)}
+			if err := registry.loadCatalog(); err != nil {
+				t.Fatalf("an invalid S3 record made the cache fatal: %v", err)
+			}
+			if got := registry.ApprovedArtifacts(); len(got) != 1 || got[0].ArtifactKey != bwKey {
+				t.Fatalf("invalid S3 record admitted or bookwarehouse lost: %+v", got)
+			}
+		})
+	}
+}
+
+func TestNativeCatalogLoadStillRejectsUnreadableCache(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "native-catalog.json"), []byte("{not json"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	registry := &NativeStorageRegistry{baseDir: root, approved: make(map[string]NativeStorageArtifact)}
+	if err := registry.loadCatalog(); err == nil {
+		t.Fatal("unparseable cache accepted")
+	}
+	if err := os.Chmod(filepath.Join(root, "native-catalog.json"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := registry.loadCatalog(); err == nil {
+		t.Fatal("group/world-readable cache accepted")
+	}
+}
+
+func TestNativeCatalogLoadSkipsInvalidArtifactRecord(t *testing.T) {
+	root := t.TempDir()
+	bad := strings.Repeat("c", 64)
+	good := strings.Repeat("d", 64)
+	invalid := cachedCatalogRecord(t, &publicv1.PluginManifest{PluginId: "bloem.storage.bookwarehouse", Version: "0.2.3", SiloApiVersion: "v2", Checksum: bad,
+		SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}}, "bookwarehouse-v")
+	valid := cachedCatalogRecord(t, &publicv1.PluginManifest{PluginId: "bloem.storage.bookwarehouse", Version: "0.2.2", SiloApiVersion: "v1", Checksum: good,
+		SupportedPlatforms: []*publicv1.SupportedPlatform{{Os: runtime.GOOS, Arch: runtime.GOARCH}}}, "bookwarehouse-v")
+	goodKey := catalogArtifactKey(bookwarehouseSpec, "0.2.2", good)
+	writeCatalogCache(t, root, map[string]storageCatalogRecord{catalogArtifactKey(bookwarehouseSpec, "0.2.3", bad): invalid, goodKey: valid})
+	registry := &NativeStorageRegistry{baseDir: root, approved: make(map[string]NativeStorageArtifact)}
+	if err := registry.loadCatalog(); err != nil {
+		t.Fatalf("an invalid artifact record made the cache fatal: %v", err)
+	}
+	if got := registry.ApprovedArtifacts(); len(got) != 1 || got[0].ArtifactKey != goodKey {
+		t.Fatalf("want only the valid record, got %+v", got)
 	}
 }

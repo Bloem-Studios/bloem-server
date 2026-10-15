@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -119,41 +120,59 @@ func (r *NativeStorageRegistry) loadCatalog() error {
 	}
 	kept := make(map[string]storageCatalogRecord, len(records))
 	for key, record := range records {
-		m := new(publicv1.PluginManifest)
-		if protojson.Unmarshal(record.Manifest, m) != nil {
-			return errors.New("invalid native catalog release")
-		}
-		spec, ok := nativeCatalogSpecFor(m.GetPluginId())
+		a, ok := r.loadCatalogRecord(key, &record)
 		if !ok {
-			return errors.New("invalid native catalog release")
-		}
-		if spec.RequirePinned {
-			// A pinned record carries the statically approved manifest, whatever
-			// the cache holds, so installed-archive admission never depends on it.
-			pinned, ok := r.pinnedArtifact(m.GetPluginId(), record.Checksum)
-			if !ok || pinned.Manifest.GetVersion() != m.GetVersion() {
-				continue
-			}
-			m = proto.CloneOf(pinned.Manifest)
-			raw, err := protojson.Marshal(m)
-			if err != nil {
-				return err
-			}
-			record.Manifest = raw
-		}
-		if key != catalogArtifactKey(spec, m.GetVersion(), record.Checksum) || !storageCatalogURL(spec, record.URL, m.GetVersion(), "plugin-"+record.OS+"-"+record.Arch) {
-			return errors.New("invalid native catalog release")
-		}
-		a := NativeStorageArtifact{Manifest: m, Checksum: record.Checksum, OS: record.OS, Arch: record.Arch}
-		if err := validateNativeStorageArtifact(a); err != nil {
-			return err
+			continue
 		}
 		r.approved[key] = a
 		kept[key] = record
 	}
-	// Records skipped as unpinned are dropped, so a refresh never re-persists them.
+	// Skipped records are dropped, so a refresh never re-persists them.
 	r.catalogRecords = kept
 	return nil
+}
+
+// loadCatalogRecord admits one cached record. A record this build cannot
+// admit (a plugin it does not know, a key or URL that does not match, an
+// invalid artifact) is skipped rather than fatal: the cache may have been
+// written by a later build, and skipping only withholds trust. An unpinned S3
+// record is dropped silently, as before; other skips log the key only, never
+// the manifest or configuration.
+func (r *NativeStorageRegistry) loadCatalogRecord(key string, record *storageCatalogRecord) (NativeStorageArtifact, bool) {
+	skip := func() (NativeStorageArtifact, bool) {
+		slog.Warn("native catalog cache record skipped", "component", "plugins", "artifact_key", key)
+		return NativeStorageArtifact{}, false
+	}
+	m := new(publicv1.PluginManifest)
+	if protojson.Unmarshal(record.Manifest, m) != nil {
+		return skip()
+	}
+	spec, ok := nativeCatalogSpecFor(m.GetPluginId())
+	if !ok {
+		return skip()
+	}
+	if spec.RequirePinned {
+		// A pinned record carries the statically approved manifest, whatever
+		// the cache holds, so installed-archive admission never depends on it.
+		pinned, ok := r.pinnedArtifact(m.GetPluginId(), record.Checksum)
+		if !ok || pinned.Manifest.GetVersion() != m.GetVersion() {
+			return NativeStorageArtifact{}, false
+		}
+		m = proto.CloneOf(pinned.Manifest)
+		raw, err := protojson.Marshal(m)
+		if err != nil {
+			return skip()
+		}
+		record.Manifest = raw
+	}
+	if key != catalogArtifactKey(spec, m.GetVersion(), record.Checksum) || !storageCatalogURL(spec, record.URL, m.GetVersion(), "plugin-"+record.OS+"-"+record.Arch) {
+		return skip()
+	}
+	a := NativeStorageArtifact{Manifest: m, Checksum: record.Checksum, OS: record.OS, Arch: record.Arch}
+	if validateNativeStorageArtifact(a) != nil {
+		return skip()
+	}
+	return a, true
 }
 func catalogArtifactKey(spec nativeCatalogSpec, version, checksum string) string {
 	return spec.KeyPrefix + "-" + version + "-" + runtime.GOOS + "-" + runtime.GOARCH + "-" + checksum
