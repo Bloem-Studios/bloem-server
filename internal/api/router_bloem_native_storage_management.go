@@ -45,6 +45,7 @@ func mountNativeStorageScopeRoutes(r chi.Router, handler *handlers.BloemNativeSt
 	r.Post("/installations", handler.HandleInstall)
 	r.Post("/installations/discover", handler.HandleDiscoverInstall)
 	r.Post("/catalog/installations", handler.HandleCatalogInstall)
+	r.Post("/catalog/installations/discover", handler.HandleCatalogDiscoverInstall)
 	r.Post("/catalog/installations/{installation_id}/upgrade", handler.HandleCatalogUpgrade)
 	r.Put("/sources/{source_key}/configuration", handler.HandleReplaceConfiguration)
 	r.Post("/installations/{installation_id}/disable", handler.HandleDisable)

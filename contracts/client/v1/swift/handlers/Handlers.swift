@@ -4695,6 +4695,7 @@ public enum Handlers {
         public let uninstall: Bool
         public let upgrade: Bool
         public let s3InitialRootDiscovery: Bool
+        public let s3CatalogDiscovery: Bool
         public let s3CheckedETagReads: Bool
         public let nativeMovieLibraries: Bool
         public let nativeVideoPlayback: Bool
@@ -4720,6 +4721,7 @@ public enum Handlers {
             case uninstall = "uninstall"
             case upgrade = "upgrade"
             case s3InitialRootDiscovery = "s3_initial_root_discovery"
+            case s3CatalogDiscovery = "s3_catalog_discovery"
             case s3CheckedETagReads = "s3_checked_etag_reads"
             case nativeMovieLibraries = "native_movie_libraries"
             case nativeVideoPlayback = "native_video_playback"
@@ -4746,6 +4748,7 @@ public enum Handlers {
             uninstall: Bool = false,
             upgrade: Bool = false,
             s3InitialRootDiscovery: Bool = false,
+            s3CatalogDiscovery: Bool = false,
             s3CheckedETagReads: Bool = false,
             nativeMovieLibraries: Bool = false,
             nativeVideoPlayback: Bool = false,
@@ -4770,6 +4773,7 @@ public enum Handlers {
             self.uninstall = uninstall
             self.upgrade = upgrade
             self.s3InitialRootDiscovery = s3InitialRootDiscovery
+            self.s3CatalogDiscovery = s3CatalogDiscovery
             self.s3CheckedETagReads = s3CheckedETagReads
             self.nativeMovieLibraries = nativeMovieLibraries
             self.nativeVideoPlayback = nativeVideoPlayback
@@ -4797,6 +4801,7 @@ public enum Handlers {
             self.uninstall = try container.decodeIfPresent(Bool.self, forKey: .uninstall) ?? false
             self.upgrade = try container.decodeIfPresent(Bool.self, forKey: .upgrade) ?? false
             self.s3InitialRootDiscovery = try container.decodeIfPresent(Bool.self, forKey: .s3InitialRootDiscovery) ?? false
+            self.s3CatalogDiscovery = try container.decodeIfPresent(Bool.self, forKey: .s3CatalogDiscovery) ?? false
             self.s3CheckedETagReads = try container.decodeIfPresent(Bool.self, forKey: .s3CheckedETagReads) ?? false
             self.nativeMovieLibraries = try container.decodeIfPresent(Bool.self, forKey: .nativeMovieLibraries) ?? false
             self.nativeVideoPlayback = try container.decodeIfPresent(Bool.self, forKey: .nativeVideoPlayback) ?? false
@@ -4824,6 +4829,7 @@ public enum Handlers {
             try container.encode(self.uninstall, forKey: .uninstall)
             try container.encode(self.upgrade, forKey: .upgrade)
             try container.encode(self.s3InitialRootDiscovery, forKey: .s3InitialRootDiscovery)
+            try container.encode(self.s3CatalogDiscovery, forKey: .s3CatalogDiscovery)
             try container.encode(self.s3CheckedETagReads, forKey: .s3CheckedETagReads)
             try container.encode(self.nativeMovieLibraries, forKey: .nativeMovieLibraries)
             try container.encode(self.nativeVideoPlayback, forKey: .nativeVideoPlayback)

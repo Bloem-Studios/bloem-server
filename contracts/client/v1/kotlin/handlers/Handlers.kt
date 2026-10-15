@@ -1523,6 +1523,8 @@ public data class nativeStorageCapabilitiesResponse(
     public val upgrade: Boolean = false,
     @SerialName("s3_initial_root_discovery")
     public val s3InitialRootDiscovery: Boolean = false,
+    @SerialName("s3_catalog_discovery")
+    public val s3CatalogDiscovery: Boolean = false,
     @SerialName("s3_checked_etag_reads")
     public val s3CheckedETagReads: Boolean = false,
     @SerialName("native_movie_libraries")
