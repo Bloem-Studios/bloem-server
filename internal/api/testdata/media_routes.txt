@@ -946,6 +946,7 @@ PUT /api/bloem/v1/admin/organization/library-locations/{library_id}	non-media
 GET /api/bloem/v1/admin/organization/native-storage/artifacts	non-media
 GET /api/bloem/v1/admin/organization/native-storage/capabilities	non-media
 POST /api/bloem/v1/admin/organization/native-storage/catalog/installations	non-media
+POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/discover	non-media
 POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade	non-media
 POST /api/bloem/v1/admin/organization/native-storage/installations	non-media
 POST /api/bloem/v1/admin/organization/native-storage/installations/discover	non-media
@@ -956,6 +957,7 @@ GET /api/bloem/v1/admin/organization/native-storage/sources	non-media
 GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}	non-media
 GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/browse	non-media
 PUT /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/configuration	non-media
+POST /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/credentials	non-media
 GET /api/bloem/v1/admin/organization/overview	non-media
 GET /api/bloem/v1/admin/organization/people/	non-media
 POST /api/bloem/v1/admin/organization/people/bulk-jobs	non-media
@@ -1046,6 +1048,7 @@ PUT /api/bloem/v1/admin/platform/library-locations/{library_id}	non-media
 GET /api/bloem/v1/admin/platform/native-storage/artifacts	non-media
 GET /api/bloem/v1/admin/platform/native-storage/capabilities	non-media
 POST /api/bloem/v1/admin/platform/native-storage/catalog/installations	non-media
+POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/discover	non-media
 POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade	non-media
 POST /api/bloem/v1/admin/platform/native-storage/installations	non-media
 POST /api/bloem/v1/admin/platform/native-storage/installations/discover	non-media
@@ -1056,6 +1059,7 @@ GET /api/bloem/v1/admin/platform/native-storage/sources	non-media
 GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}	non-media
 GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse	non-media
 PUT /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration	non-media
+POST /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/credentials	non-media
 GET /api/bloem/v1/admin/platform/organizations/	non-media
 POST /api/bloem/v1/admin/platform/organizations/	non-media
 GET /api/bloem/v1/admin/platform/organizations/{id}/	non-media
