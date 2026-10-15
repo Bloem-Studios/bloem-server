@@ -3,6 +3,20 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 15, 2026 — native OpenAPI coverage
+
+The [native OpenAPI artifact](../../contracts/api/bloem/v1/openapi.json) now
+describes 196 operations, adding the 92 previously missing administration and
+Live TV operations. The [catalogue](api-catalogue.md) reports zero explicit
+inventory gaps; the wildcard router mount remains a dispatcher.
+
+Declarations follow existing chi handlers: scoped administrative tokens and API
+keys, JSON revisions, lifecycle receipts, selected-profile authority, signed HLS
+tickets, DVR and raw media responses. Production mount tests compare allowed
+methods, aliases and trailing slashes. Schema tests cover native policy nulls,
+decoder defaults and actual Live TV serialization. This changes documentation
+only; runtime behavior, the Silo v2 contract and client releases remain separate.
+
 ## October 15, 2026 — documentation refresh
 
 Developer references and the portable operator/viewer guides now follow the

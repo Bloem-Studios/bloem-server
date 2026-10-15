@@ -15,8 +15,10 @@ The October 14 source integration includes Silo through `ea3c10a7f` and
 preserves these namespace boundaries. It includes mixed filesystem/plugin library
 locations, native ebook/movie/audiobook delivery and inherited profile limits.
 The [API catalogue](bloem/api-catalogue.md) maps typed native operations and
-identifies inventory entries whose schemas still need conversion. Swagger/OpenAPI
-coverage is generated; this prose reference also covers native chi handlers.
+checks inventoried method/path entries against generated Swagger/OpenAPI. The native
+document includes organization/platform administration and Live TV management, DVR
+and media delivery; production mount tests check allowed methods, including aliases
+and collection trailing slashes. Optional groups still depend on configured services.
 
 Silo's password-reset, request-policy, bitrate and library-monitoring contracts
 remain in their upstream API surfaces. Server ownership (`is_owner`), an
@@ -972,7 +974,7 @@ The administrative operations in this section require a second, short-lived **ad
 
 **Optimistic concurrency.** Every mutating Organization endpoint (not Policy Explain, which is read-only) requires an `expected_revision` in the request body. Two different revisions are in play and callers must send the right one for the right resource — this is easy to get wrong:
 - Group and invitation mutations check `expected_revision` against the **organization's** `tenant.PolicyRevision` (`requireOrganizationRevision`). A mismatch is `409 authorization_state_changed` with the current `policy_revision`.
-- Library entitlement mutations check `expected_revision` against that **specific entitlement row's** `security_revision` (`organization_entitlements.security_revision`), not the org-wide policy revision. A mismatch is also `409 authorization_state_changed`, with `current_revision` reflecting the entitlement's own revision, sourced from the tenant context's `SecurityRevision` field in the response envelope (see the endpoint entries below for the exact shape).
+- Library entitlement mutations check `expected_revision` against that **specific entitlement row's** `security_revision` (`organization_entitlements.security_revision`), not the org-wide policy revision. A mismatch is also `409 authorization_state_changed`, but the shared error writer returns the organization's `PolicyRevision` as `current_revision`. Reload the libraries projection for the entitlement's current `security_revision`; do not reuse the conflict value as the entitlement precondition.
 
 **Clients**: grepped both `bloem-android` and `bloem-apple` for every literal path in this section (`organization/overview`, `organization/groups`, `organization/libraries`, `organization/entitlements`, `organization/invitations`, `organization/policy-decisions`) — zero references in either repository. This entire section (Organization + Policy Explain) is admin-console/web-only; the embedded web console implements these workflows. Earlier native-client observations
 do not establish current Apple or Android adoption.
@@ -1019,7 +1021,7 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
 - Errors: `404 not_found` (organization row missing — `tenancy.ErrOrganizationNotFound`), `503 tenant_unavailable`.
 - Embedded web: organization console. Native-client implementation is separate.
 
-#### GET /api/bloem/v1/admin/organization/groups
+#### GET /api/bloem/v1/admin/organization/groups/
 - Purpose: lists every access group defined for the organization.
 - Auth required: organization-admin context.
 - Request: none.
@@ -1035,6 +1037,8 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
       "max_playback_quality": "1080p | 2160p | \"\" (unrestricted)",
       "download_allowed": true,
       "download_transcode_allowed": true,
+      "transcode_allowed": true,
+      "audio_transcode_allowed": true,
       "max_streams": 0,
       "max_transcodes": 0,
       "allowed_permissions": ["string"],
@@ -1047,12 +1051,12 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
   ]
 }
 ```
-`max_streams`/`max_transcodes` of `0` mean "no group-level cap." `library_ids` empty/absent means the group does not further restrict which libraries a profile can see beyond what the profile's account already allows. Type: `accessGroupResponse` (shared with the v1 `AccessGroupHandler`).
+`max_streams`/`max_transcodes` of `0` mean "no group-level cap." A null `library_ids` means no additional group library restriction. The current group response serializer collapses empty library and permission arrays to null, so the response does not preserve that distinction. Omit the field on updates to retain the existing policy. Group permissions remain bounded by the account and organization. Type: `accessGroupResponse` (shared with the v1 `AccessGroupHandler`).
 - Errors: `503 tenant_unavailable`.
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
-#### POST /api/bloem/v1/admin/organization/groups
+#### POST /api/bloem/v1/admin/organization/groups/
 - Purpose: creates a new access group.
 - Auth required: organization-admin context.
 - Request body:
@@ -1064,6 +1068,8 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
   "max_playback_quality": "any | standard | 480p | 720p | 1080p | 4k | uhd | 2160p | 4320p",
   "download_allowed": true,
   "download_transcode_allowed": true,
+  "transcode_allowed": true,
+  "audio_transcode_allowed": true,
   "max_streams": 0,
   "max_transcodes": 0,
   "allowed_permissions": ["string"],
@@ -1072,12 +1078,12 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
   "expected_revision": 0
 }
 ```
-`max_playback_quality` is normalized case-insensitively via `access.ParsePlaybackQualityPreset`: `""`/`"any"` → unrestricted, `"standard"`/`"480p"`/`"720p"`/`"1080p"` → canonical `"1080p"`, `"4k"`/`"uhd"`/`"2160p"`/`"4320p"` → canonical `"2160p"`; anything else is rejected. `download_allowed`, `download_transcode_allowed`, `requests_allowed` default to `true` when omitted; `max_streams`/`max_transcodes` default to `0` (uncapped) and must be `>= 0`; every `library_ids` entry must be a positive integer. `expected_revision` is checked against the **organization's** `policy_revision` (see optimistic-concurrency note above) — since a group doesn't exist yet, this is really "the org's policy state I last observed," not the group's own revision.
+`max_playback_quality` is normalized case-insensitively via `access.ParsePlaybackQualityPreset`: `""`/`"any"` → unrestricted, `"standard"`/`"480p"`/`"720p"`/`"1080p"` → canonical `"1080p"`, `"4k"`/`"uhd"`/`"2160p"`/`"4320p"` → canonical `"2160p"`; anything else is rejected. `download_allowed`, `download_transcode_allowed`, `transcode_allowed`, `audio_transcode_allowed` and `requests_allowed` default to `true` when omitted; `max_streams`/`max_transcodes` default to `0` (uncapped) and must be `>= 0`; every `library_ids` entry must be a positive integer. `expected_revision` is checked against the **organization's** `policy_revision` (see optimistic-concurrency note above) — since a group doesn't exist yet, this is really "the org's policy state I last observed," not the group's own revision.
 - Response body (201):
 ```json
 { "group": { "...": "accessGroupResponse, see GET .../groups above" }, "policy_revision": 0 }
 ```
-- Errors: `422 validation_failed` (bad name, quality, library IDs, or negative stream/transcode caps — `fields` map names the offending field), `409 authorization_state_changed` (`current_revision` = the org's current `policy_revision`), `409 conflict` (duplicate group name — `access.ErrGroupDuplicate`), `503 tenant_unavailable`.
+- Errors: `400 bad_request` (bad name, quality, library IDs, permissions, or negative stream/transcode caps), `422 validation_failed` (missing/non-positive `expected_revision`), `409 authorization_state_changed` (`current_revision` = the org's current `policy_revision`), `409 conflict` (duplicate group name — `access.ErrGroupDuplicate`), `503 tenant_unavailable`.
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
@@ -1102,6 +1108,8 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
   "max_playback_quality": "string",
   "download_allowed": true,
   "download_transcode_allowed": true,
+  "transcode_allowed": true,
+  "audio_transcode_allowed": true,
   "max_streams": 0,
   "max_transcodes": 0,
   "allowed_permissions": ["string"],
@@ -1112,7 +1120,7 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
 ```
 Same normalization/validation rules as create for any field that is present. `expected_revision` again checks the org's `policy_revision`, not a per-group revision — concurrent edits to *different* groups in the same org still race on this field.
 - Response body (200): `{ "group": { "...": "accessGroupResponse" }, "policy_revision": 0 }`.
-- Errors: `422 validation_failed`, `409 authorization_state_changed`, `404 not_found` (`access.ErrGroupNotFound`), `409 conflict` (duplicate name, or attempting to un-default the sole default group — `access.ErrGroupDuplicate`/`access.ErrDefaultGroupRequired`), `503 tenant_unavailable`.
+- Errors: `400 bad_request` (invalid group fields, as for create), `422 validation_failed` (missing/non-positive `expected_revision`), `409 authorization_state_changed`, `404 not_found` (`access.ErrGroupNotFound`), `409 conflict` (duplicate name, or attempting to un-default the sole default group — `access.ErrGroupDuplicate`/`access.ErrDefaultGroupRequired`), `503 tenant_unavailable`.
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
@@ -1164,13 +1172,13 @@ Type: `access.GroupDeletionImpact`. `default_group_id` is the group every reassi
 ```json
 { "expected_revision": 0, "status": "active | suspended" }
 ```
-`expected_revision` here is checked against **the entitlement row's own `security_revision`** (`organization_entitlements.security_revision`), *not* the organization's `policy_revision` — this is the one mutation in this section that uses the other revision counter. `status` must be exactly `"active"` or `"suspended"`; anything else (including `"revoked"`) is a validation error.
+`expected_revision` here is checked against **the entitlement row's own `security_revision`** (`organization_entitlements.security_revision`), *not* the organization's `policy_revision` — both entitlement mutations use this revision counter. `status` must be exactly `"active"` or `"suspended"`; anything else (including `"revoked"`) is a validation error.
 - Response body (200):
 ```json
 { "entitlement": { "id": "uuid", "organization_id": "uuid", "status": "active | suspended", "security_revision": 0 } }
 ```
 `security_revision` in the response is already incremented — use it as the next `expected_revision`.
-- Errors: `422 validation_failed` (missing/non-positive `expected_revision`, or `status` not `active`/`suspended`), `409 authorization_state_changed` (`current_revision` here is the *tenant* context's `SecurityRevision`, returned via the shared `writeBloemOrganizationError` conflict envelope — reload the libraries list to get the entitlement's fresh `security_revision`), `404 not_found` (no live — `active`/`suspended` — entitlement for that `folder_id` in this organization — `resourcetenancy.ErrResourceHidden`), `503 tenant_unavailable`.
+- Errors: `422 validation_failed` (missing/non-positive `expected_revision`, or `status` not `active`/`suspended`), `409 authorization_state_changed` (`current_revision` is the organization's `PolicyRevision`, returned via the shared `writeBloemOrganizationError` conflict envelope — reload the libraries list to get the entitlement's fresh `security_revision`), `404 not_found` (no live — `active`/`suspended` — entitlement for that `folder_id` in this organization — `resourcetenancy.ErrResourceHidden`), `503 tenant_unavailable`.
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
@@ -1732,7 +1740,7 @@ mechanism going forward, but it is still the field these endpoints read and writ
 
 ---
 
-#### `GET /api/bloem/v1/admin/platform/organizations`
+#### `GET /api/bloem/v1/admin/platform/organizations/`
 - Purpose: list/search organizations across the whole installation (paginated, cursor-based).
 - Auth required: platform admin-context token (`scope: "platform"`).
 - Query params: `query` (substring/name search, optional), `status` (`initializing`|`active`|
@@ -1751,7 +1759,7 @@ mechanism going forward, but it is still the field these endpoints read and writ
   (malformed cursor — `tenancy.ErrInvalidCursor`), `503 tenant_unavailable` (store unavailable).
 - Embedded web: platform console. Native-client implementation is separate.
 
-#### `POST /api/bloem/v1/admin/platform/organizations`
+#### `POST /api/bloem/v1/admin/platform/organizations/`
 - Purpose: create a new organization (tenant) and assign its initial owning account.
 - Auth required: platform admin-context token.
 - Request body:
@@ -1779,7 +1787,7 @@ be `> 0`.
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
-#### `GET /api/bloem/v1/admin/platform/organizations/{id}`
+#### `GET /api/bloem/v1/admin/platform/organizations/{id}/`
 - Purpose: fetch one organization's full administrative detail (the `OrganizationSummary` shape,
   including membership/profile/library/entitlement counts).
 - Auth required: platform admin-context token.
@@ -1794,7 +1802,7 @@ be `> 0`.
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
-#### `PATCH /api/bloem/v1/admin/platform/organizations/{id}`
+#### `PATCH /api/bloem/v1/admin/platform/organizations/{id}/`
 - Purpose: rename an organization and/or change its slug.
 - Auth required: platform admin-context token.
 - Path params: `id` (organization UUID).
@@ -2145,7 +2153,7 @@ the same `422 validation_failed` envelope.
 
 ### Directory: list & inspect
 
-#### GET /api/bloem/v1/admin/organization/people
+#### GET /api/bloem/v1/admin/organization/people/
 
 - **Purpose**: paginated, filterable, sortable listing of every person (account + membership +
   household profiles) in the caller's organization. This is the browse/search surface the other
@@ -2211,7 +2219,7 @@ type ProfileSummary struct {
   hooks consume this surface. Earlier native-client review found no People callers;
   native adoption was not re-audited in this server documentation pass.
 
-#### GET /api/bloem/v1/admin/organization/people/{account_id}
+#### GET /api/bloem/v1/admin/organization/people/{account_id}/
 
 - **Purpose**: fetch a single person's full summary by account ID — the same shape as one item
   of the list response, used e.g. to refresh a detail view after a mutation.

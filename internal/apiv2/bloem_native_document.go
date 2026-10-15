@@ -31,8 +31,7 @@ import (
 // bloem_*.go file: no seams, nothing for an upstream merge to conflict with.
 
 // BloemPrefix is the mount of Bloem's native surface. It is the same string as
-// handlers.NativeAPIPrefix; the two are separate constants because this package
-// must not import the handlers package, and a mismatch is caught by
+// handlers.NativeAPIPrefix; their independent declarations are checked by
 // TestBloemPrefixMatchesTheMountedRouter.
 const BloemPrefix = "/api/bloem/v1"
 
@@ -49,7 +48,7 @@ func bloemHumaConfig() huma.Config {
 	cfg.OpenAPI.Info = &huma.Info{
 		Title:       "Bloem Native API",
 		Version:     fmt.Sprintf("%d", bloemAPIMajor),
-		Description: "Bloem extensions alongside the separate Silo native /api/v2 contract. Account, profile, organization and platform authority are distinct; follow each operation's security declaration. This document describes registered operations; additional chi-handler routes remain in the native wire reference and API coverage catalogue. Generated schemas do not establish provider readiness, client adoption or live deployment.",
+		Description: "Bloem extensions alongside the separate Silo native /api/v2 contract. Account, profile, organization and platform authority are distinct; follow each operation's security declaration. This document describes registered operations, including document-only chi declarations. The API coverage catalogue compares them with inventoried methods and production mount tests cover optional groups. Generated schemas do not establish provider readiness, client adoption or live deployment.",
 	}
 	cfg.OpenAPI.ExternalDocs = &huma.ExternalDocs{
 		Description: "Native wire reference and documentation index",
@@ -66,6 +65,19 @@ func bloemHumaConfig() huma.Config {
 	cfg.Components.SecuritySchemes["bloemPlatformContext"] = &huma.SecurityScheme{
 		Type: "http", Scheme: "bearer",
 		Description: "A platform-scoped administrative-context token obtained through /api/bloem/v1/admin/session. The originating login session and current platform authority are revalidated on every request. Account and organization-scoped tokens are insufficient.",
+	}
+
+	cfg.Components.SecuritySchemes["bloemAdminLoginSession"] = &huma.SecurityScheme{
+		Type: "http", Scheme: "bearer", Description: "Account access token with a current login session and account incarnation, used only to exchange for an administrative context. API keys without a session are refused.",
+	}
+	cfg.Components.SecuritySchemes["bloemEntitlementAccountsKey"] = &huma.SecurityScheme{
+		Type: "http", Scheme: "bearer", Description: "Bearer sa_ API key owned by an enabled platform administrator, unscoped or carrying admin:entitlements:accounts. Accepted only by the listed catalog/per-account operations.",
+	}
+	cfg.Components.SecuritySchemes["bloemEntitlementBulkKey"] = &huma.SecurityScheme{
+		Type: "http", Scheme: "bearer", Description: "Bearer sa_ API key owned by an enabled platform administrator, unscoped or carrying admin:entitlements:bulk. Accepted only by authoritative policy reads, snapshots, cohort reads and bulk operations.",
+	}
+	cfg.Components.SecuritySchemes["bloemLiveTVDeliveryTicket"] = &huma.SecurityScheme{
+		Type: "apiKey", In: "query", Name: "st", Description: "Signed Live TV HLS delivery ticket from the session-start URL. Bound to playback ID, user/profile, expiry and purpose=bloem_livetv_hls. Current viewer authorization is re-resolved on every fetch. Does not authorize operations or the MPEG-TS session proxy.",
 	}
 	return cfg
 }
@@ -86,6 +98,7 @@ func bloemOp(method, path, id, tag, summary string) huma.Operation {
 func registerBloemAll(reg *Registry) {
 	registerBloemCapabilities(reg)
 	registerBloemLiveTV(reg)
+	registerBloemLiveTVManagementDocument(reg)
 	registerBloemXtreamDocument(reg)
 	registerBloemIdentity(reg)
 	registerBloemWatch(reg)
@@ -95,6 +108,8 @@ func registerBloemAll(reg *Registry) {
 	registerBloemItemCollections(reg)
 	registerBloemProfileCredentialDocument(reg)
 	registerBloemOrganizationWorkflowDocument(reg)
+	registerBloemOrganizationAdministrationDocument(reg)
+	registerBloemPlatformAdministrationDocument(reg)
 	registerBloemEngagementDocument(reg)
 	registerBloemSeasonalViewerDocument(reg)
 	registerBloemNativeStorageDocument(reg)

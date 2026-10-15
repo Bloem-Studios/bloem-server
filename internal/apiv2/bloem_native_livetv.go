@@ -1,109 +1,28 @@
 package apiv2
 
-import (
-	"context"
+import "github.com/Silo-Server/silo-server/internal/livetv"
 
-	"github.com/Silo-Server/silo-server/internal/livetv"
-)
-
-// Live TV's client-facing operations.
-//
-// These five are what a phone or television actually calls, and they are the
-// reason the native surface needed a document at all: Live TV is Bloem's own
-// feature, Silo has no livetv package and lists it as a non-goal, so /api/v2
-// will never describe it and no upstream contract covers it.
-//
-// The response bodies reuse the types in internal/livetv rather than restating
-// them. Those types are already the client DTO registry's source for the Live TV
-// package, so the document and the generated Kotlin and Swift describe one
-// shape. Restating them here would create a second spelling to drift.
-//
-// Registering an operation documents it; it does not move it off chi. These are
-// still served by handlers.LiveTVHandler.
-
-// BloemLiveTVCapabilityOutput reports whether this viewer can watch Live TV.
-type BloemLiveTVCapabilityOutput struct {
-	Body livetv.CapabilityResponse
-}
-
-// BloemLiveTVChannelsOutput is the channel lineup this viewer may watch.
-type BloemLiveTVChannelsOutput struct {
-	Body livetv.ChannelsResponse
-}
-
-// BloemLiveTVGuideInput bounds a guide query to a window.
-type BloemLiveTVGuideInput struct {
-	Start string `query:"start" doc:"RFC 3339 start of the guide window. Defaults to now." required:"false"`
-	End   string `query:"end" doc:"RFC 3339 end of the guide window. Defaults to a server-chosen span after start." required:"false"`
-}
-
-// BloemLiveTVGuideOutput is the programme guide for the requested window.
-type BloemLiveTVGuideOutput struct {
-	Body livetv.GuideResponse
-}
-
-// BloemLiveTVSessionInput names the channel to tune.
-type BloemLiveTVSessionInput struct {
-	ChannelID string `path:"channelId" doc:"Channel to tune."`
-}
-
-// BloemLiveTVSessionOutput carries the tuner lease and the URLs to play it.
-type BloemLiveTVSessionOutput struct {
-	Body livetv.SessionStartResponse
-}
-
-// BloemLiveTVReleaseInput names the session to release.
-type BloemLiveTVReleaseInput struct {
-	SessionID string `path:"sessionId" doc:"Session to release."`
-}
-
-// BloemLiveTVReleaseOutput is empty: releasing a tuner returns nothing but the
-// status. It exists so the operation declares a body-less success rather than
-// an unspecified one.
-type BloemLiveTVReleaseOutput struct{}
-
+// Live TV remains served by chi. These document-only declarations describe its
+// native gates and statuses, without the v2 wrapper's Problems or retry headers.
 func registerBloemLiveTV(reg *Registry) {
-	Register(reg, Operation{
-		Operation: bloemOp("GET", "/livetv/capability", "getBloemLiveTVCapability", "livetv",
-			"Whether this build supports Live TV, whether this viewer may use it, and whether a channel is available to tune."),
-		Class: ClassProfileScoped,
-	}, func(context.Context, *struct{}) (*BloemLiveTVCapabilityOutput, error) {
-		return &BloemLiveTVCapabilityOutput{}, nil
-	})
+	capability := bloemLiveTVDocumentOp(reg, "GET", "/livetv/capability", "getBloemLiveTVCapability", "Whether this build and viewer support Live TV and a channel is available.", 200, false)
+	registerBloemChiDocument[struct{}, bloemJSONOutput[livetv.CapabilityResponse]](reg, capability)
 
-	Register(reg, Operation{
-		Operation: bloemOp("GET", "/livetv/channels", "listBloemLiveTVChannels", "livetv",
-			"The channel lineup this viewer may watch."),
-		Class: ClassProfileScoped,
-	}, func(context.Context, *struct{}) (*BloemLiveTVChannelsOutput, error) {
-		return &BloemLiveTVChannelsOutput{}, nil
-	})
+	channels := bloemLiveTVDocumentOp(reg, "GET", "/livetv/channels", "listBloemLiveTVChannels", "The channel lineup this viewer may watch.", 200, false)
+	bloemDocumentQuery(&channels, "tuner_id", "Optional tuner filter.", "string")
+	registerBloemChiDocument[struct{}, bloemJSONOutput[livetv.ChannelsResponse]](reg, channels)
 
-	Register(reg, Operation{
-		Operation: bloemOp("GET", "/livetv/guide", "getBloemLiveTVGuide", "livetv",
-			"Programme guide for a window."),
-		Class: ClassProfileScoped,
-	}, func(context.Context, *BloemLiveTVGuideInput) (*BloemLiveTVGuideOutput, error) {
-		return &BloemLiveTVGuideOutput{}, nil
-	})
+	guide := bloemLiveTVDocumentOp(reg, "GET", "/livetv/guide", "getBloemLiveTVGuide", "Programme guide for a window.", 200, false)
+	bloemDocumentQuery(&guide, "start", "RFC3339; defaults to now.", "string")
+	bloemDocumentQuery(&guide, "end", "RFC3339; defaults to start plus twelve hours.", "string")
+	bloemDocumentQuery(&guide, "channels", "Comma-separated channel IDs.", "string")
+	registerBloemChiDocument[struct{}, bloemJSONOutput[livetv.GuideResponse]](reg, guide)
 
-	Register(reg, Operation{
-		Operation: bloemOp("POST", "/livetv/channels/{channelId}/session", "startBloemLiveTVSession", "livetv",
-			"Tune a channel and take a tuner lease."),
-		// Tuners are finite: a repeated start must not silently take a second
-		// lease, so this is not naturally idempotent and says so.
-		Class:       ClassProfileScoped,
-		RetrySafety: RetrySafetyNonRetryable,
-	}, func(context.Context, *BloemLiveTVSessionInput) (*BloemLiveTVSessionOutput, error) {
-		return &BloemLiveTVSessionOutput{}, nil
-	})
+	session := bloemLiveTVDocumentOp(reg, "POST", "/livetv/channels/{channelId}/session", "startBloemLiveTVSession", "Tune a channel and take a tuner lease.", 201, false)
+	session.Description += " Requires both current Live TV and playback permission. Optional client codec capabilities are read from a body of at most 16 KiB; omit for native broadcast-codec support. Returns 201 and canonical same-origin delivery URLs. HLS URLs carry a session-bound st ticket; MPEG-TS proxy URLs require account/profile authentication. Repeating a start can allocate another lease; do not automatically retry."
+	registerBloemChiDocument[bloemOptionalJSONInput[BloemLiveTVClientCapabilities], bloemJSONOutput[livetv.SessionStartResponse]](reg, session)
 
-	Register(reg, Operation{
-		Operation: bloemOp("DELETE", "/livetv/sessions/{sessionId}", "releaseBloemLiveTVSession", "livetv",
-			"Release a tuner lease. Releasing an already-released session succeeds."),
-		Class:       ClassProfileScoped,
-		RetrySafety: RetrySafetyNaturalIdempotent,
-	}, func(context.Context, *BloemLiveTVReleaseInput) (*BloemLiveTVReleaseOutput, error) {
-		return &BloemLiveTVReleaseOutput{}, nil
-	})
+	release := bloemLiveTVDocumentOp(reg, "DELETE", "/livetv/sessions/{sessionId}", "releaseBloemLiveTVSession", "Release an owned tuner lease and return the session record.", 200, false)
+	release.Description += " Does not require Live TV permission, so owned cleanup remains possible after revocation. Returns the serialized session record rather than a bodyless response."
+	registerBloemChiDocument[struct{}, bloemJSONOutput[BloemLiveTVSessionResponse]](reg, release)
 }

@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 858 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v1` | 104 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v1` | 196 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -50,8 +50,20 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v1/admin/organization/ebook-requests/{id}/approve` | `approveBloemEbookRequest` | Approve a pending ebook request. |
 | `POST /api/bloem/v1/admin/organization/ebook-requests/{id}/decline` | `declineBloemEbookRequest` | Decline a pending ebook request and refund its quota slot. |
 | `POST /api/bloem/v1/admin/organization/ebook-requests/{id}/retry` | `retryBloemEbookRequest` | Recover uncertain provider state or retry a safely failed ebook dispatch. |
+| `GET /api/bloem/v1/admin/organization/entitlement-cohorts` | `listBloemOrganizationEntitlementCohorts` | List safe entitlement cohort projections. |
+| `GET /api/bloem/v1/admin/organization/entitlement-cohorts/{cohort_id}` | `getBloemOrganizationEntitlementCohort` | Read a safe organization cohort projection. |
+| `DELETE /api/bloem/v1/admin/organization/entitlements/{folder_id}` | `deleteBloemOrganizationLibraryEntitlement` | Remove an organization library entitlement. |
+| `PUT /api/bloem/v1/admin/organization/entitlements/{folder_id}` | `updateBloemOrganizationLibraryEntitlement` | Set an organization library entitlement status. |
+| `GET /api/bloem/v1/admin/organization/groups/` | `listBloemOrganizationGroups` | List access groups in the selected organization. |
+| `POST /api/bloem/v1/admin/organization/groups/` | `createBloemOrganizationGroup` | Create an organization access group. |
+| `DELETE /api/bloem/v1/admin/organization/groups/{id}` | `deleteBloemOrganizationGroup` | Delete an organization access group and report its impact. |
+| `GET /api/bloem/v1/admin/organization/groups/{id}` | `getBloemOrganizationGroup` | Read one organization access group. |
+| `PUT /api/bloem/v1/admin/organization/groups/{id}` | `updateBloemOrganizationGroup` | Update an organization access group. |
+| `GET /api/bloem/v1/admin/organization/invitations` | `listBloemOrganizationInvitations` | List invitation metadata without claim tokens. |
+| `POST /api/bloem/v1/admin/organization/invitations` | `createBloemOrganizationInvitation` | Create a user invitation and disclose its claim token once. |
 | `DELETE /api/bloem/v1/admin/organization/invitations/{id}` | `revokeBloemOrganizationInvitation` | Revoke an unaccepted, unrevoked user invitation in the selected organization. |
 | `POST /api/bloem/v1/admin/organization/invitations/{id}/resend` | `resendBloemOrganizationInvitation` | Rotate an unaccepted, unrevoked user invitation and return its new claim token once. |
+| `GET /api/bloem/v1/admin/organization/libraries` | `listBloemOrganizationLibraries` | List the organization library entitlement projection. |
 | `POST /api/bloem/v1/admin/organization/library-locations` | `createBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
 | `GET /api/bloem/v1/admin/organization/library-locations/{library_id}` | `getBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
 | `PUT /api/bloem/v1/admin/organization/library-locations/{library_id}` | `replaceBloemOrganizationLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
@@ -68,12 +80,42 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}` | `getSourceBloemOrganizationNativeStorage` | Read a visible source without configuration secrets. |
 | `GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/browse` | `browseBloemOrganizationNativeStorage` | Browse authorized directories without starting discovery or opening files. |
 | `PUT /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/configuration` | `replaceConfigurationBloemOrganizationNativeStorage` | Replace complete configuration only while the source namespace is empty. |
+| `GET /api/bloem/v1/admin/organization/overview` | `getBloemOrganizationOverview` | Read the selected organization overview. |
+| `GET /api/bloem/v1/admin/organization/people/` | `listBloemOrganizationPeople` | Page organization people and their profiles. |
+| `POST /api/bloem/v1/admin/organization/people/bulk-jobs` | `createBloemOrganizationPeopleBulkJob` | Enqueue a people bulk mutation. |
+| `GET /api/bloem/v1/admin/organization/people/bulk-jobs/{job_id}` | `getBloemOrganizationPeopleBulkJob` | Read progress and per-record results of a people job. |
+| `POST /api/bloem/v1/admin/organization/people/policy-jobs` | `createBloemOrganizationPeoplePolicyJob` | Enqueue a confirmed people policy command. |
+| `GET /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}` | `getBloemOrganizationPeoplePolicyJob` | Read progress and per-record results of a people job. |
+| `POST /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}/cancel` | `cancelBloemOrganizationPeoplePolicyJob` | Cancel an eligible people policy job. |
+| `POST /api/bloem/v1/admin/organization/people/policy-previews` | `previewBloemOrganizationPeoplePolicy` | Preview a policy command and obtain a bound confirmation token. |
+| `POST /api/bloem/v1/admin/organization/people/selections` | `createBloemOrganizationPeopleSelection` | Create an immutable expiring selection from people filters. |
+| `GET /api/bloem/v1/admin/organization/people/{account_id}/` | `getBloemOrganizationPerson` | Read an organization person and profile summary. |
+| `PATCH /api/bloem/v1/admin/organization/people/{account_id}/memberships/current` | `updateBloemOrganizationPersonMembership` | Change an organization person membership status. |
+| `PATCH /api/bloem/v1/admin/organization/people/{account_id}/profiles/{profile_id}` | `updateBloemOrganizationPersonProfile` | Assign an organization person profile to an access group. |
+| `GET /api/bloem/v1/admin/organization/policy-decisions` | `listBloemOrganizationPolicyDecisions` | Page sanitized organization policy decision explanations. |
+| `GET /api/bloem/v1/admin/organization/policy-decisions/{id}` | `getBloemOrganizationPolicyDecision` | Read a sanitized organization policy decision explanation. |
+| `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs` | `createBloemPlatformDirectPolicyJob` | Enqueue a confirmed bulk entitlement policy job. |
+| `GET /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}` | `getBloemPlatformDirectPolicyJob` | Read a bulk entitlement policy job. |
+| `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel` | `cancelBloemPlatformDirectPolicyJob` | Cancel an eligible bulk entitlement policy job. |
+| `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews` | `previewBloemPlatformDirectPolicy` | Create a selection and preview a bulk policy command. |
+| `POST /api/bloem/v1/admin/platform/accounts/entitlement-snapshots` | `readBloemDirectAccountPolicySnapshots` | Read bounded account policy snapshots in one observation. |
+| `GET /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement` | `getBloemDirectAccountPolicy` | Read authoritative account and profile entitlement policies. |
+| `POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/apply` | `applyBloemAccountEntitlement` | Apply a pinned entitlement template. |
+| `POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run` | `previewBloemAccountEntitlement` | Preview a pinned entitlement template. |
 | `GET /api/bloem/v1/admin/platform/ambience/` | `listBloemPlatformAmbience` | List ambience packs and authoring capabilities. |
 | `POST /api/bloem/v1/admin/platform/ambience/` | `createBloemPlatformAmbience` | Create a registry entry. |
 | `POST /api/bloem/v1/admin/platform/ambience/assets` | `uploadBloemPlatformAmbienceAsset` | Upload a standalone authoring asset without attaching it to a pack. |
 | `DELETE /api/bloem/v1/admin/platform/ambience/{id}` | `deleteBloemPlatformAmbience` | Delete a registry entry. |
 | `PUT /api/bloem/v1/admin/platform/ambience/{id}` | `updateBloemPlatformAmbience` | Replace every editable field of a registry entry. |
 | `POST /api/bloem/v1/admin/platform/ambience/{id}/assets` | `attachBloemPlatformAmbienceAsset` | Upload artwork and attach it to an ambience pack. |
+| `GET /api/bloem/v1/admin/platform/entitlement-templates` | `listBloemEntitlementTemplates` | List the entitlement template catalog. |
+| `POST /api/bloem/v1/admin/platform/entitlement-templates` | `createBloemEntitlementTemplate` | Create a versioned entitlement template. |
+| `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}` | `getBloemEntitlementTemplate` | Read the latest or a selected entitlement template revision. |
+| `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/archive` | `archiveBloemEntitlementTemplate` | Archive a template using its current revision. |
+| `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/clone` | `cloneBloemEntitlementTemplate` | Clone a template revision into a disabled new template. |
+| `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/history` | `listBloemEntitlementTemplateHistory` | List immutable template revisions (history alias). |
+| `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions` | `listBloemEntitlementTemplateRevisions` | List immutable template revisions. |
+| `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions` | `reviseBloemEntitlementTemplate` | Create a new revision or copy a historical policy into a new revision. |
 | `POST /api/bloem/v1/admin/platform/library-locations` | `createBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
 | `GET /api/bloem/v1/admin/platform/library-locations/{library_id}` | `getBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
 | `PUT /api/bloem/v1/admin/platform/library-locations/{library_id}` | `replaceBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
@@ -90,10 +132,36 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}` | `getSourceBloemPlatformNativeStorage` | Read a visible source without configuration secrets. |
 | `GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse` | `browseBloemPlatformNativeStorage` | Browse authorized directories without starting discovery or opening files. |
 | `PUT /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration` | `replaceConfigurationBloemPlatformNativeStorage` | Replace complete configuration only while the source namespace is empty. |
+| `GET /api/bloem/v1/admin/platform/organizations/` | `listBloemPlatformOrganizations` | Page organizations with current summary counts. |
+| `POST /api/bloem/v1/admin/platform/organizations/` | `createBloemPlatformOrganization` | Create an organization for an existing owner account. |
+| `GET /api/bloem/v1/admin/platform/organizations/{id}/` | `getBloemPlatformOrganization` | Read an organization summary. |
+| `PATCH /api/bloem/v1/admin/platform/organizations/{id}/` | `updateBloemPlatformOrganization` | Change organization name or slug. |
+| `GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement` | `getBloemPlatformOrganizationEntitlement` | Read the managed organization entitlement. |
+| `POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/apply` | `applyBloemOrganizationEntitlement` | Apply a pinned entitlement template. |
+| `GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement/audit` | `listBloemPlatformOrganizationEntitlementAudit` | Read organization entitlement audit history. |
+| `POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/dry-run` | `previewBloemOrganizationEntitlement` | Preview a pinned entitlement template. |
+| `GET /api/bloem/v1/admin/platform/organizations/{id}/memberships` | `listBloemPlatformOrganizationMemberships` | Page an organization membership directory. |
+| `POST /api/bloem/v1/admin/platform/organizations/{id}/memberships` | `createBloemPlatformOrganizationMembership` | Create an organization membership for an existing account. |
+| `PATCH /api/bloem/v1/admin/platform/organizations/{id}/memberships/{membership_id}` | `updateBloemPlatformOrganizationMembership` | Change a membership role or status. |
+| `POST /api/bloem/v1/admin/platform/organizations/{id}/reactivate` | `reactivateBloemPlatformOrganization` | Reactivate an organization. |
+| `POST /api/bloem/v1/admin/platform/organizations/{id}/suspend` | `suspendBloemPlatformOrganization` | Suspend an organization. |
+| `POST /api/bloem/v1/admin/platform/organizations/{id}/transfer-ownership` | `transferBloemPlatformOrganizationOwnership` | Transfer ownership after explicit confirmation and reauthentication. |
+| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement` | `getBloemOrganizationAccountPolicy` | Read authoritative account and profile entitlement policies. |
+| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs` | `createBloemPlatformOrganizationPolicyJob` | Enqueue a confirmed bulk entitlement policy job. |
+| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}` | `getBloemPlatformOrganizationPolicyJob` | Read a bulk entitlement policy job. |
+| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel` | `cancelBloemPlatformOrganizationPolicyJob` | Cancel an eligible bulk entitlement policy job. |
+| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews` | `previewBloemPlatformOrganizationPolicy` | Create a selection and preview a bulk policy command. |
+| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts` | `listBloemPlatformOrganizationEntitlementCohorts` | List organization entitlement cohorts. |
+| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}` | `getBloemPlatformOrganizationEntitlementCohort` | Read one organization entitlement cohort. |
+| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots` | `readBloemOrganizationAccountPolicySnapshots` | Read bounded account policy snapshots in one observation. |
 | `GET /api/bloem/v1/admin/platform/promotions/` | `listBloemPlatformPromotions` | List platform-managed campaigns and supported delivery surfaces. |
 | `POST /api/bloem/v1/admin/platform/promotions/` | `createBloemPlatformPromotion` | Create a registry entry. |
 | `DELETE /api/bloem/v1/admin/platform/promotions/{id}` | `deleteBloemPlatformPromotion` | Delete a registry entry. |
 | `PUT /api/bloem/v1/admin/platform/promotions/{id}` | `updateBloemPlatformPromotion` | Replace every editable field of a registry entry. |
+| `GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement` | `getBloemLegacyAccountEntitlement` | Read the legacy managed account entitlement projection. |
+| `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply` | `applyBloemLegacyAccountEntitlement` | Apply a pinned entitlement template. |
+| `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run` | `previewBloemLegacyAccountEntitlement` | Preview a pinned entitlement template. |
+| `POST /api/bloem/v1/admin/session` | `createBloemAdminSession` | Exchange a login session for a scoped administrative context. |
 | `GET /api/bloem/v1/ambience` | `getBloemSeasonalViewer` | Read seasonal presentation for the current verified tenant viewer. |
 | `POST /api/bloem/v1/book-requests` | `createBloemBookRequest` | File an audiobook request. |
 | `GET /api/bloem/v1/book-requests/capability` | `getBloemBookRequestCapability` | Read audiobook request capability and current viewer policy. |
@@ -107,12 +175,36 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v1/ebook-requests/mine` | `listBloemEbookRequests` | List this profile's ebook request history. |
 | `GET /api/bloem/v1/ebook-requests/{id}` | `getBloemEbookRequest` | Read an ebook request owned by this profile. |
 | `POST /api/bloem/v1/ebook-requests/{id}/cancel` | `cancelBloemEbookRequest` | Withdraw a pending or approved ebook request locally. |
-| `GET /api/bloem/v1/livetv/capability` | `getBloemLiveTVCapability` | Whether this build supports Live TV, whether this viewer may use it, and whether a channel is available to tune. |
+| `GET /api/bloem/v1/livetv/capability` | `getBloemLiveTVCapability` | Whether this build and viewer support Live TV and a channel is available. |
 | `GET /api/bloem/v1/livetv/channels` | `listBloemLiveTVChannels` | The channel lineup this viewer may watch. |
+| `PATCH /api/bloem/v1/livetv/channels/{channelId}` | `patchBloemLiveTVChannel` | Change channel enablement, number override or guide mapping. |
 | `POST /api/bloem/v1/livetv/channels/{channelId}/session` | `startBloemLiveTVSession` | Tune a channel and take a tuner lease. |
 | `GET /api/bloem/v1/livetv/guide` | `getBloemLiveTVGuide` | Programme guide for a window. |
-| `DELETE /api/bloem/v1/livetv/sessions/{sessionId}` | `releaseBloemLiveTVSession` | Release a tuner lease. Releasing an already-released session succeeds. |
+| `GET /api/bloem/v1/livetv/guide-sources` | `listBloemLiveTVGuideSources` | List configured guide sources. |
+| `POST /api/bloem/v1/livetv/guide-sources` | `createBloemLiveTVGuideSource` | Create a guide source. |
+| `POST /api/bloem/v1/livetv/guide-sources/schedules-direct/lineups` | `lookupBloemLiveTVSchedulesDirectLineups` | Look up Schedules Direct lineups by postal code. |
+| `POST /api/bloem/v1/livetv/guide-sources/xml-sync/lineups` | `lookupBloemLiveTVXMLSyncLineups` | Look up Gracenote providers by postal code. |
+| `DELETE /api/bloem/v1/livetv/guide-sources/{sourceId}` | `deleteBloemLiveTVGuideSource` | Delete a guide source. |
+| `PATCH /api/bloem/v1/livetv/guide-sources/{sourceId}` | `updateBloemLiveTVGuideSource` | Merge supplied guide-source fields with current configuration. |
+| `POST /api/bloem/v1/livetv/guide-sources/{sourceId}/sync` | `syncBloemLiveTVGuideSource` | Synchronize a saved guide source. |
+| `GET /api/bloem/v1/livetv/live-hls/{playbackId}/{name}` | `getBloemLiveTVHLSMedia` | Fetch a session-bound HLS playlist or MPEG-TS segment. |
+| `GET /api/bloem/v1/livetv/programs/{programId}` | `getBloemLiveTVProgram` | Read a guide program. |
+| `GET /api/bloem/v1/livetv/recordings` | `listBloemLiveTVRecordings` | List recordings visible to this viewer. |
+| `POST /api/bloem/v1/livetv/recordings` | `scheduleBloemLiveTVRecording` | Schedule a guide-program or manual recording. |
+| `DELETE /api/bloem/v1/livetv/recordings/{recordingId}` | `cancelBloemLiveTVRecording` | Cancel an owned recording and return its updated record. |
+| `GET /api/bloem/v1/livetv/series-rules` | `listBloemLiveTVSeriesRules` | List viewer-owned DVR series rules. |
+| `POST /api/bloem/v1/livetv/series-rules` | `createBloemLiveTVSeriesRule` | Create a viewer-owned DVR series rule. |
+| `DELETE /api/bloem/v1/livetv/series-rules/{ruleId}` | `deleteBloemLiveTVSeriesRule` | Delete an owned DVR series rule. |
+| `DELETE /api/bloem/v1/livetv/sessions/{sessionId}` | `releaseBloemLiveTVSession` | Release an owned tuner lease and return the session record. |
+| `POST /api/bloem/v1/livetv/sessions/{sessionId}/heartbeat` | `heartbeatBloemLiveTVSession` | Renew an owned active tuner session. |
+| `GET /api/bloem/v1/livetv/sessions/{sessionId}/stream` | `streamBloemLiveTVSession` | Stream MPEG-TS media. |
+| `HEAD /api/bloem/v1/livetv/sessions/{sessionId}/stream` | `probeBloemLiveTVSession` | Check MPEG-TS stream headers. |
+| `GET /api/bloem/v1/livetv/tuners` | `listBloemLiveTVTuners` | List configured tuner metadata. |
+| `POST /api/bloem/v1/livetv/tuners` | `addBloemLiveTVTuner` | Add an HDHomeRun-compatible tuner. |
+| `POST /api/bloem/v1/livetv/tuners/discover` | `discoverBloemLiveTVTuners` | Discover local HDHomeRun-compatible tuner candidates. |
 | `POST /api/bloem/v1/livetv/tuners/xtream` | `createBloemXtreamProvider` | Authenticate and import an encrypted Xtream live-TV provider. |
+| `DELETE /api/bloem/v1/livetv/tuners/{tunerId}` | `deleteBloemLiveTVTuner` | Delete a tuner. |
+| `POST /api/bloem/v1/livetv/tuners/{tunerId}/scan` | `scanBloemLiveTVTuner` | Scan a saved tuner and refresh its channel lineup. |
 | `GET /api/bloem/v1/music/albums/{id}` | `getBloemMusicAlbum` | One album and its tracks. |
 | `GET /api/bloem/v1/music/artists` | `listBloemMusicArtists` | Artists this viewer may see, paged. |
 | `GET /api/bloem/v1/music/artists/{id}` | `getBloemMusicArtist` | One artist and its albums. |
@@ -133,7 +225,7 @@ security declaration and the wire reference before sending credentials or mutati
 
 ## Inventory entries without typed OpenAPI
 
-The current inventory identifies **92** explicit method/path entries without a
+The current inventory identifies **0** explicit method/path entries without a
 typed native declaration. They require handler-level verification before generating
 client calls. A method missing from a documented path still appears here. This is
 documentation debt, not an assertion that these routes are unavailable or safe for
@@ -141,98 +233,6 @@ unauthenticated callers. Optional groups absent from this inventory can add furt
 
 | Observed method and path | Inventory source |
 | --- | --- |
-| `GET /api/bloem/v1/admin/organization/entitlement-cohorts` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/entitlement-cohorts/{cohort_id}` | `internal/api/router_bloem.go` |
-| `DELETE /api/bloem/v1/admin/organization/entitlements/{folder_id}` | `internal/api/router_bloem.go` |
-| `PUT /api/bloem/v1/admin/organization/entitlements/{folder_id}` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/groups/` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/organization/groups/` | `internal/api/router_bloem.go` |
-| `DELETE /api/bloem/v1/admin/organization/groups/{id}` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/groups/{id}` | `internal/api/router_bloem.go` |
-| `PUT /api/bloem/v1/admin/organization/groups/{id}` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/invitations` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/organization/invitations` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/libraries` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/overview` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/people/` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/organization/people/bulk-jobs` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/people/bulk-jobs/{job_id}` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/organization/people/policy-jobs` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}/cancel` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/organization/people/policy-previews` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/organization/people/selections` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/people/{account_id}/` | `internal/api/router_bloem.go` |
-| `PATCH /api/bloem/v1/admin/organization/people/{account_id}/memberships/current` | `internal/api/router_bloem.go` |
-| `PATCH /api/bloem/v1/admin/organization/people/{account_id}/profiles/{profile_id}` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/policy-decisions` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/organization/policy-decisions/{id}` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/accounts/entitlement-snapshots` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/apply` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/entitlement-templates` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/entitlement-templates` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/archive` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/clone` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/history` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/organizations/` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/organizations/` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/organizations/{id}/` | `internal/api/router_bloem.go` |
-| `PATCH /api/bloem/v1/admin/platform/organizations/{id}/` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/apply` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement/audit` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/entitlement/dry-run` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/organizations/{id}/memberships` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/memberships` | `internal/api/router_bloem.go` |
-| `PATCH /api/bloem/v1/admin/platform/organizations/{id}/memberships/{membership_id}` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/reactivate` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/suspend` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/organizations/{id}/transfer-ownership` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots` | `internal/api/router_bloem.go` |
-| `GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run` | `internal/api/router_bloem.go` |
-| `POST /api/bloem/v1/admin/session` | `internal/api/router_bloem.go` |
-| `PATCH /api/bloem/v1/livetv/channels/{channelId}` | `internal/api/router_livetv.go` |
-| `GET /api/bloem/v1/livetv/guide-sources` | `internal/api/router_livetv.go` |
-| `POST /api/bloem/v1/livetv/guide-sources` | `internal/api/router_livetv.go` |
-| `POST /api/bloem/v1/livetv/guide-sources/schedules-direct/lineups` | `internal/api/router_livetv.go` |
-| `POST /api/bloem/v1/livetv/guide-sources/xml-sync/lineups` | `internal/api/router_livetv.go` |
-| `DELETE /api/bloem/v1/livetv/guide-sources/{sourceId}` | `internal/api/router_livetv.go` |
-| `PATCH /api/bloem/v1/livetv/guide-sources/{sourceId}` | `internal/api/router_livetv.go` |
-| `POST /api/bloem/v1/livetv/guide-sources/{sourceId}/sync` | `internal/api/router_livetv.go` |
-| `GET /api/bloem/v1/livetv/live-hls/{playbackId}/{name}` | `internal/api/router_livetv.go` |
-| `GET /api/bloem/v1/livetv/programs/{programId}` | `internal/api/router_livetv.go` |
-| `GET /api/bloem/v1/livetv/recordings` | `internal/api/router_livetv.go` |
-| `POST /api/bloem/v1/livetv/recordings` | `internal/api/router_livetv.go` |
-| `DELETE /api/bloem/v1/livetv/recordings/{recordingId}` | `internal/api/router_livetv.go` |
-| `GET /api/bloem/v1/livetv/series-rules` | `internal/api/router_livetv.go` |
-| `POST /api/bloem/v1/livetv/series-rules` | `internal/api/router_livetv.go` |
-| `DELETE /api/bloem/v1/livetv/series-rules/{ruleId}` | `internal/api/router_livetv.go` |
-| `POST /api/bloem/v1/livetv/sessions/{sessionId}/heartbeat` | `internal/api/router_livetv.go` |
-| `GET /api/bloem/v1/livetv/sessions/{sessionId}/stream` | `internal/api/router_livetv.go` |
-| `HEAD /api/bloem/v1/livetv/sessions/{sessionId}/stream` | `internal/api/router_livetv.go` |
-| `GET /api/bloem/v1/livetv/tuners` | `internal/api/router_livetv.go` |
-| `POST /api/bloem/v1/livetv/tuners` | `internal/api/router_livetv.go` |
-| `POST /api/bloem/v1/livetv/tuners/discover` | `internal/api/router_livetv.go` |
-| `DELETE /api/bloem/v1/livetv/tuners/{tunerId}` | `internal/api/router_livetv.go` |
-| `POST /api/bloem/v1/livetv/tuners/{tunerId}/scan` | `internal/api/router_livetv.go` |
 
 ## Unresolved mount dispatchers
 

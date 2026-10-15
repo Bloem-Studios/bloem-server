@@ -21,9 +21,10 @@ organization/platform context, not just a normal account login.
 
 The [API catalogue](../api-catalogue.md) lists typed operations and documentation
 gaps. The [native wire reference](../../bloem-api-reference.md) describes
-organization, household, Live TV and chi-handler extensions not all represented
-by typed schemas. These sources complement each other; the v2 viewer does not
-certify native route coverage.
+organization, household, Live TV and chi-handler wire conventions. The generated
+native artifact covers the explicit inventory operations; production mount tests
+check method-level agreement for conditional groups. These sources complement
+each other; the v2 viewer does not certify native route coverage.
 
 Experimental [native-storage administration](../../bloem-api-reference.md#native-storage-administration)
 is also Bloem-only: its platform/organization routes and protected capability

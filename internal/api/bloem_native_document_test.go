@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,7 +62,7 @@ func mountedBloemPaths(t *testing.T) map[string]struct{} {
 	}
 	out := map[string]struct{}{}
 	for _, r := range inv.Routes {
-		if !strings.HasPrefix(r.Path, apiv2.BloemPrefix) {
+		if !strings.HasPrefix(r.Path, apiv2.BloemPrefix) || strings.HasSuffix(r.Path, "/*") {
 			continue
 		}
 		switch r.Method {
@@ -85,7 +86,9 @@ func mountedBloemPaths(t *testing.T) map[string]struct{} {
 // routes even though the server mounts them for an authenticated profile.
 func mountedBookRequestOperations(t *testing.T) map[string]struct{} {
 	t.Helper()
-	h := handlers.NewBloemBookRequestsHandler(bookrequests.NewService(nil, nil), seasonalMountProfiles{})
+	service := bookrequests.NewService(nil, nil)
+	h := handlers.NewBloemBookRequestsHandler(service, seasonalMountProfiles{})
+	h.SetEbookRequests(service)
 	client := bloemClientSurface{
 		auth:   apimw.NewAuthMiddleware(seasonalMountTokens{}, seasonalMountSessions{}, nil, nil),
 		tenant: apimw.NewTenantMiddleware(seasonalMountTenant{}),
@@ -108,8 +111,8 @@ func mountedBookRequestOperations(t *testing.T) map[string]struct{} {
 
 func TestBookRequestDocumentMatchesMountedOperations(t *testing.T) {
 	mounted := mountedBookRequestOperations(t)
-	if len(mounted) != 19 {
-		t.Fatalf("book request operations=%d, want 19", len(mounted))
+	if len(mounted) != 33 {
+		t.Fatalf("book request operations=%d, want 33", len(mounted))
 	}
 	raw, err := apiv2.GenerateBloemOpenAPI()
 	if err != nil {
@@ -123,7 +126,7 @@ func TestBookRequestDocumentMatchesMountedOperations(t *testing.T) {
 	}
 	documented := map[string]struct{}{}
 	for path, item := range doc.Paths {
-		if !strings.Contains(path, "/book-requests") && !strings.Contains(path, "/audiobook-request-integrations") {
+		if !strings.Contains(path, "/book-requests") && !strings.Contains(path, "/ebook-request") && !strings.Contains(path, "/audiobook-request") {
 			continue
 		}
 		for method := range item {
@@ -229,26 +232,10 @@ func TestEveryDocumentedNativePathCarriesTheNativePrefix(t *testing.T) {
 	}
 }
 
-// The conversion is incremental, so most native routes are still undocumented.
-// This test does not fail on that -- it reports the remaining count, so the gap
-// is a number someone can watch shrink instead of a vague intention. It fails
-// only if the count goes UP, which would mean a new chi route was added to the
-// native surface without documenting it.
-//
-// Lower this ceiling as routes are converted. It may only go down.
+// Every explicit native inventory path must have a typed declaration.
 func TestUndocumentedNativeRouteCountDoesNotGrow(t *testing.T) {
 	t.Parallel()
-	// 2026-09-14: 99 at introduction (only /capabilities), then 94 (Live TV
-	// client operations), 92 (identity and organizations), 84 (watch, sync
-	// progress, music), 83 (person detail).
-	//
-	// October 7: the 30 native-storage paths are documented and walked from
-	// their production mount helper. The pinned upstream inventory is retained;
-	// its remaining documentation gap does not grow.
-	// What remains is admin, plus the Live TV routes beyond the five a viewer
-	// calls: DVR recordings, series rules, tuners, guide sources, the session
-	// heartbeat and the stream itself.
-	const ceiling = 83
+	const ceiling = 0
 
 	mounted := mountedBloemPaths(t)
 	if len(mounted) == 0 {
@@ -270,4 +257,93 @@ func TestUndocumentedNativeRouteCountDoesNotGrow(t *testing.T) {
 	}
 	t.Logf("native routes: %d mounted, %d documented, %d still to convert",
 		len(mounted), len(documented), len(missing))
+}
+
+// Exercise production registrars with every administration dependency present.
+// chi Handle advertises all verbs; probe its OPTIONS handler without middleware
+// to recover methodOnly's actual Allow contract rather than inventing operations.
+func mountedAdministrativeAndLiveTVOperations(t *testing.T) map[string]struct{} {
+	t.Helper()
+	router := chi.NewRouter()
+	mountBloemRoutes(router, handlers.NewBloemSystemHandler(nil), &handlers.AdminContextSessionHandler{},
+		&apimw.AuthMiddleware{}, &apimw.AdminContextMiddleware{}, bloemRouteSurfaces{
+			Platform: &handlers.BloemAdminPlatformHandler{}, People: &handlers.BloemAdminPeopleHandler{},
+			Organization: &handlers.BloemAdminOrganizationHandler{}, Explain: &handlers.BloemPolicyExplainHandler{},
+			Promotions: &handlers.AdminPromotionsHandler{}, Ambience: &handlers.AmbienceHandler{},
+			Entitlement: &handlers.EntitlementTemplatesHandler{}, AccountPolicy: &handlers.AdminHandler{},
+			Client: bloemClientSurface{auth: &apimw.AuthMiddleware{}, tenant: &apimw.TenantMiddleware{}, viewer: &apimw.ViewerAccessMiddleware{}, liveTV: &handlers.LiveTVHandler{}, liveTVAdmin: func(h http.Handler) http.Handler { return h }},
+		})
+	operations := map[string]struct{}{}
+	gated := map[string]string{}
+	if err := chi.Walk(router, func(method, path string, h http.Handler, _ ...func(http.Handler) http.Handler) error {
+		if strings.HasSuffix(path, "/*") || (!strings.Contains(path, "/admin/") && !strings.Contains(path, "/livetv/")) {
+			return nil
+		}
+		if strings.Contains(path, "/native-storage/") || strings.Contains(path, "/library-locations") || (strings.Contains(path, "/book-requests") || strings.Contains(path, "/ebook-request") || strings.Contains(path, "/audiobook-request")) {
+			return nil
+		}
+		if method == http.MethodOptions {
+			response := httptest.NewRecorder()
+			h.ServeHTTP(response, httptest.NewRequest(http.MethodOptions, path, nil))
+			if response.Code != http.StatusMethodNotAllowed || response.Header().Get("Allow") == "" {
+				t.Fatalf("unresolved dispatcher %s: status=%d Allow=%q", path, response.Code, response.Header().Get("Allow"))
+			}
+			gated[path] = response.Header().Get("Allow")
+		}
+		operations[method+" "+path] = struct{}{}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for path, allowed := range gated {
+		for operation := range operations {
+			_, p, _ := strings.Cut(operation, " ")
+			if p == path {
+				delete(operations, operation)
+			}
+		}
+		operations[allowed+" "+path] = struct{}{}
+	}
+	return operations
+}
+
+func TestAdministrativeAndLiveTVDocumentMatchesMountedOperations(t *testing.T) {
+	mounted := mountedAdministrativeAndLiveTVOperations(t)
+	raw, err := apiv2.GenerateBloemOpenAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Paths map[string]map[string]json.RawMessage `json:"paths"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	documented := map[string]struct{}{}
+	for path, item := range doc.Paths {
+		if !strings.Contains(path, "/livetv/") && !strings.Contains(path, "/admin/organization/") && !strings.Contains(path, "/admin/platform/") && !strings.HasSuffix(path, "/admin/session") {
+			continue
+		}
+		// Other admin families have their own production-mount tests.
+		if strings.Contains(path, "/native-storage/") || strings.Contains(path, "/library-locations") || (strings.Contains(path, "/book-requests") || strings.Contains(path, "/ebook-request") || strings.Contains(path, "/audiobook-request")) {
+			continue
+		}
+		for method := range item {
+			switch method {
+			case "get", "post", "put", "patch", "delete", "head", "options", "trace":
+				documented[strings.ToUpper(method)+" "+path] = struct{}{}
+			}
+		}
+	}
+	for operation := range mounted {
+		if _, ok := documented[operation]; !ok {
+			t.Errorf("mounted operation missing typed OpenAPI: %s", operation)
+		}
+	}
+	for operation := range documented {
+		if _, ok := mounted[operation]; !ok {
+			t.Errorf("documented operation is not mounted: %s", operation)
+		}
+	}
+	t.Logf("administration and Live TV: %d mounted operations, %d documented", len(mounted), len(documented))
 }

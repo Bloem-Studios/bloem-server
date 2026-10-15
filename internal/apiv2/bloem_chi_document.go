@@ -43,7 +43,7 @@ type BloemNativeValidationError struct {
 type BloemNativeRevisionConflict struct {
 	Error           string `json:"error"`
 	Message         string `json:"message"`
-	CurrentRevision int64  `json:"current_revision,omitempty" doc:"Current organization policy revision when error is authorization_state_changed. Absent for invitation_not_claimable."`
+	CurrentRevision int64  `json:"current_revision,omitempty" doc:"Current authorization revision when supplied for authorization_state_changed. Its scope follows the operation (organization policy, membership or person security); absent for other conflicts."`
 }
 
 type BloemNativeRateLimitError struct {

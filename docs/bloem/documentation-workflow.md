@@ -72,11 +72,19 @@ Do not reuse v2 Problem/If-Match rules unless the handler actually implements th
 Document optional service dependencies and capability gates. Binary and streaming
 routes need their actual media type and authorization boundary, not a JSON stub.
 
-The [catalogue](api-catalogue.md) deliberately exposes incomplete typed native
-coverage. An all-method router mount is not an operation for every HTTP verb.
+The [catalogue](api-catalogue.md) reports any inventoried method/path without a
+typed native declaration. Administration and Live TV declarations now cover the
+previous inventory gaps; production mount tests enforce method-level agreement.
+An all-method router mount is not an operation for every HTTP verb.
 `methodOnly` wrappers are resolved by the catalogue generator; unknown dispatchers
 remain unresolved. Production mount tests supplement the inventory for conditional
 groups. Never add invented schemas simply to make a coverage number reach zero.
+
+Document-only Go schema mirrors are separate from native-client DTO roots.
+Give each exported mirror an explicit reason in the server's
+[client coverage allowlist](../../contracts/client/v1/coverage.json), and verify
+its wire shape against the handler. Adding a schema does not establish adoption
+by either native client.
 
 ## Regenerate and verify
 

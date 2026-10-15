@@ -2104,6 +2104,326 @@
     {
       "type": "internal/models.Season",
       "reason": "Internal catalog record; native clients decode the registered API v2 episode and season projections."
+    },
+    {
+      "type": "internal/apiv2.BloemAccountPolicySnapshotsResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemAdminContextSummary",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemAdminSessionRequest",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemAdminSessionResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementApplyRequest",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementApplyResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementAuditResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementCohort",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementCohortResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementCohortsResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementDryRunChange",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementDryRunResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementManagedGroup",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementPolicy",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementPolicyInput",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementRevisionsResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementTemplate",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementTemplateClone",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementTemplateCreate",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementTemplateResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementTemplateRevise",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemEntitlementTemplatesResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLegacyAccountEntitlementRead",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVAddTunerRequest",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVChannelPatch",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVClientCapabilities",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVCreateSeriesRuleRequest",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVGuideSourceCreate",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVGuideSourcePatch",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVGuideSourcesResponse",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVScanFallback",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVScheduleRecordingRequest",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVSchedulesDirectLineup",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVSchedulesDirectLineupsRequest",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVSchedulesDirectLineupsResponse",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVSessionFields",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVSessionResponse",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVSyncFallback",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVTunersResponse",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVXMLSyncLineup",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVXMLSyncLineupsRequest",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemLiveTVXMLSyncLineupsResponse",
+      "reason": "OpenAPI-only declaration of the existing Live TV chi request, safe response or media-management contract. Runtime Live TV client DTOs remain rooted in the livetv package; document-only mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationEntitlementRead",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationEntitlementResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationEntitlementUpdate",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationGroup",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationGroupCreate",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationGroupMutationResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationGroupResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationGroupUpdate",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationGroupsResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationInvitationCreate",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationInvitationsResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationLibrariesResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemOrganizationSummaryResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPeopleJobResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPeopleMembershipUpdate",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPeoplePreviewRequest",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPeoplePreviewResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPeopleProfileUpdate",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPeopleSelectionRequest",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPeopleSelectionResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPersonResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformMembershipCreate",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformMembershipResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformMembershipUpdate",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformMembershipsResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformOrganizationCreate",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformOrganizationResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformOrganizationUpdate",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformOrganizationsResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformOwnershipTransfer",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformPolicyPreviewRequest",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformPolicyPreviewResponse",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPolicyBulkAction",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPolicyCommand",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPolicyDecisionResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemPolicyDecisionsResponse",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemRevisionRequest",
+      "reason": "OpenAPI-only declaration of the existing organization administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.BloemAccountPolicySnapshotsRequest",
+      "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
     }
   ]
 }
