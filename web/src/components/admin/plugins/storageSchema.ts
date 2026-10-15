@@ -63,6 +63,19 @@ export function validateS3Connection(value: Record<string, unknown>): Record<str
   return errors;
 }
 
+/** What a saved entry may carry: an emptied optional field is simply left out. */
+export function withoutEmpty(value: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== "" && v !== null));
+}
+
+/** The typed name, or the bucket (with the prefix, when set) so a source is never shown by its id. */
+export function sourceName(value: Record<string, unknown>): string {
+  const text = (k: string) => (typeof value[k] === "string" ? (value[k] as string) : "");
+  return (
+    text("source_name").trim() || `${text("bucket")}${text("prefix") ? `/${text("prefix")}` : ""}`
+  );
+}
+
 /** A new provider source id matching the plugin's `<kind>_<32 hex>` pattern. */
 export function newProviderSourceId(prefix: string): string {
   return `${prefix}_${randomUUID().replaceAll("-", "")}`;
