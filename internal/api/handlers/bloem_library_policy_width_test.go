@@ -13,16 +13,15 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
-// A catalog library can have a bigint ID even while unrelated child workflows
-// retain int4 limits. Merely discovering that library must not break dynamic
-// policy materialization for an otherwise ordinary, small-ID account/tenant.
+// Library policy arrays follow Silo's integer[] width, including its maximum
+// value, in both dynamic materialization and explicit allowlists.
 func TestBloemLibraryPolicyWidth(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		id   int
 	}{
 		{"int32", 7},
-		{"bigint", 2147483648},
+		{"int32-maximum", 2147483647},
 	} {
 		for _, dynamic := range []bool{true, false} {
 			mode := "explicit"

@@ -92,7 +92,10 @@ func (h *AdminHandler) effectiveProfileLimitInTransaction(ctx context.Context, t
 	if user == nil {
 		return 0, nil, nil
 	}
-	limit := user.MaxProfiles
+	limit := access.DefaultMaxProfiles
+	if user.MaxProfiles != nil {
+		limit = *user.MaxProfiles
+	}
 	if h.AccessGroups == nil {
 		return limit, cloneGroupID(user.AccessGroupID), nil
 	}
@@ -115,7 +118,7 @@ func (h *AdminHandler) effectiveProfileLimitInTransaction(ctx context.Context, t
 		if err != nil {
 			return 0, nil, err
 		}
-		return strictestProfileLimit(limit, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
+		return profileLimitWithEntitlement(user.MaxProfiles, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
 	}
 	var group *access.TenantGroup
 	var err error
@@ -130,7 +133,7 @@ func (h *AdminHandler) effectiveProfileLimitInTransaction(ctx context.Context, t
 	if err != nil {
 		return 0, nil, err
 	}
-	return strictestProfileLimit(limit, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
+	return profileLimitWithEntitlement(user.MaxProfiles, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
 }
 
 func (h *AdminHandler) handleLifecycleCreateUserProfile(w http.ResponseWriter, r *http.Request) {

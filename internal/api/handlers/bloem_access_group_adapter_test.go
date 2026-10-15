@@ -114,8 +114,8 @@ func TestTenantAccessGroupAdapterReusesActiveOrganizationDB(t *testing.T) {
 			t.Fatalf("common update changed tenant policy: %v %v", persisted, err)
 		}
 		policy := persisted.Policy()
-		view := toAdminUserResponse(&models.User{ID: 1, Role: models.RoleUser, AccessGroupID: &current.ID, MaxProfiles: 5}, &policy)
-		if view.EffectivePolicy.PlaybackAllowed || view.EffectivePolicy.MaxProfiles != 3 {
+		view := toAdminUserResponse(&models.User{ID: 1, Role: models.RoleUser, AccessGroupID: &current.ID, MaxProfiles: new(5)}, &policy)
+		if view.EffectivePolicy.PlaybackAllowed || view.EffectivePolicy.MaxProfiles != 5 {
 			t.Fatalf("account effective policy lost tenant fields: %+v", view.EffectivePolicy)
 		}
 	}

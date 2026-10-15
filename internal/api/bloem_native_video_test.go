@@ -59,6 +59,11 @@ func (v *nativeVideoViewerFixture) Resolve(ctx context.Context, input access.Res
 
 type nativeVideoLoginFixture struct{ enabled, active bool }
 
+func (l *nativeVideoLoginFixture) ActiveSession(ctx context.Context, id string) (auth.SessionAuthority, bool, error) {
+	role, active, err := l.ActiveSessionRole(ctx, id)
+	return auth.SessionAuthority{Role: role}, active, err
+}
+
 func (l *nativeVideoLoginFixture) ActiveSessionRole(context.Context, string) (string, bool, error) {
 	return "user", l.active, nil
 }
@@ -413,7 +418,7 @@ func TestNativeVideoDelegationCarriesOnlyValidatedAuthority(t *testing.T) {
 	}
 }
 func TestNativeVideoDelegatedAuthorityRejectsCurrentRevocations(t *testing.T) {
-	for _, kind := range []string{"expiry", "account", "login-owner", "login-revoked", "login-expired", "pin", "credential", "profile-tenant", "tenant", "viewer", "playback-deny", "session-owner", "session-file", "session-missing", "catalog", "source"} {
+	for _, kind := range []string{"expiry", "account", "login-owner", "login-revoked", "login-expired", "remote-profile", "remote-absolute-expiry", "pin", "credential", "profile-tenant", "tenant", "viewer", "playback-deny", "session-owner", "session-file", "session-missing", "catalog", "source"} {
 		t.Run(kind, func(t *testing.T) {
 			d := newNativeVideoDelegationFixture(t)
 			f := d.base
@@ -430,6 +435,14 @@ func TestNativeVideoDelegatedAuthorityRejectsCurrentRevocations(t *testing.T) {
 				d.login.RevokedAt = &now
 			case "login-expired":
 				d.login.ExpiresAt = time.Now().Add(-time.Minute)
+			case "remote-profile":
+				d.login.Purpose = models.SessionPurposeRemotePlayback
+				d.login.BoundProfileID = "other-profile"
+			case "remote-absolute-expiry":
+				d.login.Purpose = models.SessionPurposeRemotePlayback
+				d.login.BoundProfileID = "profile"
+				end := time.Now().Add(-time.Minute)
+				d.login.AbsoluteExpiresAt = &end
 			case "pin":
 				d.profile.PINRevision++
 			case "credential":

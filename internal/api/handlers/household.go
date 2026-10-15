@@ -65,7 +65,7 @@ func canManageHouseholdAs(
 	activeProfileID string,
 	verify func(profileID string) error,
 ) (bool, error) {
-	if bloemDirectProfileClaims(ctx) {
+	if bloemDirectProfileClaims(ctx) || apimw.GetClaims(ctx).IsRemotePlayback() {
 		return false, nil
 	}
 	if activeProfileID == "" {

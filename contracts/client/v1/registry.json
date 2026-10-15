@@ -2244,10 +2244,6 @@
           "direction": "request"
         },
         {
-          "type": "ThemeOverrides",
-          "direction": "response"
-        },
-        {
           "type": "TokenPair",
           "direction": "response"
         },
@@ -2657,6 +2653,22 @@
         {
           "type": "ChatGPTModel",
           "direction": "response"
+        },
+        {
+          "type": "AdminNodeCapabilities",
+          "direction": "response"
+        },
+        {
+          "type": "AdminNodeDrain",
+          "direction": "response"
+        },
+        {
+          "type": "CatalogLetters",
+          "direction": "response"
+        },
+        {
+          "type": "CatalogLettersQuery",
+          "direction": "request"
         }
       ]
     },

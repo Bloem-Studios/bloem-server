@@ -259,7 +259,7 @@ func TestBloemRouterAdminRequestUsageAccountTarget(t *testing.T) {
 	authMW := apimw.NewAuthMiddleware(jwt, sessions, nil, nil)
 	wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, nil, bloemLifecycleTargets{requests: requestHandler}, authMW, nil, nil)
 	usage := requestHandler.Service().(apiv2.AdminRequestUsageService)
-	v2deps := apiv2.Dependencies{Auth: authMW, AdminRequestUsage: usage, ActingAdmin: apimw.RequireActingAdmin(nil, nil)}
+	v2deps := apiv2.Dependencies{Auth: authMW, AdminRequestUsage: usage, ActingAdmin: apimw.NewActingAdminDecider(nil, nil)}
 	v2deps.AdminAccounts = handlers.NewAdminHandler(auth.NewUserRepository(pool), pool, pgstore.NewPostgresProvider(pool))
 	v2deps.ViewerAccess = apimw.NewViewerAccessMiddleware(access.NewResolver(auth.NewUserRepository(pool), pgstore.NewPostgresProvider(pool), nil, access.NewTenantGroupStore(pool)))
 	wireBloemV2(&v2deps, Dependencies{DB: pool}, nil, authMW)

@@ -53,6 +53,7 @@ type GroupPolicy struct {
 	MaxLocalStreamBitrateKbps  int
 	AllowedPermissions         []string
 	RequestsAllowed            bool
+	ManagedProfileLimit        bool `json:"-"`
 }
 
 type EffectiveUserPolicy struct {
@@ -92,9 +93,12 @@ func NormalizePlaybackQuality(value string) string {
 	return ""
 }
 
+const DefaultMaxProfiles = 5
+
 func NoGroupPolicy() GroupPolicy {
 	return GroupPolicy{
 		PlaybackAllowed:          true,
+		MaxProfiles:              DefaultMaxProfiles,
 		DownloadAllowed:          true,
 		DownloadTranscodeAllowed: false,
 		TranscodeAllowed:         true,
@@ -147,7 +151,7 @@ func ApplyGroupPolicy(user *models.User, group *GroupPolicy) EffectiveUserPolicy
 		TranscodeAllowed:           inheritBool(user.TranscodeAllowed, base.TranscodeAllowed),
 		AudioTranscodeAllowed:      inheritBool(user.AudioTranscodeAllowed, base.AudioTranscodeAllowed),
 		MaxStreams:                 inheritInt(user.MaxStreams, base.MaxStreams),
-		MaxProfiles:                strictestPositive(user.MaxProfiles, base.MaxProfiles),
+		MaxProfiles:                inheritInt(user.MaxProfiles, base.MaxProfiles),
 		MaxTranscodes:              inheritInt(user.MaxTranscodes, base.MaxTranscodes),
 		MaxRemoteStreamBitrateKbps: inheritInt(user.MaxRemoteStreamBitrateKbps, base.MaxRemoteStreamBitrateKbps),
 		MaxLocalStreamBitrateKbps:  inheritInt(user.MaxLocalStreamBitrateKbps, base.MaxLocalStreamBitrateKbps),
@@ -156,6 +160,13 @@ func ApplyGroupPolicy(user *models.User, group *GroupPolicy) EffectiveUserPolicy
 	}
 	if group != nil && group.AllowedPermissions != nil {
 		effective.Permissions = intersectStrings(user.Permissions, group.AllowedPermissions)
+	}
+	if group != nil && group.ManagedProfileLimit {
+		ceiling := group.MaxProfiles
+		if ceiling == 0 {
+			ceiling = 1
+		}
+		effective.MaxProfiles = strictestPositive(effective.MaxProfiles, ceiling)
 	}
 	return effective
 }

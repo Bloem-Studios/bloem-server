@@ -68,10 +68,10 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 			writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 			return
 		}
-		if _, valid, err := m.sessions.ActiveSessionRole(r.Context(), claims.SessionID); err != nil {
+		if authority, valid, err := m.sessions.ActiveSession(r.Context(), claims.SessionID); err != nil {
 			writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 			return
-		} else if !valid {
+		} else if !valid || authority.IsRemotePlayback() {
 			writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 			return
 		}

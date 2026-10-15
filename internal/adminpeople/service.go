@@ -1713,14 +1713,15 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 		return "", "", err
 	}
 	var accountPermissions []string
-	var accountMaxProfiles int
+	var accountMaxProfiles *int
 	if err := tx.QueryRow(ctx, `SELECT permissions,max_profiles FROM organization_memberships WHERE organization_id=$1 AND account_id=$2`, organizationID, snapshot.AccountID).Scan(&accountPermissions, &accountMaxProfiles); err != nil {
 		return "", "", err
 	}
 	targetEffectivePolicy := accesspolicy.ApplyGroupPolicy(
 		&models.User{Permissions: accountPermissions, MaxProfiles: accountMaxProfiles},
 		&accesspolicy.GroupPolicy{
-			LibraryIDs: targetPolicy.LibraryIDs, PlaybackAllowed: targetPolicy.PlaybackAllowed,
+			ManagedProfileLimit: true,
+			LibraryIDs:          targetPolicy.LibraryIDs, PlaybackAllowed: targetPolicy.PlaybackAllowed,
 			MaxStreams: targetPolicy.MaxStreams, MaxProfiles: targetPolicy.MaxProfiles,
 			TranscodeAllowed: targetPolicy.TranscodeAllowed, AudioTranscodeAllowed: targetAudioTranscodeAllowed,
 			MaxTranscodes: targetPolicy.MaxTranscodes, DownloadAllowed: targetPolicy.DownloadAllowed,

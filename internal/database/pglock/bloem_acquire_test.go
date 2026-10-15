@@ -79,14 +79,14 @@ func TestAcquireBlocksUntilHolderReleases(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	first, err := Acquire(ctx, pool, bloemAcquireTestKey)
+	first, err := AcquireBlocking(ctx, pool, bloemAcquireTestKey)
 	if err != nil {
 		t.Fatalf("Acquire: %v", err)
 	}
 	got := make(chan *Lock, 1)
 	errs := make(chan error, 1)
 	go func() {
-		second, err := Acquire(ctx, pool, bloemAcquireTestKey)
+		second, err := AcquireBlocking(ctx, pool, bloemAcquireTestKey)
 		if err != nil {
 			errs <- err
 			return
@@ -123,14 +123,14 @@ func TestAcquireCancelledWhileWaitingHoldsNothing(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	holder, err := Acquire(ctx, base, bloemAcquireTestKey)
+	holder, err := AcquireBlocking(ctx, base, bloemAcquireTestKey)
 	if err != nil {
 		t.Fatalf("Acquire: %v", err)
 	}
 	waitCtx, stop := context.WithCancel(ctx)
 	errs := make(chan error, 1)
 	go func() {
-		lock, err := Acquire(waitCtx, pool, bloemAcquireTestKey)
+		lock, err := AcquireBlocking(waitCtx, pool, bloemAcquireTestKey)
 		if err == nil {
 			_ = lock.Release(ctx)
 		}
@@ -159,7 +159,7 @@ func TestAcquireCancelledWhileWaitingHoldsNothing(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 	// The single-connection pool must still be usable.
-	again, err := Acquire(ctx, pool, bloemAcquireTestKey)
+	again, err := AcquireBlocking(ctx, pool, bloemAcquireTestKey)
 	if err != nil {
 		t.Fatalf("Acquire after cancel: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestAcquireReleaseFailureDiscardsConnection(t *testing.T) {
 	defer cancel()
 
 	t.Run("unlock reports not held", func(t *testing.T) {
-		lock, err := Acquire(ctx, pool, bloemAcquireTestKey)
+		lock, err := AcquireBlocking(ctx, pool, bloemAcquireTestKey)
 		if err != nil {
 			t.Fatalf("Acquire: %v", err)
 		}
@@ -198,7 +198,7 @@ func TestAcquireReleaseFailureDiscardsConnection(t *testing.T) {
 	})
 
 	t.Run("backend terminated", func(t *testing.T) {
-		lock, err := Acquire(ctx, pool, bloemAcquireTestKey)
+		lock, err := AcquireBlocking(ctx, pool, bloemAcquireTestKey)
 		if err != nil {
 			t.Fatalf("Acquire: %v", err)
 		}
@@ -274,8 +274,8 @@ func TestAcquirePairExcludesTransactionLockOnSamePair(t *testing.T) {
 }
 
 func TestAcquireNilPool(t *testing.T) {
-	if _, err := Acquire(context.Background(), nil, bloemAcquireTestKey); !errors.Is(err, ErrNilPool) {
-		t.Fatalf("Acquire(nil) error = %v", err)
+	if _, err := AcquireBlocking(context.Background(), nil, bloemAcquireTestKey); !errors.Is(err, ErrNilPool) {
+		t.Fatalf("AcquireBlocking(nil) error = %v", err)
 	}
 	if _, err := AcquirePair(context.Background(), nil, 1, 2); !errors.Is(err, ErrNilPool) {
 		t.Fatalf("AcquirePair(nil) error = %v", err)

@@ -72,7 +72,10 @@ func (h *ProfileHandler) effectiveProfileLimit(ctx context.Context, user *models
 	if user == nil {
 		return 0, nil, nil
 	}
-	limit := user.MaxProfiles
+	limit := access.DefaultMaxProfiles
+	if user.MaxProfiles != nil {
+		limit = *user.MaxProfiles
+	}
 	if h.AccessGroups == nil {
 		return limit, cloneGroupID(user.AccessGroupID), nil
 	}
@@ -91,7 +94,7 @@ func (h *ProfileHandler) effectiveProfileLimit(ctx context.Context, user *models
 		if err != nil {
 			return 0, nil, err
 		}
-		return strictestProfileLimit(limit, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
+		return profileLimitWithEntitlement(user.MaxProfiles, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
 	}
 	var group *access.TenantGroup
 	var err error
@@ -106,7 +109,28 @@ func (h *ProfileHandler) effectiveProfileLimit(ctx context.Context, user *models
 	if err != nil {
 		return 0, nil, err
 	}
-	return strictestProfileLimit(limit, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
+	return profileLimitWithEntitlement(user.MaxProfiles, group.MaxProfiles, group.ManagedTemplateKey != nil), cloneGroupID(&group.ID), nil
+}
+
+func profileLimitWithEntitlement(override *int, groupLimit int, managed bool) int {
+	// Silo's account override wins over an ordinary group's inherited default.
+	// Only an explicitly managed Bloem entitlement adds a ceiling.
+	if !managed {
+		if override != nil {
+			return *override
+		}
+		if groupLimit > 0 {
+			return groupLimit
+		}
+		return access.DefaultMaxProfiles
+	}
+	if override == nil {
+		if groupLimit == 0 {
+			return 1
+		}
+		return groupLimit
+	}
+	return strictestProfileLimit(*override, groupLimit, true)
 }
 
 func cloneGroupID(id *int64) *int64 {

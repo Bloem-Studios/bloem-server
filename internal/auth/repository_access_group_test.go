@@ -273,6 +273,12 @@ func newAccessGroupUserRepoDBTest(t *testing.T) (context.Context, *pgxpool.Pool,
 		t.Skip("test database has not applied default access group migration")
 	}
 
+	// Silo now validates each policy library against an actual catalog row.
+	if _, err := pool.Exec(ctx, `INSERT INTO media_folders(id,type,name) VALUES(1,'movies','Policy library one'),(3,'movies','Policy library three') ON CONFLICT(id) DO NOTHING;
+        SELECT setval(pg_get_serial_sequence('media_folders','id'),GREATEST((SELECT last_value FROM media_folders_id_seq),3),true)`); err != nil {
+		t.Fatal(err)
+	}
+
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE username LIKE $1`, "auth-access-group-test-"+suffix+"%")

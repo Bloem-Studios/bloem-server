@@ -510,6 +510,9 @@ func nativeVideoDelegation(ctx context.Context, p nativeVideoPolicy) (handlers.N
 		if login == nil {
 			return empty, middleware.ErrCurrentCredentialInvalid
 		}
+		if login.Purpose == models.SessionPurposeRemotePlayback && login.AbsoluteExpiresAt != nil && login.AbsoluteExpiresAt.Before(d.ExpiresAt) {
+			d.ExpiresAt = login.AbsoluteExpiresAt.UTC()
+		}
 		if login.ExpiresAt.Before(d.ExpiresAt) {
 			d.ExpiresAt = login.ExpiresAt.UTC()
 		}
@@ -638,6 +641,11 @@ func verifyNativeVideoActor(ctx context.Context, d handlers.NativeVideoAuthority
 			return err
 		}
 		if login == nil || login.ID != d.LoginSessionID || login.UserID != d.UserID || login.RevokedAt != nil || !time.Now().Before(login.ExpiresAt) || d.ExpiresAt.After(login.ExpiresAt) {
+			return middleware.ErrCurrentCredentialInvalid
+		}
+		if login.Purpose == models.SessionPurposeRemotePlayback &&
+			(login.BoundProfileID != d.ProfileID || login.AbsoluteExpiresAt != nil &&
+				(!time.Now().Before(*login.AbsoluteExpiresAt) || d.ExpiresAt.After(*login.AbsoluteExpiresAt))) {
 			return middleware.ErrCurrentCredentialInvalid
 		}
 		_, active, err := p.loginActive(ctx, d.LoginSessionID)

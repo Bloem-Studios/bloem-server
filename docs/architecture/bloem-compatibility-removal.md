@@ -5,6 +5,9 @@ packages, gateways, auxiliary listeners, application enrollment and UI choices a
 removed. Native library, audiobook presentation/playback, collections, progress,
 OIDC/device/profile authentication and Live TV remain supported. The storefront
 product and Authentik application remain Silo; their names are outside this change.
+The native device-login capability retains the upstream
+`jellyfin_quick_connect` field with value `false`. Native device pairing and
+remote-playback handoff remain available.
 
 ## Persistence boundary
 

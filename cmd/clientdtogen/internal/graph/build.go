@@ -67,7 +67,8 @@ var knownNamed = map[string]TypeRef{
 	// apiv2.JSONValue is []byte that marshals as the raw JSON it holds, or
 	// null when empty — the same role encoding/json.RawMessage plays above, and
 	// it takes the same client representation.
-	"github.com/Silo-Server/silo-server/internal/apiv2.JSONValue": {Kind: KindRaw, Nullable: true},
+	"github.com/Silo-Server/silo-server/internal/apiv2.JSONValue":               {Kind: KindRaw, Nullable: true},
+	"github.com/Silo-Server/silo-server/internal/apiv2.NotificationReasonFlags": {Kind: KindRaw, Nullable: true},
 	// The same shape under four more names: each is a json.RawMessage carrying
 	// JSON whose form the server does not know -- a plugin's form default, a
 	// plugin config value, a policy document or decision sample, a navigation

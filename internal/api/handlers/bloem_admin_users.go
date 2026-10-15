@@ -549,6 +549,24 @@ func bufferBloemRequestBody(w http.ResponseWriter, r *http.Request) ([]byte, boo
 	return body, true
 }
 
+// Public setup/signup receipts use the same bound as Silo's auth decoder before
+// buffering the bytes needed for their lifecycle digest.
+func bufferBloemAuthRequestBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxAuthRequestBodyBytes)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "too_large", "Request body is too large")
+		} else {
+			writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+		}
+		return nil, false
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	return body, true
+}
+
 // withAppliedEntitlementRevision stamps the applied direct-entitlement
 // template revision onto an admin user response (zero omits it).
 func withAppliedEntitlementRevision(resp AdminUserView, revision int64) AdminUserView {

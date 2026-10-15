@@ -266,8 +266,8 @@ func newAdminUserResourceHandler(t *testing.T) (*AdminHandler, map[int]userstore
 	seedDevice(t, stores[2], "profile-b-secondary", "device-b", "B television")
 
 	users := testAdminUserRepo{users: map[int]*models.User{
-		1: {ID: 1, Username: "account-a", MaxProfiles: 4},
-		2: {ID: 2, Username: "account-b", MaxProfiles: 4},
+		1: {ID: 1, Username: "account-a", MaxProfiles: new(4)},
+		2: {ID: 2, Username: "account-b", MaxProfiles: new(4)},
 	}}
 	profileA := "profile-a-secondary"
 	sessions := &adminUserResourceSessions{sessions: map[string]*models.AuthSession{
@@ -457,8 +457,8 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 	t.Run("profile quota is unprocessable", func(t *testing.T) {
 		handler, _, _ := newAdminUserResourceHandler(t)
 		handler.userRepo = testAdminUserRepo{users: map[int]*models.User{
-			1: {ID: 1, MaxProfiles: 2},
-			2: {ID: 2, MaxProfiles: 4},
+			1: {ID: 1, MaxProfiles: new(2)},
+			2: {ID: 2, MaxProfiles: new(4)},
 		}}
 		recorder := adminUserResourceRequest(t, routeAdminUserResources(handler), http.MethodPost,
 			"/api/v1/admin/users/1/profiles", `{"name":"Over quota"}`)
@@ -472,10 +472,10 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 		organizationID := uuid.New()
 		groupID := int64(91)
 		handler.userRepo = testAdminUserRepo{users: map[int]*models.User{
-			1: {ID: 1, MaxProfiles: 5},
-			2: {ID: 2, MaxProfiles: 4},
+			1: {ID: 1, MaxProfiles: new(5)},
+			2: {ID: 2, MaxProfiles: new(4)},
 		}}
-		handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 2}}
+		handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 2, ManagedTemplateKey: new("managed-test")}}
 		request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/1/profiles", strings.NewReader(`{"name":"Over managed quota"}`))
 		request.Header.Set("Content-Type", "application/json")
 		request = request.WithContext(withAdminResourceOrganization(request.Context(), organizationID))
@@ -491,7 +491,7 @@ func TestAdminUserProfiles_PreserveDomainRulesAndResponseSemantics(t *testing.T)
 		organizationID := uuid.New()
 		groupID := int64(92)
 		key := "browse-only"
-		handler.userRepo = testAdminUserRepo{users: map[int]*models.User{1: {ID: 1, MaxProfiles: 5}}}
+		handler.userRepo = testAdminUserRepo{users: map[int]*models.User{1: {ID: 1, MaxProfiles: new(5)}}}
 		handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 0, ManagedTemplateKey: &key}}
 		request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/users/1/profiles", strings.NewReader(`{"name":"Over managed zero quota"}`))
 		request.Header.Set("Content-Type", "application/json")

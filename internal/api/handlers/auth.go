@@ -190,8 +190,7 @@ type authProviderResponse struct {
 // HandleLogin handles POST /auth/login.
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	if !decodeAuthRequestBody(w, r, &req, false) {
 		return
 	}
 
@@ -378,13 +377,12 @@ func (h *AuthHandler) HandleSetupStatus(w http.ResponseWriter, r *http.Request) 
 
 // HandleSetup handles POST /auth/setup.
 func (h *AuthHandler) HandleSetup(w http.ResponseWriter, r *http.Request) {
-	body, ok := readBloemRequestBody(w, r)
+	body, ok := bufferBloemAuthRequestBody(w, r)
 	if !ok {
 		return
 	}
 	var req setupRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	if !decodeAuthRequestBody(w, r, &req, false) {
 		return
 	}
 	if h.bloemLifecycleSetup(w, r, body, &req) {
@@ -442,8 +440,7 @@ func (h *AuthHandler) HandleEndImpersonation(w http.ResponseWriter, r *http.Requ
 // HandleRefresh handles POST /auth/refresh.
 func (h *AuthHandler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 	var req refreshRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	if !decodeAuthRequestBody(w, r, &req, false) {
 		return
 	}
 
@@ -596,13 +593,12 @@ func (h *AuthHandler) HandleSignupStatus(w http.ResponseWriter, r *http.Request)
 
 // HandleSignup handles POST /auth/signup.
 func (h *AuthHandler) HandleSignup(w http.ResponseWriter, r *http.Request) {
-	body, ok := readBloemRequestBody(w, r)
+	body, ok := bufferBloemAuthRequestBody(w, r)
 	if !ok {
 		return
 	}
 	var req signupRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	if !decodeAuthRequestBody(w, r, &req, false) {
 		return
 	}
 	if h.bloemLifecycleSignup(w, r, body, &req) {

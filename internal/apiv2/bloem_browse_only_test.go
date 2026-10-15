@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/auth"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -78,6 +80,10 @@ func (v *themePlaybackViewer) Resolve(_ context.Context, in access.ResolveInput)
 }
 
 type themePlaybackSessions struct{}
+
+func (themePlaybackSessions) ActiveSession(context.Context, string) (auth.SessionAuthority, bool, error) {
+	return auth.SessionAuthority{Role: "user"}, true, nil
+}
 
 func (themePlaybackSessions) IsValid(context.Context, string) (bool, error) { return true, nil }
 

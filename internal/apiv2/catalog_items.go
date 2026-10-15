@@ -15,6 +15,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	catalogpkg "github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
+	"github.com/Silo-Server/silo-server/internal/ctxerr"
 	"github.com/Silo-Server/silo-server/internal/imagesize"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/ratingsources"
@@ -370,10 +371,18 @@ type CatalogItemDetail struct {
 	SortTitle                       string                               `json:"sort_title,omitempty"`
 	OriginalTitle                   string                               `json:"original_title,omitempty"`
 	Tagline                         string                               `json:"tagline,omitempty"`
-	PendingTranslationLanguage      string                               `json:"pending_translation_language,omitempty" doc:"A translation of the overview is queued for this language"`
+	PendingTranslationLanguage      string                               `json:"pending_translation_language,omitempty" doc:"This profile's metadata language when the page's descriptions are not available in it yet: the item's own overview, or for a season its overview or any of its episodes' overviews. Echo it to translateCatalogItemDescription."`
+	MachineTranslatedFields         []string                             `json:"machine_translated_fields,omitempty" enum:"overview,tagline" doc:"Localized fields whose text was machine-translated by AI rather than supplied by a metadata provider or a person; absent when none were"`
 	ImdbID                          string                               `json:"imdb_id,omitempty"`
 	TmdbID                          string                               `json:"tmdb_id,omitempty"`
 	TvdbID                          string                               `json:"tvdb_id,omitempty"`
+	BannerURL                       string                               `json:"banner_url,omitempty" doc:"Presigned, short-lived. A wide banner strip. Movies and series only; see getImageCapabilities extended_item_artwork"`
+	BannerThumbhash                 string                               `json:"banner_thumbhash,omitempty"`
+	ThumbURL                        string                               `json:"thumb_url,omitempty" doc:"Presigned, short-lived. A 16:9 landscape thumb, which usually carries the title. Movies and series only"`
+	ThumbThumbhash                  string                               `json:"thumb_thumbhash,omitempty"`
+	ClearArtURL                     string                               `json:"clearart_url,omitempty" doc:"Presigned, short-lived. Transparent cut-out art. Movies and series only"`
+	DiscURL                         string                               `json:"disc_url,omitempty" doc:"Presigned, short-lived. Transparent disc art. Movies only"`
+	BackdropURLs                    []string                             `json:"backdrop_urls,omitempty" doc:"Presigned, short-lived. Every backdrop in display order, backdrop_url first. Movies and series only; absent when there is none"`
 	Cast                            []catalogpkg.CastCredit              `json:"cast" doc:"Empty, never null"`
 	Crew                            []catalogpkg.CrewCredit              `json:"crew" doc:"Empty, never null"`
 	Countries                       []string                             `json:"countries,omitempty"`
@@ -437,6 +446,11 @@ func catalogRatingsOf(d *catalogpkg.ItemDetail, sel ratingsources.Selection) []C
 			item.Sources[source.Source] = source.Score
 		}
 	}
+	return builtRatingsOf(item, sel)
+}
+
+// builtRatingsOf renders item's ratings, keeping only the sources sel shows.
+func builtRatingsOf(item ratingsources.Item, sel ratingsources.Selection) []CatalogRating {
 	built := ratingsources.Build(item, sel)
 	out := make([]CatalogRating, 0, len(built))
 	for _, r := range built {
@@ -515,22 +529,25 @@ type EpisodeFile struct {
 
 // Episode is one episode row of a season listing.
 type Episode struct {
-	ContentID           string              `json:"content_id" example:"episode:severance-s01e01"`
-	SeasonNumber        int                 `json:"season_number"`
-	EpisodeNumber       int                 `json:"episode_number"`
-	Title               string              `json:"title"`
-	Overview            string              `json:"overview,omitempty"`
-	AirDate             *string             `json:"air_date,omitempty" doc:"Calendar date, YYYY-MM-DD"`
-	Runtime             int                 `json:"runtime" doc:"Minutes"`
-	ImdbID              string              `json:"imdb_id,omitempty"`
-	TmdbID              string              `json:"tmdb_id,omitempty"`
-	TvdbID              string              `json:"tvdb_id,omitempty"`
-	StillIsEpisodeStill *bool               `json:"still_is_episode_still,omitempty" doc:"Whether still_url is an episode still. False when series artwork is used as a fallback; absent when provenance is unavailable."`
-	StillURL            string              `json:"still_url,omitempty" doc:"Presigned, short-lived"`
-	StillThumbhash      string              `json:"still_thumbhash,omitempty"`
-	UserData            *WatchRollup        `json:"user_data,omitempty"`
-	Files               []EpisodeFile       `json:"files,omitempty"`
-	OverlaySummary      *CatalogItemOverlay `json:"overlay_summary,omitempty"`
+	ContentID                  string              `json:"content_id" example:"episode:severance-s01e01"`
+	SeasonNumber               int                 `json:"season_number"`
+	EpisodeNumber              int                 `json:"episode_number"`
+	Title                      string              `json:"title"`
+	Overview                   string              `json:"overview,omitempty"`
+	AirDate                    *string             `json:"air_date,omitempty" doc:"Calendar date, YYYY-MM-DD"`
+	Runtime                    int                 `json:"runtime" doc:"Minutes"`
+	ImdbID                     string              `json:"imdb_id,omitempty"`
+	TmdbID                     string              `json:"tmdb_id,omitempty"`
+	TvdbID                     string              `json:"tvdb_id,omitempty"`
+	Ratings                    []CatalogRating     `json:"ratings,omitempty" doc:"The episode's IMDb and TMDB ratings, in the shape a title page's ratings use. Absent when the episode has no rating."`
+	StillIsEpisodeStill        *bool               `json:"still_is_episode_still,omitempty" doc:"Whether still_url is an episode still. False when series artwork is used as a fallback; absent when provenance is unavailable."`
+	StillURL                   string              `json:"still_url,omitempty" doc:"Presigned, short-lived"`
+	StillThumbhash             string              `json:"still_thumbhash,omitempty"`
+	UserData                   *WatchRollup        `json:"user_data,omitempty"`
+	Files                      []EpisodeFile       `json:"files,omitempty"`
+	OverlaySummary             *CatalogItemOverlay `json:"overlay_summary,omitempty"`
+	MachineTranslatedFields    []string            `json:"machine_translated_fields,omitempty" enum:"overview" doc:"Localized fields whose text was machine-translated by AI; absent when none were"`
+	PendingTranslationLanguage string              `json:"pending_translation_language,omitempty" doc:"This profile's metadata language when the episode's description is not available in it yet; translating the episode's season fills it"`
 }
 
 // EpisodeCollection is the episodes of one season.
@@ -545,17 +562,18 @@ type EpisodeCollectionOutput struct {
 
 // Season is one season row.
 type Season struct {
-	ContentID       string       `json:"content_id" example:"series:severance-S01"`
-	PlayContentID   string       `json:"play_content_id,omitempty" doc:"The episode to play next"`
-	SeasonNumber    int          `json:"season_number"`
-	IsSpecials      bool         `json:"is_specials,omitempty"`
-	Title           string       `json:"title" example:"Season 1"`
-	Overview        string       `json:"overview,omitempty"`
-	AirDate         *string      `json:"air_date,omitempty" doc:"Calendar date, YYYY-MM-DD"`
-	EpisodeCount    int          `json:"episode_count"`
-	PosterURL       string       `json:"poster_url,omitempty" doc:"Presigned, short-lived"`
-	PosterThumbhash string       `json:"poster_thumbhash,omitempty"`
-	UserData        *WatchRollup `json:"user_data,omitempty"`
+	ContentID               string       `json:"content_id" example:"series:severance-S01"`
+	PlayContentID           string       `json:"play_content_id,omitempty" doc:"The episode to play next"`
+	SeasonNumber            int          `json:"season_number"`
+	IsSpecials              bool         `json:"is_specials,omitempty"`
+	Title                   string       `json:"title" example:"Season 1"`
+	Overview                string       `json:"overview,omitempty"`
+	AirDate                 *string      `json:"air_date,omitempty" doc:"Calendar date, YYYY-MM-DD"`
+	EpisodeCount            int          `json:"episode_count"`
+	PosterURL               string       `json:"poster_url,omitempty" doc:"Presigned, short-lived"`
+	PosterThumbhash         string       `json:"poster_thumbhash,omitempty"`
+	UserData                *WatchRollup `json:"user_data,omitempty"`
+	MachineTranslatedFields []string     `json:"machine_translated_fields,omitempty" enum:"overview" doc:"Localized fields whose text was machine-translated by AI; absent when none were"`
 }
 
 // SeasonCollection is the seasons of a series.
@@ -579,11 +597,13 @@ const (
 	opListCatalogItems     = "listCatalogItems"
 	opQueryCatalogItems    = "queryCatalogItems"
 	locationQueryImageSize = "query.image_size"
+	locationQueryGroups    = "query.groups"
 	opListAudiobookGroups  = "listAudiobookGroups"
 )
 
 func registerCatalogItems(reg *Registry) {
 	registerCatalogSearchCapabilities(reg)
+	registerCatalogLetters(reg)
 	registerThemeSongs(reg)
 	cursors := NewCursors(reg.deps.CursorSecret)
 	Register(reg, viewerOperation(humaOp(http.MethodGet, Prefix+"/catalog", opListCatalogItems, "catalog",
@@ -939,19 +959,13 @@ func (reg *Registry) listCatalogItems(ctx context.Context, cursors *Cursors, in 
 		decoder := json.NewDecoder(strings.NewReader(in.Groups))
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&groups); err != nil || !json.Valid([]byte(in.Groups)) {
-			return nil, NewProblem(TypeValidationFailed, "Invalid structured filters.").WithErrors(ProblemError{Location: "query.groups", Code: codeInvalid, Detail: "expected a JSON array of rule groups"})
+			return nil, NewProblem(TypeValidationFailed, "Invalid structured filters.").WithErrors(ProblemError{Location: locationQueryGroups, Code: codeInvalid, Detail: "expected a JSON array of rule groups"})
 		}
-		for _, g := range groups {
-			rules := make([]catalogpkg.QueryRule, 0, len(g.Rules))
-			for _, rule := range g.Rules {
-				rules = append(rules, catalogpkg.QueryRule{Field: rule.Field, Op: rule.Op, Value: rule.Value})
-			}
-			req.Query.Groups = append(req.Query.Groups, catalogpkg.QueryGroup{Match: g.Match, Rules: rules})
-		}
+		req.Query.Groups = append(req.Query.Groups, catalogQueryGroups(groups)...)
 		canonical, _ := json.Marshal(groups)
 		values.Set("groups", string(canonical))
 		if err := req.ValidateQueryDefinition(); err != nil {
-			return nil, NewProblem(TypeValidationFailed, "Invalid structured filters.").WithErrors(ProblemError{Location: "query.groups", Code: codeInvalid, Detail: err.Error()})
+			return nil, NewProblem(TypeValidationFailed, "Invalid structured filters.").WithErrors(ProblemError{Location: locationQueryGroups, Code: codeInvalid, Detail: err.Error()})
 		}
 	}
 	operationID := in.operationID
@@ -1186,7 +1200,7 @@ func (reg *Registry) getCatalogItem(ctx context.Context, in *CatalogItemDeviceIn
 	if reg.deps.ThemeSongs != nil && (detail.Type == themeOwnerMovie || detail.Type == themeOwnerSeries || detail.Type == themeOwnerSeason || detail.Type == themeOwnerEpisode) {
 		themes, err := reg.deps.ThemeSongs.Discover(ctx, in.ID, true, viewer.Access)
 		if err != nil {
-			slog.WarnContext(ctx, "catalog theme lookup failed", "component", "apiv2", "item_id", in.ID, "error", err)
+			slog.Log(ctx, ctxerr.LogLevel(ctx, err, slog.LevelWarn), "catalog theme lookup failed", "component", "apiv2", "item_id", in.ID, "error", err)
 			return &CatalogItemDetailOutput{Body: out}, nil
 		}
 		out.Themes = &ThemeSongSet{OwnerID: themes.OwnerID, Items: []ThemeSong{}}
@@ -1406,7 +1420,10 @@ func catalogItemDetailOf(d *catalogpkg.ItemDetail, sel ratingsources.Selection) 
 	out := CatalogItemDetail{
 		CatalogItem: card, PlaySeasonNumber: d.PlaySeasonNumber,
 		SortTitle: d.SortTitle, OriginalTitle: d.OriginalTitle, Tagline: d.Tagline, PendingTranslationLanguage: d.PendingTranslationLanguage,
-		ImdbID: d.ImdbID, TmdbID: d.TmdbID, TvdbID: d.TvdbID, Cast: NonNil(d.Cast), Crew: NonNil(d.Crew), Countries: d.Countries, LockedFields: d.LockedFields,
+		MachineTranslatedFields: d.MachineTranslatedFields,
+		ImdbID:                  d.ImdbID, TmdbID: d.TmdbID, TvdbID: d.TvdbID, Cast: NonNil(d.Cast), Crew: NonNil(d.Crew), Countries: d.Countries, LockedFields: d.LockedFields,
+		BannerURL: d.BannerURL, BannerThumbhash: d.BannerThumbhash, ThumbURL: d.ThumbURL, ThumbThumbhash: d.ThumbThumbhash,
+		ClearArtURL: d.ClearArtURL, DiscURL: d.DiscURL, BackdropURLs: d.BackdropURLs,
 		FirstAirDate: d.FirstAirDate, AirTime: d.AirTime, AirTimezone: d.AirTimezone, SeasonCount: d.SeasonCount, EpisodeCount: d.EpisodeCount,
 		AirDate: d.AirDate, IsSpecials: d.IsSpecials, UserData: watchRollupOf(d.SeasonUserData), UserRating: d.UserRating,
 		Versions: fileVersionsOf(d.Versions), PlaybackVariants: playbackVariantsOf(d.PlaybackVariants), Videos: d.Videos, RatingSources: catalogRatingSourcesOf(ratingSources), Ratings: catalogRatingsOf(d, sel), Extras: d.Extras,
@@ -1438,12 +1455,15 @@ func datePtr(s string) *string {
 	return &s
 }
 
+// episodesOf renders episode rows. An episode's ratings come from its IMDb and
+// TMDB columns only, which every selection shows, so it needs no rating policy.
 func episodesOf(views []handlers.EpisodeView) []Episode {
 	out := make([]Episode, 0, len(views))
 	for _, e := range views {
 		ep := Episode{ContentID: e.ContentID, SeasonNumber: e.SeasonNumber, EpisodeNumber: e.EpisodeNumber, Title: e.Title, Overview: e.Overview,
 			AirDate: datePtr(e.AirDate), Runtime: e.Runtime, ImdbID: e.ImdbID, TmdbID: e.TmdbID, TvdbID: e.TvdbID, StillIsEpisodeStill: e.StillIsEpisodeStill, StillURL: e.StillURL, StillThumbhash: e.StillThumbhash,
-			UserData: watchRollupOf(e.UserData), OverlaySummary: catalogOverlayOf(e.OverlaySummary)}
+			Ratings:  builtRatingsOf(ratingsources.Item{IMDB: e.RatingIMDB, TMDB: e.RatingTMDB}, ratingsources.Selection{}),
+			UserData: watchRollupOf(e.UserData), OverlaySummary: catalogOverlayOf(e.OverlaySummary), MachineTranslatedFields: e.MachineTranslatedFields, PendingTranslationLanguage: e.PendingTranslationLanguage}
 		for _, f := range e.Files {
 			ep.Files = append(ep.Files, EpisodeFile{FileID: IDFromInt(int64(f.FileID)), Resolution: f.Resolution, CodecVideo: f.CodecVideo, HDR: f.HDR,
 				AudioChannels: f.AudioChannels, Container: f.Container, FileSize: f.FileSize, Unreadable: f.Unreadable})
@@ -1456,5 +1476,5 @@ func episodesOf(views []handlers.EpisodeView) []Episode {
 func seasonOf(s handlers.SeasonView) Season {
 	return Season{ContentID: s.ContentID, PlayContentID: s.PlayContentID, SeasonNumber: s.SeasonNumber, IsSpecials: s.IsSpecials, Title: s.Title,
 		Overview: s.Overview, AirDate: datePtr(s.AirDate), EpisodeCount: s.EpisodeCount, PosterURL: s.PosterURL, PosterThumbhash: s.PosterThumbhash,
-		UserData: watchRollupOf(s.UserData)}
+		UserData: watchRollupOf(s.UserData), MachineTranslatedFields: s.MachineTranslatedFields}
 }

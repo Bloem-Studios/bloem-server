@@ -32,7 +32,6 @@ import { useIsActingAdmin } from "@/hooks/useIsActingAdmin";
 import { useNavigationDirection } from "@/hooks/useNavigationDirection";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { DateTimeFormatProvider, useDateTimeFormat } from "@/hooks/useDateTimeFormat";
-import { CustomThemeProvider } from "@/contexts/CustomThemeProvider";
 import { BrandingProvider } from "@/contexts/BrandingProvider";
 import { UICustomizationProvider } from "@/contexts/UICustomizationProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -59,7 +58,6 @@ import {
   buildQueryCatalogHref,
   buildUserCollectionCatalogHref,
 } from "@/pages/catalogSearchParams";
-import { buildLegacyAutoscanRedirectTarget } from "@/pages/autoscanSearchParams";
 import LegacyAdminHomeRowsRedirect from "@/pages/LegacyAdminHomeRowsRedirect";
 import LegacyRequestDetailRedirect from "@/pages/LegacyRequestDetailRedirect";
 import { buildLegacyWebhookSyncRedirectTarget } from "@/lib/webhookSync";
@@ -124,6 +122,8 @@ const AdminUsers = lazy(() => import("@/pages/AdminUsers"));
 const AdminRequests = lazy(() => import("@/bloem/BloemAdminRequests"));
 const AdminDevices = lazy(() => import("@/pages/AdminDevices"));
 const AdminLibraries = lazy(() => import("@/pages/AdminLibraries"));
+const AdminAutoscan = lazy(() => import("@/pages/AdminAutoscan"));
+const AdminAutoscanActivity = lazy(() => import("@/pages/AdminAutoscanActivity"));
 const AdminSettingsLayout = lazy(() => import("@/pages/admin-settings/AdminSettingsLayout"));
 const AdminNodes = lazy(() => import("@/pages/AdminNodes"));
 const AdminDownloads = lazy(() => import("@/pages/AdminDownloads"));
@@ -163,7 +163,7 @@ const SubtitleAppearanceSettings = lazy(
   () => import("@/pages/settings/SubtitleAppearanceSettings"),
 );
 const HomeScreenSettings = lazy(() => import("@/pages/settings/HomeScreenSettings"));
-const CardOverlaySettings = lazy(() => import("@/pages/settings/CardOverlaySettings"));
+const TitlePagesSettings = lazy(() => import("@/pages/settings/TitlePagesSettings"));
 const PersonalizeSettings = lazy(() => import("@/pages/settings/PersonalizeSettings"));
 const ConnectAppsSettings = lazy(() => import("@/pages/settings/ConnectAppsSettings"));
 const InterfaceSettings = lazy(() => import("@/pages/settings/InterfaceSettings"));
@@ -408,16 +408,6 @@ function LegacyWebhookSyncRedirect() {
   return <Navigate to={buildLegacyWebhookSyncRedirectTarget(search)} replace />;
 }
 
-/**
- * `/admin/autoscan` → the Autoscan tab on Libraries. The old query has to be
- * translated, not dropped: the panel's own view moved from `tab` to `view`
- * because `tab` now names the Libraries tab hosting it.
- */
-function LegacyAutoscanRedirect() {
-  const { search } = useLocation();
-  return <Navigate to={buildLegacyAutoscanRedirectTarget(search)} replace />;
-}
-
 function LegacyPersonalCatalogRedirect({
   source,
 }: {
@@ -532,8 +522,8 @@ function AppRoutes() {
                       <Route path="collections/:id/edit" />
                     </Route>
                     <Route path="requests" element={<AdminRequests />} />
-                    {/* Autoscan is a tab on Libraries now; keep old links working. */}
-                    <Route path="autoscan" element={<LegacyAutoscanRedirect />} />
+                    <Route path="autoscan" element={<AdminAutoscan />} />
+                    <Route path="autoscan/activity" element={<AdminAutoscanActivity />} />
                     <Route path="history" element={<AdminPlaybackHistory />} />
                     <Route path="marker-history" element={<AdminMarkerHistory />} />
                     <Route path="history-import" element={<AdminHistoryImport />} />
@@ -626,7 +616,12 @@ function AppRoutes() {
                   <Route path="watch-providers" element={<WatchProvidersSettings />} />
                   <Route path="subtitle-appearance" element={<SubtitleAppearanceSettings />} />
                   <Route path="home-screen" element={<HomeScreenSettings />} />
-                  <Route path="card-overlays" element={<CardOverlaySettings />} />
+                  {/* Card overlays merged into Navigation & Cards. */}
+                  <Route
+                    path="card-overlays"
+                    element={<Navigate to="/settings/interface" replace />}
+                  />
+                  <Route path="title-pages" element={<TitlePagesSettings />} />
                   <Route path="personalize" element={<PersonalizeSettings />} />
                   <Route path="requests" element={<RequestsSettings />} />
                   <Route path="devices" element={<DeviceSettings />} />
@@ -844,33 +839,29 @@ function AppShell() {
         <ErrorBoundary>
           <BrandingProvider>
             <ThemeProvider>
-              <CustomThemeProvider>
-                <DateTimeFormatProvider>
-                  <WatchPlaybackProvider>
-                    <AudiobookPlaybackProvider>
-                      <RealtimeEventsProvider>
-                        <PlaybackCapabilityPrewarmer />
-                        <RouteChunkPrewarmer />
-                        <RealtimeEventChannels />
-                        <ScrollRestorationManager />
-                        <NavigationDirectionManager />
-                        <RouteAnnouncer />
-                        <QueryCacheManager />
-                        <AppChrome />
-                        <Suspense fallback={null}>
-                          <SeasonalLayer />
-                        </Suspense>
-                        <Suspense fallback={<RouteLoading />}>
-                          <Outlet />
-                        </Suspense>
-                        <WatchPlaybackHost />
-                        <WatchPlaybackBar />
-                        <Toaster />
-                      </RealtimeEventsProvider>
-                    </AudiobookPlaybackProvider>
-                  </WatchPlaybackProvider>
-                </DateTimeFormatProvider>
-              </CustomThemeProvider>
+              <DateTimeFormatProvider>
+                <WatchPlaybackProvider>
+                  <AudiobookPlaybackProvider>
+                    <RealtimeEventsProvider>
+                      <PlaybackCapabilityPrewarmer />
+                      <RouteChunkPrewarmer />
+                      <RealtimeEventChannels />
+                      <ScrollRestorationManager />
+                      <NavigationDirectionManager />
+                      <RouteAnnouncer />
+                      <QueryCacheManager />
+                      <AppChrome />
+                      <Suspense fallback={null}><SeasonalLayer /></Suspense>
+                      <Suspense fallback={<RouteLoading />}>
+                        <Outlet />
+                      </Suspense>
+                      <WatchPlaybackHost />
+                      <WatchPlaybackBar />
+                      <Toaster />
+                    </RealtimeEventsProvider>
+                  </AudiobookPlaybackProvider>
+                </WatchPlaybackProvider>
+              </DateTimeFormatProvider>
             </ThemeProvider>
           </BrandingProvider>
         </ErrorBoundary>

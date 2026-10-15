@@ -64,7 +64,7 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 // membership reads as the unset policy it used to have on users.
 const allColumns = `u.id, u.account_incarnation_id, u.email, u.username, u.password_hash, u.local_password_login_enabled, u.password_change_required, u.role, COALESCE(m.permissions, '{}'), u.enabled,
 	m.library_ids, m.max_playback_quality, COALESCE(m.access_policy_revision, 1),
-	m.max_streams, m.max_transcodes, u.max_remote_stream_bitrate_kbps, u.max_local_stream_bitrate_kbps, m.transcode_allowed, m.audio_transcode_allowed, COALESCE(m.max_profiles, 5), m.download_allowed,
+	m.max_streams, m.max_transcodes, u.max_remote_stream_bitrate_kbps, u.max_local_stream_bitrate_kbps, m.transcode_allowed, m.audio_transcode_allowed, m.max_profiles, m.download_allowed,
 	m.download_transcode_allowed, m.requests_allowed, m.access_group_id, u.is_owner, u.break_glass, u.created_at, u.updated_at`
 
 // scanUser scans a single row into a *models.User.
@@ -216,7 +216,7 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 	}
 	policyCols := []string{
 		"permissions", "library_ids", "max_playback_quality", "max_streams", "max_transcodes",
-		"transcode_allowed", "audio_transcode_allowed", "download_allowed",
+		"transcode_allowed", "audio_transcode_allowed", "max_profiles", "download_allowed",
 		"download_transcode_allowed", "requests_allowed",
 	}
 	policyArgs := []any{
@@ -227,16 +227,12 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 		input.MaxTranscodes,
 		input.TranscodeAllowed,
 		input.AudioTranscodeAllowed,
+		input.MaxProfiles,
 		input.DownloadAllowed,
 		input.DownloadTranscodeAllowed,
 		input.RequestsAllowed,
 	}
 
-	// Optional columns: nil means use DB default.
-	if input.MaxProfiles != nil {
-		policyCols = append(policyCols, "max_profiles")
-		policyArgs = append(policyArgs, *input.MaxProfiles)
-	}
 	accessGroupID := input.AccessGroupID
 	if input.Role == models.RoleAdmin {
 		accessGroupID = nil
@@ -471,7 +467,7 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 		{column: "max_local_stream_bitrate_kbps", set: input.MaxLocalStreamBitrateKbps.Set, value: input.MaxLocalStreamBitrateKbps.Value},
 		{column: "transcode_allowed", set: input.TranscodeAllowed.Set, value: input.TranscodeAllowed.Value},
 		{column: "audio_transcode_allowed", set: input.AudioTranscodeAllowed.Set, value: input.AudioTranscodeAllowed.Value},
-		{column: "max_profiles", set: input.MaxProfiles != nil, value: input.MaxProfiles},
+		{column: "max_profiles", set: input.MaxProfiles.Set, value: input.MaxProfiles.Value},
 		{column: "download_allowed", set: input.DownloadAllowed.Set, value: input.DownloadAllowed.Value},
 		{column: "download_transcode_allowed", set: input.DownloadTranscodeAllowed.Set, value: input.DownloadTranscodeAllowed.Value},
 		{column: "requests_allowed", set: input.RequestsAllowed.Set, value: input.RequestsAllowed.Value},

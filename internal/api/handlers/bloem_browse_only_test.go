@@ -73,7 +73,7 @@ func TestThemeBrowseOnlyAndRevocation(t *testing.T) {
 	}
 	store := &themeFileFixture{file: themesongs.File{Song: themesongs.Song{ID: "7", Container: "mp3"}, OwnerPath: dir, Path: path, Size: info.Size(), Modified: info.ModTime().Truncate(time.Microsecond)}}
 	viewer := &socketViewerFixture{scope: access.Scope{UserID: 7, ProfileID: "profile", ProfileVerified: true, PlaybackAllowed: true}}
-	h := &BloemThemeSongsHandler{ThemeSongsHandler: &ThemeSongsHandler{Service: themesongs.NewService(store, "test secret"), Sessions: &socketSessionFixture{valid: true}, Users: &socketUserFixture{user: models.User{ID: 7, Enabled: true, AccessPolicyRevision: 2}}, Resolver: viewer}}
+	h := &BloemThemeSongsHandler{ThemeSongsHandler: &ThemeSongsHandler{Service: themesongs.NewService(store, "test secret"), Sessions: &socketSessionFixture{valid: true, account: &socketUserFixture{user: models.User{Role: models.RoleUser}}}, Users: &socketUserFixture{user: models.User{ID: 7, Enabled: true, AccessPolicyRevision: 2}}, Resolver: viewer}}
 	identity := themesongs.Identity{UserID: 7, ProfileID: "profile", SessionID: "session", PolicyRevision: 2}
 	denied := access.SetScope(context.Background(), access.Scope{})
 	grant, err := h.Authorize(denied, identity, "movie", "7", catalog.AccessFilter{PlaybackDenied: true}, nil, time.Now().Add(time.Minute))

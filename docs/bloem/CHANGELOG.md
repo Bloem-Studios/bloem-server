@@ -3,6 +3,46 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 14, 2026
+
+Local source integration: all 120 Silo commits after `1747a126b` through
+`ea3c10a7f06f82d15cb46423eee7606fe987f7f7`. The normal merge preserves upstream
+ancestry. This record does not describe a deployment.
+
+Shared behavior follows Silo, including signed worker requests, node draining
+and recovery, remote-playback profile and expiry restrictions, inherited
+household limits, local metadata, plugin event delivery, and the reorganized
+settings navigation. Bloem retains its tenant, native storage, Live TV and
+branding integration points. Jellyfin and Audiobookshelf runtime removal remains
+in force; each incoming retired path is declared individually.
+
+Library policy arrays converge to Silo's 32-bit `integer[]`, including membership
+and entitlement rollback projections. Conversion rejects overflow atomically.
+Historical migration SQL remains unchanged: owned filesystem adapters handle
+schema differences, and an additive alignment migration also covers databases
+that Silo migrated first. Ordinary account profile-limit overrides retain Silo's
+precedence; managed Bloem entitlements keep their explicit ceiling. See the
+[adapter contracts](../architecture/bloem-upstream-adapters.md).
+
+The existing deeper S3 and Bookwarehouse folder picker survives the integration.
+Its browser acceptance covers three remote folders plus three filesystem paths
+in one library at phone and desktop widths. Generated API, settings and native
+client contracts remain in the server repository; sibling client checkouts are
+not modified by generation.
+
+Verification includes the full Go suite (219 passing packages), 8,446 web tests,
+49 final navigation tests, the production web and server builds,
+four folder-picker browser cases, 136 database query pins, 155 database contract
+pins and 77 mixed-library pins. The final server binary passed backend switching
+against the exact incoming Silo source. Generated contracts, migration validation,
+protocol removal, route recovery and local-path checks passed.
+
+Changed-line lint reports three unchecked-error calls that are byte-for-byte
+upstream: `internal/metadata/local_person_photos.go` and two calls in
+`internal/metadata/item_extra_artwork_test.go`. They remain recorded upstream
+findings; no lint rules are disabled. Native client releases still require the
+[contract transition check](../architecture/bloem-contract-adjudications.md).
+
 ## October 9, 2026
 
 Source milestone, not yet deployed: **Silo backend switching.** A Silo database

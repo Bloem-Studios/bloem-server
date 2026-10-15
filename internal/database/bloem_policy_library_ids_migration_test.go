@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -80,9 +79,6 @@ func TestBloemPolicyLibraryIDsMigration(t *testing.T) {
 					}
 					pool.Reset()
 					wantType := "integer[]"
-					if step.up {
-						wantType = "bigint[]"
-					}
 					assertBloemPolicyLibraryTypes(t, pool, finalized, wantType)
 					if after := bloemPolicyLibraryState(t, pool); !slices.Equal(before, after) {
 						t.Fatal("migration changed policy data, array shape, authority, revisions or trigger definitions/modes")
@@ -102,27 +98,17 @@ func TestBloemPolicyLibraryIDsMigration(t *testing.T) {
 				})
 			}
 
-			// The last table in the migration must veto Down before ANY column
-			// narrows. Snapshots are part of lossless rollback, not disposable
-			// caches. Test both int4 boundaries, and preserve the failed state.
+			// The owned adapter preserves Silo's integer[] representation in
+			// both directions. Out-of-range writes fail without changing state.
 			for _, id := range []int64{2147483648, -2147483649} {
 				t.Run(fmt.Sprintf("refuse-%d", id), func(t *testing.T) {
-					if tag, err := pool.Exec(ctx, `UPDATE membership_policy_rollback_snapshot SET library_ids=$1`, []int64{id}); err != nil || tag.RowsAffected() != 2 {
-						t.Fatalf("seed snapshot range: %v", err)
-					}
 					beforeFailure := bloemPolicyLibraryState(t, pool)
-					err := MigrateDownTo(ctx, pool, compatibilityBaselineFS(t), "sql", bloemPolicyLibraryIDsPredecessor)
-					if err == nil || !strings.Contains(err.Error(), "membership_policy_rollback_snapshot.library_ids contains an ID outside integer range") {
-						t.Fatalf("Down must refuse loss of snapshot ID: %v", err)
+					if _, err := pool.Exec(ctx, `UPDATE membership_policy_rollback_snapshot SET library_ids=$1`, []int64{id}); err == nil {
+						t.Fatal("accepted a policy ID outside Silo's integer range")
 					}
-					pool.Reset()
-					assertBloemPolicyLibraryTypes(t, pool, finalized, "bigint[]")
+					assertBloemPolicyLibraryTypes(t, pool, finalized, "integer[]")
 					if after := bloemPolicyLibraryState(t, pool); !slices.Equal(beforeFailure, after) {
-						t.Fatal("refused Down changed data or guards")
-					}
-					var applied bool
-					if err := pool.QueryRow(ctx, `SELECT is_applied FROM goose_db_version WHERE version_id=$1 ORDER BY id DESC LIMIT 1`, bloemPolicyLibraryIDsVersion).Scan(&applied); err != nil || !applied {
-						t.Fatalf("refused Down changed migration history: applied=%t err=%v", applied, err)
+						t.Fatal("refused write changed data or guards")
 					}
 				})
 			}

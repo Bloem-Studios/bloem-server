@@ -133,6 +133,9 @@ func TestMirroredUserPolicyWriteReachesMembership(t *testing.T) {
 
 func TestMirroredMembershipPolicyWriteReachesUser(t *testing.T) {
 	ctx, pool, user, _ := mirroredPool(t)
+	if _, err := pool.Exec(ctx, `INSERT INTO media_folders(id,type,name) VALUES(1,'movies','One'),(2,'movies','Two')`); err != nil {
+		t.Fatal(err)
+	}
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)

@@ -280,7 +280,7 @@ func (s *Store) applyWithReceipt(ctx context.Context, actorAccountID int, target
 	// cannot observe the receipt committed by the winner. pglock destroys the
 	// connection if the unlock cannot be confirmed, so a stranded session lock
 	// never returns to the pool.
-	lock, err := pglock.Acquire(ctx, s.pool, advisoryKey)
+	lock, err := pglock.AcquireBlocking(ctx, s.pool, advisoryKey)
 	if err != nil {
 		return ApplyResult{}, false, fmt.Errorf("entitlements: lock apply receipt: %w", err)
 	}

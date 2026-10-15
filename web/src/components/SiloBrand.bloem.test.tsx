@@ -14,6 +14,7 @@ const BRANDING_DEFAULTS: BrandingContextValue = {
   faviconUrl: null,
   loginBgUrl: null,
   storageAvailable: false,
+  loaded: true,
 };
 
 function renderBrandSrc(variant: SiloBrandVariant): string | null {

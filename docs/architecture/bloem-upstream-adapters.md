@@ -2,16 +2,16 @@
 
 Bloem retains Silo's module path, Git ancestry, environment names, and protocol
 identifiers. New fork behavior belongs in owned files, with small hooks in the
-upstream files listed by `contracts/seams.txt`. The ledger currently contains
-407 paths; `make verify-seams` checks that it stays accurate. See
+upstream files listed by `contracts/seams.txt`. The ledger records each shared path; `make verify-seams` checks that it stays accurate. See
 [fork policy](../../FORK.md) and the [documentation index](../bloem/README.md).
 
 ## Migration filesystem
 
 [`migrations.BloemFS`](../../migrations/bloem.go) wraps Silo's embedded migration
 filesystem. The status, up, down, and normal startup paths in
-[`cmd/silo/main.go`](../../cmd/silo/main.go) all use that wrapper. Files pass
-through unchanged except the explicitly adapted request-group migration.
+[`cmd/silo/main.go`](../../cmd/silo/main.go) all use that wrapper. The migration provider applies the wrapper even to filtered migration
+filesystems used for upgrade and rollback rehearsals. Historical SQL remains
+unchanged; owned adapters handle the explicitly reviewed schema differences.
 
 Bloem's finalized membership authority has moved live policy out of `users`.
 When upstream migration `20260926181741` converts legacy blocked request limits,
@@ -44,6 +44,31 @@ SILO_REQUIRE_TEST_DATABASE=1 GOWORK=off go test ./internal/database \
 
 Set `SILO_TEST_DATABASE_URL` to a disposable test database first. The fixture
 creates and drops its own child database; never point it at a deployed catalog.
+
+Silo's library access lists use `integer[]`. Bloem follows that representation
+through tenant memberships, groups, entitlement revisions and rollback snapshots.
+The former downstream widening migration is adapted to retain the upstream
+width. Existing widened databases converge through
+`20261014233826_bloem_silo_policy_alignment.sql`; any out-of-range value aborts
+the transaction before data can be narrowed. No policy ID is clamped or discarded
+to make a conversion succeed.
+
+Silo's household limit is an inherited value: a null account override takes the
+group limit, with an ungrouped default of five. An explicit account override wins
+for ordinary groups. Bloem's managed entitlements additionally impose their
+existing ceiling. The owned migration adapter preserves pre-existing group
+columns, makes membership and rollback projections nullable, and translates
+Silo's new limit representation in compatibility, mirrored and finalized modes.
+The final alignment migration also covers a Silo-first database where Silo has
+already recorded the upstream migration versions before Bloem's older owned
+migrations run.
+
+Library deletion keeps Silo's ordered cleanup and empty-array denial semantics.
+Owned hooks apply the same cleanup to authoritative memberships and rollback
+projections, including finalized schemas whose unused account fields were
+renamed. Frozen guards admit only an exact cleanup of nonexistent library IDs;
+other policy changes remain fenced. Already-adapted migration files carry a
+versioned marker so filtered filesystems cannot apply an adapter twice.
 
 ## Profile-aware extensions
 

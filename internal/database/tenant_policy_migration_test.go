@@ -736,6 +736,9 @@ func newMembershipPolicyFixture(t *testing.T) membershipPolicyFixture {
 	ctx := context.Background()
 	pool := newMembershipPolicyLegacyPool(t)
 
+	if _, err := pool.Exec(ctx, `INSERT INTO media_folders(id,type,name) VALUES (11,'movies','First'),(22,'movies','Second')`); err != nil {
+		t.Fatalf("seed policy libraries: %v", err)
+	}
 	var fixture membershipPolicyFixture
 	fixture.pool = pool
 	if err := pool.QueryRow(ctx, `

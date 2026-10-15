@@ -158,6 +158,8 @@ for (const width of [390, 1440]) {
         if (method === "GET" && path === "/api/v2/admin/requests/counts")
           return json({ pending: 0, approved: 0, denied: 0 });
         if (method === "GET" && path === "/api/v2/admin/server/status") return json({});
+        if (method === "GET" && path === "/api/v2/admin/settings/effective") return json({values:{}});
+        if (method === "GET" && path === "/api/v2/admin/settings/sensitive-status") return json({configured:[]});
         if (method === "GET" && path === "/api/v2/admin/filesystem/browse")
           return json({
             path: "/",

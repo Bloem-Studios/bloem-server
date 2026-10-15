@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Bloem-owned blocking acquisition. Upstream's pglock only offers TryAcquire;
+// Bloem-owned blocking acquisition. Upstream now offers bounded acquisition;
 // Bloem has call sites that must wait for the lock (idempotent apply receipts,
 // per-user quota admission, initial setup admission). They previously
 // hand-rolled pg_advisory_lock/unlock pairs, and one of them returned the
@@ -21,7 +21,7 @@ import (
 // database" for "lock held".
 var ErrNilPool = errors.New("pglock: nil pool")
 
-// Acquire blocks until session-level advisory lock key is held, or ctx ends.
+// AcquireBlocking blocks until session-level advisory lock key is held, or ctx ends.
 //
 // The wait runs on a dedicated pool connection. If the wait fails for any
 // reason (including ctx cancellation racing the grant), the connection is
@@ -29,7 +29,7 @@ var ErrNilPool = errors.New("pglock: nil pool")
 // just as the client gave up can never be returned to the pool.
 //
 // The caller owns the returned Lock and must call Release exactly once.
-func Acquire(ctx context.Context, pool *pgxpool.Pool, key int64) (*Lock, error) {
+func AcquireBlocking(ctx context.Context, pool *pgxpool.Pool, key int64) (*Lock, error) {
 	conn, err := blockingLock(ctx, pool, `SELECT pg_advisory_lock($1)`, fmt.Sprintf("advisory lock %d", key), key)
 	if err != nil {
 		return nil, err

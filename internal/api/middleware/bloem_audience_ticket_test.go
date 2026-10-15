@@ -108,3 +108,17 @@ func TestAudienceTicketKeepsAPIKeyScopes(t *testing.T) {
 		t.Fatalf("scoped key handshake admitted: seen=%v status=%d", seen != nil, response.Code)
 	}
 }
+
+type remoteTicketSessions struct{}
+
+func (remoteTicketSessions) ActiveSession(context.Context, string) (auth.SessionAuthority, bool, error) {
+	return auth.SessionAuthority{Role: "user", Purpose: "remote_playback", BoundProfileID: "profile-1"}, true, nil
+}
+
+func TestAudienceTicketRefusesRemotePlaybackOnV1(t *testing.T) {
+	claims := &auth.Claims{UserID: 7, Role: "user", SessionID: "remote", TokenType: auth.TokenTypeAccess}
+	seen, response := consumeTicket(t, remoteTicketSessions{}, claims, "profile-1", nil)
+	if seen != nil || response.Code != http.StatusForbidden {
+		t.Fatalf("remote playback entered v1: seen=%t status=%d", seen != nil, response.Code)
+	}
+}

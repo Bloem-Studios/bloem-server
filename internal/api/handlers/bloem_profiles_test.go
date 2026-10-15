@@ -101,8 +101,8 @@ func TestHandleCreateProfile_EnforcesManagedGroupProfileLimit(t *testing.T) {
 	groupID := int64(88)
 	organizationID := uuid.New()
 	handler := NewProfileHandler(testUserStoreProvider{store: store})
-	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: 5, AccessGroupID: &groupID}}
-	handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 1}}
+	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: new(5), AccessGroupID: &groupID}}
+	handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 1, ManagedTemplateKey: new("standard")}}
 
 	req := newAuthorizedProfileRequestWithRole(http.MethodPost, "/profiles", `{"name":"Kids"}`, "admin", "")
 	req = req.WithContext(tenancy.WithContext(req.Context(), tenancy.Context{
@@ -124,7 +124,7 @@ func TestHandleCreateProfile_ManagedZeroRejectsSecondaryProfile(t *testing.T) {
 	organizationID := uuid.New()
 	key := "browse-only"
 	handler := NewProfileHandler(testUserStoreProvider{store: store})
-	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: 5, AccessGroupID: &groupID}}
+	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: new(5), AccessGroupID: &groupID}}
 	handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 0, ManagedTemplateKey: &key}}
 	req := newAuthorizedProfileRequestWithRole(http.MethodPost, "/profiles", `{"name":"Kids"}`, "admin", "")
 	req = req.WithContext(tenancy.WithContext(req.Context(), tenancy.Context{OrganizationID: organizationID, AccountID: 1, Legacy: true}))
@@ -140,7 +140,7 @@ func TestHandleCreateProfile_InheritsAccountManagedGroup(t *testing.T) {
 	groupID := int64(88)
 	organizationID := uuid.New()
 	handler := NewProfileHandler(testUserStoreProvider{store: store})
-	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: 5, AccessGroupID: &groupID}}
+	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 1, MaxProfiles: new(5), AccessGroupID: &groupID}}
 	handler.AccessGroups = profileCapAccessGroups{group: &access.TenantGroup{Group: access.Group{ID: groupID}, OrganizationID: organizationID, MaxProfiles: 5}}
 
 	req := newAuthorizedProfileRequestWithRole(http.MethodPost, "/profiles", `{"name":"Kids"}`, "admin", "")

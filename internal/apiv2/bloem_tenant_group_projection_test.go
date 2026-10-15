@@ -38,7 +38,7 @@ func TestTenantGroupV2ProjectionRetainsArrayDistinctions(t *testing.T) {
 				t.Fatalf("nil %s became array: %s", key, wire)
 			}
 		}
-		for _, key := range []string{"organization_id", "playback_allowed", "max_profiles", "managed_template_key"} {
+		for _, key := range []string{"organization_id", "playback_allowed", "managed_template_key"} {
 			if _, ok := fields[key]; ok {
 				t.Fatalf("storage field %s reached v2 wire", key)
 			}

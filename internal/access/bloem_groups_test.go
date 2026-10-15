@@ -58,14 +58,15 @@ func TestEffectivePolicyForSubjectAdminBypassesGroupsWithPlaybackAllowed(t *test
 
 func TestApplyGroupPolicyRestrictsEntitlementPlaybackTranscodeAndProfiles(t *testing.T) {
 	user := &models.User{
-		MaxProfiles: 8,
+		MaxProfiles: new(8),
 	}
 
 	effective := ApplyGroupPolicy(user, &GroupPolicy{
-		PlaybackAllowed:  false,
-		TranscodeAllowed: false,
-		MaxProfiles:      3,
-		RequestsAllowed:  true,
+		ManagedProfileLimit: true,
+		PlaybackAllowed:     false,
+		TranscodeAllowed:    false,
+		MaxProfiles:         3,
+		RequestsAllowed:     true,
 	})
 
 	if effective.PlaybackAllowed {
@@ -93,11 +94,12 @@ func TestApplyGroupPolicyMaxProfilesUsesStrictestPositiveLayer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			effective := ApplyGroupPolicy(&models.User{MaxProfiles: tt.accountCap}, &GroupPolicy{
-				PlaybackAllowed:  true,
-				TranscodeAllowed: true,
-				MaxProfiles:      tt.groupCap,
-				RequestsAllowed:  true,
+			effective := ApplyGroupPolicy(&models.User{MaxProfiles: new(tt.accountCap)}, &GroupPolicy{
+				ManagedProfileLimit: tt.groupCap > 0,
+				PlaybackAllowed:     true,
+				TranscodeAllowed:    true,
+				MaxProfiles:         tt.groupCap,
+				RequestsAllowed:     true,
 			})
 			if effective.MaxProfiles != tt.want {
 				t.Fatalf("MaxProfiles = %d, want %d", effective.MaxProfiles, tt.want)

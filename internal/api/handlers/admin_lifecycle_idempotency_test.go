@@ -196,7 +196,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationI
 			next.ServeHTTP(w, r.WithContext(apimw.SetClaims(r.Context(), claims)))
 		})
 	})
-	router.Put("/api/v1/admin/request-users/{user_id}/limit", handler.HandleUpdateUserLimit)
+	router.With(apimw.ProvideActingAdmin(apimw.NewActingAdminDecider(nil, nil))).Put("/api/v1/admin/request-users/{user_id}/limit", handler.HandleUpdateUserLimit)
 	key := "request-limit-replay-" + uuid.NewString()
 	request := func() *httptest.ResponseRecorder {
 		req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/request-users/"+strconv.Itoa(target.ID)+"/limit", strings.NewReader(`{"limit_mode":"custom","max_requests":3,"window_days":7,"approval_mode":"manual"}`))

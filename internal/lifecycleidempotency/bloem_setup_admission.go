@@ -47,7 +47,7 @@ func (s *PostgresStore) beginTransaction(ctx context.Context) (pgx.Tx, func(), e
 	// connection after locking could exhaust the pool under competing callers.
 	// pglock never returns a possibly locked session to the pool: not when
 	// cancellation races acquisition, and not when the unlock is unconfirmed.
-	lock, err := pglock.Acquire(ctx, s.pool, lockID)
+	lock, err := pglock.AcquireBlocking(ctx, s.pool, lockID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("acquire lifecycle admission: %w", err)
 	}

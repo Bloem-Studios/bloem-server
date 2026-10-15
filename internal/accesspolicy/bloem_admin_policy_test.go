@@ -23,7 +23,7 @@ func TestBloemAdminPolicyIgnoresStaleGroupAndRetainsAccountOverrides(t *testing.
 		LibraryIDs:               []int{9},
 		DownloadTranscodeAllowed: &disabled,
 		MaxStreams:               &limit,
-		MaxProfiles:              3,
+		MaxProfiles:              new(3),
 		MaxPlaybackQuality:       &quality,
 		Permissions:              []string{"watch"},
 	}

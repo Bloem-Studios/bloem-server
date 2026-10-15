@@ -84,12 +84,18 @@ func audienceTicketPrincipal(w http.ResponseWriter, r *http.Request, am *AuthMid
 			writeUnauthorized(w, "Session is no longer valid", "session_expired")
 			return nil, false
 		}
-		role, valid, err := am.sessionValidator.ActiveSessionRole(r.Context(), claims.SessionID)
+		authority, valid, err := am.sessionValidator.ActiveSession(r.Context(), claims.SessionID)
 		if err != nil || !valid {
 			writeUnauthorized(w, "Session is no longer valid", "session_expired")
 			return nil, false
 		}
-		claims.Role = role
+		if authority.IsRemotePlayback() {
+			// These tickets are exclusively the frozen v1 bridge; Silo
+			// restricts remote-playback handoffs to its v2 route allowlist.
+			writeForbidden(w, "A remote-playback session cannot use the v1 bridge")
+			return nil, false
+		}
+		claims.Role = authority.Role
 	}
 	if claims.ProfileID != "" {
 		r.Header.Set("X-Profile-Id", claims.ProfileID)

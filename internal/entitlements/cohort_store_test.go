@@ -36,19 +36,21 @@ func TestEnsureExactCohortAdoptsManagedGroupWithoutPolicyDrift(t *testing.T) {
 
 func TestEnsureExactCohortAdoptsSemanticallyEquivalentNoncanonicalGroupWithoutDrift(t *testing.T) {
 	fixture := newCohortFixture(t)
+	first := insertEntitlementLibrary(t, fixture.ctx, fixture.pool, "First", true)
+	second := insertEntitlementLibrary(t, fixture.ctx, fixture.pool, "Second", true)
 	_, err := fixture.pool.Exec(fixture.ctx, `
 		UPDATE access_groups
-		SET library_ids=ARRAY[2,1,2]::integer[],
+		SET library_ids=ARRAY[$3,$4,$3]::integer[],
 		    max_playback_quality='standard',
 		    allowed_permissions=ARRAY['metadata_curation','marker_edit','marker_edit']::text[]
-		WHERE organization_id=$1 AND id=$2`, fixture.organizationID, fixture.managedGroupID)
+		WHERE organization_id=$1 AND id=$2`, fixture.organizationID, fixture.managedGroupID, second, first)
 	require.NoError(t, err)
 	before := fixture.snapshotGroup(fixture.managedGroupID)
 
 	cohort, _ := fixture.ensureExact(t)
 
 	require.Equal(t, before, fixture.snapshotGroup(fixture.managedGroupID))
-	require.Equal(t, []int{1, 2}, cohort.Policy.LibraryIDs)
+	require.Equal(t, []int{first, second}, cohort.Policy.LibraryIDs)
 	require.Equal(t, "1080p", cohort.Policy.MaxPlaybackQuality)
 	require.Equal(t, []string{"marker_edit", "metadata_curation"}, cohort.Policy.AllowedPermissions)
 }

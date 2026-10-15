@@ -83,7 +83,7 @@ func newBloemSocketFixture(t *testing.T) *bloemSocketFixture {
 	ctx := tenancy.WithContext(apimw.SetClaims(t.Context(), claims), tenant)
 	f := &bloemSocketFixture{ctx: ctx, claims: claims, users: user, viewer: &bloemSocketViewer{}, primary: true,
 		tenants:  &bloemSocketTenantFixture{tenant: tenant, profileOrganization: tenant.OrganizationID},
-		sessions: &bloemSocketSessionFixture{socketSessionFixture: socketSessionFixture{valid: true}, session: models.AuthSession{ID: "session", UserID: 7, AuthMethod: "account", ExpiresAt: until}},
+		sessions: &bloemSocketSessionFixture{socketSessionFixture: socketSessionFixture{valid: true, account: user}, session: models.AuthSession{ID: "session", UserID: 7, AuthMethod: "account", ExpiresAt: until}},
 		identity: evt.SocketIdentity{UserID: 7, Role: "user", SessionID: "session", AccessExpiresAt: claims.ExpiresAt.Time},
 	}
 	f.h = NewBloemEventsSocketV2(NewEventsHandler(evt.NewHub("bloem-socket-test", nil), nil, nil, nil, nil, nil, nil), evt.NewSocketTicketStore(nil), f.sessions, user, f.viewer, func(context.Context, int, string) (bool, bool, error) { return f.primary, true, nil }, f.tenants, f.tenants, "")

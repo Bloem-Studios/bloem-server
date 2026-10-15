@@ -195,7 +195,7 @@ func preparePolicyStoreTestDatabase(
 }
 
 func migratePolicyStoreTestDatabase(ctx context.Context, pool *pgxpool.Pool) error {
-	migrationFS, err := fs.Sub(migrations.FS, "sql")
+	migrationFS, err := fs.Sub(migrations.BloemFS, "sql")
 	if err != nil {
 		return fmt.Errorf("open embedded SQL migrations: %w", err)
 	}

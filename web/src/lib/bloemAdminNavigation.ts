@@ -12,9 +12,11 @@ import {
   LayoutDashboard,
   Users,
   UsersRound,
+  Megaphone,
 } from "lucide-react";
 
-import type { AdminNavGroup, AdminNavItem } from "@/lib/adminNavigation";
+import type { AdminNavGroup, AdminNavItem, AdminNavSection } from "@/lib/adminNavigation";
+import type { AdminSettingsSearchItem } from "@/lib/adminSettingsSearch";
 
 export const ORGANIZATION_ADMIN_NAV_SECTIONS: AdminNavGroup[] = [
   {
@@ -132,22 +134,39 @@ const LIVE_TV_ITEM: AdminNavItem = {
  * Adds Bloem's platform pages to Silo's admin navigation: platform items lead
  * the Overview group and Live TV follows Requests.
  */
-export function withBloemAdminNav(sections: AdminNavGroup[]): AdminNavGroup[] {
-  return sections.map((section) => {
-    const items =
-      section.label === "Overview"
-        ? [...BLOEM_PLATFORM_OVERVIEW_ITEMS, ...section.items]
-        : [...section.items];
-    const requests = items.findIndex((item) => item.href === "/admin/requests");
-    if (requests >= 0) items.splice(requests + 1, 0, LIVE_TV_ITEM);
-    return { ...section, items };
-  });
+export function withBloemAdminNav(sections: AdminNavSection[]): AdminNavSection[] {
+  return [
+    { label: "Platform", entries: [...BLOEM_PLATFORM_OVERVIEW_ITEMS] },
+    ...sections.map((section) => {
+      const entries = [...section.entries];
+      const requests = entries.findIndex((entry) => "items" in entry && entry.id === "requests");
+      if (requests >= 0) entries.splice(requests + 1, 0, LIVE_TV_ITEM);
+      return { ...section, entries };
+    }),
+  ];
 }
 
 /** Navigation for an organization administrative context. */
-export function buildOrganizationAdminNavSections(): AdminNavGroup[] {
+export function buildOrganizationAdminNavSections(): AdminNavSection[] {
   return ORGANIZATION_ADMIN_NAV_SECTIONS.map((section) => ({
-    ...section,
-    items: [...section.items],
+    label: section.label,
+    entries: [...section.items],
   }));
+}
+
+export function withBloemAdminSettings(items: AdminSettingsSearchItem[]): AdminSettingsSearchItem[] {
+  return [...items, {
+    id: "announcements",
+    label: "Announcements",
+    description: "Publish messages to viewers and withdraw earlier announcements.",
+    settings: [{ label: "New announcement" }, { label: "Published announcements" }],
+    keywords: ["engagement", "banner", "alert", "audience", "broadcast", "inbox"],
+    icon: Megaphone,
+  }];
+}
+
+/** Adds the owned settings page through Silo's existing topic structure. */
+export function withBloemSettingsNavigation(sections: AdminNavSection[]): AdminNavSection[] {
+ const item:AdminNavItem={label:"Announcements",description:"Publish messages to viewers.",icon:Megaphone,href:"/admin/settings/announcements"};
+ return sections.map(section=>({...section,entries:section.entries.map(entry=>"items" in entry && entry.id==="integrations"?{...entry,items:[...entry.items,item]}:entry)}));
 }

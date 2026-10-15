@@ -1,5 +1,27 @@
 # Bloem contract adjudications
 
+## October 14 upstream contract transition
+
+The Silo sync through `ea3c10a7f` adopts two upstream pre-lock decisions:
+[Silo #1801](https://github.com/Silo-Server/silo-server/pull/1801) makes the
+stored account profile limit nullable to express group inheritance, and
+[Silo #2413](https://github.com/Silo-Server/silo-server/pull/2413) removes
+administrator CSS, font and color overrides. The four exact breaking-change
+fingerprints against the prior Bloem baseline are recorded in
+`contracts/api/v2/breaking-approvals.json`, with those upstream PR numbers as
+their approval provenance. No wildcard or post-lock exemption is introduced.
+
+The web consumers and server-maintained Kotlin/Swift contracts follow the
+upstream shapes. Bloem's organization and seasonal branding remain separate.
+Before rollout, both native client releases need their generated-contract
+adoption checked, especially nullable `max_profiles`. This local server merge
+does not update or certify sibling client releases.
+
+The auth scenario catalog adds Silo's `jellyfin_quick_connect` capability field;
+Bloem answers `false` because that protocol is retired. Its baseline digest was
+refreshed after reviewing those three added field-presence assertions. The
+existing adjudicated scenarios and their transport decisions are unchanged.
+
 ## Decision and scope
 
 The 2026-09-19 CI follow-through reconciles historical Silo fixtures with behavior

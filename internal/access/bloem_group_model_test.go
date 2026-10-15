@@ -70,3 +70,22 @@ func TestTenantGroupCanonicalExtendedPolicyMutationDB(t *testing.T) {
 		t.Fatalf("common update lost extended values: %+v %v", common, err)
 	}
 }
+
+func TestTenantGroupSiloProfileLimitRoundTrip(t *testing.T) {
+	ctx, fixture := newOrganizationGroupStoreDBTest(t)
+	group, err := fixture.store.Create(ctx, fixture.orgA, CreateGroupInput{Name: "Silo profile limit", MaxProfiles: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = fixture.store.Delete(ctx, fixture.orgA, group.ID) })
+	if group.MaxProfiles != 2 || group.Group.MaxProfiles != 2 {
+		t.Fatalf("created limit=%d upstream projection=%d", group.MaxProfiles, group.Group.MaxProfiles)
+	}
+	group, err = fixture.store.Update(ctx, fixture.orgA, group.ID, UpdateGroupInput{MaxProfiles: new(3)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if group.MaxProfiles != 3 || group.Group.MaxProfiles != 3 {
+		t.Fatalf("updated limit=%d upstream projection=%d", group.MaxProfiles, group.Group.MaxProfiles)
+	}
+}

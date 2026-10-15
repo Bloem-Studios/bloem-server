@@ -1,12 +1,16 @@
 package api
 
-import "context"
+import (
+	"context"
 
-func (v bloemSessionValidator) ActiveSessionRole(ctx context.Context, id string) (string, bool, error) {
+	"github.com/Silo-Server/silo-server/internal/auth"
+)
+
+func (v bloemSessionValidator) ActiveSession(ctx context.Context, id string) (auth.SessionAuthority, bool, error) {
 	valid, err := v.IsValid(ctx, id)
-	return "", valid, err
+	return auth.SessionAuthority{}, valid, err
 }
-func (v seasonalMountSessions) ActiveSessionRole(ctx context.Context, id string) (string, bool, error) {
+func (v seasonalMountSessions) ActiveSession(ctx context.Context, id string) (auth.SessionAuthority, bool, error) {
 	valid, err := v.IsValid(ctx, id)
-	return "", valid, err
+	return auth.SessionAuthority{}, valid, err
 }

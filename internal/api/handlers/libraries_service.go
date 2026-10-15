@@ -16,6 +16,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/adminjob"
 	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/ctxerr"
 	"github.com/Silo-Server/silo-server/internal/librarykind"
 	"github.com/Silo-Server/silo-server/internal/metadata"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -75,6 +76,10 @@ type UnmatchedItemView = unmatchedItemResponse
 func (h *LibraryHandler) ListLibraries(ctx context.Context) ([]LibraryView, error) {
 	folders, err := h.folderRepo.List(ctx)
 	if err != nil {
+		if ctxerr.Abandoned(ctx, err) {
+			// The client left; nothing failed, so there is nothing to log.
+			return nil, err
+		}
 		slog.ErrorContext(ctx, "listing libraries", "component", "api", "error", err)
 		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to list libraries")
 	}
@@ -511,6 +516,7 @@ func (h *LibraryHandler) LibraryProviderDefaults(ctx context.Context, libraryTyp
 			ProviderSlug:         e.CapabilityID,
 			Priority:             e.Priority,
 			Enabled:              e.Enabled,
+			Local:                e.Local,
 		})
 	}
 	return out, nil
@@ -1372,6 +1378,7 @@ func (h *LibraryHandler) LibraryProviders(ctx context.Context, id int) (map[stri
 			ProviderSlug:         e.CapabilityID,
 			Priority:             e.Priority,
 			Enabled:              e.Enabled,
+			Local:                e.Local,
 		})
 	}
 	return levels, nil

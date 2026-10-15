@@ -10,6 +10,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// ActiveSessionRole keeps older Bloem adapters on the upstream authority lookup.
+func (r *SessionRepository) ActiveSessionRole(ctx context.Context, id string) (string, bool, error) {
+	authority, active, err := r.ActiveSession(ctx, id)
+	return authority.Role, active, err
+}
+
 // CreateProfileSessionIfCurrent serializes direct-profile session creation with
 // credential rotation by locking the profile row and checking the exact subject
 // facts authenticated before the session was minted.
@@ -257,3 +263,9 @@ func normalizeSessionAuthMethod(session *models.AuthSession) error {
 
 // Begin supplies the transaction boundary used by upstream OAuth completion.
 func (r *SessionRepository) Begin(ctx context.Context) (pgx.Tx, error) { return r.pool.Begin(ctx) }
+
+// LoginSessionActive follows Silo session validity and narrowed authority.
+func (s *Service) LoginSessionActive(ctx context.Context, sessionID string) (bool, error) {
+	_, active, err := s.sessions.ActiveSession(ctx, sessionID)
+	return active, err
+}

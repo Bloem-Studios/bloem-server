@@ -10,13 +10,13 @@ import (
 )
 
 func (s *TenantGroupStore) Create(ctx context.Context, org uuid.UUID, in CreateGroupInput) (*TenantGroup, error) {
-	return s.CreatePolicy(ctx, org, TenantCreateGroupInput{CreateGroupInput: in})
+	return s.CreatePolicy(ctx, org, TenantCreateGroupInput{CreateGroupInput: in, MaxProfiles: in.MaxProfiles})
 }
 func (s *TenantGroupStore) Update(ctx context.Context, org uuid.UUID, id int64, in UpdateGroupInput) (*TenantGroup, error) {
 	return s.UpdateConditional(ctx, org, id, in, GroupPrecondition{Any: true})
 }
 func (s *TenantGroupStore) UpdateConditional(ctx context.Context, org uuid.UUID, id int64, in UpdateGroupInput, guard GroupPrecondition) (*TenantGroup, error) {
-	return s.UpdatePolicyConditional(ctx, org, id, TenantUpdateGroupInput{UpdateGroupInput: in}, guard)
+	return s.UpdatePolicyConditional(ctx, org, id, TenantUpdateGroupInput{UpdateGroupInput: in, MaxProfiles: in.MaxProfiles}, guard)
 }
 
 type tenantGroupPatch struct {
@@ -33,6 +33,9 @@ func (p *tenantGroupPatch) assign(column string, value any) {
 func (s *TenantGroupStore) CreatePolicy(ctx context.Context, organizationID uuid.UUID, input TenantCreateGroupInput) (*TenantGroup, error) {
 	if organizationID == uuid.Nil {
 		return nil, ErrGroupNotFound
+	}
+	if input.MaxProfiles == 0 {
+		input.MaxProfiles = DefaultMaxProfiles
 	}
 	name := strings.TrimSpace(input.Name)
 	if name == "" {

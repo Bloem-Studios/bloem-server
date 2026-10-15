@@ -86,7 +86,7 @@ func migratedToNativeOnboarding(t *testing.T) (*sql.DB, *goose.Provider) {
 
 func mustSub(t *testing.T, dir string) fs.FS {
 	t.Helper()
-	sub, err := fs.Sub(FS, dir)
+	sub, err := fs.Sub(BloemFS, dir)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -243,10 +243,11 @@ func (s *Service) PreviewPolicyForScope(ctx context.Context, organizationID uuid
 		current := policyFromEffective(result.Snapshot.Policy)
 		targetAccountMaxProfiles := membership.accountMaxProfiles
 		if target.Kind != PolicyRestoreDefaultEntitlement || target.CohortID != uuid.Nil {
-			targetAccountMaxProfiles = target.policy.MaxProfiles
-			if targetAccountMaxProfiles == 0 {
-				targetAccountMaxProfiles = 1
+			limit := target.policy.MaxProfiles
+			if limit == 0 {
+				limit = 1
 			}
+			targetAccountMaxProfiles = &limit
 		}
 		effectiveTarget := effectivePolicyTargetForAccount(target.policy, membership.accountPermissions, targetAccountMaxProfiles)
 		accountWillMove := target.GroupID == 0 || snapshot.GroupID != target.GroupID
@@ -316,7 +317,7 @@ type policySelectionMembership struct {
 	sourceTemplateKey      string
 	sourceTemplateRevision int64
 	accountPermissions     []string
-	accountMaxProfiles     int
+	accountMaxProfiles     *int
 }
 
 type policyObservation struct {
@@ -1040,10 +1041,10 @@ func policyFromEffective(policy entitlements.EffectivePolicySnapshot) entitlemen
 	}
 }
 
-func effectivePolicyTargetForAccount(target entitlements.Policy, accountPermissions []string, accountMaxProfiles int) entitlements.Policy {
+func effectivePolicyTargetForAccount(target entitlements.Policy, accountPermissions []string, accountMaxProfiles *int) entitlements.Policy {
 	effective := accesspolicy.ApplyGroupPolicy(
 		&models.User{Permissions: accountPermissions, MaxProfiles: accountMaxProfiles},
-		&accesspolicy.GroupPolicy{MaxProfiles: target.MaxProfiles, AllowedPermissions: target.AllowedPermissions},
+		&accesspolicy.GroupPolicy{ManagedProfileLimit: true, MaxProfiles: target.MaxProfiles, AllowedPermissions: target.AllowedPermissions},
 	)
 	target.AllowedPermissions = effective.Permissions
 	target.MaxProfiles = effective.MaxProfiles

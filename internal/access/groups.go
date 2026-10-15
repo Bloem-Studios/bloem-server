@@ -7,6 +7,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
+const DefaultMaxProfiles = accesspolicy.DefaultMaxProfiles
+
 func NoGroupPolicy() GroupPolicy { return accesspolicy.NoGroupPolicy() }
 
 // AdminPolicy preserves upstream account defaults through Bloem’s shared evaluator.

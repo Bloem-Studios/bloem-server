@@ -124,7 +124,7 @@ func TestBloemAccountExplicitOrganizationGroup(t *testing.T) {
 			}
 			user := created.User
 			if user.AccessGroupID == nil || *user.AccessGroupID != intendedGroupID ||
-				user.MaxStreams == nil || *user.MaxStreams != maxStreams || user.MaxProfiles != maxProfiles ||
+				user.MaxStreams == nil || *user.MaxStreams != maxStreams || (user.MaxProfiles == nil || *user.MaxProfiles != maxProfiles) ||
 				user.DownloadAllowed == nil || *user.DownloadAllowed != downloadAllowed ||
 				user.RequestsAllowed == nil || *user.RequestsAllowed != requestsAllowed || user.MaxTranscodes != nil {
 				t.Fatal("returned user lost explicit group, policy overrides, or inherited policy")

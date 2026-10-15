@@ -116,8 +116,8 @@ func TestSiloClientSubjectResolutionMatrix(t *testing.T) {
 		case *loaded.AccessGroupID != *tenantGroup:
 			t.Fatalf("account-level group = %d, want the tenant's %d", *loaded.AccessGroupID, *tenantGroup)
 		}
-		if loaded.MaxProfiles <= 0 {
-			t.Fatalf("account-level max_profiles = %d; a Silo client would read that as no profiles allowed", loaded.MaxProfiles)
+		if loaded.MaxProfiles != nil && *loaded.MaxProfiles <= 0 {
+			t.Fatalf("account-level max_profiles = %d; a Silo client would read that as no profiles allowed", *loaded.MaxProfiles)
 		}
 	})
 

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Silo-Server/silo-server/migrations"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -165,7 +167,7 @@ func MigrationStatuses(ctx context.Context, pool *pgxpool.Pool, fsys fs.FS, dir 
 }
 
 func newMigrationProvider(pool *pgxpool.Pool, fsys fs.FS, dir string) (*goose.Provider, error) {
-	migrationFS, err := migrationSubFS(fsys, dir)
+	migrationFS, err := migrationSubFS(migrations.AdaptBloemFS(fsys), dir)
 	if err != nil {
 		return nil, err
 	}
@@ -191,14 +193,15 @@ func newMigrationProvider(pool *pgxpool.Pool, fsys fs.FS, dir string) (*goose.Pr
 		// typed JSON, the displayprefs move parses the legacy jellycompat
 		// keys, and the subtitle language backfill applies the scanner's
 		// lang.CompatibleTag — none expressible in SQL without duplicating
-		// those rules. The invalid index rebuild decides per index whether to
-		// drop and rebuild it concurrently, which SQL cannot do outside a
-		// transaction.
+		// those rules. The invalid index rebuild and the push attempt key
+		// scope decide per index whether to drop and build it concurrently,
+		// which SQL cannot do outside a transaction.
 		goose.WithGoMigrations(
 			settingsBackfillMigration(),
 			displayPrefsMoveMigration(),
 			subtitleLanguageBackfillMigration(),
 			invalidIndexRebuildMigration(),
+			pushAttemptKeyScopeMigration(),
 		),
 	)
 	if err != nil {

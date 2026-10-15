@@ -302,6 +302,9 @@ func prepareAccessGroupTestDatabase(ctx context.Context, dsn string) (*pgxpool.C
 		admin.Close()
 		return nil, nil, fmt.Errorf("migrate disposable database: %w", err)
 	}
+	if _, err := pool.Exec(ctx, `INSERT INTO media_folders(id,type,name) VALUES(1,'movies','One'),(2,'movies','Two'),(3,'movies','Three')`); err != nil {
+		return nil, nil, err
+	}
 	// 20260829085838_membership_policy_isolation leaves a freshly migrated
 	// database in the compatibility phase, which is a policy FREEZE: writes are
 	// fenced on users and frozen on organization_memberships. These tests
@@ -335,7 +338,7 @@ func prepareAccessGroupTestDatabase(ctx context.Context, dsn string) (*pgxpool.C
 }
 
 func migrateAccessGroupDisposableDatabase(ctx context.Context, pool *pgxpool.Pool) error {
-	migrationFS, err := fs.Sub(migrations.FS, "sql")
+	migrationFS, err := fs.Sub(migrations.BloemFS, "sql")
 	if err != nil {
 		return fmt.Errorf("open embedded SQL migrations: %w", err)
 	}

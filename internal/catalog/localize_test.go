@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -180,6 +181,34 @@ func TestApplyEpisodeLocalizationPartialRow(t *testing.T) {
 	}
 }
 
+// Only fields an AI job wrote are marked; provider and manual text is not.
+func TestApplyLocalizationMarksMachineTranslatedFields(t *testing.T) {
+	item := applyItemLocalization(baseItem(), &models.MediaItemLocalization{
+		Overview: "Résumé IA.", OverviewSource: "ai",
+		Tagline: "Accroche fournisseur.", TaglineSource: "provider",
+	})
+	if !slices.Equal(item.MachineTranslatedFields, []string{MachineTranslatedOverview}) {
+		t.Errorf("item markers = %v, want [overview]", item.MachineTranslatedFields)
+	}
+	// An empty AI field falls back to the base text, which is not translated.
+	item = applyItemLocalization(baseItem(), &models.MediaItemLocalization{TaglineSource: "ai", OverviewSource: "manual", Overview: "Saisi."})
+	if len(item.MachineTranslatedFields) != 0 {
+		t.Errorf("item markers = %v, want none", item.MachineTranslatedFields)
+	}
+
+	season := applySeasonLocalization(&models.Season{Overview: "Base."}, &models.SeasonLocalization{Overview: "IA.", OverviewSource: "ai"}, false)
+	if !slices.Equal(season.MachineTranslatedFields, []string{MachineTranslatedOverview}) {
+		t.Errorf("season markers = %v, want [overview]", season.MachineTranslatedFields)
+	}
+
+	// Re-localizing an already localized model reports only the new row.
+	episode := applyEpisodeLocalization(&models.Episode{Overview: "Base."}, &models.EpisodeLocalization{Overview: "IA.", OverviewSource: "ai"})
+	episode = applyEpisodeLocalization(episode, &models.EpisodeLocalization{Overview: "Anbieter.", OverviewSource: "provider"})
+	if len(episode.MachineTranslatedFields) != 0 {
+		t.Errorf("episode markers = %v, want none", episode.MachineTranslatedFields)
+	}
+}
+
 func TestApplySeasonLocalizationKeepsLocalSidecarPoster(t *testing.T) {
 	season := &models.Season{
 		ContentID:        "s1",
@@ -195,5 +224,38 @@ func TestApplySeasonLocalizationKeepsLocalSidecarPoster(t *testing.T) {
 	}
 	if got.PosterPath != season.PosterPath || got.PosterSourcePath != season.PosterSourcePath || got.PosterThumbhash != season.PosterThumbhash {
 		t.Errorf("localized poster replaced local art: %+v", got)
+	}
+}
+
+// A cached copy of an image URL the item's NFO names is library artwork too:
+// the library chose it, so a viewer in another language keeps it.
+func TestApplyItemLocalizationKeepsNFONamedArtwork(t *testing.T) {
+	item := baseItem()
+	item.PosterPath = "nfo/movies/c1/poster/original.webp"
+	item.PosterSourcePath = "nfo+https://img.example.org/poster.jpg"
+	loc := &models.MediaItemLocalization{
+		PosterPath:       "posters/fr.jpg",
+		PosterSourcePath: "tmdb://fr-poster.jpg",
+	}
+	got := applyItemLocalization(item, loc)
+	if got.PosterPath != item.PosterPath || got.PosterSourcePath != item.PosterSourcePath {
+		t.Errorf("localized poster replaced the NFO's: path %q source %q", got.PosterPath, got.PosterSourcePath)
+	}
+
+	season := &models.Season{
+		ContentID:        "s2",
+		PosterPath:       "nfo/series/c1/poster/2/original.webp",
+		PosterSourcePath: "nfo+https://img.example.org/season02.jpg",
+	}
+	seasonLoc := &models.SeasonLocalization{PosterPath: "provider.jpg", PosterSourcePath: "tvdb://fr.jpg"}
+	if got := applySeasonLocalization(season, seasonLoc, false); got.PosterPath != season.PosterPath || got.PosterSourcePath != season.PosterSourcePath {
+		t.Errorf("localized season poster replaced the NFO's: %+v", got)
+	}
+
+	// Until the copy lands, the slot serves earlier provider art, which the
+	// localized poster still replaces.
+	item.PosterPath = "tmdb/movies/1/poster/original.webp"
+	if got := applyItemLocalization(item, loc); got.PosterPath != "posters/fr.jpg" {
+		t.Errorf("uncached NFO poster: path %q, want the localized poster", got.PosterPath)
 	}
 }

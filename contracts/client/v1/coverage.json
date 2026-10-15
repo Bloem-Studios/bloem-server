@@ -2096,6 +2096,14 @@
     {
       "type": "internal/bookrequests.AudiobookReceipt",
       "reason": "Internal abr1 provider receipt envelope decoded and validated by the host, never returned by HTTP. Admin acquisition responses expose sanitized status and validated acquisition decisions instead."
+    },
+    {
+      "type": "internal/models.Episode",
+      "reason": "Internal catalog record; native clients decode the registered API v2 episode and season projections."
+    },
+    {
+      "type": "internal/models.Season",
+      "reason": "Internal catalog record; native clients decode the registered API v2 episode and season projections."
     }
   ]
 }

@@ -17,6 +17,7 @@ func (g TenantGroup) Policy() GroupPolicy {
 	policy := g.Group.Policy()
 	policy.PlaybackAllowed = g.PlaybackAllowed
 	policy.MaxProfiles = g.MaxProfiles
+	policy.ManagedProfileLimit = g.ManagedTemplateKey != nil
 	return policy
 }
 

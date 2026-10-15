@@ -111,7 +111,6 @@ function serverRoutes() {
     "GET /api/v2/theme/branding": { body: {} },
     "GET /api/v1/theme/branding": { body: {} },
     "GET /api/bloem/v1/capabilities": { body: { features: {}, feature_tokens: [] } },
-    "GET /api/v2/theme/admin-css": { body: {} },
     "GET /api/v2/account/me": { body: getCurrentUserOk },
     "GET /api/v2/profiles": { body: listProfilesOk },
     "GET /api/v2/settings/contract/capabilities": { body: getSettingsContractCapabilitiesOk },
@@ -200,12 +199,12 @@ describe("app boot request budget", () => {
     expect(screen.getByTestId("home"), log).toHaveTextContent("2 sections");
     // Includes public Bloem branding and capability discovery; no duplicate reads.
     expect(measureBoot(server.requests), log).toEqual({
-      requestsBeforeHomeLayout: 6,
+      requestsBeforeHomeLayout: 5,
       wavesBeforeHomeLayout: 1,
       unauthorized: 0,
       refreshes: 1,
       duplicateGets: 0,
-      total: 16,
+      total: 15,
     });
     // Home starts loading as soon as the token is back, beside the account read.
     const waveOf = (operation: string) =>
@@ -247,7 +246,7 @@ describe("app boot request budget", () => {
       duplicateGets: 0,
       // Includes the login page's public signup-status and password-reset
       // capability reads.
-      total: 8,
+      total: 7,
     });
     expect(storage.get(storage.KEYS.REFRESH_TOKEN)).toBeNull();
   });
@@ -436,7 +435,7 @@ describe("app boot request budget", () => {
       duplicateGets: 0,
       // Includes the login page's public signup-status and password-reset
       // capability reads.
-      total: 7,
+      total: 6,
     });
   });
 });
