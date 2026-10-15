@@ -41,10 +41,25 @@ Audiobookshelf protocols and companion enrollment are removed from this fork.
 See the [integration changelog](../docs/bloem/CHANGELOG.md) and
 [API catalogue](../docs/bloem/api-catalogue.md).
 
-This is a source checkpoint. It does not establish the revision running on a
-particular server or native-client adoption. Before rolling out the profile-limit
-and administrator-styling changes, complete the
-[client contract transition](../docs/architecture/bloem-contract-adjudications.md).
+Source integration does not establish native-client adoption. Check the
+[client contract transition](../docs/architecture/bloem-contract-adjudications.md)
+when distributing native clients, especially nullable profile limits.
+
+### Deployment checkpoint — October 15, 2026
+
+Published source **`21fae683`** was deployed with matching bundled presentation
+workers. All 24 pending migrations completed; the status audit found 674 applied
+and none pending. Health/readiness, executable hashes, web assets, administrative
+denial checks and Swagger assets passed. The served OpenAPI document exactly
+matched the published source contract, covering 691 paths.
+
+**Public preview remains disabled.** The protected preview template is seeded,
+but account assignment, library selection, site publishing and routing still
+require their own rollout and acceptance. The
+[October 15 deployment receipt](../docs/operations/2026-10-15-preview-server-deployment.md)
+records configuration preservation, the worker packaging correction, the
+operator's PITR decision and verification limits. Mobile distribution and native
+playback acceptance are separate from this server deployment.
 
 ### Historical deployment checkpoint — October 7, 2026
 
