@@ -66,7 +66,17 @@ describe("preview subscription attribution", () => {
         "signed affiliate",
       ),
     ).toBe(
-      "https://store.example.test/trial?plan=7&src=preview&item=episode%3A1&ref=signed+affiliate",
+      "https://store.example.test/trial?plan=7&src=preview&preview_item=episode%3A1&ref=signed+affiliate",
+    );
+  });
+  it("keeps the plan a store's cart link names with item", () => {
+    expect(
+      subscriptionHref(
+        "https://store.example.test/orders/new?item=plan-1&price=price-1",
+        "movie:1",
+      ),
+    ).toBe(
+      "https://store.example.test/orders/new?item=plan-1&price=price-1&src=preview&preview_item=movie%3A1",
     );
   });
   it("does not invent an affiliate", () => {

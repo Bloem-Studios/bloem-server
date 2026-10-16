@@ -18,14 +18,18 @@ export function previewRouteRedirect(path: string, search: string): string | nul
   const content = path.match(/^\/(?:watch|reader\/ebook)\/([^/]+)\/?$/i)?.[1];
   return content ? `/item/${content}?cta=1` : "/?cta=1";
 }
+// The title the visitor was looking at rides along as preview_item. The link's
+// own parameters are the operator's and stay exactly as written: a store's cart
+// link names its plan with item=, and replacing that with the title emptied the
+// cart the Subscribe button was meant to fill.
 export function subscriptionHref(url: string, item?: string, ref?: string): string | null {
   try {
     const target = new URL(url);
     if (target.protocol !== "https:" && target.protocol !== "http:") return null;
     target.searchParams.set("src", "preview");
-    target.searchParams.delete("item");
+    target.searchParams.delete("preview_item");
     target.searchParams.delete("ref");
-    if (item) target.searchParams.set("item", item);
+    if (item) target.searchParams.set("preview_item", item);
     if (ref) target.searchParams.set("ref", ref);
     return target.href;
   } catch {

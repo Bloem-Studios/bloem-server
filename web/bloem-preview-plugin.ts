@@ -13,6 +13,8 @@ const modules: Record<string, string> = {
   "hooks/queries/useRequests.ts": "adapters/requests.ts",
   "components/HeroBanner.tsx": "adapters/HeroBanner.tsx",
   "components/LibraryHeader.tsx": "adapters/LibraryHeader.tsx",
+  "pages/LibraryRecommended.tsx": "adapters/LibraryRecommended.tsx",
+  "bloem/audiobooks/BloemLibraryRecommended.tsx": "adapters/BloemLibraryRecommended.tsx",
   "hooks/queries/settingValues.ts": "adapters/settings.ts",
   "hooks/queries/libraryPageState.ts": "adapters/libraryPageState.ts",
   "pages/ItemDetail/useThemeMusic.ts": "adapters/themeMusic.ts",
