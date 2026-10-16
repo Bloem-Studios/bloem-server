@@ -5,7 +5,13 @@ import { setAccessToken } from "@/api/client";
 import { v2 } from "@/api/v2/request";
 import { userFromAccount } from "@/api/v2/account";
 import { exchangePreviewTicket, type GuestExchange } from "./api";
-import { guestRefreshToken, guestSession, setGuestHost, storeGuestSession } from "./session";
+import {
+  guestRefreshToken,
+  guestSession,
+  setGuestHost,
+  setGuestProfile,
+  storeGuestSession,
+} from "./session";
 import PreviewLanding from "./PreviewLanding";
 let flight: { ticket: string; promise: Promise<GuestExchange> } | null = null;
 function captureLaunch() {
@@ -35,8 +41,15 @@ export default function PreviewStart() {
         if (cancelled) return;
         storeGuestSession(pair);
         setAccessToken(pair.access_token);
-        const account = await v2("GET /api/v2/account/me");
+        const [account, profiles] = await Promise.all([
+          v2("GET /api/v2/account/me"),
+          v2("GET /api/v2/profiles"),
+        ]);
         if (cancelled) return;
+        // The shared account's own profile scopes browsing; the guest is never
+        // asked to pick one.
+        const profile = profiles.items.find((item) => item.is_primary) ?? profiles.items[0] ?? null;
+        setGuestProfile(profile?.id ?? null);
         completeLogin({ ...pair, user: userFromAccount(account) });
         if (flight === launch) flight = null;
         navigate(pair.item ? `/item/${encodeURIComponent(pair.item)}` : "/", { replace: true });

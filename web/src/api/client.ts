@@ -1,4 +1,9 @@
-import { guestHost, guestRefreshToken, setGuestRefreshToken } from "@/bloem/preview/session";
+import {
+  guestHost,
+  guestProfileId,
+  guestRefreshToken,
+  setGuestRefreshToken,
+} from "@/bloem/preview/session";
 import type { ApiError } from "./types";
 import type { components } from "./v2/schema";
 import { storage } from "../utils/storage";
@@ -138,20 +143,14 @@ export function setRefreshToken(token: string | null) {
   }
 }
 
-// A preview guest's profile is held in this tab's memory only: the preview host
-// never stores account authority, but the shared account's profile still has to
-// scope the v2 reads that require X-Profile-Id (home and library layouts).
-let guestProfileId: string | null = null;
-
+// A preview guest never picks a profile; its session carries the shared
+// account's profile, which scopes the v2 reads that require X-Profile-Id.
 function getProfileId(): string | null {
-  return guestHost() ? guestProfileId : storage.get(storage.KEYS.PROFILE_ID);
+  return guestHost() ? guestProfileId() : storage.get(storage.KEYS.PROFILE_ID);
 }
 
 export function setProfileId(id: string | null) {
-  if (guestHost()) {
-    guestProfileId = id;
-    return;
-  }
+  if (guestHost()) return;
   if (id) {
     storage.set(storage.KEYS.PROFILE_ID, id);
   } else {

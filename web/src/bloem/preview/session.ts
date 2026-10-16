@@ -9,6 +9,9 @@ export interface GuestSession {
   ref?: string;
   ended?: boolean;
   presentation?: PreviewPresentation;
+  /** The shared account's profile. A guest never picks one, but the v2 home
+   * and library layouts require X-Profile-Id. */
+  profile_id?: string;
 }
 const KEY = "bloem-preview-session";
 const HOST_KEY = "bloem-preview-host";
@@ -21,7 +24,8 @@ function read(): GuestSession | null {
       !Number.isFinite(Date.parse(value.expires_at)) ||
       typeof value.item !== "string" ||
       (value.refresh_token !== null && typeof value.refresh_token !== "string") ||
-      (value.ref !== undefined && typeof value.ref !== "string")
+      (value.ref !== undefined && typeof value.ref !== "string") ||
+      (value.profile_id !== undefined && typeof value.profile_id !== "string")
     )
       return null;
     return value;
@@ -81,6 +85,15 @@ export function guestSession() {
 }
 export function guestRefreshToken() {
   return current?.refresh_token ?? null;
+}
+export function guestProfileId() {
+  return current?.ended ? null : (current?.profile_id ?? null);
+}
+export function setGuestProfile(id: string | null) {
+  if (current) {
+    current = { ...current, profile_id: id ?? undefined };
+    persist();
+  }
 }
 export function storeGuestSession(value: GuestSession) {
   host = true;
