@@ -2,6 +2,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import Original from "../../../pages/ItemDetail/components/ActionBar";
 import { usePreviewMode } from "../usePreviewMode";
+import { itemCtaLabel } from "../wording";
 import type { FileVersion } from "@/api/types";
 export * from "../../../pages/ItemDetail/components/ActionBar";
 function MetadataPopover({ label, children }: { label: string; children: ReactNode }) {
@@ -76,7 +77,7 @@ export default function ActionBar(props: ComponentProps<typeof Original>) {
         canAddToCollection={false}
         links={props.links}
         primaryAction={{
-          label: "Subscribe to watch",
+          label: itemCtaLabel(mode.presentation, "watch"),
           onClick: () => mode.requestSubscription(props.contentId),
         }}
       />

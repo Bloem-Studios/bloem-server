@@ -11,6 +11,7 @@ import { usePreviewMode } from "./usePreviewMode";
 import { guestSession } from "./session";
 import { safePreviewHref, subscriptionHref } from "./routes";
 import { previewEvent } from "./api";
+import { ctaMessage } from "./wording";
 export default function SubscribeCtaDialog({
   open,
   onOpenChange,
@@ -38,9 +39,7 @@ export default function SubscribeCtaDialog({
             {ended ? "Your preview session has ended" : `Subscribe to ${serverName}`}
           </DialogTitle>
           <DialogDescription>
-            {ended
-              ? "Start your trial to enjoy the full library."
-              : "Browse the library here. Subscribe to watch, read and listen."}
+            {ended ? "Start your trial to enjoy the full library." : ctaMessage(presentation)}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-wrap gap-3">

@@ -5074,6 +5074,9 @@
           "cta_label": {
             "type": "string"
           },
+          "cta_message": {
+            "type": "string"
+          },
           "cta_url": {
             "type": "string"
           },
@@ -5088,6 +5091,9 @@
             "type": "integer"
           },
           "issuer": {
+            "type": "string"
+          },
+          "item_cta_label": {
             "type": "string"
           },
           "launch_url": {
@@ -5127,6 +5133,8 @@
           "brand",
           "cta_url",
           "cta_label",
+          "item_cta_label",
+          "cta_message",
           "storefront_url",
           "launch_url",
           "maturity_ceiling"
@@ -8837,6 +8845,10 @@
           "cta_label": {
             "type": "string"
           },
+          "cta_message": {
+            "description": "The subscribe dialog's sentence; empty keeps the default.",
+            "type": "string"
+          },
           "cta_url": {
             "type": "string"
           },
@@ -8851,6 +8863,10 @@
             "type": "integer"
           },
           "issuer": {
+            "type": "string"
+          },
+          "item_cta_label": {
+            "description": "Replaces Subscribe to watch, read or listen on title pages; empty keeps that wording.",
             "type": "string"
           },
           "launch_url": {

@@ -13,6 +13,8 @@ type Presentation struct {
 	EndsAt        *time.Time `json:"ends_at" nullable:"true" doc:"Absolute guest session expiry, or the personal end date supplied by the storefront; null until supplied."`
 	CTAURL        string     `json:"cta_url"`
 	CTALabel      string     `json:"cta_label"`
+	ItemCTALabel  string     `json:"item_cta_label" doc:"Operator wording for the title-page button; empty means the client's own (Subscribe to watch, read or listen)."`
+	CTAMessage    string     `json:"cta_message" doc:"Operator sentence for the subscribe dialog; empty means the client's own."`
 	StorefrontURL string     `json:"storefront_url"`
 	LaunchURL     string     `json:"launch_url"`
 }
@@ -22,7 +24,7 @@ func (s *Store) Presentation(ctx context.Context, account int, session string, g
 	if err != nil {
 		return nil, err
 	}
-	out := &Presentation{Kind: "personal", CTAURL: settings.CTAURL, CTALabel: settings.CTALabel, StorefrontURL: settings.StorefrontURL, LaunchURL: settings.LaunchURL}
+	out := &Presentation{Kind: "personal", CTAURL: settings.CTAURL, CTALabel: settings.CTALabel, ItemCTALabel: settings.ItemCTALabel, CTAMessage: settings.CTAMessage, StorefrontURL: settings.StorefrontURL, LaunchURL: settings.LaunchURL}
 	if out.CTAURL == "" {
 		out.CTAURL = settings.StorefrontURL
 	}

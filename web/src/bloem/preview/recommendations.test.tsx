@@ -11,6 +11,8 @@ const presentation = {
   ends_at: null,
   cta_url: "https://store.test/trial",
   cta_label: "Subscribe",
+  item_cta_label: "",
+  cta_message: "",
   storefront_url: "",
   launch_url: "",
 };

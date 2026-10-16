@@ -19896,12 +19896,16 @@ export interface components {
     };
     BloemPreviewPresentation: {
       cta_label: string;
+      /** @description Operator sentence for the subscribe dialog; empty means the client's own. */
+      cta_message: string;
       cta_url: string;
       /**
        * Format: date-time
        * @description Absolute guest session expiry, or the personal end date supplied by the storefront; null until supplied.
        */
       ends_at: string | null;
+      /** @description Operator wording for the title-page button; empty means the client's own (Subscribe to watch, read or listen). */
+      item_cta_label: string;
       /** @enum {string} */
       kind: "guest" | "personal";
       launch_url: string;

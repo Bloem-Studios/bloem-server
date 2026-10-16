@@ -9,6 +9,8 @@ const presentation = {
   ends_at: null,
   cta_url: "",
   cta_label: "",
+  item_cta_label: "",
+  cta_message: "",
   storefront_url: "",
   launch_url: "",
 };

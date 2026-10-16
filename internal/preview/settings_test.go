@@ -27,6 +27,7 @@ func validSettings(t *testing.T, accountID int, key ed25519.PublicKey) preview.S
 		Enabled: true, Host: "browse.example.test", Issuer: "garden-operator-1", AccountID: accountID,
 		TicketPublicKeys: []ed25519.PublicKey{key}, SessionTTL: 2 * time.Hour, IdleTTL: 20 * time.Minute,
 		MaxConcurrent: 200, Brand: "Example", CTALabel: "Subscribe to Example",
+		ItemCTALabel: "Start your trial", CTAMessage: "Seven days for one euro.",
 	}
 }
 
@@ -43,7 +44,8 @@ func TestStoreRoundTripsSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got.Host != want.Host || got.AccountID != want.AccountID || !got.Enabled || len(got.TicketPublicKeys) != 1 ||
-		!got.TicketPublicKeys[0].Equal(pub) || got.IdleTTL != want.IdleTTL || got.SessionTTL != want.SessionTTL {
+		!got.TicketPublicKeys[0].Equal(pub) || got.IdleTTL != want.IdleTTL || got.SessionTTL != want.SessionTTL ||
+		got.ItemCTALabel != want.ItemCTALabel || got.CTAMessage != want.CTAMessage {
 		t.Fatalf("got %+v", got)
 	}
 }
@@ -55,19 +57,21 @@ func TestPutRefusesInvalidSettings(t *testing.T) {
 	account := insertAccount(t, ctx, pool, "user")
 	admin := insertAccount(t, ctx, pool, "admin")
 	for name, mutate := range map[string]func(*preview.Settings){
-		"host with scheme": func(s *preview.Settings) { s.Host = "https://browse.example.test" },
-		"host with port":   func(s *preview.Settings) { s.Host = "browse.example.test:443" },
-		"host with path":   func(s *preview.Settings) { s.Host = "browse.example.test/x" },
-		"upper-case host":  func(s *preview.Settings) { s.Host = "Browse.Example.Test" },
-		"admin account":    func(s *preview.Settings) { s.AccountID = admin },
-		"missing account":  func(s *preview.Settings) { s.AccountID = 0 },
-		"three keys":       func(s *preview.Settings) { s.TicketPublicKeys = []ed25519.PublicKey{pub, pub, pub} },
-		"no keys":          func(s *preview.Settings) { s.TicketPublicKeys = nil },
-		"short key":        func(s *preview.Settings) { s.TicketPublicKeys = []ed25519.PublicKey{pub[:16]} },
-		"empty issuer":     func(s *preview.Settings) { s.Issuer = "" },
-		"idle beyond ttl":  func(s *preview.Settings) { s.IdleTTL = 3 * time.Hour },
-		"zero capacity":    func(s *preview.Settings) { s.MaxConcurrent = 0 },
-		"long cta_label":   func(s *preview.Settings) { s.CTALabel = strings.Repeat("x", 121) },
+		"host with scheme":    func(s *preview.Settings) { s.Host = "https://browse.example.test" },
+		"host with port":      func(s *preview.Settings) { s.Host = "browse.example.test:443" },
+		"host with path":      func(s *preview.Settings) { s.Host = "browse.example.test/x" },
+		"upper-case host":     func(s *preview.Settings) { s.Host = "Browse.Example.Test" },
+		"admin account":       func(s *preview.Settings) { s.AccountID = admin },
+		"missing account":     func(s *preview.Settings) { s.AccountID = 0 },
+		"three keys":          func(s *preview.Settings) { s.TicketPublicKeys = []ed25519.PublicKey{pub, pub, pub} },
+		"no keys":             func(s *preview.Settings) { s.TicketPublicKeys = nil },
+		"short key":           func(s *preview.Settings) { s.TicketPublicKeys = []ed25519.PublicKey{pub[:16]} },
+		"empty issuer":        func(s *preview.Settings) { s.Issuer = "" },
+		"idle beyond ttl":     func(s *preview.Settings) { s.IdleTTL = 3 * time.Hour },
+		"zero capacity":       func(s *preview.Settings) { s.MaxConcurrent = 0 },
+		"long cta_label":      func(s *preview.Settings) { s.CTALabel = strings.Repeat("x", 121) },
+		"long item_cta_label": func(s *preview.Settings) { s.ItemCTALabel = strings.Repeat("x", 121) },
+		"long cta_message":    func(s *preview.Settings) { s.CTAMessage = strings.Repeat("x", 301) },
 	} {
 		s := validSettings(t, account, pub)
 		mutate(&s)

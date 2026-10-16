@@ -18,10 +18,12 @@ function Harness({
   children,
   kind = "guest",
   opened = () => {},
+  itemCtaLabel = "",
 }: {
   children: ReactNode;
   kind?: "guest" | "personal";
   opened?: (item?: string) => void;
+  itemCtaLabel?: string;
 }) {
   return (
     <MemoryRouter>
@@ -34,6 +36,8 @@ function Harness({
             ends_at: null,
             cta_url: "https://store.test/trial",
             cta_label: "Subscribe",
+            item_cta_label: itemCtaLabel,
+            cta_message: "",
             storefront_url: "",
             launch_url: "",
           }}
@@ -76,6 +80,17 @@ it.each(["guest", "personal"] as const)(
     expect(opened).toEqual(["movie"]);
   },
 );
+it("puts the operator's wording where play would be", () => {
+  const opened: string[] = [];
+  render(
+    <Harness itemCtaLabel="Start your €1 trial" opened={(id) => opened.push(id ?? "")}>
+      <ActionBar contentId="movie" itemTitle="Movie" playHref="/watch/movie" />
+    </Harness>,
+  );
+  expect(screen.queryByRole("button", { name: "Subscribe to watch" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Start your €1 trial" }));
+  expect(opened).toEqual(["movie"]);
+});
 it("removes play and favorite poster overlays", () => {
   render(
     <Harness>

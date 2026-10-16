@@ -1,4 +1,5 @@
 import { usePreviewMode } from "@/bloem/preview/usePreviewMode";
+import { itemCtaLabel } from "@/bloem/preview/wording";
 import { usePlaybackBarHeight } from "@/hooks/usePlaybackBarHeight";
 import { useSeekPreferences } from "@/hooks/queries/seekPreferences";
 import {
@@ -264,7 +265,9 @@ function PlaybackUnavailableScreen({ error, onBack }: { error: Error; onBack: ()
   if (preview.active)
     return (
       <div className="p-8">
-        <button onClick={() => preview.requestSubscription()}>Subscribe to watch</button>
+        <button onClick={() => preview.requestSubscription()}>
+          {itemCtaLabel(preview.presentation, "watch")}
+        </button>
       </div>
     );
   return (

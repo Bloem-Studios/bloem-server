@@ -103,7 +103,7 @@ func (h *BloemPreviewAdminHandler) HandleGetSettings(w http.ResponseWriter, r *h
 	for _, key := range s.TicketPublicKeys {
 		keys = append(keys, base64.StdEncoding.EncodeToString(key))
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"enabled": s.Enabled, "host": s.Host, "issuer": s.Issuer, "account_id": s.AccountID, "ticket_public_keys": keys, "session_ttl_seconds": int(s.SessionTTL / time.Second), "idle_ttl_seconds": int(s.IdleTTL / time.Second), "max_concurrent": s.MaxConcurrent, "brand": s.Brand, "cta_url": s.CTAURL, "cta_label": s.CTALabel, "storefront_url": s.StorefrontURL, "launch_url": s.LaunchURL, "maturity_ceiling": s.MaturityCeiling})
+	writeJSON(w, http.StatusOK, map[string]any{"enabled": s.Enabled, "host": s.Host, "issuer": s.Issuer, "account_id": s.AccountID, "ticket_public_keys": keys, "session_ttl_seconds": int(s.SessionTTL / time.Second), "idle_ttl_seconds": int(s.IdleTTL / time.Second), "max_concurrent": s.MaxConcurrent, "brand": s.Brand, "cta_url": s.CTAURL, "cta_label": s.CTALabel, "item_cta_label": s.ItemCTALabel, "cta_message": s.CTAMessage, "storefront_url": s.StorefrontURL, "launch_url": s.LaunchURL, "maturity_ceiling": s.MaturityCeiling})
 }
 
 func (h *BloemPreviewAdminHandler) HandlePutSettings(w http.ResponseWriter, r *http.Request) {

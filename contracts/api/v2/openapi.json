@@ -21117,6 +21117,10 @@
           "cta_label": {
             "type": "string"
           },
+          "cta_message": {
+            "description": "Operator sentence for the subscribe dialog; empty means the client's own.",
+            "type": "string"
+          },
           "cta_url": {
             "type": "string"
           },
@@ -21127,6 +21131,10 @@
               "string",
               "null"
             ]
+          },
+          "item_cta_label": {
+            "description": "Operator wording for the title-page button; empty means the client's own (Subscribe to watch, read or listen).",
+            "type": "string"
           },
           "kind": {
             "enum": [
@@ -21147,6 +21155,8 @@
           "ends_at",
           "cta_url",
           "cta_label",
+          "item_cta_label",
+          "cta_message",
           "storefront_url",
           "launch_url"
         ],

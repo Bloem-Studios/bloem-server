@@ -62,7 +62,7 @@ func TestPreviewPersonalPresentationThroughRouter(t *testing.T) {
 	if w := call("POST", prefix+"/account", key.Key, map[string]any{"issuer": "operator-test"}); w.Code != 201 {
 		t.Fatalf("setup: %d %s", w.Code, w.Body)
 	}
-	if w := call("PUT", prefix+"/settings", key.Key, map[string]any{"issuer": "operator-test", "brand": "Example", "cta_url": "https://store.example.test/trial", "cta_label": "Try Example"}); w.Code != 204 {
+	if w := call("PUT", prefix+"/settings", key.Key, map[string]any{"issuer": "operator-test", "brand": "Example", "cta_url": "https://store.example.test/trial", "cta_label": "Try Example", "item_cta_label": "Start your trial", "cta_message": "Seven days for one euro."}); w.Code != 204 {
 		t.Fatal(w.Body.String())
 	}
 	deadline := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
@@ -90,7 +90,7 @@ func TestPreviewPersonalPresentationThroughRouter(t *testing.T) {
 		PlaybackAllowed *bool                 `json:"playback_allowed"`
 	}
 	w := call("GET", "/api/v2/account/me", personalToken, nil)
-	if err := json.Unmarshal(w.Body.Bytes(), &me); err != nil || w.Code != 200 || me.Preview == nil || me.Preview.Kind != "personal" || me.Preview.EndsAt == nil || !me.Preview.EndsAt.Equal(deadline) || me.Preview.CTALabel != "Try Example" || me.PlaybackAllowed == nil || *me.PlaybackAllowed {
+	if err := json.Unmarshal(w.Body.Bytes(), &me); err != nil || w.Code != 200 || me.Preview == nil || me.Preview.Kind != "personal" || me.Preview.EndsAt == nil || !me.Preview.EndsAt.Equal(deadline) || me.Preview.CTALabel != "Try Example" || me.Preview.ItemCTALabel != "Start your trial" || me.Preview.CTAMessage != "Seven days for one euro." || me.PlaybackAllowed == nil || *me.PlaybackAllowed {
 		t.Fatalf("personal: %d %s", w.Code, w.Body)
 	}
 	w = call("GET", "/api/v2/account/me", ordinaryToken, nil)

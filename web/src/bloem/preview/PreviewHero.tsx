@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import type Original from "../../components/HeroBanner";
 import { Button } from "@/components/ui/button";
 import { usePreviewMode } from "./usePreviewMode";
+import { itemCtaLabel } from "./wording";
 export default function PreviewHero({
   items,
   maxSlides = 10,
@@ -10,7 +11,7 @@ export default function PreviewHero({
   libraryId,
   reserveHeaderSpace,
 }: ComponentProps<typeof Original>) {
-  const { requestSubscription } = usePreviewMode();
+  const { presentation, requestSubscription } = usePreviewMode();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const count = Math.min(items.length, maxSlides);
@@ -45,12 +46,14 @@ export default function PreviewHero({
         )}
         <div className="mt-6 flex gap-3">
           <Button onClick={() => requestSubscription(item.content_id)}>
-            Subscribe to{" "}
-            {item.type === "audiobook"
-              ? "listen"
-              : ["ebook", "manga"].includes(item.type)
-                ? "read"
-                : "watch"}
+            {itemCtaLabel(
+              presentation,
+              item.type === "audiobook"
+                ? "listen"
+                : ["ebook", "manga"].includes(item.type)
+                  ? "read"
+                  : "watch",
+            )}
           </Button>
           <Button variant="outline" asChild>
             <Link

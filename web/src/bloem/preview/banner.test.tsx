@@ -21,6 +21,8 @@ it("records absolute guest expiry once even when the banner clock continues", ()
     ends_at: "2000-01-01T00:00:00Z",
     cta_url: "https://store.test/trial",
     cta_label: "Subscribe",
+    item_cta_label: "",
+    cta_message: "",
     launch_url: "",
     storefront_url: "",
   };

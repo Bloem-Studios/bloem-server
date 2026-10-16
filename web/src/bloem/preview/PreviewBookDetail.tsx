@@ -7,6 +7,7 @@ import MetadataBadges from "@/pages/ItemDetail/components/MetadataBadges";
 import ScoreRow from "@/pages/ItemDetail/components/ScoreRow";
 import { RelatedRail } from "@/pages/audiobooks/components/RelatedRail";
 import { usePreviewMode } from "./usePreviewMode";
+import { itemCtaLabel } from "./wording";
 export default function PreviewBookDetail({
   item,
   libraryId,
@@ -62,7 +63,7 @@ export default function PreviewBookDetail({
         }}
         actions={
           <Button size="lg" onClick={() => mode.requestSubscription(item.content_id)}>
-            {audio ? "Subscribe to listen" : "Subscribe to read"}
+            {itemCtaLabel(mode.presentation, audio ? "listen" : "read")}
           </Button>
         }
       />

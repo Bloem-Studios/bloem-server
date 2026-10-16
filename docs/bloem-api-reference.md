@@ -3144,7 +3144,7 @@ are refused. Responses use `Cache-Control: no-store`.
 | --- | --- | --- |
 | `POST /account` | `{issuer}` | `201 {account_id}`; repeats reuse the account |
 | `GET /settings` | None | Settings, public keys and read-only account ID; TTLs in seconds |
-| `PUT /settings` | `{issuer, enabled?, host?, brand?, cta_url?, cta_label?, storefront_url?, launch_url?, maturity_ceiling?, session_ttl_seconds?, idle_ttl_seconds?, max_concurrent?}` | `204`; merges supplied fields atomically |
+| `PUT /settings` | `{issuer, enabled?, host?, brand?, cta_url?, cta_label?, item_cta_label?, cta_message?, storefront_url?, launch_url?, maturity_ceiling?, session_ttl_seconds?, idle_ttl_seconds?, max_concurrent?}` | `204`; merges supplied fields atomically |
 | `PUT /libraries` | `{issuer, library_ids}`; explicit array, at most 1000 IDs | `{template_revision}`; empty array grants no libraries |
 | `PUT /keys` | `{issuer, public_keys}`; one or two distinct base64 Ed25519 public keys | `204`; replaces the key allowlist |
 | `DELETE /sessions` | `{issuer}` | `204`; revokes guests without disabling the preview |
@@ -3183,11 +3183,14 @@ cannot obtain ordinary sessions, account-management authority or audience ticket
 ### Preview account and capability fields
 
 V2 `GET /api/v2/account/me` adds `playback_allowed` and
-`preview: {kind:"guest"|"personal", ends_at, cta_url, cta_label, storefront_url, launch_url}`.
+`preview: {kind:"guest"|"personal", ends_at, cta_url, cta_label, item_cta_label, cta_message, storefront_url, launch_url}`.
 Ordinary accounts receive `preview:null`. `ends_at` is the absolute session expiry
 for guests and the provisioned personal date, or null until provided. The label
 uses the configured value, then "Subscribe to <Brand>", then "Subscribe"; the CTA
 URL uses the configured value or storefront URL.
+`item_cta_label` replaces "Subscribe to watch" (read, listen) on title pages and in the player, and
+`cta_message` is the subscribe dialog's sentence; both are empty unless the operator set them, and the
+client then keeps its own wording.
 
 `GET /api/v2/playback/capabilities` reports effective policy; preview principals
 receive `allowed:false` with `denial:{code:"preview_only", cta_url, cta_label}`.
