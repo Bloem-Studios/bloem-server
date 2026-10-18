@@ -20,7 +20,6 @@ assets/icon.png
 cmd/playbackfixtures/main.go
 cmd/silo/abs_listener.go # deleted: removed protocol layer
 cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources
-contracts/api/v2/breaking-approvals.json  # transient: Silo #2586 Trakt removal approvals until this merge is on main; drop them afterwards
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/create_library_validation_failed.json  # generated: createLibrary accepts storage_source instead of paths, so paths is no longer required
@@ -41,6 +40,7 @@ docs/design/schemas/playback-v3/v3/fixtures/invalid/native-convert-decision_resp
 docs/design/schemas/playback-v3/v3/fixtures/invalid/native-negative-index-decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/invalid/native-remux-decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/valid/decision_response.json
+docs/design/schemas/playback-v3/v3/fixtures/valid/hls-subtitle-rendition-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
 go.mod
 go.sum
@@ -268,6 +268,7 @@ internal/playback/session_test.go
 internal/playback/subtitle_fonts.go  # temporary backport of Silo-Server/silo-server#2262; remove after upstream merges the font extraction fix
 internal/playback/subtitle_fonts_test.go  # temporary backport of Silo-Server/silo-server#2262; remove after upstream merges the font extraction fix
 internal/playback/testdata/protocol_v3/decision_response.json
+internal/playback/testdata/protocol_v3/hls-subtitle-rendition-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 internal/playback/testdata/protocol_v3/native-decision_response.json
 internal/playback/transcode.go
 internal/playback/transcode_manager.go
@@ -298,7 +299,7 @@ internal/proxy/mediagrant_test.go
 internal/proxy/router_socket_test.go
 internal/proxy/segment_completion_test.go
 internal/proxy/server.go
-internal/recommendations/access_postgres_test.go  # skips the access-group scope test: account groups live on organization memberships in the finalized Bloem schema
+internal/recommendations/access_postgres_test.go  # the access-group scope test reads its group from a fixed provider: account groups live on organization memberships in the finalized Bloem schema
 internal/requests/capability.go
 internal/requests/editor_concurrency.go
 internal/requests/follows.go # Tenant/profile hooks for new upstream request following; implementations stay Bloem-owned.

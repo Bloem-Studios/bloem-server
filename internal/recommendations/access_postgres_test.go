@@ -179,27 +179,16 @@ func TestTasteSeedCandidatesHonourAccessPostgres(t *testing.T) {
 // group limited to the kids library gets the kids library only, which the
 // profile's own settings do not show.
 func TestProfileAccessFilterMatchesTheResolverPostgres(t *testing.T) {
-	// Bloem: the finalized membership policy keeps access groups on
-	// organization memberships, so Silo's untenanted GroupStore and
-	// users.access_group_id do not exist here. cmd/silo's
-	// TestProductionViewerResolversUseBloemTenancy pins the engine's tenant-aware
-	// resolver instead.
-	t.Skip("Bloem: account access groups live on organization memberships")
 	pool := newEngineTestPool(t)
 	ctx := t.Context()
 	const prefix = "tscope-group-"
 	f := newAccessFixture(t, pool, prefix, 2400)
 	userID, profileID := newTasteTestAccount(t, pool, prefix)
 
-	groups := access.NewGroupStore(pool)
-	group, err := groups.Create(ctx, access.CreateGroupInput{Name: prefix + time.Now().Format(time.RFC3339Nano), LibraryIDs: []int{f.kidsLib}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM access_groups WHERE id = $1`, group.ID) })
-	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = $2 WHERE id = $1`, userID, group.ID); err != nil {
-		t.Fatal(err)
-	}
+	// Bloem: account access groups live on organization memberships, so the
+	// group comes from a fixed provider instead of Silo's GroupStore.
+	group := &access.GroupPolicy{ID: 1, LibraryIDs: []int{f.kidsLib}, PlaybackAllowed: true}
+	groups := bloemFixedGroupPolicy{group}
 	if _, err := pool.Exec(ctx, `UPDATE user_profiles SET max_content_rating = 'PG' WHERE user_id = $1 AND id = $2`, userID, profileID); err != nil {
 		t.Fatal(err)
 	}
