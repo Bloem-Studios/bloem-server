@@ -190,9 +190,11 @@ jobs:
       - name: Native authentication unit and race tests
         env:
           SILO_INITIAL_SETUP_ATOMIC_DSN: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/silo_identity_setup_ci?sslmode=disable
+        # The race run takes about ten minutes, Go's default test timeout; use
+        # the 20-minute package bound the Makefile applies.
         run: |
-          go test ./internal/auth -count=1
-          go test -race ./internal/auth -count=1
+          go test -timeout=20m ./internal/auth -count=1
+          go test -race -timeout=20m ./internal/auth -count=1
 
       - name: Native authentication vet
         run: go vet ./internal/auth
