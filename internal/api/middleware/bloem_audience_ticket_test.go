@@ -122,3 +122,39 @@ func TestAudienceTicketRefusesRemotePlaybackOnV1(t *testing.T) {
 		t.Fatalf("remote playback entered v1: seen=%t status=%d", seen != nil, response.Code)
 	}
 }
+
+// The events ticket carries the minting request's PIN proof so the socket can
+// recheck it. The handshake sees the ticket's proof, never one the caller
+// sends, and no proof at all when the ticket has none.
+func TestAudienceTicketRestoresProfileProof(t *testing.T) {
+	serve := func(t *testing.T, proof string, header http.Header) *http.Request {
+		t.Helper()
+		store := auth.NewAudienceTicketStore(nil)
+		minted := auth.NewAudienceTicket(auth.AudienceEventsWS, &auth.Claims{UserID: 7, Role: "user", SessionID: "session"}, "profile-1", "").
+			WithProfileProof(proof)
+		ticket, _, err := store.Mint(context.Background(), minted)
+		if err != nil {
+			t.Fatal(err)
+		}
+		middleware := NewAuthMiddleware(nil, fixedSessionValidator{valid: true}, nil, nil)
+		middleware.SetAudienceTicketStore(store)
+		middleware.SetDirectProfileRouteGuard(func(*http.Request) bool { return true })
+		var seen *http.Request
+		request := httptest.NewRequest(http.MethodGet, "/api/v1/events/ws?ticket="+ticket, nil)
+		for name, values := range header {
+			request.Header[name] = values
+		}
+		middleware.RequireAuth(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { seen = r })).ServeHTTP(httptest.NewRecorder(), request)
+		if seen == nil {
+			t.Fatal("handshake refused")
+		}
+		return seen
+	}
+
+	if got := serve(t, "pin-proof", http.Header{"X-Profile-Token": {"forged"}}).Header.Get("X-Profile-Token"); got != "pin-proof" {
+		t.Fatalf("X-Profile-Token = %q, want the ticket's proof", got)
+	}
+	if got := serve(t, "", http.Header{"X-Profile-Token": {"forged"}}).Header.Get("X-Profile-Token"); got != "" {
+		t.Fatalf("X-Profile-Token = %q, want removed for a ticket without a proof", got)
+	}
+}

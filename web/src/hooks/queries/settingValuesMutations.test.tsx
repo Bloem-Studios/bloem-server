@@ -76,6 +76,24 @@ describe("typed setting mutations", () => {
     },
   );
 
+  it("refreshes Home when Show new episodes first changes", async () => {
+    v2Mock.mockResolvedValueOnce({});
+    const { queryClient, wrapper } = createHarness();
+    const homeKey = sectionKeys.homeItems("continue-watching");
+    queryClient.setQueryData(homeKey, { section: { items: [] } });
+    queryClient.setQueryData(mediaSurfaceKeys.refreshSignal(), 0);
+    const { result } = renderHook(() => useSetSettingValue(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({
+        key: SETTING_KEYS.UI_NEXT_UP_NEW_RELEASES_FIRST,
+        value: true,
+        identity: { scope: "profile" },
+      });
+    });
+    expect(queryClient.getQueryState(homeKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryData(mediaSurfaceKeys.refreshSignal())).toBe(1);
+  });
+
   it("refreshes Home when the preference is cleared", async () => {
     v2Mock.mockResolvedValueOnce({});
     const { queryClient, wrapper } = createHarness();
@@ -89,6 +107,31 @@ describe("typed setting mutations", () => {
       });
     });
     expect(queryClient.getQueryState(homeKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryData(mediaSurfaceKeys.refreshSignal())).toBe(1);
+  });
+
+  it.each([
+    SETTING_KEYS.CATALOG_METADATA_LANGUAGE,
+    SETTING_KEYS.CATALOG_METADATA_LANGUAGE_OVERRIDES,
+  ])("refreshes Home and library rows when %s changes", async (key) => {
+    v2Mock.mockResolvedValueOnce({});
+    const { queryClient, wrapper } = createHarness();
+    const homeKey = sectionKeys.homeItems("featured");
+    const libraryKey = sectionKeys.libraryItems(7, "featured");
+    queryClient.setQueryData(homeKey, { section: { items: [] } });
+    queryClient.setQueryData(libraryKey, { section: { items: [] } });
+    const { result } = renderHook(() => useSetSettingValue(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({
+        key,
+        value: key === SETTING_KEYS.CATALOG_METADATA_LANGUAGE ? "fr" : { ja: "original" },
+        identity: { scope: "profile" },
+      });
+    });
+    // Section cards carry localized text, so a cached German Home would
+    // otherwise stay German after switching to French.
+    expect(queryClient.getQueryState(homeKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(libraryKey)?.isInvalidated).toBe(true);
     expect(queryClient.getQueryData(mediaSurfaceKeys.refreshSignal())).toBe(1);
   });
 

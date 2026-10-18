@@ -2,6 +2,7 @@ package recommendations
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -76,7 +77,8 @@ func newEmbedAllTestEngine(t *testing.T, pool *pgxpool.Pool, fake embedder, mode
 			EmbeddingModel:   model,
 			EmbeddingBaseURL: "http://embed.test",
 		},
-		pool: pool,
+		pool:          pool,
+		refusedEmbeds: newRefusedEmbedInputs(),
 	}
 }
 
@@ -118,14 +120,14 @@ func TestEmbedAllCheapPassDrainsBeforeTextStalePass(t *testing.T) {
 	fake := &recordingEmbedder{}
 	e := newEmbedAllTestEngine(t, pool, fake, currentModel)
 
-	n, err := e.EmbedAll(ctx)
+	counts, err := e.EmbedAll(ctx)
 	if err != nil {
 		t.Fatalf("EmbedAll: %v", err)
 	}
 
 	// All three should have been (re)embedded: 2 cheap + 1 text-stale.
-	if n < 3 {
-		t.Fatalf("EmbedAll embedded %d items, want >= 3 (2 cheap + 1 text-stale)", n)
+	if counts.Embedded < 3 {
+		t.Fatalf("EmbedAll embedded %d items, want >= 3 (2 cheap + 1 text-stale)", counts.Embedded)
 	}
 
 	// End state: every row now carries the current model and matching text.
@@ -180,14 +182,17 @@ func TestEmbedAllSkipsAlreadyCurrentItems(t *testing.T) {
 	fake := &recordingEmbedder{}
 	e := newEmbedAllTestEngine(t, pool, fake, currentModel)
 
-	_, err = e.EmbedAll(ctx)
+	counts, err := e.EmbedAll(ctx)
 	if err != nil {
 		t.Fatalf("EmbedAll: %v", err)
 	}
-	for _, text := range fake.texts {
-		if strings.Contains(text, "alreadyCurrent") {
-			t.Fatalf("embedder was called for the up-to-date item: %v", fake.texts)
-		}
+	if counts.Embedded != 0 {
+		t.Fatalf("EmbedAll re-embedded %d up-to-date items, want 0", counts.Embedded)
+	}
+	// With no lock, the run embeds only the probe text, to write the lock for
+	// the stored vector (see lockImportedEmbeddings); the item is not resent.
+	if !slices.Equal(fake.texts, []string{embedProbeText}) {
+		t.Fatalf("embedder got %v for an up-to-date item, want only the probe text", fake.texts)
 	}
 }
 

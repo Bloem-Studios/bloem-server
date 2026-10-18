@@ -37,7 +37,7 @@ func newBloemControlSocketFixture(t *testing.T, legacy bool) *bloemControlSocket
 		a.claims.DeviceID = "shield-device"
 	}
 	socket := NewBloemPlaybackControlSocketV2(f.pb, nil, a.sessions, a.users, a.viewer,
-		func(context.Context, int, string) (bool, bool, error) { return true, true, nil }, a.tenants, a.tenants, "")
+		apimw.NewActingAdminDecider(func(context.Context, int, string) (bool, bool, error) { return true, true, nil }, nil), a.tenants, a.tenants, "")
 	f.handler = socket.PlaybackControlSocketV2
 	f.server.Close()
 	router := chi.NewRouter()

@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
@@ -57,7 +58,7 @@ func (h *RecommendationsHandler) HandleSimilarResolved(w http.ResponseWriter, r 
 		limit = 20
 	}
 
-	scored, err := h.engine.SimilarItems(r.Context(), itemID, limit)
+	scored, err := h.SimilarItems(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), itemID, limit, requestAccessFilter(r))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to fetch similar items")
 		return

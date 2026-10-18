@@ -162,19 +162,36 @@ export function buildOrganizationAdminNavSections(): AdminNavSection[] {
   }));
 }
 
-export function withBloemAdminSettings(items: AdminSettingsSearchItem[]): AdminSettingsSearchItem[] {
-  return [...items, {
-    id: "announcements",
-    label: "Announcements",
-    description: "Publish messages to viewers and withdraw earlier announcements.",
-    settings: [{ label: "New announcement" }, { label: "Published announcements" }],
-    keywords: ["engagement", "banner", "alert", "audience", "broadcast", "inbox"],
-    icon: Megaphone,
-  }];
+export function withBloemAdminSettings(
+  items: AdminSettingsSearchItem[],
+): AdminSettingsSearchItem[] {
+  return [
+    ...items,
+    {
+      id: "announcements",
+      label: "Announcements",
+      description: "Publish messages to viewers and withdraw earlier announcements.",
+      settings: [{ label: "New announcement" }, { label: "Published announcements" }],
+      keywords: ["engagement", "banner", "alert", "audience", "broadcast", "inbox"],
+      icon: Megaphone,
+    },
+  ];
 }
 
 /** Adds the owned settings page through Silo's existing topic structure. */
 export function withBloemSettingsNavigation(sections: AdminNavSection[]): AdminNavSection[] {
- const item:AdminNavItem={label:"Announcements",description:"Publish messages to viewers.",icon:Megaphone,href:"/admin/settings/announcements"};
- return sections.map(section=>({...section,entries:section.entries.map(entry=>"items" in entry && entry.id==="integrations"?{...entry,items:[...entry.items,item]}:entry)}));
+  const item: AdminNavItem = {
+    label: "Announcements",
+    description: "Publish messages to viewers.",
+    icon: Megaphone,
+    href: "/admin/settings/announcements",
+  };
+  return sections.map((section) => ({
+    ...section,
+    entries: section.entries.map((entry) =>
+      "items" in entry && entry.id === "integrations"
+        ? { ...entry, items: [...entry.items, item] }
+        : entry,
+    ),
+  }));
 }

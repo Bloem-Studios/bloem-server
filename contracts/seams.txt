@@ -20,6 +20,7 @@ assets/icon.png
 cmd/playbackfixtures/main.go
 cmd/silo/abs_listener.go # deleted: removed protocol layer
 cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY cipher for protected Xtream sources
+contracts/api/v2/breaking-approvals.json  # transient: Silo #2586 Trakt removal approvals until this merge is on main; drop them afterwards
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/create_library_validation_failed.json  # generated: createLibrary accepts storage_source instead of paths, so paths is no longer required
@@ -41,7 +42,6 @@ docs/design/schemas/playback-v3/v3/fixtures/invalid/native-negative-index-decisi
 docs/design/schemas/playback-v3/v3/fixtures/invalid/native-remux-decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/valid/decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
-docs/libraries-api.md  # documents createLibrary's storage_source location for ebook libraries
 go.mod
 go.sum
 internal/access/group_guard_test.go
@@ -77,6 +77,7 @@ internal/api/handlers/devices.go
 internal/api/handlers/downloads.go
 internal/api/handlers/downloads_test.go
 internal/api/handlers/events_ws.go
+internal/api/handlers/events_ws_session_check_test.go  # the PIN-proof recheck test connects as RequireAuth leaves a Bloem audience-ticket handshake
 internal/api/handlers/home_dismissals.go
 internal/api/handlers/home_views_service.go
 internal/api/handlers/household.go
@@ -143,6 +144,7 @@ internal/audiobooks/abs/media_routes.go # deleted: removed protocol layer
 internal/audiobooks/abs/play_response.go # deleted: removed protocol layer
 internal/audiobooks/abs/rss_feeds.go # deleted: removed protocol layer
 internal/audiobooks/abs/rss_feeds_handler.go # deleted: removed protocol layer
+internal/audiobooks/config_test.go # deleted: removed protocol layer
 internal/audiobooks/enrichment_state.go  # preserve unclaimed repair attempt history while resetting only a new no-match streak
 internal/audiobooks/media_store.go # deleted: removed protocol layer
 internal/auth/account_provisioner.go  # tenant provisioning and early transactional-provider check before account or SQLite side effects
@@ -153,7 +155,7 @@ internal/auth/api_key_scopes.go
 internal/auth/client_device.go  # a reported device never replaces the device a direct-profile session is bound to
 internal/auth/external_sign_in_db_test.go # Identity fixtures use the canonical membership-aware account writer; upstream raw legacy policy columns are retired.
 internal/auth/identity_service.go  # actor and target locks use the membership-aware account projection
-internal/auth/initial_setup_atomic_test.go  # real Bloem setup seams, lifecycle admission and cross-transport first-account concurrency proof
+internal/api/initial_setup_atomic_test.go  # real Bloem setup seams, lifecycle admission and cross-transport first-account concurrency proof
 internal/auth/jwt.go
 internal/auth/login_session_device_db_test.go  # auth_sessions.device_id is NOT NULL DEFAULT '' in Bloem, so no device is '' rather than NULL
 internal/auth/login_sessions_db_test.go  # directly inserted accounts get the default-organization membership Bloem profiles require
@@ -208,7 +210,6 @@ internal/ebooks/enrichment.go
 internal/ebooks/enrichment_queue.go
 internal/ebooks/enrichment_test.go
 internal/events/socket_ticket.go
-internal/imagecache/imagecache.go
 internal/invitations/repository.go
 internal/invitations/repository_atomic_test.go  # fully migrated isolated databases preserve tenant FKs/triggers and strengthen rollback checks
 internal/invitations/service.go
@@ -222,6 +223,7 @@ internal/jellycompat/handlers_auth.go # deleted: removed protocol layer
 internal/jellycompat/handlers_images.go # deleted: removed protocol layer
 internal/jellycompat/handlers_items.go # deleted: removed protocol layer
 internal/jellycompat/handlers_playback.go # deleted: removed protocol layer
+internal/jellycompat/handlers_recommendations_test.go # deleted: removed protocol layer
 internal/jellycompat/handlers_userconfig.go # deleted: removed protocol layer
 internal/jellycompat/router.go # deleted: removed protocol layer
 internal/jellycompat/server.go # deleted: removed protocol layer
@@ -253,6 +255,7 @@ internal/notifications/webhook_payload_discord.go
 internal/notifications/webhook_payload_generic.go
 internal/notifications/webpush_sender.go
 internal/notifications/ws_ticket.go
+internal/notifications/ws_ticket_test.go # deleted: Bloem events tickets are auth audience tickets; the proof rides inside the one stored ticket value (internal/auth/audience_ticket_test.go)
 internal/nodepool/admin_configuration_test.go  # reviewed test-only exception: synthetic node table includes current upstream network and download columns
 internal/opslog/cleanup.go
 internal/playback/contract/contract_test.go
@@ -295,8 +298,7 @@ internal/proxy/mediagrant_test.go
 internal/proxy/router_socket_test.go
 internal/proxy/segment_completion_test.go
 internal/proxy/server.go
-internal/recommendations/embed_all_test.go
-internal/recommendations/worker.go
+internal/recommendations/access_postgres_test.go  # skips the access-group scope test: account groups live on organization memberships in the finalized Bloem schema
 internal/requests/capability.go
 internal/requests/editor_concurrency.go
 internal/requests/follows.go # Tenant/profile hooks for new upstream request following; implementations stay Bloem-owned.
@@ -326,10 +328,12 @@ internal/subtitles/provider_language_test.go  # reviewed test-only exception: re
 internal/transcodenode/server_test.go
 internal/userdb/bridgeimport/import_db_test.go  # reviewed test-only exception: seed frozen schema22 with historical SQL
 internal/userdb/bridgeimport/store_reads_test.go  # reviewed test-only exception: compare historical source profiles and independently derived Bloem metadata
+internal/userdb/profiles.go  # compatibility removal: the SQLite store keeps no Jellyfin display preferences table
 internal/userstore/pgstore/profile_advisory_age_test.go  # Assert advisory-age invalidation on authoritative profile membership revision
 internal/userstore/pgstore/profile_libraries.go
 internal/userstore/pgstore/profile_pin_revision_test.go  # the account policy revision lives on the default-organization membership in Bloem
 internal/userstore/pgstore/profiles.go
+internal/userstore/storetest/profile_delete.go  # compatibility removal: no Jellyfin display preferences to seed or check
 internal/userstore/types.go
 internal/watchsync/connection_settings_test.go  # create fixture account/profile through canonical tenant-aware writers
 internal/worker/cleanup.go

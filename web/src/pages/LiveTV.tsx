@@ -63,6 +63,7 @@ function LiveTVContent() {
 
   useEffect(() => {
     if (channelFromUrl && channels.some((ch) => ch.id === channelFromUrl)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the selection follows the channel named in the URL once the list loads
       setSelectedId(channelFromUrl);
       return;
     }

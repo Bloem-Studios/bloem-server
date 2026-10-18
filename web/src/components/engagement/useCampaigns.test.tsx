@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { apiWithProfileRequestContext } from "@/api/bloemClient";
+import { bloemV1ApiWithProfileRequestContext } from "@/api/bloemClient";
 import { useCampaigns, useHomeCampaignPreference } from "./useCampaigns";
 const identity = vi.hoisted(() => ({ version: 1, child: false, profileId: "viewer" }));
 vi.mock("@/hooks/useAuth", () => ({
@@ -25,7 +25,7 @@ vi.mock("@/api/client", async (original) => ({
 }));
 vi.mock("@/api/bloemClient", async (original) => ({
   ...(await original<typeof import("@/api/bloemClient")>()),
-  apiWithProfileRequestContext: vi.fn(),
+  bloemV1ApiWithProfileRequestContext: vi.fn(),
 }));
 const card = {
   id: "message",
@@ -34,7 +34,7 @@ const card = {
   expires_at: "2099-01-01T00:00:00Z",
   dismissible: true,
 };
-const request = vi.mocked(apiWithProfileRequestContext);
+const request = vi.mocked(bloemV1ApiWithProfileRequestContext);
 let clients: QueryClient[] = [];
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

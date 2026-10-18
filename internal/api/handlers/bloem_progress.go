@@ -186,7 +186,7 @@ func (h *ProgressHandler) HandleBloemSyncProgress(w http.ResponseWriter, r *http
 	}
 
 	if processedAnyItem {
-		triggerProfileRefresh(r.Context(), h.profileStaler, h.profileRefreshRequester, userID, profileID)
+		notifySignalsChanged(r.Context(), h.signalsNotifier, userID, profileID)
 		for i, item := range req.Items {
 			// Only rows the server accepted fan out: a rejected row (missing
 			// id, bad time, not visible to this profile, failed write) must not

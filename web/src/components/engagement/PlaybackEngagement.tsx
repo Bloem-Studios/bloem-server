@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/bloemClient";
+import { bloemV1Api } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 import { ChapterGate } from "./playback-policy";
 import "./playback-engagement.css";
@@ -69,7 +69,7 @@ export function PlaybackSession({
   const data = useQuery({
     queryKey: ["playback-campaign", scope],
     queryFn: () =>
-      api<{ promotions: PlaybackCard[] }>(
+      bloemV1Api<{ promotions: PlaybackCard[] }>(
         `/promotions?surface=in_playback&content_id=${encodeURIComponent(contentId)}`,
       ),
     refetchInterval: 30000,
@@ -103,6 +103,7 @@ export function PlaybackSession({
       )
     ) {
       seen.add(scope);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the card appears when playback reaches an eligible moment
       setCard(candidate!);
       setBegan(performance.now());
     }
@@ -125,6 +126,7 @@ export function PlaybackSession({
         !data.data?.promotions.some((c) => c.id === card.id))
     ) {
       if (host.current?.contains(document.activeElement)) previousFocus.current?.focus();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the card leaves when it expires or playback stops being eligible
       setCard(null);
     }
   }, [age, duration, card, blocked, playing, seeking, fresh, data.data]);
@@ -174,7 +176,7 @@ export function PlaybackSession({
               onClick={async () => {
                 setMessage("Saving…");
                 try {
-                  await api(
+                  await bloemV1Api(
                     `/promotions/${encodeURIComponent(card.id)}/save?content_id=${encodeURIComponent(contentId)}`,
                     { method: "POST" },
                   );

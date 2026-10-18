@@ -216,6 +216,10 @@ type sectionItemResponse struct {
 	ItemSource             string                 `json:"item_source,omitempty"`
 	UserState              *itemUserStateResponse `json:"user_state,omitempty"`
 	UpcomingEvent          *upcomingEventResponse `json:"upcoming_event,omitempty"`
+	// PendingTranslationLanguage and MachineTranslatedFields reach the v2
+	// card only; v1 is frozen.
+	PendingTranslationLanguage string   `json:"-"`
+	MachineTranslatedFields    []string `json:"-"`
 	// Promo is the S-2 card variant carried by `promoted` sections; such
 	// items have type "promo" and content_id = the promotion id.
 	Promo *promotions.Card `json:"promo,omitempty"`

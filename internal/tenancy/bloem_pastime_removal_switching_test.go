@@ -192,7 +192,7 @@ func TestPastimeRemovalKeepsSiloDataAndWritesInMirroredPhase(t *testing.T) {
 	install, provider := seedPastimeGrant(t, ctx, pool, user, "pr-main")
 	managed := pastimeConnection(t, ctx, pool, provider, user, "pr-main", "managed-ciphertext")
 	selfLinked := pastimeConnection(t, ctx, pool, provider, user, "pr-kids", "self-linked-ciphertext")
-	other := pastimeConnection(t, ctx, pool, "trakt", user, "pr-main", "trakt-ciphertext")
+	other := pastimeConnection(t, ctx, pool, "simkl", user, "pr-main", "simkl-ciphertext")
 	for _, connection := range []string{managed, other} {
 		pastimeRemovalExec(t, ctx, pool, `INSERT INTO watch_provider_sync_runs (connection_id, trigger, status, provider)
 			SELECT id, 'manual', 'success', provider FROM watch_provider_connections WHERE id=$1::uuid`, connection)

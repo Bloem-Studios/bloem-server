@@ -86,8 +86,8 @@ type HomeLayoutInput struct {
 	BloemHomePromotionInput
 	// The maximum must equal handlers.MaxHomeLayoutIncludedSections, which
 	// getHomeCapabilities advertises; TestHomeCapabilities pins the two.
-	IncludeItems int    `query:"include_items" default:"0" minimum:"0" maximum:"4" doc:"Also answer the cards of the first N sections in display order (featured sections count where they appear) in included_sections, saving a getHomeSectionItems call per row. 0 answers the layout alone. Send it only when getHomeCapabilities reports include_items_max; an older server rejects the parameter" example:"2"`
-	ImageSize    string `query:"image_size" enum:"small,medium,large,original" doc:"Artwork variant to presign for included_sections, as on getHomeSectionItems; absent picks each surface's default" example:"medium"`
+	IncludeItems int `query:"include_items" default:"0" minimum:"0" maximum:"4" doc:"Also answer the cards of the first N sections in display order (featured sections count where they appear) in included_sections, saving a getHomeSectionItems call per row. 0 answers the layout alone. Send it only when getHomeCapabilities reports include_items_max; an older server rejects the parameter" example:"2"`
+	ArtworkQuery
 }
 
 // HomeLayout is the home page's sections in display order and, on request,
@@ -119,14 +119,14 @@ type HomeCapabilitiesOutput struct {
 // HomeSectionsInput is the listHomeSections query.
 type HomeSectionsInput struct {
 	BloemHomePromotionInput
-	ImageSize string `query:"image_size" enum:"small,medium,large,original" doc:"Artwork variant to presign; absent picks each surface's default" example:"medium"`
+	ArtworkQuery
 }
 
 // HomeSectionItemsInput is the getHomeSectionItems query.
 type HomeSectionItemsInput struct {
 	BloemHomePromotionInput
-	ID        string `path:"id" minLength:"1" doc:"Section identifier from the home layout" example:"continue_watching"`
-	ImageSize string `query:"image_size" enum:"small,medium,large,original" doc:"Artwork variant to presign; absent picks each surface's default" example:"medium"`
+	ID string `path:"id" minLength:"1" doc:"Section identifier from the home layout" example:"continue_watching"`
+	ArtworkQuery
 }
 
 // RecipePreset is one gallery preset: a recipe plus the config it starts from.
@@ -411,7 +411,7 @@ func (reg *Registry) getHomeLayout(ctx context.Context, in *HomeLayoutInput) (*H
 	if _, _, p := viewerIdentity(ctx); p != nil {
 		return nil, p
 	}
-	view, err := svc.HomeLayoutWithItems(bloemHomeLayoutContext(ctx, in.BloemHomePromotionInput), bloemPromotedViewer(sectionViewer(ctx, in.ImageSize), in.BloemHomePromotionInput), in.IncludeItems)
+	view, err := svc.HomeLayoutWithItems(bloemHomeLayoutContext(ctx, in.BloemHomePromotionInput), bloemPromotedViewer(sectionViewer(ctx, in.Artwork()), in.BloemHomePromotionInput), in.IncludeItems)
 	if err != nil {
 		return nil, serviceProblem(err)
 	}
@@ -433,7 +433,7 @@ func (reg *Registry) listHomeSections(ctx context.Context, in *HomeSectionsInput
 	if _, _, p := viewerIdentity(ctx); p != nil {
 		return nil, p
 	}
-	view, err := svc.HomeSections(ctx, bloemPromotedViewer(sectionViewer(ctx, in.ImageSize), in.BloemHomePromotionInput))
+	view, err := svc.HomeSections(ctx, bloemPromotedViewer(sectionViewer(ctx, in.Artwork()), in.BloemHomePromotionInput))
 	if err != nil {
 		return nil, serviceProblem(err)
 	}
@@ -453,7 +453,7 @@ func (reg *Registry) getHomeSectionItems(ctx context.Context, in *HomeSectionIte
 	if _, _, p := viewerIdentity(ctx); p != nil {
 		return nil, p
 	}
-	view, err := svc.HomeSectionItems(ctx, in.ID, bloemPromotedViewer(sectionViewer(ctx, in.ImageSize), in.BloemHomePromotionInput))
+	view, err := svc.HomeSectionItems(ctx, in.ID, bloemPromotedViewer(sectionViewer(ctx, in.Artwork()), in.BloemHomePromotionInput))
 	if err != nil {
 		return nil, serviceProblem(err)
 	}

@@ -15,7 +15,7 @@ import {
   StaleApiRequestContextError,
   type ProfileRequestContextSnapshot,
 } from "@/api/client";
-import { nativeApi as api, nativeApiWithProfileRequestContext } from "@/api/bloemClient";
+import { nativeApi, nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import type {
   LiveTVChannel,
   LiveTVChannelsResponse,
@@ -67,7 +67,8 @@ export const LIVETV_HEARTBEAT_INTERVAL_MS = 30_000;
 export function useLiveTVTuners() {
   return useQuery({
     queryKey: liveTVKeys.liveTVTuners(),
-    queryFn: () => api<LiveTVTunersResponse>("/livetv/tuners").then((data) => data.tuners ?? []),
+    queryFn: () =>
+      nativeApi<LiveTVTunersResponse>("/livetv/tuners").then((data) => data.tuners ?? []),
     staleTime: LIVETV_STALE_TIME,
   });
 }
@@ -75,7 +76,7 @@ export function useLiveTVTuners() {
 export function useDiscoverLiveTVTuners() {
   return useMutation({
     mutationFn: (body: { timeout_ms?: number; include_udp?: boolean; probe_urls?: string[] }) =>
-      api<LiveTVDiscoverTunersResponse>("/livetv/tuners/discover", {
+      nativeApi<LiveTVDiscoverTunersResponse>("/livetv/tuners/discover", {
         method: "POST",
         body: JSON.stringify(body),
       }),
@@ -89,7 +90,7 @@ export function useAddLiveTVTuner() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { url?: string; discover_url?: string; device_id?: string }) =>
-      api<LiveTVTuner>("/livetv/tuners", {
+      nativeApi<LiveTVTuner>("/livetv/tuners", {
         method: "POST",
         body: JSON.stringify(body),
       }),
@@ -108,7 +109,7 @@ export function useScanLiveTVTuner() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (tunerId: string) =>
-      api<LiveTVTuner>(`/livetv/tuners/${encodeURIComponent(tunerId)}/scan`, {
+      nativeApi<LiveTVTuner>(`/livetv/tuners/${encodeURIComponent(tunerId)}/scan`, {
         method: "POST",
       }),
     onSuccess: () => {
@@ -126,7 +127,7 @@ export function useDeleteLiveTVTuner() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (tunerId: string) =>
-      api(`/livetv/tuners/${encodeURIComponent(tunerId)}`, { method: "DELETE" }),
+      nativeApi(`/livetv/tuners/${encodeURIComponent(tunerId)}`, { method: "DELETE" }),
     onSuccess: () => {
       toast.success("Tuner removed");
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVTuners() });
@@ -147,7 +148,7 @@ export function useLiveTVChannels(tunerId?: string) {
   return useQuery({
     queryKey: liveTVKeys.liveTVChannels(tunerId),
     queryFn: () =>
-      api<LiveTVChannelsResponse>(`/livetv/channels${qs ? `?${qs}` : ""}`).then(
+      nativeApi<LiveTVChannelsResponse>(`/livetv/channels${qs ? `?${qs}` : ""}`).then(
         (data) => data.channels ?? [],
       ),
     staleTime: LIVETV_STALE_TIME,
@@ -165,7 +166,7 @@ export function usePatchLiveTVChannel() {
       channelId: string;
       body: { enabled?: boolean; number_override?: string | null; guide_station_id?: string };
     }) =>
-      api<LiveTVChannel>(`/livetv/channels/${encodeURIComponent(channelId)}`, {
+      nativeApi<LiveTVChannel>(`/livetv/channels/${encodeURIComponent(channelId)}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       }),
@@ -183,7 +184,7 @@ export function useLiveTVGuideSources() {
   return useQuery({
     queryKey: liveTVKeys.liveTVGuideSources(),
     queryFn: () =>
-      api<LiveTVGuideSourcesResponse>("/livetv/guide-sources").then(
+      nativeApi<LiveTVGuideSourcesResponse>("/livetv/guide-sources").then(
         (data) => data.guide_sources ?? [],
       ),
     staleTime: LIVETV_STALE_TIME,
@@ -194,7 +195,7 @@ export function useCreateLiveTVGuideSource() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: Partial<LiveTVGuideSource>) =>
-      api<LiveTVGuideSource>("/livetv/guide-sources", {
+      nativeApi<LiveTVGuideSource>("/livetv/guide-sources", {
         method: "POST",
         body: JSON.stringify(body),
       }),
@@ -212,7 +213,7 @@ export function useUpdateLiveTVGuideSource() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: Partial<LiveTVGuideSource> }) =>
-      api<LiveTVGuideSource>(`/livetv/guide-sources/${encodeURIComponent(id)}`, {
+      nativeApi<LiveTVGuideSource>(`/livetv/guide-sources/${encodeURIComponent(id)}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       }),
@@ -230,7 +231,7 @@ export function useDeleteLiveTVGuideSource() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api(`/livetv/guide-sources/${encodeURIComponent(id)}`, { method: "DELETE" }),
+      nativeApi(`/livetv/guide-sources/${encodeURIComponent(id)}`, { method: "DELETE" }),
     onSuccess: () => {
       toast.success("Guide source removed");
       void queryClient.invalidateQueries({ queryKey: liveTVKeys.liveTVGuideSources() });
@@ -245,7 +246,7 @@ export function useSyncLiveTVGuideSource() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      api<LiveTVGuideSource>(`/livetv/guide-sources/${encodeURIComponent(id)}/sync`, {
+      nativeApi<LiveTVGuideSource>(`/livetv/guide-sources/${encodeURIComponent(id)}/sync`, {
         method: "POST",
       }),
     onSuccess: () => {
@@ -269,7 +270,7 @@ export function useLookupSchedulesDirectLineups() {
       country?: string;
       postalcode: string;
     }) =>
-      api<SchedulesDirectLineupsResponse>("/livetv/guide-sources/schedules-direct/lineups", {
+      nativeApi<SchedulesDirectLineupsResponse>("/livetv/guide-sources/schedules-direct/lineups", {
         method: "POST",
         body: JSON.stringify(body),
       }).then((data) => data.lineups ?? []),
@@ -282,7 +283,7 @@ export function useLookupSchedulesDirectLineups() {
 export function useLookupXMLSyncLineups() {
   return useMutation({
     mutationFn: (body: { country?: string; postalcode: string; lang?: string }) =>
-      api<XMLSyncLineupsResponse>("/livetv/guide-sources/xml-sync/lineups", {
+      nativeApi<XMLSyncLineupsResponse>("/livetv/guide-sources/xml-sync/lineups", {
         method: "POST",
         body: JSON.stringify(body),
       }).then((data) => data.lineups ?? []),
@@ -311,7 +312,7 @@ export function useLiveTVGuide(params: LiveTVGuideParams = {}, enabled = true) {
       end: params.end ?? "",
     }),
     queryFn: () =>
-      api<LiveTVGuideResponse>(`/livetv/guide${qs ? `?${qs}` : ""}`).then((data) => ({
+      nativeApi<LiveTVGuideResponse>(`/livetv/guide${qs ? `?${qs}` : ""}`).then((data) => ({
         programs: data.programs ?? [],
         start: data.start,
         end: data.end,
@@ -343,11 +344,14 @@ export function useStartLiveTVSession() {
       channelId: string;
       capabilities?: LiveTVClientCapabilities;
     }) =>
-      api<LiveTVSessionStartResponse>(`/livetv/channels/${encodeURIComponent(channelId)}/session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(capabilities ?? {}),
-      }),
+      nativeApi<LiveTVSessionStartResponse>(
+        `/livetv/channels/${encodeURIComponent(channelId)}/session`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(capabilities ?? {}),
+        },
+      ),
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to start Live TV session");
     },
@@ -363,7 +367,7 @@ export function useLiveTVSessionHeartbeat(sessionId: string | null, enabled = tr
   useEffect(() => {
     if (!sessionId || !enabled) return;
     const send = () => {
-      void api(`/livetv/sessions/${encodeURIComponent(sessionId)}/heartbeat`, {
+      void nativeApi(`/livetv/sessions/${encodeURIComponent(sessionId)}/heartbeat`, {
         method: "POST",
       }).catch(() => undefined);
     };
@@ -376,7 +380,7 @@ export function useLiveTVSessionHeartbeat(sessionId: string | null, enabled = tr
 export function useReleaseLiveTVSession() {
   return useMutation({
     mutationFn: (sessionId: string) =>
-      api(`/livetv/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" }),
+      nativeApi(`/livetv/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" }),
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to release Live TV session");
     },
@@ -421,7 +425,7 @@ async function recordingRequest<T>(scope: RecordingScope, path: string, options:
   const policy = options.method ? "none" : "safe";
   const data = scope.profile
     ? await nativeApiWithProfileRequestContext<T>(path, scope.profile, options, policy)
-    : await api<T>(path, options, policy);
+    : await nativeApi<T>(path, options, policy);
   if (!recordingScopeActive(scope)) throw new StaleApiRequestContextError();
   return data;
 }

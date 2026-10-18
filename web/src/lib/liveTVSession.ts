@@ -4,10 +4,7 @@ import {
   isProfileRequestContextCurrent,
   type ProfileRequestContextSnapshot,
 } from "@/api/client";
-import {
-  nativeApi as api,
-  nativeApiWithProfileRequestContext as apiWithProfileRequestContext,
-} from "@/api/bloemClient";
+import { nativeApi, nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import type { LiveTVSessionStartResponse } from "@/api/bloemTypes";
 import type { LiveTVClientCapabilities } from "@/hooks/queries/useLiveTV";
 
@@ -59,7 +56,7 @@ export function startLiveTVPlayback(
   }
   // A tune allocates capacity. Never replay it after an ambiguous network error.
   // Read late responses so their session can still be released after navigation.
-  void api<LiveTVSessionStartResponse>(
+  void nativeApi<LiveTVSessionStartResponse>(
     `/livetv/channels/${encodeURIComponent(channelId)}/session`,
     {
       method: "POST",
@@ -86,7 +83,7 @@ export function startLiveTVPlayback(
           return;
         }
         heartbeatPending = true;
-        void apiWithProfileRequestContext(
+        void nativeApiWithProfileRequestContext(
           `/livetv/sessions/${encodeURIComponent(sessionId)}/heartbeat`,
           authority,
           {

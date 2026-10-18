@@ -490,7 +490,7 @@ func TestHasForProfileSinceExcludesRevokedLibraryDelivery(t *testing.T) {
 	f.insertDelivery(f.profileA, f.userA, "test.library_bound", &platformLibrary, &seriesID, &episodeID)
 
 	since := Cursor{CreatedAt: time.Now().Add(-time.Hour), ID: ""}
-	has, err := repo.HasForProfileSince(f.ctx, f.profileA, since)
+	has, err := repo.HasForProfileSince(f.ctx, f.userA, f.profileA, since)
 	if err != nil {
 		t.Fatalf("HasForProfileSince (active): %v", err)
 	}
@@ -500,7 +500,7 @@ func TestHasForProfileSinceExcludesRevokedLibraryDelivery(t *testing.T) {
 
 	f.revoke(entitlementID)
 
-	has, err = repo.HasForProfileSince(f.ctx, f.profileA, since)
+	has, err = repo.HasForProfileSince(f.ctx, f.userA, f.profileA, since)
 	if err != nil {
 		t.Fatalf("HasForProfileSince (revoked): %v", err)
 	}

@@ -28,6 +28,12 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
 
+// Fixture secrets for the provisioning router; any fixed values work.
+const (
+	provisioningJWTSecret = "initial-setup-atomic-fixture-jwt-secret-000000000000"
+	provisioningMasterKey = "initial-setup-atomic-fixture-master-key-0000000000"
+)
+
 // With FOR UPDATE on the organization, both transactions retain the seeded
 // membership's FK KEY SHARE lock while waiting to upgrade it: one must abort.
 // The barrier observes both real inserts before either real provisioner runs.
@@ -38,14 +44,14 @@ func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	cfg, err := config.LoadFromDB(map[string]string{
-		"auth.jwt_secret":             atomicJWTSecret,
+		"auth.jwt_secret":             provisioningJWTSecret,
 		"jellyfin_compat.server_name": "Silo Fixture",
 		"jellyfin_compat.server_id":   "00000000-0000-4000-8000-0000000000f2",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	cipher, err := secret.New([]byte(atomicMasterKey))
+	cipher, err := secret.New([]byte(provisioningMasterKey))
 	if err != nil {
 		t.Fatal(err)
 	}

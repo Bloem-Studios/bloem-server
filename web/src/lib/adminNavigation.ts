@@ -1,4 +1,8 @@
-import { buildOrganizationAdminNavSections, withBloemAdminNav, withBloemSettingsNavigation } from "@/lib/bloemAdminNavigation";
+import {
+  buildOrganizationAdminNavSections,
+  withBloemAdminNav,
+  withBloemSettingsNavigation,
+} from "@/lib/bloemAdminNavigation";
 import {
   Blocks,
   Bot,
@@ -435,7 +439,8 @@ function visibleItem(item: AdminNavItem, visibility: AdminNavVisibility): boolea
 
 export function buildAdminNavSections(visibility: AdminNavVisibility = {}): AdminNavSection[] {
   if (visibility.scope === "organization") return buildOrganizationAdminNavSections();
-  const sections = visibility.scope === "platform" ? withBloemAdminNav(ADMIN_NAV_SECTIONS) : ADMIN_NAV_SECTIONS;
+  const sections =
+    visibility.scope === "platform" ? withBloemAdminNav(ADMIN_NAV_SECTIONS) : ADMIN_NAV_SECTIONS;
   return sections.map((section) => ({
     ...section,
     entries: section.entries.flatMap((entry): AdminNavEntry[] => {

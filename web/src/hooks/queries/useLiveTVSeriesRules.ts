@@ -5,7 +5,7 @@ import {
   StaleApiRequestContextError,
   type ProfileRequestContextSnapshot,
 } from "@/api/client";
-import { nativeApiWithProfileRequestContext as apiWithProfileRequestContext } from "@/api/bloemClient";
+import { nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import type { LiveTVSeriesRule, LiveTVSeriesRulesResponse } from "@/api/bloemTypes";
 import { useAuth } from "@/hooks/useAuth";
 import { liveTVKeys } from "./bloemKeys";
@@ -34,7 +34,7 @@ async function ruleRequest<T>(
   if (!authority || !isCapturedProfileAuthorityActive(authority)) {
     throw new StaleApiRequestContextError();
   }
-  const result = await apiWithProfileRequestContext<T>(
+  const result = await nativeApiWithProfileRequestContext<T>(
     `/livetv/series-rules${suffix}`,
     authority,
     options,

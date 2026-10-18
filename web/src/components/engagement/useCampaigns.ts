@@ -5,7 +5,7 @@ import {
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
 } from "@/api/client";
-import { apiWithProfileRequestContext } from "@/api/bloemClient";
+import { bloemV1ApiWithProfileRequestContext } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 import type { CampaignCard } from "./campaigns";
 
@@ -86,7 +86,7 @@ export function useCampaigns(surface: CampaignSurface, contentId = "", enabled =
   async function read<T>(path: string, signal: AbortSignal) {
     if (!authority || !isCapturedProfileAuthorityActive(authority))
       throw new StaleApiRequestContextError();
-    const data = await apiWithProfileRequestContext<T>(path, authority, { signal });
+    const data = await bloemV1ApiWithProfileRequestContext<T>(path, authority, { signal });
     if (!isCapturedProfileAuthorityActive(authority)) throw new StaleApiRequestContextError();
     return data;
   }
@@ -128,7 +128,7 @@ export function useCampaigns(surface: CampaignSurface, contentId = "", enabled =
   async function dismiss(id: string) {
     if (!authority || !isCapturedProfileAuthorityActive(authority))
       throw new StaleApiRequestContextError();
-    await apiWithProfileRequestContext(
+    await bloemV1ApiWithProfileRequestContext(
       `/home/dismissals/${encodeURIComponent(`promo:${surface}`)}/${encodeURIComponent(id)}`,
       authority,
       { method: "PUT", body: "{}" },

@@ -244,6 +244,7 @@ export function AdminContextProvider({
     const controller = new AbortController();
     controllerRef.current?.abort();
     controllerRef.current = controller;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- an account change starts a new context transition
     setSwitching(true);
     setActive(null);
     activeRef.current = null;

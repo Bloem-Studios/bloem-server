@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { api } from "@/api/bloemClient";
+import { bloemV1Api } from "@/api/bloemClient";
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
 import type { AccessGroup, AccessGroupInput } from "@/api/types";
 import type { AdminContextSummary } from "@/api/bloemTypes";
@@ -23,7 +23,7 @@ export function useAccessGroups(context?: AdminContextSummary | null) {
         ? adminV2Api<{ groups: AccessGroup[] }>("/organization/groups").then(
             (data) => data.groups ?? [],
           )
-        : api<AccessGroup[]>("/admin/access-groups").then((data) => data ?? []),
+        : bloemV1Api<AccessGroup[]>("/admin/access-groups").then((data) => data ?? []),
     staleTime: ADMIN_STALE_TIME,
   });
 }
@@ -38,7 +38,7 @@ export function useCreateAccessGroup(context?: AdminContextSummary | null) {
           body: JSON.stringify({ ...body, expected_revision: context.policyRevision }),
         }).then((data) => data.group);
       }
-      return api<AccessGroup>("/admin/access-groups", {
+      return bloemV1Api<AccessGroup>("/admin/access-groups", {
         method: "POST",
         body: JSON.stringify(body),
       });
@@ -63,7 +63,7 @@ export function useUpdateAccessGroup(context?: AdminContextSummary | null) {
           body: JSON.stringify({ ...body, expected_revision: context.policyRevision }),
         }).then((data) => data.group);
       }
-      return api<AccessGroup>(`/admin/access-groups/${id}`, {
+      return bloemV1Api<AccessGroup>(`/admin/access-groups/${id}`, {
         method: "PUT",
         body: JSON.stringify(body),
       });
@@ -98,7 +98,7 @@ export function useDeleteAccessGroup(context?: AdminContextSummary | null) {
             method: "DELETE",
             body: JSON.stringify({ expected_revision: context.policyRevision }),
           })
-        : api(`/admin/access-groups/${id}`, { method: "DELETE" }),
+        : bloemV1Api(`/admin/access-groups/${id}`, { method: "DELETE" }),
     onSuccess: (_data, id) => {
       toast.success("Access group deleted");
       queryClient.invalidateQueries({ queryKey: groupKey(context) });

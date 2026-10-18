@@ -1516,6 +1516,8 @@ public data class AdminPluginCapability(
     public val callbackUrl: String? = null,
     @SerialName("post_logout_redirect_url")
     public val postLogoutRedirectUrl: String? = null,
+    @SerialName("request_router")
+    public val requestRouter: AdminPluginRequestRouter? = null,
 )
 
 /** Wire type `internal/apiv2.AdminPluginCatalogEntry`. Direction: response. Dialect: bloem. */
@@ -1795,6 +1797,15 @@ public data class AdminPluginRepositoryCollection(
     public val items: List<AdminPluginRepository> = emptyList(),
     @SerialName("page")
     public val page: PageInfo? = null,
+)
+
+/** Wire type `internal/apiv2.AdminPluginRequestRouter`. Direction: response. Dialect: bloem. */
+@Serializable
+public data class AdminPluginRequestRouter(
+    @SerialName("api_key_optional")
+    public val apiKeyOptional: Boolean = false,
+    @SerialName("base_url_optional")
+    public val baseUrlOptional: Boolean = false,
 )
 
 /** Wire type `internal/apiv2.AdminPluginRuntime`. Direction: response. Dialect: bloem. */
@@ -4106,6 +4117,10 @@ public data class CatalogItem(
     public val userState: CatalogItemUserState? = null,
     @SerialName("upcoming_event")
     public val upcomingEvent: CatalogItemUpcomingEvent? = null,
+    @SerialName("pending_translation_language")
+    public val pendingTranslationLanguage: String = "",
+    @SerialName("machine_translated_fields")
+    public val machineTranslatedFields: List<String> = emptyList(),
     @SerialName("work_id")
     public val workId: String = "",
     @SerialName("work_title")
@@ -4220,6 +4235,10 @@ public data class CatalogItemDetail(
     public val userState: CatalogItemUserState? = null,
     @SerialName("upcoming_event")
     public val upcomingEvent: CatalogItemUpcomingEvent? = null,
+    @SerialName("pending_translation_language")
+    public val pendingTranslationLanguage: String = "",
+    @SerialName("machine_translated_fields")
+    public val machineTranslatedFields: List<String> = emptyList(),
     @SerialName("work_id")
     public val workId: String = "",
     @SerialName("work_title")
@@ -4234,10 +4253,6 @@ public data class CatalogItemDetail(
     public val originalTitle: String = "",
     @SerialName("tagline")
     public val tagline: String = "",
-    @SerialName("pending_translation_language")
-    public val pendingTranslationLanguage: String = "",
-    @SerialName("machine_translated_fields")
-    public val machineTranslatedFields: List<String> = emptyList(),
     @SerialName("imdb_id")
     public val imdbId: String = "",
     @SerialName("tmdb_id")
@@ -4412,6 +4427,8 @@ public data class CatalogItemUserState(
     public val isFavorite: Boolean = false,
     @SerialName("in_watchlist")
     public val inWatchlist: Boolean = false,
+    @SerialName("not_interested")
+    public val notInterested: Boolean = false,
 )
 
 /** Wire type `internal/apiv2.CatalogLetter`. Direction: response. Dialect: bloem. */
@@ -5042,6 +5059,8 @@ public data class DeviceSettings(
     public val deviceId: String = "",
     @SerialName("device_name")
     public val deviceName: String = "",
+    @SerialName("custom_name")
+    public val customName: String = "",
     @SerialName("device_platform")
     public val devicePlatform: String = "",
     @SerialName("last_seen_at")
@@ -6313,6 +6332,10 @@ public data class HistoryCard(
     public val userState: CatalogItemUserState? = null,
     @SerialName("upcoming_event")
     public val upcomingEvent: CatalogItemUpcomingEvent? = null,
+    @SerialName("pending_translation_language")
+    public val pendingTranslationLanguage: String = "",
+    @SerialName("machine_translated_fields")
+    public val machineTranslatedFields: List<String> = emptyList(),
     @SerialName("work_id")
     public val workId: String = "",
     @SerialName("work_title")
@@ -6563,6 +6586,8 @@ public data class ImageCapabilities(
     public val seasonListArtworkParam: String = "",
     @SerialName("param")
     public val param: String = "",
+    @SerialName("slot_width_params")
+    public val slotWidthParams: Map<String, String> = emptyMap(),
     @SerialName("sizes")
     public val sizes: List<Size> = emptyList(),
     @SerialName("widths")
@@ -6743,6 +6768,8 @@ public data class LibraryCapabilities(
     public val trickplay: Boolean = false,
     @SerialName("trickplay_supported")
     public val trickplaySupported: Boolean = false,
+    @SerialName("ignore_unmatched")
+    public val ignoreUnmatched: Boolean = false,
 )
 
 /** Wire type `internal/apiv2.LibraryCollection`. Direction: response. Dialect: bloem. Registered root. */
@@ -7701,6 +7728,8 @@ public data class NotificationCapabilities(
     public val email: NotificationAccountChannelCapability = NotificationAccountChannelCapability(),
     @SerialName("discord")
     public val discord: NotificationAccountChannelCapability = NotificationAccountChannelCapability(),
+    @SerialName("series")
+    public val series: NotificationSeriesCapability = NotificationSeriesCapability(),
 )
 
 /** Wire type `internal/apiv2.NotificationDestinationCreated`. Direction: response. Dialect: bloem. Registered root. */
@@ -7913,6 +7942,15 @@ public data class NotificationRelayRegistration(
     public val apnsTopics: List<String> = emptyList(),
     @SerialName("expires_at")
     public val expiresAt: String = "",
+)
+
+/** Wire type `internal/apiv2.NotificationSeriesCapability`. Direction: response. Dialect: bloem. */
+@Serializable
+public data class NotificationSeriesCapability(
+    @SerialName("available")
+    public val available: Boolean = false,
+    @SerialName("mute")
+    public val mute: Boolean = false,
 )
 
 /** Wire type `internal/apiv2.NotificationServerChannel`. Direction: response. Dialect: bloem. Registered root. */
@@ -8601,7 +8639,7 @@ public data class PlaybackReplanBody(
     @SerialName("position_seconds")
     public val positionSeconds: Double,
     @SerialName("metered")
-    public val metered: Boolean,
+    public val metered: Boolean = false,
     @SerialName("bandwidth_estimate_kbps")
     public val bandwidthEstimateKbps: Int? = null,
     @SerialName("bandwidth_cap_kbps")
@@ -8887,7 +8925,7 @@ public data class PlaybackStartBody(
     @SerialName("subtitle_track_index")
     public val subtitleTrackIndex: Int? = null,
     @SerialName("metered")
-    public val metered: Boolean,
+    public val metered: Boolean = false,
     @SerialName("bandwidth_estimate_kbps")
     public val bandwidthEstimateKbps: Int? = null,
     @SerialName("bandwidth_cap_kbps")
@@ -10409,6 +10447,8 @@ public data class SettingsContractCapabilities(
     public val supportsIdempotentWrites: Boolean = false,
     @SerialName("supports_atomic_shortcuts")
     public val supportsAtomicShortcuts: Boolean = false,
+    @SerialName("supports_device_rename")
+    public val supportsDeviceRename: Boolean = false,
 )
 
 /** Wire type `internal/apiv2.SetupStatus`. Direction: response. Dialect: bloem. Registered root. */
@@ -11136,33 +11176,6 @@ public data class TrailersCapability(
     public val supportedTypes: List<String> = emptyList(),
 )
 
-/** Wire type `internal/apiv2.TraktCollectionImport`. Direction: request. Dialect: bloem. Registered root. */
-@Serializable
-public data class TraktCollectionImport(
-    @SerialName("title")
-    public val title: String,
-    @SerialName("description")
-    public val description: String? = null,
-    @SerialName("limit")
-    public val limit: Int? = null,
-    @SerialName("sync_schedule")
-    public val syncSchedule: String? = null,
-    @SerialName("is_shared")
-    public val isShared: Boolean? = null,
-    @SerialName("poster_url")
-    public val posterUrl: String? = null,
-    @SerialName("library_ids")
-    public val libraryIds: List<String>? = null,
-    @SerialName("display_query_definition")
-    public val displayQueryDefinition: JsonElement? = null,
-    @SerialName("sort_config")
-    public val sortConfig: JsonElement? = null,
-    @SerialName("preset")
-    public val preset: String,
-    @SerialName("media_type")
-    public val mediaType: String? = null,
-)
-
 /** Wire type `internal/apiv2.TranslateDescription`. Direction: request. Dialect: bloem. Registered root. */
 @Serializable
 public data class TranslateDescription(
@@ -11187,6 +11200,8 @@ public data class UnmatchedItem(
     public val libraryName: String = "",
     @SerialName("status")
     public val status: String = "",
+    @SerialName("ignored_at")
+    public val ignoredAt: String? = null,
 )
 
 /** Wire type `internal/apiv2.UnmatchedItemCollection`. Direction: response. Dialect: bloem. Registered root. */
@@ -12075,6 +12090,10 @@ public data class WatchTonightCard(
     public val userState: CatalogItemUserState? = null,
     @SerialName("upcoming_event")
     public val upcomingEvent: CatalogItemUpcomingEvent? = null,
+    @SerialName("pending_translation_language")
+    public val pendingTranslationLanguage: String = "",
+    @SerialName("machine_translated_fields")
+    public val machineTranslatedFields: List<String> = emptyList(),
     @SerialName("work_id")
     public val workId: String = "",
     @SerialName("work_title")
@@ -12206,6 +12225,10 @@ public data class WatchTonightItem(
     public val userState: CatalogItemUserState? = null,
     @SerialName("upcoming_event")
     public val upcomingEvent: CatalogItemUpcomingEvent? = null,
+    @SerialName("pending_translation_language")
+    public val pendingTranslationLanguage: String = "",
+    @SerialName("machine_translated_fields")
+    public val machineTranslatedFields: List<String> = emptyList(),
     @SerialName("work_id")
     public val workId: String = "",
     @SerialName("work_title")

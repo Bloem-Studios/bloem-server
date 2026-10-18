@@ -17,8 +17,8 @@ type BloemPlaybackControlSocketV2 struct {
 	authority *bloemSocketAuthority
 }
 
-func NewBloemPlaybackControlSocketV2(playbackHandler *PlaybackHandler, client *redis.Client, sessions bloemSocketSessions, users access.UserRepository, resolver apimw.ViewerResolver, primary apimw.PrimaryProfileChecker, tenants apimw.TenantResolver, profiles bloemSocketProfiles, publicURL string) *BloemPlaybackControlSocketV2 {
-	socket := NewPlaybackControlSocketV2(playbackHandler, client, sessions, users, resolver, primary, publicURL)
+func NewBloemPlaybackControlSocketV2(playbackHandler *PlaybackHandler, client *redis.Client, sessions bloemSocketSessions, users access.UserRepository, resolver apimw.ViewerResolver, actingAdmin apimw.ActingAdminDecider, tenants apimw.TenantResolver, profiles bloemSocketProfiles, publicURL string) *BloemPlaybackControlSocketV2 {
+	socket := NewPlaybackControlSocketV2(playbackHandler, client, sessions, users, resolver, actingAdmin, publicURL)
 	authority := &bloemSocketAuthority{sessions: sessions, users: users, tenants: tenants, profiles: profiles, base: socket.Validate}
 	socket.Validate = authority.validate
 	return &BloemPlaybackControlSocketV2{PlaybackControlSocketV2: socket, authority: authority}

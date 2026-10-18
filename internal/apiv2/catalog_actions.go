@@ -12,6 +12,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	catalogpkg "github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/imagesize"
 	"github.com/Silo-Server/silo-server/internal/literaryworks"
 	"github.com/Silo-Server/silo-server/internal/metadata/translation"
 )
@@ -111,7 +112,7 @@ type MetadataAICapabilityOutput struct {
 // MetadataTranslationJob is one queued or running translation.
 type MetadataTranslationJob struct {
 	ID              ID      `json:"id" example:"42"`
-	TargetKind      string  `json:"target_kind" doc:"item, season, or episode"`
+	TargetKind      string  `json:"target_kind" doc:"item, season, episode, or library (a prewarm, whose fields_done and fields_total count items)"`
 	ContentID       string  `json:"content_id"`
 	IncludeChildren bool    `json:"include_children"`
 	SourceLanguage  string  `json:"source_language"`
@@ -376,7 +377,7 @@ func (reg *Registry) translateCatalogItemDescription(ctx context.Context, in *Tr
 	if userID != 0 {
 		requestedBy = &userID
 	}
-	viewer, p := reg.itemViewer(ctx, "", "", "")
+	viewer, p := reg.itemViewer(ctx, imagesize.Request{}, "", "")
 	if p != nil {
 		return nil, p
 	}

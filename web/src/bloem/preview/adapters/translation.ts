@@ -1,7 +1,9 @@
 import { useOnViewTranslation as useOriginal } from "../../../hooks/useOnViewTranslation";
 import { usePreviewMode } from "../usePreviewMode";
-export function useOnViewTranslation(item: Parameters<typeof useOriginal>[0]) {
+// Forwards every argument: Silo's options (the hero's poll callback and
+// pending slides) must reach the hook outside preview mode.
+export function useOnViewTranslation(...[item, options]: Parameters<typeof useOriginal>) {
   const { active } = usePreviewMode();
-  const original = useOriginal(active ? undefined : item);
+  const original = useOriginal(active ? undefined : item, options);
   return active ? { translating: false, onTranslate: undefined } : original;
 }

@@ -2,11 +2,16 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+
+	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/cache"
@@ -106,4 +111,67 @@ func TestEventsWebSocketV1ClosesWhenSessionChanges(t *testing.T) {
 			}
 		})
 	}
+}
+
+// profileProofFixture verifies a profile's PIN proof as the viewer resolver
+// does: only the token the profile was unlocked with, until its PIN changes.
+type profileProofFixture struct{ pinChanged atomic.Bool }
+
+func (f *profileProofFixture) Resolve(_ context.Context, in access.ResolveInput) (access.Scope, error) {
+	if f.pinChanged.Load() || in.ProfileToken != "pin-proof" {
+		return access.Scope{}, access.ErrProfileUnverified
+	}
+	return access.Scope{UserID: in.UserID, ProfileID: in.ProfileID, ProfileVerified: true}, nil
+}
+
+// TestEventsWebSocketV1RechecksTicketProfileProof: a v1 connection holding
+// the administrator channels as the primary profile its ticket was minted for
+// re-verifies that profile's PIN proof, at the handshake and on every session
+// check, so a PIN change closes it as on the v2 socket.
+func TestEventsWebSocketV1RechecksTicketProfileProof(t *testing.T) {
+	decide := func(_ context.Context, in apimw.ActingAdminRequest) (bool, error) {
+		return in.ProfileID == "parent", nil
+	}
+	connect := func(t *testing.T, proofs *profileProofFixture, token string) (*websocket.Conn, func(string) map[string]json.RawMessage) {
+		t.Helper()
+		sessions := new(sessionRoleFixture)
+		sessions.role.Store("admin")
+		handler := &EventsHandler{hub: evt.NewHub("test", &cache.NoopEventBus{}), sessionCheckInterval: 10 * time.Millisecond}
+		handler.SetSessionRoles(sessions)
+		handler.SetProfileVerifier(proofs)
+		// Bloem: RequireAuth consumed the audience ticket minted for "parent".
+		return bloemEventsWSTestConnAfterTicket(t, handler, &auth.Claims{UserID: 1, Role: "admin", SessionID: "session", ProfileID: "parent"},
+			token, "?channels=user_settings", decide)
+	}
+	adminChannels := func(hello map[string]json.RawMessage) bool {
+		return strings.Contains(string(hello["available_channels"]), `"sessions"`)
+	}
+
+	t.Run("stale proof at the handshake", func(t *testing.T) {
+		_, readFrame := connect(t, new(profileProofFixture), "old-pin-proof")
+		if adminChannels(readFrame("hello")) {
+			t.Fatal("ticket with a stale PIN proof got the administrator channels")
+		}
+	})
+
+	t.Run("PIN changes while connected", func(t *testing.T) {
+		proofs := new(profileProofFixture)
+		conn, readFrame := connect(t, proofs, "pin-proof")
+		if !adminChannels(readFrame("hello")) {
+			t.Fatal("verified primary profile did not get the administrator channels")
+		}
+		readFrame("subscribed")
+		proofs.pinChanged.Store(true)
+		if err := conn.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+			t.Fatal(err)
+		}
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				if strings.Contains(err.Error(), "timeout") {
+					t.Fatal("connection stayed open after the PIN changed")
+				}
+				return
+			}
+		}
+	})
 }

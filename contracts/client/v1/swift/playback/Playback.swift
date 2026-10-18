@@ -1402,6 +1402,49 @@ public enum Playback {
         }
     }
 
+    /// Wire type `internal/playback.HLSSubtitleRenditionV3`. Direction: response. Dialect: upstream-compat.
+    public struct HLSSubtitleRenditionV3: Codable, Hashable, Sendable {
+        public let groupId: String
+        public let name: String
+        public let format: String
+        public let mimeType: String
+
+        public enum CodingKeys: String, CodingKey {
+            case groupId = "group_id"
+            case name = "name"
+            case format = "format"
+            case mimeType = "mime_type"
+        }
+
+        public init(
+            groupId: String = "",
+            name: String = "",
+            format: String = "",
+            mimeType: String = ""
+        ) {
+            self.groupId = groupId
+            self.name = name
+            self.format = format
+            self.mimeType = mimeType
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.groupId = try container.decodeIfPresent(String.self, forKey: .groupId) ?? ""
+            self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+            self.format = try container.decodeIfPresent(String.self, forKey: .format) ?? ""
+            self.mimeType = try container.decodeIfPresent(String.self, forKey: .mimeType) ?? ""
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.groupId, forKey: .groupId)
+            try container.encode(self.name, forKey: .name)
+            try container.encode(self.format, forKey: .format)
+            try container.encode(self.mimeType, forKey: .mimeType)
+        }
+    }
+
     /// Wire type `internal/playback.HeaderRefreshModeV3`. Direction: response. Dialect: upstream-compat.
     public struct HeaderRefreshModeV3: RawRepresentable, Codable, Hashable, Sendable {
         public let wire: String
@@ -2988,6 +3031,7 @@ public enum Playback {
     /// Wire type `internal/playback.SubtitleDecisionV3`. Direction: response. Dialect: upstream-compat.
     public struct SubtitleDecisionV3: Codable, Hashable, Sendable {
         public let embedded: EmbeddedSubtitleV3?
+        public let hlsRendition: HLSSubtitleRenditionV3?
         public let mode: SubtitleModeV3
         public let trackId: String
         public let artifact: SubtitleArtifactV3?
@@ -2995,6 +3039,7 @@ public enum Playback {
 
         public enum CodingKeys: String, CodingKey {
             case embedded = "embedded"
+            case hlsRendition = "hls_rendition"
             case mode = "mode"
             case trackId = "track_id"
             case artifact = "artifact"
@@ -3003,12 +3048,14 @@ public enum Playback {
 
         public init(
             embedded: EmbeddedSubtitleV3? = nil,
+            hlsRendition: HLSSubtitleRenditionV3? = nil,
             mode: SubtitleModeV3 = SubtitleModeV3(rawValue: ""),
             trackId: String = "",
             artifact: SubtitleArtifactV3? = nil,
             inventory: [SubtitleInventoryItemV3] = []
         ) {
             self.embedded = embedded
+            self.hlsRendition = hlsRendition
             self.mode = mode
             self.trackId = trackId
             self.artifact = artifact
@@ -3018,6 +3065,7 @@ public enum Playback {
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             self.embedded = try container.decodeIfPresent(EmbeddedSubtitleV3.self, forKey: .embedded)
+            self.hlsRendition = try container.decodeIfPresent(HLSSubtitleRenditionV3.self, forKey: .hlsRendition)
             self.mode = try container.decodeIfPresent(SubtitleModeV3.self, forKey: .mode) ?? SubtitleModeV3(rawValue: "")
             self.trackId = try container.decodeIfPresent(String.self, forKey: .trackId) ?? ""
             self.artifact = try container.decodeIfPresent(SubtitleArtifactV3.self, forKey: .artifact)
@@ -3027,6 +3075,7 @@ public enum Playback {
         public func encode(to encoder: any Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encodeIfPresent(self.embedded, forKey: .embedded)
+            try container.encodeIfPresent(self.hlsRendition, forKey: .hlsRendition)
             try container.encode(self.mode, forKey: .mode)
             try container.encode(self.trackId, forKey: .trackId)
             try container.encodeIfPresent(self.artifact, forKey: .artifact)

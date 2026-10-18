@@ -699,8 +699,7 @@ func (h *AdminHandler) bloemPrepareUpdateUser(w http.ResponseWriter, r *http.Req
 		return currentUser, true
 	}
 	if req.AccessGroupID.Set {
-		currentUser, blocked = h.rejectGroupedAdmin(w, r, id, req, currentUser)
-		if blocked {
+		if h.rejectGroupedAdmin(w, r, id, req, currentUser) {
 			return currentUser, true
 		}
 		if req.AccessGroupID.Value != nil {

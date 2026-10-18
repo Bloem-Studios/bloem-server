@@ -106,7 +106,7 @@ func (s *System) dispatchBookRequestNotice(ctx context.Context, r bookrequests.R
 			return NewRequestFulfillmentNotifier(s).NotifyFulfilled(ctx, req, r.LibraryContentID)
 		}
 	}
-	prefs, err := s.Preferences.Get(ctx, recipient.ProfileID)
+	prefs, err := s.Preferences.Get(ctx, recipient.UserID, recipient.ProfileID)
 	if err != nil {
 		return err
 	}

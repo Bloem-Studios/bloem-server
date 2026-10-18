@@ -58,6 +58,9 @@ type AudienceTicket struct {
 	PolicyRevision       int64    `json:"policy_revision,omitempty"`
 	SecurityRevision     int64    `json:"security_revision,omitempty"`
 	CredentialRevision   int64    `json:"credential_revision,omitempty"`
+	// ProfileToken is the minting request's PIN proof for ProfileID, kept
+	// server-side so a socket can recheck it after the PIN changes.
+	ProfileToken string `json:"profile_token,omitempty"`
 }
 
 type AudienceTicketStore interface {

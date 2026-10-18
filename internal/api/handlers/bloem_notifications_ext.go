@@ -51,8 +51,8 @@ func parseIncludeDismissed(r *http.Request) bool {
 // deliveryDismisser is the repository seam HandleDismiss uses; tests
 // substitute a fake, production uses System.Deliveries.
 type deliveryDismisser interface {
-	Dismiss(ctx context.Context, profileID, id string) (bool, error)
-	Exists(ctx context.Context, profileID, id string) (bool, error)
+	Dismiss(ctx context.Context, userID int, profileID, id string) (bool, error)
+	Exists(ctx context.Context, userID int, profileID, id string) (bool, error)
 }
 
 func (h *NotificationsHandler) dismisser() deliveryDismisser {
@@ -72,7 +72,7 @@ func (h *NotificationsHandler) HandleDismiss(w http.ResponseWriter, r *http.Requ
 	id := chi.URLParam(r, "id")
 	store := h.dismisser()
 
-	transitioned, err := store.Dismiss(r.Context(), profileID, id)
+	transitioned, err := store.Dismiss(r.Context(), userID, profileID, id)
 	if errors.Is(err, notifications.ErrDeliveryNotDismissible) {
 		writeError(w, http.StatusConflict, "not_dismissible", "This notification cannot be dismissed")
 		return
@@ -82,7 +82,7 @@ func (h *NotificationsHandler) HandleDismiss(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if !transitioned {
-		exists, err := store.Exists(r.Context(), profileID, id)
+		exists, err := store.Exists(r.Context(), userID, profileID, id)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to dismiss notification")
 			return

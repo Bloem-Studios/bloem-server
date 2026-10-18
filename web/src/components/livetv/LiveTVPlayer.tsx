@@ -79,6 +79,7 @@ export function LiveTVPlayer({
     const video = videoRef.current;
     if (!video || !streamUrl) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a new stream URL starts a fresh attachment
     setError(null);
     setStarting(true);
     networkRecoveryRef.current = 0;

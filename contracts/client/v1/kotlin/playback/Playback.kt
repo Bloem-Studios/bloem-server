@@ -519,6 +519,19 @@ public data class HDRCapabilitiesV3(
     public val dolbyVisionProfileLevels: List<DolbyVisionProfileCapabilityV3> = emptyList(),
 )
 
+/** Wire type `internal/playback.HLSSubtitleRenditionV3`. Direction: response. Dialect: upstream-compat. */
+@Serializable
+public data class HLSSubtitleRenditionV3(
+    @SerialName("group_id")
+    public val groupId: String = "",
+    @SerialName("name")
+    public val name: String = "",
+    @SerialName("format")
+    public val format: String = "",
+    @SerialName("mime_type")
+    public val mimeType: String = "",
+)
+
 /** Wire type `internal/playback.HeaderRefreshModeV3`. Direction: response. Dialect: upstream-compat. */
 @Serializable
 @JvmInline
@@ -1119,6 +1132,8 @@ public data class SubtitleClaimsV3(
 public data class SubtitleDecisionV3(
     @SerialName("embedded")
     public val embedded: EmbeddedSubtitleV3? = null,
+    @SerialName("hls_rendition")
+    public val hlsRendition: HLSSubtitleRenditionV3? = null,
     @SerialName("mode")
     public val mode: SubtitleModeV3 = SubtitleModeV3(""),
     @SerialName("track_id")

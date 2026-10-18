@@ -29,17 +29,19 @@ func deliveryVisibility(includeDismissed bool) string {
 // carries dismissible=false (every critical alert).
 var ErrDeliveryNotDismissible = errors.New("notification is not dismissible")
 
-// Dismiss hides one delivery from the profile's feeds without marking it
-// read. Idempotent; reports whether the row transitioned. Rows whose body
-// says dismissible=false are refused with ErrDeliveryNotDismissible.
-func (r *DeliveryRepository) Dismiss(ctx context.Context, profileID, id string) (bool, error) {
+// Dismiss hides one delivery from the account profile's feeds without
+// marking it read. Profile ids repeat across accounts, so the account scopes
+// the row as it does every other delivery read. Idempotent; reports whether
+// the row transitioned. Rows whose body says dismissible=false are refused
+// with ErrDeliveryNotDismissible.
+func (r *DeliveryRepository) Dismiss(ctx context.Context, userID int, profileID, id string) (bool, error) {
 	var dismissible *bool
 	var alreadyDismissed, expired bool
 	err := r.pool.QueryRow(ctx, `
 		SELECT (body->>'dismissible')::boolean, dismissed_at IS NOT NULL,
 		       expires_at IS NOT NULL AND expires_at <= now()
-		FROM notification_deliveries WHERE profile_id = $1 AND id = $2`,
-		profileID, id).Scan(&dismissible, &alreadyDismissed, &expired)
+		FROM notification_deliveries WHERE user_id = $1 AND profile_id = $2 AND id = $3`,
+		userID, profileID, id).Scan(&dismissible, &alreadyDismissed, &expired)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -57,8 +59,8 @@ func (r *DeliveryRepository) Dismiss(ctx context.Context, profileID, id string) 
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE notification_deliveries
 		SET dismissed_at = now()
-		WHERE profile_id = $1 AND id = $2 AND dismissed_at IS NULL`,
-		profileID, id)
+		WHERE user_id = $1 AND profile_id = $2 AND id = $3 AND dismissed_at IS NULL`,
+		userID, profileID, id)
 	if err != nil {
 		return false, err
 	}

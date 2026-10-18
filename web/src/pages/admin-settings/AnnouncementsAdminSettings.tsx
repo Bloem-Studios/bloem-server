@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Megaphone } from "lucide-react";
-import { api } from "@/api/bloemClient";
+import { bloemV1Api } from "@/api/bloemClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
@@ -94,7 +94,7 @@ export default function AnnouncementsAdminSettings() {
   const cache = useQueryClient();
   const listing = useQuery({
     queryKey,
-    queryFn: () => api<{ announcements: Announcement[] }>(endpoint),
+    queryFn: () => bloemV1Api<{ announcements: Announcement[] }>(endpoint),
   });
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -132,7 +132,7 @@ export default function AnnouncementsAdminSettings() {
   );
   const publish = useMutation({
     mutationFn: (input: AnnouncementInput) =>
-      api<Announcement>(endpoint, { method: "POST", body: JSON.stringify(input) }),
+      bloemV1Api<Announcement>(endpoint, { method: "POST", body: JSON.stringify(input) }),
     onSuccess: (result) => {
       setReceipt(
         typeof result.recipient_count === "number"
@@ -157,7 +157,8 @@ export default function AnnouncementsAdminSettings() {
     },
   });
   const withdraw = useMutation({
-    mutationFn: (id: string) => api(endpoint + "/" + encodeURIComponent(id), { method: "DELETE" }),
+    mutationFn: (id: string) =>
+      bloemV1Api(endpoint + "/" + encodeURIComponent(id), { method: "DELETE" }),
     onSuccess: () => {
       setWithdrawing(null);
       setReceipt("Announcement withdrawn.");

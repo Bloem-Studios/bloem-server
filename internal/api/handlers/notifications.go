@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/ambience"
+	"github.com/go-chi/chi/v5"
+
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/notifications"
-	"github.com/go-chi/chi/v5"
 )
 
 const (
@@ -70,8 +71,6 @@ type notificationSyncResponse struct {
 	UnreadCount   int                                `json:"unread_count"`
 }
 
-type notificationApplePushDisplayResponse = notifications.NotificationDisplay
-
 type unreadCountResponse struct {
 	Count int `json:"count"`
 }
@@ -95,6 +94,7 @@ func parseNotificationsLimit(r *http.Request, fallback int) int {
 
 // HandleList handles GET /notifications (newest-first inbox page).
 func (h *NotificationsHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 	unreadOnly := r.URL.Query().Get("status") == "unread"
 	includeDismissed := parseIncludeDismissed(r)
@@ -110,7 +110,7 @@ func (h *NotificationsHandler) HandleList(w http.ResponseWriter, r *http.Request
 		before = &cursor
 	}
 
-	rows, err := h.system.Deliveries.ListInbox(r.Context(), profileID, unreadOnly, includeDismissed, limit, before)
+	rows, err := h.system.Deliveries.ListInbox(r.Context(), userID, profileID, unreadOnly, limit, before, includeDismissed)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list notifications")
 		return
@@ -126,6 +126,7 @@ func (h *NotificationsHandler) HandleList(w http.ResponseWriter, r *http.Request
 // HandleSync handles GET /notifications/sync — the forward (ascending) cursor
 // sync used by clients waking from a push or reconnecting after a gap.
 func (h *NotificationsHandler) HandleSync(w http.ResponseWriter, r *http.Request) {
+	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 	limit := parseNotificationsLimit(r, notificationsSyncLimit)
 
@@ -139,12 +140,12 @@ func (h *NotificationsHandler) HandleSync(w http.ResponseWriter, r *http.Request
 		since = &cursor
 	}
 
-	rows, err := h.system.Deliveries.ListSync(r.Context(), profileID, since, limit, parseIncludeDismissed(r))
+	rows, err := h.system.Deliveries.ListSync(r.Context(), userID, profileID, since, limit, parseIncludeDismissed(r))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to sync notifications")
 		return
 	}
-	unread, err := h.system.Deliveries.UnreadCount(r.Context(), profileID)
+	unread, err := h.system.Deliveries.UnreadCount(r.Context(), userID, profileID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to count unread notifications")
 		return
@@ -165,10 +166,11 @@ func (h *NotificationsHandler) HandleSync(w http.ResponseWriter, r *http.Request
 
 // HandleGet handles GET /notifications/{id}; 404 for other profiles' rows.
 func (h *NotificationsHandler) HandleGet(w http.ResponseWriter, r *http.Request) {
+	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 	id := chi.URLParam(r, "id")
 
-	row, err := h.system.Deliveries.GetByID(r.Context(), profileID, id)
+	row, err := h.system.Deliveries.GetByID(r.Context(), userID, profileID, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load notification")
 		return
@@ -185,13 +187,14 @@ func (h *NotificationsHandler) HandleGet(w http.ResponseWriter, r *http.Request)
 // enrichment, scoped to the active profile.
 func (h *NotificationsHandler) HandleApplePushDisplay(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
+	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 	id := chi.URLParam(r, "delivery_id")
 	if id == "" {
 		writeError(w, http.StatusNotFound, "not_found", "Notification not found")
 		return
 	}
-	row, err := h.system.Deliveries.GetByID(r.Context(), profileID, id)
+	row, err := h.system.Deliveries.GetByID(r.Context(), userID, profileID, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load notification")
 		return
@@ -205,8 +208,9 @@ func (h *NotificationsHandler) HandleApplePushDisplay(w http.ResponseWriter, r *
 
 // HandleUnreadCount handles GET /notifications/unread-count.
 func (h *NotificationsHandler) HandleUnreadCount(w http.ResponseWriter, r *http.Request) {
+	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	count, err := h.system.Deliveries.UnreadCount(r.Context(), profileID)
+	count, err := h.system.Deliveries.UnreadCount(r.Context(), userID, profileID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to count unread notifications")
 		return
@@ -220,14 +224,14 @@ func (h *NotificationsHandler) HandleMarkRead(w http.ResponseWriter, r *http.Req
 	profileID := apimw.GetProfileID(r.Context())
 	id := chi.URLParam(r, "id")
 
-	transitioned, err := h.system.Deliveries.MarkRead(r.Context(), profileID, id)
+	transitioned, err := h.system.Deliveries.MarkRead(r.Context(), userID, profileID, id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mark notification read")
 		return
 	}
 	if !transitioned {
 		// Already read is fine (idempotent); unknown IDs are a 404.
-		exists, err := h.system.Deliveries.Exists(r.Context(), profileID, id)
+		exists, err := h.system.Deliveries.Exists(r.Context(), userID, profileID, id)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mark notification read")
 			return
@@ -248,7 +252,7 @@ func (h *NotificationsHandler) HandleReadAll(w http.ResponseWriter, r *http.Requ
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 
-	if _, err := h.system.Deliveries.MarkAllRead(r.Context(), profileID); err != nil {
+	if _, err := h.system.Deliveries.MarkAllRead(r.Context(), userID, profileID); err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mark notifications read")
 		return
 	}
@@ -274,8 +278,9 @@ func (h *NotificationsHandler) publishReadEvent(r *http.Request, userID int, pro
 
 // HandleGetPreferences handles GET /notifications/preferences.
 func (h *NotificationsHandler) HandleGetPreferences(w http.ResponseWriter, r *http.Request) {
+	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
-	prefs, err := h.system.Preferences.Get(r.Context(), profileID)
+	prefs, err := h.system.Preferences.Get(r.Context(), userID, profileID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to load notification preferences")
 		return
@@ -294,6 +299,7 @@ type updatePreferencesRequest struct {
 // HandleUpdatePreferences handles PUT /notifications/preferences. Fields are
 // optional; omitted fields keep their current value. Idempotent.
 func (h *NotificationsHandler) HandleUpdatePreferences(w http.ResponseWriter, r *http.Request) {
+	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())
 
 	var req updatePreferencesRequest
@@ -302,7 +308,7 @@ func (h *NotificationsHandler) HandleUpdatePreferences(w http.ResponseWriter, r 
 		return
 	}
 
-	prefs, err := h.system.Preferences.Patch(r.Context(), profileID, notifications.PreferencePatch{Enabled: req.Enabled, NotifyFavorites: req.NotifyFavorites, NotifyWatchlist: req.NotifyWatchlist, NotifyContinueWatching: req.NotifyContinueWatching, NotifyNextUp: req.NotifyNextUp})
+	prefs, err := h.system.Preferences.Patch(r.Context(), userID, profileID, notifications.PreferencePatch{Enabled: req.Enabled, NotifyFavorites: req.NotifyFavorites, NotifyWatchlist: req.NotifyWatchlist, NotifyContinueWatching: req.NotifyContinueWatching, NotifyNextUp: req.NotifyNextUp})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to save notification preferences")
 		return

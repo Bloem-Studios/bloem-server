@@ -3,7 +3,6 @@ package notifications
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/oklog/ulid/v2"
@@ -50,27 +49,26 @@ func (s *System) dispatchOperationalBatch(ctx context.Context, deliveries []Deli
 		}
 		return nil, nil
 	}
-	profileIDs := make([]string, 0, len(inserted))
-	seen := make(map[string]struct{}, len(inserted))
+	profiles := make([]profileKey, 0, len(inserted))
+	seen := make(map[profileKey]struct{}, len(inserted))
 	for _, row := range inserted {
-		if _, ok := seen[row.ProfileID]; ok {
+		key := profileKey{row.UserID, row.ProfileID}
+		if _, ok := seen[key]; ok {
 			continue
 		}
-		seen[row.ProfileID] = struct{}{}
-		profileIDs = append(profileIDs, row.ProfileID)
+		seen[key] = struct{}{}
+		profiles = append(profiles, key)
 	}
 
 	if opts.WebhookFilter != nil && s.webhookRepo != nil && s.Settings.WebhooksEnabled(ctx) {
-		hooksByProfile, err := s.webhookRepo.ListEnabledByProfiles(ctx, tx, profileIDs)
+		hooksByProfile, err := s.webhookRepo.ListEnabledByProfiles(ctx, tx, profiles)
 		if err != nil {
 			return nil, err
 		}
 		attempts := make([]DeliveryAttempt, 0, len(inserted))
 		for _, row := range inserted {
-			for _, hook := range hooksByProfile[row.ProfileID] {
-				// Profile IDs repeat across accounts (legacy "default"), so a
-				// target must also belong to the delivery's account.
-				if hook.UserID != row.UserID || !opts.WebhookFilter(hook) {
+			for _, hook := range hooksByProfile[profileKey{row.UserID, row.ProfileID}] {
+				if !opts.WebhookFilter(hook) {
 					continue
 				}
 				attempts = append(attempts, DeliveryAttempt{
@@ -85,16 +83,13 @@ func (s *System) dispatchOperationalBatch(ctx context.Context, deliveries []Deli
 		}
 	}
 	if s.webPushRepo != nil && s.Settings.WebPushEnabled(ctx) {
-		subsByProfile, err := s.webPushRepo.ListEnabledByProfiles(ctx, tx, profileIDs)
+		subsByProfile, err := s.webPushRepo.ListEnabledByProfiles(ctx, tx, profiles)
 		if err != nil {
 			return nil, err
 		}
 		attempts := make([]DeliveryAttempt, 0, len(inserted))
 		for _, row := range inserted {
-			for _, sub := range subsByProfile[row.ProfileID] {
-				if sub.UserID != row.UserID {
-					continue
-				}
+			for _, sub := range subsByProfile[profileKey{row.UserID, row.ProfileID}] {
 				attempts = append(attempts, DeliveryAttempt{
 					ID:                     ulid.Make().String(),
 					NotificationDeliveryID: row.ID,
@@ -108,16 +103,13 @@ func (s *System) dispatchOperationalBatch(ctx context.Context, deliveries []Deli
 	}
 	if s.pushDeviceRepo != nil {
 		if platforms := s.Settings.EnabledPushPlatforms(ctx); len(platforms) > 0 {
-			devicesByProfile, err := s.pushDeviceRepo.ListEnabledPushByProfiles(ctx, tx, profileIDs, platforms)
+			devicesByProfile, err := s.pushDeviceRepo.ListEnabledPushByProfiles(ctx, tx, profiles, platforms)
 			if err != nil {
 				return nil, err
 			}
 			attempts := make([]PushDeliveryAttempt, 0, len(inserted))
 			for _, row := range inserted {
-				devices := slices.DeleteFunc(slices.Clone(devicesByProfile[row.ProfileID]), func(device PushDevice) bool {
-					return device.UserID != row.UserID
-				})
-				attempts = append(attempts, newPushDeliveryAttempts(row.ID, devices)...)
+				attempts = append(attempts, newPushDeliveryAttempts(row.ID, devicesByProfile[profileKey{row.UserID, row.ProfileID}])...)
 			}
 			if err := s.pushDeviceRepo.EnqueuePushAttempts(ctx, tx, attempts); err != nil {
 				return nil, err

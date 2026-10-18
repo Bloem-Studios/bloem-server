@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/bloemClient";
+import { bloemV1Api } from "@/api/bloemClient";
 import type {
   Invitation,
   CreateInvitationRequest,
@@ -36,7 +36,7 @@ export function useAdminInvitations(context?: AdminContextSummary | null) {
             "safe",
             authority,
           ).then((data) => data.invitations ?? [])
-        : api<Invitation[]>("/admin/invitations").then((d) => d ?? []),
+        : bloemV1Api<Invitation[]>("/admin/invitations").then((d) => d ?? []),
     staleTime: ADMIN_STALE_TIME,
   });
 }
@@ -130,7 +130,7 @@ export function useCreateInvitation(context?: AdminContextSummary | null) {
             : undefined,
         };
       }
-      return api<SendInvitationResponse>(
+      return bloemV1Api<SendInvitationResponse>(
         "/admin/invitations",
         {
           method: "POST",
@@ -162,7 +162,7 @@ export function useResendInvitation(context?: AdminContextSummary | null) {
           claim_url: `${window.location.origin}/invite/${encodeURIComponent(data.claim_token)}`,
         };
       }
-      return api<SendInvitationResponse>(
+      return bloemV1Api<SendInvitationResponse>(
         `/admin/invitations/${id}/resend`,
         { method: "POST" },
         "none",
@@ -189,7 +189,7 @@ export function useRevokeInvitation(context?: AdminContextSummary | null) {
             "none",
             authority,
           )
-        : api(`/admin/invitations/${id}`, { method: "DELETE" }),
+        : bloemV1Api(`/admin/invitations/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       toast.success("Invitation revoked");
       queryClient.invalidateQueries({ queryKey: invitationsKey(context) });

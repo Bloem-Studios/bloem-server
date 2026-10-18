@@ -107,5 +107,12 @@ func audienceTicketPrincipal(w http.ResponseWriter, r *http.Request, am *AuthMid
 	} else {
 		r.Header.Del("X-Profile-Id")
 	}
+	// The ticket's PIN proof, never a caller-supplied one, is what a socket
+	// rechecks for the ticket's profile.
+	if claims.ProfileID != "" && principal.ProfileToken != "" {
+		r.Header.Set("X-Profile-Token", principal.ProfileToken)
+	} else {
+		r.Header.Del("X-Profile-Token")
+	}
 	return claims, true
 }

@@ -73,7 +73,9 @@ describe("AdminSectionCommandDialog", () => {
       act(() => frames.splice(0).forEach((callback) => callback(0)));
       await userEvent.keyboard("ogs");
       expect(searchBox).toHaveValue("logs");
-      expect(screen.getByRole("option", { name: /^Server LogServer log stream/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: /^Server LogServer log stream/ }),
+      ).toBeInTheDocument();
     } finally {
       frame.mockRestore();
     }

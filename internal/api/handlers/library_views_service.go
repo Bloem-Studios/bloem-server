@@ -24,9 +24,17 @@ import (
 // beyond the identity on the context: the access filter (which carries the
 // declared device) and the artwork size asked for.
 type SectionViewer struct {
-	Access     catalog.AccessFilter
-	ImageSize  imagesize.Size
-	Extensions url.Values
+	Access    catalog.AccessFilter
+	ImageSize imagesize.Size
+	// ImageWidths are per-slot target widths overriding ImageSize; only the
+	// native v2 API carries them.
+	ImageWidths imagesize.Widths
+	Extensions  url.Values
+}
+
+// Artwork is the viewer's artwork preference.
+func (v SectionViewer) Artwork() imagesize.Request {
+	return imagesize.Request{Size: v.ImageSize, Widths: v.ImageWidths}
 }
 
 func sectionViewerFromRequest(r *http.Request) SectionViewer {
@@ -160,11 +168,19 @@ func (h *SectionHandler) LibrarySections(ctx context.Context, libraryID int, vie
 	withItems := h.fetcher.FetchAll(ctx, resolved, &libraryID, nil, userID, profileID, accessFilter)
 	withItems = applyDiversityFilter(withItems)
 	withItems = dropEmptySeasonalSections(withItems)
-	return h.buildSections(ctx, withItems, &libraryID, viewer.Access, viewer.ImageSize), nil
+	return h.buildSections(ctx, withItems, &libraryID, viewer.Access, viewer.Artwork()), nil
 }
 
-// LibrarySectionItems answers one section of the library with its items.
+// LibrarySectionItems answers one section of the library with its items, or
+// an error when its items cannot be fetched.
 func (h *SectionHandler) LibrarySectionItems(ctx context.Context, libraryID int, sectionID string, viewer SectionViewer) (SectionView, error) {
+	return h.librarySectionItems(ctx, libraryID, sectionID, viewer, false)
+}
+
+// librarySectionItems is LibrarySectionItems. With emptyOnFetchError, a
+// section whose items cannot be fetched answers with no items, as the frozen
+// v1 endpoint always has.
+func (h *SectionHandler) librarySectionItems(ctx context.Context, libraryID int, sectionID string, viewer SectionViewer, emptyOnFetchError bool) (SectionView, error) {
 	if err := h.requireViewableLibrary(ctx, libraryID); err != nil {
 		return SectionView{}, err
 	}
@@ -180,12 +196,14 @@ func (h *SectionHandler) LibrarySectionItems(ctx context.Context, libraryID int,
 		withItems, fetchErr := h.fetcher.FetchOne(ctx, s, &libraryID, nil, userID, profileID, accessFilter)
 		if fetchErr != nil {
 			sections.LogFetchError(ctx, "api", s, fetchErr)
-			withItems = sections.SectionWithItems{
-				ResolvedSection: s,
-				Items:           []*models.MediaItem{},
+			// As on Home, a failed single section answers an error rather
+			// than an empty row; a deleted collection keeps its empty row.
+			if !emptyOnFetchError && !sections.IsMissingCollection(fetchErr) {
+				return SectionView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to load section")
 			}
+			withItems = sections.SectionWithItems{ResolvedSection: s, Items: []*models.MediaItem{}}
 		}
-		resp := h.buildSections(ctx, []sections.SectionWithItems{withItems}, &libraryID, viewer.Access, viewer.ImageSize)
+		resp := h.buildSections(ctx, []sections.SectionWithItems{withItems}, &libraryID, viewer.Access, viewer.Artwork())
 		if len(resp.Sections) == 0 {
 			return resolvedSectionResponse{
 				ID:          withItems.ID,

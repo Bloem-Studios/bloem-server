@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -48,5 +49,29 @@ func TestAudienceTicketWrongResourceDoesNotConsume(t *testing.T) {
 	}
 	if _, err := store.Consume(context.Background(), ticket, AudienceWatchTogetherWS, "room-1"); err != nil {
 		t.Fatalf("correct resource after mismatch: %v", err)
+	}
+}
+
+// A ticket keeps the minting request's PIN proof through the memory store
+// and drops one longer than any signed profile token.
+func TestAudienceTicketProfileProof(t *testing.T) {
+	store := NewAudienceTicketStore(nil)
+	for _, tc := range []struct {
+		name, proof, want string
+	}{
+		{"kept", "pin-proof", "pin-proof"},
+		{"oversized", strings.Repeat("x", maxProfileProofBytes+1), ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			minted := NewAudienceTicket(AudienceEventsWS, &Claims{UserID: 7, SessionID: "session"}, "profile-1", "").WithProfileProof(tc.proof)
+			ticket, _, err := store.Mint(context.Background(), minted)
+			if err != nil {
+				t.Fatal(err)
+			}
+			principal, err := store.Consume(context.Background(), ticket, AudienceEventsWS, "")
+			if err != nil || principal.ProfileToken != tc.want {
+				t.Fatalf("consumed proof = %q, %v; want %q", principal.ProfileToken, err, tc.want)
+			}
+		})
 	}
 }

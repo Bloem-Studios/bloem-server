@@ -104,6 +104,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/wI2L/jsondiff v0.7.1 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yargevad/filepathx v1.0.0 // indirect
@@ -121,7 +122,7 @@ require (
 )
 
 require (
-	github.com/Silo-Server/silo-plugin-sdk v0.25.0
+	github.com/Silo-Server/silo-plugin-sdk v0.28.0
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.14 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.30 // indirect

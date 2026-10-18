@@ -15,8 +15,8 @@ type BloemEventsSocketV2 struct {
 	*bloemSocketAuthority
 }
 
-func NewBloemEventsSocketV2(events *EventsHandler, tickets *evt.SocketTicketStore, sessions bloemSocketSessions, users access.UserRepository, resolver apimw.ViewerResolver, primary apimw.PrimaryProfileChecker, tenants apimw.TenantResolver, profiles bloemSocketProfiles, publicURL string) *BloemEventsSocketV2 {
-	socket := NewEventsSocketV2(events, tickets, sessions, users, resolver, primary, publicURL)
+func NewBloemEventsSocketV2(events *EventsHandler, tickets *evt.SocketTicketStore, sessions bloemSocketSessions, users access.UserRepository, resolver apimw.ViewerResolver, actingAdmin apimw.ActingAdminDecider, tenants apimw.TenantResolver, profiles bloemSocketProfiles, publicURL string) *BloemEventsSocketV2 {
+	socket := NewEventsSocketV2(events, tickets, sessions, users, resolver, actingAdmin, publicURL)
 	h := &BloemEventsSocketV2{EventsSocketV2: socket, bloemSocketAuthority: &bloemSocketAuthority{sessions: sessions, users: users, tenants: tenants, profiles: profiles, base: socket.Validate}}
 	socket.Validate = h.validate
 	return h

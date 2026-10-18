@@ -12,7 +12,7 @@ public object GeneratedContract {
     public const val SERVER_REVISION: String = "f7c31eaf116eb7b38953a758ae2bf7c67e6bf5fc"
     public const val GENERATOR_VERSION: Int = 1
     /** Digest of the normalised type graph; changes only when a wire shape changes. */
-    public const val CONTRACT_DIGEST: String = "sha256:b37f23a0c9f0526133f49478fde74efa0578f4e42555f8bd7c11548b1a169461"
+    public const val CONTRACT_DIGEST: String = "sha256:a9826bf2144e30499490e3e3225fb7e0ae45139ced2b24301be2d7bc711ac1c1"
     /** Fully qualified class name → direction (request, response or both). */
     public val DIRECTION: Map<String, String> = mapOf(
         "org.bloemserver.bloem.contract.ambience.Assets" to "response",
@@ -109,6 +109,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.apiv2.AdminPluginPresentation" to "response",
         "org.bloemserver.bloem.contract.apiv2.AdminPluginRepository" to "response",
         "org.bloemserver.bloem.contract.apiv2.AdminPluginRepositoryCollection" to "response",
+        "org.bloemserver.bloem.contract.apiv2.AdminPluginRequestRouter" to "response",
         "org.bloemserver.bloem.contract.apiv2.AdminPluginRuntime" to "response",
         "org.bloemserver.bloem.contract.apiv2.AdminPluginTaskBinding" to "response",
         "org.bloemserver.bloem.contract.apiv2.AdminPolicyDecision" to "response",
@@ -435,6 +436,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.apiv2.NotificationPushCapability" to "response",
         "org.bloemserver.bloem.contract.apiv2.NotificationPushDisplay" to "response",
         "org.bloemserver.bloem.contract.apiv2.NotificationRelayRegistration" to "response",
+        "org.bloemserver.bloem.contract.apiv2.NotificationSeriesCapability" to "response",
         "org.bloemserver.bloem.contract.apiv2.NotificationServerChannel" to "response",
         "org.bloemserver.bloem.contract.apiv2.NotificationServerChannelCollection" to "response",
         "org.bloemserver.bloem.contract.apiv2.NotificationWebPushCapability" to "response",
@@ -616,7 +618,6 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.apiv2.TokenPair" to "response",
         "org.bloemserver.bloem.contract.apiv2.TrailerRefresh" to "response",
         "org.bloemserver.bloem.contract.apiv2.TrailersCapability" to "response",
-        "org.bloemserver.bloem.contract.apiv2.TraktCollectionImport" to "request",
         "org.bloemserver.bloem.contract.apiv2.TranslateDescription" to "request",
         "org.bloemserver.bloem.contract.apiv2.UnmatchedItem" to "response",
         "org.bloemserver.bloem.contract.apiv2.UnmatchedItemCollection" to "response",
@@ -987,6 +988,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.playback.EventEnvelope" to "response",
         "org.bloemserver.bloem.contract.playback.FailureV3" to "request",
         "org.bloemserver.bloem.contract.playback.HDRCapabilitiesV3" to "request",
+        "org.bloemserver.bloem.contract.playback.HLSSubtitleRenditionV3" to "response",
         "org.bloemserver.bloem.contract.playback.HeaderRefreshModeV3" to "response",
         "org.bloemserver.bloem.contract.playback.HelloCapabilities" to "request",
         "org.bloemserver.bloem.contract.playback.HelloClientInfo" to "request",
@@ -1209,6 +1211,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.apiv2.AdminPluginPresentation" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.AdminPluginRepository" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.AdminPluginRepositoryCollection" to "bloem",
+        "org.bloemserver.bloem.contract.apiv2.AdminPluginRequestRouter" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.AdminPluginRuntime" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.AdminPluginTaskBinding" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.AdminPolicyDecision" to "bloem",
@@ -1535,6 +1538,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.apiv2.NotificationPushCapability" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.NotificationPushDisplay" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.NotificationRelayRegistration" to "bloem",
+        "org.bloemserver.bloem.contract.apiv2.NotificationSeriesCapability" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.NotificationServerChannel" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.NotificationServerChannelCollection" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.NotificationWebPushCapability" to "bloem",
@@ -1716,7 +1720,6 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.apiv2.TokenPair" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.TrailerRefresh" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.TrailersCapability" to "bloem",
-        "org.bloemserver.bloem.contract.apiv2.TraktCollectionImport" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.TranslateDescription" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.UnmatchedItem" to "bloem",
         "org.bloemserver.bloem.contract.apiv2.UnmatchedItemCollection" to "bloem",
@@ -2087,6 +2090,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.playback.EventEnvelope" to "upstream-compat",
         "org.bloemserver.bloem.contract.playback.FailureV3" to "upstream-compat",
         "org.bloemserver.bloem.contract.playback.HDRCapabilitiesV3" to "upstream-compat",
+        "org.bloemserver.bloem.contract.playback.HLSSubtitleRenditionV3" to "upstream-compat",
         "org.bloemserver.bloem.contract.playback.HeaderRefreshModeV3" to "upstream-compat",
         "org.bloemserver.bloem.contract.playback.HelloCapabilities" to "upstream-compat",
         "org.bloemserver.bloem.contract.playback.HelloClientInfo" to "upstream-compat",

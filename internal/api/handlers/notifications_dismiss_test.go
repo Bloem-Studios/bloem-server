@@ -18,13 +18,13 @@ type fakeDismissStore struct {
 	seenProfile string
 }
 
-func (f *fakeDismissStore) Dismiss(_ context.Context, profileID, id string) (bool, error) {
+func (f *fakeDismissStore) Dismiss(_ context.Context, _ int, profileID, id string) (bool, error) {
 	f.seenProfile = profileID
 	f.dismissed = append(f.dismissed, id)
 	return f.transition, f.err
 }
 
-func (f *fakeDismissStore) Exists(context.Context, string, string) (bool, error) {
+func (f *fakeDismissStore) Exists(context.Context, int, string, string) (bool, error) {
 	return f.exists, nil
 }
 

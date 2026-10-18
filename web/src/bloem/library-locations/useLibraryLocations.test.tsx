@@ -101,7 +101,11 @@ it("refreshes retained references at save and keeps original edit token", async 
   const { result } = renderHook(() => useLibraryLocations(7, "ebooks"));
   await waitFor(() => expect(result.current.ready).toBe(true));
   await act(async () => {
-    await result.current.save({ name: "Books", type: "ebooks", paths: [] } as CreateLibraryRequest);
+    await result.current.save({
+      name: "Books",
+      type: "ebooks",
+      paths: [],
+    } satisfies CreateLibraryRequest);
   });
   expect(saved).toMatchObject({
     expected_edit_token: "original-token",
@@ -299,7 +303,7 @@ it("creates filesystem plus two S3 prefixes and a Bookwarehouse collection when 
       type: "ebooks",
       paths: ["/books"],
       metadata_language: "fr",
-    } as CreateLibraryRequest);
+    } satisfies CreateLibraryRequest);
   });
   expect(created.library).toMatchObject({ paths: ["/books"], metadata_language: "fr" });
   expect(created.selections).toHaveLength(3);
@@ -327,7 +331,7 @@ it("does not permit another create after an unknown mutation outcome even on rel
       name: "Books",
       type: "ebooks",
       paths: ["/books"],
-    } as CreateLibraryRequest);
+    } satisfies CreateLibraryRequest);
   });
   await act(async () => {
     await result.current.reload();
@@ -337,7 +341,7 @@ it("does not permit another create after an unknown mutation outcome even on rel
       name: "Books",
       type: "ebooks",
       paths: ["/books"],
-    } as CreateLibraryRequest);
+    } satisfies CreateLibraryRequest);
   });
   expect(writes).toBe(1);
 });

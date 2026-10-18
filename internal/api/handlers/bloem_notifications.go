@@ -112,7 +112,7 @@ func (h *NotificationsHandler) HandleBloemNotificationList(w http.ResponseWriter
 		before, through = &pos.Before, &pos.Through
 	}
 
-	view, err := h.ListNotificationInbox(r.Context(), profileID, r.URL.Query().Get("status") == "unread", limit, before, through)
+	view, err := h.ListNotificationInbox(r.Context(), apimw.GetUserID(r.Context()), profileID, r.URL.Query().Get("status") == "unread", limit, before, through)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to list notifications")
 		return
@@ -162,7 +162,7 @@ func (h *NotificationsHandler) HandleBloemNotificationSync(w http.ResponseWriter
 		since = &cursor
 	}
 
-	rows, more, unread, err := h.SyncNotificationInbox(r.Context(), profileID, limit, since)
+	rows, more, unread, err := h.SyncNotificationInbox(r.Context(), apimw.GetUserID(r.Context()), profileID, limit, since)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to sync notifications")
 		return
@@ -195,7 +195,7 @@ func bloemSyncPageOf(rows []notifications.DeliveryRowPayload, more bool, unread 
 // Another profile's row is a 404, not a 403: whether it exists is not this
 // viewer's business.
 func (h *NotificationsHandler) HandleBloemNotificationGet(w http.ResponseWriter, r *http.Request) {
-	row, err := h.GetNotificationInboxItem(r.Context(), apimw.GetProfileID(r.Context()), chi.URLParam(r, "id"))
+	row, err := h.GetNotificationInboxItem(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), chi.URLParam(r, "id"))
 	if err != nil {
 		writeAPIError(w, err)
 		return

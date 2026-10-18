@@ -23,11 +23,11 @@ type fakeSimilarEngine struct {
 	err    error
 }
 
-func (f *fakeSimilarEngine) SimilarItems(_ context.Context, _ string, _ int) ([]recommendations.ScoredItem, error) {
+func (f *fakeSimilarEngine) SimilarItems(context.Context, int, string, string, int, catalog.AccessFilter) ([]recommendations.ScoredItem, error) {
 	return f.scored, f.err
 }
 
-func (f *fakeSimilarEngine) BecauseYouWatched(context.Context, int, string, string, int) ([]recommendations.ScoredItem, error) {
+func (f *fakeSimilarEngine) BecauseYouWatched(context.Context, int, string, string, int, catalog.AccessFilter) ([]recommendations.ScoredItem, error) {
 	return nil, nil
 }
 
@@ -68,6 +68,14 @@ func (fakeSimilarPresigner) PresignURL(_ context.Context, path string, _ string)
 	return "https://images.example/" + path
 }
 
+func (p fakeSimilarPresigner) PresignURLsWithExpiry(ctx context.Context, paths []string, variant string) map[string]catalog.ResolvedImageURL {
+	out := make(map[string]catalog.ResolvedImageURL, len(paths))
+	for _, path := range paths {
+		out[path] = catalog.ResolvedImageURL{URL: p.PresignURL(ctx, path, variant)}
+	}
+	return out
+}
+
 func newSimilarResolvedRequest(t *testing.T, itemID string) *http.Request {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/recommendations/similar/"+itemID+"/resolved", nil)
@@ -96,6 +104,7 @@ func TestHandleSimilarResolvedPreservesTheRecommendersOrder(t *testing.T) {
 	}}
 	handler := NewRecommendationsHandler(engine, nil, nil, nil, nil, true)
 	handler.Fetcher = fetcher
+	handler.accessibleIDs = fakeAccessibleIDs{}
 	handler.DetailSvc = fakeSimilarPresigner{}
 
 	rr := httptest.NewRecorder()
@@ -129,6 +138,7 @@ func TestHandleSimilarResolvedDropsAReferenceTheFetchCouldNotAnswer(t *testing.T
 	}}
 	handler := NewRecommendationsHandler(engine, nil, nil, nil, nil, true)
 	handler.Fetcher = fetcher
+	handler.accessibleIDs = fakeAccessibleIDs{}
 
 	rr := httptest.NewRecorder()
 	handler.HandleSimilarResolved(rr, newSimilarResolvedRequest(t, "origin"))
@@ -149,6 +159,7 @@ func TestHandleSimilarResolvedDisabledEnginePassesTheRequestsAccessFilterThrough
 	}}
 	handler := NewRecommendationsHandler(engine, nil, nil, nil, nil, true)
 	handler.Fetcher = fetcher
+	handler.accessibleIDs = fakeAccessibleIDs{}
 
 	rr := httptest.NewRecorder()
 	handler.HandleSimilarResolved(rr, newSimilarResolvedRequest(t, "origin"))
@@ -158,5 +169,31 @@ func TestHandleSimilarResolvedDisabledEnginePassesTheRequestsAccessFilterThrough
 	}
 	if fetcher.lastAccess.ProfileID != "profile-1" {
 		t.Errorf("access filter profile = %q, want profile-1", fetcher.lastAccess.ProfileID)
+	}
+}
+
+// An anchor the viewer cannot see answers an empty rail, as the shared
+// SimilarItems service does for /similar: the engine is not asked.
+func TestHandleSimilarResolvedHidesAnInvisibleAnchor(t *testing.T) {
+	engine := &fakeSimilarEngine{scored: []recommendations.ScoredItem{{MediaItemID: "a", Score: 1}}}
+	fetcher := &fakeSimilarFetcher{items: map[string]*models.MediaItem{
+		"a": {ContentID: "a", Type: "movie", Title: "Alpha"},
+	}}
+	handler := NewRecommendationsHandler(engine, nil, nil, nil, nil, true)
+	handler.Fetcher = fetcher
+	handler.accessibleIDs = fakeAccessibleIDs{hidden: map[string]struct{}{"origin": {}}}
+
+	rr := httptest.NewRecorder()
+	handler.HandleSimilarResolved(rr, newSimilarResolvedRequest(t, "origin"))
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	var body resolvedSimilarItemsResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if len(body.Items) != 0 {
+		t.Fatalf("items = %+v, want none for a hidden anchor", body.Items)
 	}
 }

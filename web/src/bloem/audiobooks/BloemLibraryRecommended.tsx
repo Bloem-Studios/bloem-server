@@ -82,6 +82,7 @@ export default function BloemLibraryRecommended({
 
   useEffect(() => {
     const activeIds = layout.map((section) => section.id);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a new layout or library restarts section loading from the cache
     setLoadedSections(
       collectCachedHomeSections(layout, (sectionId) =>
         queryClient.getQueryData<HomeSectionItemsResponse>(
@@ -119,6 +120,7 @@ export default function BloemLibraryRecommended({
     if (nextIds.length === 0) return;
 
     const generation = loadGenerationRef.current;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the next batch is marked in flight before its requests start
     setInFlightIds((prev) => {
       const next = new Set(prev);
       nextIds.forEach((id) => next.add(id));

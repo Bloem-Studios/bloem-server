@@ -61,7 +61,7 @@ function useRetainedSettingsBaseline(
     },
   };
 }
-/* eslint-enable react-hooks/refs */
+/* eslint-enable react-hooks/refs -- ends the baseline-capture exception */
 
 export type CatalogSearchStatus = V2Result<"GET /api/v2/admin/catalog/search/status">;
 

@@ -148,7 +148,7 @@ func TestDeliveryRepositoryFiltersExpiredAndDismissed(t *testing.T) {
 		t.Fatalf("expires_at not derived from body: %v %v", expires, err)
 	}
 
-	inbox, err := repo.ListInbox(ctx, profile, false, false, 10, nil)
+	inbox, err := repo.ListInbox(ctx, 1, profile, false, 10, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,50 +162,50 @@ func TestDeliveryRepositoryFiltersExpiredAndDismissed(t *testing.T) {
 	}
 
 	// Dismiss: the dismissible row transitions once; the critical row refuses.
-	if ok, err := repo.Dismiss(ctx, profile, "active"); err != nil || !ok {
+	if ok, err := repo.Dismiss(ctx, 1, profile, "active"); err != nil || !ok {
 		t.Fatalf("dismiss active: ok=%v err=%v", ok, err)
 	}
-	if ok, err := repo.Dismiss(ctx, profile, "active"); err != nil || ok {
+	if ok, err := repo.Dismiss(ctx, 1, profile, "active"); err != nil || ok {
 		t.Fatalf("second dismiss should be a no-op: ok=%v err=%v", ok, err)
 	}
-	if _, err := repo.Dismiss(ctx, profile, "critical"); !errors.Is(err, ErrDeliveryNotDismissible) {
+	if _, err := repo.Dismiss(ctx, 1, profile, "critical"); !errors.Is(err, ErrDeliveryNotDismissible) {
 		t.Fatalf("critical dismiss: got %v, want ErrDeliveryNotDismissible", err)
 	}
-	if ok, err := repo.Dismiss(ctx, "other-profile", "plain"); err != nil || ok {
+	if ok, err := repo.Dismiss(ctx, 1, "other-profile", "plain"); err != nil || ok {
 		t.Fatalf("dismiss across profiles must not transition: ok=%v err=%v", ok, err)
 	}
-	if ok, err := repo.Dismiss(ctx, profile, "expired"); err != nil || ok {
+	if ok, err := repo.Dismiss(ctx, 1, profile, "expired"); err != nil || ok {
 		t.Fatalf("expired rows are not dismissible: ok=%v err=%v", ok, err)
 	}
-	if row, err := repo.GetByID(ctx, profile, "expired"); err != nil || row != nil {
+	if row, err := repo.GetByID(ctx, 1, profile, "expired"); err != nil || row != nil {
 		t.Fatalf("GetByID must hide expired rows: row=%v err=%v", row, err)
 	}
 	// Plain rows (no body) can be dismissed too.
-	if ok, err := repo.Dismiss(ctx, profile, "plain"); err != nil || !ok {
+	if ok, err := repo.Dismiss(ctx, 1, profile, "plain"); err != nil || !ok {
 		t.Fatalf("dismiss plain: ok=%v err=%v", ok, err)
 	}
 
-	inbox, _ = repo.ListInbox(ctx, profile, false, false, 10, nil)
+	inbox, _ = repo.ListInbox(ctx, 1, profile, false, 10, nil)
 	if got := rowIDs(inbox); len(got) != 1 || got[0] != "critical" {
 		t.Fatalf("default inbox should hide dismissed rows: %v", got)
 	}
-	inbox, _ = repo.ListInbox(ctx, profile, false, true, 10, nil)
+	inbox, _ = repo.ListInbox(ctx, 1, profile, false, 10, nil, true)
 	if got := rowIDs(inbox); len(got) != 3 || containsString(got, "expired") {
 		t.Fatalf("include_dismissed inbox: %v", got)
 	}
 	// Dismiss never touched read state.
-	if unread, _ := repo.UnreadCount(ctx, profile); unread != 1 {
+	if unread, _ := repo.UnreadCount(ctx, 1, profile); unread != 1 {
 		t.Fatalf("unread count = %d, want 1 (only the non-dismissed critical row counts)", unread)
 	}
-	synced, _ := repo.ListSync(ctx, profile, nil, 10)
+	synced, _ := repo.ListSync(ctx, 1, profile, nil, 10)
 	if got := rowIDs(synced); len(got) != 1 || got[0] != "critical" {
 		t.Fatalf("sync default: %v", got)
 	}
-	synced, _ = repo.ListSync(ctx, profile, &Cursor{CreatedAt: past, ID: ""}, 10, true)
+	synced, _ = repo.ListSync(ctx, 1, profile, &Cursor{CreatedAt: past, ID: ""}, 10, true)
 	if got := rowIDs(synced); len(got) != 3 || containsString(got, "expired") {
 		t.Fatalf("sync include_dismissed from cursor: %v", got)
 	}
-	recent, _ := repo.RecentUnread(ctx, profile, 10)
+	recent, _ := repo.RecentUnread(ctx, 1, profile, 10)
 	if got := rowIDs(recent); len(got) != 1 || got[0] != "critical" {
 		t.Fatalf("snapshot: %v", got)
 	}
@@ -260,7 +260,7 @@ func TestAnnouncementServiceCreateFansOutAndWithdraws(t *testing.T) {
 	system.Announcements = svc
 
 	// p1-optout has the master toggle off: announcements skip it, alerts do not.
-	optOut := DefaultPreferences("p1-optout")
+	optOut := DefaultPreferences(1, "p1-optout")
 	optOut.Enabled = false
 	if err := system.Preferences.Upsert(ctx, optOut); err != nil {
 		t.Fatal(err)
@@ -316,7 +316,7 @@ func TestAnnouncementServiceCreateFansOutAndWithdraws(t *testing.T) {
 	}
 
 	// Withdraw: p1 read the announcement (row expires), p2 did not (row deleted).
-	if _, err := system.Deliveries.MarkRead(ctx, "p1", dispatchedID(dispatcher, "p1")); err != nil {
+	if _, err := system.Deliveries.MarkRead(ctx, 1, "p1", dispatchedID(dispatcher, "p1")); err != nil {
 		t.Fatal(err)
 	}
 	if err := svc.Withdraw(ctx, created.ID); err != nil {
@@ -329,8 +329,8 @@ func TestAnnouncementServiceCreateFansOutAndWithdraws(t *testing.T) {
 	if remaining != 1 {
 		t.Fatalf("unread rows should be deleted on withdraw; %d remain", remaining)
 	}
-	for _, profile := range []string{"p1", "p2"} {
-		rows, err := system.Deliveries.ListInbox(ctx, profile, false, true, 10, nil)
+	for userID, profile := range map[int]string{1: "p1", 2: "p2"} {
+		rows, err := system.Deliveries.ListInbox(ctx, userID, profile, false, 10, nil, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -341,7 +341,7 @@ func TestAnnouncementServiceCreateFansOutAndWithdraws(t *testing.T) {
 		}
 	}
 	// The read-then-withdrawn row is expired: GET /notifications/{id} 404s.
-	if row, err := system.Deliveries.GetByID(ctx, "p1", dispatchedID(dispatcher, "p1")); err != nil || row != nil {
+	if row, err := system.Deliveries.GetByID(ctx, 1, "p1", dispatchedID(dispatcher, "p1")); err != nil || row != nil {
 		t.Fatalf("withdrawn read row must not be fetchable by id: row=%v err=%v", row, err)
 	}
 	got, _ := svc.repo.Get(ctx, created.ID)

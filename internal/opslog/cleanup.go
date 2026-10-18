@@ -130,7 +130,7 @@ func LoadRetentionPolicy(ctx context.Context, store SettingsStore) (RetentionPol
 
 	rawBuckets, err := store.Get(ctx, keyBucketPolicies)
 	if err != nil || strings.TrimSpace(rawBuckets) == "" {
-		return policy, nil
+		return policy, nil //nolint:nilerr // like the global limits above, an unreadable bucket list keeps the defaults
 	}
 
 	var buckets []BucketPolicy

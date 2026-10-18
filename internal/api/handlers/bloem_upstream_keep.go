@@ -12,7 +12,6 @@ var (
 
 var (
 	_ adminUserProfileRow
-	_ notificationApplePushDisplayResponse
 	_ libraryCollectionGroupsListResponse
 	_ createLibraryCollectionGroupRequest
 	_ updateLibraryCollectionGroupRequest

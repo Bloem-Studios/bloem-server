@@ -3,6 +3,8 @@ package api
 import (
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -12,10 +14,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/music"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
-	"github.com/Silo-Server/silo-server/internal/recommendations"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/go-chi/chi/v5"
 )
 
 // bloemClientSurface is the native client surface: what a television or a phone
@@ -168,12 +168,12 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	progress.EventsHub = deps.EventsHub
 	progress.SettingsRepo = settings
 	progress.LibraryLookup = catalog.NewLibraryItemRepository(deps.DB)
-	// Recommendation staleness is driven by watching, so a v2 sync marks the
-	// taste profile stale exactly as a v1 sync does. A nil worker leaves the
-	// refresh unqueued, which is what a deployment with recommendations off
-	// wants.
-	progress.SetProfileStaler(recommendations.NewRepo(deps.DB))
-	progress.SetProfileRefreshRequester(deps.RecWorker)
+	// Watching changes the profile's recommendation signals, so a Bloem sync
+	// notifies the worker exactly as a v1 sync does. Without a worker
+	// (recommendations off) nothing is notified.
+	if deps.RecWorker != nil {
+		progress.SetSignalsChangedNotifier(deps.RecWorker)
+	}
 	surface.progress = progress
 
 	if deps.Config != nil {

@@ -582,10 +582,6 @@
       "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
     },
     {
-      "type": "internal/api/handlers.UserImportTraktRequest",
-      "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
-    },
-    {
       "type": "internal/api/handlers.UserImportView",
       "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
     },
@@ -1534,10 +1530,6 @@
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     },
     {
-      "type": "internal/apiv2.AdminTraktImport",
-      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
-    },
-    {
       "type": "internal/apiv2.AdminUser",
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     },
@@ -1984,6 +1976,46 @@
     {
       "type": "internal/apiv2.ServerEndpointPublic",
       "reason": "Upstream Silo server identity/connection discovery document (API v2, synced 2026-09-23); Bloem native clients use their own LAN/identity path and do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.ServerLocalRoute",
+      "reason": "Upstream Silo connections document local-network route (API v2, synced 2026-10-18); Bloem native clients use their own LAN/identity path and do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.ProgressCapabilities",
+      "reason": "Upstream Silo watch-progress capability document (API v2, synced 2026-10-18); Bloem native clients do not clear resume positions through it yet."
+    },
+    {
+      "type": "internal/apiv2.AdminRecommendationEmbeddingsReset",
+      "reason": "Upstream Silo administrator recommendation-job API (API v2, synced 2026-10-18); administrators use the bundled web, and Bloem native clients do not decode it."
+    },
+    {
+      "type": "internal/apiv2.AdminRecommendationJobRun",
+      "reason": "Upstream Silo administrator recommendation-job API (API v2, synced 2026-10-18); administrators use the bundled web, and Bloem native clients do not decode it."
+    },
+    {
+      "type": "internal/apiv2.AdminRecommendationStaleSweep",
+      "reason": "Upstream Silo administrator recommendation-job API (API v2, synced 2026-10-18); administrators use the bundled web, and Bloem native clients do not decode it."
+    },
+    {
+      "type": "internal/apiv2.DeviceUpdate",
+      "reason": "Upstream Silo device rename request (API v2, synced 2026-10-18); Bloem native clients do not rename devices through it yet."
+    },
+    {
+      "type": "internal/apiv2.NotInterestedEntry",
+      "reason": "Upstream Silo recommendation Not interested marks (API v2, synced 2026-10-18); Bloem native clients do not decode them yet."
+    },
+    {
+      "type": "internal/apiv2.NotificationEpisodeRef",
+      "reason": "Upstream Silo notified-series listing (API v2, synced 2026-10-18); Bloem native clients do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.NotificationSeries",
+      "reason": "Upstream Silo notified-series listing (API v2, synced 2026-10-18); Bloem native clients do not decode it yet."
+    },
+    {
+      "type": "internal/apiv2.NotificationSeriesReasons",
+      "reason": "Upstream Silo notified-series listing (API v2, synced 2026-10-18); Bloem native clients do not decode it yet."
     },
     {
       "type": "internal/apiv2.ServerIdentity",

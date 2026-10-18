@@ -2256,10 +2256,6 @@
           "direction": "response"
         },
         {
-          "type": "TraktCollectionImport",
-          "direction": "request"
-        },
-        {
           "type": "TranslateDescription",
           "direction": "request"
         },

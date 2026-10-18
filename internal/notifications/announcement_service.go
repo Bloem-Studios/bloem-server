@@ -116,22 +116,22 @@ func (s *AnnouncementService) filterOptedOut(ctx context.Context, recipients []A
 	if s.system == nil || s.system.Preferences == nil || s.system.pool == nil || len(recipients) == 0 {
 		return recipients, nil
 	}
-	profileIDs := make([]string, 0, len(recipients))
+	profiles := make([]profileKey, 0, len(recipients))
 	for _, r := range recipients {
-		profileIDs = append(profileIDs, r.ProfileID)
+		profiles = append(profiles, profileKey{r.UserID, r.ProfileID})
 	}
 	tx, err := s.system.pool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin preferences read: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	prefs, err := s.system.Preferences.GetMany(ctx, tx, profileIDs)
+	prefs, err := s.system.Preferences.GetMany(ctx, tx, profiles)
 	if err != nil {
 		return nil, err
 	}
 	out := recipients[:0]
 	for _, r := range recipients {
-		if p, ok := prefs[r.ProfileID]; ok && !p.Enabled {
+		if p, ok := prefs[profileKey{r.UserID, r.ProfileID}]; ok && !p.Enabled {
 			continue
 		}
 		out = append(out, r)

@@ -156,8 +156,7 @@ function ProviderForm({
       alive.current = false;
       active.current?.abort();
     };
-    // The non-secret scope captures every authority boundary used above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the non-secret scope captures every authority boundary used above
   }, [scope]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {

@@ -66,3 +66,17 @@ func (t AudienceTicket) Claims() *Claims {
 	}
 	return claims
 }
+
+// maxProfileProofBytes is well above any signed profile token. A longer value
+// is dropped, so a PIN-locked profile then fails its proof check, which closes
+// rather than opens access.
+const maxProfileProofBytes = 4 << 10
+
+// WithProfileProof keeps profileToken, the minting request's PIN proof for the
+// ticket's profile, with the ticket.
+func (t AudienceTicket) WithProfileProof(profileToken string) AudienceTicket {
+	if len(profileToken) <= maxProfileProofBytes {
+		t.ProfileToken = profileToken
+	}
+	return t
+}

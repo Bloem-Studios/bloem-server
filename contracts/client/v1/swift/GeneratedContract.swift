@@ -12,7 +12,7 @@ public enum GeneratedContract {
     public static let SERVER_REVISION: String = "f7c31eaf116eb7b38953a758ae2bf7c67e6bf5fc"
     public static let GENERATOR_VERSION: Int = 1
     /// Digest of the normalised type graph; changes only when a wire shape changes.
-    public static let CONTRACT_DIGEST: String = "sha256:b37f23a0c9f0526133f49478fde74efa0578f4e42555f8bd7c11548b1a169461"
+    public static let CONTRACT_DIGEST: String = "sha256:a9826bf2144e30499490e3e3225fb7e0ae45139ced2b24301be2d7bc711ac1c1"
     /// Qualified type name → direction (request, response or both).
     public static let DIRECTION: [String: String] = [
         "Ambience.Assets": "response",
@@ -109,6 +109,7 @@ public enum GeneratedContract {
         "Apiv2.AdminPluginPresentation": "response",
         "Apiv2.AdminPluginRepository": "response",
         "Apiv2.AdminPluginRepositoryCollection": "response",
+        "Apiv2.AdminPluginRequestRouter": "response",
         "Apiv2.AdminPluginRuntime": "response",
         "Apiv2.AdminPluginTaskBinding": "response",
         "Apiv2.AdminPolicyDecision": "response",
@@ -435,6 +436,7 @@ public enum GeneratedContract {
         "Apiv2.NotificationPushCapability": "response",
         "Apiv2.NotificationPushDisplay": "response",
         "Apiv2.NotificationRelayRegistration": "response",
+        "Apiv2.NotificationSeriesCapability": "response",
         "Apiv2.NotificationServerChannel": "response",
         "Apiv2.NotificationServerChannelCollection": "response",
         "Apiv2.NotificationWebPushCapability": "response",
@@ -616,7 +618,6 @@ public enum GeneratedContract {
         "Apiv2.TokenPair": "response",
         "Apiv2.TrailerRefresh": "response",
         "Apiv2.TrailersCapability": "response",
-        "Apiv2.TraktCollectionImport": "request",
         "Apiv2.TranslateDescription": "request",
         "Apiv2.UnmatchedItem": "response",
         "Apiv2.UnmatchedItemCollection": "response",
@@ -987,6 +988,7 @@ public enum GeneratedContract {
         "Playback.EventEnvelope": "response",
         "Playback.FailureV3": "request",
         "Playback.HDRCapabilitiesV3": "request",
+        "Playback.HLSSubtitleRenditionV3": "response",
         "Playback.HeaderRefreshModeV3": "response",
         "Playback.HelloCapabilities": "request",
         "Playback.HelloClientInfo": "request",
@@ -1209,6 +1211,7 @@ public enum GeneratedContract {
         "Apiv2.AdminPluginPresentation": "bloem",
         "Apiv2.AdminPluginRepository": "bloem",
         "Apiv2.AdminPluginRepositoryCollection": "bloem",
+        "Apiv2.AdminPluginRequestRouter": "bloem",
         "Apiv2.AdminPluginRuntime": "bloem",
         "Apiv2.AdminPluginTaskBinding": "bloem",
         "Apiv2.AdminPolicyDecision": "bloem",
@@ -1535,6 +1538,7 @@ public enum GeneratedContract {
         "Apiv2.NotificationPushCapability": "bloem",
         "Apiv2.NotificationPushDisplay": "bloem",
         "Apiv2.NotificationRelayRegistration": "bloem",
+        "Apiv2.NotificationSeriesCapability": "bloem",
         "Apiv2.NotificationServerChannel": "bloem",
         "Apiv2.NotificationServerChannelCollection": "bloem",
         "Apiv2.NotificationWebPushCapability": "bloem",
@@ -1716,7 +1720,6 @@ public enum GeneratedContract {
         "Apiv2.TokenPair": "bloem",
         "Apiv2.TrailerRefresh": "bloem",
         "Apiv2.TrailersCapability": "bloem",
-        "Apiv2.TraktCollectionImport": "bloem",
         "Apiv2.TranslateDescription": "bloem",
         "Apiv2.UnmatchedItem": "bloem",
         "Apiv2.UnmatchedItemCollection": "bloem",
@@ -2087,6 +2090,7 @@ public enum GeneratedContract {
         "Playback.EventEnvelope": "upstream-compat",
         "Playback.FailureV3": "upstream-compat",
         "Playback.HDRCapabilitiesV3": "upstream-compat",
+        "Playback.HLSSubtitleRenditionV3": "upstream-compat",
         "Playback.HeaderRefreshModeV3": "upstream-compat",
         "Playback.HelloCapabilities": "upstream-compat",
         "Playback.HelloClientInfo": "upstream-compat",

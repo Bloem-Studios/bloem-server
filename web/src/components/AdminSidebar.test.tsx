@@ -362,6 +362,8 @@ describe("AdminSidebar", () => {
   });
 });
 
-vi.mock("@/contexts/AdminContextProvider", () => ({ useAdminContext: () => ({ active: { key: "platform", scope: "platform" } }) }));
+vi.mock("@/contexts/AdminContextProvider", () => ({
+  useAdminContext: () => ({ active: { key: "platform", scope: "platform" } }),
+}));
 
 vi.mock("./admin/AdminContextSwitcher", () => ({ default: () => null }));

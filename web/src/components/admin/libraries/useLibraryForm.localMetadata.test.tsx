@@ -40,9 +40,20 @@ vi.mock("@/hooks/queries/admin/libraries", () => ({
   useLibraryRealtimeMonitoring: () => ({ data: undefined }),
 }));
 
+// The translation panel fetches its own status; this file only covers the provider chain.
+vi.mock("./LibraryTranslatePanel", () => ({ LibraryTranslatePanel: () => null }));
+
 beforeEach(() => setChain.mockClear());
 
-function wrapper({children}:{children:ReactNode}) { return <QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}>{children}</QueryClientProvider>; }
+function wrapper({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      {children}
+    </QueryClientProvider>
+  );
+}
 
 const library = { id: 7, name: "Shows", type: "series", paths: ["/tv"] } as Library;
 
@@ -55,7 +66,7 @@ describe("local metadata in the provider chain", () => {
   });
 
   it("shows one switch, on when any level reads local files, and keeps it out of the level lists", () => {
-    const { result } = renderHook(() => useLibraryForm({ library }),{wrapper});
+    const { result } = renderHook(() => useLibraryForm({ library }), { wrapper });
     expect(result.current.hasLocalMetadata).toBe(true);
     expect(result.current.localMetadataEnabled).toBe(true);
     expect(result.current.remoteLevelChains["series"]!.map((item) => item.provider_slug)).toEqual([
@@ -65,7 +76,7 @@ describe("local metadata in the provider chain", () => {
   });
 
   it("switches every level at once and saves local metadata first", () => {
-    const { result } = renderHook(() => useLibraryForm({ library }),{wrapper});
+    const { result } = renderHook(() => useLibraryForm({ library }), { wrapper });
     act(() => result.current.toggleLocalMetadata(false));
     expect(result.current.localMetadataEnabled).toBe(false);
     act(() => result.current.toggleLocalMetadata(true));
@@ -96,7 +107,7 @@ describe("local metadata in the provider chain", () => {
   });
 
   it("renders one labelled switch instead of a raw nfo row", () => {
-    const { result } = renderHook(() => useLibraryForm({ library }),{wrapper});
+    const { result } = renderHook(() => useLibraryForm({ library }), { wrapper });
     render(<MetadataFields form={result.current} />);
     const toggle = screen.getByRole("switch", { name: "Local metadata (NFO + artwork)" });
     expect(toggle).toHaveAttribute("aria-checked", "true");

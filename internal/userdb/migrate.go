@@ -1,11 +1,12 @@
 package userdb
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 )
 
-const schemaVersion = 32
+const schemaVersion = 34
 
 func runMigrations(db *sql.DB) error {
 	version, err := userVersion(db)
@@ -324,15 +325,32 @@ func runMigrations(db *sql.DB) error {
 			return err
 		}
 	}
-	if _, err := tx.Exec(profilePINRevisionSchema); err != nil {
-		return fmt.Errorf("creating profile PIN revision trigger: %w", err)
-	}
 	if version < 32 {
-		if err := removeCompatibilitySQLite(tx); err != nil {
-			return fmt.Errorf("migration v32 failed: %w", err)
+		// A fresh user_devices table already has the column. The Postgres
+		// store adds the same column in 20261015140728_add_user_devices_custom_name.sql.
+		if !columnExists(tx, "user_devices", "custom_name") {
+			if _, err := tx.Exec(`ALTER TABLE user_devices ADD COLUMN custom_name TEXT`); err != nil {
+				return fmt.Errorf("migration v32 failed: %w", err)
+			}
 		}
 		if _, err := tx.Exec("PRAGMA user_version = 32"); err != nil {
 			return err
+		}
+	}
+	if version < 33 {
+		if err := retireTraktSectionOverrides(tx); err != nil {
+			return fmt.Errorf("migration v33 failed: %w", err)
+		}
+		if _, err := tx.ExecContext(context.Background(), "PRAGMA user_version = 33"); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(profilePINRevisionSchema); err != nil {
+		return fmt.Errorf("creating profile PIN revision trigger: %w", err)
+	}
+	if version < 34 {
+		if err := migrateBloemV34(tx); err != nil {
+			return fmt.Errorf("migration v34 failed: %w", err)
 		}
 	}
 
@@ -703,16 +721,4 @@ func migrateToV7(tx *sql.Tx) error {
 	}
 
 	return nil
-}
-
-type execSQL interface {
-	Exec(string, ...any) (sql.Result, error)
-}
-
-func removeCompatibilitySQLite(db execSQL) error {
-	if _, err := db.Exec("DROP TABLE IF EXISTS jellycompat_displayprefs"); err != nil {
-		return err
-	}
-	_, err := db.Exec("DELETE FROM user_settings WHERE key LIKE 'jellycompat:%'")
-	return err
 }

@@ -4628,6 +4628,7 @@ public enum Apiv2 {
         public let signInMode: String
         public let callbackUrl: String?
         public let postLogoutRedirectUrl: String?
+        public let requestRouter: AdminPluginRequestRouter?
 
         public enum CodingKeys: String, CodingKey {
             case type = "type"
@@ -4640,6 +4641,7 @@ public enum Apiv2 {
             case signInMode = "sign_in_mode"
             case callbackUrl = "callback_url"
             case postLogoutRedirectUrl = "post_logout_redirect_url"
+            case requestRouter = "request_router"
         }
 
         public init(
@@ -4652,7 +4654,8 @@ public enum Apiv2 {
             metadata: [String: BloemJSONValue] = [:],
             signInMode: String = "",
             callbackUrl: String? = nil,
-            postLogoutRedirectUrl: String? = nil
+            postLogoutRedirectUrl: String? = nil,
+            requestRouter: AdminPluginRequestRouter? = nil
         ) {
             self.type = type
             self.id = id
@@ -4664,6 +4667,7 @@ public enum Apiv2 {
             self.signInMode = signInMode
             self.callbackUrl = callbackUrl
             self.postLogoutRedirectUrl = postLogoutRedirectUrl
+            self.requestRouter = requestRouter
         }
 
         public init(from decoder: any Decoder) throws {
@@ -4678,6 +4682,7 @@ public enum Apiv2 {
             self.signInMode = try container.decodeIfPresent(String.self, forKey: .signInMode) ?? ""
             self.callbackUrl = try container.decodeIfPresent(String.self, forKey: .callbackUrl)
             self.postLogoutRedirectUrl = try container.decodeIfPresent(String.self, forKey: .postLogoutRedirectUrl)
+            self.requestRouter = try container.decodeIfPresent(AdminPluginRequestRouter.self, forKey: .requestRouter)
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -4692,6 +4697,7 @@ public enum Apiv2 {
             try container.encode(self.signInMode, forKey: .signInMode)
             try container.encodeIfPresent(self.callbackUrl, forKey: .callbackUrl)
             try container.encodeIfPresent(self.postLogoutRedirectUrl, forKey: .postLogoutRedirectUrl)
+            try container.encodeIfPresent(self.requestRouter, forKey: .requestRouter)
         }
     }
 
@@ -5581,6 +5587,37 @@ public enum Apiv2 {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(self.items, forKey: .items)
             try container.encodeIfPresent(self.page, forKey: .page)
+        }
+    }
+
+    /// Wire type `internal/apiv2.AdminPluginRequestRouter`. Direction: response. Dialect: bloem.
+    public struct AdminPluginRequestRouter: Codable, Hashable, Sendable {
+        public let apiKeyOptional: Bool
+        public let baseUrlOptional: Bool
+
+        public enum CodingKeys: String, CodingKey {
+            case apiKeyOptional = "api_key_optional"
+            case baseUrlOptional = "base_url_optional"
+        }
+
+        public init(
+            apiKeyOptional: Bool = false,
+            baseUrlOptional: Bool = false
+        ) {
+            self.apiKeyOptional = apiKeyOptional
+            self.baseUrlOptional = baseUrlOptional
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.apiKeyOptional = try container.decodeIfPresent(Bool.self, forKey: .apiKeyOptional) ?? false
+            self.baseUrlOptional = try container.decodeIfPresent(Bool.self, forKey: .baseUrlOptional) ?? false
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.apiKeyOptional, forKey: .apiKeyOptional)
+            try container.encode(self.baseUrlOptional, forKey: .baseUrlOptional)
         }
     }
 
@@ -12778,6 +12815,8 @@ public enum Apiv2 {
         public let sortMetrics: CatalogItemSortMetrics?
         public let userState: CatalogItemUserState?
         public let upcomingEvent: CatalogItemUpcomingEvent?
+        public let pendingTranslationLanguage: String
+        public let machineTranslatedFields: [String]
         public let workId: String
         public let workTitle: String
         public let workFormats: [CatalogWorkFormat]
@@ -12829,6 +12868,8 @@ public enum Apiv2 {
             case sortMetrics = "sort_metrics"
             case userState = "user_state"
             case upcomingEvent = "upcoming_event"
+            case pendingTranslationLanguage = "pending_translation_language"
+            case machineTranslatedFields = "machine_translated_fields"
             case workId = "work_id"
             case workTitle = "work_title"
             case workFormats = "work_formats"
@@ -12881,6 +12922,8 @@ public enum Apiv2 {
             sortMetrics: CatalogItemSortMetrics? = nil,
             userState: CatalogItemUserState? = nil,
             upcomingEvent: CatalogItemUpcomingEvent? = nil,
+            pendingTranslationLanguage: String = "",
+            machineTranslatedFields: [String] = [],
             workId: String = "",
             workTitle: String = "",
             workFormats: [CatalogWorkFormat] = []
@@ -12931,6 +12974,8 @@ public enum Apiv2 {
             self.sortMetrics = sortMetrics
             self.userState = userState
             self.upcomingEvent = upcomingEvent
+            self.pendingTranslationLanguage = pendingTranslationLanguage
+            self.machineTranslatedFields = machineTranslatedFields
             self.workId = workId
             self.workTitle = workTitle
             self.workFormats = workFormats
@@ -12984,6 +13029,8 @@ public enum Apiv2 {
             self.sortMetrics = try container.decodeIfPresent(CatalogItemSortMetrics.self, forKey: .sortMetrics)
             self.userState = try container.decodeIfPresent(CatalogItemUserState.self, forKey: .userState)
             self.upcomingEvent = try container.decodeIfPresent(CatalogItemUpcomingEvent.self, forKey: .upcomingEvent)
+            self.pendingTranslationLanguage = try container.decodeIfPresent(String.self, forKey: .pendingTranslationLanguage) ?? ""
+            self.machineTranslatedFields = try container.decodeIfPresent([String].self, forKey: .machineTranslatedFields) ?? []
             self.workId = try container.decodeIfPresent(String.self, forKey: .workId) ?? ""
             self.workTitle = try container.decodeIfPresent(String.self, forKey: .workTitle) ?? ""
             self.workFormats = try container.decodeIfPresent([CatalogWorkFormat].self, forKey: .workFormats) ?? []
@@ -13037,6 +13084,8 @@ public enum Apiv2 {
             try container.encodeIfPresent(self.sortMetrics, forKey: .sortMetrics)
             try container.encodeIfPresent(self.userState, forKey: .userState)
             try container.encodeIfPresent(self.upcomingEvent, forKey: .upcomingEvent)
+            try container.encode(self.pendingTranslationLanguage, forKey: .pendingTranslationLanguage)
+            try container.encode(self.machineTranslatedFields, forKey: .machineTranslatedFields)
             try container.encode(self.workId, forKey: .workId)
             try container.encode(self.workTitle, forKey: .workTitle)
             try container.encode(self.workFormats, forKey: .workFormats)
@@ -13123,6 +13172,8 @@ public enum Apiv2 {
         public let sortMetrics: CatalogItemSortMetrics?
         public let userState: CatalogItemUserState?
         public let upcomingEvent: CatalogItemUpcomingEvent?
+        public let pendingTranslationLanguage: String
+        public let machineTranslatedFields: [String]
         public let workId: String
         public let workTitle: String
         public let workFormats: [CatalogWorkFormat]
@@ -13130,8 +13181,6 @@ public enum Apiv2 {
         public let sortTitle: String
         public let originalTitle: String
         public let tagline: String
-        public let pendingTranslationLanguage: String
-        public let machineTranslatedFields: [String]
         public let imdbId: String
         public let tmdbId: String
         public let tvdbId: String
@@ -13227,6 +13276,8 @@ public enum Apiv2 {
             case sortMetrics = "sort_metrics"
             case userState = "user_state"
             case upcomingEvent = "upcoming_event"
+            case pendingTranslationLanguage = "pending_translation_language"
+            case machineTranslatedFields = "machine_translated_fields"
             case workId = "work_id"
             case workTitle = "work_title"
             case workFormats = "work_formats"
@@ -13234,8 +13285,6 @@ public enum Apiv2 {
             case sortTitle = "sort_title"
             case originalTitle = "original_title"
             case tagline = "tagline"
-            case pendingTranslationLanguage = "pending_translation_language"
-            case machineTranslatedFields = "machine_translated_fields"
             case imdbId = "imdb_id"
             case tmdbId = "tmdb_id"
             case tvdbId = "tvdb_id"
@@ -13332,6 +13381,8 @@ public enum Apiv2 {
             sortMetrics: CatalogItemSortMetrics? = nil,
             userState: CatalogItemUserState? = nil,
             upcomingEvent: CatalogItemUpcomingEvent? = nil,
+            pendingTranslationLanguage: String = "",
+            machineTranslatedFields: [String] = [],
             workId: String = "",
             workTitle: String = "",
             workFormats: [CatalogWorkFormat] = [],
@@ -13339,8 +13390,6 @@ public enum Apiv2 {
             sortTitle: String = "",
             originalTitle: String = "",
             tagline: String = "",
-            pendingTranslationLanguage: String = "",
-            machineTranslatedFields: [String] = [],
             imdbId: String = "",
             tmdbId: String = "",
             tvdbId: String = "",
@@ -13435,6 +13484,8 @@ public enum Apiv2 {
             self.sortMetrics = sortMetrics
             self.userState = userState
             self.upcomingEvent = upcomingEvent
+            self.pendingTranslationLanguage = pendingTranslationLanguage
+            self.machineTranslatedFields = machineTranslatedFields
             self.workId = workId
             self.workTitle = workTitle
             self.workFormats = workFormats
@@ -13442,8 +13493,6 @@ public enum Apiv2 {
             self.sortTitle = sortTitle
             self.originalTitle = originalTitle
             self.tagline = tagline
-            self.pendingTranslationLanguage = pendingTranslationLanguage
-            self.machineTranslatedFields = machineTranslatedFields
             self.imdbId = imdbId
             self.tmdbId = tmdbId
             self.tvdbId = tvdbId
@@ -13541,6 +13590,8 @@ public enum Apiv2 {
             self.sortMetrics = try container.decodeIfPresent(CatalogItemSortMetrics.self, forKey: .sortMetrics)
             self.userState = try container.decodeIfPresent(CatalogItemUserState.self, forKey: .userState)
             self.upcomingEvent = try container.decodeIfPresent(CatalogItemUpcomingEvent.self, forKey: .upcomingEvent)
+            self.pendingTranslationLanguage = try container.decodeIfPresent(String.self, forKey: .pendingTranslationLanguage) ?? ""
+            self.machineTranslatedFields = try container.decodeIfPresent([String].self, forKey: .machineTranslatedFields) ?? []
             self.workId = try container.decodeIfPresent(String.self, forKey: .workId) ?? ""
             self.workTitle = try container.decodeIfPresent(String.self, forKey: .workTitle) ?? ""
             self.workFormats = try container.decodeIfPresent([CatalogWorkFormat].self, forKey: .workFormats) ?? []
@@ -13548,8 +13599,6 @@ public enum Apiv2 {
             self.sortTitle = try container.decodeIfPresent(String.self, forKey: .sortTitle) ?? ""
             self.originalTitle = try container.decodeIfPresent(String.self, forKey: .originalTitle) ?? ""
             self.tagline = try container.decodeIfPresent(String.self, forKey: .tagline) ?? ""
-            self.pendingTranslationLanguage = try container.decodeIfPresent(String.self, forKey: .pendingTranslationLanguage) ?? ""
-            self.machineTranslatedFields = try container.decodeIfPresent([String].self, forKey: .machineTranslatedFields) ?? []
             self.imdbId = try container.decodeIfPresent(String.self, forKey: .imdbId) ?? ""
             self.tmdbId = try container.decodeIfPresent(String.self, forKey: .tmdbId) ?? ""
             self.tvdbId = try container.decodeIfPresent(String.self, forKey: .tvdbId) ?? ""
@@ -13647,6 +13696,8 @@ public enum Apiv2 {
             try container.encodeIfPresent(self.sortMetrics, forKey: .sortMetrics)
             try container.encodeIfPresent(self.userState, forKey: .userState)
             try container.encodeIfPresent(self.upcomingEvent, forKey: .upcomingEvent)
+            try container.encode(self.pendingTranslationLanguage, forKey: .pendingTranslationLanguage)
+            try container.encode(self.machineTranslatedFields, forKey: .machineTranslatedFields)
             try container.encode(self.workId, forKey: .workId)
             try container.encode(self.workTitle, forKey: .workTitle)
             try container.encode(self.workFormats, forKey: .workFormats)
@@ -13654,8 +13705,6 @@ public enum Apiv2 {
             try container.encode(self.sortTitle, forKey: .sortTitle)
             try container.encode(self.originalTitle, forKey: .originalTitle)
             try container.encode(self.tagline, forKey: .tagline)
-            try container.encode(self.pendingTranslationLanguage, forKey: .pendingTranslationLanguage)
-            try container.encode(self.machineTranslatedFields, forKey: .machineTranslatedFields)
             try container.encode(self.imdbId, forKey: .imdbId)
             try container.encode(self.tmdbId, forKey: .tmdbId)
             try container.encode(self.tvdbId, forKey: .tvdbId)
@@ -13935,21 +13984,25 @@ public enum Apiv2 {
         public let played: Bool
         public let isFavorite: Bool
         public let inWatchlist: Bool
+        public let notInterested: Bool
 
         public enum CodingKeys: String, CodingKey {
             case played = "played"
             case isFavorite = "is_favorite"
             case inWatchlist = "in_watchlist"
+            case notInterested = "not_interested"
         }
 
         public init(
             played: Bool = false,
             isFavorite: Bool = false,
-            inWatchlist: Bool = false
+            inWatchlist: Bool = false,
+            notInterested: Bool = false
         ) {
             self.played = played
             self.isFavorite = isFavorite
             self.inWatchlist = inWatchlist
+            self.notInterested = notInterested
         }
 
         public init(from decoder: any Decoder) throws {
@@ -13957,6 +14010,7 @@ public enum Apiv2 {
             self.played = try container.decodeIfPresent(Bool.self, forKey: .played) ?? false
             self.isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
             self.inWatchlist = try container.decodeIfPresent(Bool.self, forKey: .inWatchlist) ?? false
+            self.notInterested = try container.decodeIfPresent(Bool.self, forKey: .notInterested) ?? false
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -13964,6 +14018,7 @@ public enum Apiv2 {
             try container.encode(self.played, forKey: .played)
             try container.encode(self.isFavorite, forKey: .isFavorite)
             try container.encode(self.inWatchlist, forKey: .inWatchlist)
+            try container.encode(self.notInterested, forKey: .notInterested)
         }
     }
 
@@ -15982,6 +16037,7 @@ public enum Apiv2 {
     public struct DeviceSettings: Codable, Hashable, Sendable {
         public let deviceId: String
         public let deviceName: String
+        public let customName: String
         public let devicePlatform: String
         public let lastSeenAt: String
         public let profileId: String
@@ -15992,6 +16048,7 @@ public enum Apiv2 {
         public enum CodingKeys: String, CodingKey {
             case deviceId = "device_id"
             case deviceName = "device_name"
+            case customName = "custom_name"
             case devicePlatform = "device_platform"
             case lastSeenAt = "last_seen_at"
             case profileId = "profile_id"
@@ -16003,6 +16060,7 @@ public enum Apiv2 {
         public init(
             deviceId: String = "",
             deviceName: String = "",
+            customName: String = "",
             devicePlatform: String = "",
             lastSeenAt: String = "",
             profileId: String = "",
@@ -16012,6 +16070,7 @@ public enum Apiv2 {
         ) {
             self.deviceId = deviceId
             self.deviceName = deviceName
+            self.customName = customName
             self.devicePlatform = devicePlatform
             self.lastSeenAt = lastSeenAt
             self.profileId = profileId
@@ -16024,6 +16083,7 @@ public enum Apiv2 {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             self.deviceId = try container.decodeIfPresent(String.self, forKey: .deviceId) ?? ""
             self.deviceName = try container.decodeIfPresent(String.self, forKey: .deviceName) ?? ""
+            self.customName = try container.decodeIfPresent(String.self, forKey: .customName) ?? ""
             self.devicePlatform = try container.decodeIfPresent(String.self, forKey: .devicePlatform) ?? ""
             self.lastSeenAt = try container.decodeIfPresent(String.self, forKey: .lastSeenAt) ?? ""
             self.profileId = try container.decodeIfPresent(String.self, forKey: .profileId) ?? ""
@@ -16036,6 +16096,7 @@ public enum Apiv2 {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(self.deviceId, forKey: .deviceId)
             try container.encode(self.deviceName, forKey: .deviceName)
+            try container.encode(self.customName, forKey: .customName)
             try container.encode(self.devicePlatform, forKey: .devicePlatform)
             try container.encode(self.lastSeenAt, forKey: .lastSeenAt)
             try container.encode(self.profileId, forKey: .profileId)
@@ -19819,6 +19880,8 @@ public enum Apiv2 {
         public let sortMetrics: CatalogItemSortMetrics?
         public let userState: CatalogItemUserState?
         public let upcomingEvent: CatalogItemUpcomingEvent?
+        public let pendingTranslationLanguage: String
+        public let machineTranslatedFields: [String]
         public let workId: String
         public let workTitle: String
         public let workFormats: [CatalogWorkFormat]
@@ -19871,6 +19934,8 @@ public enum Apiv2 {
             case sortMetrics = "sort_metrics"
             case userState = "user_state"
             case upcomingEvent = "upcoming_event"
+            case pendingTranslationLanguage = "pending_translation_language"
+            case machineTranslatedFields = "machine_translated_fields"
             case workId = "work_id"
             case workTitle = "work_title"
             case workFormats = "work_formats"
@@ -19924,6 +19989,8 @@ public enum Apiv2 {
             sortMetrics: CatalogItemSortMetrics? = nil,
             userState: CatalogItemUserState? = nil,
             upcomingEvent: CatalogItemUpcomingEvent? = nil,
+            pendingTranslationLanguage: String = "",
+            machineTranslatedFields: [String] = [],
             workId: String = "",
             workTitle: String = "",
             workFormats: [CatalogWorkFormat] = [],
@@ -19975,6 +20042,8 @@ public enum Apiv2 {
             self.sortMetrics = sortMetrics
             self.userState = userState
             self.upcomingEvent = upcomingEvent
+            self.pendingTranslationLanguage = pendingTranslationLanguage
+            self.machineTranslatedFields = machineTranslatedFields
             self.workId = workId
             self.workTitle = workTitle
             self.workFormats = workFormats
@@ -20029,6 +20098,8 @@ public enum Apiv2 {
             self.sortMetrics = try container.decodeIfPresent(CatalogItemSortMetrics.self, forKey: .sortMetrics)
             self.userState = try container.decodeIfPresent(CatalogItemUserState.self, forKey: .userState)
             self.upcomingEvent = try container.decodeIfPresent(CatalogItemUpcomingEvent.self, forKey: .upcomingEvent)
+            self.pendingTranslationLanguage = try container.decodeIfPresent(String.self, forKey: .pendingTranslationLanguage) ?? ""
+            self.machineTranslatedFields = try container.decodeIfPresent([String].self, forKey: .machineTranslatedFields) ?? []
             self.workId = try container.decodeIfPresent(String.self, forKey: .workId) ?? ""
             self.workTitle = try container.decodeIfPresent(String.self, forKey: .workTitle) ?? ""
             self.workFormats = try container.decodeIfPresent([CatalogWorkFormat].self, forKey: .workFormats) ?? []
@@ -20083,6 +20154,8 @@ public enum Apiv2 {
             try container.encodeIfPresent(self.sortMetrics, forKey: .sortMetrics)
             try container.encodeIfPresent(self.userState, forKey: .userState)
             try container.encodeIfPresent(self.upcomingEvent, forKey: .upcomingEvent)
+            try container.encode(self.pendingTranslationLanguage, forKey: .pendingTranslationLanguage)
+            try container.encode(self.machineTranslatedFields, forKey: .machineTranslatedFields)
             try container.encode(self.workId, forKey: .workId)
             try container.encode(self.workTitle, forKey: .workTitle)
             try container.encode(self.workFormats, forKey: .workFormats)
@@ -20820,6 +20893,7 @@ public enum Apiv2 {
         public let extendedItemArtwork: Bool
         public let seasonListArtworkParam: String
         public let param: String
+        public let slotWidthParams: [String: String]
         public let sizes: [Imagesize.Size]
         public let widths: [String: ImageSizeWidths]
         public let originalMaxWidthPx: Int
@@ -20834,6 +20908,7 @@ public enum Apiv2 {
             case extendedItemArtwork = "extended_item_artwork"
             case seasonListArtworkParam = "season_list_artwork_param"
             case param = "param"
+            case slotWidthParams = "slot_width_params"
             case sizes = "sizes"
             case widths = "widths"
             case originalMaxWidthPx = "original_max_width_px"
@@ -20849,6 +20924,7 @@ public enum Apiv2 {
             extendedItemArtwork: Bool = false,
             seasonListArtworkParam: String = "",
             param: String = "",
+            slotWidthParams: [String: String] = [:],
             sizes: [Imagesize.Size] = [],
             widths: [String: ImageSizeWidths] = [:],
             originalMaxWidthPx: Int = 0,
@@ -20862,6 +20938,7 @@ public enum Apiv2 {
             self.extendedItemArtwork = extendedItemArtwork
             self.seasonListArtworkParam = seasonListArtworkParam
             self.param = param
+            self.slotWidthParams = slotWidthParams
             self.sizes = sizes
             self.widths = widths
             self.originalMaxWidthPx = originalMaxWidthPx
@@ -20878,6 +20955,7 @@ public enum Apiv2 {
             self.extendedItemArtwork = try container.decodeIfPresent(Bool.self, forKey: .extendedItemArtwork) ?? false
             self.seasonListArtworkParam = try container.decodeIfPresent(String.self, forKey: .seasonListArtworkParam) ?? ""
             self.param = try container.decodeIfPresent(String.self, forKey: .param) ?? ""
+            self.slotWidthParams = try container.decodeIfPresent([String: String].self, forKey: .slotWidthParams) ?? [:]
             self.sizes = try container.decodeIfPresent([Imagesize.Size].self, forKey: .sizes) ?? []
             self.widths = try container.decodeIfPresent([String: ImageSizeWidths].self, forKey: .widths) ?? [:]
             self.originalMaxWidthPx = try container.decodeIfPresent(Int.self, forKey: .originalMaxWidthPx) ?? 0
@@ -20894,6 +20972,7 @@ public enum Apiv2 {
             try container.encode(self.extendedItemArtwork, forKey: .extendedItemArtwork)
             try container.encode(self.seasonListArtworkParam, forKey: .seasonListArtworkParam)
             try container.encode(self.param, forKey: .param)
+            try container.encode(self.slotWidthParams, forKey: .slotWidthParams)
             try container.encode(self.sizes, forKey: .sizes)
             try container.encode(self.widths, forKey: .widths)
             try container.encode(self.originalMaxWidthPx, forKey: .originalMaxWidthPx)
@@ -21405,6 +21484,7 @@ public enum Apiv2 {
         public let realtimeMonitoring: Bool
         public let trickplay: Bool
         public let trickplaySupported: Bool
+        public let ignoreUnmatched: Bool
 
         public enum CodingKeys: String, CodingKey {
             case revision = "revision"
@@ -21413,6 +21493,7 @@ public enum Apiv2 {
             case realtimeMonitoring = "realtime_monitoring"
             case trickplay = "trickplay"
             case trickplaySupported = "trickplay_supported"
+            case ignoreUnmatched = "ignore_unmatched"
         }
 
         public init(
@@ -21421,7 +21502,8 @@ public enum Apiv2 {
             allowed: Bool? = nil,
             realtimeMonitoring: Bool = false,
             trickplay: Bool = false,
-            trickplaySupported: Bool = false
+            trickplaySupported: Bool = false,
+            ignoreUnmatched: Bool = false
         ) {
             self.revision = revision
             self.state = state
@@ -21429,6 +21511,7 @@ public enum Apiv2 {
             self.realtimeMonitoring = realtimeMonitoring
             self.trickplay = trickplay
             self.trickplaySupported = trickplaySupported
+            self.ignoreUnmatched = ignoreUnmatched
         }
 
         public init(from decoder: any Decoder) throws {
@@ -21439,6 +21522,7 @@ public enum Apiv2 {
             self.realtimeMonitoring = try container.decodeIfPresent(Bool.self, forKey: .realtimeMonitoring) ?? false
             self.trickplay = try container.decodeIfPresent(Bool.self, forKey: .trickplay) ?? false
             self.trickplaySupported = try container.decodeIfPresent(Bool.self, forKey: .trickplaySupported) ?? false
+            self.ignoreUnmatched = try container.decodeIfPresent(Bool.self, forKey: .ignoreUnmatched) ?? false
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -21449,6 +21533,7 @@ public enum Apiv2 {
             try container.encode(self.realtimeMonitoring, forKey: .realtimeMonitoring)
             try container.encode(self.trickplay, forKey: .trickplay)
             try container.encode(self.trickplaySupported, forKey: .trickplaySupported)
+            try container.encode(self.ignoreUnmatched, forKey: .ignoreUnmatched)
         }
     }
 
@@ -24483,6 +24568,7 @@ public enum Apiv2 {
         public let webhooks: NotificationWebhookCapability
         public let email: NotificationAccountChannelCapability
         public let discord: NotificationAccountChannelCapability
+        public let series: NotificationSeriesCapability
 
         public enum CodingKeys: String, CodingKey {
             case revision = "revision"
@@ -24495,6 +24581,7 @@ public enum Apiv2 {
             case webhooks = "webhooks"
             case email = "email"
             case discord = "discord"
+            case series = "series"
         }
 
         public init(
@@ -24507,7 +24594,8 @@ public enum Apiv2 {
             webPush: NotificationWebPushCapability = NotificationWebPushCapability(),
             webhooks: NotificationWebhookCapability = NotificationWebhookCapability(),
             email: NotificationAccountChannelCapability = NotificationAccountChannelCapability(),
-            discord: NotificationAccountChannelCapability = NotificationAccountChannelCapability()
+            discord: NotificationAccountChannelCapability = NotificationAccountChannelCapability(),
+            series: NotificationSeriesCapability = NotificationSeriesCapability()
         ) {
             self.revision = revision
             self.state = state
@@ -24519,6 +24607,7 @@ public enum Apiv2 {
             self.webhooks = webhooks
             self.email = email
             self.discord = discord
+            self.series = series
         }
 
         public init(from decoder: any Decoder) throws {
@@ -24533,6 +24622,7 @@ public enum Apiv2 {
             self.webhooks = try container.decodeIfPresent(NotificationWebhookCapability.self, forKey: .webhooks) ?? NotificationWebhookCapability()
             self.email = try container.decodeIfPresent(NotificationAccountChannelCapability.self, forKey: .email) ?? NotificationAccountChannelCapability()
             self.discord = try container.decodeIfPresent(NotificationAccountChannelCapability.self, forKey: .discord) ?? NotificationAccountChannelCapability()
+            self.series = try container.decodeIfPresent(NotificationSeriesCapability.self, forKey: .series) ?? NotificationSeriesCapability()
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -24547,6 +24637,7 @@ public enum Apiv2 {
             try container.encode(self.webhooks, forKey: .webhooks)
             try container.encode(self.email, forKey: .email)
             try container.encode(self.discord, forKey: .discord)
+            try container.encode(self.series, forKey: .series)
         }
     }
 
@@ -25239,6 +25330,37 @@ public enum Apiv2 {
             try container.encode(self.relayRequestId, forKey: .relayRequestId)
             try container.encode(self.apnsTopics, forKey: .apnsTopics)
             try container.encode(self.expiresAt, forKey: .expiresAt)
+        }
+    }
+
+    /// Wire type `internal/apiv2.NotificationSeriesCapability`. Direction: response. Dialect: bloem.
+    public struct NotificationSeriesCapability: Codable, Hashable, Sendable {
+        public let available: Bool
+        public let mute: Bool
+
+        public enum CodingKeys: String, CodingKey {
+            case available = "available"
+            case mute = "mute"
+        }
+
+        public init(
+            available: Bool = false,
+            mute: Bool = false
+        ) {
+            self.available = available
+            self.mute = mute
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.available = try container.decodeIfPresent(Bool.self, forKey: .available) ?? false
+            self.mute = try container.decodeIfPresent(Bool.self, forKey: .mute) ?? false
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.available, forKey: .available)
+            try container.encode(self.mute, forKey: .mute)
         }
     }
 
@@ -27411,7 +27533,7 @@ public enum Apiv2 {
             attemptCount: Int,
             qualityPreference: String,
             positionSeconds: Double,
-            metered: Bool,
+            metered: Bool = false,
             bandwidthEstimateKbps: Int? = nil,
             bandwidthCapKbps: Int? = nil,
             selectedTracks: Playback.SelectedTracksV3,
@@ -27458,7 +27580,7 @@ public enum Apiv2 {
             self.attemptCount = try container.decode(Int.self, forKey: .attemptCount)
             self.qualityPreference = try container.decode(String.self, forKey: .qualityPreference)
             self.positionSeconds = try container.decode(Double.self, forKey: .positionSeconds)
-            self.metered = try container.decode(Bool.self, forKey: .metered)
+            self.metered = try container.decodeIfPresent(Bool.self, forKey: .metered) ?? false
             self.bandwidthEstimateKbps = try container.decodeIfPresent(Int.self, forKey: .bandwidthEstimateKbps)
             self.bandwidthCapKbps = try container.decodeIfPresent(Int.self, forKey: .bandwidthCapKbps)
             self.selectedTracks = try container.decode(Playback.SelectedTracksV3.self, forKey: .selectedTracks)
@@ -28286,7 +28408,7 @@ public enum Apiv2 {
             audioTrackIndex: Int? = nil,
             subtitleTrackId: String = "",
             subtitleTrackIndex: Int? = nil,
-            metered: Bool,
+            metered: Bool = false,
             bandwidthEstimateKbps: Int? = nil,
             bandwidthCapKbps: Int? = nil,
             capabilities: Playback.ClientCodecCapabilitiesV3,
@@ -28331,7 +28453,7 @@ public enum Apiv2 {
             self.audioTrackIndex = try container.decodeIfPresent(Int.self, forKey: .audioTrackIndex)
             self.subtitleTrackId = try container.decodeIfPresent(String.self, forKey: .subtitleTrackId) ?? ""
             self.subtitleTrackIndex = try container.decodeIfPresent(Int.self, forKey: .subtitleTrackIndex)
-            self.metered = try container.decode(Bool.self, forKey: .metered)
+            self.metered = try container.decodeIfPresent(Bool.self, forKey: .metered) ?? false
             self.bandwidthEstimateKbps = try container.decodeIfPresent(Int.self, forKey: .bandwidthEstimateKbps)
             self.bandwidthCapKbps = try container.decodeIfPresent(Int.self, forKey: .bandwidthCapKbps)
             self.capabilities = try container.decode(Playback.ClientCodecCapabilitiesV3.self, forKey: .capabilities)
@@ -33181,6 +33303,7 @@ public enum Apiv2 {
         public let supportsBatchedEffective: Bool
         public let supportsIdempotentWrites: Bool
         public let supportsAtomicShortcuts: Bool
+        public let supportsDeviceRename: Bool
 
         public enum CodingKeys: String, CodingKey {
             case revision = "revision"
@@ -33195,6 +33318,7 @@ public enum Apiv2 {
             case supportsBatchedEffective = "supports_batched_effective"
             case supportsIdempotentWrites = "supports_idempotent_writes"
             case supportsAtomicShortcuts = "supports_atomic_shortcuts"
+            case supportsDeviceRename = "supports_device_rename"
         }
 
         public init(
@@ -33209,7 +33333,8 @@ public enum Apiv2 {
             clientFamilies: [String] = [],
             supportsBatchedEffective: Bool = false,
             supportsIdempotentWrites: Bool = false,
-            supportsAtomicShortcuts: Bool = false
+            supportsAtomicShortcuts: Bool = false,
+            supportsDeviceRename: Bool = false
         ) {
             self.revision = revision
             self.state = state
@@ -33223,6 +33348,7 @@ public enum Apiv2 {
             self.supportsBatchedEffective = supportsBatchedEffective
             self.supportsIdempotentWrites = supportsIdempotentWrites
             self.supportsAtomicShortcuts = supportsAtomicShortcuts
+            self.supportsDeviceRename = supportsDeviceRename
         }
 
         public init(from decoder: any Decoder) throws {
@@ -33239,6 +33365,7 @@ public enum Apiv2 {
             self.supportsBatchedEffective = try container.decodeIfPresent(Bool.self, forKey: .supportsBatchedEffective) ?? false
             self.supportsIdempotentWrites = try container.decodeIfPresent(Bool.self, forKey: .supportsIdempotentWrites) ?? false
             self.supportsAtomicShortcuts = try container.decodeIfPresent(Bool.self, forKey: .supportsAtomicShortcuts) ?? false
+            self.supportsDeviceRename = try container.decodeIfPresent(Bool.self, forKey: .supportsDeviceRename) ?? false
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -33255,6 +33382,7 @@ public enum Apiv2 {
             try container.encode(self.supportsBatchedEffective, forKey: .supportsBatchedEffective)
             try container.encode(self.supportsIdempotentWrites, forKey: .supportsIdempotentWrites)
             try container.encode(self.supportsAtomicShortcuts, forKey: .supportsAtomicShortcuts)
+            try container.encode(self.supportsDeviceRename, forKey: .supportsDeviceRename)
         }
     }
 
@@ -35629,91 +35757,6 @@ public enum Apiv2 {
         }
     }
 
-    /// Wire type `internal/apiv2.TraktCollectionImport`. Direction: request. Dialect: bloem. Registered root.
-    public struct TraktCollectionImport: Codable, Hashable, Sendable {
-        public let title: String
-        public let description: String?
-        public let limit: Int?
-        public let syncSchedule: String?
-        public let isShared: Bool?
-        public let posterUrl: String?
-        public let libraryIds: [String]?
-        public let displayQueryDefinition: BloemJSONValue?
-        public let sortConfig: BloemJSONValue?
-        public let preset: String
-        public let mediaType: String?
-
-        public enum CodingKeys: String, CodingKey {
-            case title = "title"
-            case description = "description"
-            case limit = "limit"
-            case syncSchedule = "sync_schedule"
-            case isShared = "is_shared"
-            case posterUrl = "poster_url"
-            case libraryIds = "library_ids"
-            case displayQueryDefinition = "display_query_definition"
-            case sortConfig = "sort_config"
-            case preset = "preset"
-            case mediaType = "media_type"
-        }
-
-        public init(
-            title: String,
-            description: String? = nil,
-            limit: Int? = nil,
-            syncSchedule: String? = nil,
-            isShared: Bool? = nil,
-            posterUrl: String? = nil,
-            libraryIds: [String]? = nil,
-            displayQueryDefinition: BloemJSONValue? = nil,
-            sortConfig: BloemJSONValue? = nil,
-            preset: String,
-            mediaType: String? = nil
-        ) {
-            self.title = title
-            self.description = description
-            self.limit = limit
-            self.syncSchedule = syncSchedule
-            self.isShared = isShared
-            self.posterUrl = posterUrl
-            self.libraryIds = libraryIds
-            self.displayQueryDefinition = displayQueryDefinition
-            self.sortConfig = sortConfig
-            self.preset = preset
-            self.mediaType = mediaType
-        }
-
-        public init(from decoder: any Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            self.title = try container.decode(String.self, forKey: .title)
-            self.description = try container.decodeIfPresent(String.self, forKey: .description)
-            self.limit = try container.decodeIfPresent(Int.self, forKey: .limit)
-            self.syncSchedule = try container.decodeIfPresent(String.self, forKey: .syncSchedule)
-            self.isShared = try container.decodeIfPresent(Bool.self, forKey: .isShared)
-            self.posterUrl = try container.decodeIfPresent(String.self, forKey: .posterUrl)
-            self.libraryIds = try container.decodeIfPresent([String].self, forKey: .libraryIds)
-            self.displayQueryDefinition = try container.decodeIfPresent(BloemJSONValue.self, forKey: .displayQueryDefinition)
-            self.sortConfig = try container.decodeIfPresent(BloemJSONValue.self, forKey: .sortConfig)
-            self.preset = try container.decode(String.self, forKey: .preset)
-            self.mediaType = try container.decodeIfPresent(String.self, forKey: .mediaType)
-        }
-
-        public func encode(to encoder: any Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(self.title, forKey: .title)
-            try container.encodeIfPresent(self.description, forKey: .description)
-            try container.encodeIfPresent(self.limit, forKey: .limit)
-            try container.encodeIfPresent(self.syncSchedule, forKey: .syncSchedule)
-            try container.encodeIfPresent(self.isShared, forKey: .isShared)
-            try container.encodeIfPresent(self.posterUrl, forKey: .posterUrl)
-            try container.encodeIfPresent(self.libraryIds, forKey: .libraryIds)
-            try container.encodeIfPresent(self.displayQueryDefinition, forKey: .displayQueryDefinition)
-            try container.encodeIfPresent(self.sortConfig, forKey: .sortConfig)
-            try container.encode(self.preset, forKey: .preset)
-            try container.encodeIfPresent(self.mediaType, forKey: .mediaType)
-        }
-    }
-
     /// Wire type `internal/apiv2.TranslateDescription`. Direction: request. Dialect: bloem. Registered root.
     public struct TranslateDescription: Codable, Hashable, Sendable {
         public let targetLanguage: String
@@ -35748,6 +35791,7 @@ public enum Apiv2 {
         public let libraryId: String
         public let libraryName: String
         public let status: String
+        public let ignoredAt: String?
 
         public enum CodingKeys: String, CodingKey {
             case contentId = "content_id"
@@ -35757,6 +35801,7 @@ public enum Apiv2 {
             case libraryId = "library_id"
             case libraryName = "library_name"
             case status = "status"
+            case ignoredAt = "ignored_at"
         }
 
         public init(
@@ -35766,7 +35811,8 @@ public enum Apiv2 {
             contentType: String = "",
             libraryId: String = "",
             libraryName: String = "",
-            status: String = ""
+            status: String = "",
+            ignoredAt: String? = nil
         ) {
             self.contentId = contentId
             self.title = title
@@ -35775,6 +35821,7 @@ public enum Apiv2 {
             self.libraryId = libraryId
             self.libraryName = libraryName
             self.status = status
+            self.ignoredAt = ignoredAt
         }
 
         public init(from decoder: any Decoder) throws {
@@ -35786,6 +35833,7 @@ public enum Apiv2 {
             self.libraryId = try container.decodeIfPresent(String.self, forKey: .libraryId) ?? ""
             self.libraryName = try container.decodeIfPresent(String.self, forKey: .libraryName) ?? ""
             self.status = try container.decodeIfPresent(String.self, forKey: .status) ?? ""
+            self.ignoredAt = try container.decodeIfPresent(String.self, forKey: .ignoredAt)
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -35797,6 +35845,7 @@ public enum Apiv2 {
             try container.encode(self.libraryId, forKey: .libraryId)
             try container.encode(self.libraryName, forKey: .libraryName)
             try container.encode(self.status, forKey: .status)
+            try container.encodeIfPresent(self.ignoredAt, forKey: .ignoredAt)
         }
     }
 
@@ -38345,6 +38394,8 @@ public enum Apiv2 {
         public let sortMetrics: CatalogItemSortMetrics?
         public let userState: CatalogItemUserState?
         public let upcomingEvent: CatalogItemUpcomingEvent?
+        public let pendingTranslationLanguage: String
+        public let machineTranslatedFields: [String]
         public let workId: String
         public let workTitle: String
         public let workFormats: [CatalogWorkFormat]
@@ -38398,6 +38449,8 @@ public enum Apiv2 {
             case sortMetrics = "sort_metrics"
             case userState = "user_state"
             case upcomingEvent = "upcoming_event"
+            case pendingTranslationLanguage = "pending_translation_language"
+            case machineTranslatedFields = "machine_translated_fields"
             case workId = "work_id"
             case workTitle = "work_title"
             case workFormats = "work_formats"
@@ -38452,6 +38505,8 @@ public enum Apiv2 {
             sortMetrics: CatalogItemSortMetrics? = nil,
             userState: CatalogItemUserState? = nil,
             upcomingEvent: CatalogItemUpcomingEvent? = nil,
+            pendingTranslationLanguage: String = "",
+            machineTranslatedFields: [String] = [],
             workId: String = "",
             workTitle: String = "",
             workFormats: [CatalogWorkFormat] = [],
@@ -38504,6 +38559,8 @@ public enum Apiv2 {
             self.sortMetrics = sortMetrics
             self.userState = userState
             self.upcomingEvent = upcomingEvent
+            self.pendingTranslationLanguage = pendingTranslationLanguage
+            self.machineTranslatedFields = machineTranslatedFields
             self.workId = workId
             self.workTitle = workTitle
             self.workFormats = workFormats
@@ -38559,6 +38616,8 @@ public enum Apiv2 {
             self.sortMetrics = try container.decodeIfPresent(CatalogItemSortMetrics.self, forKey: .sortMetrics)
             self.userState = try container.decodeIfPresent(CatalogItemUserState.self, forKey: .userState)
             self.upcomingEvent = try container.decodeIfPresent(CatalogItemUpcomingEvent.self, forKey: .upcomingEvent)
+            self.pendingTranslationLanguage = try container.decodeIfPresent(String.self, forKey: .pendingTranslationLanguage) ?? ""
+            self.machineTranslatedFields = try container.decodeIfPresent([String].self, forKey: .machineTranslatedFields) ?? []
             self.workId = try container.decodeIfPresent(String.self, forKey: .workId) ?? ""
             self.workTitle = try container.decodeIfPresent(String.self, forKey: .workTitle) ?? ""
             self.workFormats = try container.decodeIfPresent([CatalogWorkFormat].self, forKey: .workFormats) ?? []
@@ -38614,6 +38673,8 @@ public enum Apiv2 {
             try container.encodeIfPresent(self.sortMetrics, forKey: .sortMetrics)
             try container.encodeIfPresent(self.userState, forKey: .userState)
             try container.encodeIfPresent(self.upcomingEvent, forKey: .upcomingEvent)
+            try container.encode(self.pendingTranslationLanguage, forKey: .pendingTranslationLanguage)
+            try container.encode(self.machineTranslatedFields, forKey: .machineTranslatedFields)
             try container.encode(self.workId, forKey: .workId)
             try container.encode(self.workTitle, forKey: .workTitle)
             try container.encode(self.workFormats, forKey: .workFormats)
@@ -38750,6 +38811,8 @@ public enum Apiv2 {
         public let sortMetrics: CatalogItemSortMetrics?
         public let userState: CatalogItemUserState?
         public let upcomingEvent: CatalogItemUpcomingEvent?
+        public let pendingTranslationLanguage: String
+        public let machineTranslatedFields: [String]
         public let workId: String
         public let workTitle: String
         public let workFormats: [CatalogWorkFormat]
@@ -38802,6 +38865,8 @@ public enum Apiv2 {
             case sortMetrics = "sort_metrics"
             case userState = "user_state"
             case upcomingEvent = "upcoming_event"
+            case pendingTranslationLanguage = "pending_translation_language"
+            case machineTranslatedFields = "machine_translated_fields"
             case workId = "work_id"
             case workTitle = "work_title"
             case workFormats = "work_formats"
@@ -38855,6 +38920,8 @@ public enum Apiv2 {
             sortMetrics: CatalogItemSortMetrics? = nil,
             userState: CatalogItemUserState? = nil,
             upcomingEvent: CatalogItemUpcomingEvent? = nil,
+            pendingTranslationLanguage: String = "",
+            machineTranslatedFields: [String] = [],
             workId: String = "",
             workTitle: String = "",
             workFormats: [CatalogWorkFormat] = [],
@@ -38906,6 +38973,8 @@ public enum Apiv2 {
             self.sortMetrics = sortMetrics
             self.userState = userState
             self.upcomingEvent = upcomingEvent
+            self.pendingTranslationLanguage = pendingTranslationLanguage
+            self.machineTranslatedFields = machineTranslatedFields
             self.workId = workId
             self.workTitle = workTitle
             self.workFormats = workFormats
@@ -38960,6 +39029,8 @@ public enum Apiv2 {
             self.sortMetrics = try container.decodeIfPresent(CatalogItemSortMetrics.self, forKey: .sortMetrics)
             self.userState = try container.decodeIfPresent(CatalogItemUserState.self, forKey: .userState)
             self.upcomingEvent = try container.decodeIfPresent(CatalogItemUpcomingEvent.self, forKey: .upcomingEvent)
+            self.pendingTranslationLanguage = try container.decodeIfPresent(String.self, forKey: .pendingTranslationLanguage) ?? ""
+            self.machineTranslatedFields = try container.decodeIfPresent([String].self, forKey: .machineTranslatedFields) ?? []
             self.workId = try container.decodeIfPresent(String.self, forKey: .workId) ?? ""
             self.workTitle = try container.decodeIfPresent(String.self, forKey: .workTitle) ?? ""
             self.workFormats = try container.decodeIfPresent([CatalogWorkFormat].self, forKey: .workFormats) ?? []
@@ -39014,6 +39085,8 @@ public enum Apiv2 {
             try container.encodeIfPresent(self.sortMetrics, forKey: .sortMetrics)
             try container.encodeIfPresent(self.userState, forKey: .userState)
             try container.encodeIfPresent(self.upcomingEvent, forKey: .upcomingEvent)
+            try container.encode(self.pendingTranslationLanguage, forKey: .pendingTranslationLanguage)
+            try container.encode(self.machineTranslatedFields, forKey: .machineTranslatedFields)
             try container.encode(self.workId, forKey: .workId)
             try container.encode(self.workTitle, forKey: .workTitle)
             try container.encode(self.workFormats, forKey: .workFormats)
