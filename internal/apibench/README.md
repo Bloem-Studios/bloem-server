@@ -26,7 +26,7 @@ report rather than reported as zero.
 ## Named hot paths
 
 `catalog_list`, `catalog_search`, `home_sections`, `playback_start`,
-`playback_replan`, `progress_write`. The example plan
+`playback_replan`, `progress_write`, `jellycompat_browse`. The example plan
 under `testdata/plan.example.json` names all seven; copy it and fill in the
 `${...}` environment references. The two playback paths read their bodies from
 `playback-start.json` and `playback-replan.json` next to the plan (`body_file`

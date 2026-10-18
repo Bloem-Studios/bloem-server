@@ -10,8 +10,7 @@ import (
 )
 
 // Bloem-owned compatibility tables go; the Jellyfin and Audiobookshelf tables
-// belong to upstream Silo, which can serve the database again while switching
-// is mirrored, so they stay even though Bloem no longer uses them.
+// belong to upstream Silo's compatibility servers, which Bloem runs as well.
 func TestBloemCompatibilityTablesRemovedOnFreshInstall(t *testing.T) {
 	pool := newDisposableMigrationDatabase(t)
 	runAllMigrations(t, pool)

@@ -99,7 +99,7 @@ GOWORK=off make verify-apiv2-openapi verify-bloem-openapi verify-apiv2-web-types
 GOWORK=off make verify-settings-bindings-all verify-client-digest verify-client-dtos verify-client-coverage
 GOWORK=off make verify-route-inventory verify-migration-ledger verify-apiv2-contract
 make verify-bloem-api-catalogue
-make verify-local-paths verify-seams verify-no-compat
+make verify-local-paths verify-seams
 ```
 
 When Go wire types or registered roots change, also run `make client-dtos`.
@@ -136,9 +136,9 @@ not a substitute for checking documentation accuracy.
 - Libraries can combine multiple local paths and selected roots from several
   storage sources. Preserve folder navigation and existing selections; provider
   and playback readiness remain separate from configuring a source.
-- Jellyfin/Audiobookshelf protocol gateways, companion applications, settings and
-  auxiliary listeners are removed. Native pairing, audiobooks and ebooks remain.
-  See the [removal invariant](../architecture/bloem-compatibility-removal.md).
+- Silo's Jellyfin and Audiobookshelf compatibility servers run on their own ports;
+  Bloem's companion applications and compatibility gateway are removed. See
+  [protocol compatibility](../architecture/bloem-compatibility-removal.md).
 - Pastime managed tracking is removed. Do not restore its API/setup guidance;
   any future ordinary plugin integration has its own contract.
 - Authenticated browse-only content policy does not by itself establish a public

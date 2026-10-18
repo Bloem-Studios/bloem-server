@@ -1,0 +1,489 @@
+package jellycompat
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"time"
+
+	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/Silo-Server/silo-server/internal/watchstate"
+)
+
+// directUserDataService implements UserDataService using the user store directly.
+type directUserDataService struct {
+	storeProvider   userstore.UserStoreProvider
+	itemRepo        *catalog.ItemRepository
+	detailSvc       *catalog.DetailService
+	watchState      *watchstate.Service
+	resumeFilter    *catalog.ContinueWatchingProgressFilter
+	signalsNotifier signalsChangedNotifier
+	// events announces watched-state changes to other surfaces and replicas.
+	events UserStateEvents
+	// episodes expands a series or season unplayed mark to its episodes,
+	// including watched ones that no longer have a file.
+	episodes watchstate.EpisodePartitioner
+}
+
+func newDirectUserDataService(
+	storeProvider userstore.UserStoreProvider,
+	itemRepo *catalog.ItemRepository,
+	episodeRepo *catalog.EpisodeRepository,
+	providerIDRepo *catalog.ProviderIDRepository,
+	detailSvc *catalog.DetailService,
+	resumeFilter *catalog.ContinueWatchingProgressFilter,
+	signalsNotifier signalsChangedNotifier,
+	completionObserver watchstate.CompletionObserver,
+) *directUserDataService {
+	svc := &directUserDataService{
+		storeProvider: storeProvider,
+		itemRepo:      itemRepo,
+		detailSvc:     detailSvc,
+		watchState: watchstate.NewService(storeProvider).
+			WithStableIdentityResolver(watchstate.NewStableIdentityResolver(itemRepo, episodeRepo, providerIDRepo)).
+			WithCompletionObserver(completionObserver),
+		resumeFilter:    resumeFilter,
+		signalsNotifier: signalsNotifier,
+	}
+	if episodeRepo != nil {
+		svc.episodes = episodeRepo
+	}
+	return svc
+}
+
+func (s *directUserDataService) ListFavorites(ctx context.Context, session *Session, limit, offset int) ([]upstreamListItem, error) {
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return nil, fmt.Errorf("open user store: %w", err)
+	}
+
+	// ABS-surface favorites (audiobooks/podcasts) are filtered out below, so
+	// the limit/offset window must apply to the *filtered* list — a raw
+	// store-level window would shift or shrink the visible page. Over-fetch
+	// the raw rows, filter, then window.
+	scanLimit := min(max((limit+offset)*2, 200), 10000)
+	favorites, err := store.ListFavorites(ctx, session.ProfileID, scanLimit, 0)
+	if err != nil {
+		return nil, fmt.Errorf("list favorites: %w", err)
+	}
+
+	contentIDs := make([]string, 0, len(favorites))
+	for _, fav := range favorites {
+		contentIDs = append(contentIDs, fav.MediaItemID)
+	}
+
+	if len(contentIDs) == 0 {
+		return []upstreamListItem{}, nil
+	}
+
+	items, err := s.itemRepo.GetByIDs(ctx, contentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("get favorite items: %w", err)
+	}
+
+	// Build a map for ordering by the original favorites list order
+	itemMap := make(map[string]*upstreamListItem, len(items))
+	for _, mi := range items {
+		// Favorites are shared with the ABS surface; its media types are
+		// never exposed here (they would 404 on detail/PlaybackInfo).
+		if isCompatExcludedMediaType(mi.Type) {
+			continue
+		}
+		li := mediaItemToListItem(mi)
+		itemMap[mi.ContentID] = &li
+	}
+
+	ordered := make([]upstreamListItem, 0, len(contentIDs))
+	for _, id := range contentIDs {
+		if li, ok := itemMap[id]; ok {
+			ordered = append(ordered, *li)
+		}
+	}
+
+	// Presign artwork only for the page being returned, batching each image
+	// type into one PresignImageURLsWithExpiry call for the whole page.
+	result := slicePage(ordered, offset, limit)
+	presignCompatListItems(ctx, s.detailSvc, result)
+	fillListItemDurations(ctx, s.detailSvc, result)
+	if result == nil {
+		result = []upstreamListItem{}
+	}
+	return result, nil
+}
+
+// ListNotInterestedByMediaItems reports which of mediaItemIDs the session's
+// profile marked Not interested.
+func (s *directUserDataService) ListNotInterestedByMediaItems(ctx context.Context, session *Session, mediaItemIDs []string) (map[string]bool, error) {
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return nil, fmt.Errorf("open user store: %w", err)
+	}
+	result, err := store.ListNotInterestedByMediaItems(ctx, session.ProfileID, mediaItemIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list not interested by media items: %w", err)
+	}
+	return result, nil
+}
+
+func (s *directUserDataService) ListFavoritesByMediaItems(ctx context.Context, session *Session, mediaItemIDs []string) (map[string]bool, error) {
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return nil, fmt.Errorf("open user store: %w", err)
+	}
+
+	result, err := store.ListFavoritesByMediaItems(ctx, session.ProfileID, mediaItemIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list favorites by media items: %w", err)
+	}
+	if result == nil {
+		return map[string]bool{}, nil
+	}
+	return result, nil
+}
+
+func (s *directUserDataService) IsFavorite(ctx context.Context, session *Session, contentID string) (bool, error) {
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return false, fmt.Errorf("open user store: %w", err)
+	}
+
+	favorite, err := store.IsFavorite(ctx, session.ProfileID, contentID)
+	if err != nil {
+		return false, fmt.Errorf("check favorite: %w", err)
+	}
+	return favorite, nil
+}
+
+func (s *directUserDataService) AddFavorite(ctx context.Context, session *Session, contentID string) error {
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return fmt.Errorf("open user store: %w", err)
+	}
+	if _, err := store.AddFavorite(ctx, session.ProfileID, contentID); err != nil {
+		return err
+	}
+	notifySignalsChanged(ctx, s.signalsNotifier, session.StreamAppUserID, session.ProfileID)
+	return nil
+}
+
+func (s *directUserDataService) RemoveFavorite(ctx context.Context, session *Session, contentID string) error {
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return fmt.Errorf("open user store: %w", err)
+	}
+	if _, err := store.RemoveFavorite(ctx, session.ProfileID, contentID); err != nil {
+		return err
+	}
+	notifySignalsChanged(ctx, s.signalsNotifier, session.StreamAppUserID, session.ProfileID)
+	return nil
+}
+
+func (s *directUserDataService) ListProgress(ctx context.Context, session *Session, status string, limit, offset int) ([]upstreamProgress, error) {
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return nil, fmt.Errorf("open user store: %w", err)
+	}
+
+	entries, err := store.ListProgress(ctx, session.ProfileID, status, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("list progress: %w", err)
+	}
+
+	result := make([]upstreamProgress, 0, len(entries))
+	for _, entry := range entries {
+		result = append(result, toUpstreamProgress(entry))
+	}
+	return result, nil
+}
+
+func (s *directUserDataService) ListProgressFiltered(ctx context.Context, session *Session, status string, types []string, libraryID *int, limit, offset int) ([]upstreamProgress, error) {
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return nil, fmt.Errorf("open user store: %w", err)
+	}
+
+	entries, err := store.ListProgressFiltered(ctx, session.ProfileID, status, types, libraryID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("list filtered progress: %w", err)
+	}
+
+	result := make([]upstreamProgress, 0, len(entries))
+	for _, entry := range entries {
+		result = append(result, toUpstreamProgress(entry))
+	}
+	return result, nil
+}
+
+// FilterResumeProgress applies the same hiding rules as the first-party
+// Continue Watching fetcher: dismissed entries, episodes of dropped series,
+// and episodes superseded by a later-completed episode in the same series.
+func (s *directUserDataService) FilterResumeProgress(ctx context.Context, session *Session, entries []upstreamProgress) ([]upstreamProgress, error) {
+	if len(entries) == 0 {
+		return entries, nil
+	}
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return nil, fmt.Errorf("open user store: %w", err)
+	}
+
+	progress := make([]userstore.WatchProgress, 0, len(entries))
+	for _, entry := range entries {
+		progress = append(progress, fromUpstreamProgress(entry))
+	}
+
+	// Dismissal lookup failures degrade to showing the entries, matching the
+	// first-party fetcher.
+	if dismissals, err := store.ListHomeDismissals(ctx, session.ProfileID, userstore.HomeSurfaceContinueWatching); err != nil {
+		slog.ErrorContext(ctx, "listing continue watching dismissals", "component", "jellycompat", "profile_id", session.ProfileID, "error", err)
+	} else {
+		progress = catalog.NewHomeDismissalIndex(dismissals).FilterProgress(progress)
+	}
+	if filtered, err := s.resumeFilter.FilterDroppedProgress(ctx, session.StreamAppUserID, session.ProfileID, progress); err != nil {
+		slog.ErrorContext(ctx, "filtering dropped series from resume", "component", "jellycompat", "profile_id", session.ProfileID, "error", err)
+	} else {
+		progress = filtered
+	}
+
+	superseded, err := s.resumeFilter.SupersededEpisodeProgressIDs(ctx, store, session.ProfileID, progress)
+	if err != nil {
+		return nil, fmt.Errorf("filter superseded progress: %w", err)
+	}
+	progress = catalog.FilterSupersededProgress(progress, superseded)
+
+	result := make([]upstreamProgress, 0, len(progress))
+	for _, entry := range progress {
+		result = append(result, toUpstreamProgress(entry))
+	}
+	return result, nil
+}
+
+func (s *directUserDataService) ListProgressByMediaItems(ctx context.Context, session *Session, mediaItemIDs []string) (map[string]*upstreamProgress, error) {
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return nil, fmt.Errorf("open user store: %w", err)
+	}
+
+	mediaItemIDs = normalizeContentIDs(mediaItemIDs)
+	progressMap, err := userstore.ListProgressWithCompletedHistory(ctx, store, session.ProfileID, mediaItemIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list progress by media items: %w", err)
+	}
+
+	dates, err := jellycompatProgressDates(ctx, store, session.ProfileID, mediaItemIDs)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]*upstreamProgress, len(progressMap))
+	for contentID, progress := range progressMap {
+		entry := toUpstreamProgress(progress)
+		if date := dates[contentID]; date != "" {
+			entry.UpdatedAt = date
+		}
+		result[contentID] = &entry
+	}
+	return result, nil
+}
+
+func (s *directUserDataService) GetProgress(ctx context.Context, session *Session, contentID string) (*upstreamProgress, error) {
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return nil, fmt.Errorf("open user store: %w", err)
+	}
+
+	progress, err := userstore.GetProgressWithCompletedHistory(ctx, store, session.ProfileID, contentID)
+	if err != nil {
+		return nil, fmt.Errorf("get progress: %w", err)
+	}
+	if progress == nil {
+		return nil, nil
+	}
+
+	entry := toUpstreamProgress(*progress)
+	dates, err := jellycompatProgressDates(ctx, store, session.ProfileID, []string{contentID})
+	if err != nil {
+		return nil, err
+	}
+	if date := dates[contentID]; date != "" {
+		entry.UpdatedAt = date
+	}
+	return &entry, nil
+}
+
+func (s *directUserDataService) MarkPlayed(ctx context.Context, session *Session, contentID string) error {
+	if s.watchState == nil {
+		return fmt.Errorf("watch state service is not configured")
+	}
+	if err := s.watchState.RecordJellycompatMarkPlayed(ctx, session.StreamAppUserID, session.ProfileID, contentID, time.Now().UTC()); err != nil {
+		return err
+	}
+	notifySignalsChanged(ctx, s.signalsNotifier, session.StreamAppUserID, session.ProfileID)
+	publishWatchedChange(ctx, s.events, session, []string{contentID}, true)
+	return nil
+}
+
+func (s *directUserDataService) MarkPlayedBatch(ctx context.Context, session *Session, contentIDs []string) error {
+	if s.watchState == nil {
+		return fmt.Errorf("watch state service is not configured")
+	}
+	if len(contentIDs) == 0 {
+		return nil
+	}
+	if err := s.watchState.RecordJellycompatMarkPlayedBatch(ctx, session.StreamAppUserID, session.ProfileID, contentIDs, time.Now().UTC()); err != nil {
+		return err
+	}
+	notifySignalsChanged(ctx, s.signalsNotifier, session.StreamAppUserID, session.ProfileID)
+	publishWatchedChange(ctx, s.events, session, contentIDs, true)
+	return nil
+}
+
+func (s *directUserDataService) MarkUnplayed(ctx context.Context, session *Session, contentID string) error {
+	if s.watchState == nil {
+		return fmt.Errorf("watch state service is not configured")
+	}
+	if err := s.watchState.RecordJellycompatMarkUnplayed(ctx, session.StreamAppUserID, session.ProfileID, contentID); err != nil {
+		return err
+	}
+	notifySignalsChanged(ctx, s.signalsNotifier, session.StreamAppUserID, session.ProfileID)
+	publishWatchedChange(ctx, s.events, session, []string{contentID}, false)
+	return nil
+}
+
+// ParentUnplayedTargets returns the episodes a series or season unplayed mark
+// must clear, including watched episodes whose file is gone; see
+// watchstate.Service.ParentUnwatchTargets.
+func (s *directUserDataService) ParentUnplayedTargets(ctx context.Context, session *Session, parentKind, parentID string) ([]string, error) {
+	if s.watchState == nil || s.episodes == nil {
+		return nil, nil
+	}
+	return s.watchState.ParentUnwatchTargets(ctx, session.StreamAppUserID, session.ProfileID, s.episodes, parentKind, parentID)
+}
+
+func (s *directUserDataService) MarkUnplayedBatch(ctx context.Context, session *Session, contentIDs []string) error {
+	if s.watchState == nil {
+		return fmt.Errorf("watch state service is not configured")
+	}
+	if len(contentIDs) == 0 {
+		return nil
+	}
+	if err := s.watchState.RecordJellycompatMarkUnplayedBatch(ctx, session.StreamAppUserID, session.ProfileID, contentIDs); err != nil {
+		return err
+	}
+	notifySignalsChanged(ctx, s.signalsNotifier, session.StreamAppUserID, session.ProfileID)
+	publishWatchedChange(ctx, s.events, session, contentIDs, false)
+	return nil
+}
+
+func toUpstreamProgress(entry userstore.WatchProgress) upstreamProgress {
+	return upstreamProgress{
+		MediaItemID:     entry.MediaItemID,
+		PositionSeconds: entry.PositionSeconds,
+		DurationSeconds: entry.DurationSeconds,
+		Completed:       entry.Completed,
+		UpdatedAt:       entry.UpdatedAt,
+	}
+}
+
+func fromUpstreamProgress(entry upstreamProgress) userstore.WatchProgress {
+	return userstore.WatchProgress{
+		MediaItemID:     entry.MediaItemID,
+		PositionSeconds: entry.PositionSeconds,
+		DurationSeconds: entry.DurationSeconds,
+		Completed:       entry.Completed,
+		UpdatedAt:       entry.UpdatedAt,
+	}
+}
+
+func (s *directUserDataService) MarkPlayedBatchAt(ctx context.Context, session *Session, ids []string, date time.Time) error {
+	if s.watchState == nil {
+		return fmt.Errorf("watch state service unavailable")
+	}
+	if err := s.watchState.RecordJellycompatMarkPlayedBatch(ctx, session.StreamAppUserID, session.ProfileID, ids, date); err != nil {
+		return err
+	}
+	notifySignalsChanged(ctx, s.signalsNotifier, session.StreamAppUserID, session.ProfileID)
+	publishWatchedChange(ctx, s.events, session, ids, true)
+	return nil
+}
+
+func (s *directUserDataService) UpdateUserData(ctx context.Context, session *Session, contentID string, duration float64, req updateUserDataRequest) error {
+	store, err := s.storeProvider.ForUser(ctx, session.StreamAppUserID)
+	if err != nil {
+		return err
+	}
+	if req.PlayCount != nil && req.Played == nil {
+		req.Played = new(*req.PlayCount > 0)
+	}
+	if req.Played != nil || req.PlaybackPositionTicks != nil || req.PlayedPercentage != nil || req.LastPlayedDate != nil {
+		existing, err := s.GetProgress(ctx, session, contentID)
+		if err != nil {
+			return err
+		}
+		position, played := float64(0), false
+		if existing != nil {
+			position, played = existing.PositionSeconds, existing.Completed
+			if existing.DurationSeconds > 0 {
+				duration = existing.DurationSeconds
+			}
+		}
+		if req.PlayedPercentage != nil {
+			if duration <= 0 {
+				return &HTTPError{StatusCode: 400, Message: "Cannot set percentage without item duration"}
+			}
+			position = duration * *req.PlayedPercentage / 100
+		}
+		if req.PlaybackPositionTicks != nil {
+			position = float64(*req.PlaybackPositionTicks) / 10000000
+		}
+		date := time.Now().UTC()
+		if req.LastPlayedDate != nil {
+			date = *req.LastPlayedDate
+		}
+
+		if req.Played != nil {
+			played = *req.Played
+			if req.PlaybackPositionTicks == nil && req.PlayedPercentage == nil {
+				position = 0
+			}
+		}
+		if s.watchState == nil {
+			return fmt.Errorf("watch state service unavailable")
+		}
+		edit := userstore.JellycompatProgressEdit{MediaItemID: contentID, PositionSeconds: position, DurationSeconds: duration, Completed: played, EventAt: date, IsFavorite: req.IsFavorite}
+		if err := s.watchState.RecordJellycompatProgress(ctx, session.StreamAppUserID, session.ProfileID, edit, req.Played); err != nil {
+			return err
+		}
+	} else if req.IsFavorite != nil {
+		if *req.IsFavorite {
+			_, err = store.AddFavorite(ctx, session.ProfileID, contentID)
+		} else {
+			_, err = store.RemoveFavorite(ctx, session.ProfileID, contentID)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	notifySignalsChanged(ctx, s.signalsNotifier, session.StreamAppUserID, session.ProfileID)
+	return nil
+}
+
+func jellycompatProgressDates(ctx context.Context, store userstore.UserStore, profile string, ids []string) (map[string]string, error) {
+	reader, ok := store.(interface {
+		ListJellycompatProgressDates(context.Context, string, []string) (map[string]string, error)
+	})
+	if !ok {
+		return nil, nil
+	}
+	return reader.ListJellycompatProgressDates(ctx, profile, ids)
+}
+
+func (s *directUserDataService) UpdateParentUserData(ctx context.Context, session *Session, parentID string, targets []string, played, favorite bool) error {
+	if s.watchState == nil {
+		return fmt.Errorf("watch state service unavailable")
+	}
+	if err := s.watchState.RecordJellycompatParent(ctx, session.StreamAppUserID, session.ProfileID, parentID, targets, played, favorite); err != nil {
+		return err
+	}
+	notifySignalsChanged(ctx, s.signalsNotifier, session.StreamAppUserID, session.ProfileID)
+	return nil
+}

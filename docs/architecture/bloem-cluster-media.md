@@ -29,7 +29,7 @@ releases the dead tuner allocation. Forwarding is routing, not encoder failover.
 The former Jellyfin compatibility stream mapping and opener-token path are
 removed. Native session ownership remains the authority for retained Live TV
 routes; historical protocol tables do not provide an alternate content path.
-See [protocol removal](bloem-compatibility-removal.md).
+See [protocol compatibility](bloem-compatibility-removal.md).
 
 Apply the cluster-route migration before deploying the new binary. Sessions
 opened by an older binary have no process owner and retain local-only routing;

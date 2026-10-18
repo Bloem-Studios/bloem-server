@@ -42,7 +42,7 @@ func RunDatedMarkWatchedBatch(t *testing.T, store userstore.UserStore) {
 	}
 	entries[0].ID, entries[1].ID = "", ""
 	reader, ok := store.(interface {
-		ListWatchProgressDates(context.Context, string, []string) (map[string]string, error)
+		ListJellycompatProgressDates(context.Context, string, []string) (map[string]string, error)
 	})
 	if !ok {
 		t.Fatal("store does not expose progress dates")
@@ -51,7 +51,7 @@ func RunDatedMarkWatchedBatch(t *testing.T, store userstore.UserStore) {
 		if _, err := userstore.MarkWatchedBatch(ctx, store, profile, targets, entries); err != nil {
 			t.Fatal(err)
 		}
-		dates, err := reader.ListWatchProgressDates(ctx, profile, ids)
+		dates, err := reader.ListJellycompatProgressDates(ctx, profile, ids)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -82,7 +82,7 @@ func RunDatedMarkWatchedBatch(t *testing.T, store userstore.UserStore) {
 	if _, err := userstore.MarkWatchedBatch(ctx, store, profile, targets, nil); err != nil {
 		t.Fatal(err)
 	}
-	dates, err := reader.ListWatchProgressDates(ctx, profile, ids)
+	dates, err := reader.ListJellycompatProgressDates(ctx, profile, ids)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func RunDatedMarkWatchedBatch(t *testing.T, store userstore.UserStore) {
 	if _, err := userstore.MarkWatchedBatch(ctx, store, profile, []userstore.MarkWatchedTarget{{MediaItemID: ids[1]}}, nil); err != nil {
 		t.Fatal(err)
 	}
-	dates, err = reader.ListWatchProgressDates(ctx, profile, ids[1:])
+	dates, err = reader.ListJellycompatProgressDates(ctx, profile, ids[1:])
 	if err != nil {
 		t.Fatal(err)
 	}

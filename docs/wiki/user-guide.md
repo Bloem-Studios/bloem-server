@@ -306,10 +306,10 @@ Use the web app or a Bloem/Silo-native app your administrator supports. Enter th
 same server address you use in the browser, then follow that app's sign-in and
 profile selection flow. Use device pairing when the app offers it.
 
-Jellyfin, Emby and Audiobookshelf protocol apps cannot connect to this fork.
-Their protocol services were removed; changing ports or passwords will not enable
-them. Ask the administrator for a supported native app release. Native listening
-and reading in supported clients are separate from those retired protocols.
+Jellyfin-compatible apps (such as Infuse or Swiftfin) and Audiobookshelf apps can
+also connect, on the separate ports your administrator gives you. Sign in with your
+account name and password; to choose a profile, enter `account#profile` as the
+username.
 
 ---
 
@@ -341,5 +341,5 @@ and reading in supported clients are separate from those retired protocols.
 
 - `web/src/pages/` — Home, LibraryBrowse, Collections, Calendar, PersonDetail, Requests,
   Notifications, WatchTogether*, EbookReader, and the `settings/` pages named above
-- `docs/architecture/bloem-compatibility-removal.md` — retired protocol services and native alternatives
+- `docs/architecture/bloem-compatibility-removal.md` — Jellyfin and Audiobookshelf compatibility servers
 - `docs/architecture/invitations-onboarding.md` — invitations and sign-up

@@ -12,16 +12,13 @@ files only where a Bloem extension needs an integration point. Retain the integr
 points needed for Bloem plugins. When a fork change breaks Silo behavior, restore
 the upstream implementation before adding an adapter.
 
-## Protocol compatibility removal (fork override)
+## Jellyfin and Audiobookshelf compatibility
 
-Jellyfin and Audiobookshelf compatibility are removed from this fork. This overrides
-upstream's protocol commitment and beta-preservation requirements; native audiobook,
-ebook, podcast, movie/series, authentication and Live TV functionality remain in scope.
-Do not restore protocol packages, listeners, settings, application enrollment or UI
-choices during upstream merges. Historical migrations must remain executable and unchanged.
-The user-directed removal is an explicit exception to the seam-count restriction:
-list each deleted upstream path individually, without wildcard exemptions. See
-[the removal invariant](docs/architecture/bloem-compatibility-removal.md).
+Bloem runs Silo's Jellyfin and Audiobookshelf compatibility servers as Silo ships them
+(restored 2026-10-18 after the 2026-10-13 removal). Take upstream's code in merges.
+Bloem's tenant wiring lives in `cmd/silo/main.go` and `cmd/silo/bloem_compat.go`.
+Bloem's companion-application enrollment and compatibility gateway stay removed; do
+not restore them. See [protocol compatibility](docs/architecture/bloem-compatibility-removal.md).
 
 ## Naming
 

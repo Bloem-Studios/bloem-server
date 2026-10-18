@@ -342,7 +342,7 @@ Source publication alone does not configure hosts or enable the preview.
 | **Downloads** | Whether viewers can download for offline use, and limits. |
 | **Security & access** | Password rules, invitations and invite codes, API keys, session lifetimes. |
 | **Notifications** | What the server tells people about — new episodes, request updates — and through which channels (in-app, email, Discord, generic webhooks). |
-| **Native clients** | Supported client APIs and retired protocols (2.12). |
+| **Native clients** | Supported client APIs and compatibility ports (2.12). |
 | **Watch sync** | Syncing watch state to and from outside services. |
 | **Infrastructure** | Search (Meilisearch), object storage for artwork and downloads (S3, MinIO, Cloudflare R2 — [S3 storage setup](../bloem/overlays/s3-storage-setup.md)), the distributed roles (2.14). |
 | **AI** | Optional AI-assisted features such as description translation, each with its own provider key. |
@@ -442,16 +442,16 @@ is installed, lets you enable and disable each one, and holds each plugin's own 
 are installed by the person with access to the host, not from inside the web app — that is a
 deliberate security boundary.
 
-### 2.12 Native clients and retired protocols
+### 2.12 Native and compatibility clients
 
 The web app and native client APIs share the main server address. Use a native
-client release with matching server contracts. Jellyfin, Emby and Audiobookshelf
-protocol apps cannot sign in to this fork: their gateways, settings, auxiliary
-listeners and companion enrollment were removed. Setting `JF_PORT` or `ABS_PORT`
-does not restore them. Native audiobook and ebook features remain available.
+client release with matching server contracts. Jellyfin-compatible apps sign in on
+the Jellyfin port (`JF_PORT`, default `8096`), and Audiobookshelf apps on `ABS_PORT`
+(default `13378`) when Audiobookshelf compatibility is enabled. Each session sees
+only its organization's libraries. Bloem's companion enrollment is removed.
 
-See [protocol removal](../architecture/bloem-compatibility-removal.md) for
-migration and restoration boundaries, and [client contracts](../architecture/bloem-sdk-compatibility.md)
+See [protocol compatibility](../architecture/bloem-compatibility-removal.md) for
+the tenant wiring and persistence boundary, and [client contracts](../architecture/bloem-sdk-compatibility.md)
 for the distinction between generated types and a tested app release.
 
 ### 2.13 Tasks, Logs, Diagnostics, Maintenance, Stats

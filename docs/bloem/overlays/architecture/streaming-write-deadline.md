@@ -7,18 +7,16 @@ disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../.
 ## Current native boundary
 
 Apply Silo's streaming write-deadline and writer-chain conformance rules to the
-native routes retained by Bloem. Playback, ranges and cancellation still require
+native routes and to Silo's Audiobookshelf-compatible listener. Playback, ranges and cancellation still require
 their normal host authority and delivery checks; streaming telemetry must not
 prevent response-controller traversal of the writer chain.
 
-The former same-origin Audiobookshelf gateway, private in-process dispatch marker,
-ABS media route enrollment and dedicated protocol listener were removed. Earlier
-ABS-specific rolling-writer guidance describes retired code and must not be used
-to add a new public content path. See
-[protocol removal](../../../architecture/bloem-compatibility-removal.md).
+Bloem's former same-origin Audiobookshelf gateway and its in-process dispatch
+marker were removed; the Audiobookshelf server runs only on its own port. See
+[protocol compatibility](../../../architecture/bloem-compatibility-removal.md).
 
 For Bloem-owned delivery, consult the
 [browse-only policy](../../../architecture/bloem-browse-only-content-policy.md),
 [native video](../../../architecture/bloem-native-video-playback.md) and
 [native audiobook](../../../architecture/bloem-native-audio-playback.md) contracts.
-Do not infer equivalent timeout or permission behavior from a removed protocol test.
+Do not infer equivalent timeout or permission behavior from a compatibility-protocol test.

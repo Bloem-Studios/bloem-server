@@ -36,46 +36,6 @@ func readBloemWorkflow(t *testing.T, path string) map[string]bloemWorkflowJob {
 	return workflow.Jobs
 }
 
-// The upstream-sync merge job does not run the compatibility-removal gate
-// itself: it would inspect the default branch after the merge had landed.
-// It relies on CI's Go contract checks job having run the gate on the tested
-// head, so that job must run on every pull request, with ripgrep installed
-// before the gate.
-func TestUpstreamSyncMergeReliesOnCIForTheCompatibilityGate(t *testing.T) {
-	verify, ok := readBloemWorkflow(t, "../../.github/workflows/ci.yml")["go-verify"]
-	if !ok {
-		t.Fatal("CI has no go-verify job")
-	}
-	if verify.If != "" {
-		t.Fatalf("go-verify runs only when %q; the upstream-sync merge needs it on every head", verify.If)
-	}
-	ripgrep, gate := -1, -1
-	for i, step := range verify.Steps {
-		if strings.Contains(step.Run, "bloem-install-test-tools.sh") && strings.Contains(step.Run, "ripgrep") && ripgrep < 0 {
-			ripgrep = i
-		}
-		if strings.Contains(step.Run, "verify-no-compat") && gate < 0 {
-			gate = i
-		}
-	}
-	if gate < 0 {
-		t.Fatal("go-verify does not run verify-no-compat")
-	}
-	if ripgrep < 0 || ripgrep > gate {
-		t.Fatal("go-verify does not install ripgrep before verify-no-compat")
-	}
-
-	merge, ok := readBloemWorkflow(t, "../../.github/workflows/upstream-sync-merge.yml")["merge"]
-	if !ok {
-		t.Fatal("upstream-sync-merge has no merge job")
-	}
-	for _, step := range merge.Steps {
-		if strings.Contains(step.Run, "verify-no-compat") {
-			t.Fatalf("upstream-sync-merge step %q runs verify-no-compat against the default branch", step.Name)
-		}
-	}
-}
-
 // CI's PostgreSQL services run the major version the deployment compose file
 // runs. PostgreSQL 18 reports some constraint violations with SQLSTATEs that
 // 17 does not (23001 for RESTRICT), so a 17 service hides behavior production

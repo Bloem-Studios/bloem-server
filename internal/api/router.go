@@ -313,6 +313,14 @@ type Dependencies struct {
 	AdminTimeseriesProvider       handlers.AdminTimeseriesSource
 	AdminDownloadsStatsProvider   handlers.AdminDownloadsStatsSource
 
+	// ABSHandler is the Audiobookshelf-compatible HTTP handler. When non-nil
+	// it is mounted at the root router level (not under /api/v1/) so that ABS
+	// clients hitting /login, /api/*, /abs/api/*, and /abs/socket.io/* all
+	// resolve correctly. May be nil; no ABS routes are registered in that case.
+	ABSHandler absHandler
+
+	// BloemDependencies carries every dependency Bloem adds on top of
+	// Silo's set; see bloem_dependencies.go.
 	BloemDependencies
 
 	// LocalTLSPin is the pin of the key the API listener presents over TLS on
@@ -323,6 +331,9 @@ type Dependencies struct {
 
 // absHandler is the narrow interface the router needs from the ABS handler.
 // Using an interface avoids a direct import of the abs sub-package from router.go.
+type absHandler interface {
+	Mount(r chi.Router)
+}
 
 // CurrentConfig returns the live config when hot reload is wired, falling
 // back to the startup snapshot otherwise.
@@ -517,7 +528,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// Health handler advertises the server's identity so multi-server
 	// clients can display a friendly name. Falls back to empty strings
 	// if config is absent (tests, minimal fixtures); JSON omits empties.
-	healthHandler := bloemHealthHandler(deps)
+	var healthServerName, healthServerID string
+	if deps.Config != nil {
+		healthServerName = deps.Config.JellyfinCompat.ServerName
+		healthServerID = deps.Config.JellyfinCompat.ServerID
+	}
+	healthHandler := handlers.NewHealthHandler(healthServerName, healthServerID)
 
 	// Build server settings repo if DB is available (needed by auth and admin).
 	// Wrap it in the encrypting decorator so sensitive keys rest as ciphertext
@@ -2467,8 +2483,21 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 	}
 
+	// userRepo is a concrete pointer, so it has to stay out of the
+	// interface parameter when unset — a typed nil would satisfy the
+	// handler's nil check and panic on first use.
+	var compatUsers handlers.UserRepository
+	if userRepo != nil {
+		compatUsers = userRepo
+	}
+	compatConnectInfoHandler := handlers.NewCompatConnectInfoHandler(
+		deps.Config,
+		settingsRepo,
+		compatUsers,
+	)
 	v2deps := v2Dependencies(deps, authMiddleware, viewerAccessMiddleware, actingAdmin, metadataCurationAccess, markerEditAccess, settingsRepo)
 	wireBloemV2(&v2deps, deps, tenantMiddleware, authMiddleware)
+	v2deps.CompatConnectInfo = compatConnectInfoHandler
 	// Server identity is public discovery data, so it reads through the raw
 	// settings repo: a SECRET_KEY rotation must not change who the server is.
 	if deps.DB != nil {
@@ -2738,6 +2767,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		v2deps.AdminSettingRead = adminHandler
 
+		v2deps.AdminJellyfinCompatStatus = adminHandler
+		v2deps.AdminJellyfinCompatSettings = adminHandler
+		v2deps.AdminJellyfinCompatWeb = adminHandler
 		v2deps.AdminSettingsInspection = adminHandler
 		v2deps.AdminSettingsWrite = adminHandler
 		v2deps.AdminSettingsChecks = adminHandler
@@ -3452,6 +3484,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 				if deps.RateLimitMW != nil {
 					r.Use(deps.RateLimitMW.Handler)
 				}
+				r.Get("/compat/connect-info", compatConnectInfoHandler.HandleGetConnectInfo)
 			})
 		}
 
@@ -4469,6 +4502,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 								r.Post("/literary-works/matches/ignore", literaryWorkHandler.HandleIgnoreMatch)
 							}
 							r.Post("/server/restart", serverControlHandler.HandleRestart)
+							r.Get("/jellyfin-compat/status", adminHandler.HandleGetJellyfinCompatStatus)
+							r.Patch("/jellyfin-compat/settings", adminHandler.HandleUpdateJellyfinCompatSettings)
+							r.Post("/jellyfin-compat/web/install", adminHandler.HandleInstallJellyfinCompatWeb)
+							r.Post("/jellyfin-compat/web/update", adminHandler.HandleUpdateJellyfinCompatWeb)
+							r.Post("/jellyfin-compat/web/remove", adminHandler.HandleRemoveJellyfinCompatWeb)
 							r.Get("/settings/sensitive-status", adminHandler.HandleGetSensitiveStatus)
 							r.Get("/settings/restart-keys", adminHandler.HandleGetRestartKeys)
 							r.Post("/settings/check/{kind}", adminHandler.HandleCheckSettingsConnection)

@@ -362,6 +362,9 @@ var serverBuilders = map[string]bool{
 	// Opt-in via SILO_METRICS_LISTEN, owns exactly one socket on its own port,
 	// and serves only the Prometheus handler.
 	"startMetricsListener": true,
+	// Upstream's Audiobookshelf-compatible listener on its own configured
+	// port (audiobookshelf_compat.listen), never the public address.
+	"newAudiobookshelfListener": true,
 }
 
 // serveCallers may put a handler on a socket.
@@ -369,6 +372,9 @@ var serveCallers = map[string]bool{
 	"servePublic":           true,
 	"startStandaloneServer": true,
 	"startMetricsListener":  true,
+	// Serves the Jellyfin and Audiobookshelf compatibility servers, each on
+	// its own configured port.
+	"serveAux": true,
 }
 
 // listenBinders may open a listening socket.

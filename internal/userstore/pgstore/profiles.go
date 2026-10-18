@@ -428,6 +428,12 @@ func deleteProfile(ctx context.Context, tx preferenceSettingsExecutor, userID in
 		return fmt.Errorf("deleting collection visibility for profile %s: %w", id, err)
 	}
 
+	// Jellyfin display preferences carry the profile in their key.
+	if _, err := tx.Exec(ctx,
+		`DELETE FROM jellycompat_displayprefs WHERE user_id = $1 AND left(prefs_id, length($2)) = $2`,
+		userID, userstore.ProfileDisplayPrefsPrefix(id)); err != nil {
+		return fmt.Errorf("deleting display preferences for profile %s: %w", id, err)
+	}
 	// Every caller's executor is a transaction; the override lock needs one.
 	sectionTx, ok := tx.(pgx.Tx)
 	if !ok {

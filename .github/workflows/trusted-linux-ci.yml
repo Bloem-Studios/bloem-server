@@ -732,7 +732,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/race"
           go test -p 2 -race -c -o "$RUNNER_TEMP/race/" \
-            ./internal/api/handlers/ ./internal/auth/ ./internal/plugins/
+            ./internal/api/handlers/ ./internal/auth/ ./internal/jellycompat/ ./internal/plugins/
 
       # Account resolution and linking, the local-password policy, the OAuth
       # flow store across nodes, provider re-checks, network identity sign-in
@@ -743,6 +743,7 @@ jobs:
         run: |
           (cd internal/api/handlers && "$RUNNER_TEMP/race/handlers.test" -test.run='^(TestLocalLoginSettingRequiresBreakGlassDB|TestV1AdminUserChangesKeepBreakGlassDB|TestDeviceApprovalInheritsSessionProviderChainDB|TestExternalSignInAdminIdentityGuardsDB)$' -test.count=1 -test.timeout=10m)
           (cd internal/auth && "$RUNNER_TEMP/race/auth.test" -test.run='^(TestExternalSignIn|TestProviderRecheck|TestPGOAuthStore|TestOAuthNativeFlowAcrossNodes|TestOAuthNativeStartOrigin|TestOAuthWebFlowBrowserBinding|TestOAuthUnredeemedCode|TestOAuthLinkFlow|TestOAuthForcedLink|TestLinkCredentialsIdentity|TestNetworkSignIn|TestNetworkIdentity|TestLinkNetworkIdentity|TestLocalPasswordPolicy|TestPasswordLoginRouting|TestIdentityService|TestConcurrentFirstSignInCreatesOneAccount|TestEnableAccountLocalLogin|TestSignupRefusedWhileLocalLoginIsOff).*DB$' -test.count=1 -test.timeout=10m)
+          (cd internal/jellycompat && "$RUNNER_TEMP/race/jellycompat.test" -test.run='^TestLoginPINConventionStaysLocalDB$' -test.count=1 -test.timeout=10m)
           (cd internal/plugins && "$RUNNER_TEMP/race/plugins.test" -test.run='^TestUpsertAuthBindingAllows(OneEnabledProvider|NetworkProviderBesidePrimary)$' -test.count=1 -test.timeout=10m)
 
       - name: Save the Go cache

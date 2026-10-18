@@ -452,7 +452,7 @@ is the admin-elevation surface for the tenant/admin web UI, not the TV/phone Wat
 **Purpose.** The public, unauthenticated "which server is this, and can I log into it yet" probe a
 client calls before it holds any credentials — the first request of server discovery/pairing, and
 distinct in both scope and source from `GET /api/v1/health` (health's `server_name`/`server_id`
-retain the persisted server identity as described by [protocol removal](architecture/bloem-compatibility-removal.md), and are deliberately left untouched by this
+come from the Jellyfin compatibility configuration as described by [protocol compatibility](architecture/bloem-compatibility-removal.md), and are deliberately left untouched by this
 endpoint; the two must not be conflated even though both can carry a "server name"). Mounted
 unconditionally, even when no database is configured — see Errors for why the failure mode is
 `503`, never `404`, in that case.
@@ -1991,12 +1991,11 @@ left without an eligible admin via this path.
 
 ### Retired compatibility applications
 
-Jellyfin/Audiobookshelf companion enrollment, credential exchange, gateway routing
-and their platform administration routes are removed. They are not native-client
-integration options. Older documents or generated bundles listing
-`/admin/platform/compatibility/*` describe the pre-removal implementation.
-See [protocol removal](architecture/bloem-compatibility-removal.md) for preserved
-historical SQL, forward-only cleanup and restoration boundaries.
+Bloem's Jellyfin/Audiobookshelf companion enrollment, credential exchange, gateway
+routing and their platform administration routes are removed. Older documents or
+generated bundles listing `/admin/platform/compatibility/*` describe that removed
+implementation. Silo's own Jellyfin and Audiobookshelf compatibility servers still
+run; see [protocol compatibility](architecture/bloem-compatibility-removal.md).
 
 ### Platform entitlement cohorts and bulk policy
 

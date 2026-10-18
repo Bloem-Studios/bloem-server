@@ -1,6 +1,6 @@
 // Package apibench is the hot-path performance harness skeleton for the API
 // v2 program: it drives the named hot paths (catalog list/search, home
-// sections, playback start/replan, progress writes)
+// sections, playback start/replan, progress writes, jellycompat browse)
 // against a running server at configurable concurrency and records latency
 // percentiles, throughput, response bytes, allocations, and database-query
 // counts in a JSON report.
@@ -37,14 +37,15 @@ import (
 
 // Surfaces a path can target.
 const (
-	SurfaceNative = "native"
+	SurfaceNative      = "native"
+	SurfaceJellycompat = "jellycompat"
 )
 
 // Path is one hot-path operation to drive.
 type Path struct {
 	// Name is the stable identifier the report is keyed by.
 	Name string `json:"name"`
-	// Surface is "native" (API listener).
+	// Surface is "native" (API listener) or "jellycompat".
 	Surface string `json:"surface"`
 	Method  string `json:"method"`
 	// URL is relative to the surface's base URL. ${session_id} is replaced
@@ -67,13 +68,16 @@ type Path struct {
 type Plan struct {
 	// NativeBaseURL is the API listener origin, e.g. http://127.0.0.1:8080.
 	NativeBaseURL string `json:"native_base_url"`
+	// JellycompatBaseURL is the Jellyfin-protocol listener origin.
+	JellycompatBaseURL string `json:"jellycompat_base_url,omitempty"`
 	// MetricsURL is the Prometheus endpoint used for allocation deltas.
 	MetricsURL string `json:"metrics_url,omitempty"`
-	// Bearer and ProfileID authenticate native requests. Values may be
-	// ${ENV_VAR} references so
+	// Bearer and ProfileID authenticate native requests; EmbyToken
+	// authenticates jellycompat ones. Values may be ${ENV_VAR} references so
 	// a committed plan never holds a credential.
 	Bearer    string `json:"bearer"`
 	ProfileID string `json:"profile_id"`
+	EmbyToken string `json:"emby_token,omitempty"`
 	// BaseDir resolves relative BodyFile paths. It is not part of the JSON
 	// plan; the loader sets it to the plan file's directory.
 	BaseDir string `json:"-"`
@@ -127,10 +131,11 @@ type Report struct {
 
 // Target describes what was measured, without credentials.
 type Target struct {
-	NativeBaseURL    string `json:"native_base_url"`
-	MetricsSampled   bool   `json:"metrics_sampled"`
-	DatabaseSampled  bool   `json:"database_sampled"`
-	PgStatStatements bool   `json:"pg_stat_statements"`
+	NativeBaseURL      string `json:"native_base_url"`
+	JellycompatBaseURL string `json:"jellycompat_base_url,omitempty"`
+	MetricsSampled     bool   `json:"metrics_sampled"`
+	DatabaseSampled    bool   `json:"database_sampled"`
+	PgStatStatements   bool   `json:"pg_stat_statements"`
 }
 
 // PathResult is one path's measurements.
@@ -225,7 +230,7 @@ func (r *Runner) Run(ctx context.Context) (*Report, error) {
 		return nil, errors.New("apibench: native_base_url is required")
 	}
 	r.Plan.Bearer = expandEnv(r.Plan.Bearer)
-
+	r.Plan.EmbyToken = expandEnv(r.Plan.EmbyToken)
 	r.Plan.ProfileID = expandEnv(r.Plan.ProfileID)
 
 	report := &Report{
@@ -236,9 +241,10 @@ func (r *Runner) Run(ctx context.Context) (*Report, error) {
 		Concurrency:   r.Plan.Concurrency,
 		Duration:      r.Plan.Duration,
 		Target: Target{
-			NativeBaseURL:   r.Plan.NativeBaseURL,
-			MetricsSampled:  r.Metrics != nil,
-			DatabaseSampled: r.Database != nil,
+			NativeBaseURL:      r.Plan.NativeBaseURL,
+			JellycompatBaseURL: r.Plan.JellycompatBaseURL,
+			MetricsSampled:     r.Metrics != nil,
+			DatabaseSampled:    r.Database != nil,
 		},
 	}
 	if db, ok := r.Database.(interface{ HasStatements() bool }); ok {
@@ -261,11 +267,13 @@ func (r *Runner) Run(ctx context.Context) (*Report, error) {
 func (r *Runner) runPath(ctx context.Context, p Path) (PathResult, error) {
 	res := PathResult{Name: p.Name, Surface: p.Surface, Method: p.Method, URL: p.URL, StatusCounts: map[int]int{}}
 	base := r.Plan.NativeBaseURL
-	if p.Surface != "" && p.Surface != SurfaceNative {
-		res.Skipped = "unsupported surface"
-		return res, nil
+	if p.Surface == SurfaceJellycompat {
+		if r.Plan.JellycompatBaseURL == "" {
+			res.Skipped = "jellycompat_base_url not configured"
+			return res, nil
+		}
+		base = r.Plan.JellycompatBaseURL
 	}
-
 	body, err := r.loadBody(p)
 	if err != nil {
 		return res, err
@@ -288,14 +296,18 @@ func (r *Runner) runPath(ctx context.Context, p Path) (PathResult, error) {
 		if body != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}
-
-		if r.Plan.Bearer != "" {
-			req.Header.Set("Authorization", "Bearer "+r.Plan.Bearer)
+		if p.Surface == SurfaceJellycompat {
+			if r.Plan.EmbyToken != "" {
+				req.Header.Set("X-Emby-Token", r.Plan.EmbyToken)
+			}
+		} else {
+			if r.Plan.Bearer != "" {
+				req.Header.Set("Authorization", "Bearer "+r.Plan.Bearer)
+			}
+			if r.Plan.ProfileID != "" {
+				req.Header.Set("X-Profile-Id", r.Plan.ProfileID)
+			}
 		}
-		if r.Plan.ProfileID != "" {
-			req.Header.Set("X-Profile-Id", r.Plan.ProfileID)
-		}
-
 		for k, v := range p.Headers {
 			req.Header.Set(k, expandEnv(v))
 		}

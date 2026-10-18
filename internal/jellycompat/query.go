@@ -1,0 +1,970 @@
+package jellycompat
+
+import (
+	"log/slog"
+	"net/http"
+	"net/url"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Silo-Server/silo-server/internal/catalog"
+)
+
+type itemsQuery struct {
+	limit                  int
+	startIndex             int
+	enableTotalRecordCount bool
+	searchTerm             string
+	namePrefix             string
+	maxOfficialRating      string
+	parentLibraryID        int
+	parentItemID           string
+	parentSeasonID         string
+	parentCollectionID     string
+	specificIDs            []string
+	specificCollectionIDs  []string
+	itemTypes              []string
+	genreName              string
+	genres                 []string
+	years                  []int
+	recursive              bool
+	disableImages          bool
+	disableUserData        bool
+	enableImageTypes       map[string]bool
+	seasonNumber           *int
+	totalOverride          *int
+	isFavorite             bool
+	isResumable            bool
+	isNotFolder            bool // Filters=IsNotFolder or IsFolder=false: leaf items only
+	includesOnlyLeafTypes  bool // IncludeItemTypes names Episode and no Series or Season
+	hasItemTypeFilter      bool // true when IncludeItemTypes or ExcludeItemTypes was present in the request
+	wantsBoxSets           bool // true when IncludeItemTypes contains BoxSet
+	wantsViews             bool // true when IncludeItemTypes contains CollectionFolder
+	sortExplicit           bool // true when SortBy was present in the request
+	needsDetailFields      bool // true when requested Fields include detail-level data (e.g. MediaSources)
+	itemType               string
+	sort                   string
+	order                  string
+	personID               int64
+	isPlayed               *bool // nil = not specified
+	imageTypeLimit         *int  // nil = not specified
+	requireBackdrop        bool  // true when ImageTypes includes Backdrop (filter, not just a hint)
+	audioLanguages         []string
+	subtitleLanguages      []string
+	hasRootFilter          bool // a Jellyfin 12 HasFilters parameter was sent; see jellyfinRootFilterParams
+	unmatchedIDFilter      bool // GenreIds, PersonIds, or StudioIds was sent but no value names a genre, person, or studio
+	unmatchedItemIDs       bool // Ids was sent but no value names an item, collection, season, library view, or the Collections view
+	mediaTypes             []string
+	mediaTypesSet          map[string]bool
+	mediaTypesExplicit     bool
+	requestedFields        map[string]bool // parsed from Fields param
+	fieldsExplicit         bool            // true when Fields was in the request
+	startItemID            string          // raw encoded ID from StartItemId param
+	adjacentTo             string          // raw encoded ID from AdjacentTo param
+	// Jellyfin browse filters served by catalog compat predicates.
+	nameLessThan            string
+	nameStartsWithOrGreater string
+	excludeIDs              []string // decoded content IDs from ExcludeItemIds
+	studios                 []string // decoded studio names from StudioIds
+	officialRatings         []string
+	minCommunityRating      float64
+	minPremiereDate         string // YYYY-MM-DD
+	maxPremiereDate         string // YYYY-MM-DD
+	countOnly               bool   // Limit=0 was sent: only TotalRecordCount is wanted
+	limitDefaulted          bool   // Limit was absent, so limit holds the default page size
+}
+
+func parseItemsQuery(r *http.Request, codec *ResourceIDCodec) itemsQuery {
+	q := newCaseInsensitiveQuery(r.URL.Query())
+	result := itemsQuery{
+		limit:                  parsePositiveInt(q.Get("Limit"), 24),
+		startIndex:             parsePositiveInt(q.Get("StartIndex"), 0),
+		enableTotalRecordCount: parseBool(q.Get("EnableTotalRecordCount"), true),
+		searchTerm:             strings.TrimSpace(q.Get("SearchTerm")),
+		namePrefix:             strings.TrimSpace(firstNonEmpty(q.Get("NameStartsWith"), q.Get("StartsWith"))),
+		maxOfficialRating:      strings.TrimSpace(q.Get("MaxOfficialRating")),
+
+		recursive:       parseBool(q.Get("Recursive"), false),
+		disableImages:   !parseBool(q.Get("EnableImages"), true),
+		disableUserData: !parseBool(q.Get("EnableUserData"), true),
+	}
+	result.sort, result.order = parseSort(q.Get("SortBy"), q.Get("SortOrder"))
+
+	result.genres = splitNonemptyGenres(q.Get("Genres"))
+	for year := range strings.SplitSeq(q.Get("Years"), ",") {
+		if n, err := strconv.Atoi(strings.TrimSpace(year)); err == nil && n > 0 {
+			result.years = append(result.years, n)
+		}
+	}
+	if raw := q.Get("Season"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n >= 0 {
+			result.seasonNumber = new(n)
+		}
+	}
+	// Jellyfin Web repeats the parameter once per type, so every value counts.
+	// A list with no types means every type, as in Jellyfin.
+	if kinds := splitCommaValues(q.Values("EnableImageTypes")); len(kinds) > 0 {
+		result.enableImageTypes = map[string]bool{}
+		for _, kind := range kinds {
+			result.enableImageTypes[strings.ToLower(kind)] = true
+		}
+	}
+	if parentID := strings.TrimSpace(q.Get("ParentId")); parentID != "" {
+		if libraryID, err := codec.DecodeIntID(EncodedIDLibrary, parentID); err == nil {
+			result.parentLibraryID = int(libraryID)
+		} else if collectionID, collErr := codec.DecodeStringID(EncodedIDCollection, parentID); collErr == nil && collectionID != "" {
+			result.parentCollectionID = collectionID
+		} else if seasonID, seasonErr := codec.DecodeStringID(EncodedIDSeason, parentID); seasonErr == nil && seasonID != "" {
+			// A season ParentId means "list this season's episodes". The codec's
+			// kind tagging already keeps Season and Item IDs distinct; decoding
+			// Season first is defensive in case that separation ever changes.
+			result.parentSeasonID = seasonID
+		} else if contentID, itemErr := decodeItemID(codec, parentID); itemErr == nil && contentID != "" {
+			result.parentItemID = contentID
+		}
+	}
+
+	// Every repeated Ids value counts, as in idsRequestCollectionsView.
+	if ids := splitCommaValues(q.Values("Ids")); len(ids) > 0 {
+		keepsRouting := false
+		for _, raw := range ids {
+			if decoded, err := decodeItemID(codec, raw); err == nil && decoded != "" {
+				result.specificIDs = append(result.specificIDs, decoded)
+			} else if collectionID, collErr := codec.DecodeStringID(EncodedIDCollection, raw); collErr == nil && collectionID != "" {
+				result.specificCollectionIDs = append(result.specificCollectionIDs, collectionID)
+			} else if _, libErr := codec.DecodeIntID(EncodedIDLibrary, raw); libErr == nil || isCollectionsViewID(raw) {
+				// A library or Collections view ID is routed as it was
+				// before unmatched Ids returned empty.
+				keepsRouting = true
+			} else if seasonID, seasonErr := codec.DecodeStringID(EncodedIDSeason, raw); seasonErr == nil && seasonID != "" {
+				// The Ids filter does not serve season IDs, so a request
+				// that names a season keeps its earlier routing too (a
+				// series ParentId still lists its seasons).
+				keepsRouting = true
+			}
+		}
+		// A repeated ID would otherwise come back twice.
+		result.specificIDs = normalizeContentIDs(result.specificIDs)
+		result.specificCollectionIDs = normalizeContentIDs(result.specificCollectionIDs)
+		result.unmatchedItemIDs = len(result.specificIDs) == 0 && len(result.specificCollectionIDs) == 0 && !keepsRouting
+	}
+	if genreIDs := strings.TrimSpace(firstNonEmpty(q.Get("GenreIds"), q.Get("GenreItems"))); genreIDs != "" {
+		matched := false
+		for part := range strings.SplitSeq(genreIDs, ",") {
+			decoded, err := codec.DecodeStringID(EncodedIDGenre, strings.TrimSpace(part))
+			if err == nil && decoded != "" {
+				result.genres = append(result.genres, decoded)
+				matched = true
+			}
+		}
+		result.unmatchedIDFilter = !matched
+	}
+
+	if personIDs := strings.TrimSpace(q.Get("PersonIds")); personIDs != "" {
+		for part := range strings.SplitSeq(personIDs, ",") {
+			trimmed := strings.TrimSpace(part)
+			if trimmed == "" {
+				continue
+			}
+			if decoded, err := codec.DecodeIntID(EncodedIDPerson, trimmed); err == nil && decoded > 0 {
+				result.personID = decoded
+				break
+			}
+		}
+		if result.personID == 0 {
+			result.unmatchedIDFilter = true
+		}
+	}
+
+	result.countOnly = strings.TrimSpace(q.Get("Limit")) == "0"
+	result.limitDefaulted = strings.TrimSpace(q.Get("Limit")) == ""
+	result.nameLessThan = strings.TrimSpace(q.Get("NameLessThan"))
+	result.nameStartsWithOrGreater = strings.TrimSpace(q.Get("NameStartsWithOrGreater"))
+	for _, raw := range splitCommaValues(q.Values("ExcludeItemIds")) {
+		if decoded, err := decodeItemID(codec, raw); err == nil && decoded != "" {
+			result.excludeIDs = append(result.excludeIDs, decoded)
+		}
+	}
+	if studioIDs := splitPipeOrCommaValues(q.Values("StudioIds")); len(studioIDs) > 0 {
+		for _, raw := range studioIDs {
+			if decoded, err := codec.DecodeStringID(EncodedIDStudio, raw); err == nil && decoded != "" {
+				result.studios = append(result.studios, decoded)
+			}
+		}
+		if len(result.studios) == 0 {
+			result.unmatchedIDFilter = true
+		}
+	}
+	result.officialRatings = splitPipeOrCommaValues(q.Values("OfficialRatings"))
+	if rating, err := strconv.ParseFloat(strings.TrimSpace(q.Get("MinCommunityRating")), 64); err == nil && rating > 0 {
+		result.minCommunityRating = rating
+	}
+	result.minPremiereDate = parsePremiereDateBound(q.Get("MinPremiereDate"), true)
+	result.maxPremiereDate = parsePremiereDateBound(q.Get("MaxPremiereDate"), false)
+
+	rawItemTypes := q.Values("IncludeItemTypes")
+	rawExcludedItemTypes := q.Values("ExcludeItemTypes")
+	result.hasItemTypeFilter = hasNonEmptyValues(rawItemTypes) || hasNonEmptyValues(rawExcludedItemTypes)
+	result.itemTypes = effectiveItemTypes(rawItemTypes, rawExcludedItemTypes)
+	result.wantsBoxSets = includeItemTypesContain(rawItemTypes, "boxset")
+	result.wantsViews = includeItemTypesContain(rawItemTypes, "collectionfolder")
+	includedTypes := mapIncludeItemTypes(rawItemTypes)
+	result.includesOnlyLeafTypes = itemTypesContain(includedTypes, "episode") &&
+		!itemTypesContain(includedTypes, "series") && !itemTypesContain(includedTypes, "season")
+	result.sortExplicit = strings.TrimSpace(q.Get("SortBy")) != ""
+	if result.sort == "latest_episode_added" && !itemTypesOnlySeries(result.itemTypes) {
+		result.sort = "created_at"
+	}
+	if len(result.itemTypes) > 0 {
+		result.itemType = result.itemTypes[0]
+	}
+	// Jellyfin 12 language filters. As upstream, HasSubtitles=false asks for
+	// items without subtitles, which makes a subtitle-language list moot.
+	result.audioLanguages = splitCommaValues(q.Values("AudioLanguages"))
+	if !strings.EqualFold(strings.TrimSpace(q.Get("HasSubtitles")), "false") {
+		result.subtitleLanguages = splitCommaValues(q.Values("SubtitleLanguages"))
+	}
+	result.hasRootFilter = hasAnyNonEmptyParam(q, jellyfinRootFilterParams)
+	result.isFavorite = hasFilter(q.Get("Filters"), "IsFavorite") || parseBool(q.Get("IsFavorite"), false)
+	result.isResumable = hasFilter(q.Get("Filters"), "IsResumable")
+	result.isNotFolder = hasFilter(q.Get("Filters"), "IsNotFolder") || strings.EqualFold(strings.TrimSpace(q.Get("IsFolder")), "false")
+
+	if hasFilter(q.Get("Filters"), "IsPlayed") {
+		result.isPlayed = new(true)
+	}
+	if hasFilter(q.Get("Filters"), "IsUnplayed") {
+		result.isPlayed = new(false)
+	}
+	// IsPlayed filter.
+	if isPlayedRaw := q.Get("IsPlayed"); isPlayedRaw != "" {
+		val := strings.EqualFold(isPlayedRaw, "true") || isPlayedRaw == "1"
+		result.isPlayed = &val
+	}
+
+	// ImageTypeLimit.
+	if itlRaw := q.Get("ImageTypeLimit"); itlRaw != "" {
+		if itl, err := strconv.Atoi(itlRaw); err == nil {
+			result.imageTypeLimit = &itl
+		}
+	}
+
+	// ImageTypes acts as a filter: clients (e.g. Wholphin genre cards) request
+	// ImageTypes=Backdrop and assume every returned item has a backdrop. Only
+	// Backdrop is enforced — the catalog browse path can filter on backdrop_path.
+	for _, raw := range q.Values("ImageTypes") {
+		for part := range strings.SplitSeq(raw, ",") {
+			if strings.EqualFold(strings.TrimSpace(part), "Backdrop") {
+				result.requireBackdrop = true
+			}
+		}
+	}
+
+	mediaTypesRaw := q.Values("MediaTypes")
+	result.mediaTypes = parseMediaTypes(mediaTypesRaw)
+	result.mediaTypesExplicit = len(mediaTypesRaw) > 0 && strings.TrimSpace(strings.Join(mediaTypesRaw, "")) != ""
+	if len(result.mediaTypes) > 0 {
+		result.mediaTypesSet = make(map[string]bool, len(result.mediaTypes))
+		for _, mediaType := range result.mediaTypes {
+			result.mediaTypesSet[mediaType] = true
+		}
+	}
+
+	// Fields — parse requested fields and track if explicitly present.
+	// Clients send Fields two ways: comma-separated in a single param (VidHub:
+	// Fields=A,B,C) OR as repeated params (Wholphin / jellyfin-sdk-kotlin:
+	// Fields=A&Fields=B&Fields=C). q.Get returns only the FIRST repeated value,
+	// which silently dropped every field after the first — so a Wholphin
+	// playlist request (Fields=PrimaryImageAspectRatio&...&Fields=MediaSources)
+	// never triggered the detail path and came back without MediaSources,
+	// breaking next-episode playback. Join all values, then split on commas.
+	fieldsRaw := strings.Join(q.Values("Fields"), ",")
+	result.requestedFields = parseRequestedFields(fieldsRaw)
+	result.fieldsExplicit = strings.TrimSpace(fieldsRaw) != ""
+	result.needsDetailFields = requestedFieldsNeedDetail(result.requestedFields)
+
+	result.startItemID = strings.TrimSpace(q.Get("StartItemId"))
+	result.adjacentTo = strings.TrimSpace(q.Get("AdjacentTo"))
+
+	// Diagnostic: when the request stays on the list path, emit a Debug log
+	// listing any requested Fields that mapping.go's itemFromList does not
+	// populate AND that are not in the detail-required allowlist. Those
+	// fields are silently dropped from the response. Operators can grep for
+	// "jellycompat unsatisfied fields" to discover client/server feature
+	// drift (e.g., a client asking for RemoteTrailers without also asking
+	// for Chapters/MediaSources/People to trigger detail).
+	if !result.needsDetailFields {
+		if missing := unsatisfiedListFields(result.requestedFields); len(missing) > 0 {
+			slog.DebugContext(r.Context(), "jellycompat unsatisfied fields", "component", "jellycompat",
+				"path", r.URL.Path,
+				"fields", missing,
+				"hint", "list-path response will omit these; add a detail-required field (e.g. MediaSources) to switch paths")
+		}
+	}
+
+	return result
+}
+
+// parseSuggestionsQuery parses the Jellyfin Suggestions endpoint parameters.
+// The Suggestions API uses "type" (not "IncludeItemTypes") to filter item types.
+func parseSuggestionsQuery(r *http.Request, codec *ResourceIDCodec) itemsQuery {
+	q := newCaseInsensitiveQuery(r.URL.Query())
+	result := itemsQuery{
+		limit:      parsePositiveInt(q.Get("Limit"), 10),
+		startIndex: parsePositiveInt(q.Get("StartIndex"), 0),
+	}
+	// The Suggestions endpoint uses "type" rather than "IncludeItemTypes".
+	// The bracket variant (type[]) is handled by caseInsensitiveQuery.Values.
+	typeValues := q.Values("Type")
+	mapped := mapIncludeItemTypes(typeValues)
+	if len(mapped) > 0 {
+		result.itemType = mapped[0]
+		result.itemTypes = mapped
+	}
+	return result
+}
+
+func buildLatestBrowseParams(query itemsQuery) url.Values {
+	params := buildBrowseParams(query)
+	// "recently_added" sorts by mil.first_seen_at, which the
+	// idx_item_libraries_folder_seen_content index orders for free —
+	// vs "created_at" which forces a full-library top-N heapsort.
+	params.Set("sort", "recently_added")
+	params.Set("order", "desc")
+	return params
+}
+
+func buildBrowseParams(query itemsQuery) url.Values {
+	params := url.Values{}
+	if query.isPlayed != nil || query.isFavorite || query.isResumable {
+		params.Set("compose_state", "true")
+	}
+	if len(query.genres) > 0 {
+		params.Set("genres", strings.Join(query.genres, "|"))
+	}
+	if len(query.years) > 0 {
+		values := make([]string, len(query.years))
+		for i, year := range query.years {
+			values[i] = strconv.Itoa(year)
+		}
+		params.Set("years", strings.Join(values, ","))
+	}
+	if query.searchTerm != "" {
+		params.Set("search_term", query.searchTerm)
+	}
+	if len(query.specificIDs) > 0 {
+		params.Set("content_ids", strings.Join(query.specificIDs, ","))
+	}
+	params.Set("limit", strconv.Itoa(query.limit))
+	params.Set("offset", strconv.Itoa(query.startIndex))
+	if len(query.itemTypes) > 0 {
+		params.Set("type", strings.Join(query.itemTypes, ","))
+	}
+	if query.parentLibraryID > 0 {
+		params.Set("library_id", strconv.Itoa(query.parentLibraryID))
+	}
+	if query.genreName != "" {
+		params.Set("genre", query.genreName)
+	}
+	if query.namePrefix != "" {
+		params.Set("name_prefix", query.namePrefix)
+	}
+	if query.nameLessThan != "" {
+		params.Set("name_less_than", query.nameLessThan)
+	}
+	if query.nameStartsWithOrGreater != "" {
+		params.Set("name_at_least", query.nameStartsWithOrGreater)
+	}
+	if len(query.excludeIDs) > 0 {
+		params.Set("exclude_content_ids", strings.Join(query.excludeIDs, ","))
+	}
+	if len(query.studios) > 0 {
+		params.Set("studios", strings.Join(query.studios, "|"))
+	}
+	if len(query.officialRatings) > 0 {
+		params.Set("official_ratings", strings.Join(query.officialRatings, "|"))
+	}
+	if query.minCommunityRating > 0 {
+		params.Set("min_community_rating", strconv.FormatFloat(query.minCommunityRating, 'f', -1, 64))
+	}
+	if query.minPremiereDate != "" {
+		params.Set("min_premiere_date", query.minPremiereDate)
+	}
+	if query.maxPremiereDate != "" {
+		params.Set("max_premiere_date", query.maxPremiereDate)
+	}
+	if query.sort != "" {
+		params.Set("sort", query.sort)
+	}
+	if query.order != "" {
+		params.Set("order", query.order)
+	}
+	params.Set("include_total", strconv.FormatBool(query.enableTotalRecordCount))
+	if query.countOnly {
+		params.Set("count_only", "true")
+	}
+	if query.isFavorite {
+		params.Set("is_favorite", "true")
+	}
+	if query.isResumable {
+		params.Set("is_resumable", "true")
+	}
+	if query.personID > 0 {
+		params.Set("person_id", strconv.FormatInt(query.personID, 10))
+	}
+	if query.maxOfficialRating != "" {
+		params.Set("max_content_rating", query.maxOfficialRating)
+	}
+	if query.isPlayed != nil {
+		if *query.isPlayed {
+			params.Set("is_played", "true")
+		} else {
+			params.Set("is_played", "false")
+		}
+	}
+	if query.requireBackdrop {
+		params.Set("require_backdrop", "true")
+	}
+	if len(query.audioLanguages) > 0 {
+		params.Set("audio_languages", strings.Join(query.audioLanguages, ","))
+	}
+	if len(query.subtitleLanguages) > 0 {
+		params.Set("subtitle_languages", strings.Join(query.subtitleLanguages, ","))
+	}
+	return params
+}
+
+// jellyfinRootFilterParams are the GET /Items parameters that set a field of
+// Jellyfin 12's InternalItemsQuery.HasFilters. From 12.0 a user-root request
+// carrying any of them searches the libraries recursively instead of listing
+// them, even when Recursive is absent, so Silo must not fall back to the
+// library views even for filters it cannot apply. LocationTypes and
+// ExcludeLocationTypes are deliberately left out: Silo has no virtual items,
+// and older clients send ExcludeLocationTypes=Virtual on their library-list
+// request.
+//
+//nolint:goconst // Jellyfin GET /Items parameter names, listed verbatim.
+var jellyfinRootFilterParams = []string{
+	"IncludeItemTypes", "ExcludeItemTypes", "MediaTypes", "VideoTypes", "ImageTypes",
+	"Genres", "GenreIds", "Years", "Tags", "OfficialRatings", "Studios", "StudioIds",
+	"Artists", "ArtistIds", "AlbumArtistIds", "ContributingArtistIds", "ExcludeArtistIds",
+	"Albums", "AlbumIds", "Person", "PersonIds", "PersonTypes", "SeriesStatus",
+	"ExcludeItemIds", "AudioLanguages", "SubtitleLanguages", "Filters",
+	"IsFavorite", "IsPlayed", "IsMissing", "IsUnaired", "Is3D", "IsHd", "Is4K", "IsLocked",
+	"IsPlaceHolder", "IsMovie", "IsSports", "IsKids", "IsNews", "IsSeries",
+	"HasImdbId", "HasTmdbId", "HasTvdbId", "HasOverview", "HasOfficialRating",
+	"HasParentalRating", "HasThemeSong", "HasThemeVideo", "HasSubtitles",
+	"HasSpecialFeature", "HasTrailer", "MinCriticRating", "MinCommunityRating",
+	"MinOfficialRating", "IndexNumber", "ParentIndexNumber", "MinWidth", "MinHeight",
+	"MaxWidth", "MaxHeight", "MinPremiereDate", "MaxPremiereDate", "MinDateLastSaved",
+	"MinDateLastSavedForUser", "AdjacentTo", "NameStartsWith", "NameStartsWithOrGreater",
+	"NameLessThan", "SearchTerm",
+}
+
+func hasAnyNonEmptyParam(q caseInsensitiveQuery, keys []string) bool {
+	for _, key := range keys {
+		if hasNonEmptyValues(q.Values(key)) {
+			return true
+		}
+	}
+	return false
+}
+
+// splitCommaValues flattens repeated and comma-delimited query values into
+// trimmed, non-empty entries.
+func splitCommaValues(values []string) []string {
+	var out []string
+	for _, raw := range values {
+		for part := range strings.SplitSeq(raw, ",") {
+			if part = strings.TrimSpace(part); part != "" {
+				out = append(out, part)
+			}
+		}
+	}
+	return out
+}
+
+// splitPipeOrCommaValues flattens repeated values delimited by either '|'
+// (Jellyfin's binder for StudioIds and OfficialRatings) or ','.
+func splitPipeOrCommaValues(values []string) []string {
+	var out []string
+	for _, raw := range values {
+		out = append(out, splitCommaValues(strings.Split(raw, "|"))...)
+	}
+	return out
+}
+
+func favoriteItemsNeedBrowseFilters(query itemsQuery) bool {
+	return query.parentLibraryID > 0 ||
+		query.genreName != "" ||
+		query.namePrefix != "" ||
+		query.maxOfficialRating != "" ||
+		query.sort != "" ||
+		query.order != "" ||
+		query.personID > 0 ||
+		query.isPlayed != nil ||
+		len(query.specificIDs) > 0
+}
+
+// favoriteBrowseFiltersSupportedBySQL reports whether the favorite items query
+// can be served by the catalog.BrowseFavorites single-query SQL path. Filters
+// that require joining user_progress (isPlayed) or item_people (personID) are
+// not supported by that path; specific-ID intersections are also routed to the
+// legacy two-query fallback to keep the SQL plan simple. Sorts outside
+// catalog.IsBrowseFavoritesSortSupported (e.g. random, rating_imdb) would
+// silently fall back to added_at in BrowseFavorites — fall back to the legacy
+// path so client-requested ordering is preserved.
+func favoriteBrowseFiltersSupportedBySQL(query itemsQuery) bool {
+	if query.isPlayed != nil {
+		return false
+	}
+	if query.personID > 0 {
+		return false
+	}
+	if len(query.specificIDs) > 0 {
+		return false
+	}
+	if !catalog.IsBrowseFavoritesSortSupported(query.sort) {
+		return false
+	}
+	return true
+}
+
+func parsePositiveInt(raw string, fallback int) int {
+	if raw == "" {
+		return fallback
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 0 {
+		return fallback
+	}
+	return value
+}
+
+func parseBool(s string, defaultVal bool) bool {
+	if s == "" {
+		return defaultVal
+	}
+	return strings.EqualFold(s, "true") || s == "1"
+}
+
+func mapIncludeItemTypes(rawValues []string) []string {
+	if len(rawValues) == 0 {
+		return nil
+	}
+
+	seen := map[string]bool{}
+	result := make([]string, 0, len(rawValues))
+	for _, raw := range rawValues {
+		for part := range strings.SplitSeq(raw, ",") {
+			var mapped string
+			switch strings.ToLower(strings.TrimSpace(part)) {
+			case "movie", "movies":
+				mapped = "movie"
+			case "series", "tvshows", "show":
+				mapped = "series"
+			case "episode", "episodes":
+				mapped = "episode"
+			case "season", "seasons":
+				mapped = "season"
+			}
+			if mapped == "" || seen[mapped] {
+				continue
+			}
+			seen[mapped] = true
+			result = append(result, mapped)
+		}
+	}
+	return result
+}
+
+func effectiveItemTypes(rawIncluded, rawExcluded []string) []string {
+	included := mapIncludeItemTypes(rawIncluded)
+	excluded := mapIncludeItemTypes(rawExcluded)
+	if len(excluded) == 0 {
+		return included
+	}
+
+	base := included
+	if len(base) == 0 && !hasNonEmptyValues(rawIncluded) {
+		base = compatVideoTypeList
+	}
+	if len(base) == 0 {
+		return nil
+	}
+
+	excludedSet := make(map[string]struct{}, len(excluded))
+	for _, itemType := range excluded {
+		excludedSet[itemType] = struct{}{}
+	}
+	result := make([]string, 0, len(base))
+	for _, itemType := range base {
+		if _, skip := excludedSet[itemType]; skip {
+			continue
+		}
+		result = append(result, itemType)
+	}
+	return result
+}
+
+func hasNonEmptyValues(values []string) bool {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func itemTypesOnlySeries(itemTypes []string) bool {
+	return len(itemTypes) == 1 && itemTypes[0] == "series"
+}
+
+// includeItemTypesContain reports whether a raw IncludeItemTypes value list
+// contains the given (lowercase) type, before mapIncludeItemTypes drops
+// entries it cannot map to catalog types (e.g. BoxSet).
+func includeItemTypesContain(rawValues []string, target string) bool {
+	for _, raw := range rawValues {
+		for part := range strings.SplitSeq(raw, ",") {
+			if strings.ToLower(strings.TrimSpace(part)) == target {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func parseMediaTypes(rawValues []string) []string {
+	if len(rawValues) == 0 {
+		return nil
+	}
+
+	seen := map[string]bool{}
+	result := make([]string, 0, len(rawValues))
+	for _, raw := range rawValues {
+		for part := range strings.SplitSeq(raw, ",") {
+			mediaType := strings.ToLower(strings.TrimSpace(part))
+			if mediaType == "" || seen[mediaType] {
+				continue
+			}
+			seen[mediaType] = true
+			result = append(result, mediaType)
+		}
+	}
+	return result
+}
+
+// parseSort maps Jellyfin's parallel SortBy/SortOrder lists to one browse sort
+// and order. The catalog sorts by one key, so the first key Silo maps wins and
+// takes the SortOrder entry at the same position. Jellyfin sorts ascending
+// when that entry is absent; without SortBy, Silo keeps its newest-first rail
+// default. Unmapped keys alone fall back to created_at.
+func parseSort(sortBy, sortOrder string) (sort, order string) {
+	keys := strings.Split(sortBy, ",")
+	orders := strings.Split(sortOrder, ",")
+	position := 0
+	sort = catalog.BrowseSortCreatedAt
+	for i, key := range keys {
+		if mapped, ok := sortKey(key); ok {
+			sort, position = mapped, i
+			break
+		}
+	}
+	orderRaw := ""
+	if position < len(orders) {
+		orderRaw = orders[position]
+	}
+	return sort, mapSortOrder(orderRaw, strings.TrimSpace(sortBy) != "")
+}
+
+// mapSortBy returns the browse sort parseSort selects for a SortBy list.
+func mapSortBy(raw string) string {
+	sort, _ := parseSort(raw, "")
+	return sort
+}
+
+// sortKey maps one Jellyfin SortBy key. Episode-order keys map to "" — the
+// natural season/episode order episode browses already use — rather than to
+// created_at.
+func sortKey(raw string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "sortname", "name":
+		return catalog.BrowseSortTitle, true
+	case "datecreated":
+		return catalog.BrowseSortCreatedAt, true
+	case "premiered", "premieredate":
+		return catalog.BrowseSortReleaseDate, true
+	case "productionyear":
+		return catalog.BrowseSortYear, true
+	case "communityrating":
+		return catalog.BrowseSortRatingIMDB, true
+	case "random":
+		return "random", true
+	case "dateplayed":
+		return catalog.BrowseSortCreatedAt, true
+	case "datelastcontentadded":
+		// Jellyfin's standard "Latest" sort for TV libraries: shows ordered
+		// by their most recently added episode (issue #202).
+		return "latest_episode_added", true
+	case "indexnumber", "parentindexnumber", "airedepisodeorder":
+		return "", true
+	default:
+		return "", false
+	}
+}
+
+// mapSortOrder maps one Jellyfin SortOrder entry to a browse order. Jellyfin
+// sorts an explicit SortBy ascending when SortOrder is absent (Wholphin relies
+// on this for episode lists); requests without SortBy keep Silo's
+// newest-first rail default.
+func mapSortOrder(raw string, explicitSort bool) string {
+	switch raw = strings.TrimSpace(raw); {
+	case strings.EqualFold(raw, "Ascending"):
+		return "asc"
+	case strings.EqualFold(raw, "Descending"):
+		return catalog.BrowseOrderDescending
+	case explicitSort:
+		return "asc"
+	default:
+		return catalog.BrowseOrderDescending
+	}
+}
+
+func parseRequestedFields(raw string) map[string]bool {
+	if raw == "" {
+		return nil
+	}
+	fields := map[string]bool{}
+	for part := range strings.SplitSeq(raw, ",") {
+		key := strings.ToLower(strings.TrimSpace(part))
+		if key != "" {
+			fields[key] = true
+		}
+	}
+	return fields
+}
+
+// fieldsRequiringDetail enumerates the (case-insensitive) Jellyfin Fields
+// values that genuinely require a per-item GetItemDetail call. All other
+// fields can be served by browse-level joins; do NOT add fields here just
+// to be safe — every entry causes an N+1 amplification (one detail fetch
+// per result item, e.g. ~525 queries for /Shows/{id}/Episodes on a
+// 500-episode series).
+//
+// Keys must be lowercase. parseRequestedFields normalizes incoming Fields
+// to lowercase before storing them in the requestedFields map.
+//
+// mediasources is listed because BrowseRepository does not yet project
+// per-file media metadata. When the LATERAL JOIN against media_files lands
+// (catalog SQL performance overhaul plan §3.2 part b), it can be removed.
+var fieldsRequiringDetail = parseRequestedFields("RemoteTrailers,ProviderIds,People,Chapters,MediaStreams,MediaSources")
+
+// Lowercased Fields keys for the list path's file-backed video size.
+const (
+	fieldWidth  = "width"
+	fieldHeight = "height"
+	fieldIsHD   = "ishd"
+)
+
+// fieldsServedByList enumerates Fields values that mapping.go's itemFromList
+// can populate — gated by `if allFields || fields[X]` blocks — plus the
+// file-backed ones applyListFileFields fills in afterwards. Anything outside
+// this set AND outside fieldsRequiringDetail is silently dropped from
+// list-path responses (no detail fetch is triggered to fill it).
+//
+// Keep aligned with mapping.go itemFromList. When you add a new
+// `fields[X]`-gated branch there, add the lowercase key here too.
+var fieldsServedByList = map[string]struct{}{
+	"overview":            {},
+	"genres":              {},
+	"etag":                {},
+	"sortname":            {},
+	"studios":             {},
+	"taglines":            {},
+	"tags":                {},
+	"productionlocations": {},
+	"criticrating":        {},
+	"mediasourcecount":    {},
+	fieldWidth:            {},
+	fieldHeight:           {},
+	fieldIsHD:             {},
+	"providerids":         {},
+}
+
+func requestedFieldsNeedDetail(fields map[string]bool) bool {
+	for field := range fields {
+		key := strings.ToLower(strings.TrimSpace(field))
+		if _, ok := fieldsRequiringDetail[key]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// unsatisfiedListFields returns the (sorted, lowercased) Fields values that
+// will be silently dropped on list-path responses — neither populated by the
+// browse mapper nor recognized as a detail-required field that would trigger
+// a per-item GetItemDetail fetch. Returns nil when the request will fall
+// into the detail path (which serves all fields) or when no fields are
+// unserved. Diagnostic only — does not change response behavior.
+func unsatisfiedListFields(fields map[string]bool) []string {
+	if len(fields) == 0 {
+		return nil
+	}
+	if requestedFieldsNeedDetail(fields) {
+		return nil
+	}
+	var out []string
+	for field := range fields {
+		key := strings.ToLower(strings.TrimSpace(field))
+		if key == "" || key == "*" {
+			continue
+		}
+		if _, ok := fieldsServedByList[key]; ok {
+			continue
+		}
+		if _, ok := fieldsRequiringDetail[key]; ok {
+			continue
+		}
+		out = append(out, key)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func hasFilter(raw, target string) bool {
+	for part := range strings.SplitSeq(raw, ",") {
+		if strings.EqualFold(strings.TrimSpace(part), target) {
+			return true
+		}
+	}
+	return false
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+// caseInsensitiveQuery wraps url.Values with case-insensitive key lookup.
+// Jellyfin clients use inconsistent casing (PascalCase, camelCase, lowercase).
+type caseInsensitiveQuery struct {
+	index map[string]string // lowercase key → original key
+	raw   url.Values
+}
+
+func newCaseInsensitiveQuery(values url.Values) caseInsensitiveQuery {
+	index := make(map[string]string, len(values))
+	for key := range values {
+		lower := strings.ToLower(key)
+		if _, exists := index[lower]; !exists {
+			index[lower] = key
+		}
+	}
+	return caseInsensitiveQuery{index: index, raw: values}
+}
+
+func (q caseInsensitiveQuery) Get(key string) string {
+	lower := strings.ToLower(key)
+	if orig, ok := q.index[lower]; ok {
+		return q.raw.Get(orig)
+	}
+	// Jellyfin SDKs may send "key[]" for array params — try bracket variant.
+	if orig, ok := q.index[lower+"[]"]; ok {
+		return q.raw.Get(orig)
+	}
+	return ""
+}
+
+func (q caseInsensitiveQuery) Values(key string) []string {
+	lower := strings.ToLower(key)
+	if orig, ok := q.index[lower]; ok {
+		return q.raw[orig]
+	}
+	// Jellyfin SDKs may send "key[]" for array params — try bracket variant.
+	if orig, ok := q.index[lower+"[]"]; ok {
+		return q.raw[orig]
+	}
+	return nil
+}
+
+// hasCompatBrowseFilters reports Jellyfin filters that only the catalog browse
+// path applies.
+func (q itemsQuery) hasCompatBrowseFilters() bool {
+	return q.nameLessThan != "" || q.nameStartsWithOrGreater != "" || len(q.excludeIDs) > 0 || len(q.studios) > 0 ||
+		len(q.officialRatings) > 0 || q.minCommunityRating > 0 || q.minPremiereDate != "" || q.maxPremiereDate != ""
+}
+
+// parsePremiereDateBound converts a Jellyfin Min/MaxPremiereDate instant to
+// the inclusive YYYY-MM-DD bound the catalog compares. Jellyfin compares the
+// instant with premiere dates at midnight UTC, so a minimum with a time of day
+// starts the next UTC day and a maximum ends on its own UTC day.
+func parsePremiereDateBound(raw string, isMin bool) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	for _, layout := range []string{time.RFC3339Nano, "2006-01-02T15:04:05.999999999Z0700", "2006-01-02T15:04:05.999999999", "2006-01-02 15:04:05", "2006-01-02"} {
+		t, err := time.Parse(layout, raw)
+		if err != nil {
+			continue
+		}
+		t = t.UTC()
+		day := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+		if isMin && t.After(day) {
+			day = day.AddDate(0, 0, 1)
+		}
+		return day.Format("2006-01-02")
+	}
+	if len(raw) >= 10 {
+		if _, err := time.Parse("2006-01-02", raw[:10]); err == nil {
+			return raw[:10]
+		}
+	}
+	return ""
+}
+
+// hasIntersectingFilters selects catalog predicate composition before specialized
+// rails can discard filters. Unfiltered rails keep their episode-aware semantics.
+func (q itemsQuery) hasIntersectingFilters() bool {
+	return len(q.genres) > 0 || len(q.years) > 0 || q.hasCompatBrowseFilters() || q.genreName != "" || q.personID > 0 || q.requireBackdrop || len(q.audioLanguages) > 0 || len(q.subtitleLanguages) > 0 || q.maxOfficialRating != "" || q.namePrefix != "" || (q.searchTerm != "" && (q.isFavorite || q.isPlayed != nil || q.isResumable || q.sortExplicit)) || (q.isFavorite && (q.isPlayed != nil || q.isResumable)) || (q.isResumable && q.isPlayed != nil)
+}
+
+// matchesNothing reports whether an ID filter names nothing, so the request
+// returns an empty page rather than an unfiltered browse. An unresolvable Ids
+// with no other filter still lists the library views, as Jellyfin does for an
+// Ids value that is not a GUID.
+func (q itemsQuery) matchesNothing() bool {
+	return q.unmatchedIDFilter || (q.unmatchedItemIDs && !q.listsUserRootViews())
+}
+
+// listsUserRootViews reports whether a /Items request with no parent, type,
+// user-state, search, or Jellyfin 12 HasFilters parameter lists the user's
+// library views rather than searching the catalog.
+func (q itemsQuery) listsUserRootViews() bool {
+	return q.parentLibraryID == 0 && q.parentCollectionID == "" && q.parentSeasonID == "" && q.parentItemID == "" &&
+		!q.hasItemTypeFilter && len(q.itemTypes) == 0 && !q.recursive && !q.hasRootFilter &&
+		!q.hasMemberFilters()
+}
+
+// hasMemberFilters reports whether the request narrows results by catalog
+// fields, search, or user state.
+func (q itemsQuery) hasMemberFilters() bool {
+	return q.hasIntersectingFilters() || q.searchTerm != "" || q.isFavorite || q.isPlayed != nil || q.isResumable
+}
+
+// allowsItemType reports whether the IncludeItemTypes/ExcludeItemTypes filter,
+// if any, admits the native item type.
+func (q itemsQuery) allowsItemType(itemType string) bool {
+	return !q.hasItemTypeFilter || itemTypesContain(q.itemTypes, itemType)
+}
+
+// allowsVideo reports whether the MediaTypes filter, if any, admits video.
+func (q itemsQuery) allowsVideo() bool {
+	return !q.mediaTypesExplicit || q.mediaTypesSet["video"]
+}

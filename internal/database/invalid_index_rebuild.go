@@ -22,6 +22,7 @@ var rebuiltConcurrentIndexes = []struct{ name, definition string }{
 	{"idx_media_files_folder_file_path_pattern", "media_files (media_folder_id, file_path text_pattern_ops)"},
 	{"idx_media_items_content_type", "media_items USING btree (content_id, type)"},
 	{"idx_uwp_profile_completed_cursor", "user_watch_progress USING btree (user_id, profile_id, updated_at DESC, media_item_id DESC) WHERE completed = TRUE"},
+	{"idx_abs_playback_sessions_user_profile_started", "abs_playback_sessions USING btree (user_id, profile_id, started_at)"},
 	{"idx_manga_enrichment_state_next_attempt", "manga_enrichment_state (next_attempt_at) WHERE next_attempt_at IS NOT NULL"},
 }
 

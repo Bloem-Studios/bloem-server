@@ -18,19 +18,22 @@ const (
 	deleteSetting  = "player.playback_speed"
 	hiddenTitle    = "movie:hidden-before"
 	deleteScope    = "home"
+	deletePrefsID  = "usersettings"
+	deleteClient   = "emby"
 )
 
 // registeredDevice names the device registry row profileStateLeft reports.
 const registeredDevice = "registered device"
 
 // profileStateKinds is how many kinds of state seedProfileState writes.
-const profileStateKinds = 8
+const profileStateKinds = 9
 
 // RunDeleteProfileRemovesProfileState checks that deleting a profile removes
 // the per-profile state the store keeps beyond its lists and progress: watch
 // history, hidden-history cutoffs, Home dismissals, audio and subtitle
-// preferences, onboarding state, device settings and registry rows and
-// section overrides. Another profile's state stays. A profile recreated under the deleted ID starts clean, so nothing
+// preferences, onboarding state, device settings and registry rows, section
+// overrides and Jellyfin display preferences. Another profile's state
+// stays. A profile recreated under the deleted ID starts clean, so nothing
 // the old profile left behind (a hidden-history cutoff above all) reaches it.
 //
 // devicesPurgedElsewhere marks a store whose device registry another step
@@ -124,6 +127,9 @@ func seedProfileState(t *testing.T, ctx context.Context, store userstore.UserSto
 	if err := store.SaveSectionOverrides(ctx, profileID, deleteScope, "", []userstore.SectionOverride{{SectionID: "default-recently-added", Hidden: true}}); err != nil {
 		t.Fatalf("SaveSectionOverrides %s: %v", profileID, err)
 	}
+	if err := store.SetJellycompatDisplayPrefs(ctx, userstore.ProfileDisplayPrefsID(profileID, deletePrefsID), deleteClient, `{"SortBy":"SortName"}`); err != nil {
+		t.Fatalf("SetJellycompatDisplayPrefs %s: %v", profileID, err)
+	}
 }
 
 // profileStateLeft names each kind of seeded state profileID still has.
@@ -178,6 +184,11 @@ func profileStateLeft(t *testing.T, ctx context.Context, store userstore.UserSto
 		t.Fatalf("ListSectionOverrides %s: %v", profileID, err)
 	} else if len(overrides) > 0 {
 		left = append(left, "section overrides")
+	}
+	if prefs, err := store.GetJellycompatDisplayPrefs(ctx, userstore.ProfileDisplayPrefsID(profileID, deletePrefsID), deleteClient); err != nil {
+		t.Fatalf("GetJellycompatDisplayPrefs %s: %v", profileID, err)
+	} else if prefs != "" {
+		left = append(left, "display preferences")
 	}
 	return left
 }

@@ -130,11 +130,13 @@ describe("AdminSettingsLayout", () => {
     }
   });
 
-  it("sends a retired compatibility page to the first settings page", async () => {
+  it("redirects a retired page route to the page that absorbed it", async () => {
     vi.stubGlobal("scrollTo", vi.fn());
     renderInteractiveLayout("/jellyfin");
 
-    expect(await screen.findByRole("region", { name: "General settings" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("region", { name: "Compatibility settings" }),
+    ).toBeInTheDocument();
   });
 
   it.each(["", "/not-a-page"])("opens the first settings page from %s", async (suffix) => {

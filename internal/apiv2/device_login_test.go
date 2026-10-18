@@ -38,7 +38,7 @@ func TestGetDeviceLoginCapability(t *testing.T) {
 	if rec.Code != 200 || rec.Header().Get("Cache-Control") != cachePrivateNoCache {
 		t.Fatalf("%d %s %s", rec.Code, rec.Header().Get("Cache-Control"), rec.Body.String())
 	}
-	want := `{"revision":"1","state":"available","remote_playback_handoff":true,"jellyfin_quick_connect":false,"protocol_versions":[2],"cancel":true,"opened_signal":true}` + "\n"
+	want := `{"revision":"1","state":"available","remote_playback_handoff":true,"jellyfin_quick_connect":true,"protocol_versions":[2],"cancel":true,"opened_signal":true}` + "\n"
 	if !capabilityBodyMatches(t, rec.Body.Bytes(), want) {
 		t.Fatalf("body = %s", rec.Body.String())
 	}

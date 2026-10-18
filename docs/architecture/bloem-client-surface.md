@@ -85,12 +85,10 @@ Identity resolves the
 Folding the two together would either make the capability probe fallible or
 leave the identity fields silently absent.
 
-`GET /api/v1/health` retains an existing `jellyfin_compat.server_id` when present
-so previously enrolled native clients keep their server identity. Otherwise it
-uses the deployment identity; the name uses operator branding. This read does
-not restore the retired protocol. Health fields are not a scope key; the native
-identity endpoint remains authoritative for that purpose. See
-[protocol removal](bloem-compatibility-removal.md).
+`GET /api/v1/health` answers `server_name` and `server_id` from the Jellyfin
+compatibility configuration, as upstream does. Health fields are not a scope key;
+the native identity endpoint remains authoritative for that purpose. See
+[protocol compatibility](bloem-compatibility-removal.md).
 
 ## Progress sync reports two vocabularies
 

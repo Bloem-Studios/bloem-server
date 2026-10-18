@@ -32,6 +32,7 @@ export const ADMIN_SETTINGS_PAGE_IDS = [
   "ai",
   "email",
   "announcements",
+  "compatibility",
   "notifications",
   "network-access",
 ] as const;

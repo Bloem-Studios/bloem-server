@@ -184,6 +184,10 @@ POST /api/v2/admin/items/{id}/refresh-metadata	non-media
 POST /api/v2/admin/items/{id}/split	non-media
 GET /api/v2/admin/items/{id}/trickplay	non-media
 POST /api/v2/admin/items/{id}/trickplay/regenerate	non-media
+PATCH /api/v2/admin/jellyfin-compat/settings	non-media
+GET /api/v2/admin/jellyfin-compat/status	non-media
+POST /api/v2/admin/jellyfin-compat/web/install	non-media
+POST /api/v2/admin/jellyfin-compat/web/remove	non-media
 GET /api/v2/admin/jobs	non-media
 GET /api/v2/admin/jobs/capabilities	non-media
 GET /api/v2/admin/jobs/{id}	non-media
@@ -522,6 +526,7 @@ DELETE /api/v2/collections/{id}/items/{item_id}	non-media
 PUT /api/v2/collections/{id}/items/{item_id}	non-media
 PUT /api/v2/collections/{id}/poster	non-media
 POST /api/v2/collections/{id}/sync	non-media
+GET /api/v2/compat/connect-info	non-media
 GET /api/v2/devices	non-media
 POST /api/v2/devices/push/apple	non-media
 GET /api/v2/devices/push/apple/capabilities	non-media
@@ -1274,6 +1279,11 @@ GET /api/v1/admin/items/{id}/metadata-translation/jobs	non-media
 POST /api/v1/admin/items/{id}/metadata-translation/jobs/{job_id}/cancel	non-media
 POST /api/v1/admin/items/{id}/refresh-metadata	non-media
 POST /api/v1/admin/items/{id}/split	non-media
+PATCH /api/v1/admin/jellyfin-compat/settings	non-media
+GET /api/v1/admin/jellyfin-compat/status	non-media
+POST /api/v1/admin/jellyfin-compat/web/install	non-media
+POST /api/v1/admin/jellyfin-compat/web/remove	non-media
+POST /api/v1/admin/jellyfin-compat/web/update	non-media
 GET /api/v1/admin/jobs/	non-media
 GET /api/v1/admin/jobs/{id}	non-media
 POST /api/v1/admin/jobs/{id}/cancel	non-media
@@ -1438,6 +1448,7 @@ POST /api/v1/catalog/query	non-media
 GET /api/v1/catalog/series/{id}/seasons	non-media
 GET /api/v1/catalog/series/{id}/seasons/{num}	non-media
 GET /api/v1/catalog/series/{id}/seasons/{num}/episodes	non-media
+GET /api/v1/compat/connect-info	non-media
 POST /api/v1/diagnostics/reports	non-media
 POST /api/v1/diagnostics/reports/uploads/	non-media
 DELETE /api/v1/diagnostics/reports/uploads/{upload_id}	non-media
@@ -1773,6 +1784,10 @@ POST /api/v2/admin/items/{id}/refresh-metadata	non-media
 POST /api/v2/admin/items/{id}/split	non-media
 GET /api/v2/admin/items/{id}/trickplay	non-media
 POST /api/v2/admin/items/{id}/trickplay/regenerate	non-media
+PATCH /api/v2/admin/jellyfin-compat/settings	non-media
+GET /api/v2/admin/jellyfin-compat/status	non-media
+POST /api/v2/admin/jellyfin-compat/web/install	non-media
+POST /api/v2/admin/jellyfin-compat/web/remove	non-media
 GET /api/v2/admin/jobs	non-media
 GET /api/v2/admin/jobs/capabilities	non-media
 GET /api/v2/admin/jobs/{id}	non-media
@@ -2111,6 +2126,7 @@ DELETE /api/v2/collections/{id}/items/{item_id}	non-media
 PUT /api/v2/collections/{id}/items/{item_id}	non-media
 PUT /api/v2/collections/{id}/poster	non-media
 POST /api/v2/collections/{id}/sync	non-media
+GET /api/v2/compat/connect-info	non-media
 GET /api/v2/devices	non-media
 POST /api/v2/devices/push/apple	non-media
 GET /api/v2/devices/push/apple/capabilities	non-media

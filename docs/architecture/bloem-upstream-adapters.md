@@ -205,13 +205,15 @@ for routes that have a v2 contract; do not alias these helpers to `api`.
 ## SQLite user-store versions
 
 Silo owns the SQLite user-store version numbers in
-[`internal/userdb/migrate.go`](../../internal/userdb/migrate.go). Bloem's step
-follows Silo's latest, is idempotent, and lives in
-[`bloem_compat_removal.go`](../../internal/userdb/bloem_compat_removal.go). Bloem
-once shipped its cleanup as version 32 before Silo claimed 32, so a store Bloem
-left at 32 skipped Silo's version 32; Bloem's version 34 adds the column that
-step would have added. When Silo claims Bloem's number again, renumber Bloem's
-step after Silo's and backfill whatever Silo's skipped step does.
+[`internal/userdb/migrate.go`](../../internal/userdb/migrate.go). Bloem's steps
+follow Silo's latest, are idempotent, and live in
+[`bloem_migrate.go`](../../internal/userdb/bloem_migrate.go). Bloem once shipped
+a compatibility cleanup as version 32, before Silo claimed 32, and then as
+version 34. A store Bloem left at 32 skipped Silo's version 32, so Bloem's
+version 34 adds the column that step would have added. Both cleanups dropped
+the Jellyfin display-preference table, which version 35 recreates. When Silo
+claims Bloem's numbers, renumber Bloem's steps after Silo's and backfill
+whatever Silo's skipped step does.
 
 ## Realtime ticket PIN proof
 
@@ -365,12 +367,10 @@ Removing URL authentication without replacing every media loader caused subtitle
 and attached-font requests to fail with 401. Follow upstream here rather than
 adding a second subtitle transport.
 
-## Native audiobook boundary after protocol removal
+## Native audiobook boundary
 
-Native audiobook scanning and direct playback remain in the host. The former
-Audiobookshelf REST/Socket.IO services, media-store filtering adapter and
-compatibility session repository are retired; they are not extension points for
-new providers. Historical protocol tables may remain for Silo switching, as
-specified by [protocol removal](bloem-compatibility-removal.md). Current native
-publication and playback invariants are in
-[bloem-native-audio-playback.md](bloem-native-audio-playback.md).
+Native audiobook scanning and direct playback remain in the host. Silo's
+Audiobookshelf-compatible server runs beside them on its own port, as described
+in [protocol compatibility](bloem-compatibility-removal.md); it is not an
+extension point for new providers. Current native publication and playback
+invariants are in [bloem-native-audio-playback.md](bloem-native-audio-playback.md).

@@ -362,6 +362,17 @@ var adminSettingDefaults = map[string]string{
 	playback.TranscodeThrottleEnabledSettingKey:      strconv.FormatBool(playback.DefaultTranscodeThrottleEnabled),
 	playback.TranscodeThrottleSecondsSettingKey:      strconv.Itoa(playback.DefaultTranscodeThrottleSeconds),
 
+	"audiobookshelf_compat.enabled":           "true",
+	"jellyfin_compat.enabled":                 "true",
+	"jellyfin_compat.public_url":              "http://127.0.0.1:8096",
+	"jellyfin_compat.emulated_server_version": DefaultJellyfinCompatEmulatedServerVersion,
+	"jellyfin_compat.server_name":             "Silo",
+	"jellyfin_compat.web_enabled":             "true",
+	"jellyfin_compat.web_version":             DefaultJellyfinWebVersion,
+	"jellyfin_compat.web_install_dir":         DefaultJellyfinWebInstallDir,
+	"jellyfin_compat.session_ttl":             "87600h",
+	"jellyfin_compat.playback_session_ttl":    "6h",
+
 	"recommendations.enabled":                    "false",
 	"recommendations.embeddings_job_timeout":     "24h",
 	"recommendations.embedding_base_url":         "http://ollama:11434",
@@ -599,7 +610,8 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 		PlaybackKeyframePlaylistSettingKey,
 		ChapterThumbnailSoftwareToneMapSettingKey, PlaybackTranscodeHardwareToneMapSettingKey,
 		PlaybackTranscodeSoftwareToneMapSettingKey, CatalogScopeVersionsToLibrarySettingKey,
-		Allow4KTranscodeSettingKey, playback.TranscodeThrottleEnabledSettingKey, "recommendations.enabled",
+		Allow4KTranscodeSettingKey, playback.TranscodeThrottleEnabledSettingKey, "audiobookshelf_compat.enabled",
+		"jellyfin_compat.enabled", "jellyfin_compat.web_enabled", "recommendations.enabled",
 		"subtitle_ai.enabled", "subtitle_ai.transcribe_enabled", "metadata_ai.enabled", "subtitles.auto_sync",
 		"download.enabled", "download.transcode_enabled", DownloadLocalTranscodeFallbackSettingKey,
 		"email.enabled", "signup.enabled", "password_reset.self_service_enabled", SetupCompletedSettingKey,
@@ -758,7 +770,8 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 		return normalizeAdminFloat(key, value, 0, 1)
 
 	case "auth.access_token_expiry", "auth.refresh_token_expiry", "userdb.idle_timeout",
-		"download.period_duration", "s3.metadata_presign_expiry",
+		"download.period_duration", "jellyfin_compat.session_ttl",
+		"jellyfin_compat.playback_session_ttl", "s3.metadata_presign_expiry",
 		"recommendations.embeddings_job_timeout":
 		return normalizeAdminDuration(key, value)
 	case "scanner.file_removal_grace":
@@ -823,7 +836,8 @@ func NormalizeAdminSetting(key, raw string) (string, error) {
 		return value, nil
 
 	case "ai.base_url", "ai.asr_base_url", "recommendations.embedding_base_url",
-		"server.public_url", "s3.public_endpoint", "s3.public_read_endpoint", "s3.private_endpoint",
+		"server.public_url", "jellyfin_compat.public_url",
+		"s3.public_endpoint", "s3.public_read_endpoint", "s3.private_endpoint",
 		"s3.user_db_endpoint", "catalog.search.meilisearch.url":
 		return normalizeAdminURL(key, value)
 	case ServerLocalURLSettingKey:

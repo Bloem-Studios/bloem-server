@@ -73,6 +73,11 @@ func YAMLToSettingsMap(path string) (map[string]string, error) {
 	if err := yaml.Unmarshal(data, raw); err != nil {
 		return nil, fmt.Errorf("parsing YAML config: %w", err)
 	}
+	jellyfinCompatEnabledConfigured, err := yamlHasPath(data, "jellyfin_compat", "enabled")
+	if err != nil {
+		return nil, fmt.Errorf("parsing YAML config: %w", err)
+	}
+
 	m := make(map[string]string)
 
 	// Server
@@ -223,6 +228,24 @@ func YAMLToSettingsMap(path string) (map[string]string, error) {
 	setIfNonEmpty(m, "auth.jwt_secret", raw.Auth.JWTSecret)
 	setIfNonEmpty(m, "auth.access_token_expiry", raw.Auth.AccessTokenExpiry)
 	setIfNonEmpty(m, "auth.refresh_token_expiry", raw.Auth.RefreshTokenExpiry)
+
+	// JellyfinCompat
+	if jellyfinCompatEnabledConfigured {
+		m["jellyfin_compat.enabled"] = strconv.FormatBool(raw.JellyfinCompat.Enabled)
+	} else if raw.JellyfinCompat.Listen != "" {
+		m["jellyfin_compat.enabled"] = "true"
+	}
+	setIfNonEmpty(m, "jellyfin_compat.listen", raw.JellyfinCompat.Listen)
+	setIfNonEmpty(m, "jellyfin_compat.public_url", raw.JellyfinCompat.PublicURL)
+	setIfNonEmpty(m, "jellyfin_compat.emulated_server_version", raw.JellyfinCompat.EmulatedServerVersion)
+	setIfNonEmpty(m, "jellyfin_compat.server_id", raw.JellyfinCompat.ServerID)
+	setIfNonEmpty(m, "jellyfin_compat.server_name", raw.JellyfinCompat.ServerName)
+	setIfNonEmpty(m, "jellyfin_compat.web_enabled", strconv.FormatBool(raw.JellyfinCompat.WebEnabled))
+	setIfNonEmpty(m, "jellyfin_compat.web_version", raw.JellyfinCompat.WebVersion)
+	setIfNonEmpty(m, "jellyfin_compat.web_dir", raw.JellyfinCompat.WebDir)
+	setIfNonEmpty(m, "jellyfin_compat.web_install_dir", raw.JellyfinCompat.WebInstallDir)
+	setIfNonEmpty(m, "jellyfin_compat.session_ttl", raw.JellyfinCompat.SessionTTL)
+	setIfNonEmpty(m, "jellyfin_compat.playback_session_ttl", raw.JellyfinCompat.PlaybackSessionTTL)
 
 	return m, nil
 }

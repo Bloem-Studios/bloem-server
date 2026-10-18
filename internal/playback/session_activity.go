@@ -11,6 +11,12 @@ import (
 // no additional activity. A failed lookup must not authorize session expiry.
 type SessionActivityReader func(context.Context, []Session) (map[string]time.Time, error)
 
+func (m *SessionManager) SetCompatActivityReader(reader SessionActivityReader) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.compatActivityReader = reader
+}
+
 // SetDeliveryActivityReader installs the reader for media that another node
 // served for a remote-transport session. A remote session otherwise stays alive
 // only on its client's progress reports, so a client that pulls media without
@@ -37,6 +43,15 @@ func (m *SessionManager) refreshDeliveryActivity(activeIdle, pausedIdle time.Dur
 	m.mu.RUnlock()
 	m.refreshExternalActivity("node_delivery", reader, activeIdle, pausedIdle, false, func(s *Session, _ bool) bool {
 		return s.remoteTransport
+	})
+}
+
+func (m *SessionManager) refreshCompatActivity(activeIdle, pausedIdle time.Duration) map[*Session]bool {
+	m.mu.RLock()
+	reader := m.compatActivityReader
+	m.mu.RUnlock()
+	return m.refreshExternalActivity("compat", reader, activeIdle, pausedIdle, true, func(s *Session, inactive bool) bool {
+		return s.IsJellyfinCompat && inactive
 	})
 }
 
@@ -96,4 +111,54 @@ func (m *SessionManager) refreshExternalActivity(source string, reader SessionAc
 		m.mu.Unlock()
 	}
 	return protected
+}
+
+// SessionExpiryCandidate carries the exact inactivity threshold selected under
+// the manager lock. The claimer must arbitrate retirement with durable pings.
+type SessionExpiryCandidate struct {
+	Session
+	InactiveBefore time.Time
+}
+
+type SessionExpiryClaimer func(context.Context, []SessionExpiryCandidate) (map[string]bool, error)
+
+func (m *SessionManager) SetCompatExpiryClaimer(claimer SessionExpiryClaimer) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.compatExpiryClaimer = claimer
+}
+
+// Called with m.mu held so a successful claim cannot race local activity or a
+// new transport. A single batched round trip has a strict 250ms deadline.
+func (m *SessionManager) claimCompatExpiryLocked(now time.Time, activeIdle, pausedIdle time.Duration, protected map[*Session]bool) map[string]bool {
+	if m.compatExpiryClaimer == nil {
+		return nil
+	}
+	var candidates []SessionExpiryCandidate
+	for _, s := range m.sessions {
+		active, paused := remoteTransportGrace(s, activeIdle, pausedIdle)
+		if !s.IsJellyfinCompat || protected[s] || s.activeTransportCount > 0 || !m.sessionIsInactiveLocked(s, now, active, paused) {
+			continue
+		}
+		if len(candidates) == 256 {
+			break
+		}
+		grace := active
+		if s.IsPaused {
+			grace = paused
+		}
+		candidates = append(candidates, SessionExpiryCandidate{Session: *s, InactiveBefore: now.Add(-max(grace, 0))})
+	}
+	claimed := make(map[string]bool)
+	if len(candidates) == 0 {
+		return claimed
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+	result, err := m.compatExpiryClaimer(ctx, candidates)
+	if err != nil {
+		slog.Warn("could not claim shared compatibility playback expiry", "error", err, "sessions", len(candidates))
+		return claimed
+	}
+	return result
 }

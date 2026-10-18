@@ -9,7 +9,7 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 - [Documentation workflow](documentation-workflow.md) — Silo's manual/reference model, Bloem ownership, generation and verification.
 - [API catalogue](api-catalogue.md) — generated typed operations and explicit native documentation gaps.
 
-- [Protocol compatibility removal](../architecture/bloem-compatibility-removal.md) — native-only runtime, persistence cleanup and upstream merge invariant.
+- [Protocol compatibility](../architecture/bloem-compatibility-removal.md) — Silo's Jellyfin and Audiobookshelf servers, their tenant wiring, and the removed companion gateway.
 - [Pastime managed-tracking removal](../architecture/bloem-pastime-removal.md) — forward-only cleanup migration and the rule that Pastime returns only as an ordinary plugin.
 
 - [October 15 preview server deployment](../operations/2026-10-15-preview-server-deployment.md) — published source, offline migrations, matching presentation workers, live API/Swagger checks and pending preview activation.
@@ -131,7 +131,7 @@ same path. Read the upstream document together with its overlay.
 - [Bloem Xtream deployment — 2026-09-19](../operations/2026-09-19-xtream-deployment.md)
 - [Bulk policy cohorts release and canary runbook](../operations/bulk-policy-cohorts-runbook.md)
 - [Bulk policy cohorts](../operations/bulk-policy-cohorts.md)
-- [Protocol removal and restoration boundary](../architecture/bloem-compatibility-removal.md)
+- [Protocol compatibility](../architecture/bloem-compatibility-removal.md)
 - [Entitlement templates](../operations/entitlement-templates.md)
 - [Header-Authenticated Media Rollout Handoff](../operations/header-authenticated-media-rollout-handoff.md)
 

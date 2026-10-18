@@ -374,6 +374,12 @@ func DeleteProfile(db *sql.DB, id string) error {
 		}
 	}
 
+	// Jellyfin display preferences carry the profile in their key.
+	prefix := userstore.ProfileDisplayPrefsPrefix(id)
+	if _, err := tx.Exec(`DELETE FROM jellycompat_displayprefs WHERE substr(prefs_id, 1, length(?)) = ?`, prefix, prefix); err != nil {
+		return fmt.Errorf("deleting display preferences for profile %s: %w", id, err)
+	}
+
 	// Delete the profile itself.
 	result, err := tx.Exec("DELETE FROM profiles WHERE id = ?", id)
 	if err != nil {

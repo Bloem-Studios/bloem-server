@@ -7,7 +7,7 @@ import (
 
 	"github.com/pressly/goose/v3"
 
-	"github.com/Silo-Server/silo-server/internal/legacymigrate/displayprefs"
+	"github.com/Silo-Server/silo-server/internal/jellycompat/displayprefs"
 )
 
 // displayPrefsMoveVersion sorts immediately after
@@ -21,7 +21,7 @@ const displayPrefsMoveVersion int64 = 20260728132327
 // the last non-settings tenant of the legacy key/value table.
 //
 // A Go migration rather than SQL because the key parsing and row
-// classification live in internal/legacymigrate/displayprefs, shared with the
+// classification live in internal/jellycompat/displayprefs, shared with the
 // per-user SQLite backend so the two cannot diverge; SQL could not use those
 // rules without duplicating them. Values are copied byte-for-byte — the blobs
 // are opaque Jellyfin client JSON and reinterpreting them is not this

@@ -79,6 +79,7 @@ func TestLoginSessionActivityAndAdminRevocationDB(t *testing.T) {
 		return id
 	}
 	one, two, untouched := session(target), session(target), session(other)
+	targetJellyfin, otherJellyfin := insertJellyfinSession(t, pool, target), insertJellyfinSession(t, pool, other)
 	read := func(id string) *time.Time {
 		t.Helper()
 		s, err := repo.GetByID(ctx, id)
@@ -114,6 +115,9 @@ func TestLoginSessionActivityAndAdminRevocationDB(t *testing.T) {
 	if n, err := repo.RevokeAsAdmin(ctx, actor, target, &one); err != nil || n != 1 {
 		t.Fatalf("single revoke %d %v", n, err)
 	}
+	if !jellyfinSessionExists(t, pool, targetJellyfin) {
+		t.Fatal("single-session revoke must leave the account's Jellyfin-compatible sessions")
+	}
 	if _, active, err := repo.ActiveSession(ctx, one); err != nil || active {
 		t.Fatalf("revoked session still valid: %t %v", active, err)
 	}
@@ -123,8 +127,31 @@ func TestLoginSessionActivityAndAdminRevocationDB(t *testing.T) {
 	if at := read(one); at == nil || !at.Equal(later) {
 		t.Fatalf("revoked activity changed: %v", at)
 	}
+	absSession := func(userID int) int64 {
+		t.Helper()
+		var id int64
+		if err := pool.QueryRow(ctx, `INSERT INTO abs_sessions(user_id,token_hash,device_id) VALUES($1,$2,'test') RETURNING id`, userID, uuid.NewString()).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	absRevoked := func(id int64) bool {
+		t.Helper()
+		var revoked bool
+		if err := pool.QueryRow(ctx, `SELECT revoked_at IS NOT NULL FROM abs_sessions WHERE id=$1`, id).Scan(&revoked); err != nil {
+			t.Fatal(err)
+		}
+		return revoked
+	}
+	targetABS, otherABS := absSession(target), absSession(other)
 	if n, err := repo.RevokeAsAdmin(ctx, actor, target, nil); err != nil || n != 1 {
 		t.Fatalf("all revoke %d %v", n, err)
+	}
+	if !absRevoked(targetABS) || absRevoked(otherABS) {
+		t.Fatal("account-wide revoke must end only the target's Audiobookshelf sessions")
+	}
+	if jellyfinSessionExists(t, pool, targetJellyfin) || !jellyfinSessionExists(t, pool, otherJellyfin) {
+		t.Fatal("account-wide revoke must delete only the target's Jellyfin-compatible sessions")
 	}
 	for _, id := range []string{one, two} {
 		if _, active, err := repo.ActiveSession(ctx, id); err != nil || active {

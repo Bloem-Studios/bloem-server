@@ -17,6 +17,7 @@ var approvedDomainSchemaTypes = map[string]string{
 	"github.com/Silo-Server/silo-server/internal/diagnostics":           "IngestResult",
 	"github.com/Silo-Server/silo-server/internal/downloads":             "OfflineAudioTrack OfflineChapter OfflineIdentity OfflineIntegrity OfflineSubtitle SkippedDownload SkippedManifest",
 	"github.com/Silo-Server/silo-server/internal/historyimport":         "ExternalUser",
+	"github.com/Silo-Server/silo-server/internal/jellycompat":           "ConnectInfo WebInstallerPrerequisite",
 	"github.com/Silo-Server/silo-server/internal/metadata":              "MatchCandidate TitleAlias",
 	"github.com/Silo-Server/silo-server/internal/models":                "AudioTrack VideoTrack",
 	"github.com/Silo-Server/silo-server/internal/onboarding":            "Flow SettingOption SettingSpec Step StepLink",

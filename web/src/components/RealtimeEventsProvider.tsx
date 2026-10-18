@@ -1,3 +1,4 @@
+import { jellyfinCompatStatusKey } from "@/api/v2/jellyfinStatusCache";
 import { fetchAdminTaskJob } from "@/api/v2/adminTasks";
 import type { QueryClient, QueryFilters } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
@@ -9,11 +10,13 @@ import type {
   EventsSnapshotMessage,
   EventsStreamMessage,
   HistoryImportRun,
+  JellyfinCompatOperationStatus,
+  JellyfinCompatStatus,
   NotificationReadEventPayload,
   ScanRun,
   TaskInfo,
 } from "@/api/types";
-import { type ProfileRequestContextSnapshot } from "@/api/client";
+import { isCapturedProfileAuthorityActive, type ProfileRequestContextSnapshot } from "@/api/client";
 import {
   mintEventsSocketTicket,
   captureEventsAuthority,
@@ -195,6 +198,49 @@ function upsertJob(existing: AdminJob[] | undefined, nextJob: AdminJob, limit = 
     jobs.push(nextJob);
   }
   return sortJobs(jobs).slice(0, limit);
+}
+
+export function applyJellyfinCompatOperationUpdate(
+  queryClient: QueryClient,
+  operation: JellyfinCompatOperationStatus,
+  authority: ProfileRequestContextSnapshot | null,
+) {
+  if (!authority || !isCapturedProfileAuthorityActive(authority)) return;
+  const key = jellyfinCompatStatusKey(authority);
+  if (!operation?.id) {
+    void queryClient.invalidateQueries({ queryKey: key, exact: true });
+    return;
+  }
+
+  queryClient.setQueryData<JellyfinCompatStatus>(key, (existing) => {
+    if (!existing) {
+      return existing;
+    }
+    return {
+      ...existing,
+      web_state: jellyfinCompatOperationWebState(operation),
+      operation,
+    };
+  });
+
+  if (operation.state !== "running") {
+    void queryClient.invalidateQueries({ queryKey: key, exact: true });
+  }
+}
+
+function jellyfinCompatOperationWebState(
+  operation: JellyfinCompatOperationStatus,
+): JellyfinCompatStatus["web_state"] {
+  if (operation.state === "running") {
+    return operation.kind === "remove" ? "removing" : "installing";
+  }
+  if (operation.state === "failed") {
+    return "failed";
+  }
+  if (operation.kind === "remove") {
+    return "missing";
+  }
+  return "installed";
 }
 
 function hydrateAdminJobSnapshot(queryClient: QueryClient, jobs: AdminJob[]) {
@@ -776,6 +822,13 @@ export function RealtimeEventsProvider({ children }: { children: ReactNode }) {
         updateHistoryImportCaches(queryClient, message.data as HistoryImportRun);
         break;
       case "settings":
+        if (message.event === "jellyfin_compat.web_operation.updated") {
+          applyJellyfinCompatOperationUpdate(
+            queryClient,
+            message.data as JellyfinCompatOperationStatus,
+            realtimeAuthority,
+          );
+        }
         break;
       case "user_state":
         handleUserStateEvent(

@@ -45,16 +45,6 @@ POST /api/v1/livetv/tuners
 POST /api/v1/livetv/tuners/discover
 POST /api/v1/livetv/tuners/{tunerId}/scan`
 
-// Exact user-directed removals; historical baselines remain frozen.
-var bloemRemovedCompatibilityRoutes = []string{
-	"GET /api/v1/admin/jellyfin-compat/status",
-	"GET /api/v1/compat/connect-info",
-	"PATCH /api/v1/admin/jellyfin-compat/settings",
-	"POST /api/v1/admin/jellyfin-compat/web/install",
-	"POST /api/v1/admin/jellyfin-compat/web/remove",
-	"POST /api/v1/admin/jellyfin-compat/web/update",
-}
-
 var bloemUpstreamOAuthRoutes = []string{
 	"GET /api/v1/auth/oauth/{install_id}/callback",
 	"POST /api/v1/auth/oauth/complete",
@@ -90,9 +80,6 @@ func TestBloemV1AdjudicationClosedSet(t *testing.T) {
 		for _, route := range strings.Split(bloemRelocatedLiveTVRoutes, "\n") {
 			delete(mounted, route)
 			mounted[strings.Replace(route, "/api/v1/", "/api/bloem/v1/", 1)] = true
-		}
-		for _, route := range bloemRemovedCompatibilityRoutes {
-			delete(mounted, route)
 		}
 		for _, route := range bloemUpstreamOAuthRoutes {
 			mounted[route] = true
@@ -157,12 +144,6 @@ func bloemReviewV1Baseline(file string, raw []byte, mounted map[string]bool) ([]
 		native := strings.Replace(route, "/api/v1/livetv/", "/api/bloem/v1/livetv/", 1)
 		if !remaining[route] || mounted[route] || !mounted[native] {
 			return nil, fmt.Errorf("reviewed Live TV relocation is not exact: %s -> %s", route, native)
-		}
-		delete(remaining, route)
-	}
-	for _, route := range bloemRemovedCompatibilityRoutes {
-		if !remaining[route] || mounted[route] {
-			return nil, fmt.Errorf("reviewed compatibility removal is not exact: %s", route)
 		}
 		delete(remaining, route)
 	}

@@ -174,6 +174,7 @@ GET /api/v1/admin/invitations/
 GET /api/v1/admin/invite-codes/
 GET /api/v1/admin/items/{id}/files
 GET /api/v1/admin/items/{id}/metadata-translation/jobs
+GET /api/v1/admin/jellyfin-compat/status
 GET /api/v1/admin/jobs/
 GET /api/v1/admin/jobs/{id}
 GET /api/v1/admin/libraries/{libraryID}/collection-groups/
@@ -244,6 +245,7 @@ GET /api/v1/catalog/items/{id}/versions
 GET /api/v1/catalog/series/{id}/seasons
 GET /api/v1/catalog/series/{id}/seasons/{num}
 GET /api/v1/catalog/series/{id}/seasons/{num}/episodes
+GET /api/v1/compat/connect-info
 GET /api/v1/diagnostics/status
 GET /api/v1/direct-download
 GET /api/v1/direct-download-proxy
@@ -371,6 +373,7 @@ PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-c
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots
 PATCH /api/v1/admin/items/{id}/metadata
+PATCH /api/v1/admin/jellyfin-compat/settings
 PATCH /api/v1/admin/subtitles/{id}/
 PATCH /api/v1/admin/tenants/{id}/limits
 PATCH /api/v1/downloads/subscriptions/{id}
@@ -487,6 +490,9 @@ POST /api/v1/admin/items/{id}/metadata-translation
 POST /api/v1/admin/items/{id}/metadata-translation/jobs/{job_id}/cancel
 POST /api/v1/admin/items/{id}/refresh-metadata
 POST /api/v1/admin/items/{id}/split
+POST /api/v1/admin/jellyfin-compat/web/install
+POST /api/v1/admin/jellyfin-compat/web/remove
+POST /api/v1/admin/jellyfin-compat/web/update
 POST /api/v1/admin/jobs/{id}/cancel
 POST /api/v1/admin/libraries/{libraryID}/collection-groups/
 POST /api/v1/admin/literary-works/link

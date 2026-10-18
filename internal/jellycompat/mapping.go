@@ -1,0 +1,1048 @@
+package jellycompat
+
+import (
+	"crypto/sha1"
+	"encoding/hex"
+	"log/slog"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Silo-Server/silo-server/internal/catalog"
+	"github.com/Silo-Server/silo-server/internal/config"
+	"github.com/Silo-Server/silo-server/internal/lang"
+	"github.com/Silo-Server/silo-server/internal/models"
+)
+
+// allDetailFields is a sentinel passed to itemFromList so detail views include all fields.
+var allDetailFields = map[string]bool{
+	"*": true, "overview": true, "genres": true, "premieredate": true,
+	"studios": true, "tags": true, "taglines": true, "etag": true,
+	"sortname": true, "productionlocations": true, "criticrating": true,
+	"providerids": true, "externalurls": true, "remotetrailers": true,
+	"datecreated": true, "mediastreams": true, "path": true,
+}
+
+type mapper struct {
+	codec          *ResourceIDCodec
+	serverID       string
+	imageTagSigner *imageTagSigner
+}
+
+func newMapper(codec *ResourceIDCodec, cfg *config.Config) *mapper {
+	serverID := ""
+	imageTagSecret := ""
+	if cfg != nil {
+		serverID = cfg.JellyfinCompat.ServerID
+		imageTagSecret = cfg.Auth.JWTSecret
+	}
+	return &mapper{codec: codec, serverID: serverID, imageTagSigner: newImageTagSigner(imageTagSecret)}
+}
+
+// displayPreferencesID is Jellyfin's DisplayPreferencesId for a view: the
+// view's GUID in "N" format (no hyphens).
+func displayPreferencesID(viewID string) string {
+	return strings.ReplaceAll(viewID, "-", "")
+}
+
+func (m *mapper) viewFromLibrary(library upstreamUserLibrary) baseItemDTO {
+	imgTags := map[string]string{}
+	routeID := m.codec.EncodeIntID(EncodedIDLibrary, int64(library.ID))
+	if library.PosterPath != "" {
+		imgTags["Primary"] = m.imageTagSigner.Tag(
+			imageTagSeed(routeID, "Primary", compatCardImageSize, library.PosterPath, "", time.Time{}),
+			library.PosterURL,
+		)
+	}
+
+	return baseItemDTO{
+		ID:             routeID,
+		Type:           "CollectionFolder",
+		MediaType:      "Unknown",
+		IsFolder:       true,
+		Name:           library.Name,
+		ServerID:       m.serverID,
+		CollectionType: libraryCollectionType(library.Type),
+		SortName:       strings.ToLower(library.Name),
+		// Jellyfin clients key per-library view settings on this; Jellyfin
+		// for Android TV crashes reopening a library without it.
+		DisplayPreferencesID: displayPreferencesID(routeID),
+		ImageTags:            imgTags,
+		UserData: &itemUserDataDTO{
+			Key:    routeID,
+			ItemID: routeID,
+		},
+	}
+}
+
+// applyPlayableLocation stamps location fields for a movie/episode based on
+// whether any media file backs it. Fileless (provider-metadata-only) items are
+// Jellyfin "Virtual" and carry no VideoType, so clients exclude them from
+// playback queues. Items whose file went missing are currently also reported
+// as Virtual rather than Jellyfin's "Offline".
+func applyPlayableLocation(dto *baseItemDTO, hasFile bool) {
+	if hasFile {
+		dto.LocationType = "FileSystem"
+		dto.VideoType = "VideoFile"
+	} else {
+		dto.LocationType = "Virtual"
+		dto.VideoType = ""
+	}
+}
+
+func (m *mapper) itemFromList(item upstreamListItem, isFavorite bool, progress *upstreamProgress, fields map[string]bool) baseItemDTO {
+	_, allFields := fields["*"] // detail views pass allDetailFields sentinel
+
+	dto := baseItemDTO{
+		ID:              m.codec.EncodeStringID(EncodedIDItem, item.ContentID),
+		Type:            jellyfinItemType(item.Type),
+		IsFolder:        jellyfinIsFolder(item.Type),
+		Name:            item.Title,
+		ServerID:        m.serverID,
+		ProductionYear:  item.Year,
+		OfficialRating:  item.ContentRating,
+		CommunityRating: item.RatingIMDB,
+		// Jellyfin 12 reports the item's own original language, uninherited.
+		OriginalLanguage: item.OriginalLanguage,
+		ImageTags:        map[string]string{},
+		UserData:         userDataDTO(m.codec.EncodeStringID(EncodedIDItem, item.ContentID), jellyfinIsFolder(item.Type), item.UserData, isFavorite, progress),
+	}
+
+	if mt := jellyfinMediaType(item.Type); mt != "" {
+		dto.MediaType = mt
+	}
+	if ticks := runtimeTicks(item.DurationSeconds, item.Runtime); ticks > 0 {
+		dto.RunTimeTicks = ticks
+	}
+	if item.Type == "movie" || item.Type == "episode" {
+		applyPlayableLocation(&dto, item.HasMediaFiles == nil || *item.HasMediaFiles)
+	}
+	if item.SeriesID != "" {
+		dto.SeriesID = m.codec.EncodeStringID(EncodedIDItem, item.SeriesID)
+		dto.SeriesName = item.SeriesTitle
+	}
+	if item.SeasonNumber != nil {
+		dto.ParentIndexNumber = item.SeasonNumber
+	}
+	if item.EpisodeNumber != nil {
+		dto.IndexNumber = item.EpisodeNumber
+	}
+	if item.EpisodeCount != nil {
+		dto.ChildCount = *item.EpisodeCount
+		dto.RecursiveItemCount = *item.EpisodeCount
+	}
+	if item.SeasonCount != nil {
+		seasonCount := *item.SeasonCount
+		dto.ChildCount = seasonCount
+		if item.EpisodeCount == nil {
+			dto.RecursiveItemCount = seasonCount
+		}
+		dto.SeasonCount = seasonCount
+	}
+	primaryPath, primaryThumbhash := listItemPrimaryImageSeedParts(item)
+	if tags := imageTagsWithSeed(m.imageTagSigner,
+		imageTagSeed(item.ContentID, "Primary", compatCardImageSize, primaryPath, primaryThumbhash, item.UpdatedAt),
+		item.PosterURL,
+	); tags != nil {
+		dto.ImageTags = tags
+	}
+	if tags := backdropTagsWithSeed(m.imageTagSigner,
+		imageTagSeed(item.ContentID, "Backdrop", compatCardImageSize, item.BackdropPath, item.BackdropThumbhash, item.UpdatedAt),
+		item.BackdropURL,
+	); tags != nil {
+		dto.BackdropImageTags = tags
+	}
+	// Advertise the logo as Jellyfin does, so clients that check ImageTags
+	// know it exists. Episodes carry no logo of their own; applySeriesImages
+	// points their ParentLogoItemId at the series instead.
+	if item.LogoURL != "" && item.Type != "episode" {
+		dto.ImageTags["Logo"] = m.imageTagSigner.Tag(
+			imageTagSeed(item.ContentID, "Logo", compatCardImageSize, item.LogoPath, "", item.UpdatedAt),
+			item.LogoURL,
+		)
+	}
+	m.applyExtraImageTags(&dto, item)
+	if ratio := primaryAspectRatio(item.Type); ratio != nil {
+		dto.PrimaryImageAspectRatio = ratio
+	}
+
+	// Optional fields — only included when explicitly requested via Fields param.
+	if allFields || fields["overview"] {
+		dto.Overview = item.Overview
+	}
+	if allFields || fields["genres"] {
+		dto.Genres = nonNilStrings(item.Genres)
+		dto.GenreItems = m.genreItems(item.Genres)
+	}
+	// PremiereDate is always included (part of Jellyfin's minimal default set).
+	if item.AirDate != "" {
+		dto.PremiereDate = ensureRFC3339(item.AirDate)
+	}
+	if allFields || fields["etag"] {
+		dto.Etag = itemEtag(item)
+	}
+	if allFields || fields["sortname"] {
+		dto.SortName = firstNonEmpty(item.SortTitle, item.Title)
+	}
+	if allFields || fields["studios"] {
+		dto.Studios = m.namePairs(item.Studios, EncodedIDStudio)
+	}
+	if allFields || fields["taglines"] {
+		if item.Tagline != "" {
+			dto.Taglines = []string{item.Tagline}
+		}
+	}
+	if allFields || fields["tags"] {
+		dto.Tags = []string{}
+	}
+	if allFields || fields["productionlocations"] {
+		dto.ProductionLocations = append([]string{}, lang.UniqueCountries(item.Countries)...)
+	}
+	if allFields || fields["mediasourcecount"] {
+		// The list path has no version data, so assume matched playable items
+		// have exactly one source. Unmatched/file-missing items leave this
+		// unset so clients fall back to the detail path (which reports the
+		// real count via len(item.Versions)).
+		if isPlayableItemType(item.Type) && item.Status == "matched" {
+			dto.MediaSourceCount = 1
+		}
+	}
+	if allFields || fields["providerids"] {
+		dto.ProviderIDs = providerIDMap(item.ImdbID, item.TmdbID, item.TvdbID)
+	}
+	// Fields that are never populated in list view — only include in detail.
+	if allFields {
+		dto.PlayAccess = "Full"
+		dto.EnableMediaSourceDisplay = true
+		dto.DisplayPreferencesID = m.codec.EncodeStringID(EncodedIDItem, item.ContentID)
+		dto.ExternalURLs = []map[string]any{}
+		dto.RemoteTrailers = []map[string]any{}
+		dto.ImageBlurHashes = map[string]map[string]string{}
+		dto.LockedFields = []string{}
+		dto.Chapters = []map[string]any{}
+		dto.MediaStreams = []mediaStreamDTO{}
+	}
+
+	return dto
+}
+
+// itemFromDetail maps a detail payload into a full baseItemDTO, including every
+// heavy field (People, MediaSources, MediaStreams, Chapters). Use this from
+// single-item detail endpoints where the client expects the full payload.
+func (m *mapper) itemFromDetail(item upstreamItemDetail, isFavorite bool, progress *upstreamProgress) baseItemDTO {
+	return m.itemFromDetailWithFields(item, isFavorite, progress, nil)
+}
+
+// itemFromDetailWithFields is the field-aware variant used by list endpoints
+// that fall into the detail path. A nil requestedFields map means "all fields"
+// (legacy detail-endpoint behavior). When non-nil, heavy nested arrays are only
+// populated if the client explicitly requested them via the Fields query
+// parameter — matching Jellyfin's opt-in semantics for People, MediaSources,
+// MediaStreams, and Chapters.
+func (m *mapper) itemFromDetailWithFields(item upstreamItemDetail, isFavorite bool, progress *upstreamProgress, requestedFields map[string]bool) baseItemDTO {
+	allFields := requestedFields == nil
+	wantField := func(name string) bool {
+		return allFields || requestedFields[name]
+	}
+
+	dto := m.itemFromList(upstreamListItem{
+		ContentID:         item.ContentID,
+		Type:              item.Type,
+		Title:             item.Title,
+		SortTitle:         item.SortTitle,
+		OriginalLanguage:  item.OriginalLanguage,
+		Year:              item.Year,
+		Genres:            item.Genres,
+		ContentRating:     item.ContentRating,
+		RatingIMDB:        item.RatingIMDB,
+		Overview:          item.Overview,
+		PosterURL:         item.PosterURL,
+		BackdropURL:       item.BackdropURL,
+		PosterPath:        item.PosterPath,
+		PosterThumbhash:   item.PosterThumbhash,
+		BackdropPath:      item.BackdropPath,
+		BackdropThumbhash: item.BackdropThumbhash,
+		LogoURL:           item.LogoURL,
+		LogoPath:          item.LogoPath,
+		UpdatedAt:         item.UpdatedAt,
+		SeasonCount:       item.SeasonCount,
+		SeriesID:          item.SeriesID,
+		SeriesTitle:       item.SeriesTitle,
+		SeasonNumber:      item.SeasonNumber,
+		EpisodeNumber:     item.EpisodeNumber,
+		EpisodeCount:      item.EpisodeCount,
+		Runtime:           item.Runtime,
+		AirDate:           derefString(item.AirDate),
+		ImdbID:            item.ImdbID,
+		TmdbID:            item.TmdbID,
+		TvdbID:            item.TvdbID,
+		UserData:          item.UserData,
+		// Cached artwork paths that seed the image tags.
+		BannerPath:         item.BannerPath,
+		ThumbPath:          item.ThumbPath,
+		ClearArtPath:       item.ClearArtPath,
+		DiscPath:           item.DiscPath,
+		ExtraBackdropPaths: item.ExtraBackdropPaths,
+	}, isFavorite, progress, allDetailFields)
+
+	if wantField("people") {
+		dto.People = make([]personDTO, 0, len(item.Cast)+len(item.Crew))
+		for _, cast := range item.Cast {
+			personID, _ := strconv.ParseInt(cast.PersonID, 10, 64)
+			routeID := m.codec.EncodeIntID(EncodedIDPerson, personID)
+			var primaryTag string
+			if cast.PhotoURL != "" {
+				primaryTag = personPrimaryImageTag(m.imageTagSigner, routeID, cast.PhotoPath, cast.PhotoThumbhash)
+			}
+			dto.People = append(dto.People, personDTO{
+				ID:              routeID,
+				Name:            cast.Name,
+				Role:            cast.Character,
+				Type:            "Actor",
+				PrimaryImageTag: primaryTag,
+			})
+		}
+		for _, crew := range item.Crew {
+			personID, _ := strconv.ParseInt(crew.PersonID, 10, 64)
+			routeID := m.codec.EncodeIntID(EncodedIDPerson, personID)
+			var primaryTag string
+			if crew.PhotoURL != "" {
+				primaryTag = personPrimaryImageTag(m.imageTagSigner, routeID, crew.PhotoPath, crew.PhotoThumbhash)
+			}
+			dto.People = append(dto.People, personDTO{
+				ID:              routeID,
+				Name:            crew.Name,
+				Role:            crew.Job,
+				Type:            crew.Job,
+				PrimaryImageTag: primaryTag,
+			})
+		}
+	}
+	// Remote provider trailers and local extras counts. The itemFromList base
+	// stamped RemoteTrailers as an empty slice; override with real data here
+	// on the detail path.
+	dto.RemoteTrailers = remoteTrailerDTOs(item.Videos)
+	localTrailers, specialFeatures := countLocalExtras(item.Extras)
+	dto.LocalTrailerCount = localTrailers
+	dto.SpecialFeatureCount = specialFeatures
+
+	if item.SeriesID != "" {
+		dto.SeriesID = m.codec.EncodeStringID(EncodedIDItem, item.SeriesID)
+	}
+	if item.Type == "season" {
+		dto.ID = m.codec.EncodeStringID(EncodedIDSeason, item.ContentID)
+	}
+	dto.ServerID = m.serverID
+	dto.CanDelete = false
+	dto.OriginalTitle = firstNonEmpty(item.OriginalTitle, item.Title)
+	dto.SortName = firstNonEmpty(item.SortTitle, item.OriginalTitle, item.Title)
+	dto.ForcedSortName = dto.SortName
+	dto.Studios = m.namePairs(item.Studios, EncodedIDStudio)
+	dto.ProductionLocations = append([]string{}, lang.UniqueCountries(item.Countries)...)
+	if item.Tagline != "" {
+		dto.Taglines = []string{item.Tagline}
+	}
+	if item.AirDate != nil {
+		dto.PremiereDate = ensureRFC3339(*item.AirDate)
+	} else if item.Year > 0 {
+		dto.PremiereDate = syntheticPremiereDate(item.Year)
+	}
+	if isPlayableItemType(item.Type) && len(item.Versions) > 0 {
+		dto.MediaSourceCount = len(item.Versions)
+		firstVersion := item.Versions[0]
+		if firstVersion.Duration > 0 {
+			dto.RunTimeTicks = secondsToTicks(float64(firstVersion.Duration))
+		}
+		dto.DateCreated = formatCompatTime(firstVersion.AddedAt)
+		// CanDownload is load-bearing for Infuse: it refuses Direct Play
+		// (Static=true streaming) of items it believes it cannot download.
+		// The flag is backed by the /Items/{id}/Download route (streams.go).
+		dto.CanDownload = true
+		dto.HasSubtitles = versionsHaveSubtitles(item.Versions)
+		dto.SupportsSync = false
+		dto.Container = strings.ToLower(firstVersion.Container)
+		applyPlayableLocation(&dto, true)
+		dto.Path = compatMediaPath(firstVersion)
+		if len(firstVersion.VideoTracks) > 0 {
+			dto.Width = firstVersion.VideoTracks[0].Width
+			dto.Height = firstVersion.VideoTracks[0].Height
+			dto.IsHD = isHDVideo(firstVersion.VideoTracks[0])
+		}
+		routeItemID := m.codec.EncodeStringID(EncodedIDItem, item.ContentID)
+		wantMediaSources := wantField("mediasources")
+		wantMediaStreams := wantField("mediastreams")
+		if wantMediaSources {
+			dto.MediaSources = make([]mediaSourceDTO, 0, len(item.Versions))
+		}
+		if wantMediaSources || wantMediaStreams {
+			for _, version := range item.Versions {
+				sourceID := m.codec.EncodeIntID(EncodedIDMediaSource, int64(version.FileID))
+				streams := buildMediaStreams(routeItemID, sourceID, version)
+				if wantMediaStreams {
+					dto.MediaStreams = append(dto.MediaStreams, streams...)
+				}
+				if wantMediaSources {
+					dto.MediaSources = append(dto.MediaSources, detailMediaSourceDTO(sourceID, version, streams))
+				}
+			}
+		}
+		if wantField("chapters") {
+			dto.Chapters = compatChapters(firstVersion.Chapters, firstVersion.AddedAt)
+		}
+		if wantField("trickplay") {
+			dto.Trickplay = m.compatTrickplay(item.Versions)
+		}
+	} else if isPlayableItemType(item.Type) {
+		// Provider-metadata-only (unaired/missing) item: version data is
+		// authoritative here, so override the FileSystem default set by
+		// itemFromList with Jellyfin's Virtual contract.
+		applyPlayableLocation(&dto, false)
+	}
+	slog.Info("jellycompat item detail mapped",
+		"content_id", item.ContentID,
+		"type", item.Type,
+		"is_folder", dto.IsFolder,
+		"media_type", dto.MediaType,
+		"versions", len(item.Versions),
+		"media_sources", len(dto.MediaSources),
+	)
+	return dto
+}
+
+func (m *mapper) seasonFromUpstream(season upstreamSeason, seriesID string, isFavorite bool) baseItemDTO {
+	dto := baseItemDTO{
+		ID:                 m.codec.EncodeStringID(EncodedIDSeason, season.ContentID),
+		Type:               "Season",
+		Name:               season.Title,
+		IsFolder:           true,
+		ServerID:           m.serverID,
+		ImageTags:          map[string]string{},
+		SeriesID:           m.codec.EncodeStringID(EncodedIDItem, seriesID),
+		ParentID:           m.codec.EncodeStringID(EncodedIDItem, seriesID),
+		UserData:           userDataDTO(m.codec.EncodeStringID(EncodedIDSeason, season.ContentID), true, season.UserData, isFavorite, nil),
+		ChildCount:         season.EpisodeCount,
+		RecursiveItemCount: season.EpisodeCount,
+	}
+	dto.IndexNumber = &season.SeasonNumber
+	if tags := imageTagsWithSeed(m.imageTagSigner,
+		imageTagSeed(season.ContentID, "Primary", compatCardImageSize, season.PosterPath, season.PosterThumbhash, season.UpdatedAt),
+		season.PosterURL,
+	); tags != nil {
+		dto.ImageTags = tags
+	}
+	return dto
+}
+
+func (m *mapper) episodeFromUpstream(ep upstreamEpisode, isFavorite bool, progress *upstreamProgress) baseItemDTO {
+	dto := baseItemDTO{
+		ID:           m.codec.EncodeStringID(EncodedIDItem, ep.ContentID),
+		Type:         "Episode",
+		MediaType:    "Video",
+		Name:         ep.Title,
+		ServerID:     m.serverID,
+		Overview:     ep.Overview,
+		RunTimeTicks: runtimeTicks(ep.DurationSeconds, ep.Runtime),
+		ImageTags:    map[string]string{},
+		SeriesName:   ep.SeriesTitle,
+		UserData:     userDataDTO(m.codec.EncodeStringID(EncodedIDItem, ep.ContentID), false, ep.UserData, isFavorite, progress),
+	}
+	applyPlayableLocation(&dto, ep.HasMediaFiles == nil || *ep.HasMediaFiles)
+	dto.ProviderIDs = providerIDMap(ep.ImdbID, ep.TmdbID, ep.TvdbID)
+	dto.IndexNumber = &ep.EpisodeNumber
+	dto.ParentIndexNumber = &ep.SeasonNumber
+	if ep.SeriesID != "" {
+		dto.SeriesID = m.codec.EncodeStringID(EncodedIDItem, ep.SeriesID)
+	}
+	if ep.SeasonID != "" {
+		dto.SeasonID = m.codec.EncodeStringID(EncodedIDSeason, ep.SeasonID)
+		dto.ParentID = m.codec.EncodeStringID(EncodedIDSeason, ep.SeasonID)
+	}
+	if tags := imageTagsWithSeed(m.imageTagSigner,
+		imageTagSeed(ep.ContentID, "Primary", compatCardImageSize, ep.StillPath, ep.StillThumbhash, ep.UpdatedAt),
+		ep.StillURL,
+	); tags != nil {
+		dto.ImageTags = tags
+	}
+	return dto
+}
+
+type seriesImageSet struct {
+	ContentID         string
+	PosterURL         string
+	PosterPath        string
+	PosterThumbhash   string
+	BackdropURL       string
+	BackdropPath      string
+	BackdropThumbhash string
+	LogoURL           string
+	LogoPath          string
+	UpdatedAt         time.Time
+}
+
+// applySeriesImages sets series/parent image tags on an episode DTO so clients
+// can display the series poster, backdrop and logo in Continue Watching / Next
+// Up and the player. Jellyfin points an episode's ParentLogoItemId at its
+// series; clients read the show logo from there, never from the episode.
+func (m *mapper) applySeriesImages(dto *baseItemDTO, series seriesImageSet) {
+	if dto.SeriesID == "" {
+		return
+	}
+	if series.PosterURL != "" {
+		dto.SeriesPrimaryImageTag = m.imageTagSigner.Tag(
+			imageTagSeed(series.ContentID, "Primary", compatCardImageSize, series.PosterPath, series.PosterThumbhash, series.UpdatedAt),
+			series.PosterURL,
+		)
+		if dto.ParentPrimaryImageItemID == "" {
+			dto.ParentPrimaryImageItemID = dto.SeriesID
+			dto.ParentPrimaryImageTag = dto.SeriesPrimaryImageTag
+		}
+	}
+	if series.BackdropURL != "" {
+		tag := m.imageTagSigner.Tag(
+			imageTagSeed(series.ContentID, "Backdrop", compatCardImageSize, series.BackdropPath, series.BackdropThumbhash, series.UpdatedAt),
+			series.BackdropURL,
+		)
+		dto.ParentBackdropImageTags = []string{tag}
+		dto.ParentBackdropItemID = dto.SeriesID
+		dto.ParentThumbImageTag = tag
+		dto.ParentThumbItemID = dto.SeriesID
+	}
+	if series.LogoURL != "" {
+		// Seeded as the series' own ImageTags["Logo"] is, so both name one
+		// cached image.
+		dto.ParentLogoItemID = dto.SeriesID
+		dto.ParentLogoImageTag = m.imageTagSigner.Tag(
+			imageTagSeed(series.ContentID, "Logo", compatCardImageSize, series.LogoPath, "", series.UpdatedAt),
+			series.LogoURL,
+		)
+	}
+}
+
+// applySeasonPrimaryImage points an episode's parent poster at its season,
+// as Jellyfin 12 does, when the season has a poster of its own. Otherwise the
+// series poster set by applySeriesImages stays the parent poster. The tag seed
+// matches seasonFromUpstream so the season image route accepts it.
+func (m *mapper) applySeasonPrimaryImage(dto *baseItemDTO, season seriesImageSet) {
+	if season.ContentID == "" || season.PosterURL == "" {
+		return
+	}
+	dto.ParentPrimaryImageItemID = m.codec.EncodeStringID(EncodedIDSeason, season.ContentID)
+	dto.ParentPrimaryImageTag = m.imageTagSigner.Tag(
+		imageTagSeed(season.ContentID, "Primary", compatCardImageSize, season.PosterPath, season.PosterThumbhash, season.UpdatedAt),
+		season.PosterURL,
+	)
+}
+
+func userDataDTO(itemID string, isFolder bool, data *catalog.SeasonUserData, isFavorite bool, progress *upstreamProgress) *itemUserDataDTO {
+	dto := &itemUserDataDTO{IsFavorite: isFavorite, ItemID: itemID, Key: itemID}
+
+	if data != nil {
+		pos := clampResumeSeconds(data.PositionSeconds, data.DurationSeconds)
+		dto.PlaybackPositionTicks = secondsToTicks(pos)
+		dto.PlayedPercentage = playedPercentage(pos, data.DurationSeconds)
+		dto.Played = data.Played
+		dto.UnplayedItemCount = data.UnplayedCount
+		if data.Played {
+			dto.PlayCount = 1
+		}
+	}
+
+	if progress != nil {
+		pos := clampResumeSeconds(progress.PositionSeconds, progress.DurationSeconds)
+		played := dto.Played || progress.Completed
+		dto.PlaybackPositionTicks = secondsToTicks(pos)
+		dto.PlayedPercentage = playedPercentage(pos, progress.DurationSeconds)
+		dto.Played = played
+		if played {
+			dto.PlayCount = 1
+		}
+		dto.LastPlayedDate = progress.UpdatedAt
+	}
+
+	// Jellyfin folders report the share of children played, so a played
+	// series or season reports 100.
+	if isFolder && dto.Played {
+		dto.PlayedPercentage = 100
+	}
+
+	return dto
+}
+
+// playedPercentage derives PlayedPercentage from the same clamped position
+// used for PlaybackPositionTicks so the two fields can never disagree. Like
+// Jellyfin, a video with no resume point reports 0, which omits the field,
+// even when it is played: clients that draw a bar for any positive value
+// would otherwise show a full bar on every watched item. A rewatch in flight
+// reports its live fraction.
+func playedPercentage(clampedPos, duration float64) float64 {
+	if duration <= 0 {
+		return 0
+	}
+	return (clampedPos / duration) * 100
+}
+
+func jellyfinItemType(native string) string {
+	switch strings.ToLower(native) {
+	case "movie":
+		return "Movie"
+	case "series":
+		return "Series"
+	case "episode":
+		return "Episode"
+	case "season":
+		return "Season"
+	case "extra":
+		// Local extras have no dedicated BaseItemKind; plain Video is what
+		// Jellyfin uses for special features.
+		return "Video"
+	default:
+		if native == "" {
+			return ""
+		}
+		return strings.ToUpper(native[:1]) + strings.ToLower(native[1:])
+	}
+}
+
+func libraryCollectionType(native string) string {
+	switch native {
+	case "movies":
+		return "movies"
+	case "series":
+		return "tvshows"
+	default:
+		return native
+	}
+}
+
+func jellyfinMediaType(native string) string {
+	switch strings.ToLower(native) {
+	case "movie", "episode":
+		return "Video"
+	default:
+		return ""
+	}
+}
+
+func jellyfinIsFolder(native string) bool {
+	switch strings.ToLower(native) {
+	case "series", "season":
+		return true
+	default:
+		return false
+	}
+}
+
+func isPlayableItemType(native string) bool {
+	switch strings.ToLower(native) {
+	case "movie", "episode":
+		return true
+	default:
+		return false
+	}
+}
+
+func (m *mapper) genreItems(genres []string) []namePairDTO {
+	return m.namePairs(genres, EncodedIDGenre)
+}
+
+func (m *mapper) namePairs(values []string, kind EncodedIDType) []namePairDTO {
+	items := make([]namePairDTO, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		items = append(items, namePairDTO{
+			Name: trimmed,
+			ID:   m.codec.EncodeStringID(kind, trimmed),
+		})
+	}
+	return items
+}
+
+func primaryAspectRatio(native string) *float64 {
+	switch strings.ToLower(native) {
+	case "movie", "series":
+		value := 2.0 / 3.0 // portrait poster
+		return &value
+	case "episode":
+		value := 16.0 / 9.0 // landscape still
+		return &value
+	default:
+		return nil
+	}
+}
+
+// isHDVideo reports Jellyfin's IsHD for a video track: 720 lines and up, as
+// Jellyfin 12 reports it (a 1280x536 scope encode is not HD there).
+func isHDVideo(track models.VideoTrack) bool {
+	return track.Height >= 720
+}
+
+func versionsHaveSubtitles(versions []catalog.FileVersion) bool {
+	for _, version := range versions {
+		if len(version.SubtitleTracks) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func compatChapters(chapters []catalog.VersionChapter, addedAt time.Time) []map[string]any {
+	if len(chapters) == 0 {
+		return []map[string]any{}
+	}
+
+	imageDateModified := formatCompatTime(addedAt)
+	if imageDateModified == "" {
+		imageDateModified = formatCompatTime(time.Unix(0, 0))
+	}
+
+	items := make([]map[string]any, 0, len(chapters))
+	for _, chapter := range chapters {
+		item := map[string]any{
+			"StartPositionTicks": secondsToTicks(chapter.StartSeconds),
+			"EndPositionTicks":   secondsToTicks(chapter.EndSeconds),
+			"Name":               chapter.Title,
+			"ImageDateModified":  imageDateModified,
+		}
+		if chapter.ThumbnailURL != "" {
+			item["ImagePath"] = chapter.ThumbnailURL
+		}
+		if chapter.ThumbnailThumbhash != "" {
+			item["ImageTag"] = chapter.ThumbnailThumbhash
+		}
+		items = append(items, item)
+	}
+	return items
+}
+
+// remoteTrailerDTOs maps remote provider videos of trailer kinds onto
+// Jellyfin's RemoteTrailers MediaUrl shape ({Url, Name}). Non-trailer kinds
+// (featurettes, clips, ...) have no Jellyfin remote surface and are omitted.
+func remoteTrailerDTOs(videos []catalog.ItemVideoInfo) []map[string]any {
+	trailers := []map[string]any{}
+	for _, v := range videos {
+		if v.Kind != string(models.ExtraKindTrailer) && v.Kind != string(models.ExtraKindTeaser) {
+			continue
+		}
+		var url string
+		switch v.Site {
+		case "youtube":
+			url = "https://www.youtube.com/watch?v=" + v.SiteKey
+		case "vimeo":
+			url = "https://vimeo.com/" + v.SiteKey
+		default:
+			continue
+		}
+		trailers = append(trailers, map[string]any{
+			"Url":  url,
+			"Name": v.Name,
+		})
+	}
+	return trailers
+}
+
+// countLocalExtras splits local extras into Jellyfin's LocalTrailerCount
+// (trailer/teaser kinds, surfaced via /LocalTrailers) and SpecialFeatureCount
+// (everything else, surfaced via /SpecialFeatures).
+func countLocalExtras(extras []catalog.ItemExtraInfo) (localTrailers, specialFeatures int) {
+	for _, e := range extras {
+		if isLocalTrailerKind(e.Kind) {
+			localTrailers++
+		} else {
+			specialFeatures++
+		}
+	}
+	return localTrailers, specialFeatures
+}
+
+func isLocalTrailerKind(kind string) bool {
+	return kind == string(models.ExtraKindTrailer) || kind == string(models.ExtraKindTeaser)
+}
+
+func minutesToTicks(minutes int) int64 {
+	return int64(minutes) * 600_000_000
+}
+
+func secondsToTicks(seconds float64) int64 {
+	return int64(seconds * 10_000_000)
+}
+
+// runtimeTicks resolves RunTimeTicks probed-duration-first with the catalog
+// runtime as fallback, matching the v1 API's contentDurationSeconds. Returns
+// 0 when neither is known; RunTimeTicks is omitempty, so the field stays
+// absent rather than being emitted as a bogus 0.
+func runtimeTicks(durationSeconds, runtimeMinutes int) int64 {
+	if durationSeconds > 0 {
+		return secondsToTicks(float64(durationSeconds))
+	}
+	if runtimeMinutes > 0 {
+		return minutesToTicks(runtimeMinutes)
+	}
+	return 0
+}
+
+// clampResumeSeconds normalizes a stored resume position for client-facing
+// user data. Completed rows store position 0, so fully watched items report 0
+// (clients start fresh) while a rewatch in flight reports its live resume
+// point alongside Played=true — matching real Jellyfin. The position is
+// clamped to the item duration so a stale/overflowed stored position cannot
+// drive the player past end-of-file (which stalls the HLS transcoder on
+// resume).
+func clampResumeSeconds(position, duration float64) float64 {
+	if duration > 0 && position > duration {
+		position = duration
+	}
+	if position < 0 {
+		position = 0
+	}
+	return position
+}
+
+func imageTagsWithSeed(signer *imageTagSigner, seed, imageURL string) map[string]string {
+	if imageURL == "" {
+		return nil
+	}
+	return map[string]string{"Primary": signer.Tag(seed, imageURL)}
+}
+
+func backdropTags(imageURL string) []string {
+	return backdropTagsWithSeed(nil, "", imageURL)
+}
+
+func backdropTagsWithSeed(signer *imageTagSigner, seed, imageURL string) []string {
+	if imageURL == "" {
+		return nil
+	}
+	return []string{signer.Tag(seed, imageURL)}
+}
+
+func listItemPrimaryImageSeedParts(item upstreamListItem) (string, string) {
+	if item.Type == "episode" && item.StillPath != "" {
+		return item.StillPath, item.StillThumbhash
+	}
+	return firstNonEmpty(item.PosterPath, item.StillPath), item.PosterThumbhash
+}
+
+func imageTagSeed(routeID, imageType, size, rawPath, thumbhash string, updatedAt time.Time) string {
+	rawPath = strings.TrimSpace(rawPath)
+	thumbhash = strings.TrimSpace(thumbhash)
+	if rawPath == "" && thumbhash == "" && updatedAt.IsZero() {
+		return ""
+	}
+	parts := []string{
+		strings.TrimSpace(routeID),
+		strings.ToLower(strings.TrimSpace(imageType)),
+		normalizeImageCacheSize(size),
+		rawPath,
+		thumbhash,
+	}
+	if !updatedAt.IsZero() {
+		parts = append(parts, updatedAt.UTC().Format(time.RFC3339Nano))
+	}
+	return strings.Join(parts, "\x00")
+}
+
+// personImageTagSeed is the signed-tag seed for a person headshot. Tags built
+// from it are minted only in responses that already passed a visible-credit
+// check, so a matching tag lets anonymous <img> requests (Jellyfin Web sends no
+// auth on image GETs) load the photo without a session. The photo path and
+// thumbhash change with the photo, so a replaced photo gets a new tag and the
+// old one stops authorizing it.
+func personImageTagSeed(routeID, photoPath, thumbhash string) string {
+	normalize := func(v string) string {
+		if v = strings.TrimSpace(v); v == "-" {
+			return ""
+		}
+		return v
+	}
+	return strings.Join([]string{"person", strings.TrimSpace(routeID), "primary", normalize(photoPath), normalize(thumbhash)}, "\x00")
+}
+
+func personPrimaryImageTag(signer *imageTagSigner, routeID, photoPath, thumbhash string) string {
+	return signer.Tag(personImageTagSeed(routeID, photoPath, thumbhash), "")
+}
+
+func tagValue(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	sum := sha1.Sum([]byte(raw))
+	return hex.EncodeToString(sum[:8])
+}
+
+func itemEtag(item upstreamListItem) string {
+	return tagValue(strings.Join([]string{
+		item.ContentID,
+		item.Title,
+		strconv.Itoa(item.Year),
+		item.AirDate,
+		firstNonEmpty(item.PosterPath, item.PosterURL),
+		firstNonEmpty(item.BackdropPath, item.BackdropURL),
+		item.UpdatedAt.UTC().Format(time.RFC3339Nano),
+	}, ":"))
+}
+
+func derefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func detailMediaSourceDTO(sourceID string, version catalog.FileVersion, streams []mediaStreamDTO) mediaSourceDTO {
+	return mediaSourceDTO{
+		Protocol:                            "File",
+		ID:                                  sourceID,
+		Path:                                compatMediaPath(version),
+		Type:                                "Default",
+		Container:                           strings.ToLower(version.Container),
+		Size:                                version.FileSize,
+		Name:                                mediaSourceName(version),
+		IsRemote:                            false,
+		ETag:                                mediaSourceETag(version),
+		RunTimeTicks:                        secondsToTicks(float64(version.Duration)),
+		ReadAtNativeFramerate:               false,
+		IgnoreDts:                           false,
+		IgnoreIndex:                         false,
+		GenPtsInput:                         false,
+		SupportsTranscoding:                 true,
+		SupportsDirectStream:                true,
+		SupportsDirectPlay:                  true,
+		IsInfiniteStream:                    false,
+		UseMostCompatibleTranscodingProfile: false,
+		RequiresOpening:                     false,
+		RequiresClosing:                     false,
+		RequiresLooping:                     false,
+		SupportsProbing:                     true,
+		VideoType:                           "VideoFile",
+		HasSegments:                         false,
+		Formats:                             []string{strings.ToLower(version.Container)},
+		RequiredHTTPHeaders:                 map[string]string{},
+		MediaAttachments:                    []map[string]any{},
+		TranscodingSubProtocol:              "hls",
+		Bitrate:                             version.Bitrate * 1000,
+		DefaultAudioStreamIndex:             defaultAudioStreamIndex(version),
+		DefaultSubtitleStreamIndex:          defaultSubtitleStreamIndex(version),
+		MediaStreams:                        streams,
+	}
+}
+
+func mediaSourceName(version catalog.FileVersion) string {
+	name := strings.TrimSpace(version.FileName)
+	if name == "" {
+		name = filepath.Base(version.FilePath)
+	}
+	if name == "" {
+		return ""
+	}
+	ext := filepath.Ext(name)
+	return strings.TrimSuffix(name, ext)
+}
+
+func compatMediaPath(version catalog.FileVersion) string {
+	if strings.TrimSpace(version.FilePath) != "" {
+		return version.FilePath
+	}
+	name := mediaSourceName(version)
+	if name == "" {
+		return ""
+	}
+	ext := strings.ToLower(strings.TrimSpace(version.Container))
+	if ext == "" {
+		return filepath.ToSlash(filepath.Join("/silo", name))
+	}
+	return filepath.ToSlash(filepath.Join("/silo", name+"."+ext))
+}
+
+func formatCompatTime(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+	return value.UTC().Format(time.RFC3339)
+}
+
+func syntheticPremiereDate(year int) string {
+	if year <= 0 {
+		return ""
+	}
+	return time.Date(year, time.January, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
+}
+
+func ensureRFC3339(value string) string {
+	if strings.Contains(value, "T") {
+		return value
+	}
+	t, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return value
+	}
+	return t.UTC().Format(time.RFC3339)
+}
+
+func nonNilStrings(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+// compatTrickplay is Jellyfin's Trickplay member: for each media source with
+// published seek-bar previews, its one width. Nil when no version has any.
+func (m *mapper) compatTrickplay(versions []catalog.FileVersion) map[string]map[string]trickplayInfoDTO {
+	var out map[string]map[string]trickplayInfoDTO
+	for _, version := range versions {
+		grid := version.Trickplay
+		if grid == nil {
+			continue
+		}
+		if out == nil {
+			out = map[string]map[string]trickplayInfoDTO{}
+		}
+		sourceID := m.codec.EncodeIntID(EncodedIDMediaSource, int64(version.FileID))
+		out[sourceID] = map[string]trickplayInfoDTO{strconv.Itoa(grid.Width): {
+			Width: grid.Width, Height: grid.Height, TileWidth: grid.TileColumns, TileHeight: grid.TileRows,
+			ThumbnailCount: grid.ThumbnailCount, Interval: grid.IntervalMS, Bandwidth: grid.Bandwidth,
+		}}
+	}
+	return out
+}
+
+// applyExtraImageTags advertises a movie's or series' banner, thumb, clear art
+// (Jellyfin's Art) and disc art in ImageTags, and its backdrops after the
+// primary in BackdropImageTags, so BackdropImageTags[i] names
+// /Items/{id}/Images/Backdrop/{i}. The tags are seeded by cached path, so they
+// change with the image, not with each presigned URL. Jellyfin clients fall
+// back to the backdrop for a thumb they are not offered.
+func (m *mapper) applyExtraImageTags(dto *baseItemDTO, item upstreamListItem) {
+	if item.Type != "movie" && item.Type != "series" {
+		return
+	}
+	for _, art := range []struct{ imageType, path string }{
+		{compatImageBanner, item.BannerPath},
+		{compatImageThumb, item.ThumbPath},
+		{compatImageArt, item.ClearArtPath},
+		{compatImageDisc, item.DiscPath},
+	} {
+		if art.path == "" {
+			continue
+		}
+		dto.ImageTags[art.imageType] = m.imageTagSigner.Tag(
+			imageTagSeed(item.ContentID, art.imageType, compatCardImageSize, art.path, "", item.UpdatedAt),
+			"",
+		)
+	}
+	// Without a primary there is no Backdrop/0, so the extra indexes would
+	// name the wrong images.
+	if len(dto.BackdropImageTags) == 0 {
+		return
+	}
+	for i, path := range item.ExtraBackdropPaths {
+		dto.BackdropImageTags = append(dto.BackdropImageTags, m.imageTagSigner.Tag(
+			imageTagSeed(item.ContentID, compatBackdropImageType+"/"+strconv.Itoa(i+1), compatCardImageSize, path, "", item.UpdatedAt),
+			"",
+		))
+	}
+}

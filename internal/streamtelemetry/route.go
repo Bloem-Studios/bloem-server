@@ -17,7 +17,9 @@ type Role string
 
 const (
 	FamilyNative        Family = "native"
+	FamilyJellycompat   Family = "jellycompat"
 	FamilyProxy         Family = "proxy"
+	FamilyABS           Family = "abs"
 	FamilyTranscodeNode Family = "transcode_node"
 
 	ClassPlayback Class = "playback"
@@ -33,7 +35,7 @@ const (
 // the canonical set Config.ObservesFamily and Config.ObservedFamilies fall
 // back to when SILO_STREAM_TELEMETRY_FAMILIES is unset, so the five families
 // are named once rather than duplicated across both functions.
-var AllFamilies = []Family{FamilyNative, FamilyProxy, FamilyTranscodeNode}
+var AllFamilies = []Family{FamilyABS, FamilyJellycompat, FamilyNative, FamilyProxy, FamilyTranscodeNode}
 
 type MediaRoute struct {
 	Family              Family

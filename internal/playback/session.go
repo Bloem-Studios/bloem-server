@@ -335,16 +335,18 @@ func ClientInfoFromContext(ctx context.Context) ClientInfo {
 
 // SessionManager tracks active playback sessions and enforces stream limits.
 type SessionManager struct {
-	sessions         map[string]*Session
-	mu               sync.RWMutex
-	maxStreams       int
-	maxTranscodes    int
-	limitProvider    ProfileSessionLimitProvider
-	admissionDecider AdmissionDecider
-	activeGrace      time.Duration
-	pausedGrace      time.Duration
-	expireHooks      []func(*Session)
-	finishHooks      []func(context.Context, *Session)
+	sessions             map[string]*Session
+	mu                   sync.RWMutex
+	maxStreams           int
+	maxTranscodes        int
+	limitProvider        ProfileSessionLimitProvider
+	admissionDecider     AdmissionDecider
+	activeGrace          time.Duration
+	pausedGrace          time.Duration
+	expireHooks          []func(*Session)
+	finishHooks          []func(context.Context, *Session)
+	compatActivityReader SessionActivityReader
+	compatExpiryClaimer  SessionExpiryClaimer
 	// deliveryActivityReader reports media that another node served for a
 	// remote-transport session. See SetDeliveryActivityReader.
 	deliveryActivityReader SessionActivityReader
@@ -1950,11 +1952,16 @@ func (m *SessionManager) CleanStale() []*Session {
 // preserved even if they have not emitted a recent heartbeat yet.
 func (m *SessionManager) CleanInactive(activeIdle, pausedIdle time.Duration) []*Session {
 	m.refreshDeliveryActivity(activeIdle, pausedIdle)
+	protected := m.refreshCompatActivity(activeIdle, pausedIdle)
 	m.mu.Lock()
 
 	now := time.Now()
+	claimed := m.claimCompatExpiryLocked(now, activeIdle, pausedIdle, protected)
 	var expired []*Session
 	for id, s := range m.sessions {
+		if protected[s] || s.IsJellyfinCompat && claimed != nil && !claimed[id] {
+			continue
+		}
 		if s.activeTransportCount > 0 {
 			continue
 		}
@@ -1988,6 +1995,12 @@ func (m *SessionManager) touchSessionLocked(s *Session) {
 func (m *SessionManager) countsTowardLimitsLocked(s *Session, now time.Time) bool {
 	if s == nil {
 		return false
+	}
+	// Shared compatibility activity may be newer than this replica's snapshot.
+	// Its retained slot is released by removal; admission must not infer that
+	// release from a stale local timestamp before cleanup or an explicit stop.
+	if s.IsJellyfinCompat && m.compatExpiryClaimer != nil {
+		return true
 	}
 	if s.activeTransportCount > 0 {
 		return true

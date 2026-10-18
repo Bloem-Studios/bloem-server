@@ -427,6 +427,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = withBloemSettingsNavigation
           settingsPage("notifications"),
           settingsPage("ai"),
           PAGES.recommendations,
+          settingsPage("compatibility"),
         ],
       },
     ],

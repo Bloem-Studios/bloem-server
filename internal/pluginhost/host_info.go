@@ -19,12 +19,16 @@ const (
 
 // Listener names reported in GetHostInfo.listeners.
 const (
-	ListenerAPI = "api"
+	ListenerAPI      = "api"
+	ListenerJellyfin = "jellyfin"
+	ListenerABS      = "abs"
 )
 
 // Default overlay ports a network access provider exposes each listener on.
 const (
-	DefaultPortAPI = 443
+	DefaultPortAPI      = 443
+	DefaultPortJellyfin = 8096
+	DefaultPortABS      = 13378
 )
 
 // HostListener is one local listener a network access provider should expose

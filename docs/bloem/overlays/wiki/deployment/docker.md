@@ -182,11 +182,11 @@ another service. The container listeners are fixed.
 | `PROXY_PORT` | `8083` | Commented standalone proxy example |
 | `TRANSCODE_PORT` | `8082` | Commented standalone transcode example |
 
-The main listener serves the web app and supported native APIs. Jellyfin/Emby
-and Audiobookshelf protocol gateways, companion enrollment and dedicated
-listeners are removed. Legacy `JF_PORT`, `ABS_PORT` and protocol settings do not
-enable them; see [protocol removal](../../../../architecture/bloem-compatibility-removal.md).
-Native audiobook and ebook support remains separate.
+The main listener serves the web app and supported native APIs. Silo's
+Jellyfin-compatible server listens on `JF_PORT` (default `8096`) and the
+Audiobookshelf-compatible server on `ABS_PORT` (default `13378`) when Audiobookshelf
+compatibility is enabled. Bloem's companion enrollment is removed; see
+[protocol compatibility](../../../../architecture/bloem-compatibility-removal.md).
 
 > [!WARNING]
 > The application port mapping listen on all host interfaces

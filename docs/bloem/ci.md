@@ -8,12 +8,8 @@ Commands assume the repository root is the cwd.
 `scripts/ci/bloem-install-test-tools.sh` installs what the Go jobs need beyond
 libvips:
 
-- **Go contract checks:** ripgrep. `scripts/verify-no-compat.sh` searches with
-  `rg`. It refuses to run without it and fails on any `rg` error, so a missing
-  tool can no longer pass the compatibility-removal gate unchecked.
-  It reads every file under the searched paths, including hidden directories
-  and files that ignore rules or a `RIPGREP_CONFIG_PATH` configuration would
-  skip.
+- **Go test:** ripgrep, which `scripts/generate-bloem-storage-proto_test.sh`
+  uses to match the generator's output.
 - **Go test:** FFmpeg and ripgrep. The native audio and video tests generate
   fixtures with real FFmpeg; the two native audiobook tests fail without it, and
   about twenty other packages' FFmpeg tests skip.
@@ -47,12 +43,7 @@ carry their own color properties.
 ## Upstream sync merges
 
 `.github/workflows/upstream-sync-merge.yml` merges an upstream-sync pull request
-only after CI succeeded on its exact head. It does not run the
-compatibility-removal gate itself: from its default-branch checkout the gate
-would inspect `main` rather than the head, and only after the merge. The Go
-contract checks job runs the gate on every pull request head instead, and
-`TestUpstreamSyncMergeReliesOnCIForTheCompatibilityGate` in `internal/api` keeps
-that job unconditional, with ripgrep installed first.
+only after CI succeeded on its exact head.
 
 ## PostgreSQL version
 

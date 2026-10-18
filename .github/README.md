@@ -36,8 +36,9 @@ for forks.
 The current source integrates Silo through `ea3c10a7f` (October 14, 2026),
 including inherited household profile limits, node draining, signed worker
 requests, metadata updates and reorganized settings. Bloem retains native
-storage, multi-organization policy, Live TV and branding. Jellyfin and
-Audiobookshelf protocols and companion enrollment are removed from this fork.
+storage, multi-organization policy, Live TV and branding. It runs Silo's
+Jellyfin and Audiobookshelf compatibility servers; Bloem's companion enrollment
+is removed.
 See the [integration changelog](../docs/bloem/CHANGELOG.md) and
 [API catalogue](../docs/bloem/api-catalogue.md).
 
@@ -187,9 +188,10 @@ in the [completion handoff](../docs/architecture/bloem-web-completion-handoff.md
   further recording actions until explicit reload succeeds. Automatic catalog import, enforced retention
   and rule editing are not implemented. Actual tuner, Safari and replica owner-loss
   playback remain separate acceptance work.
-- **Native client access:** use the embedded web app or a client that speaks
-  the supported native APIs. The [protocol removal contract](../docs/architecture/bloem-compatibility-removal.md)
-  records retired gateways, companion enrollment and migration boundaries.
+- **Client access:** use the embedded web app, a client that speaks the
+  supported native APIs, or a Jellyfin or Audiobookshelf app on the
+  compatibility ports. [Protocol compatibility](../docs/architecture/bloem-compatibility-removal.md)
+  describes how those servers are scoped to organizations.
 
 ### Native apps, catalog and contracts
 
@@ -333,7 +335,7 @@ Everything below is described in more depth in the
 **Compatibility and clients**
 
 - **Web app included** — a full-featured web client and admin interface ship with the server.
-- **Native API integrations** — the Silo native `/api/v2` surface and Bloem-specific `/api/bloem/v1` extensions support clients with matching contracts. Jellyfin/Emby and Audiobookshelf protocol apps cannot connect to this fork.
+- **Native API integrations** — the Silo native `/api/v2` surface and Bloem-specific `/api/bloem/v1` extensions support clients with matching contracts. Jellyfin-compatible apps connect on the Jellyfin port (default 8096) and Audiobookshelf apps on 13378 when enabled.
 - **Native Bloem apps** for phone, tablet and TV, served by the native client API described above.
 - **Watch sync** to and from outside services, and optional **AI-assisted features** such as description translation, each with its own provider key.
 - **Presentation and accessibility** — operator-managed campaign and seasonal artwork, profile ambience, larger text, reduced motion and high contrast. The former web profile theme editor has been retired.
@@ -651,7 +653,7 @@ If you prefer running Bloem without Docker:
 - [Bloem documentation index](../docs/bloem/README.md) — every Bloem-owned document, including Bloem editions of and overlays on upstream Silo documents.
 - [Bloem development guide](../docs/bloem/overlays/DEVELOPMENT.md) — building from source, tests, migrations and project layout; [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations.
 - [FORK.md](../FORK.md) — provenance, deliberate divergence from upstream and the protected-remote setup; [TRADEMARK.md](../TRADEMARK.md) and [LICENSE](../LICENSE).
-- `docs/architecture/` and `docs/operations/` — design notes and operator runbooks, including the [Bloem v1 compatibility policy](../docs/bloem/overlays/architecture/v1-scope.md), [entitlement-template operations](../docs/operations/entitlement-templates.md), [bulk policy cohorts](../docs/operations/bulk-policy-cohorts.md), [protocol removal](../docs/architecture/bloem-compatibility-removal.md) and the [Canonical Settings API guide](../docs/settings-api.md).
+- `docs/architecture/` and `docs/operations/` — design notes and operator runbooks, including the [Bloem v1 compatibility policy](../docs/bloem/overlays/architecture/v1-scope.md), [entitlement-template operations](../docs/operations/entitlement-templates.md), [bulk policy cohorts](../docs/operations/bulk-policy-cohorts.md), [protocol compatibility](../docs/architecture/bloem-compatibility-removal.md) and the [Canonical Settings API guide](../docs/settings-api.md).
 - [Apple Push Display Token](../docs/notifications-push-api.md) — notification enrichment contract.
 
 ## Reporting Issues

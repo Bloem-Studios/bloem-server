@@ -526,13 +526,8 @@ jobs:
           git remote add upstream https://github.com/Silo-Server/silo-server.git
           git fetch upstream main
 
-      # Bloem: verify-no-compat searches with ripgrep and refuses to run
-      # without it; the runner image does not ship it.
-      - name: Install ripgrep
-        run: scripts/ci/bloem-install-test-tools.sh ripgrep
-
       - name: Verify the seam ledger covers Silo-file changes
-        run: make verify-seams verify-no-compat
+        run: make verify-seams
 
       - name: Save the Go cache
         if: success() && runner.environment == 'github-hosted' && github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request'

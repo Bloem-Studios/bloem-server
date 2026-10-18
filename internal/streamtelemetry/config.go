@@ -325,7 +325,7 @@ func parseFamilies(value string) (map[Family]bool, bool) {
 		}
 		family := Family(name)
 		switch family {
-		case FamilyNative, FamilyProxy, FamilyTranscodeNode:
+		case FamilyNative, FamilyJellycompat, FamilyProxy, FamilyABS, FamilyTranscodeNode:
 			families[family] = true
 		default:
 			return nil, false

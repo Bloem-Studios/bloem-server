@@ -4,8 +4,8 @@
 # Usage (the repository root is the cwd):
 #   scripts/ci/bloem-install-test-tools.sh [ripgrep] [ffmpeg]
 #
-#   ripgrep  scripts/verify-no-compat.sh searches with rg and refuses to run
-#            without it.
+#   ripgrep  scripts/generate-bloem-storage-proto_test.sh matches the
+#            generator's output with rg.
 #   ffmpeg   The native audio and video tests generate fixtures with real
 #            FFmpeg and fail without it. This installs Jellyfin's FFmpeg build,
 #            the family the runtime image ships, and puts it on PATH for later

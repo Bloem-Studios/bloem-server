@@ -301,7 +301,7 @@ func (reg *Registry) getDeviceLoginCapability(_ context.Context, _ *CapabilityIn
 		Body: DeviceLoginCapability{
 			Capability:            Capability{State: state},
 			RemotePlaybackHandoff: true,
-			JellyfinQuickConnect:  false,
+			JellyfinQuickConnect:  true,
 			ProtocolVersions:      []int{2},
 			Cancel:                true,
 			OpenedSignal:          true,

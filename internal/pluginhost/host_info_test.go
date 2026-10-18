@@ -67,6 +67,8 @@ func TestRuntimeHostServer_GetHostInfo_ReportsListenersAndIngressToken(t *testin
 	srv := pluginhost.NewRuntimeHostServerWithOptions(pluginhost.RuntimeHostOptions{
 		HostInfo: apiHostInfo(
 			pluginhost.HostListener{Name: pluginhost.ListenerAPI, Address: "127.0.0.1:8080", DefaultPort: pluginhost.DefaultPortAPI},
+			pluginhost.HostListener{Name: pluginhost.ListenerJellyfin, Address: "127.0.0.1:8096", DefaultPort: pluginhost.DefaultPortJellyfin},
+			pluginhost.HostListener{Name: pluginhost.ListenerABS, Address: "127.0.0.1:13378", DefaultPort: pluginhost.DefaultPortABS},
 		),
 		NetworkAccess:         broker,
 		Logger:                hclog.NewNullLogger(),
@@ -97,7 +99,7 @@ func TestRuntimeHostServer_GetHostInfo_ReportsListenersAndIngressToken(t *testin
 	want := []struct {
 		name, address string
 		port          int32
-	}{{"api", "127.0.0.1:8080", 443}}
+	}{{"api", "127.0.0.1:8080", 443}, {"jellyfin", "127.0.0.1:8096", 8096}, {"abs", "127.0.0.1:13378", 13378}}
 	if len(resp.GetListeners()) != len(want) {
 		t.Fatalf("listeners = %v", resp.GetListeners())
 	}

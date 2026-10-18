@@ -24,6 +24,7 @@ import ProvidersSettings from "./ProvidersSettings";
 import AISettings from "./AISettings";
 import AnnouncementsAdminSettings from "./AnnouncementsAdminSettings";
 import NotificationsAdminSettings from "./NotificationsAdminSettings";
+import CompatibilityProxiesSettings from "./CompatibilityProxiesSettings";
 import NetworkAccessSettings from "./NetworkAccessSettings";
 import StorageSettings from "./StorageSettings";
 import SearchSettings from "./SearchSettings";
@@ -49,6 +50,7 @@ const SETTINGS_COMPONENTS: Record<string, ComponentType> = {
   ai: AISettings,
   notifications: NotificationsAdminSettings,
   announcements: AnnouncementsAdminSettings,
+  compatibility: CompatibilityProxiesSettings,
   "network-access": NetworkAccessSettings,
   storage: StorageSettings,
   search: SearchSettings,

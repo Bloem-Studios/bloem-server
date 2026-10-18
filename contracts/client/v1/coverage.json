@@ -246,6 +246,10 @@
       "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
     },
     {
+      "type": "internal/api/handlers.AdminJellyfinCompatSettingsPatch",
+      "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+    },
+    {
       "type": "internal/api/handlers.AdminPlaybackActivity",
       "reason": "Admin dashboard payload served to the bundled web UI (/admin/stats family); the migration inventory of the spec covers the client-facing v1 domains, which have no admin projection."
     },
@@ -348,6 +352,14 @@
     {
       "type": "internal/api/handlers.CollectionSortPreferenceResponse",
       "reason": "Served only on the frozen /api/v1 bridge: it appears in neither contracts/api/v2/openapi.json nor contracts/api/bloem/v1/openapi.json, and the generated clients read those two surfaces. Retiring v1 retires this shape with it."
+    },
+    {
+      "type": "internal/api/handlers.CompatConnectAccountInfo",
+      "reason": "Served by the account connect-info endpoint, which the bundled web reads through its generated OpenAPI types; Bloem's native clients do not read it, so no generated client decodes it."
+    },
+    {
+      "type": "internal/api/handlers.CompatConnectInfoResponse",
+      "reason": "Served by the account connect-info endpoint, which the bundled web reads through its generated OpenAPI types; Bloem's native clients do not read it, so no generated client decodes it."
     },
     {
       "type": "internal/api/handlers.DiagnosticsChunkInitRequest",
@@ -755,6 +767,22 @@
     },
     {
       "type": "internal/apiv2.AdminCollectionSection",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminJellyfinCompatSettingsPatch",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminJellyfinCompatStatus",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminJellyfinWebInstallBody",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminJellyfinWebOperation",
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     },
     {
@@ -1536,6 +1564,14 @@
     {
       "type": "internal/apiv2.Collection",
       "reason": "The generic list envelope itself, uninstantiated. It has no wire shape until it is given a type argument; every instantiation is emitted under its own name (Collection[UserLibrary] becomes UserLibraryCollection)."
+    },
+    {
+      "type": "internal/apiv2.CompatConnectAccountInfo",
+      "reason": "Served by the account connect-info endpoint, which the bundled web reads through its generated OpenAPI types; Bloem's native clients do not read it, so no generated client decodes it."
+    },
+    {
+      "type": "internal/apiv2.CompatConnectInfoResponse",
+      "reason": "Served by the account connect-info endpoint, which the bundled web reads through its generated OpenAPI types; Bloem's native clients do not read it, so no generated client decodes it."
     },
     {
       "type": "internal/apiv2.CurrentImages",

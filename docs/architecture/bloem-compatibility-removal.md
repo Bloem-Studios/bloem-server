@@ -1,73 +1,59 @@
-# Protocol compatibility removal
+# Protocol compatibility
 
-Bloem serves its native APIs and frontend. Jellyfin and Audiobookshelf protocol
-packages, gateways, auxiliary listeners, application enrollment and UI choices are
-removed. Native library, audiobook presentation/playback, collections, progress,
-OIDC/device/profile authentication and Live TV remain supported. The storefront
-product and Authentik application remain Silo; their names are outside this change.
-The native device-login capability retains the upstream
-`jellyfin_quick_connect` field with value `false`. Native device pairing and
-remote-playback handoff remain available.
+Bloem runs upstream Silo's Jellyfin-compatible server (`internal/jellycompat`) and
+Audiobookshelf-compatible server (`internal/audiobooks/abs`, `internal/audiobooks/abssocket`)
+as Silo ships them. Each binds its own configured port: `jellyfin_compat.listen`
+(default `:8096`) and, when Audiobookshelf compatibility is enabled, `:13378`. Neither
+is served on the public port.
 
-## Persistence boundary
+Bloem removed both on 2026-10-13 and restored them on 2026-10-18, so that Silo's code
+merges without hundreds of deletion seams. Bloem's own additions from before the
+removal stay removed: the companion-application enrollment, the same-origin
+compatibility gateway on the public port, and Live TV through the Jellyfin surface.
 
-Migration `20261013161500_remove_bloem_compatibility.sql` drops Bloem's own
-compatibility persistence: the application enrollment, credential and audit
-tables and the Live TV compatibility streams. The Jellyfin and Audiobookshelf
-tables, the ABS author-count materialized view and the `jellyfin_compat.`,
-`audiobookshelf_compat.`, `audiobooks.abs.` and `jellycompat:` settings belong to
-upstream Silo, which can serve the database again while the membership policy is
-mirrored. They stay until Silo switching ends
-(`docs/architecture/silo-backend-switching.md`). Bloem writes none of them and reads
-one: `jellyfin_compat.server_id`, which `GET /api/v1/health` still answers as
-`server_id`, so clients that enrolled against health before the removal keep the
-server ID they stored. A database without that row answers the deployment identity
-(`server.identity_id`), and `server_name` is the branding name
-(`internal/api/handlers/bloem_health_identity.go`). Native canonical collections
-and watch progress stay intact.
-Historical SQL remains unchanged; the displayprefs parser lives in
-`internal/legacymigrate/displayprefs` solely to execute old migration chains.
-Bloem's SQLite step removes legacy displayprefs storage and keys: version 34 now, first
-shipped as version 32 before Silo claimed that number (see
-[SQLite user-store versions](bloem-upstream-adapters.md#sqlite-user-store-versions)).
+## Tenant integration
 
-The PostgreSQL cleanup is transactional and uses no `CASCADE`. An unexpected
-schema dependency fails the whole migration. Its Down explicitly refuses rollback:
-erased credentials and bookmarks cannot be reconstructed. Restoration requires the
-pre-removal database backup and matching old binary. This implementation does not
-establish that browse-only accounts are safe; native content authorization and the
-preview principal require separate work.
+Silo's packages stay upstream bytes. Bloem adapts them only where `cmd/silo/main.go`
+wires them, with the adapters in `cmd/silo/bloem_compat.go`:
+
+- Both servers' scope resolvers are wrapped in `newTenantAwareViewerResolver`, so a
+  Jellyfin or Audiobookshelf session reaches only its organization's libraries.
+- Jellyfin downloads go through the native download service for the session's
+  profile, with the validated tenant on the context (`newBloemCompatDownloadServer`).
+  The native per-profile download policy decides; a session without a resolvable
+  tenant is refused.
+- Files in native storage locations are hidden from the Jellyfin handlers that need
+  an OS filename (`bloemGuardNativeStorageFiles`).
+- Account-wide sign-outs use Silo's path: the revoking transaction deletes the stored
+  compatibility sessions, and every replica evicts its cached copies when the
+  revocation is announced. A Jellyfin session also ends when its login session is
+  revoked. `OnUserSessionsRevoked` returns an error so Bloem's organization lifecycle
+  can report a failed invalidation.
+- A Jellyfin sign-in opens an account-level login session, which Bloem's
+  profile-scoped revocation (an organization removing its profiles) does not reach.
+  `bloemProfileSessionRevoker` deletes those profiles' `jellycompat_sessions` rows
+  and announces the revocation so replicas drop cached copies.
+
+`GET /api/v1/health` answers `server_name` and `server_id` from the Jellyfin
+compatibility configuration, as upstream does.
+
+## Persistence
+
+Migration `20261013161500_remove_bloem_compatibility.sql` dropped only Bloem's own
+tables: application enrollment, credentials, audit and the Live TV compatibility
+streams. Silo's Jellyfin and Audiobookshelf tables, the author-count view and their
+settings were kept, so the restore needs no PostgreSQL migration. That migration's
+Down still refuses rollback.
+
+Bloem's earlier SQLite cleanups (shipped as user-store versions 32 and 34) dropped
+`jellycompat_displayprefs` and its settings. Bloem's v35 step recreates the table;
+the deleted preferences do not return. See
+[SQLite user-store versions](bloem-upstream-adapters.md#sqlite-user-store-versions).
 
 ## Upstream merges
 
-Run `scripts/verify-no-compat.sh` and its fixture test after every upstream merge.
-The gate checks explicit retired package/page paths, imports and registrations;
-it does not reject historical SQL or generic uses of the word compatibility.
-`contracts/seams.txt` declares every upstream-owned deletion individually. The
-user-directed deletion is the reviewed exception to the normal shrinking seam
-budget and incurs ongoing merge-conflict cost.
-
-For delete/modify conflicts, prune only paths explicitly declared deleted in the
-ledger. Resolve shared files manually, preserving native changes from upstream;
-never apply wildcard deletion to unrelated code. Regenerate OpenAPI, settings,
-route inventory and client DTOs, then verify absence, seams, native authentication,
-media/audiobook playback, migrations and Live TV before merging.
-
-## Evidence
-
-Removal acceptance covers fresh PostgreSQL installs, seeded upgrades preserving
-native collections/progress, repeated startup and atomic failure on unknown
-schema dependencies. SQLite acceptance covers fresh stores, reopened version-31 stores and stores
-Bloem left at its former version 32. HTTP tests drive the production router/root composition with GET, HEAD,
-POST, Range and credential fixtures. Former protocol paths may return the frontend
-shell; a shell response is not protocol support. Removed API paths return 404.
-
-Historical origin metadata in native playback observations and recipe records is
-retained for stored-record/client-schema compatibility; it does not mount a
-protocol handler. Native node recipe/delivery stores and Jellyfin history imports
-have independent native callers and are retained. Compatibility-only session
-activity/expiry adapters and the Socket.IO dependencies are removed.
-
-The six retired v1 admin/connect methods are individually adjudicated in
-`bloem_v1_adjudication_test.go`. Frozen route baselines remain unchanged;
-no prefix-wide exemption hides unrelated native route drift.
+Take Silo's compatibility code as it is; there are no deletion seams to preserve.
+When upstream changes how `main.go` builds either server, keep the tenant wiring
+above and re-run the `cmd/silo` listener guard tests, which allow only the named
+listener functions (`newAudiobookshelfListener`, `serveAux`) to build or serve the
+compatibility ports.

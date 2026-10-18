@@ -696,6 +696,11 @@ func (r *ProviderRecheck) applyAnswer(ctx context.Context, tx pgx.Tx, identity *
 				identity.ID, identity.UserID, DeviceLoginStatusDenied, DeviceLoginStatusApproved); err != nil {
 				return fmt.Errorf("withdrawing provider device sign-in approvals: %w", err)
 			}
+			// A Jellyfin-compatible session does not record the identity it
+			// signed in through, so every one the account holds ends.
+			if err := deleteJellyfinSessionsInTransaction(ctx, tx, []int{identity.UserID}); err != nil {
+				return err
+			}
 			out.revoked = true
 			out.audit = append(out.audit, auditEvent{"recheck_revoked", []any{
 				auditInstallationID, identity.InstallationID, auditUserID, identity.UserID, auditCheckStatus, checkStatus,
@@ -725,10 +730,14 @@ func (r *ProviderRecheck) applyAnswer(ctx context.Context, tx pgx.Tx, identity *
 		if err != nil {
 			return err
 		}
-		if keys > 0 {
+		absSessions, err := tx.Exec(ctx, `UPDATE abs_sessions SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`, identity.UserID)
+		if err != nil {
+			return fmt.Errorf("revoking Audiobookshelf sessions: %w", err)
+		}
+		if keys > 0 || absSessions.RowsAffected() > 0 {
 			out.audit = append(out.audit, auditEvent{"recheck_credentials_revoked", []any{
 				auditInstallationID, identity.InstallationID, auditUserID, identity.UserID, auditCheckStatus, checkStatus,
-				"api_keys", keys}})
+				"api_keys", keys, "abs_sessions", absSessions.RowsAffected()}})
 		}
 	case checkStatus == CheckStatusUnavailable:
 		slog.WarnContext(ctx, "provider re-check could not reach the provider; retrying at the next refresh",
@@ -794,6 +803,8 @@ var idleIdentityCondition = `
 			AND EXISTS (SELECT 1 FROM plugin_auth_bindings b JOIN plugin_installations pi ON pi.id = b.plugin_installation_id
 				WHERE b.plugin_installation_id = i.plugin_installation_id AND b.enabled AND pi.enabled
 					AND ` + plugins.AuthBindingIsNetworkSQL("b.plugin_installation_id", "b.capability_id") + `))
+		OR EXISTS (SELECT 1 FROM abs_sessions a WHERE a.user_id = i.user_id AND a.revoked_at IS NULL
+			AND (a.expires_at IS NULL OR a.expires_at > NOW()))
 		OR EXISTS (SELECT 1 FROM auth_sessions s WHERE s.identity_id = i.id AND s.revoked_at IS NULL AND s.expires_at > NOW()
 			AND EXISTS (SELECT 1 FROM plugin_auth_bindings b JOIN plugin_installations pi ON pi.id = b.plugin_installation_id
 				WHERE b.plugin_installation_id = i.plugin_installation_id AND b.enabled AND pi.enabled))

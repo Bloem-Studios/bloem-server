@@ -3,6 +3,18 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 18, 2026 — Jellyfin and Audiobookshelf compatibility restored
+
+Bloem runs Silo's Jellyfin and Audiobookshelf compatibility servers again, as
+Silo ships them, on their own ports. This reverses the October 13 removal and
+drops 464 deletion and removal seams from the ledger (852 to 388). Bloem's tenant
+integration sits at the wiring points: tenant-aware scope resolvers, per-profile
+downloads and sign-out, and hidden native-storage files
+([protocol compatibility](../architecture/bloem-compatibility-removal.md)).
+Bloem's companion enrollment and compatibility gateway stay removed. Bloem's
+own `/api/v1/health` identity handler is retired in favor of Silo's. The SQLite
+user store gains a v35 step that recreates the Jellyfin display-preference table.
+
 ## October 18, 2026 — Silo integration through b430099ff
 
 Bloem merges 89 Silo commits after `ea3c10a7f`, through `b430099ff`. Silo's

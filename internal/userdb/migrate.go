@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion = 34
+const schemaVersion = bloemSchemaVersion
 
 func runMigrations(db *sql.DB) error {
 	version, err := userVersion(db)
@@ -17,9 +17,6 @@ func runMigrations(db *sql.DB) error {
 		return fmt.Errorf("unsupported sqlite schema version %d", version)
 	}
 	if version == 0 {
-		if err := removeCompatibilitySQLite(db); err != nil {
-			return err
-		}
 		if _, err := db.Exec(profilePINRevisionSchema); err != nil {
 			return fmt.Errorf("creating profile PIN revision trigger: %w", err)
 		}
@@ -348,10 +345,8 @@ func runMigrations(db *sql.DB) error {
 	if _, err := tx.Exec(profilePINRevisionSchema); err != nil {
 		return fmt.Errorf("creating profile PIN revision trigger: %w", err)
 	}
-	if version < 34 {
-		if err := migrateBloemV34(tx); err != nil {
-			return fmt.Errorf("migration v34 failed: %w", err)
-		}
+	if err := migrateBloemSQLite(tx, version); err != nil {
+		return fmt.Errorf("bloem sqlite migration failed: %w", err)
 	}
 
 	return tx.Commit()

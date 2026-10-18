@@ -11,13 +11,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/Silo-Server/silo-server/internal/legacymigrate/displayprefs"
+	"github.com/Silo-Server/silo-server/internal/jellycompat/displayprefs"
+	"github.com/Silo-Server/silo-server/migrations"
 )
 
 // TestPostgresDisplayPrefsMove runs the real goose provider — which registers
 // the Go move migration — against a real database, then exercises the move
 // directly over seeded legacy rows. The parsing rules are unit-tested in
-// internal/legacymigrate/displayprefs; this covers what only a live database
+// internal/jellycompat/displayprefs; this covers what only a live database
 // shows: registration, the table's constraints, verbatim copy through real
 // text columns, and that re-running or rolling back behaves.
 func TestPostgresDisplayPrefsMove(t *testing.T) {
@@ -27,12 +28,16 @@ func TestPostgresDisplayPrefsMove(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
 
 	// Migrate first, then seed legacy rows and run the move directly: the
 	// goose version gate has already consumed the registered migration, so
 	// calling the function is how the upgrade path is exercised against data.
-	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
+	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("initial migration: %v", err)
 	}
 	userID := seedLegacyDisplayPrefsRows(ctx, t, pool)
@@ -186,13 +191,17 @@ func TestPostgresDisplayPrefsMoveDoesNotDeleteConcurrentWrites(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
-	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("initial migration: %v", err)
 	}
 
 	var userID int
-	err := pool.QueryRow(ctx, `
+	err = pool.QueryRow(ctx, `
 INSERT INTO users (username, email, password_hash, role)
 VALUES ('displayprefs-racetest', 'displayprefs-racetest@example.com', 'x', 'user')
 ON CONFLICT (username) DO UPDATE SET email = EXCLUDED.email
@@ -372,13 +381,17 @@ func TestPostgresDisplayPrefsRollbackDoesNotDeleteConcurrentUpdates(t *testing.T
 	}
 	ctx := context.Background()
 
-	pool := newTenantIdentityDisposableDatabase(t, ctx, dsn)
-	if err := RunMigrations(ctx, pool, compatibilityBaselineFS(t), "sql"); err != nil {
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("connect test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	if err := RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("initial migration: %v", err)
 	}
 
 	var userID int
-	err := pool.QueryRow(ctx, `
+	err = pool.QueryRow(ctx, `
 INSERT INTO users (username, email, password_hash, role)
 VALUES ('displayprefs-rollback-racetest', 'displayprefs-rollback-racetest@example.com', 'x', 'user')
 ON CONFLICT (username) DO UPDATE SET email = EXCLUDED.email

@@ -7,6 +7,7 @@ import {
   type SettingsValues,
   type SettingsBaseline,
 } from "@/api/v2/adminSettingsSnapshot";
+import { jellyfinCompatStatusKey } from "@/api/v2/jellyfinStatusCache";
 import { PASSWORD_RESET_CAPABILITY_KEY } from "@/hooks/queries/passwordReset";
 import { refreshAuthProviders } from "../authProviders";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,14 +15,18 @@ import {
   captureProfileRequestContext,
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
+  type ProfileRequestContextSnapshot,
 } from "@/api/client";
 import type {
   AdminSettingUpdateResponse,
   AdminServerStatus,
   AdminSettingsUpdateResponse,
   AdminSettingsConnectionCheckRequest,
+  JellyfinCompatSettingsPatch,
+  JellyfinCompatStatus,
+  JellyfinCompatWebInstallRequest,
 } from "@/api/types";
-import { adminKeys, settingsKeys, themeKeys } from "../keys";
+import { adminKeys, compatKeys, settingsKeys, themeKeys } from "../keys";
 import { toast } from "sonner";
 
 /**
@@ -234,7 +239,14 @@ export function useUpdateServerSettings(displayed?: SettingsValues) {
       if (keys.includes("auth.local_password_login") || keys.includes("server.public_url")) {
         invalidations.push(refreshAuthProviders(queryClient));
       }
-
+      if (keys.some((key) => key.startsWith("jellyfin_compat."))) {
+        invalidations.push(
+          queryClient.invalidateQueries({ queryKey: adminKeys.jellyfinCompatStatus() }),
+          // The user-facing Connect Apps card reads the same settings and
+          // caches them for minutes, so it has to drop its copy too.
+          queryClient.invalidateQueries({ queryKey: compatKeys.all }),
+        );
+      }
       if (keys.includes("server.public_url")) {
         // Invitation and reset links are built on the public URL, so the
         // capability answers that gate them change with it.
@@ -346,7 +358,11 @@ export function useUpdateServerSetting(displayed?: SettingsValues) {
       if (variables.key === "auth.local_password_login" || variables.key === "server.public_url") {
         invalidations.push(refreshAuthProviders(queryClient));
       }
-
+      if (variables.key.startsWith("jellyfin_compat.")) {
+        invalidations.push(
+          queryClient.invalidateQueries({ queryKey: adminKeys.jellyfinCompatStatus() }),
+        );
+      }
       if (variables.key.startsWith("catalog.search.")) {
         invalidations.push(
           queryClient.invalidateQueries({ queryKey: adminKeys.catalogSearchStatus() }),
@@ -439,6 +455,172 @@ export function useCatalogSearchStatus(enabled = true, { pollRebuild = true } = 
   });
 }
 
+export function useJellyfinCompatStatus() {
+  const profileContext = captureProfileRequestContext();
+  return useQuery({
+    queryKey: profileContext
+      ? jellyfinCompatStatusKey(profileContext)
+      : [...adminKeys.jellyfinCompatStatus(), null],
+    enabled: profileContext !== null,
+    queryFn: async (): Promise<JellyfinCompatStatus> => {
+      if (!profileContext || !isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      const status = await v2("GET /api/v2/admin/jellyfin-compat/status", { profileContext });
+      if (!isCapturedProfileAuthorityActive(profileContext))
+        throw new StaleApiRequestContextError();
+      return {
+        ...status,
+        operation: status.operation
+          ? { ...status.operation, started_at: status.operation.started_at ?? "" }
+          : undefined,
+      };
+    },
+    staleTime: 15_000,
+  });
+}
+
+export function useUpdateJellyfinCompatSettings() {
+  const { data: displayed } = useAdminServerSettings();
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    retry: false,
+    mutationFn: (intent: SettingsBaseline & { body: JellyfinCompatSettingsPatch }) =>
+      v2("PATCH /api/v2/admin/jellyfin-compat/settings", {
+        body: intent.body,
+        headers: { "If-Match": intent.etag },
+        profileContext: intent.profileContext,
+        retryAuthentication: false,
+      }),
+    onSuccess: async (_result, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: jellyfinCompatStatusKey(intent.profileContext),
+          exact: true,
+        }),
+        queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
+        queryClient.invalidateQueries({ queryKey: adminKeys.serverStatus() }),
+        queryClient.invalidateQueries({ queryKey: compatKeys.all }),
+      ]);
+    },
+    onError: (err, intent) => {
+      if (!isCapturedProfileAuthorityActive(intent.profileContext)) return;
+      toast.error(err instanceof Error ? err.message : "Failed to update Jellyfin compatibility");
+    },
+  });
+  const capture = (body: JellyfinCompatSettingsPatch) => ({
+    ...captureSettingsBaseline(displayed),
+    body: { ...body },
+  });
+  return {
+    ...mutation,
+    variables: mutation.variables?.body,
+    mutate: (body: JellyfinCompatSettingsPatch) => {
+      try {
+        mutation.mutate(capture(body));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Reload settings before saving.");
+      }
+    },
+    mutateAsync: async (body: JellyfinCompatSettingsPatch) => {
+      const intent = capture(body);
+      const result = await mutation.mutateAsync(intent);
+      if (!isCapturedProfileAuthorityActive(intent.profileContext))
+        throw new StaleApiRequestContextError();
+      return result;
+    },
+  };
+}
+
+/**
+ * Jellyfin Web asset commands are coalescing: a repeat while the same-kind
+ * operation runs returns that running operation, and a running operation of the
+ * other kind is a 409. Each intent captures its authority at click time, sends
+ * once without authentication replay, and refuses to run after the authority
+ * changed. Progress is local to the replica that accepted it.
+ */
+type JellyfinWebIntent = {
+  body: JellyfinCompatWebInstallRequest;
+  profileContext: ProfileRequestContextSnapshot | null;
+};
+function jellyfinWebIntent(body: JellyfinCompatWebInstallRequest = {}): JellyfinWebIntent {
+  return { body: { ...body }, profileContext: captureProfileRequestContext() };
+}
+function jellyfinWebAuthorityActive(intent: JellyfinWebIntent): boolean {
+  return intent.profileContext !== null && isCapturedProfileAuthorityActive(intent.profileContext);
+}
+function useJellyfinWebCommand(kind: "install" | "remove", started: string, failed: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    retry: false,
+    mutationFn: async (intent: JellyfinWebIntent): Promise<JellyfinCompatStatus> => {
+      if (!intent.profileContext || !jellyfinWebAuthorityActive(intent))
+        throw new StaleApiRequestContextError();
+      const common = { profileContext: intent.profileContext, retryAuthentication: false };
+      const status =
+        kind === "install"
+          ? await v2("POST /api/v2/admin/jellyfin-compat/web/install", {
+              ...common,
+              body: intent.body,
+            })
+          : await v2("POST /api/v2/admin/jellyfin-compat/web/remove", common);
+      if (!jellyfinWebAuthorityActive(intent)) throw new StaleApiRequestContextError();
+      return {
+        ...status,
+        operation: status.operation
+          ? { ...status.operation, started_at: status.operation.started_at ?? "" }
+          : undefined,
+      };
+    },
+    onSuccess: async (_result, intent) => {
+      if (!intent.profileContext || !jellyfinWebAuthorityActive(intent)) return;
+      toast.success(started);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: jellyfinCompatStatusKey(intent.profileContext),
+          exact: true,
+        }),
+        queryClient.invalidateQueries({ queryKey: adminKeys.serverSettings() }),
+        queryClient.invalidateQueries({ queryKey: adminKeys.serverStatus() }),
+      ]);
+    },
+    onError: (err, intent) => {
+      if (!jellyfinWebAuthorityActive(intent)) return;
+      toast.error(err instanceof Error ? err.message : failed);
+    },
+  });
+}
+
+export function useInstallJellyfinCompatWeb() {
+  const mutation = useJellyfinWebCommand(
+    "install",
+    "Jellyfin Web install started",
+    "Failed to install Jellyfin Web assets",
+  );
+  return {
+    ...mutation,
+    variables: mutation.variables?.body,
+    mutate: (body: JellyfinCompatWebInstallRequest = {}) =>
+      mutation.mutate(jellyfinWebIntent(body)),
+    mutateAsync: (body: JellyfinCompatWebInstallRequest = {}) =>
+      mutation.mutateAsync(jellyfinWebIntent(body)),
+  };
+}
+
+export function useRemoveJellyfinCompatWeb() {
+  const mutation = useJellyfinWebCommand(
+    "remove",
+    "Jellyfin Web removal started",
+    "Failed to remove Jellyfin Web assets",
+  );
+  return {
+    ...mutation,
+    mutate: () => mutation.mutate(jellyfinWebIntent()),
+    mutateAsync: () => mutation.mutateAsync(jellyfinWebIntent()),
+  };
+}
+
+/** Reads one stored setting for the setup wizard. Protected/empty values stay absent. */
 export function useAdminSettingValue(key: string) {
   const profileContext = captureProfileRequestContext();
   return useQuery({
