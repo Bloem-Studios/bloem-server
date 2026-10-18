@@ -306,6 +306,21 @@ jobs:
           path: ${{ runner.temp }}/libvips-debs/*.deb
           key: ${{ steps.libvips-cache.outputs.cache-primary-key }}
 
+      # Bloem: Silo's setup-go keeps the Go build cache on a tmpfs sized at
+      # half the runner's memory. Vetting Bloem's whole tree fills it until the
+      # hosted runner shuts down mid-step. Move the restored cache onto the
+      # disk at the same path, so saving it still works.
+      - name: Keep the Go build cache on disk
+        if: runner.environment == 'github-hosted'
+        run: |
+          staged="$RUNNER_TEMP/go-build"
+          mkdir -p "$staged"
+          cp -a "$HOME/.cache/go-build/." "$staged/"
+          sudo umount "$HOME/.cache/go-build"
+          cp -a "$staged/." "$HOME/.cache/go-build/"
+          rm -rf "$staged"
+          du -sh "$HOME/.cache/go-build"
+
       - name: gofmt
         run: |
           unformatted="$(gofmt -l .)"
