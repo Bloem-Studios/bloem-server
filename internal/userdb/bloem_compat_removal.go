@@ -1,6 +1,7 @@
 package userdb
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 )
@@ -28,10 +29,10 @@ func migrateBloemV34(tx *sql.Tx) error {
 		return err
 	}
 	if !columnExists(tx, "user_devices", "custom_name") {
-		if _, err := tx.Exec(`ALTER TABLE user_devices ADD COLUMN custom_name TEXT`); err != nil {
+		if _, err := tx.ExecContext(context.Background(), `ALTER TABLE user_devices ADD COLUMN custom_name TEXT`); err != nil {
 			return fmt.Errorf("adding user_devices.custom_name: %w", err)
 		}
 	}
-	_, err := tx.Exec("PRAGMA user_version = 34")
+	_, err := tx.ExecContext(context.Background(), "PRAGMA user_version = 34")
 	return err
 }
