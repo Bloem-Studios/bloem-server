@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -86,6 +87,47 @@ func TestPreviewHostGuard(t *testing.T) {
 	serve("Browse.Example.Test:443", "GET", "/", "")
 	if sawHost != "browse.example.test" {
 		t.Fatalf("request host in context = %q, want the Host header, never X-Forwarded-Host", sawHost)
+	}
+}
+
+type failingHostSettings struct{}
+
+func (failingHostSettings) PreviewGuestSettings(context.Context) (auth.PreviewGuestSettings, error) {
+	return auth.PreviewGuestSettings{}, errors.New("database unreachable")
+}
+
+// Unreadable settings refuse every request that signs in or carries a
+// credential, and let anonymous requests elsewhere reach their handlers, so
+// liveness and readiness still answer for themselves.
+func TestPreviewHostGuardWithoutSettings(t *testing.T) {
+	tokens := hostTokens{"member": {UserID: 8, TokenType: auth.TokenTypeAccess}}
+	guard := previewHostGuard(failingHostSettings{}, tokens)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	for _, tc := range []struct {
+		method, path, bearer string
+		want                 int
+	}{
+		{"GET", "/health/live", "", http.StatusNoContent},
+		{"GET", "/health/ready", "", http.StatusNoContent},
+		// Every auth route stays refused: a GET there can start a sign-in.
+		{"GET", "/api/v1/auth/device/capability", "", http.StatusServiceUnavailable},
+		{"GET", "/api/v2/auth/oauth/x/start", "", http.StatusServiceUnavailable},
+		{"POST", "/api/v1/auth/login", "", http.StatusServiceUnavailable},
+		{"POST", "/api/v2/auth/refresh", "", http.StatusServiceUnavailable},
+		{"POST", "/api/v2/password-resets", "", http.StatusServiceUnavailable},
+		{"GET", "/api/v2/catalog/items/x", "member", http.StatusServiceUnavailable},
+		{"GET", "/api/v2/catalog/items/x?token=member", "", http.StatusServiceUnavailable},
+	} {
+		r := httptest.NewRequest(tc.method, tc.path, nil)
+		if tc.bearer != "" {
+			r.Header.Set("Authorization", "Bearer "+tc.bearer)
+		}
+		w := httptest.NewRecorder()
+		guard.ServeHTTP(w, r)
+		if w.Code != tc.want {
+			t.Errorf("%s %s (%s) = %d, want %d", tc.method, tc.path, tc.bearer, w.Code, tc.want)
+		}
 	}
 }
 

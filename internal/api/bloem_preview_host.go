@@ -46,6 +46,12 @@ func previewHostRefusesPath(path string) bool {
 	return false
 }
 
+// previewHostAuthPath reports whether path signs in, refreshes, ends a session
+// or reaches a plugin surface: every route the preview host treats specially.
+func previewHostAuthPath(path string) bool {
+	return previewHostAuthRoutes[strings.TrimSuffix(path, "/")] || previewHostRefusesPath(path)
+}
+
 // previewHostGuard runs ahead of routing. Every request learns its Host (never
 // X-Forwarded-Host) through auth.WithRequestHost. On the preview host, sign-in
 // routes and plugin surfaces are refused and only guest credentials pass.
@@ -74,9 +80,18 @@ func previewHostGuard(settings auth.PreviewGuestSettingsSource, tokens previewTo
 				}
 			}
 			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusServiceUnavailable)
-				_, _ = w.Write([]byte(`{"error":"unavailable","message":"Preview host configuration is unavailable."}`))
+				// Without settings the preview host cannot be told apart, so
+				// anything that signs in or carries a credential is refused.
+				// An anonymous request elsewhere passes the guard on any host
+				// anyway; refusing it would also fail liveness and readiness
+				// probes whenever the database is unreachable.
+				if previewHostAuthPath(r.URL.Path) || carriesGuest || previewHostCredential(r) != "" {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusServiceUnavailable)
+					_, _ = w.Write([]byte(`{"error":"unavailable","message":"Preview host configuration is unavailable."}`))
+					return
+				}
+				next.ServeHTTP(w, r)
 				return
 			}
 			if carriesGuest && host != current.Host {
