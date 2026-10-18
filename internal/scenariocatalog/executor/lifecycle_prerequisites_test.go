@@ -54,8 +54,11 @@ func TestLifecyclePrerequisiteMissingDatabase(t *testing.T) {
 			if len(result.Failures) != 1 || !strings.Contains(result.Failures[0], "requires a reachable lifecycle store") || !strings.Contains(result.Failures[0], DatabaseEnv) {
 				t.Errorf("missing readiness was not reported explicitly: %+v", result)
 			}
-		} else if !result.Passed() {
-			t.Errorf("independent v2 input validation failed: %+v", result)
+		} else if result.Passed() || !strings.Contains(strings.Join(result.Failures, " "), "Preview host configuration is unavailable.") {
+			// Without a database the preview host guard cannot read its
+			// settings, so it refuses every auth route before validation
+			// (docs/architecture/bloem-contract-adjudications.md).
+			t.Errorf("v2 sign-in without a database was not refused by the preview host guard: %+v", result)
 		}
 	}
 	for id, seen := range wanted {

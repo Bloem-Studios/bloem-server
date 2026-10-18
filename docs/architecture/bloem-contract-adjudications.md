@@ -36,7 +36,7 @@ not a claim that the original Silo expectations passed unchanged.
 
 The implementation is
 [`bloem_adjudications.go`](../../internal/scenariocatalog/bloem_adjudications.go),
-with all 45 transport decisions and their reasons in
+with all 53 transport decisions and their reasons in
 [`bloem_adjudications.json`](../../internal/scenariocatalog/bloem_adjudications.json).
 The loader checks SHA-256 pins for all six affected baseline catalogs and compares
 each supplied scenario and row with its original. A changed request, principal,
@@ -50,8 +50,10 @@ copies; the frozen loader and its historical selectors are not rewritten.
 | `adm_inv_create.invalid_email` / v2 | `422 validation_failed`, with exactly one safe `body.email` field diagnostic | Required by [Problem Details](api-contract.md#problem-details); v1 remains `400 invalid_email`. |
 | `resources.ok`, `resources.unsampled` / v2 | Unsampled resources explicitly include `stale: true` | Availability remains false and GPU entries remain empty. Do not discard freshness information. |
 | `keys_list.meaning`, `keys_list.shape` / v1 | `key` is absent, including null/empty values; `key_prefix` is present and `revision` is a positive integer | The [recorded pre-lock removal](v1-scope.md#breaking-removals-taken-before-lock) makes secrets creation-only. Ownership, scope and ordering assertions stay. |
-| Five `scopes.*` discovery cases / v2 | Exactly six named scopes in the reviewed order | Native discovery includes session summaries, library discovery, bulk entitlements and storefront template provisioning (`admin:entitlements:accounts`). V1 keeps its two-scope projection. Discovery never grants authority. |
+| Five `scopes.*` discovery cases / v2 | Exactly seven named scopes in the reviewed order | Native discovery includes session summaries, library discovery, bulk entitlements, storefront template provisioning (`admin:entitlements:accounts`) and preview administration (`admin:preview`). V1 keeps its two-scope projection. Discovery never grants authority. |
 | `me.api_key` / v1 | An authenticated unscoped key reads its own exact, nonsecret account projection | Authentication is resolved once by middleware rather than reparsing a key as a JWT. This does not permit session minting, logout or scope escalation. |
+| `me.api_key`, `me.ok`, `me.disabled_account` / v2 | Silo's account keys plus `preview` and `playback_allowed` | Bloem's account projection reports the guest preview binding (null otherwise) and playback permission. Everything else Silo pins is unchanged. |
+| `setup_status.db_down` / v1, `signup_status.db_down` and `capability.ok` / v1 and v2 | `503 unavailable`, "Preview host configuration is unavailable." | With the database unreachable the preview host guard cannot read its settings, so it refuses every auth route before routing; a GET there can start a sign-in. Anonymous routes elsewhere, including liveness and readiness, keep Silo's answers. |
 | Four `account_capability.*` cases / v2 | Revision is the opaque authority-bound digest, not constant `"1"` | Primary, secondary and profileless capability predicates stay unchanged. |
 | Three `state.*` and four `progress.*` cases / v2 | Exact `Cache-Control: no-store, no-transform`, including follow-up reads | Preserve both privacy directives rather than weakening the response. |
 | `profiles_create.limit`, `profiles_create.unknown_library_ids` / v1 | Existing status/error codes with safe domain-level error text | Transactional profile mutations do not expose storage implementation details. |

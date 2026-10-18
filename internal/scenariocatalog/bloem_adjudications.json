@@ -332,7 +332,7 @@
       "registration_index": 0,
       "scenario": "scopes.ok",
       "transport": "v2",
-      "reason": "Native scope discovery includes six reviewed scopes; v1 remains its original two-scope projection. Pin all six names and their order; scopes never grant their owner authority.",
+      "reason": "Native scope discovery includes seven reviewed scopes, ending with Bloem's admin:preview; v1 remains its original two-scope projection. Pin all seven names and their order; scopes never grant their owner authority.",
       "expect": {
         "status": 200,
         "headers": [
@@ -359,7 +359,7 @@
           {
             "pointer": "/scopes",
             "op": "length",
-            "value": 6
+            "value": 7
           },
           {
             "pointer": "/scopes",
@@ -410,6 +410,11 @@
             "pointer": "/scopes/5/name",
             "op": "equals",
             "value": "admin:entitlements:accounts"
+          },
+          {
+            "pointer": "/scopes/6/name",
+            "op": "equals",
+            "value": "admin:preview"
           }
         ]
       },
@@ -422,7 +427,7 @@
       "registration_index": 0,
       "scenario": "scopes.meaning",
       "transport": "v2",
-      "reason": "Native scope discovery includes six reviewed scopes; v1 remains its original two-scope projection. Pin all six names and their order; scopes never grant their owner authority.",
+      "reason": "Native scope discovery includes seven reviewed scopes, ending with Bloem's admin:preview; v1 remains its original two-scope projection. Pin all seven names and their order; scopes never grant their owner authority.",
       "expect": {
         "status": 200,
         "headers": [
@@ -449,7 +454,7 @@
           {
             "pointer": "/scopes",
             "op": "length",
-            "value": 6
+            "value": 7
           },
           {
             "pointer": "/scopes",
@@ -500,6 +505,11 @@
             "pointer": "/scopes/5/name",
             "op": "equals",
             "value": "admin:entitlements:accounts"
+          },
+          {
+            "pointer": "/scopes/6/name",
+            "op": "equals",
+            "value": "admin:preview"
           }
         ]
       },
@@ -512,7 +522,7 @@
       "registration_index": 0,
       "scenario": "scopes.api_key_allowed",
       "transport": "v2",
-      "reason": "Native scope discovery includes six reviewed scopes; v1 remains its original two-scope projection. Pin all six names and their order; scopes never grant their owner authority.",
+      "reason": "Native scope discovery includes seven reviewed scopes, ending with Bloem's admin:preview; v1 remains its original two-scope projection. Pin all seven names and their order; scopes never grant their owner authority.",
       "expect": {
         "status": 200,
         "headers": [
@@ -544,7 +554,7 @@
           {
             "pointer": "/scopes",
             "op": "length",
-            "value": 6
+            "value": 7
           },
           {
             "pointer": "/scopes/0/name",
@@ -575,6 +585,11 @@
             "pointer": "/scopes/5/name",
             "op": "equals",
             "value": "admin:entitlements:accounts"
+          },
+          {
+            "pointer": "/scopes/6/name",
+            "op": "equals",
+            "value": "admin:preview"
           }
         ]
       },
@@ -587,7 +602,7 @@
       "registration_index": 0,
       "scenario": "scopes.shape",
       "transport": "v2",
-      "reason": "Native scope discovery includes six reviewed scopes; v1 remains its original two-scope projection. Pin all six names and their order; scopes never grant their owner authority.",
+      "reason": "Native scope discovery includes seven reviewed scopes, ending with Bloem's admin:preview; v1 remains its original two-scope projection. Pin all seven names and their order; scopes never grant their owner authority.",
       "expect": {
         "status": 200,
         "headers": [
@@ -614,7 +629,7 @@
           {
             "pointer": "/scopes",
             "op": "length",
-            "value": 6
+            "value": 7
           },
           {
             "pointer": "/scopes",
@@ -665,6 +680,11 @@
             "pointer": "/scopes/5/name",
             "op": "equals",
             "value": "admin:entitlements:accounts"
+          },
+          {
+            "pointer": "/scopes/6/name",
+            "op": "equals",
+            "value": "admin:preview"
           }
         ]
       },
@@ -677,7 +697,7 @@
       "registration_index": 0,
       "scenario": "scopes.sorted",
       "transport": "v2",
-      "reason": "Native scope discovery includes six reviewed scopes; v1 remains its original two-scope projection. Pin all six names and their order; scopes never grant their owner authority.",
+      "reason": "Native scope discovery includes seven reviewed scopes, ending with Bloem's admin:preview; v1 remains its original two-scope projection. Pin all seven names and their order; scopes never grant their owner authority.",
       "expect": {
         "status": 200,
         "headers": [
@@ -704,7 +724,7 @@
           {
             "pointer": "/scopes",
             "op": "length",
-            "value": 6
+            "value": 7
           },
           {
             "pointer": "/scopes",
@@ -755,6 +775,11 @@
             "pointer": "/scopes/5/name",
             "op": "equals",
             "value": "admin:entitlements:accounts"
+          },
+          {
+            "pointer": "/scopes/6/name",
+            "op": "equals",
+            "value": "admin:preview"
           }
         ]
       },
@@ -794,6 +819,72 @@
             "pointer": "/id",
             "op": "equals",
             "value": "${admin_user_id:int}"
+          },
+          {
+            "pointer": "/username",
+            "op": "equals",
+            "value": "${admin_username}"
+          },
+          {
+            "pointer": "/role",
+            "op": "equals",
+            "value": "admin"
+          },
+          {
+            "pointer": "/download_allowed",
+            "op": "equals",
+            "value": true
+          },
+          {
+            "pointer": "/impersonation",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "registration_index": 0,
+      "scenario": "me.api_key",
+      "transport": "v2",
+      "reason": "Bloem's account projection adds preview (null outside a guest preview) and playback_allowed to Silo's v2 keys; the authority oracle is unchanged.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required",
+              "preview",
+              "playback_allowed"
+            ]
+          },
+          {
+            "pointer": "/id",
+            "op": "equals",
+            "value": "${admin_user_id}"
           },
           {
             "pointer": "/username",
@@ -2929,6 +3020,317 @@
             "pointer": "/server_name",
             "op": "equals",
             "value": "Bloem"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/setup",
+      "registration_index": 0,
+      "scenario": "setup_status.db_down",
+      "transport": "v1",
+      "reason": "Bloem's preview host guard reads its settings before routing. With the database unreachable it cannot tell the preview host apart, so it refuses every auth route with 503 unavailable rather than letting the request reach a handler; anonymous routes elsewhere, including liveness and readiness, keep Silo's answers.",
+      "expect": {
+        "status": 503,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "error",
+              "message"
+            ]
+          },
+          {
+            "pointer": "/error",
+            "op": "equals",
+            "value": "unavailable"
+          },
+          {
+            "pointer": "/message",
+            "op": "equals",
+            "value": "Preview host configuration is unavailable."
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/signup",
+      "registration_index": 0,
+      "scenario": "signup_status.db_down",
+      "transport": "v1",
+      "reason": "Bloem's preview host guard reads its settings before routing. With the database unreachable it cannot tell the preview host apart, so it refuses every auth route with 503 unavailable rather than letting the request reach a handler; anonymous routes elsewhere, including liveness and readiness, keep Silo's answers.",
+      "expect": {
+        "status": 503,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "error",
+              "message"
+            ]
+          },
+          {
+            "pointer": "/error",
+            "op": "equals",
+            "value": "unavailable"
+          },
+          {
+            "pointer": "/message",
+            "op": "equals",
+            "value": "Preview host configuration is unavailable."
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/signup",
+      "registration_index": 0,
+      "scenario": "signup_status.db_down",
+      "transport": "v2",
+      "reason": "Bloem's preview host guard reads its settings before routing. With the database unreachable it cannot tell the preview host apart, so it refuses every auth route with 503 unavailable rather than letting the request reach a handler; anonymous routes elsewhere, including liveness and readiness, keep Silo's answers.",
+      "expect": {
+        "status": 503,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "error",
+              "message"
+            ]
+          },
+          {
+            "pointer": "/error",
+            "op": "equals",
+            "value": "unavailable"
+          },
+          {
+            "pointer": "/message",
+            "op": "equals",
+            "value": "Preview host configuration is unavailable."
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device/capability",
+      "registration_index": 0,
+      "scenario": "capability.ok",
+      "transport": "v1",
+      "reason": "Bloem's preview host guard reads its settings before routing. With the database unreachable it cannot tell the preview host apart, so it refuses every auth route with 503 unavailable rather than letting the request reach a handler; anonymous routes elsewhere, including liveness and readiness, keep Silo's answers.",
+      "expect": {
+        "status": 503,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "error",
+              "message"
+            ]
+          },
+          {
+            "pointer": "/error",
+            "op": "equals",
+            "value": "unavailable"
+          },
+          {
+            "pointer": "/message",
+            "op": "equals",
+            "value": "Preview host configuration is unavailable."
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/device/capability",
+      "registration_index": 0,
+      "scenario": "capability.ok",
+      "transport": "v2",
+      "reason": "Bloem's preview host guard reads its settings before routing. With the database unreachable it cannot tell the preview host apart, so it refuses every auth route with 503 unavailable rather than letting the request reach a handler; anonymous routes elsewhere, including liveness and readiness, keep Silo's answers.",
+      "expect": {
+        "status": 503,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "error",
+              "message"
+            ]
+          },
+          {
+            "pointer": "/error",
+            "op": "equals",
+            "value": "unavailable"
+          },
+          {
+            "pointer": "/message",
+            "op": "equals",
+            "value": "Preview host configuration is unavailable."
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "registration_index": 0,
+      "scenario": "me.ok",
+      "transport": "v2",
+      "reason": "Bloem's account projection adds preview (null outside a guest preview) and playback_allowed to Silo's v2 keys; everything else Silo pins is unchanged.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required",
+              "preview",
+              "playback_allowed"
+            ]
+          },
+          {
+            "pointer": "/id",
+            "op": "equals",
+            "value": "${member_user_id}"
+          },
+          {
+            "pointer": "/id",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/impersonation",
+            "op": "absent"
+          }
+        ]
+      },
+      "then": {}
+    },
+    {
+      "catalog": "api/api-v1-auth.json",
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "registration_index": 0,
+      "scenario": "me.disabled_account",
+      "transport": "v2",
+      "reason": "Bloem's account projection adds preview (null outside a guest preview) and playback_allowed to Silo's v2 keys; everything else Silo pins is unchanged.",
+      "expect": {
+        "status": 200,
+        "headers": [
+          {
+            "name": "Content-Type",
+            "op": "equals",
+            "value": "application/json"
+          },
+          {
+            "name": "Cache-Control",
+            "op": "equals",
+            "value": "no-store"
+          }
+        ],
+        "body": [
+          {
+            "pointer": "",
+            "op": "keys_equal",
+            "value": [
+              "id",
+              "username",
+              "email",
+              "role",
+              "permissions",
+              "download_allowed",
+              "password_change_required",
+              "preview",
+              "playback_allowed"
+            ]
+          },
+          {
+            "pointer": "/permissions",
+            "op": "empty"
+          },
+          {
+            "pointer": "/id",
+            "op": "type",
+            "value": "string"
+          },
+          {
+            "pointer": "/impersonation",
+            "op": "absent"
           }
         ]
       },

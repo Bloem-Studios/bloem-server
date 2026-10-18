@@ -209,6 +209,10 @@ func (e *Env) reseedBloemSettings() {
 	// fixture value through the compatibility configuration Bloem removed;
 	// here it is the row an upgraded Silo database carries.
 	e.mustSetting("jellyfin_compat.server_id", serverID)
+	// The preview settings row references users, so the household truncation
+	// cascades to it. Every request reads it first (previewHostGuard), so
+	// restore the disabled default the migration seeds.
+	e.mustExec(`INSERT INTO bloem_preview_settings DEFAULT VALUES ON CONFLICT (singleton) DO NOTHING`)
 	// V2 invite-code creation requires a caller-selected value. Both the
 	// generic runner and the dedicated effect tests execute these packets.
 	e.fixtures["caller_invite_code"] = strings.ToUpper(rand.Text()[:8])
