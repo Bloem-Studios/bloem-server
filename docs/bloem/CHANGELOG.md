@@ -3,6 +3,28 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 18, 2026 — Silo integration through b430099ff
+
+Bloem merges 89 Silo commits after `ea3c10a7f`, through `b430099ff`. Silo's
+implementation replaces Bloem's where it now covers the same need: recommendation
+jobs take Silo's cluster locks, artwork downloads use Silo's guarded client, and
+the storage-source note moved from Silo's library document into an
+[overlay](overlays/libraries-api.md). Jellyfin and Audiobookshelf remain removed;
+Silo files added under those packages are declared deletions.
+
+Bloem adapts its own code to Silo's new behavior: account-scoped notification
+state, the acting-administrator and PIN-proof rules on realtime sockets, the
+local-network TLS listener on the public port, Silo's recommendation scope
+resolver behind Bloem tenancy, and Silo's removal of Trakt, whose two v2
+operations carry recorded approvals and leave the generated client DTOs. The
+SQLite user store moves Bloem's step to version 34. See the
+[adapter guide](../architecture/bloem-upstream-adapters.md) for the durable rules.
+
+The eager launch bundle measures 322,627 bytes brotli, up 4,918 from the
+317,709-byte allowance. Silo's own eager bundle grew 5,096 bytes across the same
+commits (190,739 to 195,835), so the increase is Silo's and Bloem's share fell by
+178 bytes. The allowance is regenerated for the combined source.
+
 ## October 15, 2026 — preview source integration
 
 The browse-only preview implementation is integrated with the October Silo

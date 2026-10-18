@@ -190,6 +190,46 @@ allowance explicit; do not change upstream thresholds merely to hide fork costs.
 Seasonal branding reads are cached by server, while authenticated profile
 ambience retains its own authority and scheduling rules.
 
+Preview adapters in [`web/bloem-preview-plugin.ts`](../../web/bloem-preview-plugin.ts)
+replace Silo modules at Vite resolve time, so TypeScript checks callers against
+the original module and cannot see an adapter that drops an argument or prop.
+Each adapter forwards every argument and prop outside preview mode. When an
+upstream merge changes a redirected module, compare its signature with the
+adapter; Silo's own tests for that module run through the adapter.
+
+Bloem web code calling `/api/v1` routes without a generated v2 contract uses
+`bloemV1Api` or `bloemV1ApiWithProfileRequestContext`, and `/api/bloem/v1`
+routes use `nativeApi`. Silo's lint rule against `api<T>()` stays meaningful
+for routes that have a v2 contract; do not alias these helpers to `api`.
+
+## SQLite user-store versions
+
+Silo owns the SQLite user-store version numbers in
+[`internal/userdb/migrate.go`](../../internal/userdb/migrate.go). Bloem's step
+follows Silo's latest, is idempotent, and lives in
+[`bloem_compat_removal.go`](../../internal/userdb/bloem_compat_removal.go). Bloem
+once shipped its cleanup as version 32 before Silo claimed 32, so a store Bloem
+left at 32 skipped Silo's version 32; Bloem's version 34 adds the column that
+step would have added. When Silo claims Bloem's number again, renumber Bloem's
+step after Silo's and backfill whatever Silo's skipped step does.
+
+## Realtime ticket PIN proof
+
+Bloem's events, watch-together and playback-control sockets authenticate with
+route-bound audience tickets ([`internal/auth/audience_ticket.go`](../../internal/auth/audience_ticket.go)).
+The events ticket also keeps the minting request's `X-Profile-Token`, at most
+4 KiB, inside the single stored ticket value. `RequireAuth` restores it as the
+handshake's `X-Profile-Token` and drops any token the caller sent. Silo's v1
+events socket then rechecks that PIN proof at the handshake and on every
+session check, so a PIN change still removes the administrator channels.
+
+## Recommendation scope
+
+The recommendation engine builds cached rows under a scope resolver. Production
+wiring wraps it in `newTenantAwareViewerResolver` like every other viewer
+resolver; `TestProductionViewerResolversUseBloemTenancy` fails on an untenanted
+one.
+
 ## Updating documentation and contracts
 
 The GitHub front page and contributor guide are `.github/README.md` and

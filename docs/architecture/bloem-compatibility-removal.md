@@ -27,7 +27,9 @@ server ID they stored. A database without that row answers the deployment identi
 and watch progress stay intact.
 Historical SQL remains unchanged; the displayprefs parser lives in
 `internal/legacymigrate/displayprefs` solely to execute old migration chains.
-SQLite schema version 32 removes legacy displayprefs storage and keys.
+Bloem's SQLite step removes legacy displayprefs storage and keys: version 34 now, first
+shipped as version 32 before Silo claimed that number (see
+[SQLite user-store versions](bloem-upstream-adapters.md#sqlite-user-store-versions)).
 
 The PostgreSQL cleanup is transactional and uses no `CASCADE`. An unexpected
 schema dependency fails the whole migration. Its Down explicitly refuses rollback:
@@ -55,8 +57,8 @@ media/audiobook playback, migrations and Live TV before merging.
 
 Removal acceptance covers fresh PostgreSQL installs, seeded upgrades preserving
 native collections/progress, repeated startup and atomic failure on unknown
-schema dependencies. SQLite acceptance covers fresh stores and reopened version-31
-stores. HTTP tests drive the production router/root composition with GET, HEAD,
+schema dependencies. SQLite acceptance covers fresh stores, reopened version-31 stores and stores
+Bloem left at its former version 32. HTTP tests drive the production router/root composition with GET, HEAD,
 POST, Range and credential fixtures. Former protocol paths may return the frontend
 shell; a shell response is not protocol support. Removed API paths return 404.
 
