@@ -101,12 +101,19 @@ embed-stub:
 # Run the Go and frontend test suites.
 test: test-go test-web
 
+<<<<<<< HEAD
 # The Go suite minus the scenario executor, which has its own target (and CI
 # job) below. When SILO_TEST_DATABASE_URL is set the shared test database is
 # prepared first. GO_TEST_PACKAGES and test-db-prepare live in Makefile.bloem.
 test-go: embed-stub
 	@if [ -n "$$SILO_TEST_DATABASE_URL" ]; then $(MAKE) --no-print-directory test-db-prepare || exit 1; fi
 	go test -timeout=20m $(GO_TEST_PACKAGES)
+=======
+# The queryattr concurrency tests prove nothing without the race detector.
+test-go: embed-stub
+	go test ./...
+	go test -race -count=1 ./internal/database/queryattr/
+>>>>>>> upstream/main
 
 # Run the DB-backed query-budget pins listed in $(DB_PINS), then the database
 # contracts, against the migrated, disposable database named by
