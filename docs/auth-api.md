@@ -18,6 +18,15 @@ the route answers `413` without processing the request: `too_large` in the v1 er
 or plain text on `/api/v1/auth/oauth/complete`. Only the first JSON value is decoded; data
 after it is ignored, not rejected.
 
+`POST /api/v1/auth/setup` also requires `Content-Type: application/json` before
+reading the body. MIME parameters are accepted; missing, malformed, or other media
+types return `415` with the v1 `unsupported_media_type` error. This critical bridge
+fix prevents a cross-site browser form or `no-cors` fetch from claiming the first
+administrator. A cross-origin JSON fetch requires a preflight, which the main API
+does not grant. Same-origin browser and native JSON setup keep the existing
+database-wide one-winner transaction. This does not add a setup secret or limit
+which networks may complete setup.
+
 ## Login sessions
 
 Login sessions belong to accounts and are separate from household profiles, registered
@@ -359,6 +368,12 @@ header itself, spend only the per-client budget. An exhausted budget answers 429
 `Retry-After`.
 
 ## Profile PINs
+
+Profile creation through v1 and v2 stores a requested PIN hash in the same
+transaction as the profile and its preferences. The first committed profile
+state already requires PIN proof. Creation rejects PINs longer than 72 bytes
+before writing anything (v1: 400 `bad_request`; v2: 422 `validation_failed`).
+Omitting the PIN still creates an unlocked profile.
 
 `POST /api/v2/profiles/{id}/verify-pin` (`verifyProfilePIN`) and v1
 `POST /api/v1/profiles/{id}/verify-pin` check a household profile's PIN. A match

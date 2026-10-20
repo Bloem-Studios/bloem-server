@@ -162,12 +162,38 @@ func (h *EventsHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+<<<<<<< HEAD
 	// RequireAuth has already atomically consumed the route-bound ticket and
 	// reconstructed its authenticated principal, restoring the profile's PIN
 	// proof as X-Profile-Token.
 	bound := struct{ ProfileID, ProfileToken string }{claims.ProfileID, r.Header.Get("X-Profile-Token")}
+=======
+	// Browsers cannot set custom headers on websocket handshakes, so profile
+	// identity arrives as a short-lived single-use ticket minted via
+	// POST /events/ws-ticket. An unbound connection cannot subscribe to
+	// notifications or receive profile-addressed state and settings events.
+	var bound notifications.Ticket
+	if ticket := r.URL.Query().Get("ticket"); ticket != "" && h.notifications != nil {
+		binding, ok := h.notifications.Tickets.Consume(r.Context(), ticket)
+		if ok && binding.UserID == claims.UserID {
+			bound = binding
+		} else {
+			// Expired, reused, consumed on a different node, or minted for
+			// another user: degrade to an unbound connection instead of
+			// failing the handshake, which would take down every realtime
+			// channel. An unbound connection cannot subscribe to
+			// notifications, and on an admin account it is judged as acting
+			// with no profile below, so a household that requires a profile
+			// gets the user channels. Both fail closed: the client gets the
+			// binding back by reconnecting with a fresh ticket, which it does
+			// when its notifications subscription is rejected.
+			slog.WarnContext(r.Context(), "events: websocket ticket rejected; connection unbound", "component", "api",
+				"user_id", claims.UserID)
+		}
+	}
+>>>>>>> upstream/main
 
-	// Admin channels and other accounts' events follow the acting profile, as
+	// Admin channels follow the acting profile, as
 	// on the v2 socket: another profile on an admin's account connects with
 	// the user role. A handshake that declares no profile acts as the profile
 	// its ticket was minted for, which the viewer gate verified then. Either
@@ -713,6 +739,21 @@ func allowsEventForClaims(claims *auth.Claims, boundProfileID string, env evt.En
 		return boundProfileID != "" &&
 			env.UserID == claims.UserID &&
 			env.ProfileID == boundProfileID
+	}
+	switch env.Channel {
+	case evt.ChannelUserState:
+		// Personal state never inherits the administrator's account-wide reach.
+		if env.UserID <= 0 || env.UserID != claims.UserID || boundProfileID == "" || env.ProfileID != boundProfileID {
+			return false
+		}
+	case evt.ChannelUserSettings:
+		// An empty profile identifies an account-scoped settings change.
+		if env.UserID <= 0 || env.UserID != claims.UserID {
+			return false
+		}
+		if env.ProfileID != "" && (boundProfileID == "" || env.ProfileID != boundProfileID) {
+			return false
+		}
 	}
 	if env.UserID > 0 && claims.Role != "admin" && env.UserID != claims.UserID {
 		return false
