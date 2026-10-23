@@ -49,6 +49,7 @@ func TestPublicAuthLifecycleReplayPrecedesConsumedCreateSources(t *testing.T) {
 				return lifecycleidempotency.Digest{1}
 			}, lifecycleidempotency.NewPreauthActorDigester([]byte("test-secret")), authLifecycleIdentity{id: "server-one"})
 			req := httptest.NewRequest(http.MethodPost, test.path, strings.NewReader(test.body))
+			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Idempotency-Key", "public-create-replay-0001")
 			rec := httptest.NewRecorder()
 

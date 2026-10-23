@@ -31,6 +31,7 @@ import { adminKeys } from "@/hooks/queries/keys";
 import { catalogJobs, hasCapabilityJob } from "@/lib/pluginCapabilities";
 import {
   CATALOG_GROUPS,
+  installationTier,
   pluginDisplayName,
   pluginMatchesSearch,
   pluginPagePath,
@@ -269,7 +270,7 @@ function InstalledTab({
             installation.presentation ??
             catalogByPluginID.get(installation.plugin_id)?.presentation,
           capabilities: installation.capabilities ?? [],
-          sourceKind: installation.source_kind,
+          sourceKind: installationTier(installation),
           repositoryName: installation.repository_name,
         }),
       ),

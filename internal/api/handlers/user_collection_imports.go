@@ -370,11 +370,8 @@ func (h *UserCollectionImportHandler) presignCollectionPoster(ctx context.Contex
 	if path == "" {
 		return ""
 	}
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		return path
-	}
-	if strings.HasPrefix(path, "/") {
-		return path
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") || strings.HasPrefix(path, "/") {
+		return catalog.ImageURLOrEmpty(path)
 	}
 	if h.ArtworkResolver == nil {
 		return ""
@@ -458,8 +455,8 @@ func validateOptionalLimit(limit *int) error {
 	if limit == nil {
 		return nil
 	}
-	if *limit <= 0 || *limit > collectionutil.MaxExplicitItemLimit {
-		return fieldError("limit", fmt.Sprintf("limit must be between 1 and %d", collectionutil.MaxExplicitItemLimit))
+	if *limit <= 0 {
+		return fieldError("limit", "limit must be at least 1")
 	}
 	return nil
 }

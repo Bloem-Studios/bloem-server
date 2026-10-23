@@ -173,6 +173,11 @@ func (h *AdminHandler) handleLifecycleCreateUserProfile(w http.ResponseWriter, r
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
+	pinHash, err := hashProfilePIN(r.Context(), &req.PIN)
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
 	actorID, actorIncarnation, ok := lifecycleActor(r)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
@@ -233,7 +238,8 @@ func (h *AdminHandler) handleLifecycleCreateUserProfile(w http.ResponseWriter, r
 			SubtitleMode: req.SubtitleMode, AutoSkipIntro: req.AutoSkipIntro, AutoSkipCredits: req.AutoSkipCredits,
 			AutoSkipRecap: req.AutoSkipRecap, AutoPlayNextPreview: req.AutoPlayNextPreview,
 			ShowForcedSubtitles: showForcedSubtitles, LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
-			AllowedLibraryIDs: req.AllowedLibraryIDs, MaxPlaybackQuality: maxPlaybackQuality, AccessGroupID: inheritedGroupID}
+			AllowedLibraryIDs: req.AllowedLibraryIDs, MaxPlaybackQuality: maxPlaybackQuality, AccessGroupID: inheritedGroupID,
+			PINHash: *pinHash}
 		if organizationID := adminResourceOrganization(ctx); organizationID != uuid.Nil {
 			profile.OrganizationID = organizationID.String()
 		}
@@ -252,11 +258,6 @@ func (h *AdminHandler) handleLifecycleCreateUserProfile(w http.ResponseWriter, r
 		changedKeys, err = writeCanonicalSettingsSync(ctx, writer, userstore.SettingIdentity{Scope: settingscontract.ScopeProfile, ProfileID: profile.ID}, append(settingsSync, inherited...))
 		if err != nil {
 			return lifecycleidempotency.Result{}, err
-		}
-		if req.PIN != "" {
-			if err := writer.UpdateProfile(ctx, profile.ID, userstore.UpdateProfileInput{PIN: &req.PIN}); err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
 		}
 		if req.ShowForcedSubtitles != nil && !*req.ShowForcedSubtitles {
 			if err := writer.UpdateProfile(ctx, profile.ID, userstore.UpdateProfileInput{ShowForcedSubtitles: req.ShowForcedSubtitles}); err != nil {
@@ -402,7 +403,12 @@ func (h *AdminHandler) handleLifecycleUpdateUserProfile(w http.ResponseWriter, r
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
-	input := userstore.UpdateProfileInput{Name: req.Name, Avatar: avatarRef, PIN: req.PIN, IsChild: req.IsChild,
+	pinHash, err := hashProfilePIN(r.Context(), req.PIN)
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+	input := userstore.UpdateProfileInput{Name: req.Name, Avatar: avatarRef, PINHash: pinHash, IsChild: req.IsChild,
 		MaxContentRating: req.MaxContentRating, QualityPreference: req.QualityPreference, Language: req.Language,
 		PreferredMetadataLanguage: req.PreferredMetadataLanguage, SubtitleLanguage: req.SubtitleLanguage,
 		SubtitleMode: req.SubtitleMode, AutoSkipIntro: req.AutoSkipIntro, AutoSkipCredits: req.AutoSkipCredits,

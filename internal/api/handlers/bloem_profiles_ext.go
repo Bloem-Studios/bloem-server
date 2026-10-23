@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -250,16 +249,17 @@ func (h *ProfileHandler) bloemCreateProfileLifecycle(ctx context.Context, cmd Pr
 }
 
 // bloemProfileLimit enforces the effective (account and entitlement) profile
-// ceiling for a new profile and returns the access group it inherits.
-func (h *ProfileHandler) bloemProfileLimit(ctx context.Context, user *models.User, existing int) (*int64, error) {
+// ceiling for a new profile and returns that limit (0 = unlimited) and the
+// access group the profile inherits.
+func (h *ProfileHandler) bloemProfileLimit(ctx context.Context, user *models.User, existing int) (int, *int64, error) {
 	limit, inheritedGroupID, err := h.effectiveProfileLimit(ctx, user)
 	if err != nil {
-		return nil, apiError(500, "internal_error", "Failed to resolve profile limit")
+		return 0, nil, apiError(500, "internal_error", "Failed to resolve profile limit")
 	}
 	if limit >= 1 && existing >= limit {
-		return nil, apiError(409, "profile_limit_reached", fmt.Sprintf("This account has reached its profile limit (%d)", limit))
+		return 0, nil, profileLimitReached(limit)
 	}
-	return inheritedGroupID, nil
+	return limit, inheritedGroupID, nil
 }
 
 // bloemUpdateProfilePrelude runs Bloem's pre-store profile update steps: it
@@ -282,7 +282,7 @@ func (h *ProfileHandler) bloemUpdateProfilePrelude(ctx context.Context, cmd Prof
 		return none, true, apiError(http.StatusBadRequest, "bad_request", err.Error())
 	}
 	input := userstore.UpdateProfileInput{
-		Name: req.Name, Avatar: avatarRef, PIN: req.PIN, IsChild: req.IsChild,
+		Name: req.Name, Avatar: avatarRef, IsChild: req.IsChild,
 		MaxContentRating: req.MaxContentRating, MaxAdvisoryAge: req.MaxAdvisoryAge, RequireAdvisoryAge: req.RequireAdvisoryAge, QualityPreference: req.QualityPreference,
 		Language: req.Language, PreferredMetadataLanguage: req.PreferredMetadataLanguage,
 		SubtitleLanguage: req.SubtitleLanguage, SubtitleMode: req.SubtitleMode,
@@ -292,6 +292,11 @@ func (h *ProfileHandler) bloemUpdateProfilePrelude(ctx context.Context, cmd Prof
 		AllowedLibraryIDs: req.AllowedLibraryIDs, MaxPlaybackQuality: maxPlaybackQuality,
 	}
 	if h.lifecycle != nil {
+		pinHash, err := hashProfilePIN(ctx, req.PIN)
+		if err != nil {
+			return none, true, err
+		}
+		input.PINHash = pinHash
 		result, err := h.updateProfileLifecycle(ctx, cmd, input, settingsSync)
 		if cmd.lifecycleResult != nil {
 			*cmd.lifecycleResult = result

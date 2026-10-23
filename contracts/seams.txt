@@ -42,9 +42,7 @@ docs/design/schemas/playback-v3/v3/fixtures/valid/hls-subtitle-rendition-decisio
 docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
 go.mod
 go.sum
-internal/access/group_guard_test.go
 internal/access/group_store.go  # GetPolicyForUser reads the account membership group; users.access_group_id no longer exists
-internal/access/group_store_test.go
 internal/access/groups.go
 internal/access/groups_test.go  # Bloem adds EffectiveUserPolicy.PlaybackAllowed; whole-struct expectations add PlaybackAllowed: true, nothing else changed
 internal/access/resolver.go
@@ -52,8 +50,8 @@ internal/access/types.go
 internal/activitylog/cleanup.go
 internal/adminjob/catalog_import.go
 internal/adminjob/lifecycle_test.go  # isolate durable job fixtures and create their real actor account
-internal/adminjob/paging_test.go  # use the isolated fixture's actual creator account
 internal/adminjob/runner.go
+internal/api/handlers/access_groups_policy_db_test.go # run Silo's library-policy cases through Bloem's tenant group store and membership assignment
 internal/api/handlers/access_groups_test.go
 internal/api/handlers/admin.go
 internal/api/handlers/admin_access_group_delete_test.go  # Run upstream group-delete callback tests through organization-aware interface
@@ -61,7 +59,6 @@ internal/api/handlers/admin_login_sessions.go  # sign-out-everywhere reports a f
 internal/api/handlers/admin_login_sessions_test.go  # the revocation hook returns an error in Bloem
 internal/api/handlers/admin_sections_service.go
 internal/api/handlers/admin_session_revocation_test.go  # exercise upstream session policy against organization-aware group fixture
-internal/api/handlers/admin_subtitle_list_test.go  # tenant-aware cleanup and shared raw-language versus v2 canonical projection
 internal/api/handlers/admin_user_policy_test.go
 internal/api/handlers/admin_users_service.go
 internal/api/handlers/auth.go
@@ -85,14 +82,14 @@ internal/api/handlers/libraries_service.go  # native selected-target authorizati
 internal/api/handlers/library_views_service.go
 internal/api/handlers/markers_test.go
 internal/api/handlers/notifications.go
-internal/api/handlers/notifications_apple_display_test.go
 internal/api/handlers/playback.go
+internal/api/handlers/playback_hung_node_test.go  # the router fixture sets the viewer scope Bloem's per-segment library recheck requires
 internal/api/handlers/playback_test.go
 internal/api/handlers/playback_v3.go
 internal/api/handlers/playback_v3_test.go
 internal/api/handlers/plugins.go  # installation store becomes an interface so native storage installations can be hidden (bloem_plugins_native_storage.go)
-internal/api/handlers/policy_test.go
 internal/api/handlers/profiles.go
+internal/api/handlers/profiles_limit_db_test.go # seed the account's profile limit on its membership, where Bloem keeps account policy
 internal/api/handlers/requests.go
 internal/api/handlers/sections.go
 internal/api/handlers/session_ws.go
@@ -106,16 +103,12 @@ internal/api/middleware/api_key_scopes.go
 internal/api/middleware/api_key_scopes_test.go
 internal/api/middleware/auth.go
 internal/api/middleware/household_profile_gate.go  # direct-profile sessions are bound to their one profile and pass the gate
-internal/api/middleware/identity_prelude_db_test.go  # Bloem schema: access groups are per-organization and assigned on organization_memberships (users.access_group_id is gone); the prelude adds tenant membership and resource-bound reads
 internal/api/middleware/policy_gates.go
 internal/api/middleware/profile.go
 internal/api/middleware/viewer_access.go
 internal/api/router.go  # Bloem route/service integration; fallback Live TV services receive the same at-rest cipher
-internal/api/router_v2_plugin_browser_test.go
 internal/api/testdata/media_routes.txt
-internal/apibench/bench_test.go  # reviewed test-only exception: synchronize concurrently served benchmark fixture counters and bodies
 internal/apiv2/admin_subtitle_metadata_test.go  # reviewed test-only exception: canonical API language projection preserves raw legacy row
-internal/apiv2/admin_system_test.go  # assert actual platform capability while retaining authorization and cache checks
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
 internal/apiv2/auth_sessions.go
 internal/apiv2/device_login_test.go  # expected server_name follows branding.DefaultServerName, which Bloem sets to "Bloem"
@@ -130,7 +123,6 @@ internal/apiv2/libraries.go  # createLibrary takes a storage_source location as 
 internal/apiv2/notification_inbox.go
 internal/apiv2/notification_inbox_test.go
 internal/apiv2/parity_test.go
-internal/apiv2/profile_token_revision_test.go  # skipped: Bloem runs profile mutations only under lifecycle transactions, which the SQLite store cannot
 internal/apiv2/profiles.go
 internal/apiv2/registry.go
 internal/apiv2/router.go
@@ -143,12 +135,9 @@ internal/auth/api_key_scopes.go
 internal/auth/client_device.go  # a reported device never replaces the device a direct-profile session is bound to
 internal/auth/external_sign_in_db_test.go # Identity fixtures use the canonical membership-aware account writer; upstream raw legacy policy columns are retired.
 internal/auth/identity_service.go  # actor and target locks use the membership-aware account projection
-internal/api/initial_setup_atomic_test.go  # real Bloem setup seams, lifecycle admission and cross-transport first-account concurrency proof
 internal/auth/jwt.go
 internal/auth/login_session_device_db_test.go  # auth_sessions.device_id is NOT NULL DEFAULT '' in Bloem, so no device is '' rather than NULL
 internal/auth/login_sessions_db_test.go  # directly inserted accounts get the default-organization membership Bloem profiles require
-internal/auth/oauth_completion_authority_db_test.go  # membership policy projection and entitlement-aware plugin cleanup in upstream OAuth authority tests
-internal/auth/owner_test.go  # Supply transactional ownership hook to upstream initial-owner regression
 internal/auth/password_hash_test.go  # compose upstream bcrypt test initialization with isolated Bloem auth database lifecycle
 internal/auth/password_test.go  # password hashing fixture follows canonical Bloem account creation
 internal/auth/permissions.go
@@ -156,8 +145,6 @@ internal/auth/repository.go
 internal/auth/repository_access_group_test.go  # insertAuthAccessGroupTestUser seeds a group-less membership: the shim gives raw accounts the default group, which the update/revision assertions do not expect
 internal/auth/service.go
 internal/auth/session.go
-internal/auth/signup_atomic_test.go  # real tenant ownership and transactional membership wiring for atomic signup fixtures
-internal/auth/signup_wrapped_provider_test.go  # complete isolated schema and membership wiring for PostgreSQL/decorator signup parity
 internal/branding/branding.go
 internal/branding/render.go
 internal/branding/render_test.go
@@ -167,28 +154,21 @@ internal/catalog/episode_repo.go
 internal/catalog/filesplit/filesplit.go  # native selected-target authorization boundary
 internal/catalog/folder_repo.go
 internal/catalog/library_repo.go
-internal/catalog/search_session_db_test.go  # reviewed test-only exception: seed normalized PG/R ages required by the upstream access filter
 internal/catalogseed/service.go
 internal/config/admin_settings.go
 internal/config/config.go
 internal/config/db_loader.go
 internal/config/yaml_import.go
 internal/contractledger/ledger_test.go  # upstreamable: the copied-field drift case must pick an api_v1 row on a fork with its own namespace
-internal/database/media_analysis_artifacts_migration_test.go  # rollback rehearsal runs on the baseline without Bloem's forward-only removals
-internal/database/migrate_downto_test.go  # rollback rehearsal runs on the baseline without Bloem's forward-only removals
-internal/database/simplify_playback_authority_migration_test.go  # isolate downgrade rehearsal and scope schema assertions
 internal/downloads/artifact_repo.go  # route quota-scoped artifact operations through the admission connection to prevent pool starvation
-internal/downloads/artifact_repo_test.go
 internal/downloads/artifact_test.go
 internal/downloads/offline.go
 internal/downloads/policy.go
 internal/downloads/policy_action_test.go
 internal/downloads/preparation_controls_test.go # Preserve cancellation race tests using Bloem membership policy instead of retired user policy column.
-internal/downloads/preparations_test.go # Upstream preparation requester fixture uses Bloem membership policy authority; retired user policy column is absent.
 internal/downloads/repo.go  # preserve quota serialization on a single connection with bounded, fail-closed session-lock cleanup
 internal/downloads/repo_managed_test.go
 internal/downloads/service.go
-internal/downloads/service_remote_test.go
 internal/downloads/subscription_mutations.go
 internal/downloads/subscription_page_test.go  # share the underlying fixture pool when the download repository uses its quota adapter
 internal/downloads/subscription_service.go
@@ -205,7 +185,6 @@ internal/invitations/service_test.go
 internal/libraryingest/executor.go
 internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
 internal/librarykind/librarykind.go
-internal/mail/brand_test.go  # default-name expectation reads branding.DefaultServerName (Bloem) instead of the literal "Silo"; a const, so no test hook can restore it
 internal/mail/layout_test.go  # default alt text and logo size derive from branding.DefaultServerName and the embedded default wordmark; Bloem pins its own in bloem_brand_test.go
 internal/metadata/image_cache_job_repo.go
 internal/metadata/image_cache_processor.go
@@ -218,18 +197,13 @@ internal/notifications/dispatcher.go
 internal/notifications/display.go
 internal/notifications/fanout_logic_test.go
 internal/notifications/interest_repo.go
-internal/notifications/operational_dispatch_test.go
 internal/notifications/release_types.go
 internal/notifications/settings.go
 internal/notifications/system.go
-internal/notifications/webhook_guard.go
-internal/notifications/webhook_http.go
 internal/notifications/webhook_payload_discord.go
 internal/notifications/webhook_payload_generic.go
 internal/notifications/webpush_sender.go
 internal/notifications/ws_ticket.go
-internal/notifications/ws_ticket_test.go # deleted: Bloem events tickets are auth audience tickets; the proof rides inside the one stored ticket value (internal/auth/audience_ticket_test.go)
-internal/nodepool/admin_configuration_test.go  # reviewed test-only exception: synthetic node table includes current upstream network and download columns
 internal/opslog/cleanup.go
 internal/playback/contract/contract_test.go
 internal/playback/gpudetect.go
@@ -245,13 +219,10 @@ internal/playback/testdata/protocol_v3/hls-subtitle-rendition-decision_response.
 internal/playback/testdata/protocol_v3/native-decision_response.json
 internal/playback/transcode.go
 internal/playback/transcode_manager.go
-internal/pluginhost/integration_dispatch_test.go  # reviewed test-only exception: current SDK manifests and supported event-name/targeted dispatch with a local subprocess fixture
-internal/pluginhost/integration_test.go  # reviewed test-only exception: replace unavailable absolute SDK example path with the local subprocess fixture
 internal/plugins/content.go
 internal/policy/action_parity_test.go
 internal/policy/decisionlog.go
 internal/policy/decisionlog_repo.go
-internal/policy/decisionlog_repo_test.go
 internal/policy/decisionlog_test.go
 internal/policy/engine_bench_test.go
 internal/policy/input.go
@@ -292,22 +263,15 @@ internal/scanner/ebook_skip.go  # skip-state preload also reads ebook_cover_retr
 internal/scanner/file_repo.go  # native selected-target authorization boundary
 internal/scanner/file_repo_chapter_lock_db_test.go  # waits for a closed dedicated session to leave pg_stat_activity instead of racing its backend exit (flaked in CI; same race upstream)
 internal/scanner/scanner.go
-internal/scanqueue/service_overlap_db_test.go  # upstream queued overlap fixture supplies a finite local reader for its actual folder
 internal/scenariocatalog/executor/env.go  # restore canonical fixture authority; bind router maintenance to test lifetime without canceling SQL cleanup
-internal/scenariocatalog/executor/executor_test.go  # verify tenant reseeding and real lifecycle/avatar fixture prerequisites
 internal/scenariocatalog/executor/run.go  # row-scoped prerequisites/lifecycle readiness; avoid duplicate FreshState reseeds; apply explicit SHA-pinned Bloem adjudications while retaining frozen Silo catalogs
 internal/sections/fetcher.go
 internal/sections/types.go
-internal/subtitles/provider_language_test.go  # reviewed test-only exception: repository reads preserve upstream raw legacy language
 internal/transcodenode/server_test.go
-internal/userdb/bridgeimport/import_db_test.go  # reviewed test-only exception: seed frozen schema22 with historical SQL
-internal/userdb/bridgeimport/store_reads_test.go  # reviewed test-only exception: compare historical source profiles and independently derived Bloem metadata
-internal/userstore/pgstore/profile_advisory_age_test.go  # Assert advisory-age invalidation on authoritative profile membership revision
 internal/userstore/pgstore/profile_libraries.go
 internal/userstore/pgstore/profile_pin_revision_test.go  # the account policy revision lives on the default-organization membership in Bloem
 internal/userstore/pgstore/profiles.go
 internal/userstore/types.go
-internal/watchsync/connection_settings_test.go  # create fixture account/profile through canonical tenant-aware writers
 internal/worker/cleanup.go
 internal/worker/heartbeat.go
 internal/worker/reconciler.go
@@ -323,7 +287,7 @@ web/public/silo-icon-1024.png  # deleted
 web/public/silo-wordmark-sidebar.png  # deleted
 web/public/web-app-icon-192.png
 web/public/web-app-icon-512.png
-web/src/App.adminRoutes.test.tsx  # mocks Bloem's admin shell and platform guard, which mint a server admin-context session the route test does not serve
+web/src/App.routes.test.tsx  # mocks Bloem's admin-context shell, as the retired App.adminRoutes test did, for the Home rows redirect Silo moved here
 web/src/App.tsx
 web/src/api/client.pinGeneration.test.ts
 web/src/api/client.ts
@@ -348,7 +312,6 @@ web/src/hooks/queries/admin/plugins.ts
 web/src/hooks/queries/admin/policy.ts
 web/src/hooks/queries/admin/stats.ts
 web/src/hooks/queries/admin/system.ts
-web/src/hooks/queries/catalogRead.test.ts
 web/src/hooks/queries/profiles.ts
 web/src/hooks/useAuth.tsx
 web/src/lib/adminNavigation.test.ts  # covers the organization Storage sources entry
@@ -369,7 +332,6 @@ web/src/pages/admin-policy/AdminPolicyLayout.tsx
 web/src/pages/admin-settings/AdminSettingsLayout.tsx
 web/src/pages/admin-settings/InvitationsTab.test.tsx
 web/src/pages/admin-settings/InvitationsTab.tsx
-web/src/pages/admin-settings/NotificationsAdminSettings.test.tsx
 web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permission-list hook after upstream split the user detail page
 web/src/pages/watchtogether/StartPartySheet.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
 web/src/pages/watchtogether/room/browse/CandidateStage.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
@@ -386,15 +348,12 @@ web/vite.config.ts
 
 # Silo's Jellyfin and Audiobookshelf compatibility was restored 2026-10-18
 # after the 2026-10-13 removal; Bloem's own companion gateway stays removed.
-internal/userdb/migrate.go # Bloem's SQLite steps (v34, v35) run after Silo's v33
+internal/userdb/migrate.go # Bloem's SQLite step (v36) runs after Silo's v35; a store Bloem left at its former v34 or v35 resumes after v33
 internal/jellycompat/dv_strip_test.go # the no-route cases turn off Bloem's tone-mapping defaults explicitly
-web/src/pages/admin-settings/CompatibilityProxiesSettings.test.tsx # expected name derives from the fixture, which the brand transform rewrites
 
 internal/database/migrate.go # apply owned migration adapters at the provider boundary
 internal/api/handlers/events_ws_declared_channels_test.go # exercise Silo acting-admin selection after Bloem middleware consumed the v1 ticket
 internal/api/handlers/profiles_test.go # adapt Silo inherited-limit fixture to organization-aware group interface
-internal/auth/device_login_quick_connect_db_test.go # provision the real tenant membership required by shared profile storage
-internal/auth/remote_playback_session_db_test.go # provision the real tenant membership for Silo handoff fixtures
 web/src/components/admin/libraries/useLibraryForm.localMetadata.test.tsx # supply query context for the owned storage-location hook
 web/src/hooks/admin/useSettingsHealth.ts # include owned announcements
 

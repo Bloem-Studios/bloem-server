@@ -99,7 +99,7 @@ func (h *StreamHandler) serveNativeVideoRemux(w http.ResponseWriter, r *http.Req
 	}
 	abort, release := h.sessionMgr.WatchTransportStop(session.ID)
 	defer release()
-	return playback.ServeSourceRemux(w, r, playback.TranscodeOpts{InputPath: file.FilePath, InputSource: source, InputFormat: format, SessionID: session.ID, FFmpegPath: h.ffmpegPath(), AudioTrackIndex: session.AudioTrackIndex, SeekSeconds: seek}, "mp4", session.TranscodeAudio, file.PrimaryDVProfile(), playback.RemuxServeOptions{DVMode: session.RemuxDVMode, FFmpegPath: h.ffmpegPath(), DropResumeLeadingPictures: session.RemuxResumeLeadingPictureDrop, ContentType: playback.RemuxContentType(false), AudioOnly: false, Abort: abort, SourceAudioChannels: session.SourceAudioChannels, TargetAudioChannels: session.TargetAudioChannels, TargetAudioBitrateKbps: session.TargetAudioBitrateKbps})
+	return playback.ServeSourceRemux(w, r, playback.TranscodeOpts{InputPath: file.FilePath, InputSource: source, InputFormat: format, SessionID: session.ID, FFmpegPath: h.ffmpegPath(), AudioTrackIndex: session.AudioTrackIndex, SeekSeconds: seek}, "mp4", session.TranscodeAudio, file.PrimaryDVProfile(), playback.RemuxServeOptions{DVMode: session.RemuxDVMode, FFmpegPath: h.ffmpegPath(), DropResumeLeadingPictures: session.RemuxResumeLeadingPictureDrop, ContentType: playback.RemuxContentType(false), AudioOnly: false, Abort: abort, SourceAudioChannels: session.SourceAudioChannels, TargetAudioChannels: session.TargetAudioChannels, TargetAudioBitrateKbps: session.TargetAudioBitrateKbps, CopyAudioCodec: session.TargetAudioCodec})
 }
 
 // A native worker stop must revoke shared authority before the session can

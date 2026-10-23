@@ -50,6 +50,11 @@ func (h *ProfileHandler) createProfileLifecycle(ctx context.Context, cmd Profile
 		return lifecycleidempotency.Result{}, lifecycleidempotency.ErrKeyRequired
 	}
 	request := *cmd.Lifecycle
+	pinHash, err := hashProfilePIN(ctx, &req.PIN)
+	if err != nil {
+		return lifecycleidempotency.Result{}, err
+	}
+	profile.PINHash = *pinHash
 	var changedKeys []string
 	result, err := h.lifecycle.ExecuteCreate(ctx, request,
 		func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, lifecycleidempotency.Result, error) {
@@ -114,11 +119,6 @@ func (h *ProfileHandler) createProfileLifecycle(ctx context.Context, cmd Profile
 				}, responseWrites)
 				if err != nil {
 					return err
-				}
-				if req.PIN != "" {
-					if err := writer.UpdateProfile(ctx, profile.ID, userstore.UpdateProfileInput{PIN: &req.PIN}); err != nil {
-						return err
-					}
 				}
 				if req.ShowForcedSubtitles != nil && !*req.ShowForcedSubtitles {
 					if err := writer.UpdateProfile(ctx, profile.ID, userstore.UpdateProfileInput{ShowForcedSubtitles: req.ShowForcedSubtitles}); err != nil {

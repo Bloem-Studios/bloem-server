@@ -21,10 +21,12 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/ctxerr"
+	"github.com/Silo-Server/silo-server/internal/database/queryattr"
 	"github.com/Silo-Server/silo-server/internal/imagesize"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/sections"
 	"github.com/Silo-Server/silo-server/internal/sections/recipes"
+	"github.com/Silo-Server/silo-server/internal/settingsresolve"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -50,9 +52,29 @@ type SectionHandler struct {
 	TrendingRefresher     interface {
 		RefreshConfig(context.Context, json.RawMessage)
 	}
+	// SeasonalLists fetches the lists a saved seasonal row needs, so it fills
+	// without waiting for the scheduled refresh.
+	SeasonalLists interface {
+		RefreshConfig(context.Context, json.RawMessage)
+	}
 	// Extensions are configured once before serving requests.
 	HomeTransformers      []HomeSectionTransformer
 	SectionItemExtensions []SectionItemExtension
+}
+
+// refreshSeasonalLists fetches, in the background, the lists saved seasonal
+// row configs need. The refresher skips lists it already has.
+func (h *SectionHandler) refreshSeasonalLists(ctx context.Context, configs ...json.RawMessage) {
+	if h.SeasonalLists == nil || len(configs) == 0 {
+		return
+	}
+	go func() {
+		refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+		defer cancel()
+		for _, config := range configs {
+			h.SeasonalLists.RefreshConfig(refreshCtx, config)
+		}
+	}()
 }
 
 // NewSectionHandler creates a new SectionHandler.
@@ -774,6 +796,20 @@ func adminOnlyRecipeError() *APIError {
 	return apiError(http.StatusForbidden, "custom_disabled", "this server does not allow profiles to build custom sections")
 }
 
+// refusesNewRow reports a section type no admin or profile may add a row of.
+// The only next_up row is the one maybeInjectNextUp inserts when a profile's
+// ui.next_up_mode is separate: an added copy showed nothing in the combined
+// mode, where Continue Watching carries next episodes, and repeated that row
+// in the separate mode. A profile may keep saving one it already has, which
+// a bridge import can bring in after 20261018213122_retire_next_up_rows.sql.
+func refusesNewRow(sectionType string) bool {
+	return sectionType == string(sections.SectionNextUp)
+}
+
+func newRowRefusedError(sectionType string) *APIError {
+	return apiError(http.StatusBadRequest, "bad_request", sectionType+" rows cannot be added; Next Up shows as its own row when ui.next_up_mode is separate")
+}
+
 // userAddedRecipe is the recipe a stored user-added override runs, read the
 // way the resolver reads it.
 func userAddedRecipe(o userstore.SectionOverride) string {
@@ -808,12 +844,15 @@ func (h *SectionHandler) saveProfileOverrides(ctx context.Context, q SectionOver
 	// ID -> recipe of the admin-only sections a non-admin sends; each must
 	// already be saved on this page with the same recipe.
 	keptAdminOnly := make(map[string]string)
+	// The same for the sections of a type no one may add (refusesNewRow).
+	keptRefused := make(map[string]string)
 
 	type trendingCandidate struct {
 		id     string
 		config json.RawMessage
 	}
 	refreshCandidates := make([]trendingCandidate, 0, len(writes))
+	var seasonalConfigs []json.RawMessage
 	seenIDs := make(map[string]struct{}, len(writes))
 	baseSections := make(map[string]*sections.PageSection)
 	loadBaseSection := func(sectionID string) (*sections.PageSection, bool, error) {
@@ -861,6 +900,13 @@ func (h *SectionHandler) saveProfileOverrides(ctx context.Context, q SectionOver
 				}
 				refreshCandidates = append(refreshCandidates, trendingCandidate{id: o.ID, config: append(json.RawMessage(nil), cfg...)})
 			}
+			if hasBase && base.Enabled && base.SectionType == sections.SectionSeasonalThemed {
+				cfg := o.Config
+				if !hasSectionConfig(cfg) {
+					cfg = base.Config
+				}
+				seasonalConfigs = append(seasonalConfigs, append(json.RawMessage(nil), cfg...))
+			}
 			continue
 		}
 
@@ -880,6 +926,12 @@ func (h *SectionHandler) saveProfileOverrides(ctx context.Context, q SectionOver
 			}
 			keptAdminOnly[o.ID] = recipeType
 		}
+		if refusesNewRow(recipeType) {
+			if o.ID == "" {
+				return newRowRefusedError(recipeType)
+			}
+			keptRefused[o.ID] = recipeType
+		}
 		// Validate whichever config the resolver will actually use.
 		cfg := o.UserConfig
 		if len(cfg) == 0 {
@@ -890,6 +942,9 @@ func (h *SectionHandler) saveProfileOverrides(ctx context.Context, q SectionOver
 		}
 		if recipeType == string(sections.SectionTrendingDiscover) && !o.Hidden && !o.Removed {
 			refreshCandidates = append(refreshCandidates, trendingCandidate{id: o.ID, config: append(json.RawMessage(nil), cfg...)})
+		}
+		if recipeType == string(sections.SectionSeasonalThemed) && !o.Hidden && !o.Removed {
+			seasonalConfigs = append(seasonalConfigs, append(json.RawMessage(nil), cfg...))
 		}
 	}
 
@@ -912,6 +967,12 @@ func (h *SectionHandler) saveProfileOverrides(ctx context.Context, q SectionOver
 		old, ok := existingByID[id]
 		if !ok || old.SectionID != "" || userAddedRecipe(old) != recipeType {
 			return adminOnlyRecipeError()
+		}
+	}
+	for id, recipeType := range keptRefused {
+		old, ok := existingByID[id]
+		if !ok || old.SectionID != "" || userAddedRecipe(old) != recipeType {
+			return newRowRefusedError(recipeType)
 		}
 	}
 	refreshConfigsByKey := make(map[string]json.RawMessage, len(refreshCandidates))
@@ -982,12 +1043,13 @@ func (h *SectionHandler) saveProfileOverrides(ctx context.Context, q SectionOver
 		for _, config := range refreshConfigsByKey {
 			config := config
 			go func() {
-				refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+				refreshCtx, cancel := context.WithTimeout(queryattr.Detach(context.WithoutCancel(ctx)), 2*time.Minute)
 				defer cancel()
 				h.TrendingRefresher.RefreshConfig(refreshCtx, config)
 			}()
 		}
 	}
+	h.refreshSeasonalLists(ctx, seasonalConfigs...)
 	return nil
 }
 
@@ -1756,7 +1818,11 @@ func (h *SectionHandler) maybeInjectNextUp(ctx context.Context, resolved []secti
 	if err != nil {
 		return resolved
 	}
-	if sections.NextUpMode(ctx, store, apimw.GetProfileID(ctx)) == sections.NextUpModeSeparate {
+	var adminDefaults settingsresolve.ServerSettings
+	if h.fetcher != nil {
+		adminDefaults = h.fetcher.AdminDefaults
+	}
+	if sections.NextUpMode(ctx, store, adminDefaults, apimw.GetProfileID(ctx)) == sections.NextUpModeSeparate {
 		return injectNextUpSection(resolved)
 	}
 	return resolved

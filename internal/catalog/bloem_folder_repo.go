@@ -120,9 +120,13 @@ func (g *folderDeletionGuard) Rollback(ctx context.Context) error {
 	return err
 }
 
-// finishFolderDeletion releases live grants and removes the root atomically.
-// Immutable bundle members and entitlement audit events are never rewritten.
+// finishFolderDeletion moves shared collections off the folder, releases live
+// grants and removes the root atomically. Immutable bundle members and
+// entitlement audit events are never rewritten.
 func finishFolderDeletion(ctx context.Context, tx pgx.Tx, id int) error {
+	if err := moveCollectionsOffGuardedFolder(ctx, tx, id); err != nil {
+		return fmt.Errorf("deleting folder: %w", err)
+	}
 	if _, err := tx.Exec(ctx, `DELETE FROM organization_entitlements WHERE media_folder_id=$1`, id); err != nil {
 		return fmt.Errorf("releasing folder entitlements: %w", err)
 	}
@@ -133,4 +137,27 @@ func finishFolderDeletion(ctx context.Context, tx pgx.Tx, id int) error {
 		return fmt.Errorf("commit folder deletion: %w", err)
 	}
 	return nil
+}
+
+// moveCollectionsOffGuardedFolder runs Silo's moveCollectionsOffFolder under
+// the deletion guard. Silo starts a fresh transaction when the collections
+// change or a deadlock aborts the attempt; the guard must keep its folder lock,
+// so each attempt runs in a savepoint whose rollback drops only its own locks.
+func moveCollectionsOffGuardedFolder(ctx context.Context, tx pgx.Tx, id int) error {
+	attemptMove := func() error {
+		savepoint, err := tx.Begin(ctx)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = savepoint.Rollback(ctx) }()
+		if err := moveCollectionsOffFolder(ctx, savepoint, id); err != nil {
+			return err
+		}
+		return savepoint.Commit(ctx)
+	}
+	err := retryOnDeadlock(ctx, attemptMove)
+	for attempt := 1; errors.Is(err, errFolderCollectionsChanged) && attempt < 5; attempt++ {
+		err = retryOnDeadlock(ctx, attemptMove)
+	}
+	return err
 }

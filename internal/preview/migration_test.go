@@ -68,7 +68,7 @@ func TestSharedAccountHoldsOnlyGuestSessions(t *testing.T) {
 
 	_, err := pool.Exec(ctx, `INSERT INTO auth_sessions (id, user_id, expires_at) VALUES ($1, $2, $3)`, uuid.NewString(), shared, expires)
 	requireSQLState(t, err, "42501")
-	_, err = pool.Exec(ctx, `INSERT INTO api_keys (user_id, label, api_key) VALUES ($1, 'x', $2)`, shared, "sa_"+uuid.NewString())
+	_, err = pool.Exec(ctx, `INSERT INTO api_keys (user_id, label, key_hash) VALUES ($1, 'x', encode(sha256(convert_to($2, 'UTF8')), 'hex'))`, shared, "sa_"+uuid.NewString())
 	requireSQLState(t, err, "42501")
 	_, err = pool.Exec(ctx, `INSERT INTO auth_sessions (id, user_id, expires_at, auth_method) VALUES ($1, $2, $3, 'preview_guest')`, uuid.NewString(), other, expires)
 	requireSQLState(t, err, "42501")
@@ -115,7 +115,7 @@ func TestSharedAccountGuardSerializesCredentialInsertWithAssignment(t *testing.T
 				if kind == "session" {
 					_, err = conn.Exec(ctx, `INSERT INTO auth_sessions (id,user_id,expires_at) VALUES ($1,$2,now()+interval '1 hour')`, uuid.NewString(), account)
 				} else {
-					_, err = conn.Exec(ctx, `INSERT INTO api_keys (user_id,label,api_key) VALUES ($1,'race',$2)`, account, "sa_"+uuid.NewString())
+					_, err = conn.Exec(ctx, `INSERT INTO api_keys (user_id, label, key_hash) VALUES ($1, 'race', encode(sha256(convert_to($2, 'UTF8')), 'hex'))`, account, "sa_"+uuid.NewString())
 				}
 				done <- err
 			}()

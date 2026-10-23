@@ -224,6 +224,11 @@ func (h *AdminHandler) HandleCreateUserProfile(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusConflict, "name_conflict", "A profile with this name already exists")
 		return
 	}
+	pinHash, err := hashProfilePIN(r.Context(), &req.PIN)
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
 
 	showForcedSubtitles := true
 	if req.ShowForcedSubtitles != nil {
@@ -249,25 +254,20 @@ func (h *AdminHandler) HandleCreateUserProfile(w http.ResponseWriter, r *http.Re
 		AllowedLibraryIDs:          req.AllowedLibraryIDs,
 		MaxPlaybackQuality:         maxPlaybackQuality,
 		AccessGroupID:              inheritedGroupID,
+		PINHash:                    *pinHash,
 	}
 	if organizationID := adminResourceOrganization(r.Context()); organizationID != uuid.Nil {
 		profile.OrganizationID = organizationID.String()
 	}
 	if err := profileHandler.createProfileWithSettingsSync(
-		r.Context(), resources.store, resources.user.ID, profile, settingsSync,
+		r.Context(), resources.store, resources.user.ID, profile, limit, settingsSync,
 	); err != nil {
-		if isProfileEntitlementLimitError(err) {
+		if errors.Is(err, errProfileLimitReached) || isProfileEntitlementLimitError(err) {
 			writeError(w, http.StatusUnprocessableEntity, "profile_limit_reached", "This account has reached its profile limit")
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create profile")
 		return
-	}
-	if req.PIN != "" {
-		if err := resources.store.UpdateProfile(r.Context(), profile.ID, userstore.UpdateProfileInput{PIN: &req.PIN}); err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to set profile PIN")
-			return
-		}
 	}
 	if req.ShowForcedSubtitles != nil && !*req.ShowForcedSubtitles {
 		if err := resources.store.UpdateProfile(r.Context(), profile.ID, userstore.UpdateProfileInput{
@@ -355,10 +355,15 @@ func (h *AdminHandler) HandleUpdateUserProfile(w http.ResponseWriter, r *http.Re
 		writeError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
+	pinHash, err := hashProfilePIN(r.Context(), req.PIN)
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
 	input := userstore.UpdateProfileInput{
 		Name:                       req.Name,
 		Avatar:                     avatarRef,
-		PIN:                        req.PIN,
+		PINHash:                    pinHash,
 		IsChild:                    req.IsChild,
 		MaxContentRating:           req.MaxContentRating,
 		QualityPreference:          req.QualityPreference,

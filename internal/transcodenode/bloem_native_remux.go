@@ -60,7 +60,7 @@ func (s *Server) handleNativeSourceRemux(w http.ResponseWriter, r *http.Request,
 	}
 	s.mu.Lock()
 	now := time.Now()
-	s.pruneStoppedProgressiveRemuxesLocked(now)
+	s.pruneStopFencesLocked(now)
 	stopped := s.stoppedProgressiveRemuxes[transport].After(now)
 	_, active := s.progressiveRemuxes[transport]
 	s.mu.Unlock()
@@ -132,7 +132,7 @@ func (s *Server) handleNativeSourceRemux(w http.ResponseWriter, r *http.Request,
 	s.attachTelemetrySession(request, transport)
 	if err := playback.ServeSourceRemux(w, request, opts, "mp4", claims.TranscodeAudio, claims.DVProfile, playback.RemuxServeOptions{
 		DVMode: playback.RemuxDVMode(claims.RemuxDVMode), FFmpegPath: cfg.Playback.FFmpegPath, DropResumeLeadingPictures: claims.RemuxResumeLeadingPictureDrop,
-		ContentType: playback.RemuxContentType(claims.AudioOnly), AudioOnly: claims.AudioOnly, SourceAudioChannels: claims.SourceAudioChannels, TargetAudioChannels: claims.TargetAudioChannels, TargetAudioBitrateKbps: claims.TargetAudioBitrateKbps, Abort: abort,
+		ContentType: playback.RemuxContentType(claims.AudioOnly), AudioOnly: claims.AudioOnly, SourceAudioChannels: claims.SourceAudioChannels, TargetAudioChannels: claims.TargetAudioChannels, TargetAudioBitrateKbps: claims.TargetAudioBitrateKbps, CopyAudioCodec: claims.CopyAudioCodec, Abort: abort,
 	}); err != nil {
 		http.Error(w, "native remux unavailable", http.StatusServiceUnavailable)
 	}

@@ -13,6 +13,7 @@ func runMigrations(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
+	version = bloemSQLiteResumeVersion(version)
 	if version > schemaVersion {
 		return fmt.Errorf("unsupported sqlite schema version %d", version)
 	}
@@ -339,6 +340,39 @@ func runMigrations(db *sql.DB) error {
 			return fmt.Errorf("migration v33 failed: %w", err)
 		}
 		if _, err := tx.ExecContext(context.Background(), "PRAGMA user_version = 33"); err != nil {
+			return err
+		}
+	}
+	if version < 34 {
+		// A Next Up row a profile added; the Postgres store deletes the same
+		// rows in 20261018213122_retire_next_up_rows.sql. The server inserts
+		// the only Next Up row itself and refuses new ones.
+		if _, err := tx.ExecContext(context.Background(), `
+DELETE FROM profile_section_overrides
+WHERE COALESCE(section_id, '') = ''
+  AND COALESCE(NULLIF(user_section_type, ''), section_type) = 'next_up'`); err != nil {
+			return fmt.Errorf("migration v34 failed: %w", err)
+		}
+		if _, err := tx.ExecContext(context.Background(), "PRAGMA user_version = 34"); err != nil {
+			return err
+		}
+	}
+	if version < 35 {
+		// A fresh series_playback_preferences table already has the columns.
+		// The Postgres store adds the same columns in
+		// 20261023003343_add_item_version_choice.sql.
+		for _, c := range []struct{ name, ddl string }{
+			{"file_id", "ALTER TABLE series_playback_preferences ADD COLUMN file_id INTEGER"},
+			{"edition_key", "ALTER TABLE series_playback_preferences ADD COLUMN edition_key TEXT"},
+		} {
+			if columnExists(tx, "series_playback_preferences", c.name) {
+				continue
+			}
+			if _, err := tx.ExecContext(context.Background(), c.ddl); err != nil {
+				return fmt.Errorf("migration v35 failed: %w", err)
+			}
+		}
+		if _, err := tx.ExecContext(context.Background(), "PRAGMA user_version = 35"); err != nil {
 			return err
 		}
 	}

@@ -101,6 +101,9 @@ type Session struct {
 
 	Position float64
 	IsPaused bool
+	// Watch measures how much of the session was actually watched; Position
+	// is only where the player is now. See WatchTime.
+	Watch WatchTime
 	// StopReported marks a session a client reported stopped without an ID
 	// that could end it (#1454). It only hides the session from the live
 	// admin view: pause state and idle grace are untouched, so a stale stop
@@ -231,6 +234,7 @@ type SessionReplacementRollback struct {
 	previousPosition             float64
 	previousPaused               bool
 	previousPositionSequence     int64
+	previousWatch                WatchTime
 	restoreProgress              bool
 	previousReplacementMethod    PlayMethod
 	previousReservationRequest   *ReservationRequest
@@ -1046,6 +1050,11 @@ func (m *SessionManager) updateProgress(sessionID string, position float64, isPa
 		return ErrSessionNotFound
 	}
 
+	// Progress side effects re-apply the latest accepted sample on retries
+	// and on another replica's passes. Measuring a sample it has already seen
+	// would restart the watch-time interval and make the next report look
+	// like a seek, so only a sample newer than any applied is observed.
+	unseen := sequence < 0 || sequence > s.positionSequence
 	s.Position = position
 	s.positionSequence = max(s.positionSequence, sequence)
 	if sequence < 0 || sequence > s.confirmedPauseSequence {
@@ -1054,6 +1063,9 @@ func (m *SessionManager) updateProgress(sessionID string, position float64, isPa
 	s.StopReported = false
 	s.streamRevision++
 	m.touchSessionLocked(s)
+	if unseen {
+		s.Watch.Observe(s.Position, s.IsPaused, s.UpdatedAt)
+	}
 	touched.capture(s)
 	return nil
 }
@@ -1072,22 +1084,40 @@ func (m *SessionManager) SetPaused(sessionID string, paused bool, acceptedSequen
 		return false, ErrSessionNotFound
 	}
 	s.confirmedPauseSequence = max(s.confirmedPauseSequence, acceptedSequence)
-	moved := false
+	now := time.Now()
+	adopted, moved := false, false
 	if latest != nil && latest.Sequence > s.positionSequence {
+		adopted = true
 		s.positionSequence = latest.Sequence
 		moved = s.Position != latest.Position
 		s.Position = latest.Position
+		// This session never measured the adopted report. Measuring it at
+		// the pause state it reported keeps a seek made while paused, then
+		// confirmed as a resume, from being credited as viewing.
+		s.Watch.Observe(latest.Position, latest.IsPaused, now)
 	}
-	if s.IsPaused == paused {
-		if moved {
-			s.streamRevision++
+	changed := s.IsPaused != paused
+	if changed {
+		s.IsPaused = paused
+		m.touchSessionLocked(s)
+	}
+	if changed || moved {
+		s.streamRevision++
+	}
+	if changed || adopted {
+		// The measurement then follows the confirmed state, which the adopted
+		// report may not share. A confirmation carries no position of its
+		// own, so s.Position can predate the pause. Measuring a pause there
+		// would drop the viewing since the last report; the pause is marked
+		// and the next report measures up to it. A resume starts from where
+		// the pause held the player.
+		if paused {
+			s.Watch.Pause(now)
+		} else {
+			s.Watch.Observe(s.Position, false, now)
 		}
-		return false, nil
 	}
-	s.IsPaused = paused
-	s.streamRevision++
-	m.touchSessionLocked(s)
-	return true, nil
+	return changed, nil
 }
 
 // MarkStopReported records that a client reported this session stopped
@@ -1374,6 +1404,7 @@ func (m *SessionManager) applyReplacementLocked(
 		rollback.previousPosition = s.Position
 		rollback.previousPaused = s.IsPaused
 		rollback.previousPositionSequence = s.positionSequence
+		rollback.previousWatch = s.Watch
 		rollback.restoreProgress = true
 	}
 
@@ -1392,6 +1423,9 @@ func (m *SessionManager) applyReplacementLocked(
 	s.streamRevision++
 	rollback.appliedRevision = s.streamRevision
 	m.touchSessionLocked(s)
+	if replacement.PositionSeconds != nil {
+		s.Watch.Observe(s.Position, s.IsPaused, s.UpdatedAt)
+	}
 	return rollback, nil
 }
 
@@ -1417,6 +1451,7 @@ func (m *SessionManager) RollbackReplacement(sessionID string, rollback SessionR
 		s.Position = rollback.previousPosition
 		s.IsPaused = rollback.previousPaused
 		s.positionSequence = rollback.previousPositionSequence
+		s.Watch = rollback.previousWatch
 	}
 	s.replacementPlayMethod = rollback.previousReplacementMethod
 	s.replacementReservationPrevious = nil

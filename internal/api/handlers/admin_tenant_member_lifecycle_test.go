@@ -407,8 +407,8 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, defaultOrgani
 		t.Fatalf("replay reset = %d %s; first = %d %s", replayReset.Code, replayReset.Body.String(), firstReset.Code, firstReset.Body.String())
 	}
 	got, err = memberService.Get(ctx, tenant.ID, member.ID)
-	if err != nil || !auth.CheckPassword(&got, laterPassword) || auth.CheckPassword(&got, firstPassword) {
-		t.Fatalf("password after replay preserved later mutation = %v, error = %v", auth.CheckPassword(&got, laterPassword), err)
+	if err != nil || !checkTenantMemberPassword(t, &got, laterPassword) || checkTenantMemberPassword(t, &got, firstPassword) {
+		t.Fatalf("password after replay preserved later mutation = %v, error = %v", checkTenantMemberPassword(t, &got, laterPassword), err)
 	}
 
 	deleteKey := "tenant-member-delete-" + uuid.NewString()
@@ -463,4 +463,15 @@ VALUES ($1,$2,'Replacement',$3,$4)`, replacementProfileID, member.ID, tenant.ID,
 	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id=$1 AND account_incarnation_id=$2)`, member.ID, replacementIncarnation).Scan(&replacementPresent); err != nil || !replacementPresent {
 		t.Fatalf("replacement present = %v, error = %v", replacementPresent, err)
 	}
+}
+
+// checkTenantMemberPassword reports whether password matches the account,
+// failing the test when the server was too busy to check it.
+func checkTenantMemberPassword(t *testing.T, user *models.User, password string) bool {
+	t.Helper()
+	ok, err := auth.CheckPassword(t.Context(), user, password)
+	if err != nil {
+		t.Fatalf("CheckPassword: %v", err)
+	}
+	return ok
 }

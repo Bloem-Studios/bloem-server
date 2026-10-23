@@ -187,7 +187,7 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 				profileTokens,
 				deps.PolicySystem.PDP(),
 				groups,
-			).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))
+			).WithAdminDefaults(deps.AdminDefaults).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))
 		} else {
 			// Legacy resolver: proxy/test wiring without a policy system.
 			// Production integrated/api modes always take the policy path.

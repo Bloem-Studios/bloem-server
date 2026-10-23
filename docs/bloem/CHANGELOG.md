@@ -3,6 +3,31 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 23, 2026 — Silo integration through 31fabc723
+
+Bloem merges 125 Silo commits after `b430099ff`, through `31fabc723`. Silo wins
+every conflict; Bloem keeps only its integration points, and the seam ledger
+drops from 388 to 347. Silo's webhook destination guard now covers what Bloem's
+outbound override did (pinned dials, checked redirects, blocked addresses in
+private mode), so the override is retired and both files return to Silo's bytes.
+Silo's removal of low-value tests stands; the few Bloem tests that exercised
+Bloem's own tenant code move to Bloem-owned files, and fixtures they shared with
+removed Silo tests are copied beside them. Silo's `internal/database`
+`TestMain` replaces Bloem's isolated-suite runner there. Silo's new database
+tests that seed account policy on `users` seed it on the membership instead, and
+the library-policy cases run through Bloem's tenant group store.
+
+Bloem adapts its own code to Silo's new behavior: passwords and profile PINs are
+hashed before a transaction opens (including Bloem's lifecycle and tenant paths),
+a busy server answers 503, household profile limits are recounted inside the
+creating transaction, Bloem's resolvers take the administrator's setting
+defaults, library deletion moves shared collections inside Bloem's deletion
+guard, and native remux carries the copied audio codec. The SQLite user store
+keeps Silo's v34 and v35; Bloem's step becomes v36, and a store Bloem left at its
+former v34 or v35 resumes after v33 so Silo's steps still run. Bloem's clients
+are unreleased, so Silo's wire changes are taken as shipped and the generated
+client contracts are regenerated.
+
 ## October 18, 2026 — Jellyfin and Audiobookshelf compatibility restored
 
 Bloem runs Silo's Jellyfin and Audiobookshelf compatibility servers again, as

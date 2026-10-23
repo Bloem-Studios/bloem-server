@@ -121,7 +121,9 @@ func TestTenantAccessGroupAdapterReusesActiveOrganizationDB(t *testing.T) {
 	}
 }
 
-func TestTenantAccessGroupLegacyProjectionPreservesNullArrays(t *testing.T) {
+// Silo's v1 projection keeps null (no restriction) apart from an empty list
+// (no libraries); the tenant adapter must not blur the two.
+func TestTenantAccessGroupLegacyProjectionKeepsNullAndEmptyArrays(t *testing.T) {
 	for _, group := range []access.Group{{ID: 1, LibraryIDs: nil, AllowedPermissions: nil}, {ID: 1, LibraryIDs: []int{}, AllowedPermissions: []string{}}} {
 		wire, err := json.Marshal(toAccessGroupResponse(group))
 		if err != nil {
@@ -131,7 +133,7 @@ func TestTenantAccessGroupLegacyProjectionPreservesNullArrays(t *testing.T) {
 		if err := json.Unmarshal(wire, &fields); err != nil {
 			t.Fatal(err)
 		}
-		if len(fields) != 17 || fields["library_ids"] != nil || fields["allowed_permissions"] != nil {
+		if len(fields) != 17 || (fields["library_ids"] == nil) != (group.LibraryIDs == nil) || (fields["allowed_permissions"] == nil) != (group.AllowedPermissions == nil) {
 			t.Fatalf("legacy projection changed: %s", wire)
 		}
 		for _, key := range []string{"organization_id", "playback_allowed", "max_profiles", "managed_template_key"} {

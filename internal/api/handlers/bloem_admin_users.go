@@ -147,6 +147,10 @@ func (h *AdminHandler) createTenantUser(ctx context.Context, w http.ResponseWrit
 
 	user, err := h.userRepo.Create(ctx, input.User)
 	if err != nil {
+		if apiErr := busyError(err); apiErr != nil {
+			writeAPIError(w, apiErr)
+			return nil
+		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
 		return nil
 	}
@@ -638,6 +642,10 @@ func (h *AdminHandler) bloemCreateUser(w http.ResponseWriter, r *http.Request, b
 				writeError(w, http.StatusConflict, "duplicate", "A user with that username or email already exists")
 				return nil, 0, false
 			}
+			if apiErr := busyError(err); apiErr != nil {
+				writeAPIError(w, apiErr)
+				return nil, 0, false
+			}
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
 			return nil, 0, false
 		}
@@ -646,6 +654,10 @@ func (h *AdminHandler) bloemCreateUser(w http.ResponseWriter, r *http.Request, b
 		accountInput.DefaultProfile.Enabled = false
 		user, err = h.accountProvisioner.CreateAccount(r.Context(), accountInput)
 		if err != nil {
+			if apiErr := busyError(err); apiErr != nil {
+				writeAPIError(w, apiErr)
+				return nil, 0, false
+			}
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
 			return nil, 0, false
 		}

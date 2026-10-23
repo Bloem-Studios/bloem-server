@@ -11,12 +11,12 @@ import (
 type Presentation struct {
 	Kind          string     `json:"kind" enum:"guest,personal"`
 	EndsAt        *time.Time `json:"ends_at" nullable:"true" doc:"Absolute guest session expiry, or the personal end date supplied by the storefront; null until supplied."`
-	CTAURL        string     `json:"cta_url"`
+	CTAURL        string     `json:"cta_url" format:"uri-reference"`
 	CTALabel      string     `json:"cta_label"`
 	ItemCTALabel  string     `json:"item_cta_label" doc:"Operator wording for the title-page button; empty means the client's own (Subscribe to watch, read or listen)."`
 	CTAMessage    string     `json:"cta_message" doc:"Operator sentence for the subscribe dialog; empty means the client's own."`
-	StorefrontURL string     `json:"storefront_url"`
-	LaunchURL     string     `json:"launch_url"`
+	StorefrontURL string     `json:"storefront_url" format:"uri-reference"`
+	LaunchURL     string     `json:"launch_url" format:"uri-reference"`
 }
 
 func (s *Store) Presentation(ctx context.Context, account int, session string, guest bool) (*Presentation, error) {

@@ -38,10 +38,11 @@ func TestLocalCleanupPreservesNativeFilesIncludingExpiredMissingDB(t *testing.T)
 	pool, s, folder, location := mixedStorageFixture(t)
 	publishStorageEbooks(t, pool, s, folder, location, storageEbookEntry("native", "epub", &storagev1.EbookMetadata{Title: "Native"}, "r1"))
 	var id int
-	if err := pool.QueryRow(t.Context(), `SELECT id FROM media_files WHERE media_folder_id=$1`, folder.ID).Scan(&id); err != nil {
+	var filePath string
+	if err := pool.QueryRow(t.Context(), `SELECT id, file_path FROM media_files WHERE media_folder_id=$1`, folder.ID).Scan(&id, &filePath); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.fileRepo.MarkMissing(t.Context(), id, time.Now().Add(-time.Hour)); err != nil {
+	if err := s.fileRepo.MarkMissing(t.Context(), id, filePath, time.Now().Add(-time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	s.SetMaintenanceFileScope(NativeMaintenanceFileScope{})

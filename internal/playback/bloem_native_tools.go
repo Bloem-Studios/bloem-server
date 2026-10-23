@@ -266,7 +266,7 @@ func ServeSourceRemux(w http.ResponseWriter, r *http.Request, opts TranscodeOpts
 		return err
 	}
 	args := buildRemuxArgsWithLeadingPictureDropV3(executionOpts.InputPath, outputFormat, opts.SeekSeconds, transcodeAudio, opts.AudioTrackIndex, effectiveProfile,
-		tagSampleEntry, serve.AudioOnly, serve.SourceAudioChannels, serve.TargetAudioChannels, serve.TargetAudioBitrateKbps, dropLeading)
+		tagSampleEntry, serve.AudioOnly, serve.SourceAudioChannels, serve.TargetAudioChannels, serve.TargetAudioBitrateKbps, dropLeading, serve.CopyAudioCodec)
 	cmd := exec.CommandContext(runCtx, ResolveFFmpegPath(bin), restrictSourceInputArgs(args, opts.InputFormat)...)
 	configureTranscodeInputCommand(cmd, input)
 	streamWriter := httpstream.NewRollingDeadlineWriter(w)

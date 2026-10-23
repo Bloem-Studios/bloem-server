@@ -8,7 +8,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
-| Silo native `/api/v2` | 879 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
+| Silo native `/api/v2` | 882 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
 | Bloem extensions `/api/bloem/v1` | 217 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 

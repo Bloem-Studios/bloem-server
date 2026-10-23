@@ -457,7 +457,7 @@ func NewNativeVideoDelegateService(deps Dependencies, coordinator *nativestorage
 	unrated := config.NewUnratedContentPolicy(catalog.NewServerSettingsRepo(deps.DB))
 	var resolver middleware.ViewerResolver
 	if deps.PolicySystem != nil {
-		resolver = policy.NewViewerResolver(users, deps.UserStoreProvider, nil, deps.PolicySystem.PDP(), groups).WithUnratedContentPolicy(unrated).WithBloemTenancy(resources)
+		resolver = policy.NewViewerResolver(users, deps.UserStoreProvider, nil, deps.PolicySystem.PDP(), groups).WithUnratedContentPolicy(unrated).WithAdminDefaults(deps.AdminDefaults).WithBloemTenancy(resources)
 	} else {
 		resolver = access.NewResolver(users, deps.UserStoreProvider, nil, groups).WithUnratedContentPolicy(unrated)
 	}

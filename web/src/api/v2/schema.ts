@@ -67,7 +67,7 @@ export interface paths {
     put?: never;
     /**
      * Link a directory (LDAP) identity to the caller's account with the directory username and password.
-     * @description The account re-enters its local password; the credentials plugin then checks the directory username and password, and the identity it answers for is linked to this account with the same rules as other linking: linking turns local password sign-in off unless the account is break-glass, and is audited. Answers 201 with the linked identity as listAccountIdentities shows it. Refusals, by problem type: 422 validation_failed at body.password (wrong local password) or at body.directory_password (the directory refused the credentials); 409 local_password_required (the account has no local password sign-in); 403 not_permitted (the directory's group rules); 403 account_disabled (the directory account is disabled, locked or expired); 403 password_expired (the directory password expired); 403 permission_denied (the Silo account is disabled, or the caller is an API key or impersonation session); 409 identity_linked_elsewhere; 409 already_linked (this account already has an identity at the installation); 404 not_found (not an enabled credentials provider, an OAuth one included); 503 provider_unavailable. Spends the login rate-limit budget. getExternalSignInCapabilities reports credentials_linking.
+     * @description The account re-enters its local password; the credentials plugin then checks the directory username and password, and the identity it answers for is linked to this account with the same rules as other linking: linking turns local password sign-in off unless the account is break-glass, and is audited. Answers 201 with the linked identity as listAccountIdentities shows it. Refusals, by problem type: 422 validation_failed at body.password (wrong local password) or at body.directory_password (the directory refused the credentials); 409 local_password_required (the account has no local password sign-in); 403 not_permitted (the directory's group rules); 403 account_disabled (the directory account is disabled, locked or expired); 403 password_expired (the directory password expired); 403 permission_denied (the Silo account is disabled, or the caller is an API key or impersonation session); 409 identity_linked_elsewhere; 409 already_linked (this account already has an identity at the installation); 404 not_found (not an enabled credentials provider, an OAuth one included); 429 rate_limited with Retry-After (the directory username has used its sign-in attempt budget); 503 provider_unavailable. Spends the login rate-limit budget. getExternalSignInCapabilities reports credentials_linking.
      */
     post: operations["linkAccountIdentityWithCredentials"];
     delete?: never;
@@ -2475,7 +2475,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Request cancellation of a cancellable administrator job. Completed effects and verified storage-copy checkpoints are retained. */
+    /** Request cancellation of a job that reports cancelable: library refresh, storage transition, or image cache cleanup. Completed effects and verified storage-copy checkpoints are retained. */
     post: operations["cancelAdminJob"];
     delete?: never;
     options?: never;
@@ -7369,6 +7369,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/devices/push/apple/retire": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Stop delivery to an Apple installation without a login session, proved by its installation key. Send it after removing this server, when the session is already gone. */
+    post: operations["retireApplePushInstallation"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/diagnostics/capabilities": {
     parameters: {
       query?: never;
@@ -9047,7 +9064,10 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    /** Unlink the account's current Discord identity and turn delivery off. Send once; replay can unlink a later connection. */
+    /**
+     * Unlink the account's current Discord identity and turn delivery off. Send once; replay can unlink a later connection.
+     * @description Discord delivery is account-wide, so only the account's household manager may change it. X-Profile-Id must name the account's primary profile, with X-Profile-Token when that profile is PIN-protected (without it the request is 403 profile_verification_required); naming any other profile is 403 permission_denied, including on an admin account. A request without X-Profile-Id is accepted only from an admin account's API key, or from an admin account's login session while no profile on the account is PIN-protected or access-restricted; otherwise it is 403 permission_denied.
+     */
     delete: operations["unlinkNotificationDiscord"];
     options?: never;
     head?: never;
@@ -9063,7 +9083,10 @@ export interface paths {
     };
     /** Read the login account's Discord notification preferences. */
     get: operations["getNotificationDiscordPreferences"];
-    /** Set the login account's Discord delivery mode. */
+    /**
+     * Set the login account's Discord delivery mode.
+     * @description Discord delivery is account-wide, so only the account's household manager may change it. X-Profile-Id must name the account's primary profile, with X-Profile-Token when that profile is PIN-protected (without it the request is 403 profile_verification_required); naming any other profile is 403 permission_denied, including on an admin account. A request without X-Profile-Id is accepted only from an admin account's API key, or from an admin account's login session while no profile on the account is PIN-protected or access-restricted; otherwise it is 403 permission_denied.
+     */
     put: operations["updateNotificationDiscordPreferences"];
     post?: never;
     delete?: never;
@@ -9098,7 +9121,10 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Begin one account-bound Discord consent flow. */
+    /**
+     * Begin one account-bound Discord consent flow.
+     * @description Discord delivery is account-wide, so only the account's household manager may change it. X-Profile-Id must name the account's primary profile, with X-Profile-Token when that profile is PIN-protected (without it the request is 403 profile_verification_required); naming any other profile is 403 permission_denied, including on an admin account. A request without X-Profile-Id is accepted only from an admin account's API key, or from an admin account's login session while no profile on the account is PIN-protected or access-restricted; otherwise it is 403 permission_denied.
+     */
     post: operations["beginNotificationDiscordLink"];
     delete?: never;
     options?: never;
@@ -9258,6 +9284,23 @@ export interface paths {
     post?: never;
     /** Apply an ordered removal for the installation's current account/profile. Tombstones prevent stale registration replay. */
     delete: operations["unregisterPushDevice"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/notifications/push/devices/{device_id}/retire": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Stop delivery to an Android installation without a login session, proved by its installation key. Send it after removing this server or signing out, when the login is already gone. */
+    post: operations["retirePushDevice"];
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -10688,6 +10731,23 @@ export interface paths {
     };
     /** The values a parameterized recipe offers for its parameter. */
     get: operations["listSectionRecipeCandidates"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/sections/seasonal-themes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The holidays a Seasonal Picks row can follow, with the curated vibes each offers. */
+    get: operations["listSeasonalThemes"];
     put?: never;
     post?: never;
     delete?: never;
@@ -12484,7 +12544,7 @@ export interface components {
     };
     AccountIdentityLinkStart: {
       /**
-       * @description Provider sign-in URL; navigate the same browser there
+       * @description Provider sign-in URL as the sign-in plugin returned it; navigate the same browser there; not validated as a URI
        * @example https://id.example.test/authorize?client_id=silo&state=...
        */
       authorize_url: string;
@@ -12995,6 +13055,7 @@ export interface components {
       plugin_id: string;
     };
     AdminAutoscanConnection: {
+      /** @description Base URL as entered; not validated as a URI */
       base_url?: string;
       has_api_key: boolean;
       id: string;
@@ -13004,6 +13065,7 @@ export interface components {
     };
     AdminAutoscanConnectionCreateBody: {
       api_key_ref?: string;
+      /** Format: uri-reference */
       base_url?: string;
       kind: string;
       name: string;
@@ -13011,6 +13073,7 @@ export interface components {
     };
     AdminAutoscanConnectionTestBody: {
       api_key_ref?: string;
+      /** Format: uri-reference */
       base_url?: string;
       connection_id?: string;
       request_integration_id?: string;
@@ -13294,6 +13357,7 @@ export interface components {
        */
       webhook_last_received_at?: string;
       webhook_secret_suffix?: string;
+      /** Format: uri-reference */
       webhook_url?: string;
     };
     AdminAutoscanSourceCreateBody: {
@@ -13360,7 +13424,10 @@ export interface components {
       kind: "wordmark" | "mark" | "favicon" | "login_bg";
       /** @description Content-addressed reference of the stored bytes */
       ref: string;
-      /** @description Stable public asset path with the ref as cache-buster */
+      /**
+       * Format: uri-reference
+       * @description Stable public asset path with the ref as cache-buster
+       */
       url: string;
     };
     AdminBrandingAssetForm: {
@@ -13398,6 +13465,7 @@ export interface components {
       export_job_id?: string;
       local_path?: string;
       path_rewrites: components["schemas"]["CatalogImportPathRewrite"][];
+      /** Format: uri-reference */
       remote_url?: string;
     };
     AdminCatalogPublished: {
@@ -13411,6 +13479,7 @@ export interface components {
        * @example 1
        */
       job_id: string;
+      /** Format: uri-reference */
       url: string;
     };
     AdminCatalogSearchIndexStateStatus: {
@@ -13496,6 +13565,7 @@ export interface components {
       vector_coverage_ratio: number;
     };
     AdminCatalogSearchTaskLink: {
+      /** Format: uri-reference */
       href: string;
       key: string;
       name: string;
@@ -13574,6 +13644,7 @@ export interface components {
     };
     AdminCollection: {
       backdrop_thumbhash?: string;
+      /** Format: uri-reference */
       backdrop_url: string;
       collection_type: string;
       /**
@@ -13627,6 +13698,7 @@ export interface components {
        */
       poster_is_collage: boolean;
       poster_thumbhash?: string;
+      /** Format: uri-reference */
       poster_url: string;
       query_definition: unknown;
       /**
@@ -13639,6 +13711,7 @@ export interface components {
       /** Format: int64 */
       sort_order: number;
       source_config: unknown;
+      /** @description Where an imported collection came from (a list URL or a tmdb:// source); empty when not imported; not validated as a URI */
       source_url: string;
       sync_schedule?: string;
       title: string;
@@ -13652,11 +13725,13 @@ export interface components {
     AdminCollectionArtworkForm: {
       /** Format: binary */
       image?: string;
+      /** Format: uri-reference */
       source_url?: string;
     };
     AdminCollectionBackdropForm: {
       /** Format: binary */
       image?: string;
+      /** Format: uri-reference */
       source_url?: string;
     };
     AdminCollectionCapabilityOutputBody: {
@@ -13700,6 +13775,7 @@ export interface components {
       template_summaries: boolean;
     };
     AdminCollectionCreate: {
+      /** Format: uri-reference */
       backdrop_url?: string;
       collection_type?: string;
       description?: string;
@@ -13718,6 +13794,7 @@ export interface components {
       management_key?: string;
       management_mode?: string;
       management_source?: string;
+      /** Format: uri-reference */
       poster_url?: string;
       query_definition?: unknown;
       slug?: string;
@@ -13725,6 +13802,7 @@ export interface components {
       /** Format: int64 */
       sort_order?: number;
       source_config?: unknown;
+      /** Format: uri-reference */
       source_url?: string;
       sync_schedule?: string;
       title: string;
@@ -13816,6 +13894,7 @@ export interface components {
        * @example 1
        */
       content_id: string;
+      /** Format: uri-reference */
       poster_url?: string;
       title: string;
       type: string;
@@ -13892,6 +13971,7 @@ export interface components {
       status: string;
     };
     AdminCollectionUpdate: {
+      /** Format: uri-reference */
       backdrop_url?: string;
       collection_type?: string;
       description?: string;
@@ -13905,6 +13985,7 @@ export interface components {
       management_key?: string;
       management_mode?: string;
       management_source?: string;
+      /** Format: uri-reference */
       poster_url?: string;
       query_definition?: unknown;
       slug?: string;
@@ -13912,6 +13993,7 @@ export interface components {
       /** Format: int64 */
       sort_order?: number;
       source_config?: unknown;
+      /** Format: uri-reference */
       source_url?: string;
       sync_schedule?: string;
       title?: string;
@@ -14543,6 +14625,7 @@ export interface components {
       /** Format: int64 */
       channels?: number;
       codec?: string;
+      /** @description Track language from the file: BCP 47 tag, ISO 639-1 where one exists (en, pt-BR); und when the file marks it undetermined. Older scans may carry an ISO 639-2 code or the file's raw tag */
       language?: string;
     };
     AdminDownloadPreparationCapabilitiesOutputBody: {
@@ -15117,6 +15200,7 @@ export interface components {
       capability_hash?: string;
       detected_backends?: components["schemas"]["DetectedBackend"][];
       intel_detected: boolean;
+      /** @description Configured address of the node that answered, with credentials removed, or [invalid URL] when it does not parse; not validated as a URI */
       node_url?: string;
       nodes?: components["schemas"]["NodeHWAccel"][];
       nvidia_gpu_uuids?: string[];
@@ -15339,6 +15423,7 @@ export interface components {
       watchlist_added: number;
     };
     AdminHistoryImportSource: {
+      /** Format: uri-reference */
       base_url: string;
       enabled: boolean;
       has_admin_token: boolean;
@@ -15358,6 +15443,7 @@ export interface components {
     };
     AdminHistoryImportSourceCreateInputBody: {
       admin_token?: string;
+      /** Format: uri */
       base_url: string;
       enabled: boolean;
       name: string;
@@ -15370,6 +15456,7 @@ export interface components {
     AdminHistoryImportSourceUpdateInputBody: {
       /** @description Omit to preserve, empty string to clear, nonempty string to replace. */
       admin_token?: string;
+      /** Format: uri */
       base_url?: string;
       enabled?: boolean;
       name?: string;
@@ -15382,12 +15469,14 @@ export interface components {
     };
     AdminImageApplied: {
       content_id: string;
+      /** Format: uri-reference */
       image_url?: string;
       revision?: string;
       stored_path: string;
       thumbhash: string;
     };
     AdminImageApplyInputBody: {
+      /** @description An original_url from this item's image list, sent back unchanged; not validated as a URI */
       original_url: string;
       provider_id?: string;
       type: string;
@@ -15624,6 +15713,7 @@ export interface components {
       /** @description IANA time zone; null clears it */
       air_timezone?: string | null;
       content_rating?: string | null;
+      /** @description Country codes, ISO 3166-1 alpha-2 by convention (US); stored as sent; null clears */
       countries?: string[] | null;
       /** Format: int64 */
       episode_number?: number | null;
@@ -15680,6 +15770,7 @@ export interface components {
     AdminJellyfinCompatSettingsPatch: {
       emulated_server_version?: string;
       enabled?: boolean;
+      /** Format: uri-reference */
       public_url?: string;
       server_name?: string;
       web_dir?: string;
@@ -15710,9 +15801,11 @@ export interface components {
       pinned_version: string;
       prerequisites: components["schemas"]["WebInstallerPrerequisite"][];
       provenance_present: boolean;
+      /** @description Public URL Jellyfin clients are told to use, as configured; not validated as a URI */
       public_url: string;
       restart_required: boolean;
       server_name: string;
+      /** Format: uri */
       source_url: string;
       tag?: string;
       web_enabled: boolean;
@@ -15726,7 +15819,10 @@ export interface components {
         | "update_available";
     };
     AdminJellyfinWebInstallBody: {
-      /** @description Official jellyfin-web source; empty uses the stored source URL */
+      /**
+       * Format: uri-reference
+       * @description Official jellyfin-web source; empty uses the stored source URL
+       */
       source_url?: string;
       /** @description Jellyfin Web release to pin; empty resolves the release compatible with the emulated server version */
       version?: string;
@@ -16114,12 +16210,14 @@ export interface components {
       management_key?: string;
       management_mode?: string;
       management_source?: string;
+      /** Format: uri-reference */
       poster_url?: string;
       sort_config?: unknown;
       /** Format: int64 */
       sort_order?: number;
       sync_schedule?: string;
       title: string;
+      /** Format: uri */
       url: string;
     };
     AdminMergeInputBody: {
@@ -16197,9 +16295,11 @@ export interface components {
         [key: string]: components["schemas"]["AdminNodeNetworkAccess"];
       };
       physical_gpu_keys?: string[];
+      /** @description Client-facing node address as configured; not validated as a URI */
       public_url?: string;
       /** @enum {string} */
       type: "proxy" | "transcode";
+      /** @description Node address as configured; not validated as a URI */
       url: string;
     };
     AdminNodeCapabilities: {
@@ -16222,9 +16322,11 @@ export interface components {
       /** Format: int64 */
       max_jobs?: number | null;
       name: string;
+      /** Format: uri-reference */
       public_url?: string;
       /** @enum {string} */
       type: "proxy" | "transcode";
+      /** Format: uri-reference */
       url: string;
     };
     AdminNodeDrain: {
@@ -16314,6 +16416,7 @@ export interface components {
       media_item_id?: string;
       media_title?: string;
       node_name: string;
+      /** @description Address the node reported for itself; not validated as a URI */
       node_url: string;
       /**
        * @description Opaque identifier
@@ -16367,7 +16470,9 @@ export interface components {
       /** Format: int64 */
       max_jobs?: number;
       name?: string;
+      /** Format: uri-reference */
       public_url?: string | null;
+      /** Format: uri-reference */
       url?: string;
     };
     AdminNotificationDiscordTestResult: {
@@ -16454,6 +16559,7 @@ export interface components {
        */
       expires_at: string;
       /**
+       * Format: uri
        * @description Present for delivery=link only. One-time disclosure of a bearer credential for the account's password; share it only with the account holder
        * @example https://silo.example.test/reset-password/3f2b47eb7b36dd2d
        */
@@ -16469,10 +16575,10 @@ export interface components {
     };
     AdminPersonUpdate: {
       bio?: string | null;
-      /** @description YYYY-MM-DD; empty clears; null or omission preserves. */
+      /** @description Calendar date, YYYY-MM-DD; empty clears; null or omission preserves. */
       birth_date?: string | null;
       birthplace?: string | null;
-      /** @description YYYY-MM-DD; empty clears; null or omission preserves. */
+      /** @description Calendar date, YYYY-MM-DD; empty clears; null or omission preserves. */
       death_date?: string | null;
       homepage?: string | null;
       imdb_id?: string | null;
@@ -16570,6 +16676,11 @@ export interface components {
       /** @description episode, or the catalog item type; empty when unknown */
       media_type: string;
       play_method: string;
+      /**
+       * Format: double
+       * @description Seconds of the media watched by normal playback, excluding pauses, seeks and buffering; null when the play has no watch-time measurement, which includes every play recorded before it existed
+       */
+      played_seconds: number | null;
       profile_id: string;
       /** @description Profile display name at the time of playback; the profile id when none was recorded */
       profile_name: string;
@@ -16594,7 +16705,10 @@ export interface components {
       user_id: string;
       /** @description Empty when the account no longer exists */
       username: string;
-      /** Format: double */
+      /**
+       * Format: double
+       * @description Position the play ended at, in seconds. Not how long it was watched: a play resumed partway through reports the resume point plus what was watched; played_seconds is the watch time
+       */
       watched_seconds: number;
     };
     AdminPlaybackReliability: {
@@ -16664,6 +16778,7 @@ export interface components {
       play_method: string;
       /** Format: double */
       position_seconds: number;
+      /** Format: uri-reference */
       poster_url?: string;
       profile_id: string;
       profile_name?: string;
@@ -16699,6 +16814,7 @@ export interface components {
       /** Format: int64 */
       source_audio_channels: number | null;
       source_audio_codec?: string;
+      /** @description Language of the source audio track as the file tags it (BCP 47; older scans may carry an ISO 639-2 code or the raw tag); empty when unknown */
       source_audio_language?: string;
       source_audio_layout?: string;
       source_audio_title?: string;
@@ -16854,6 +16970,7 @@ export interface components {
     AdminPluginAuthBinding: {
       auto_provision: boolean;
       /**
+       * Format: uri-reference
        * @description Redirect URI to register at the OAuth (OIDC) provider for this installation: the v2 callback on the public URL (server.public_url). Empty for a password (LDAP) provider and while no public URL is configured
        * @example https://silo.example.test/api/v2/auth/oauth/3/callback
        */
@@ -16869,6 +16986,7 @@ export interface components {
       display_order: number;
       enabled: boolean;
       /**
+       * Format: uri-reference
        * @description Post-logout redirect URI to register at the OAuth (OIDC) provider when provider logout is on: the login page on the public URL. Empty for a password (LDAP) provider and while no public URL is configured
        * @example https://silo.example.test/login
        */
@@ -16896,6 +17014,7 @@ export interface components {
     };
     AdminPluginCapability: {
       /**
+       * Format: uri-reference
        * @description On an installation's OAuth sign-in capability: the redirect URI to register at the provider, the v2 callback on the public URL (server.public_url). Empty while no public URL is configured; omitted for other capabilities and in the catalog
        * @example https://silo.example.test/api/v2/auth/oauth/3/callback
        */
@@ -16908,6 +17027,7 @@ export interface components {
         [key: string]: unknown;
       };
       /**
+       * Format: uri-reference
        * @description On an installation's OAuth sign-in capability: the post-logout redirect URI to register at the provider for provider logout, the login page on the public URL. Empty while no public URL is configured; omitted for other capabilities and in the catalog
        * @example https://silo.example.test/login
        */
@@ -16924,6 +17044,7 @@ export interface components {
       type: string;
     };
     AdminPluginCatalogEntry: {
+      /** Format: uri-reference */
       archive_url: string;
       assets: components["schemas"]["PluginAsset"][];
       capabilities: components["schemas"]["AdminPluginCapability"][];
@@ -16933,6 +17054,7 @@ export interface components {
       };
       plugin_id: string;
       presentation?: components["schemas"]["AdminPluginPresentation"];
+      /** @description Source repository the catalog lists for the plugin; not validated as a URI */
       repo_url?: string;
       /**
        * @description Opaque identifier
@@ -17070,6 +17192,7 @@ export interface components {
       };
       plugin_id: string;
       presentation?: components["schemas"]["AdminPluginPresentation"];
+      /** Format: uri-reference */
       repo_url?: string;
       /**
        * @description Opaque identifier
@@ -17112,16 +17235,21 @@ export interface components {
       version?: string;
     };
     AdminPluginPresentation: {
+      /** Format: uri-reference */
       changelog_url: string;
       description_markdown: string;
       display_name: string;
+      /** Format: uri-reference */
       homepage_url: string;
       license_spdx: string;
       publisher_name: string;
+      /** Format: uri-reference */
       publisher_url: string;
       setup_markdown: string;
+      /** Format: uri-reference */
       source_url: string;
       summary: string;
+      /** Format: uri-reference */
       support_url: string;
     };
     AdminPluginRepository: {
@@ -17145,16 +17273,19 @@ export interface components {
        * @description RFC 3339 instant in UTC with millisecond precision
        */
       updated_at: string;
+      /** @description Repository index URL as entered; not validated as a URI */
       url: string;
     };
     AdminPluginRepositoryCreateBody: {
       display_name: string;
       enabled?: boolean;
+      /** Format: uri-reference */
       url: string;
     };
     AdminPluginRepositoryUpdateBody: {
       display_name?: string;
       enabled?: boolean;
+      /** Format: uri-reference */
       url?: string;
     };
     AdminPluginRequestRouter: {
@@ -17778,6 +17909,7 @@ export interface components {
       window_days: number | null;
     };
     AdminRequestIntegration: {
+      /** @description Service base URL as stored; not validated as a URI */
       base_url: string;
       capability_id: string;
       enabled: boolean;
@@ -17813,6 +17945,7 @@ export interface components {
     AdminRequestIntegrationBody: {
       /** @description New credential; omitted or blank preserves the saved credential on update */
       api_key_ref?: string;
+      /** @description Service base URL; a host[:port] without a scheme gets http://; not validated as a URI */
       base_url: string;
       capability_id: string;
       enabled: boolean;
@@ -17844,6 +17977,7 @@ export interface components {
     };
     AdminRequestOptionsInputBody: {
       api_key_ref?: string;
+      /** @description Service base URL; a host[:port] without a scheme gets http://, and empty clears it; not validated as a URI */
       base_url?: string;
       capability_id?: string;
       /**
@@ -17908,10 +18042,10 @@ export interface components {
       exclude_keyword_ids?: number[];
       /** @description Match series on none of these TMDB networks */
       exclude_network_ids?: number[];
-      /** @description Match titles from none of these ISO 3166-1 countries */
+      /** @description Match titles from none of these upper-case ISO 3166-1 alpha-2 countries */
       exclude_origin_countries?: string[];
       /**
-       * @description Match titles whose original language is none of these ISO 639-1 codes
+       * @description Match titles whose original language is none of these TMDB codes (lowercase ISO 639-1; TMDB also uses cn and xx)
        * @example [
        *       "en"
        *     ]
@@ -17931,14 +18065,14 @@ export interface components {
       /** @description TMDB network IDs (series) */
       network_ids?: number[];
       /**
-       * @description ISO 3166-1 country codes
+       * @description Upper-case ISO 3166-1 alpha-2 country codes (TMDB origin_country)
        * @example [
        *       "JP"
        *     ]
        */
       origin_countries?: string[];
       /**
-       * @description ISO 639-1 codes of the original language
+       * @description TMDB original-language codes: lowercase ISO 639-1 (TMDB also uses cn and xx)
        * @example [
        *       "ja"
        *     ]
@@ -17979,7 +18113,9 @@ export interface components {
       genre_ids: number[];
       keyword_ids: number[];
       network_ids: number[];
+      /** @description The title's TMDB origin countries, ISO 3166-1 alpha-2 */
       origin_countries: string[];
+      /** @description The title's TMDB original-language code (ISO 639-1; TMDB also uses cn and xx) */
       original_language?: string;
       /** Format: int64 */
       year?: number;
@@ -18194,6 +18330,7 @@ export interface components {
       connection_kinds: string[];
       delivery_modes: string[];
       emits_native_paths: boolean;
+      /** @description Icon as the scan source plugin reported it; not validated as a URI */
       icon_url: string;
       summary: string;
     };
@@ -18637,6 +18774,7 @@ export interface components {
        * @example 1
        */
       id: string;
+      /** @description BCP 47 tag, ISO 639-1 where one exists (en, pt-BR) */
       language: string;
       media_content_id?: string;
       /**
@@ -18682,6 +18820,7 @@ export interface components {
        * @example 1
        */
       id: string;
+      /** @description BCP 47 tag, ISO 639-1 where one exists (en, pt-BR) */
       language: string;
       /**
        * @description Opaque identifier
@@ -18695,6 +18834,7 @@ export interface components {
     };
     AdminSubtitleMetadataPatch: {
       hearing_impaired?: boolean;
+      /** @description BCP 47 tag or ISO 639 code, any case; stored in canonical form */
       language?: string;
       release_name?: string;
     };
@@ -18883,6 +19023,7 @@ export interface components {
        * @description RFC 3339 instant in UTC with millisecond precision
        */
       download_expires_at?: string;
+      /** Format: uri-reference */
       download_url?: string;
       failure?: components["schemas"]["JobFailure"];
       /**
@@ -18904,6 +19045,7 @@ export interface components {
       progress?: components["schemas"]["JobProgress"];
       /** @description Whether this server can mint a shareable seven-day link. False when exports are stored locally, because only storage-side presigning produces a URL usable off this server. */
       public_link_supported: boolean;
+      /** Format: uri-reference */
       public_url?: string;
       refresh_result?: components["schemas"]["LibraryRefreshJobResult"];
       source_label?: string;
@@ -19233,6 +19375,7 @@ export interface components {
       management_mode?: string;
       management_source?: string;
       media_type?: string;
+      /** Format: uri-reference */
       poster_url?: string;
       preset?: string;
       sort_config?: unknown;
@@ -19256,6 +19399,7 @@ export interface components {
       management_key?: string;
       management_mode?: string;
       management_source?: string;
+      /** Format: uri-reference */
       poster_url?: string;
       sort_config?: unknown;
       /** Format: int64 */
@@ -19263,6 +19407,7 @@ export interface components {
       sync_schedule?: string;
       title: string;
       /**
+       * Format: uri-reference
        * @description A public TMDB list page (https://www.themoviedb.org/list/...) or its numeric ID
        * @example https://www.themoviedb.org/list/310-my-movie-list
        */
@@ -19279,7 +19424,7 @@ export interface components {
     };
     AdminTranslateLibraryInputBody: {
       /**
-       * @description BCP 47 tag of the language to fill in
+       * @description BCP 47 tag or ISO 639 code of the language to fill in (de, pt-BR); stored in canonical form
        * @example de
        */
       target_language: string;
@@ -19289,6 +19434,7 @@ export interface components {
       force?: boolean;
       /** @description Defaults true for item targets; ignored for season and episode targets. */
       include_children?: boolean | null;
+      /** @description BCP 47 tag or ISO 639 code of the language to fill in (de, pt-BR); stored in canonical form */
       target_language: string;
     };
     AdminTrickplayFile: {
@@ -19779,7 +19925,7 @@ export interface components {
        */
       installation_id: string;
       /**
-       * @description Who asserted the subject, as the provider last said; may be empty
+       * @description Who asserted the subject, as the provider last said; may be empty; not validated as a URI
        * @example https://id.example.test
        */
       issuer: string;
@@ -19957,6 +20103,15 @@ export interface components {
        */
       server_id?: string;
     };
+    AndroidPushRetirementReceipt: {
+      /**
+       * @description The retirement's generation, which is now the installation's newest intent.
+       * @example 1
+       */
+      generation: string;
+      /** @description Always true: the server delivers nothing to this installation until it registers again with a higher generation. */
+      removed: boolean;
+    };
     APIKeyScope: {
       description: string;
       name: string;
@@ -20012,6 +20167,18 @@ export interface components {
        * @example 3f2a9d5e-6b1c-4c7e-9a0d-2f4b8c1e7a35
        */
       server_id?: string;
+    };
+    ApplePushRetirementBody: {
+      device_id: string;
+    };
+    ApplePushRetirementReceipt: {
+      /**
+       * @description The retirement's generation, which is now the installation's newest intent.
+       * @example 1
+       */
+      generation: string;
+      /** @description Always true: the server delivers nothing to this installation until it registers again with a higher generation. */
+      removed: boolean;
     };
     AppliedQuirkV3: {
       action: string;
@@ -20076,6 +20243,7 @@ export interface components {
       name: string;
       person_id?: string;
       photo_thumbhash?: string;
+      /** Format: uri-reference */
       photo_url?: string;
     };
     AudiobookRelatedContent: {
@@ -20084,6 +20252,7 @@ export interface components {
     };
     AudiobookRelatedItem: {
       content_id: string;
+      /** Format: uri-reference */
       poster_url?: string;
       /** Format: int64 */
       series_index?: number;
@@ -20116,8 +20285,8 @@ export interface components {
     };
     AudioPreference: {
       /**
-       * @description Preferred audio language; empty means no language preference
-       * @example eng
+       * @description Preferred audio language for the series: BCP 47 tag (en, pt-BR) or x-silo-original; empty means no language preference
+       * @example en
        */
       audio_language: string;
       /**
@@ -20147,8 +20316,8 @@ export interface components {
     };
     AudioPreferenceUpdate: {
       /**
-       * @description Preferred audio language; empty or omitted means no language preference
-       * @example eng
+       * @description Preferred audio language: BCP 47 tag or ISO 639 code, any case (en, eng, pt-BR), stored in canonical form; x-silo-original picks the original language; empty or omitted means no language preference
+       * @example en
        */
       audio_language?: string;
       /**
@@ -20170,6 +20339,7 @@ export interface components {
       codec?: string;
       default: boolean;
       embedded_title?: string;
+      /** @description Track language from the file: BCP 47 tag, ISO 639-1 where one exists (en, pt-BR); und when the file marks it undetermined. Older scans may carry an ISO 639-2 code or the file's raw tag */
       language?: string;
       layout?: string;
       profile?: string;
@@ -20196,8 +20366,8 @@ export interface components {
        */
       embedded_title?: string;
       /**
-       * @description Track language (ISO 639)
-       * @example eng
+       * @description Track language as the client recorded it, normally the track's language (BCP 47); stored as sent
+       * @example en
        */
       language?: string;
       /**
@@ -20213,6 +20383,7 @@ export interface components {
     };
     AuthConnectionTestResult: {
       /**
+       * Format: uri-reference
        * @description Redirect URI to register at an OAuth (OIDC) provider for this installation, on the public URL; empty when no public URL is configured. Password (LDAP) providers do not use it
        * @example https://silo.example.test/api/v2/auth/oauth/3/callback
        */
@@ -20253,6 +20424,7 @@ export interface components {
        */
       display_name: string;
       /**
+       * Format: uri-reference
        * @description Icon shown next to the button; absent when the provider ships none
        * @example https://plugins.example.test/icon.svg
        */
@@ -20325,12 +20497,14 @@ export interface components {
       /** @enum {string} */
       code: "preview_only";
       cta_label: string;
+      /** Format: uri-reference */
       cta_url: string;
     };
     BloemPreviewPresentation: {
       cta_label: string;
       /** @description Operator sentence for the subscribe dialog; empty means the client's own. */
       cta_message: string;
+      /** Format: uri-reference */
       cta_url: string;
       /**
        * Format: date-time
@@ -20341,7 +20515,9 @@ export interface components {
       item_cta_label: string;
       /** @enum {string} */
       kind: "guest" | "personal";
+      /** Format: uri-reference */
       launch_url: string;
+      /** Format: uri-reference */
       storefront_url: string;
     };
     BrandingCapabilitiesOutputBody: {
@@ -20359,12 +20535,16 @@ export interface components {
     };
     BrandingConfiguration: {
       accent_color?: string;
+      /** Format: uri-reference */
       favicon_url?: string;
+      /** Format: uri-reference */
       login_bg_url?: string;
       login_subtitle: string;
+      /** Format: uri-reference */
       mark_url?: string;
       server_name: string;
       storage_available: boolean;
+      /** Format: uri-reference */
       wordmark_url?: string;
     };
     BulkItemFailure: {
@@ -20393,6 +20573,7 @@ export interface components {
     };
     CalendarDay: {
       /**
+       * Format: date
        * @description YYYY-MM-DD in the viewer's zone
        * @example 2026-01-10
        */
@@ -20407,6 +20588,7 @@ export interface components {
        */
       air_at?: string;
       /**
+       * Format: date
        * @description The source air date, YYYY-MM-DD
        * @example 2026-01-09
        */
@@ -20432,12 +20614,16 @@ export interface components {
       episode_number?: number;
       episode_title?: string;
       /**
+       * Format: date
        * @description The air date in the viewer's zone, YYYY-MM-DD; the day this event is listed under
        * @example 2026-01-10
        */
       local_air_date: string;
       poster_thumbhash?: string;
-      /** @example https://s3.example.test/poster.jpg */
+      /**
+       * Format: uri-reference
+       * @example https://s3.example.test/poster.jpg
+       */
       poster_url?: string;
       /**
        * Format: int64
@@ -20485,6 +20671,7 @@ export interface components {
       order: number;
       person_id?: string;
       photo_thumbhash?: string;
+      /** Format: uri-reference */
       photo_url?: string;
       plex_guid?: string;
       tmdb_id?: string;
@@ -20540,11 +20727,13 @@ export interface components {
       /** @description First 1000 alphabetically; searchCatalogFacet pages the rest */
       authors: string[];
       content_ratings: string[];
+      /** @description Distinct countries in scope, normally ISO 3166-1 alpha-2 codes; NFO files and manual edits can store country names */
       countries: string[];
       /** @description Empty, never null */
       genres: string[];
       narrators: string[];
       networks: string[];
+      /** @description Distinct original languages in scope, normally ISO 639-1 codes (ISO 639-3 when none exists); provider codes such as TMDB's xx pass through */
       original_languages: string[];
       series: string[];
       studios: string[];
@@ -20576,7 +20765,10 @@ export interface components {
       /** @description Whether backdrop_url is an episode still. False for series artwork; absent when provenance is unavailable. */
       backdrop_is_episode_still?: boolean;
       backdrop_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       backdrop_url?: string;
       /** @description Section-specific badges (new, returning, …) */
       badges?: string[];
@@ -20597,9 +20789,15 @@ export interface components {
       item_source?: string;
       /** @description Empty, never null */
       keywords: string[];
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       last_air_date?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       logo_url?: string;
       /** @description Localized fields whose text was machine-translated by AI rather than supplied by a metadata provider or a person; absent when none were. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards. A card shows no tagline, so a card's overview label depends on overview alone. */
       machine_translated_fields?: ("overview" | "tagline")[];
@@ -20608,12 +20806,15 @@ export interface components {
       /** Format: int64 */
       manga_volume_count?: number;
       networks?: string[];
-      /** @example en */
+      /**
+       * @description Original language, normally an ISO 639-1 code (ISO 639-3 when none exists, such as fil); provider codes such as TMDB's xx pass through, and audiobook and ebook items can carry the file's raw tag
+       * @example en
+       */
       original_language?: string;
       /** @description Technical badges of the best file */
       overlay_summary?: components["schemas"]["CatalogItemOverlay"];
       overview?: string;
-      /** @description The language this profile reads here when the descriptions this item's page shows are not available in it yet. That is the profile's metadata language after its per-language exceptions, or, when it sets none, the library's for a library's rows or a detail opened in that library. It is pending for the item's own overview, or for a season its overview or any of its episodes' overviews. Echo it to translateCatalogItemDescription to translate on view. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards; other listings never carry it, so its absence there says nothing about the language. */
+      /** @description The language (BCP 47 tag, such as en or pt-BR) this profile reads here when the descriptions this item's page shows are not available in it yet. That is the profile's metadata language after its per-language exceptions, or, when it sets none, the library's for a library's rows or a detail opened in that library. It is pending for the item's own overview, or for a season its overview or any of its episodes' overviews. Echo it to translateCatalogItemDescription to translate on view. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards; other listings never carry it, so its absence there says nothing about the language. */
       pending_translation_language?: string;
       /** @description The item to play when the card is a series or season; absent when the item plays itself */
       play_content_id?: string;
@@ -20625,7 +20826,10 @@ export interface components {
       /** @description Whether poster_url is an episode still. False for series or season artwork; absent when provenance is unavailable. */
       poster_is_episode_still?: boolean;
       poster_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       poster_url?: string;
       /**
        * Format: date-time
@@ -20647,6 +20851,7 @@ export interface components {
       /** Format: double */
       rating_tmdb?: number;
       /**
+       * Format: date
        * @description Calendar date, YYYY-MM-DD
        * @example 1995-12-15
        */
@@ -20717,7 +20922,10 @@ export interface components {
        * @enum {string}
        */
       advisory_source?: "commonsense" | "mdblist";
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       air_date?: string;
       air_time?: string;
       air_timezone?: string;
@@ -20725,18 +20933,27 @@ export interface components {
       /** @description Whether backdrop_url is an episode still. False for series artwork; absent when provenance is unavailable. */
       backdrop_is_episode_still?: boolean;
       backdrop_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       backdrop_url?: string;
       /** @description Presigned, short-lived. Every backdrop in display order, backdrop_url first. Movies and series only; absent when there is none */
       backdrop_urls?: string[];
       /** @description Section-specific badges (new, returning, …) */
       badges?: string[];
       banner_thumbhash?: string;
-      /** @description Presigned, short-lived. A wide banner strip. Movies and series only; see getImageCapabilities extended_item_artwork */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived. A wide banner strip. Movies and series only; see getImageCapabilities extended_item_artwork
+       */
       banner_url?: string;
       /** @description Empty, never null */
       cast: components["schemas"]["CastCredit"][];
-      /** @description Presigned, short-lived. Transparent cut-out art. Movies and series only */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived. Transparent cut-out art. Movies and series only
+       */
       clearart_url?: string;
       /**
        * @description Deterministic catalog identifier
@@ -20745,18 +20962,22 @@ export interface components {
       content_id: string;
       /** @example R */
       content_rating?: string;
+      /** @description Production countries, normally ISO 3166-1 alpha-2 codes (US); NFO files and manual edits can store country names */
       countries?: string[];
       credits?: components["schemas"]["Marker"];
       /** @description Empty, never null */
       crew: components["schemas"]["CrewCredit"][];
-      /** @description Presigned, short-lived. Transparent disc art. Movies only */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived. Transparent disc art. Movies only
+       */
       disc_url?: string;
       /** Format: double */
       duration_seconds?: number;
       ebook?: components["schemas"]["EbookDetailExtension"];
       /** @description Whether forced subtitles show for this item under the viewer's preferences */
       effective_show_forced_subtitles?: boolean;
-      /** @description The subtitle language the viewer's preferences resolve to for this item */
+      /** @description The subtitle language the viewer's preferences resolve to for this item: BCP 47 tag; empty when the preference is None */
       effective_subtitle_language?: string;
       /** @description The subtitle mode the viewer's preferences resolve to for this item */
       effective_subtitle_mode?: string;
@@ -20770,7 +20991,10 @@ export interface components {
       /** Format: int64 */
       episode_number?: number;
       extras?: components["schemas"]["ItemExtraInfo"][];
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       first_air_date?: string;
       /** @description Absent for viewers without file-path visibility */
       folder_paths?: string[];
@@ -20783,11 +21007,17 @@ export interface components {
       item_source?: string;
       /** @description Empty, never null */
       keywords: string[];
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       last_air_date?: string;
       /** @description Metadata fields an editor pinned */
       locked_fields?: number[];
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       logo_url?: string;
       /** @description Localized fields whose text was machine-translated by AI rather than supplied by a metadata provider or a person; absent when none were. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards. A card shows no tagline, so a card's overview label depends on overview alone. */
       machine_translated_fields?: ("overview" | "tagline")[];
@@ -20797,13 +21027,16 @@ export interface components {
       /** Format: int64 */
       manga_volume_count?: number;
       networks?: string[];
-      /** @example en */
+      /**
+       * @description Original language, normally an ISO 639-1 code (ISO 639-3 when none exists, such as fil); provider codes such as TMDB's xx pass through, and audiobook and ebook items can carry the file's raw tag
+       * @example en
+       */
       original_language?: string;
       original_title?: string;
       /** @description Technical badges of the best file */
       overlay_summary?: components["schemas"]["CatalogItemOverlay"];
       overview?: string;
-      /** @description The language this profile reads here when the descriptions this item's page shows are not available in it yet. That is the profile's metadata language after its per-language exceptions, or, when it sets none, the library's for a library's rows or a detail opened in that library. It is pending for the item's own overview, or for a season its overview or any of its episodes' overviews. Echo it to translateCatalogItemDescription to translate on view. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards; other listings never carry it, so its absence there says nothing about the language. */
+      /** @description The language (BCP 47 tag, such as en or pt-BR) this profile reads here when the descriptions this item's page shows are not available in it yet. That is the profile's metadata language after its per-language exceptions, or, when it sets none, the library's for a library's rows or a detail opened in that library. It is pending for the item's own overview, or for a season its overview or any of its episodes' overviews. Echo it to translateCatalogItemDescription to translate on view. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards; other listings never carry it, so its absence there says nothing about the language. */
       pending_translation_language?: string;
       /** @description The item to play when the card is a series or season; absent when the item plays itself */
       play_content_id?: string;
@@ -20821,7 +21054,10 @@ export interface components {
       /** @description Whether poster_url is an episode still. False for series or season artwork; absent when provenance is unavailable. */
       poster_is_episode_still?: boolean;
       poster_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       poster_url?: string;
       preview?: components["schemas"]["Marker"];
       /**
@@ -20849,6 +21085,7 @@ export interface components {
       ratings: components["schemas"]["CatalogRating"][];
       recap?: components["schemas"]["Marker"];
       /**
+       * Format: date
        * @description Calendar date, YYYY-MM-DD
        * @example 1995-12-15
        */
@@ -20882,7 +21119,10 @@ export interface components {
       tagline?: string;
       themes?: components["schemas"]["ThemeSongSet"];
       thumb_thumbhash?: string;
-      /** @description Presigned, short-lived. A 16:9 landscape thumb, which usually carries the title. Movies and series only */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived. A 16:9 landscape thumb, which usually carries the title. Movies and series only
+       */
       thumb_url?: string;
       /** @example Heat */
       title: string;
@@ -20946,7 +21186,10 @@ export interface components {
       play_count?: number;
       /** Format: double */
       progress_ratio?: number;
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       release_date?: string;
       resolution?: string;
       /** Format: int64 */
@@ -20957,6 +21200,7 @@ export interface components {
     };
     CatalogItemUpcomingEvent: {
       /**
+       * Format: date
        * @description Calendar date, YYYY-MM-DD
        * @example 2026-01-09
        */
@@ -21231,9 +21475,11 @@ export interface components {
       session_expires_at?: string;
     };
     CatalogTechnicalFilters: {
+      /** @description Distinct audio track languages in scope as lowercase BCP 47 tags (en, pt-br); older scans may carry an ISO 639-2 code or the raw tag */
       audio_languages: string[];
       /** @description Empty, never null */
       resolutions: string[];
+      /** @description Distinct subtitle languages in scope as BCP 47 tags; a stored value that is not a recognizable language passes through */
       subtitle_languages: string[];
     };
     CatalogWorkFormat: {
@@ -21273,6 +21519,7 @@ export interface components {
       usage_limited?: boolean;
     };
     ChatGPTCompleteInputBody: {
+      /** Format: uri */
       callback_url: string;
     };
     ChatGPTDisconnectOutputBody: {
@@ -21280,7 +21527,9 @@ export interface components {
     };
     ChatGPTLogin: {
       attempt_id: string;
+      /** Format: uri */
       authorization_url: string;
+      /** Format: uri */
       callback_uri: string;
       /** Format: date-time */
       expires_at: string;
@@ -22030,6 +22279,7 @@ export interface components {
     ConnectInfo: {
       enabled: boolean;
       pending_restart: boolean;
+      /** @description Public URL Jellyfin clients are told to use, as configured; not validated as a URI */
       public_url: string;
       server_name: string;
     };
@@ -22063,6 +22313,7 @@ export interface components {
       name: string;
       person_id?: string;
       photo_thumbhash?: string;
+      /** Format: uri-reference */
       photo_url?: string;
       plex_guid?: string;
       tmdb_id?: string;
@@ -22070,7 +22321,10 @@ export interface components {
     };
     CuratedCollection: {
       backdrop_thumbhash?: string;
-      /** @description Presigned, short-lived; empty when none */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived; empty when none
+       */
       backdrop_url: string;
       /**
        * @description manual, smart, or an import type
@@ -22124,7 +22378,10 @@ export interface components {
        */
       poster_is_collage: boolean;
       poster_thumbhash?: string;
-      /** @description Presigned, short-lived; empty when none */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived; empty when none
+       */
       poster_url: string;
       /** @description Smart collection query; null when not a smart collection */
       query_definition: unknown;
@@ -22139,7 +22396,7 @@ export interface components {
       sort_order: number;
       /** @description Import source configuration; null when not imported */
       source_config: unknown;
-      /** @description Where an imported collection came from; empty otherwise */
+      /** @description Where an imported collection came from (a list URL or a tmdb:// source); empty when not imported; not validated as a URI */
       source_url: string;
       sync_schedule?: string;
       /** @example Oscar Winners */
@@ -22154,8 +22411,11 @@ export interface components {
       visibility: string;
     };
     CurrentImages: {
+      /** @description Stored artwork reference (storage key, plugin path, or URL), not a fetchable URL; not validated as a URI */
       backdrop_url?: string;
+      /** @description Stored artwork reference (storage key, plugin path, or URL), not a fetchable URL; not validated as a URI */
       logo_url?: string;
+      /** @description Stored artwork reference (storage key, plugin path, or URL), not a fetchable URL; not validated as a URI */
       poster_url?: string;
     };
     DecideDeviceLoginInputBody: {
@@ -22554,9 +22814,15 @@ export interface components {
        * @description Latest time a request with this link is accepted. A transfer that started in time may run past it.
        */
       expires_at: string;
-      /** @description The same link for /api/v2/direct-download-proxy; use it only when the download capability reports proxy_delivery. */
+      /**
+       * Format: uri-reference
+       * @description The same link for /api/v2/direct-download-proxy; use it only when the download capability reports proxy_delivery.
+       */
       proxy_url: string;
-      /** @description Server-relative GET/HEAD URL for /api/v2/direct-download that carries the link token as dl. Treat it as a secret until it expires. */
+      /**
+       * Format: uri-reference
+       * @description Server-relative GET/HEAD URL for /api/v2/direct-download that carries the link token as dl. Treat it as a secret until it expires.
+       */
       url: string;
     };
     DirectDownloadLinkBody: {
@@ -22573,6 +22839,7 @@ export interface components {
       gradient_from?: string;
       /** @example #16213e */
       gradient_to?: string;
+      /** Format: uri */
       logo_url?: string | null;
       /** @description Whether the brand can be browsed for series */
       series_supported?: boolean;
@@ -22599,6 +22866,7 @@ export interface components {
        * @example studio
        */
       kind: string;
+      /** Format: uri */
       logo_url?: string | null;
       /**
        * @description movie or series
@@ -23445,7 +23713,10 @@ export interface components {
       status: string;
     };
     Episode: {
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       air_date?: string;
       /** @example episode:severance-s01e01 */
       content_id: string;
@@ -23457,7 +23728,7 @@ export interface components {
       machine_translated_fields?: "overview"[];
       overlay_summary?: components["schemas"]["CatalogItemOverlay"];
       overview?: string;
-      /** @description The language this profile reads here (its metadata language, or the library's when it sets none) when the episode's description is not available in it yet; translating the episode's season fills it */
+      /** @description The language (BCP 47 tag, such as en or pt-BR) this profile reads here (its metadata language, or the library's when it sets none) when the episode's description is not available in it yet; translating the episode's season fills it */
       pending_translation_language?: string;
       /** @description The episode's IMDb and TMDB ratings, in the shape a title page's ratings use. Absent when the episode has no rating. */
       ratings?: components["schemas"]["CatalogRating"][];
@@ -23471,7 +23742,10 @@ export interface components {
       /** @description Whether still_url is an episode still. False when series artwork is used as a fallback; absent when provenance is unavailable. */
       still_is_episode_still?: boolean;
       still_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       still_url?: string;
       title: string;
       tmdb_id?: string;
@@ -23710,6 +23984,7 @@ export interface components {
       duration: number;
       edition_key?: string;
       edition_raw?: string;
+      /** @description Language of the audio track playback will pick (BCP 47, from the file), or the item's original language (normally ISO 639-1) when the preference is original; absent when unknown */
       effective_audio_language?: string;
       /** Format: int64 */
       effective_audio_track_index?: number;
@@ -23794,7 +24069,10 @@ export interface components {
       /** @description Whether backdrop_url is an episode still. False for series artwork; absent when provenance is unavailable. */
       backdrop_is_episode_still?: boolean;
       backdrop_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       backdrop_url?: string;
       /** @description Section-specific badges (new, returning, …) */
       badges?: string[];
@@ -23815,9 +24093,15 @@ export interface components {
       item_source?: string;
       /** @description Empty, never null */
       keywords: string[];
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       last_air_date?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       logo_url?: string;
       /** @description Localized fields whose text was machine-translated by AI rather than supplied by a metadata provider or a person; absent when none were. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards. A card shows no tagline, so a card's overview label depends on overview alone. */
       machine_translated_fields?: ("overview" | "tagline")[];
@@ -23826,12 +24110,15 @@ export interface components {
       /** Format: int64 */
       manga_volume_count?: number;
       networks?: string[];
-      /** @example en */
+      /**
+       * @description Original language, normally an ISO 639-1 code (ISO 639-3 when none exists, such as fil); provider codes such as TMDB's xx pass through, and audiobook and ebook items can carry the file's raw tag
+       * @example en
+       */
       original_language?: string;
       /** @description Technical badges of the best file */
       overlay_summary?: components["schemas"]["CatalogItemOverlay"];
       overview?: string;
-      /** @description The language this profile reads here when the descriptions this item's page shows are not available in it yet. That is the profile's metadata language after its per-language exceptions, or, when it sets none, the library's for a library's rows or a detail opened in that library. It is pending for the item's own overview, or for a season its overview or any of its episodes' overviews. Echo it to translateCatalogItemDescription to translate on view. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards; other listings never carry it, so its absence there says nothing about the language. */
+      /** @description The language (BCP 47 tag, such as en or pt-BR) this profile reads here when the descriptions this item's page shows are not available in it yet. That is the profile's metadata language after its per-language exceptions, or, when it sets none, the library's for a library's rows or a detail opened in that library. It is pending for the item's own overview, or for a season its overview or any of its episodes' overviews. Echo it to translateCatalogItemDescription to translate on view. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards; other listings never carry it, so its absence there says nothing about the language. */
       pending_translation_language?: string;
       /** @description The item to play when the card is a series or season; absent when the item plays itself */
       play_content_id?: string;
@@ -23843,7 +24130,10 @@ export interface components {
       /** @description Whether poster_url is an episode still. False for series or season artwork; absent when provenance is unavailable. */
       poster_is_episode_still?: boolean;
       poster_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       poster_url?: string;
       /**
        * Format: date-time
@@ -23865,6 +24155,7 @@ export interface components {
       /** Format: double */
       rating_tmdb?: number;
       /**
+       * Format: date
        * @description Calendar date, YYYY-MM-DD
        * @example 1995-12-15
        */
@@ -24057,6 +24348,7 @@ export interface components {
        */
       connect_session_id?: string;
       /**
+       * Format: uri-reference
        * @description Jellyfin: the server address
        * @example https://jellyfin.example.test
        */
@@ -24069,7 +24361,10 @@ export interface components {
       password?: string;
       /** @description Plex: the plex.tv account token, for watchlist import alongside a server token */
       plex_account_token?: string;
-      /** @description Plex: a server address when the client holds its own token */
+      /**
+       * Format: uri-reference
+       * @description Plex: a server address when the client holds its own token
+       */
       plex_base_url?: string;
       /**
        * @description Plex: the other addresses plex.tv advertised for the same server, in preference order. Addresses the account may not reach under the local network policy are skipped, and the run races up to max_plex_connections of the rest, counting plex_base_url, keeping the first that answers. plex_base_url stays the preferred one.
@@ -24107,6 +24402,7 @@ export interface components {
     };
     HistoryImportSource: {
       /**
+       * Format: uri-reference
        * @description Server address; absent for Plex sources reached through plex.tv
        * @example https://emby.example.test
        */
@@ -24375,7 +24671,10 @@ export interface components {
       state: "available" | "disabled" | "not_configured" | "unsupported";
     };
     InvitationDelivery: {
-      /** @description One-time disclosure; never retained for replay. Contains the bearer claim token. */
+      /**
+       * Format: uri
+       * @description One-time disclosure; never retained for replay. Contains the bearer claim token.
+       */
       claim_url: string;
       /**
        * @description not_requested: a link invitation; nothing was emailed.
@@ -24408,17 +24707,26 @@ export interface components {
       /** Format: int64 */
       file_id?: number;
       kind: string;
+      still_thumbhash?: string;
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived. 16:9 image of the extra; absent when it has none
+       */
+      still_url?: string;
       title?: string;
     };
     ItemImageEntry: {
       /** Format: int64 */
       height: number;
+      /** @description Language of text in the image as the provider reports it, usually ISO 639-1 (TMDB uses xx for none); empty when textless or unknown */
       language: string;
+      /** @description The provider's image URL, or file:// and the unescaped path of a local image; not validated as a URI. Send it unchanged to apply the image */
       original_url: string;
       provider_id: string;
       /** Format: double */
       rating: number;
       type: string;
+      /** @description Preview of the image: a fetchable URL, a data: URI, or the provider's value as given; not validated as a URI */
       url: string;
       /** Format: int64 */
       width: number;
@@ -24426,6 +24734,7 @@ export interface components {
     ItemVideoInfo: {
       is_official: boolean;
       kind: string;
+      /** @description Language of the video as the provider reports it, usually ISO 639-1 */
       language?: string;
       name?: string;
       site: string;
@@ -24476,7 +24785,7 @@ export interface components {
        */
       last_scanned_at?: string;
       /**
-       * @description ISO 639-1 code metadata is fetched in
+       * @description Lowercase ISO 639-1 code metadata is fetched in; empty when an update cleared it, and fetches then use en
        * @example en
        */
       metadata_language: string;
@@ -24489,7 +24798,10 @@ export interface components {
        *     ]
        */
       paths: string[];
-      /** @description Presigned poster URL; absent when the library has no poster */
+      /**
+       * Format: uri-reference
+       * @description Presigned poster URL; absent when the library has no poster
+       */
       poster_url?: string;
       /**
        * @description Scan automatically when files in the library's folders change. Takes effect only while the server-wide scanner.realtime_monitoring setting is on.
@@ -24596,7 +24908,10 @@ export interface components {
        */
       poster_is_collage: boolean;
       poster_thumbhash?: string;
-      /** @description Presigned, short-lived; empty when none */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived; empty when none
+       */
       poster_url: string;
       /** @example Oscar Winners */
       title: string;
@@ -24650,7 +24965,7 @@ export interface components {
       /** @example false */
       intro_detection_enabled?: boolean;
       /**
-       * @description ISO 639-1 code; default en
+       * @description Lowercase ISO 639-1 code from the supported list; empty or omitted means en
        * @example en
        */
       metadata_language?: string;
@@ -24761,7 +25076,7 @@ export interface components {
     };
     LibraryPlaybackPreference: {
       /**
-       * @description Audio language override (BCP 47 language tag); empty means none
+       * @description Audio language override: BCP 47 tag (en, pt-BR) or x-silo-original; empty means none
        * @example en
        */
       audio_language?: string;
@@ -24778,7 +25093,7 @@ export interface components {
       /** @example false */
       show_forced_subtitles?: boolean;
       /**
-       * @description Subtitle language override (BCP 47 language tag); empty means none
+       * @description Subtitle language override: BCP 47 tag (en, pt-BR); empty means none
        * @example en
        */
       subtitle_language?: string;
@@ -24802,7 +25117,7 @@ export interface components {
     };
     LibraryPlaybackPreferenceUpdate: {
       /**
-       * @description Audio language override (BCP 47 language tag); null or empty clears it
+       * @description Audio language override: BCP 47 tag or ISO 639 code, any case (en, eng, pt-BR), stored in canonical form; x-silo-original picks the original language; null or empty clears it
        * @example en
        */
       audio_language?: string | null;
@@ -24812,7 +25127,7 @@ export interface components {
        */
       show_forced_subtitles?: boolean | null;
       /**
-       * @description Subtitle language override (BCP 47 language tag); null or empty clears it
+       * @description Subtitle language override: BCP 47 tag or ISO 639 code, any case (en, eng, pt-BR), stored in canonical form; null or empty clears it
        * @example en
        */
       subtitle_language?: string | null;
@@ -25009,7 +25324,7 @@ export interface components {
       /** @example false */
       intro_detection_enabled?: boolean;
       /**
-       * @description ISO 639-1 code; a change queues a quick metadata refresh
+       * @description Lowercase ISO 639-1 code from the supported list; a change queues a quick metadata refresh
        * @example en
        */
       metadata_language?: string;
@@ -25048,6 +25363,7 @@ export interface components {
       /** @description The editions the viewer can see; empty, never null */
       formats: components["schemas"]["LiteraryWorkFormat"][];
       metadata: components["schemas"]["LiteraryWorkMetadata"];
+      /** Format: uri-reference */
       primary_cover_url?: string;
       work_id: string;
       /** @example Dune */
@@ -25093,7 +25409,10 @@ export interface components {
       description?: string;
       /** @description Empty, never null */
       genres: string[];
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       published_date?: string;
       publisher?: string;
       series?: components["schemas"]["LiteraryWorkSeries"];
@@ -25259,6 +25578,7 @@ export interface components {
       /** Format: double */
       chapter_index?: number;
       content_id: string;
+      /** Format: uri-reference */
       poster_url?: string;
       /** Format: double */
       progress?: number;
@@ -25309,6 +25629,7 @@ export interface components {
        */
       thumbnail_capture_seconds?: number;
       thumbnail_thumbhash?: string;
+      /** Format: uri-reference */
       thumbnail_url?: string;
     };
     MarkerSegment: {
@@ -25403,6 +25724,7 @@ export interface components {
       agreement_hints: string[];
       aliases?: components["schemas"]["TitleAlias"][];
       content_type: string;
+      /** @description Image for the candidate as the metadata plugin returned it; not validated as a URI */
       image_url?: string;
       match_reasons?: string[];
       /** Format: double */
@@ -25416,6 +25738,7 @@ export interface components {
       sources: string[];
       title: string;
       title_is_fallback?: boolean;
+      /** @description Language of the title as the provider reports it, usually ISO 639-1 */
       title_language?: string;
       /** Format: int64 */
       year: number;
@@ -25444,6 +25767,7 @@ export interface components {
        */
       limit?: number;
       /**
+       * Format: uri-reference
        * @description A bundled template poster path or an image URL
        * @example
        */
@@ -25461,6 +25785,7 @@ export interface components {
        */
       title: string;
       /**
+       * Format: uri
        * @description An MDBList list page (https://mdblist.com/lists/...)
        * @example https://mdblist.com/lists/linaspurinis/top-watched-movies-of-the-week
        */
@@ -25494,6 +25819,7 @@ export interface components {
       /** @example top-watched-movies-of-the-week */
       slug: string;
       /**
+       * Format: uri-reference
        * @description The list page; empty when MDBList did not report one
        * @example https://mdblist.com/lists/linaspurinis/top-watched-movies-of-the-week
        */
@@ -25518,6 +25844,7 @@ export interface components {
       page?: components["schemas"]["PageInfo"];
     };
     MDBListSpec: {
+      /** Format: uri-reference */
       url: string;
     };
     MediaRequest: {
@@ -25839,11 +26166,13 @@ export interface components {
        */
       progress: number;
       progress_message: string;
+      /** @description Language of the base metadata (ISO 639-1); empty until the job reads it */
       source_language: string;
       /** @description pending, running, completed, failed, or canceled */
       status: string;
       /** @description item, season, episode, or library (a prewarm, whose fields_done and fields_total count items) */
       target_kind: string;
+      /** @description BCP 47 tag of the language being filled in */
       target_language: string;
       /**
        * Format: date-time
@@ -25962,7 +26291,7 @@ export interface components {
     NetworkAccessHostStatus: {
       /** @description Overlay IP addresses */
       addresses: string[];
-      /** @description Interactive enrollment URL, only while awaiting_authorization; admin-only, never logged */
+      /** @description Interactive enrollment URL as the network access plugin reported it, only while awaiting_authorization; admin-only, never logged; not validated as a URI */
       auth_url?: string;
       error?: string;
       host: components["schemas"]["NetworkAccessHostRef"];
@@ -26008,6 +26337,7 @@ export interface components {
     NodeHWAccel: {
       error?: string;
       node_name?: string;
+      /** @description Configured node address with credentials removed, or [invalid URL] when it does not parse; not validated as a URI */
       node_url: string;
       render_device_details?: components["schemas"]["RenderDeviceInfo"][];
       render_devices?: string[];
@@ -26159,6 +26489,7 @@ export interface components {
       library_id?: string;
       poster_path?: string;
       poster_thumbhash?: string;
+      /** Format: uri-reference */
       poster_url?: string;
       /**
        * @description Opaque identifier
@@ -26226,12 +26557,14 @@ export interface components {
       delivery_id: string;
       thread_id?: string;
       title: string;
+      /** Format: uri-reference */
       url: string;
     };
     NotificationReadAllInputBody: {
       through: string;
     };
     NotificationRelayRegisterInputBody: {
+      /** Format: uri-reference */
       relay_url?: string;
     };
     NotificationRelayRegistration: {
@@ -26249,6 +26582,7 @@ export interface components {
       expires_at: string;
       key_prefix: string;
       relay_request_id?: string;
+      /** Format: uri */
       relay_url: string;
     };
     NotificationSeries: {
@@ -26341,6 +26675,7 @@ export interface components {
       notify_request_submitted?: boolean;
       /** @enum {string} */
       type?: "discord" | "generic";
+      /** Format: uri */
       url: string;
     };
     NotificationServerChannelUpdateInputBody: {
@@ -26354,6 +26689,7 @@ export interface components {
       notify_request_declined?: boolean;
       notify_request_fulfilled?: boolean;
       notify_request_submitted?: boolean;
+      /** Format: uri */
       url?: string;
     };
     NotificationSyncOutputBody: {
@@ -26381,6 +26717,7 @@ export interface components {
       notify_watchlist?: boolean;
       /** @enum {string} */
       type?: "discord" | "generic";
+      /** Format: uri */
       url: string;
     };
     NotificationWebhookDestination: {
@@ -26429,6 +26766,7 @@ export interface components {
       notify_next_up?: boolean;
       notify_requests?: boolean;
       notify_watchlist?: boolean;
+      /** Format: uri */
       url?: string;
     };
     NotificationWebPushCapability: {
@@ -26437,6 +26775,7 @@ export interface components {
     };
     NotificationWebPushSubscribeInputBody: {
       device_name?: string;
+      /** Format: uri */
       endpoint: string;
       keys: components["schemas"]["KeysStruct"];
     };
@@ -26448,6 +26787,7 @@ export interface components {
       created_at: string;
       device_name?: string;
       enabled: boolean;
+      /** Format: uri-reference */
       endpoint: string;
       /**
        * @description Opaque identifier
@@ -26466,6 +26806,7 @@ export interface components {
       last_success_at: string | null;
     };
     NotificationWebPushUnsubscribeInputBody: {
+      /** Format: uri */
       endpoint: string;
     };
     NotInterestedCapability: {
@@ -26552,6 +26893,7 @@ export interface components {
       default: boolean;
       /** Format: int64 */
       index: number;
+      /** @description Track language from the file: BCP 47 tag, ISO 639-1 where one exists (en, pt-BR); und when the file marks it undetermined. Older scans may carry an ISO 639-2 code or the file's raw tag */
       language?: string;
       layout?: string;
       /** Format: int64 */
@@ -26589,12 +26931,14 @@ export interface components {
     };
     OfflineSubtitle: {
       external: boolean;
+      /** Format: uri-reference */
       fetch_url: string;
       /** Format: int64 */
       file_size?: number;
       forced: boolean;
       format: string;
       hearing_impaired: boolean;
+      /** @description Subtitle language: BCP 47 tag (en, pt-BR), empty when unknown; older rows may carry a legacy value */
       language: string;
       revision?: string;
       title?: string;
@@ -26775,12 +27119,16 @@ export interface components {
     Person: {
       bio?: string;
       /**
+       * Format: date
        * @description Calendar date, YYYY-MM-DD
        * @example 1940-04-25
        */
       birth_date?: string;
       birthplace?: string;
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       death_date?: string;
       homepage?: string;
       /**
@@ -26792,7 +27140,10 @@ export interface components {
       /** @example Al Pacino */
       name: string;
       photo_thumbhash?: string;
-      /** @description Presigned photo URL; absent when the person has no photo */
+      /**
+       * Format: uri-reference
+       * @description Presigned photo URL; absent when the person has no photo
+       */
       photo_url?: string;
       plex_guid?: string;
       tmdb_id?: string;
@@ -26910,6 +27261,7 @@ export interface components {
       /** @example  */
       poster_thumbhash: string;
       /**
+       * Format: uri-reference
        * @description Presigned, short-lived; empty when there is no poster
        * @example
        */
@@ -26932,7 +27284,7 @@ export interface components {
       /** @description Import source document; absent for a manual or smart collection */
       source_config?: unknown;
       /**
-       * @description Where an imported collection is synced from; empty otherwise
+       * @description Where an imported collection is synced from; empty otherwise; not validated as a URI
        * @example
        */
       source_url: string;
@@ -26990,6 +27342,7 @@ export interface components {
       /** @example Rainy days */
       name: string;
       /**
+       * Format: uri-reference
        * @description An image URL the server fetches and stores as the poster
        * @example
        */
@@ -27026,6 +27379,7 @@ export interface components {
     PersonalCollectionPosterForm: {
       /** Format: binary */
       poster?: string;
+      /** Format: uri-reference */
       source_url?: string;
     };
     PersonalCollectionPreviewInputBody: {
@@ -27042,7 +27396,10 @@ export interface components {
        * @example 1
        */
       content_id: string;
-      /** @description Card-size poster URL; omitted when the item has none */
+      /**
+       * Format: uri-reference
+       * @description Card-size poster URL; omitted when the item has none
+       */
       poster_url?: string;
       title: string;
       type: string;
@@ -27070,9 +27427,11 @@ export interface components {
       /** Format: int64 */
       max_items?: number;
       name?: string;
+      /** Format: uri-reference */
       poster_source_url?: string;
       query_definition?: unknown;
       sort_config?: unknown;
+      /** Format: uri-reference */
       source_url?: string;
       /**
        * @description A synced list's cadence; empty stops scheduled syncs. Cron expressions are refused. Accepted when getCollectionCapabilities reports sync_schedule_editable
@@ -27186,6 +27545,8 @@ export interface components {
       stop_id?: string;
     };
     PlaybackPlan: {
+      /** @description The available_qualities label this plan delivers, so a client can mark that menu entry: the label quality_preference named while the menu lists it and the encode keeps its resolution, otherwise the rung whose resolution class and bitrate the encode matches. Absent when the plan delivers no listed entry, such as the source played unchanged or a plain-resolution or auto request whose capped encode falls between two rungs. Present on servers that advertise plan_active_quality_v1. */
+      active_quality?: string;
       applied_quirks: components["schemas"]["AppliedQuirkV3"][];
       /** @description Fixed quality rungs a quality_change replan may request, in menu order. The source is not listed: quality_preference auto returns to it. Empty when no rung applies. */
       available_qualities: components["schemas"]["AvailableQualityV3"][];
@@ -27448,6 +27809,7 @@ export interface components {
        */
       position_seconds: number;
       /**
+       * Format: uri-reference
        * @description Where to fetch the poster; empty when there is none
        * @example https://media.example/poster.jpg
        */
@@ -27540,8 +27902,8 @@ export interface components {
        */
       source_audio_codec: string;
       /**
-       * @description Empty when unknown
-       * @example eng
+       * @description Language of the source audio track as the file tags it (BCP 47; older scans may carry an ISO 639-2 code or the raw tag); empty when unknown
+       * @example en
        */
       source_audio_language: string;
       /**
@@ -27800,6 +28162,7 @@ export interface components {
     };
     PlexPin: {
       /**
+       * Format: uri
        * @description Where the user signs in
        * @example https://app.plex.tv/auth#?code=ABCD
        */
@@ -28148,6 +28511,7 @@ export interface components {
        */
       avatar_source: "none" | "preset" | "upload";
       /**
+       * Format: uri-reference
        * @description Where to fetch the avatar; absent when there is none to fetch
        * @example /avatars/presets/fox.png
        */
@@ -28173,7 +28537,7 @@ export interface components {
        */
       is_primary: boolean;
       /**
-       * @description Preferred audio language (ISO 639-1); empty inherits
+       * @description Preferred audio language: BCP 47 tag, ISO 639-1 where one exists (en, pt-BR), or x-silo-original for each item's original language; empty inherits
        * @example en
        */
       language: string;
@@ -28198,7 +28562,7 @@ export interface components {
       /** @example Alice */
       name: string;
       /**
-       * @description Metadata language (ISO 639-1); empty inherits the library's
+       * @description Metadata language: BCP 47 tag (en, pt-BR), or x-silo-original for each item's original language; empty inherits the library's
        * @example en
        */
       preferred_metadata_language: string;
@@ -28215,7 +28579,7 @@ export interface components {
       /** @example false */
       show_forced_subtitles: boolean;
       /**
-       * @description Preferred subtitle language (ISO 639-1); empty inherits
+       * @description Preferred subtitle language: BCP 47 tag, ISO 639-1 where one exists (en, pt-BR); empty inherits
        * @example en
        */
       subtitle_language: string;
@@ -28284,7 +28648,7 @@ export interface components {
       /** @example false */
       is_child?: boolean;
       /**
-       * @description Preferred audio language (ISO 639-1)
+       * @description Preferred audio language: BCP 47 tag or ISO 639 code, any case (en, eng, pt-BR), stored in canonical form; x-silo-original picks each item's original language; omitted or empty inherits
        * @example en
        */
       language?: string;
@@ -28318,7 +28682,7 @@ export interface components {
        */
       pin?: string;
       /**
-       * @description Metadata language (ISO 639-1)
+       * @description Metadata language: BCP 47 tag or ISO 639 code, any case (en, eng, pt-BR), stored in canonical form; x-silo-original picks each item's original language; omitted or empty inherits the library's
        * @example en
        */
       preferred_metadata_language?: string;
@@ -28338,7 +28702,7 @@ export interface components {
        */
       show_forced_subtitles?: boolean;
       /**
-       * @description Preferred subtitle language (ISO 639-1)
+       * @description Preferred subtitle language: BCP 47 tag or ISO 639 code, any case (en, eng, pt-BR), stored in canonical form; omitted or empty inherits
        * @example en
        */
       subtitle_language?: string;
@@ -28444,7 +28808,7 @@ export interface components {
       /** @example false */
       is_child?: boolean;
       /**
-       * @description Preferred audio language (ISO 639-1); null inherits
+       * @description Preferred audio language: BCP 47 tag or ISO 639 code, any case (en, eng, pt-BR), stored in canonical form; x-silo-original picks each item's original language; null inherits
        * @example en
        */
       language?: string | null;
@@ -28478,7 +28842,7 @@ export interface components {
        */
       pin?: string | null;
       /**
-       * @description Metadata language (ISO 639-1); null inherits the library's
+       * @description Metadata language: BCP 47 tag or ISO 639 code, any case (en, eng, pt-BR), stored in canonical form; x-silo-original picks each item's original language; null inherits the library's
        * @example en
        */
       preferred_metadata_language?: string | null;
@@ -28495,7 +28859,7 @@ export interface components {
       /** @example false */
       show_forced_subtitles?: boolean;
       /**
-       * @description Preferred subtitle language (ISO 639-1); null inherits
+       * @description Preferred subtitle language: BCP 47 tag or ISO 639 code, any case (en, eng, pt-BR), stored in canonical form; null inherits
        * @example en
        */
       subtitle_language?: string | null;
@@ -28764,6 +29128,7 @@ export interface components {
     };
     ProviderLogout: {
       /**
+       * Format: uri-reference
        * @description Provider end-session URL to navigate to after logout; empty when there is none
        * @example https://id.example.test/logout?id_token_hint=eyJhbGciOi...
        */
@@ -29064,7 +29429,10 @@ export interface components {
       /** @description Empty, never null */
       creators: string[];
       director?: string;
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       first_air_date?: string;
       /** @description Empty, never null */
       genres: string[];
@@ -29076,7 +29444,10 @@ export interface components {
        * @example false
        */
       in_watchlist: boolean;
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       last_air_date?: string;
       /** @description The catalog item when the media is available */
       library_content_id?: string;
@@ -29099,7 +29470,10 @@ export interface components {
       production_companies: string[];
       /** @description Empty, never null */
       recommendations: components["schemas"]["RequestMediaResult"][];
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       release_date?: string;
       request: components["schemas"]["RequestMediaState"];
       /**
@@ -29190,6 +29564,7 @@ export interface components {
        */
       poster_path?: string;
       /**
+       * Format: date
        * @description Calendar date, YYYY-MM-DD
        * @example 1995-12-15
        */
@@ -29213,6 +29588,7 @@ export interface components {
     };
     RequestMediaSeason: {
       /**
+       * Format: date
        * @description Calendar date, YYYY-MM-DD
        * @example 2025-01-17
        */
@@ -29392,6 +29768,7 @@ export interface components {
       root_path: string;
     };
     RotateWebhookResult: {
+      /** Format: uri-reference */
       webhook_url: string;
     };
     RouterOption: {
@@ -29456,7 +29833,10 @@ export interface components {
       status: "accepted";
     };
     Season: {
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       air_date?: string;
       /** @example series:severance-S01 */
       content_id: string;
@@ -29469,13 +29849,76 @@ export interface components {
       /** @description The episode to play next */
       play_content_id?: string;
       poster_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       poster_url?: string;
       /** Format: int64 */
       season_number: number;
       /** @example Season 1 */
       title: string;
       user_data?: components["schemas"]["WatchRollup"];
+    };
+    SeasonalTheme: {
+      /** @description Whether a row may set its own yearly window for this holiday in theme_dates. False for weekly themes. */
+      dates_editable: boolean;
+      /**
+       * @description Last day of the default window, MM-DD, inclusive; before start when the window wraps across New Year
+       * @example 10-31
+       */
+      end?: string;
+      /**
+       * @description Stored in the row's enabled_themes config; stable
+       * @example halloween
+       */
+      key: string;
+      /** @example Halloween */
+      name: string;
+      /**
+       * @description First day of the default window, MM-DD. Absent when the holiday moves (Easter) or recurs weekly.
+       * @example 10-01
+       */
+      start?: string;
+      /** @description The first vibe is the default; never empty */
+      vibes: components["schemas"]["SeasonalVibe"][];
+      /**
+       * @description When the holiday is in season by default, for display
+       * @example October
+       */
+      when: string;
+    };
+    SeasonalThemeCatalog: {
+      /**
+       * Format: int64
+       * @description The most custom holidays one row may define
+       * @example 12
+       */
+      max_custom_holidays: number;
+      /** @description In calendar order, for display: dated holidays by their usual start, then the weekly ones */
+      themes: components["schemas"]["SeasonalTheme"][];
+    };
+    SeasonalVibe: {
+      /** @example Spooky fun for all ages. */
+      description: string;
+      /**
+       * @description Stored in the row's vibes config; stable
+       * @example family
+       */
+      key: string;
+      /**
+       * Format: uri
+       * @description The MDBList list behind the vibe
+       * @example https://mdblist.com/lists/purple_smurf/halloween-family2
+       */
+      list_url: string;
+      /** @example Family Halloween */
+      name: string;
+      /**
+       * @description The row's title while this vibe is in season, unless the row sets its own
+       * @example Family Halloween
+       */
+      title: string;
     };
     SeasonCollection: {
       /** @description The page's items; empty, never null */
@@ -29834,7 +30277,10 @@ export interface components {
         | "connected"
         | "error"
         | "unavailable";
-      /** @description scheme://host[:port] clients reach the API at over the overlay; present only while connected */
+      /**
+       * Format: uri
+       * @description scheme://host[:port] clients reach the API at over the overlay; present only while connected
+       */
       url?: string;
     };
     ServerEndpointPublic: {
@@ -29843,7 +30289,10 @@ export interface components {
        * @enum {string}
        */
       kind: "public";
-      /** @description scheme://host[:port] clients reach the API at */
+      /**
+       * Format: uri
+       * @description scheme://host[:port] clients reach the API at
+       */
       url: string;
     };
     ServerIdentity: {
@@ -29860,6 +30309,7 @@ export interface components {
        */
       spki_sha256: string;
       /**
+       * Format: uri
        * @description server.local_url: scheme://host[:port] of the API server on the local network, when an admin set one. Clients connect with https on the same host and port, whatever the scheme says, and require the pinned key. Absent when unset; clients may still find local addresses through LAN discovery.
        * @example http://192.168.1.20:8080
        */
@@ -30340,6 +30790,7 @@ export interface components {
     };
     StepLink: {
       label: string;
+      /** Format: uri */
       url: string;
     };
     StoredSubtitle: {
@@ -30355,6 +30806,7 @@ export interface components {
        * @example 1
        */
       id: string;
+      /** @description BCP 47 tag, ISO 639-1 where one exists (en, pt-BR); empty when the stored value is not a recognizable language */
       language: string;
       /**
        * @description Opaque identifier
@@ -30374,12 +30826,14 @@ export interface components {
     StreamV3: {
       container?: string;
       header_refresh: string;
+      /** Format: uri-reference */
       header_refresh_url?: string;
       headers: {
         [key: string]: string;
       };
       mime_type?: string;
       protocol: string;
+      /** Format: uri-reference */
       url: string;
     };
     SubtitleAICreateBody: {
@@ -30393,9 +30847,11 @@ export interface components {
       session_id?: string;
       /** Format: int64 */
       source_index: number;
+      /** @description BCP 47 tag of the source language; empty or unrecognized means detect */
       source_language: string;
       /** Format: double */
       start_position: number;
+      /** @description BCP 47 tag or ISO 639 code to produce; empty only for kind transcribe */
       target_language: string;
     };
     SubtitleAICreateOutputBody: {
@@ -30432,8 +30888,10 @@ export interface components {
       result_subtitle_id: string | null;
       /** Format: int64 */
       source_index: number;
+      /** @description BCP 47 tag of the source language; empty when not given */
       source_language: string;
       status: string;
+      /** @description BCP 47 tag to produce; empty for transcribe jobs */
       target_language: string;
       /**
        * Format: date-time
@@ -30472,6 +30930,7 @@ export interface components {
       mime_type: string;
       /** Format: double */
       timing_origin_seconds: number;
+      /** Format: uri-reference */
       url: string;
     };
     SubtitleClaimsV3: {
@@ -30491,15 +30950,18 @@ export interface components {
     SubtitleDetectForm: {
       /** Format: binary */
       file: string;
+      /** @description BCP 47 tag or ISO 639 code, used as a hint; omitted means detect */
       language?: string;
     };
     SubtitleDetection: {
+      /** @description BCP 47 tag detected from the file name, embedded metadata, or speech */
       language: string;
       /** @enum {string} */
       source: "filename" | "metadata" | "content" | "manual";
     };
     SubtitleDownloadBody: {
       hearing_impaired: boolean;
+      /** @description Language of the chosen result exactly as searchSubtitles returned it (BCP 47) */
       language: string;
       /**
        * @description Opaque identifier
@@ -30523,6 +30985,7 @@ export interface components {
       codec?: string;
       forced: boolean;
       hearing_impaired: boolean;
+      /** @description Subtitle language: BCP 47 tag (en, pt-BR), empty when unknown; older rows may carry a legacy value */
       language: string;
       source: string;
       title?: string;
@@ -30533,14 +30996,17 @@ export interface components {
       combined_index: number;
       default: boolean;
       delivery: string;
+      /** Format: uri-reference */
       font_bundle_url?: string;
       forced: boolean;
       hearing_impaired: boolean;
       label?: string;
+      /** @description Subtitle language: BCP 47 tag (en, pt-BR), empty when unknown; older rows may carry a legacy value */
       language?: string;
       source: string;
       sync_key?: string;
       track_id: string;
+      /** Format: uri-reference */
       url?: string;
     };
     SubtitlePreference: {
@@ -30565,8 +31031,8 @@ export interface components {
        */
       show_forced_subtitles?: boolean;
       /**
-       * @description Preferred subtitle language; empty means no language preference
-       * @example eng
+       * @description Preferred subtitle language for the series: BCP 47 tag (en, pt-BR); empty means no language preference
+       * @example en
        */
       subtitle_language: string;
       /**
@@ -30601,8 +31067,8 @@ export interface components {
        */
       show_forced_subtitles?: boolean;
       /**
-       * @description Preferred subtitle language; empty or omitted means no language preference
-       * @example eng
+       * @description Preferred subtitle language: BCP 47 tag or ISO 639 code, any case (en, eng, pt-BR), stored in canonical form; empty or omitted means no language preference
+       * @example en
        */
       subtitle_language?: string;
       /**
@@ -30639,6 +31105,7 @@ export interface components {
       success: boolean;
     };
     SubtitleSearchBody: {
+      /** @description BCP 47 tags or ISO 639 codes, any case; recognized English language names are also accepted */
       languages: string[];
       /**
        * @description Opaque identifier
@@ -30656,6 +31123,7 @@ export interface components {
        * @example 1
        */
       id: string;
+      /** @description BCP 47 tag, ISO 639-1 where one exists (en, pt-BR) */
       language: string;
       provider: string;
       release_name: string;
@@ -30752,6 +31220,7 @@ export interface components {
       format: string;
       key: string;
       label: string;
+      /** @description Language tag (BCP 47 for current data); may be empty or a legacy value */
       language: string;
       /**
        * @description Opaque identifier
@@ -30812,8 +31281,8 @@ export interface components {
        */
       label?: string;
       /**
-       * @description Track language (ISO 639)
-       * @example eng
+       * @description Track language as the client recorded it, normally the track's language (BCP 47); stored as sent
+       * @example en
        */
       language?: string;
       /**
@@ -30826,6 +31295,7 @@ export interface components {
       /** Format: binary */
       file: string;
       hearing_impaired?: boolean;
+      /** @description BCP 47 tag or ISO 639 code; omitted means detect */
       language?: string;
       language_override?: boolean;
       media_file_id: string;
@@ -30930,7 +31400,10 @@ export interface components {
       delivery: "original" | "converted";
       /** Format: date-time */
       expires_at: string;
-      /** @description Short-lived credential; do not log, persist, or share. Relative to this server, or an absolute URL on a proxy node's origin */
+      /**
+       * Format: uri-reference
+       * @description Short-lived credential; do not log, persist, or share. Relative to this server, or an absolute URL on a proxy node's origin
+       */
       url: string;
     };
     ThemePlaybackRequest: {
@@ -30988,6 +31461,7 @@ export interface components {
     };
     TitleAlias: {
       kind: string;
+      /** @description Language of the alias as the provider reports it, usually ISO 639-1 */
       language?: string;
       provider?: string;
       title: string;
@@ -31021,6 +31495,7 @@ export interface components {
        */
       media_type?: string;
       /**
+       * Format: uri-reference
        * @description A bundled template poster path or an image URL
        * @example
        */
@@ -31056,6 +31531,7 @@ export interface components {
       certification_lte?: string;
       certifications?: string[];
       media_type: string;
+      /** @description TMDB original-language code (ISO 639-1) */
       original_language?: string;
       release_date_gte?: string;
       release_date_lte?: string;
@@ -31095,6 +31571,7 @@ export interface components {
        */
       limit?: number;
       /**
+       * Format: uri-reference
        * @description A bundled template poster path or an image URL
        * @example
        */
@@ -31112,12 +31589,14 @@ export interface components {
        */
       title: string;
       /**
+       * Format: uri-reference
        * @description A public TMDB list page (https://www.themoviedb.org/list/...) or its numeric ID
        * @example https://www.themoviedb.org/list/310-my-movie-list
        */
       url: string;
     };
     TMDBListSpec: {
+      /** Format: uri-reference */
       url: string;
     };
     TMDBSpec: {
@@ -31269,7 +31748,10 @@ export interface components {
        */
       poster_is_collage: boolean;
       poster_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       poster_url?: string;
       /**
        * Format: date-time
@@ -31291,6 +31773,7 @@ export interface components {
        */
       id: string;
       name: string;
+      /** Format: uri-reference */
       poster_url?: string;
       /** Format: int64 */
       sort_order: number;
@@ -31327,6 +31810,7 @@ export interface components {
       /** Format: double */
       start_seconds: number;
       thumbnail_thumbhash?: string;
+      /** Format: uri-reference */
       thumbnail_url?: string;
       title: string;
     };
@@ -31340,6 +31824,7 @@ export interface components {
       hearing_impaired: boolean;
       /** Format: int64 */
       index?: number;
+      /** @description Track language from the file: BCP 47 tag, ISO 639-1 where one exists (en, pt-BR); und when the file marks it undetermined. Older scans may carry an ISO 639-2 code or the file's raw tag; an external track's comes from its file name */
       language?: string;
       resolution?: string;
       title?: string;
@@ -31419,7 +31904,10 @@ export interface components {
       codec?: string;
       default: boolean;
       embedded_title?: string;
-      /** @example eng */
+      /**
+       * @description Track language from the file: BCP 47 tag, ISO 639-1 where one exists (en, pt-BR); und when the file marks it undetermined. Older scans may carry an ISO 639-2 code or the file's raw tag
+       * @example en
+       */
       language?: string;
       layout?: string;
       profile?: string;
@@ -31437,18 +31925,22 @@ export interface components {
       /** Format: double */
       start_seconds: number;
       thumbnail_thumbhash?: string;
+      /** Format: uri-reference */
       thumbnail_url?: string;
       title: string;
     };
     WatchDetail: {
       backdrop_thumbhash?: string;
-      /** @description The item's backdrop, an episode's series backdrop, or an extra's parent backdrop, sized by image_size */
+      /**
+       * Format: uri-reference
+       * @description The item's backdrop, an episode's series backdrop, or an extra's parent backdrop, sized by image_size
+       */
       backdrop_url?: string;
       /** @example movie:heat-1995 */
       content_id: string;
       credits?: components["schemas"]["WatchMarker"];
       effective_show_forced_subtitles?: boolean;
-      /** @description The subtitle language the profile's preferences resolve to */
+      /** @description The subtitle language the profile's preferences resolve to: BCP 47 tag; empty when the preference is None */
       effective_subtitle_language?: string;
       effective_subtitle_mode?: string;
       /** @description The subtitle track the profile last chose on this item */
@@ -31465,7 +31957,10 @@ export interface components {
       /** @description Logical watch choices, each spanning one or more ordered parts */
       playback_variants?: components["schemas"]["WatchPlaybackVariant"][];
       poster_thumbhash?: string;
-      /** @description The item's poster, an episode's still, or an extra's parent poster, sized by image_size; for system media controls */
+      /**
+       * Format: uri-reference
+       * @description The item's poster, an episode's still, or a local extra's still (its parent's poster when it has none), sized by image_size; for system media controls
+       */
       poster_url?: string;
       preview?: components["schemas"]["WatchMarker"];
       recap?: components["schemas"]["WatchMarker"];
@@ -31521,6 +32016,7 @@ export interface components {
       duration_seconds: number;
       edition_key?: string;
       edition_raw?: string;
+      /** @description Language of the audio track playback will pick (BCP 47, from the file), or the item's original language (normally ISO 639-1) when the preference is original; absent when unknown */
       effective_audio_language?: string;
       /** Format: int64 */
       effective_audio_track_index?: number;
@@ -31602,6 +32098,7 @@ export interface components {
        */
       poster_path?: string;
       /**
+       * Format: date
        * @description Calendar date, YYYY-MM-DD: the release date of a movie, the first air date of a series
        * @example 1995-12-15
        */
@@ -31818,6 +32315,7 @@ export interface components {
       interval_seconds: number;
       provider: string;
       user_code: string;
+      /** Format: uri-reference */
       verification_url: string;
     };
     WatchProviderPollInputBody: {
@@ -31969,7 +32467,10 @@ export interface components {
       codec?: string;
       forced: boolean;
       hearing_impaired: boolean;
-      /** @example eng */
+      /**
+       * @description Subtitle language: BCP 47 tag (en, pt-BR), empty when unknown; older rows may carry a legacy value
+       * @example en
+       */
       language: string;
       /**
        * @description embedded or external
@@ -31983,6 +32484,7 @@ export interface components {
       forced: boolean;
       hearing_impaired: boolean;
       label?: string;
+      /** @description Track language as the client recorded it, normally the track's language (BCP 47); stored as sent */
       language?: string;
       source?: string;
     };
@@ -31996,7 +32498,10 @@ export interface components {
       hearing_impaired: boolean;
       /** Format: int64 */
       index?: number;
-      /** @example eng */
+      /**
+       * @description Track language from the file: BCP 47 tag, ISO 639-1 where one exists (en, pt-BR); und when the file marks it undetermined. Older scans may carry an ISO 639-2 code or the file's raw tag; an external track's comes from its file name
+       * @example en
+       */
       language?: string;
       resolution?: string;
       title?: string;
@@ -32266,6 +32771,7 @@ export interface components {
        */
       id: string;
       note: string;
+      /** @description Poster the suggesting member's client sent; not validated as a URI */
       poster_url: string;
       /**
        * @description Opaque identifier
@@ -32293,6 +32799,7 @@ export interface components {
       /** @enum {string} */
       content_type: "movie" | "episode";
       note?: string;
+      /** Format: uri-reference */
       poster_url?: string;
       subtitle?: string;
       /** Format: uuid */
@@ -32339,7 +32846,10 @@ export interface components {
       /** @description Whether backdrop_url is an episode still. False for series artwork; absent when provenance is unavailable. */
       backdrop_is_episode_still?: boolean;
       backdrop_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       backdrop_url?: string;
       /** @description Section-specific badges (new, returning, …) */
       badges?: string[];
@@ -32362,9 +32872,15 @@ export interface components {
       item_source?: string;
       /** @description Empty, never null */
       keywords: string[];
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       last_air_date?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       logo_url?: string;
       /** @description Localized fields whose text was machine-translated by AI rather than supplied by a metadata provider or a person; absent when none were. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards. A card shows no tagline, so a card's overview label depends on overview alone. */
       machine_translated_fields?: ("overview" | "tagline")[];
@@ -32373,12 +32889,15 @@ export interface components {
       /** Format: int64 */
       manga_volume_count?: number;
       networks?: string[];
-      /** @example en */
+      /**
+       * @description Original language, normally an ISO 639-1 code (ISO 639-3 when none exists, such as fil); provider codes such as TMDB's xx pass through, and audiobook and ebook items can carry the file's raw tag
+       * @example en
+       */
       original_language?: string;
       /** @description Technical badges of the best file */
       overlay_summary?: components["schemas"]["CatalogItemOverlay"];
       overview?: string;
-      /** @description The language this profile reads here when the descriptions this item's page shows are not available in it yet. That is the profile's metadata language after its per-language exceptions, or, when it sets none, the library's for a library's rows or a detail opened in that library. It is pending for the item's own overview, or for a season its overview or any of its episodes' overviews. Echo it to translateCatalogItemDescription to translate on view. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards; other listings never carry it, so its absence there says nothing about the language. */
+      /** @description The language (BCP 47 tag, such as en or pt-BR) this profile reads here when the descriptions this item's page shows are not available in it yet. That is the profile's metadata language after its per-language exceptions, or, when it sets none, the library's for a library's rows or a detail opened in that library. It is pending for the item's own overview, or for a season its overview or any of its episodes' overviews. Echo it to translateCatalogItemDescription to translate on view. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards; other listings never carry it, so its absence there says nothing about the language. */
       pending_translation_language?: string;
       /** @description The item to play when the card is a series or season; absent when the item plays itself */
       play_content_id?: string;
@@ -32390,7 +32909,10 @@ export interface components {
       /** @description Whether poster_url is an episode still. False for series or season artwork; absent when provenance is unavailable. */
       poster_is_episode_still?: boolean;
       poster_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       poster_url?: string;
       /**
        * Format: date-time
@@ -32412,6 +32934,7 @@ export interface components {
       /** Format: double */
       rating_tmdb?: number;
       /**
+       * Format: date
        * @description Calendar date, YYYY-MM-DD
        * @example 1995-12-15
        */
@@ -32488,7 +33011,10 @@ export interface components {
       character?: string;
       /** @example Al Pacino */
       name: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       photo_url?: string;
     };
     WatchTonightItem: {
@@ -32512,7 +33038,10 @@ export interface components {
       /** @description Whether backdrop_url is an episode still. False for series artwork; absent when provenance is unavailable. */
       backdrop_is_episode_still?: boolean;
       backdrop_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       backdrop_url?: string;
       /** @description Section-specific badges (new, returning, …) */
       badges?: string[];
@@ -32533,9 +33062,15 @@ export interface components {
       item_source?: string;
       /** @description Empty, never null */
       keywords: string[];
-      /** @description Calendar date, YYYY-MM-DD */
+      /**
+       * Format: date
+       * @description Calendar date, YYYY-MM-DD
+       */
       last_air_date?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       logo_url?: string;
       /** @description Localized fields whose text was machine-translated by AI rather than supplied by a metadata provider or a person; absent when none were. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards. A card shows no tagline, so a card's overview label depends on overview alone. */
       machine_translated_fields?: ("overview" | "tagline")[];
@@ -32544,12 +33079,15 @@ export interface components {
       /** Format: int64 */
       manga_volume_count?: number;
       networks?: string[];
-      /** @example en */
+      /**
+       * @description Original language, normally an ISO 639-1 code (ISO 639-3 when none exists, such as fil); provider codes such as TMDB's xx pass through, and audiobook and ebook items can carry the file's raw tag
+       * @example en
+       */
       original_language?: string;
       /** @description Technical badges of the best file */
       overlay_summary?: components["schemas"]["CatalogItemOverlay"];
       overview?: string;
-      /** @description The language this profile reads here when the descriptions this item's page shows are not available in it yet. That is the profile's metadata language after its per-language exceptions, or, when it sets none, the library's for a library's rows or a detail opened in that library. It is pending for the item's own overview, or for a season its overview or any of its episodes' overviews. Echo it to translateCatalogItemDescription to translate on view. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards; other listings never carry it, so its absence there says nothing about the language. */
+      /** @description The language (BCP 47 tag, such as en or pt-BR) this profile reads here when the descriptions this item's page shows are not available in it yet. That is the profile's metadata language after its per-language exceptions, or, when it sets none, the library's for a library's rows or a detail opened in that library. It is pending for the item's own overview, or for a season its overview or any of its episodes' overviews. Echo it to translateCatalogItemDescription to translate on view. Set only on item details, the cards built from them (shuffles, the Watch Together picker), and Home and library section cards; other listings never carry it, so its absence there says nothing about the language. */
       pending_translation_language?: string;
       /** @description The item to play when the card is a series or season; absent when the item plays itself */
       play_content_id?: string;
@@ -32561,7 +33099,10 @@ export interface components {
       /** @description Whether poster_url is an episode still. False for series or season artwork; absent when provenance is unavailable. */
       poster_is_episode_still?: boolean;
       poster_thumbhash?: string;
-      /** @description Presigned, short-lived */
+      /**
+       * Format: uri-reference
+       * @description Presigned, short-lived
+       */
       poster_url?: string;
       /**
        * Format: date-time
@@ -32583,6 +33124,7 @@ export interface components {
       /** Format: double */
       rating_tmdb?: number;
       /**
+       * Format: date
        * @description Calendar date, YYYY-MM-DD
        * @example 1995-12-15
        */
@@ -32691,7 +33233,10 @@ export interface components {
        * @example 0
        */
       index: number;
-      /** @description A JPEG image; the URL carries its own authorization */
+      /**
+       * Format: uri-reference
+       * @description A JPEG image; the URL carries its own authorization
+       */
       url: string;
     };
     WatchUserData: {
@@ -32805,7 +33350,10 @@ export interface components {
       updated_at: string;
       /** Format: int64 */
       user_count: number;
-      /** @description Relative URL of the external webhook receiver; resolve against the server origin. */
+      /**
+       * Format: uri-reference
+       * @description Relative URL of the external webhook receiver; resolve against the server origin.
+       */
       webhook_url: string;
     };
     WebhookConnectionCollection: {
@@ -32816,6 +33364,7 @@ export interface components {
     };
     WebhookCreateInputBody: {
       access_token?: string;
+      /** Format: uri-reference */
       base_url?: string;
       /**
        * @description Opaque identifier
@@ -32829,6 +33378,7 @@ export interface components {
     };
     WebhookCreateOutputBody: {
       connection: components["schemas"]["WebhookConnection"];
+      /** Format: uri-reference */
       webhook_url: string;
     };
     WebhookEvent: {
@@ -78121,6 +78671,7 @@ export interface operations {
     parameters: {
       query?: {
         cursor?: string;
+        /** @description BCP 47 tag or ISO 639 code; legacy spellings of the same language also match */
         language?: string;
         /** @description Page size; default 50, maximum 200 */
         limit?: number;
@@ -86280,6 +86831,15 @@ export interface operations {
           "application/problem+json": components["schemas"]["Problem"];
         };
       };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
       /** @description Internal Server Error */
       500: {
         headers: {
@@ -89367,7 +89927,7 @@ export interface operations {
           | "person";
         /** @description Metadata match state */
         status?: string;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
         /** @description Media scope: movie, series, episode, audiobook, ebook, manga, or video (movies and series). video_with_episodes, for source=query only, searches movies, series, and episodes when q is set and lists movies and series without q; check getCatalogSearchCapabilities.video_with_episodes_scope first */
         type?: string;
@@ -89503,7 +90063,7 @@ export interface operations {
         skip_total?: boolean;
         /** @description Default name */
         sort?: "name" | "count" | "duration";
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -89901,7 +90461,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -90029,7 +90589,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -90155,7 +90715,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -90958,7 +91518,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -91561,7 +92121,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -91847,7 +92407,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -91971,7 +92531,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -92097,7 +92657,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -97417,6 +97977,134 @@ export interface operations {
         headers: {
           /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
           ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  retireApplePushInstallation: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Positive decimal int64, persisted and incremented for each new installation intent across account/profile switches. Reuse exactly after uncertainty. */
+        "X-Push-Generation": string;
+        /** @description Secret 32-byte base64url installation credential. Persist privately; never rotate on retry or account switch. */
+        "X-Push-Installation-Key": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ApplePushRetirementBody"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ApplePushRetirementReceipt"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
+        headers: {
           [name: string]: unknown;
         };
         content: {
@@ -103793,7 +104481,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -104239,7 +104927,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -105869,7 +106557,7 @@ export interface operations {
         poster_width?: number;
         /** @description Opt in to promoted home sections */
         promoted?: "1";
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -105990,7 +106678,7 @@ export interface operations {
         poster_width?: number;
         /** @description Opt in to promoted home sections */
         promoted?: "1";
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -106111,7 +106799,7 @@ export interface operations {
         poster_width?: number;
         /** @description Opt in to promoted home sections */
         promoted?: "1";
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -111019,7 +111707,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -111141,7 +111829,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -112099,7 +112787,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -114901,6 +115589,114 @@ export interface operations {
       };
     };
   };
+  retirePushDevice: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Positive decimal int64, persisted and incremented for each new installation intent across account/profile switches. Reuse exactly after uncertainty. */
+        "X-Push-Generation": string;
+        /** @description Secret 32-byte base64url installation credential. Persist privately; never rotate on retry or account switch. */
+        "X-Push-Installation-Key": string;
+      };
+      path: {
+        device_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AndroidPushRetirementReceipt"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   getPushRegistrationCapabilities: {
     parameters: {
       query?: never;
@@ -115201,7 +115997,7 @@ export interface operations {
           | "-latest_episode_added";
         /** @description active keeps the series that notify; inactive keeps the ones that do not, because the profile's preferences silence every reason or the profile muted the series */
         status?: "all" | "active" | "inactive";
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -122294,7 +123090,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -122416,7 +123212,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -122537,7 +123333,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -122658,7 +123454,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -122781,7 +123577,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -122904,7 +123700,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -123027,7 +123823,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -123158,7 +123954,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -123279,7 +124075,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -123648,7 +124444,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -123769,7 +124565,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -123896,7 +124692,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -126730,6 +127526,112 @@ export interface operations {
       };
     };
   };
+  listSeasonalThemes: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name a profile of the authenticated account. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SeasonalThemeCatalog"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   getSettingsContract: {
     parameters: {
       query?: never;
@@ -128793,7 +129695,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -128953,7 +129855,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -129191,7 +130093,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -129353,7 +130255,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {
@@ -138929,7 +139831,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header?: {
@@ -139385,7 +140287,7 @@ export interface operations {
         photo_width?: number;
         /** @description Width in device pixels the client draws poster_url at. Overrides image_size for posters: the narrowest cached size at least this wide, else the original */
         poster_width?: number;
-        /** @description Width in device pixels the client draws an episode's still_url at. Overrides image_size for episode stills */
+        /** @description Width in device pixels the client draws an episode's or a local extra's still_url at. Overrides image_size for those stills */
         still_width?: number;
       };
       header: {

@@ -57,7 +57,8 @@ PRAGMA user_version = 32;`); err != nil {
 }
 
 // Bloem's former v34 dropped the Jellyfin display-preference table from a
-// store that already had user_devices.custom_name; v35 brings the table back.
+// store that already had user_devices.custom_name; Bloem's step brings the
+// table back.
 func TestBloemV34StoreRegainsDisplayPrefs(t *testing.T) {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
@@ -81,5 +82,41 @@ func TestBloemV34StoreRegainsDisplayPrefs(t *testing.T) {
 	var tables int
 	if err := db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE name = 'jellycompat_displayprefs'`).Scan(&tables); err != nil || tables != 1 {
 		t.Fatalf("jellycompat_displayprefs tables = %d, %v; want 1", tables, err)
+	}
+}
+
+// A store Bloem left at its former v35 never ran Silo's v34 or v35, which
+// reused those numbers, so it resumes after v33 and gets both.
+func TestBloemV35StoreRunsSiloV34AndV35(t *testing.T) {
+	db := newSingleConnSchemaDB(t)
+	if _, err := db.Exec(`
+ALTER TABLE series_playback_preferences DROP COLUMN file_id;
+ALTER TABLE series_playback_preferences DROP COLUMN edition_key;
+INSERT INTO profile_section_overrides (id, profile_id, scope, library_id, section_id, hidden, section_type, is_user_added, user_section_type, created_at, updated_at) VALUES
+    ('added', 'p1', 'home', NULL, NULL, 0, NULL, 1, 'next_up', 'now', 'now'),
+    ('gems', 'p1', 'home', NULL, NULL, 0, NULL, 1, 'hidden_gems', 'now', 'now');
+PRAGMA user_version = 35;`); err != nil {
+		t.Fatalf("seed Bloem v35 store: %v", err)
+	}
+
+	if err := runMigrations(db); err != nil {
+		t.Fatalf("runMigrations: %v", err)
+	}
+	if version, err := userVersion(db); err != nil || version != schemaVersion {
+		t.Fatalf("user_version = %d, %v; want %d", version, err, schemaVersion)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	for _, column := range []string{"file_id", "edition_key"} {
+		if !columnExists(tx, "series_playback_preferences", column) {
+			t.Fatalf("series_playback_preferences.%s missing after migration", column)
+		}
+	}
+	var nextUp int
+	if err := tx.QueryRow(`SELECT count(*) FROM profile_section_overrides WHERE user_section_type = 'next_up'`).Scan(&nextUp); err != nil || nextUp != 0 {
+		t.Fatalf("added Next Up rows = %d, %v; want 0", nextUp, err)
 	}
 }

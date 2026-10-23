@@ -83,6 +83,14 @@ var knownNamed = map[string]TypeRef{
 	"github.com/Silo-Server/silo-server/internal/apiv2.NullableInstant": {Kind: KindTime, Nullable: true},
 }
 
+// shapePreservingMarshalers are types whose MarshalJSON writes their own
+// struct fields, so the plain struct is the wire shape. models.VideoTrack only
+// keeps hdr10_plus present once a scan has checked it; an absent hdr10_plus
+// already reads as false.
+var shapePreservingMarshalers = map[string]bool{
+	"github.com/Silo-Server/silo-server/internal/models.VideoTrack": true,
+}
+
 // nullableWrappers maps a wrapper whose MarshalJSON writes its Value field or
 // null to the name of the wrapped type in the same package.
 var nullableWrappers = map[string]string{
@@ -444,7 +452,7 @@ func (b *builder) resolveNamed(t *types.Named, ownerKey, field string, pos token
 		b.refuse(ownerKey, field, "json.Number is a string in Go but a bare number on the wire; state the numeric type instead", pos)
 		return TypeRef{}
 	}
-	if m := hasCustomMarshal(t); m != "" {
+	if m := hasCustomMarshal(t); m != "" && !shapePreservingMarshalers[qualified] {
 		b.refuse(ownerKey, field, fmt.Sprintf("%s has a custom %s; its response shape is invisible — add a registry serializer for the field or project it into a named type", qualified, m), pos)
 		return TypeRef{}
 	}

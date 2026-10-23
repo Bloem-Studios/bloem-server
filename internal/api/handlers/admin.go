@@ -28,6 +28,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/ai/chatgpt"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/auth/passwordhash"
 	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/cache"
 	"github.com/Silo-Server/silo-server/internal/catalog"
@@ -1121,6 +1122,8 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 			writeError(w, http.StatusNotFound, "not_found", "User not found")
 		case auth.IsDuplicate(err):
 			writeError(w, http.StatusConflict, "duplicate", "A user with that username or email already exists")
+		case errors.Is(err, passwordhash.ErrBusy):
+			writeAPIError(w, busyError(err))
 		default:
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update user")
 		}
@@ -2819,6 +2822,7 @@ func (h *AdminHandler) UpdateAdminSettings(ctx context.Context, values map[strin
 		if h.OnServerSettingUpdated != nil {
 			h.OnServerSettingUpdated(ctx, key, after[key])
 		}
+		publishAdminDefaultEvent(ctx, h.EventsHub, key)
 		if config.RestartRequired(key) {
 			restartKeys = append(restartKeys, key)
 		}
@@ -3208,6 +3212,7 @@ func (h *AdminHandler) UpdateAdminSetting(ctx context.Context, key, value string
 		if h.OnServerSettingUpdated != nil {
 			h.OnServerSettingUpdated(ctx, key, after[key])
 		}
+		publishAdminDefaultEvent(ctx, h.EventsHub, key)
 	}
 	restartRequired := effectiveChanged && config.RestartRequired(key)
 	if restartRequired {

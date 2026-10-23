@@ -92,8 +92,14 @@ var membershipPolicyColumns = map[string]bool{
 
 // UpdateInTransaction applies the canonical normalization, hashing and access
 // revision behavior while participating in the caller's transaction.
+// The caller already holds its transaction, so a new password is hashed inside
+// it; Update and the v2 admin path hash before they begin.
 func (r *UserRepository) UpdateInTransaction(ctx context.Context, tx pgx.Tx, id int, input models.UpdateUserInput) error {
-	return r.updateWithQuerier(ctx, tx, id, input)
+	passwordHash, err := hashUpdatePassword(ctx, &input)
+	if err != nil {
+		return err
+	}
+	return r.updateWithQuerier(ctx, tx, id, input, passwordHash)
 }
 
 // applyMembershipPolicyUpdate writes the policy half of an account update to the

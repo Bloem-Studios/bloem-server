@@ -15,6 +15,12 @@ type toggleEbookCoverCacher struct {
 	fakeEbookCoverCacher
 }
 
+// CacheExtraStill completes the scanner's image cacher; ebook cover retries
+// never cache an extra's still.
+func (*toggleEbookCoverCacher) CacheExtraStill(context.Context, []byte, string) (string, string, error) {
+	return "", "", nil
+}
+
 func (f *toggleEbookCoverCacher) CacheAudiobookCover(context.Context, []byte, string) (string, string, error) {
 	return "", "", errors.New("unexpected audiobook cover")
 }

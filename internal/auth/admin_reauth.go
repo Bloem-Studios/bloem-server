@@ -31,5 +31,10 @@ func (v *AccountCredentialVerifier) VerifyPassword(ctx context.Context, accountI
 	if err != nil {
 		return false, err
 	}
-	return account != nil && account.Enabled && account.LocalPasswordLoginEnabled && CheckPassword(account, password), nil
+	if account == nil || !account.Enabled || !account.LocalPasswordLoginEnabled {
+		return false, nil
+	}
+	// passwordhash.ErrBusy is neither a match nor a mismatch; callers answer
+	// it as a retryable busy error.
+	return CheckPassword(ctx, account, password)
 }

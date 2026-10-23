@@ -83,6 +83,11 @@ const (
 	// server_transcode_hls plan uses it, for an embedded text track. It
 	// exists only on /api/v2 (see NativeServerFeaturesV3).
 	FeatureHLSSubtitleRenditionsV3 = "hls_subtitle_renditions_v1"
+	// FeaturePlanActiveQualityV3 tells a client the plan names the
+	// available_qualities entry it delivers in active_quality, so an absent
+	// active_quality means "no entry" rather than "a server that predates
+	// the field". It exists only on /api/v2 (see NativeServerFeaturesV3).
+	FeaturePlanActiveQualityV3 = "plan_active_quality_v1"
 	// FailureSubtitleHLSRenditionFailedV3 is the failure_recovery
 	// classification a client sends when the plan's subtitle rendition never
 	// became selectable in its player. The server stops offering renditions
@@ -209,7 +214,7 @@ func ServerFeaturesV3() []string {
 // advertises and honors only on /api/v2. They postdate the /api/v1 freeze, so
 // the frozen surface neither advertises nor negotiates them.
 func NativeServerFeaturesV3() []string {
-	return append(ServerFeaturesV3(), FeatureSubripSidecarV3, FeatureMarkerThumbnailsV3, FeatureHLSSubtitleRenditionsV3)
+	return append(ServerFeaturesV3(), FeatureSubripSidecarV3, FeatureMarkerThumbnailsV3, FeatureHLSSubtitleRenditionsV3, FeaturePlanActiveQualityV3)
 }
 
 // WithoutFeatureV3 returns features with every spelling of feature removed.
@@ -796,13 +801,13 @@ type RouteEventV3 struct {
 }
 
 type StreamV3 struct {
-	URL              string              `json:"url"`
+	URL              string              `json:"url" format:"uri-reference"`
 	Protocol         StreamProtocolV3    `json:"protocol"`
 	Container        string              `json:"container,omitempty"`
 	MIMEType         string              `json:"mime_type,omitempty"`
 	Headers          map[string]string   `json:"headers"`
 	HeaderRefresh    HeaderRefreshModeV3 `json:"header_refresh"`
-	HeaderRefreshURL string              `json:"header_refresh_url,omitempty"`
+	HeaderRefreshURL string              `json:"header_refresh_url,omitempty" format:"uri-reference"`
 }
 
 type TimelineV3 struct {
@@ -902,7 +907,7 @@ type ValidationClaimsV3 struct {
 }
 
 type SubtitleArtifactV3 struct {
-	URL                 string  `json:"url"`
+	URL                 string  `json:"url" format:"uri-reference"`
 	MIMEType            string  `json:"mime_type"`
 	Format              string  `json:"format"`
 	TimingOriginSeconds float64 `json:"timing_origin_seconds"`
@@ -1032,6 +1037,10 @@ type PlanV3 struct {
 	EffectiveMediaFileID   int                    `json:"effective_media_file_id"`
 	Source                 SourceDescriptorV3     `json:"source"`
 	SubtitleFidelityPolicy string                 `json:"subtitle_fidelity_policy"`
+	// ActiveQuality is the AvailableQualities label this plan delivers, or
+	// empty when it delivers none of them (see activeQualityV3). Published
+	// on /api/v2 only, under FeaturePlanActiveQualityV3.
+	ActiveQuality string `json:"active_quality,omitempty"`
 }
 
 type TerminalV3 struct {

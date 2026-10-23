@@ -35,7 +35,7 @@ func (BloemAccount) Schema(r huma.Registry) *huma.Schema {
 
 type BloemPreviewDenial struct {
 	Code     string `json:"code" enum:"preview_only"`
-	CTAURL   string `json:"cta_url"`
+	CTAURL   string `json:"cta_url" format:"uri-reference"`
 	CTALabel string `json:"cta_label"`
 }
 type BloemPlaybackCapabilities struct {

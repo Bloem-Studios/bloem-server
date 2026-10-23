@@ -2524,6 +2524,30 @@
     {
       "type": "internal/apiv2.BloemAccountPolicySnapshotsRequest",
       "reason": "OpenAPI-only declaration of the existing platform/session administration chi contract. Native administration-client adoption is separate; these schema mirrors are not client DTO roots."
+    },
+    {
+      "type": "internal/apiv2.AndroidPushRetirementReceipt",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-23 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.ApplePushRetirementBody",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-23 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.ApplePushRetirementReceipt",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-23 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.SeasonalTheme",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-23 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.SeasonalThemeCatalog",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-23 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.SeasonalVibe",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-23 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
     }
   ]
 }

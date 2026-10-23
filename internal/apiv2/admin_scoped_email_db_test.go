@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
@@ -162,7 +163,7 @@ func TestScopedAdminKeyCannotRedirectRecoveryDB(t *testing.T) {
 					t.Fatalf("recovery did not issue a full admin login: %+v, %v", claims, err)
 				}
 				stored, err = users.GetByID(ctx, admin.ID)
-				if err != nil || !auth.CheckPassword(stored, "replacement-password") {
+				if err != nil || bcrypt.CompareHashAndPassword([]byte(stored.PasswordHash), []byte("replacement-password")) != nil {
 					t.Fatal("recovery did not replace the password", err)
 				}
 				// The same account and email write succeed through its full login,

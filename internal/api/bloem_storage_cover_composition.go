@@ -34,7 +34,7 @@ func nativeStorageActorPolicy(deps Dependencies) nativeVideoPolicy {
 	unrated := config.NewUnratedContentPolicy(catalog.NewEncryptedSettingsRepo(catalog.NewServerSettingsRepo(deps.DB), deps.SecretCipher))
 	var viewer middleware.ViewerResolver
 	if deps.PolicySystem != nil {
-		viewer = policy.NewViewerResolver(users, deps.UserStoreProvider, tokens, deps.PolicySystem.PDP(), groups).WithUnratedContentPolicy(unrated).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))
+		viewer = policy.NewViewerResolver(users, deps.UserStoreProvider, tokens, deps.PolicySystem.PDP(), groups).WithUnratedContentPolicy(unrated).WithAdminDefaults(deps.AdminDefaults).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))
 	} else {
 		viewer = access.NewResolver(users, deps.UserStoreProvider, tokens, groups).WithUnratedContentPolicy(unrated)
 	}

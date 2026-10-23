@@ -437,7 +437,7 @@ func TestMemberServiceIdentityAndSessionRevocationAreAtomic(t *testing.T) {
 		t.Fatal("password reset unexpectedly succeeded despite revoke failure")
 	}
 	stored, err = service.Get(ctx, tenant.ID, member.ID)
-	if err != nil || !auth.CheckPassword(&stored, input.Password) {
+	if err != nil || !passwordMatches(&stored, input.Password) {
 		t.Fatalf("password committed despite revoke failure: user=%+v err=%v", stored, err)
 	}
 	if _, err := service.Suspend(ctx, tenant.ID, member.ID); err == nil {
@@ -605,13 +605,13 @@ func TestMemberServiceCompatInvalidationRunsAfterCommittedSecurityMutation(t *te
 		if err := pool.QueryRow(queryCtx, `SELECT password_hash FROM users WHERE id=$1`, member.ID).Scan(&passwordHash); err != nil {
 			return false
 		}
-		return auth.CheckPassword(&models.User{PasswordHash: passwordHash}, resetPassword)
+		return passwordMatches(&models.User{PasswordHash: passwordHash}, resetPassword)
 	}))
 	if _, err := service.ResetPassword(ctx, tenant.ID, member.ID, resetPassword); !errors.Is(err, compatErr) {
 		t.Fatalf("reset error = %v, want committed compat failure", err)
 	}
 	stored, err = service.Get(ctx, tenant.ID, member.ID)
-	if err != nil || !auth.CheckPassword(&stored, resetPassword) {
+	if err != nil || !passwordMatches(&stored, resetPassword) {
 		t.Fatalf("password did not remain committed after compat failure: user=%+v err=%v", stored, err)
 	}
 
@@ -676,7 +676,7 @@ func TestMemberServiceCompatInvalidationSurvivesRequestCancellationAndPrecedesRe
 				}
 			case "password reset":
 				var passwordHash string
-				if err := pool.QueryRow(context.Background(), `SELECT password_hash FROM users WHERE id=$1`, member.ID).Scan(&passwordHash); err != nil || !auth.CheckPassword(&models.User{PasswordHash: passwordHash}, "replacement-password") {
+				if err := pool.QueryRow(context.Background(), `SELECT password_hash FROM users WHERE id=$1`, member.ID).Scan(&passwordHash); err != nil || !passwordMatches(&models.User{PasswordHash: passwordHash}, "replacement-password") {
 					t.Fatalf("committed password reset missing: %v", err)
 				}
 			}
@@ -834,7 +834,7 @@ func TestMemberServiceLifecycleIsTenantScopedAndRevokesResetSessions(t *testing.
 		t.Fatalf("create session: %v", err)
 	}
 	reset, err := service.ResetPassword(ctx, tenant.ID, member.ID, "replacement-secret")
-	if err != nil || !auth.CheckPassword(&reset, "replacement-secret") {
+	if err != nil || !passwordMatches(&reset, "replacement-secret") {
 		t.Fatalf("reset = (%+v, %v)", reset, err)
 	}
 	storedSession, err := sessions.GetByID(ctx, sessionID)
@@ -863,4 +863,11 @@ func TestMemberServiceLifecycleIsTenantScopedAndRevokesResetSessions(t *testing.
 	if _, err := service.Get(ctx, tenant.ID, member.ID); !errors.Is(err, tenancy.ErrMemberNotFound) {
 		t.Fatalf("get after delete = %v", err)
 	}
+}
+
+// passwordMatches reports whether password matches the account. A server too
+// busy to check counts as a mismatch, which fails the caller's assertion.
+func passwordMatches(user *models.User, password string) bool {
+	ok, err := auth.CheckPassword(context.Background(), user, password)
+	return err == nil && ok
 }

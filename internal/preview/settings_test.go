@@ -94,7 +94,7 @@ func TestPutRevokesTheNewSharedAccountsCredentials(t *testing.T) {
 	if _, err := pool.Exec(ctx, `INSERT INTO auth_sessions (id, user_id, expires_at) VALUES ($1, $2, now() + interval '1 hour')`, sessionID, account); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO api_keys (user_id, label, api_key) VALUES ($1, 'old', $2)`, account, "sa_"+uuid.NewString()); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO api_keys (user_id, label, key_hash) VALUES ($1, 'old', encode(sha256(convert_to($2, 'UTF8')), 'hex'))`, account, "sa_"+uuid.NewString()); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Put(ctx, validSettings(t, account, pub)); err != nil {
