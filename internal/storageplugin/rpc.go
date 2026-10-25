@@ -17,9 +17,30 @@ func rpcContext(caller, lifetime context.Context, limit time.Duration) (context.
 	}
 	return ctx, func() { stop(); cancel() }
 }
+
+// RPCLimit lets one unary call run for up to limit instead of the session's
+// RPC deadline, for a call the caller deliberately gives longer, such as a
+// listing page. It never shortens the session limit, and the caller's own
+// deadline still applies.
+func RPCLimit(limit time.Duration) grpc.CallOption { return rpcLimit{limit: limit} }
+
+type rpcLimit struct {
+	grpc.EmptyCallOption
+	limit time.Duration
+}
+
+func callLimit(opts []grpc.CallOption, limit time.Duration) time.Duration {
+	for _, opt := range opts {
+		if requested, ok := opt.(rpcLimit); ok && requested.limit > limit {
+			limit = requested.limit
+		}
+	}
+	return limit
+}
+
 func unaryLifetime(lifetime context.Context, limit time.Duration) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoke grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		bounded, cancel := rpcContext(ctx, lifetime, limit)
+		bounded, cancel := rpcContext(ctx, lifetime, callLimit(opts, limit))
 		defer cancel()
 		return invoke(bounded, method, req, reply, cc, opts...)
 	}
