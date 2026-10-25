@@ -86,8 +86,13 @@ point. Drop them only when Silo switching ends for good.
   (background jobs, caches and scheduled work assume one owner).
 - **Separate caches.** Each backend has its own Redis, flushed before it starts.
 - **Silo version pin.** Run a Silo image whose source revision Bloem has
-  already merged (an ancestor of the deployed Bloem commit). A newer upstream
-  can apply database changes Bloem has not adapted to.
+  already merged (an ancestor of the deployed Bloem commit) and that has every
+  Silo migration Bloem has applied to the database. A newer upstream can apply
+  database changes Bloem has not adapted to; an older one can expect a schema
+  that a later Silo migration changed. For example,
+  `20261019181724_hash_api_key_verifiers.sql` replaces the raw `api_keys.api_key`
+  column with sha256 verifiers in `key_hash`, which a Silo image from before
+  that migration cannot read.
 - **Rollback point.** Snapshot the database before the first switch.
 
 ## Checking a change

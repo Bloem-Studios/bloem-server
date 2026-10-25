@@ -607,9 +607,12 @@ working on the same data; only one runs at a time.
 
 1. Back up the database, or snapshot the volume or container that holds it. This
    is the rollback point for the takeover itself.
-2. Pin Silo's image by digest to a release Bloem has already merged
+2. Pin Silo's image by digest to the release Bloem last merged
    (`SILO_IMAGE=ghcr.io/silo-server/silo-server@sha256:...`). Do not leave Silo on
    `latest`: a newer upstream can apply database changes Bloem has not adapted to.
+   An older one may not read a schema a later Silo migration changed: a Silo image
+   from before Silo's `ba2de9827` (#2715) cannot read API keys stored as verifiers.
+   See the [Silo version pin](../../../../architecture/silo-backend-switching.md#operating-rules).
 3. Give Bloem Silo's `DATABASE_URL` and the same `SECRET_KEY` (encrypted settings
    are unreadable with any other key). Give Bloem its own Redis.
 4. Copy Silo's plugin directory to Bloem's data root, and mount the media at the

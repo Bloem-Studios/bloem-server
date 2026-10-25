@@ -16,6 +16,13 @@ pre-submission gate are in [CONTRIBUTING.md](../../../.github/CONTRIBUTING.md).
 
 ---
 
+**Location:** section “Prerequisites”. **Bloem adds:**
+
+Bloem's `go.mod` declares `go 1.26.10`, above Silo's 1.26.4 minimum, so build
+with Go 1.26.10 or later. Bloem CI installs exactly the patch `go.mod` names.
+
+---
+
 **Location:** section “Working on the plugin SDK at the same time”. **Bloem replaces** the corresponding upstream passage with:
 
 If a change spans Bloem Server and `silo-plugin-sdk`, use an untracked local `go.work`
@@ -108,10 +115,17 @@ marker from `public.bloem_membership_policy_writer_marker()`, never from an inli
 phase check. Local test databases need `max_locks_per_transaction = 512`, as in CI,
 and `make lint-changed` needs a golangci-lint built with the toolchain `go.mod` names.
 
-Run `make verify-seams` after an upstream merge. Bloem currently declares 407
-modified upstream files; additions belong in owned modules wherever possible.
-The web budget uses `web/bloem-perf-budget.json` through its owned runner, keeping
-Silo's validation rules unchanged.
+Run `make verify-seams` after an upstream merge. Bloem currently declares 350
+seams (modified or deleted upstream files); additions belong in owned modules
+wherever possible. CI's changed-line lint gate, `scripts/bloem-lint-changed-ci.sh`,
+reports a finding only on a line that changed in the push and differs from Silo's
+copy of the file, so lines a Silo merge brings in, or a file restored to Silo's
+text, do not count against Bloem; Bloem's own changed lines, in any file, still do.
+The web budget keeps Bloem's measured allowance in `web/bloem-perf-budget.json`
+(326,067 B brotli for the eager launch bundle, within 1 KiB either way, and no
+cross-origin render-blocking resources), checked by `pnpm run budget:check`
+through the owned `web/scripts/bloem-bundle-budget.mjs` with Silo's manifest and
+resource checks unchanged; Silo's own script reports launch bytes without gating them.
 
 The [web coverage matrix](../../architecture/bloem-web-feature-coverage.md) and
 [completion handoff](../../architecture/bloem-web-completion-handoff.md) distinguish

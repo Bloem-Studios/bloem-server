@@ -101,6 +101,7 @@ make test-go
 make test-web
 make lint
 (cd web && pnpm run format:check)
+(cd web && pnpm run budget:check)    # after make build
 make verify-settings-bindings-all
 make verify-client-dtos
 make verify-client-coverage
@@ -120,9 +121,11 @@ make verify-local-paths
 ```
 
 `make build` installs the pinned frontend dependencies and builds the embedded
-web bundle. `make lint` runs the full local Go and frontend linters; CI scopes
+web bundle, which `pnpm run budget:check` then measures against
+`web/bloem-perf-budget.json`. `make lint` runs the full local Go and frontend linters; CI scopes
 its Go lint gate to changed lines because the repository has pre-existing
-findings. `go tool govulncheck ./...` is CI's reachable Go vulnerability scan.
+findings. `go tool govulncheck ./...` is CI's reachable Go vulnerability scan;
+CI runs it on exactly the Go patch `go.mod` names, so run it on that patch too.
 Touching `internal/apiv2` registrations? Run `make apiv2-openapi` and
 `make apiv2-fixtures` and commit what they write; the gates above fail on a
 stale artifact or fixture tree.
@@ -134,6 +137,11 @@ the packages your branch touched, so it takes seconds where a cold run over
 `./...` takes minutes of every core. Do not add to the inherited findings.
 Never pass `--allow-parallel-runners`: concurrent runs queue behind one
 another on purpose.
+
+An upstream merge brings in Silo's own lines, which `make lint-changed` would
+report as changed. CI's push gate, `scripts/bloem-lint-changed-ci.sh`, reports
+only changed lines that also differ from Silo's copy; run it before pushing a
+merge with `BASE_SHA=origin/main scripts/bloem-lint-changed-ci.sh`.
 
 If your change spans this server and Bloem's separately maintained plugin SDK, local iteration through
 an untracked `go.work` workspace is expected. Do not rely on that workspace in repo-tracked

@@ -10,7 +10,7 @@ justify replacing them.
 Baseline: Bloem `95403cedd`, incorporating Silo `0362b6dae`. The tables include the
 subsequent embedded-web completion and Xtream work. Deployment of `418a18b7d` completed
 on September 19, 2026; it is not exhaustive feature, browser or security certification.
-The October 14 source integration includes Silo through `ea3c10a7f`. The
+The October 25 source integration includes Silo through `6de6d5e5e`. The
 [October 7 deployment record](../operations/2026-10-07-native-storage-deployment.md)
 is historical evidence. Protocol compatibility and companion enrollment have since
 been removed; the remaining rows preserve their original acceptance limits.

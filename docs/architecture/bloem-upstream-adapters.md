@@ -205,15 +205,18 @@ for routes that have a v2 contract; do not alias these helpers to `api`.
 ## SQLite user-store versions
 
 Silo owns the SQLite user-store version numbers in
-[`internal/userdb/migrate.go`](../../internal/userdb/migrate.go). Bloem's steps
-follow Silo's latest, are idempotent, and live in
-[`bloem_migrate.go`](../../internal/userdb/bloem_migrate.go). Bloem once shipped
+[`internal/userdb/migrate.go`](../../internal/userdb/migrate.go), and a store
+ends at Silo's `schemaVersion`. Bloem's idempotent repair step lives in
+[`bloem_migrate.go`](../../internal/userdb/bloem_migrate.go) and runs inside
+Silo's migration transaction without a version of its own. Bloem once shipped
 a compatibility cleanup as version 32, before Silo claimed 32, and then as
-version 34. A store Bloem left at 32 skipped Silo's version 32, so Bloem's
-version 34 adds the column that step would have added. Both cleanups dropped
-the Jellyfin display-preference table, which version 35 recreates. When Silo
-claims Bloem's numbers, renumber Bloem's steps after Silo's and backfill
-whatever Silo's skipped step does.
+version 34. A store Bloem left at 32 skipped Silo's version 32, so the repair
+adds `user_devices.custom_name` when it is missing. Both cleanups dropped the
+Jellyfin display-preference table, which the repair recreates. A store Bloem
+left at its former version 34 or 35 has not run Silo's 34 or 35, so
+`bloemSQLiteResumeVersion` resumes it after version 33 and Silo's idempotent
+steps run. With no number of its own, the repair cannot collide with a later
+Silo version.
 
 ## Realtime ticket PIN proof
 

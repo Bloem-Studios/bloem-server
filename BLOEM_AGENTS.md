@@ -12,6 +12,10 @@ files only where a Bloem extension needs an integration point. Retain the integr
 points needed for Bloem plugins. When a fork change breaks Silo behavior, restore
 the upstream implementation before adding an adapter.
 
+In an upstream merge, take Silo's side of every conflict that Bloem can adapt
+around. Bloem's native clients are unreleased, so keeping them on an older wire
+shape is not a reason to keep a Bloem difference.
+
 ## Jellyfin and Audiobookshelf compatibility
 
 Bloem runs Silo's Jellyfin and Audiobookshelf compatibility servers as Silo ships them

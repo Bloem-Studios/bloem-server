@@ -3,6 +3,22 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 25, 2026 — Merge follow-ups: CI and the daily sync
+
+CI on the merged main caught what the pre-push gates had not run. The eager
+launch bundle grows 3,163 B, of which Silo's own bundle accounts for 2,903 B, so
+Bloem's allowance moves to the measured 326,067 B. Go moves to 1.26.10 for
+GO-2026-6809 (`crypto/x509`), because Bloem's CI scans on exactly the patch
+`go.mod` names. Six changed-line lint findings on the merges' Bloem lines are
+cleared; Bloem's split of an account update between the users row and the
+membership moves out of Silo's `repository.go` into a Bloem-owned helper.
+
+The daily upstream sync had failed since Silo changed a workflow file: GitHub's
+default Actions token can never push or merge such a commit. The sync now pushes
+and merges with the `UPSTREAM_SYNC_TOKEN` repository secret, and its checkout
+keeps no credential while the merged upstream tree builds. See
+[CI additions](ci.md#upstream-sync-merges).
+
 ## October 25, 2026 — Silo integration through 6de6d5e5e
 
 Bloem merges 63 more Silo commits after `31fabc723`, through `6de6d5e5e`, with

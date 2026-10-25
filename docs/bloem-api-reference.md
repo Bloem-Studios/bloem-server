@@ -11,7 +11,7 @@ and frozen alpha `/api/v1`; its extensions are not Silo-compatible or externally
 The native API evolves with Bloem; clients must use capability tokens for
 optional behavior and ignore additive response fields they do not understand.
 
-The October 14 source integration includes Silo through `ea3c10a7f` and
+The October 25 source integration includes Silo through `6de6d5e5e` and
 preserves these namespace boundaries. It includes mixed filesystem/plugin library
 locations, native ebook/movie/audiobook delivery and inherited profile limits.
 The [API catalogue](bloem/api-catalogue.md) maps typed native operations and
@@ -733,7 +733,7 @@ Three distinct write paths per item, chosen in this priority order:
 1. **`updated_at` present** → offline-queued event. The client time is parsed as RFC3339 (a
    malformed value is a per-item `error`, not silently treated as "now" — treating it as now would
    let a stale offline event unfairly win a last-write-wins race); it is then clamped to at most
-   `now + 2 minutes` (`progressClockSkew`) — a value further in the future than that is silently
+   `now + 2 minutes` (`clientclock.MaxSkew`) — a value further in the future than that is silently
    replaced with `now` (and logged server-side), never rejected. `store.SetProgressIfNewer` applies
    last-write-wins on this clamped event time; a `false` return (a newer stored event already won)
    is exactly what makes the result `"ignored"`, not an error.

@@ -98,8 +98,13 @@ A running admin-job deletion owns at most three database connections in addition
 to the existing pools. Preflight opens only the guard connection. The current
 admin-job runner executes one catalog job at a time per runner; replicas may
 run separate deletion jobs, so connection budgeting includes three connections
-per active deletion worker. Live organization grants and the root are removed
-together after the catalog batches finish. Entitlement audit events survive.
+per active deletion worker. After the catalog batches finish, one guarded
+transaction moves admin collections that cover other libraries off the root,
+removes live organization grants and the root, and recomputes the episode
+membership denorms of series that survive in other libraries. Silo retries the
+collection move in a fresh transaction when collections change or a deadlock
+aborts it; under the guard each attempt runs in a savepoint instead, so a retry
+never releases the root lock. Entitlement audit events survive.
 
 Catalog batches retain upstream's resumable, short-transaction behavior. This
 guard prevents the known permanent bundle-reference failure; it does not make

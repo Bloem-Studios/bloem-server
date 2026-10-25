@@ -7,11 +7,12 @@ is not proof of provider or playback acceptance.
 
 ## What Silo does
 
-The reviewed Silo server baseline is `ea3c10a7f`. Its
-[`docs/README.md`](../README.md) separates developer references from the public
-manual. Architecture and invariants live under `docs/architecture/`; API references
-live in `docs/*-api.md`. Go registrations generate OpenAPI and the server embeds
-Swagger UI at `/api/v2/docs`. New plans are temporary working files.
+The reviewed Silo server baseline is `6de6d5e5e`. Its
+[`docs/README.md`](../README.md), unchanged since `ea3c10a7f`, separates developer
+references from the public manual. Architecture and invariants live under
+`docs/architecture/`; API references live in `docs/*-api.md`. Go registrations
+generate OpenAPI and the server embeds Swagger UI at `/api/v2/docs`. New plans are
+temporary working files.
 
 Silo's public manual is a separate repository,
 [`Silo-Server/siloserver.org`](https://github.com/Silo-Server/siloserver.org),

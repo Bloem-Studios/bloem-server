@@ -26,19 +26,21 @@ for forks.
 > permissions, roles, watch history and settings written by one are there when
 > the other starts. One server runs at a time; a switch is a stop, a start and a
 > route change. Bloem-only features (more organizations, profile logins, Live TV)
-> wait unused while Silo serves. Keep Silo on a release Bloem has already merged.
+> wait unused while Silo serves. Keep Silo on the release Bloem last merged: an
+> older one may not read a schema a later Silo migration changed.
 > See [Silo backend switching](../docs/architecture/silo-backend-switching.md)
 > and the operator steps in the
 > [Docker guide](../docs/bloem/overlays/wiki/deployment/docker.md#switching-between-silo-and-bloem).
 
 ## Source integration and deployment records
 
-The current source integrates Silo through `ea3c10a7f` (October 14, 2026),
-including inherited household profile limits, node draining, signed worker
-requests, metadata updates and reorganized settings. Bloem retains native
-storage, multi-organization policy, Live TV and branding. It runs Silo's
-Jellyfin and Audiobookshelf compatibility servers; Bloem's companion enrollment
-is removed.
+The current source integrates Silo through `6de6d5e5e` (October 25, 2026),
+including API keys stored as one-way verifiers, bounded password hashing, Auto
+quality that steps down when playback keeps buffering, best-effort direct play,
+subtitles carried in HLS streams, Seasonal Picks and per-profile Not interested.
+Silo wins every conflict. Bloem retains native storage, multi-organization
+policy, Live TV and branding. It runs Silo's Jellyfin and Audiobookshelf
+compatibility servers; Bloem's companion enrollment is removed.
 See the [integration changelog](../docs/bloem/CHANGELOG.md) and
 [API catalogue](../docs/bloem/api-catalogue.md).
 
@@ -106,7 +108,7 @@ latency hardening, both upstream Silo features.
 ## What Bloem adds on top of Silo
 
 The overview below describes Bloem's additions alongside the Silo source
-through `ea3c10a7f`, integrated on October 14, 2026. The
+through `6de6d5e5e`, integrated on October 25, 2026. The
 [web coverage matrix](../docs/architecture/bloem-web-feature-coverage.md) separates
 implemented workflows from bounded acceptance evidence. Upstream features remain
 credited to Silo; a server endpoint does not imply support in every client.
@@ -610,7 +612,7 @@ move fully to a custom `postgresql.conf`.
 
 If you prefer running Bloem without Docker:
 
-1. **Install prerequisites**: Go 1.26.10+, Node.js 22+ for the frontend, pnpm 10.32.1, a C compiler and libvips development libraries for CGO, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
+1. **Install prerequisites**: Go 1.26.10+, Node.js 24+ for the frontend, pnpm 10.32.1, a C compiler and libvips development libraries for CGO, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
 
 2. **Configure the source process**
 

@@ -46,8 +46,8 @@ settings were kept, so the restore needs no PostgreSQL migration. That migration
 Down still refuses rollback.
 
 Bloem's earlier SQLite cleanups (shipped as user-store versions 32 and 34) dropped
-`jellycompat_displayprefs` and its settings. Bloem's v35 step recreates the table;
-the deleted preferences do not return. See
+`jellycompat_displayprefs` and its settings. Bloem's SQLite repair step recreates
+the table; the deleted preferences do not return. See
 [SQLite user-store versions](bloem-upstream-adapters.md#sqlite-user-store-versions).
 
 ## Upstream merges

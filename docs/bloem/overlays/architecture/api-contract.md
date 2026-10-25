@@ -49,20 +49,23 @@ operation and is not part of this target -- it needs the sibling client trees at
 
 ## Bloem native storage and generated contracts
 
-The October 14 source integration, including Silo through `ea3c10a7f`, keeps
-`/api/v2` separate from `/api/bloem/v1`. Native-storage administration is a
-Bloem-owned protected platform/organization surface. Its route and wire
+Bloem keeps `/api/v2` separate from `/api/bloem/v1`. Native-storage
+administration is a Bloem-owned protected platform/organization surface. Its route and wire
 reference is [Native Storage Administration](../../../bloem-api-reference.md#native-storage-administration),
-with all 32 scope-specific operations also generated into
+with all 34 scope-specific operations also generated into
 [the native OpenAPI artifact](../../../../contracts/api/bloem/v1/openapi.json).
 These are document-only chi declarations, not the Silo OpenAPI operation inventory
 or additional runtime registrations. Its composition-dependent capability
 schema never promotes artifact approval or synthetic provider tests to
-`backend_verified`.
+`backend_verified`. The `internal/contractspec` member-shape lint (date, URL and
+language formats) runs on `contracts/api/v2/openapi.json`, which includes Bloem's
+`/api/v2` registrations; it does not check the native artifact.
 
-Storage-source libraries use ordinary v1/v2 library operations. The v2
-`createLibrary` supports native source selection; local paths and multiple source
-locations can coexist. Source roots retain opaque identities. The
+Storage-source libraries use ordinary v1/v2 library operations, except where
+locations combine: the v2 `createLibrary` takes exactly one of `paths` and
+`storage_source`, while the scoped native `library-locations` routes combine local
+paths and several selected source roots when native-storage capabilities advertise
+`library_location_mixing`. Source roots retain opaque identities. The
 [storage architecture](../../../architecture/bloem-native-storage.md) records
 the publication, scanner and delivery readiness limits. Downloads and conversion
 require their own supported delivery path; configuring a source does not grant them.

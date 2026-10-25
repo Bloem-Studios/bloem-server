@@ -26,3 +26,20 @@ The following remain out of scope regardless of implementation quality:
 
 These limits preserve the product boundary: Bloem supports the reviewed Live
 TV integrations it ships, not an open-ended remote-stream ingestion service.
+
+## Deleting or managing media files
+
+Bloem keeps Silo's permanent non-goal unchanged: the server reads library files
+and does not delete, move, rename or reorganize them. That holds for every API,
+admin option, client action and plugin, and for automatic cleanup such as removing
+a watched episode. Silo's [reasons and alternatives](../../non-goals.md#deleting-or-managing-media-files)
+apply as written: the shipped Compose file mounts `MEDIA_ROOT` read-only, Silo's
+Jellyfin compatibility server reports items as not deletable, and library
+managers, file managers or the shell own file layout, with the next scan
+reflecting their changes.
+
+Bloem's own features stay inside that boundary. The storage provider protocol
+only describes, lists, stats and reads, and removing a library location deletes
+no provider files. The DVR writes new recordings under `livetv.dvr_path` and
+removes only its own partial segment files after merging them; stored
+`keep_last` deletes nothing.

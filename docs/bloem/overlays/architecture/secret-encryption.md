@@ -69,20 +69,17 @@ The legacy downgrade discussion above does not authorize converting Xtream
 credentials to plaintext. Older binaries cannot administer protected Xtream sources.
 The [September 19 rollback plan](../../../operations/2026-09-19-xtream-deployment.md#upgrade-and-rollback-boundaries)
 retains additive schema and ciphertext; it requires a compatibility review if new
-providers or recordings have since been created.
+providers or recordings have since been created. A rollback to any binary that
+predates migration `20261019181724_hash_api_key_verifiers` is also bound by
+Silo's *API key verifiers* section: that binary needs the removed `api_key`
+column and must not be restarted against the migrated database.
 
 ---
 
-**Location:** section “Scope and known gaps”. **Bloem replaces** the corresponding upstream passage with:
+**Location:** section “Scope and known gaps”, after the paragraph beginning “Covered: arr (Requests + Autoscan) API keys, S3 keys, all sensitive…”. **Bloem adds:**
 
-Covered: arr (Requests + Autoscan) API keys, S3 keys, all sensitive
-`server_settings`, watch-sync tokens, webhook-sync `access_token`,
-history-import admin/session tokens and temporary server-list credentials,
-and subtitle provider `api_key`/`password`. Historical upstream protocol settings
-and ciphertext may remain for Silo switching; the removed Jellyfin/ABS runtime
-is not an active reader/writer. The retained health identity read does not
-restore protocol credential handling. Bloem also encrypts Xtream username/password envelopes with
-tuner/origin binding and no plaintext fallback. Plugin runtime configuration is
-encrypted as one opaque row-bound envelope rather than by manifest field. Consequently, runtime code
-must use `RuntimeConfigStore`; database JSON-member queries and indexes are not
-supported for `plugin_runtime_configs.config_value`.
+Bloem runs Silo's Jellyfin- and Audiobookshelf-compatible servers as Silo ships
+them, so the upstream coverage, including their session tokens and signing key,
+applies unchanged; see [protocol compatibility](../../../architecture/bloem-compatibility-removal.md).
+Bloem also encrypts Xtream username/password envelopes with tuner/origin binding
+and no plaintext fallback (*Bloem Xtream credentials* above).

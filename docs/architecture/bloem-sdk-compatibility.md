@@ -6,8 +6,8 @@ that every client feature or storage provider has shipped.
 
 ## Server and public plugin runtime
 
-The current source includes Silo through `ea3c10a7f` and pins the public
-`github.com/Silo-Server/silo-plugin-sdk` module at `v0.25.0` in `go.mod`.
+The current source includes Silo through `6de6d5e5e` and pins the public
+`github.com/Silo-Server/silo-plugin-sdk` module at `v0.30.0` in `go.mod`.
 Host builds use `GOWORK=off`; no private SDK module replacement is required.
 The [October 7 deployment record](../operations/2026-10-07-native-storage-deployment.md)
 is a historical checkpoint with an older SDK pin. Source contracts and live
@@ -40,7 +40,7 @@ The plugin-author release verified on October 15 is
 It adds private audiobook/audio metadata and directory-only listing declarations.
 The earlier `v0.26.0` synchronized public protocols with Silo SDK `v0.24.0`,
 while `v0.25.0` introduced ebook metadata and incremental listing. The host
-now uses Silo SDK `v0.25.0`; a release number alone does not prove all optional
+now uses Silo SDK `v0.30.0`; a release number alone does not prove all optional
 public services match. Check descriptors and host runtime assembly for the
 services a plugin uses.
 
@@ -142,7 +142,8 @@ explicit bundle adoption and runtime checks. See the
 
 ### Reproduce and verify
 
-Use the Go toolchain declared by the server (`1.26.9` for this integration).
+Use the Go toolchain declared in the server's `go.mod` (now `1.26.10`; the
+October 14 integration used `1.26.9`).
 Go `1.27.1` changes standard-library JSON alias representation and is not the
 validated generation environment. Commands assume the server repository root:
 

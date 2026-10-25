@@ -28,10 +28,13 @@ Session-scoped names: `pause`, `unpause`, `play_pause`, `seek {position_ms}`,
 `set_volume {level}`, `stop {reason?}`, `terminate {reason?}` (reason required),
 `set_audio_track` / `set_subtitle_track {track_id} | {off: true}`,
 `display_message {title, body, severity, timeout_ms?}`, and `replan {overrides:
-{transcode: auto|force|direct, max_bitrate_kbps?, video_codec?, audio_codec?,
+{transcode: auto|direct, max_bitrate_kbps?, video_codec?, audio_codec?,
 container?}, reason}`, which pins the overrides on the session and withdraws the
 current plan with `plan_invalidated` so the client reloads without leaving the
-player.
+player. The planner stays Silo's: it lowers Auto quality itself when playback
+keeps buffering, and a `max_bitrate_kbps` below the source's bitrate still forces
+a transcode. A `force` transcode value is refused with `400 invalid_payload`, as
+is `direct` with a bitrate or codec pin.
 
 Errors: `400 invalid_payload | unknown_command | reason_required | bad_request`,
 `403 forbidden` (session outside the admin's tenant scope), `404 not_found`,
@@ -55,11 +58,13 @@ and the [deployment record](../../operations/2026-09-30-upstream-deployment.md).
 ## Experimental native-storage administration
 
 Bloem's platform and organization administrative scopes expose separate
-`/native-storage` routes for approved artifact installation, sanitized source
-inspection, empty-namespace configuration replacement, pathless ebook-library
-creation/initialization/binding, full-scan admission, disable and uninstall.
-They use the existing signed administrative context and retained current
-resource authority. The [native API reference](../../bloem-api-reference.md#native-storage-administration)
+`/native-storage` routes for approved and catalog artifact installation, S3 root
+discovery, upgrade, sanitized source inspection and browsing, empty-namespace
+configuration replacement, S3 credential rotation, stateless S3 bucket/folder
+browsing, disable and uninstall. They use the existing signed administrative
+context and retained current resource authority. A library attaches a source
+through the ordinary v2 `createLibrary` (`storage_source`) or the scoped
+`library-locations` routes. The [native API reference](../../bloem-api-reference.md#native-storage-administration)
 lists methods, request fields, state revisions, error codes and recovery.
 
 The protected capability document checks actual composition; it remains

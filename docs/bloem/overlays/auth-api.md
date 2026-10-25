@@ -15,6 +15,30 @@ never change an account password.
 
 ---
 
+**Location:** section “When the server is too busy to check a password”, after the paragraph beginning “The refusal is `503` with `Retry-After: 1`: v2 `dependency_unavailable`, v1 error code…”. **Bloem adds:**
+
+Bloem's lifecycle-receipt handlers do not map that refusal. They serve v1 setup,
+signup, invitation acceptance and `POST /api/v1/admin/users` whenever the server
+has a database and a JWT secret, and there a busy refusal answers
+`500 internal_error`. `POST /api/v1/admin/tenants/{tenant_id}/members` does the
+same and also hashes its receipt outside the limit. The account-password check
+before a profile-credential write or an organization ownership transfer runs under
+the limit, but answers `503` without `Retry-After` (`unavailable` or
+`tenant_unavailable`). Direct-profile login and the new credential's hash on
+set/rotate run outside the limit; direct-profile login never answers busy.
+
+---
+
+**Location:** section “Sign-in attempts per name”, after the paragraph beginning “Every password sign-in also spends a budget kept for the name it signs in with…”. **Bloem adds:**
+
+Direct-profile login (`POST /api/v1/auth/profile-login`) spends no per-name budget.
+Its `profile_login` budget, like `profile_credentials` on the credential-management
+routes, has no endpoint limit configured. Only the general per-address, account
+and global request budgets apply, without the connection-address cap on forwarded
+clients described under [sign-in rate limits](../../auth-api.md#sign-in-rate-limits).
+
+---
+
 **Location:** section “Ordinary v2 authentication”. **Bloem replaces** the corresponding upstream passage with:
 
 Invited signup commits invite consumption and account creation together. With the

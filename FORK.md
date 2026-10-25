@@ -42,7 +42,11 @@ git pull --ff-only origin main
 git merge --no-ff upstream/main
 ```
 
-Run the complete verification suite before pushing the merge to `origin`. For
+Run the complete verification suite before pushing the merge to `origin`: the
+[validation checks](.github/CONTRIBUTING.md#validate-your-change), including the
+web bundle budget and CI's changed-line lint for merges. The daily
+`Upstream sync` workflow performs this merge itself when it is conflict-free;
+see [CI additions](docs/bloem/ci.md#upstream-sync-merges). For
 an urgent isolated fix, cherry-pick the exact upstream commit onto a Bloem
 topic branch instead; the next full upstream merge will recognize that patch.
 Never force-push shared Bloem branches or squash imported upstream history.

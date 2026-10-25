@@ -40,10 +40,36 @@ software tone-map acceptance test. Its fixture tags frames through `setparams`,
 because FFmpeg 8 ignores `-color_trc` and related options when the frames
 carry their own color properties.
 
+## Go patch
+
+Silo's setup action installs the newest Go 1.26. Bloem's lint, contract-check,
+test and scenario jobs then install exactly the patch `go.mod` names (`Use the Go
+patch go.mod requires`), so a
+security release takes effect when `go.mod` moves, not when runner images catch
+up. `go tool govulncheck` reads the standard library of that patch: a new
+standard-library advisory fails the Go lint job until `go.mod` names the fixed
+patch.
+
 ## Upstream sync merges
 
-`.github/workflows/upstream-sync-merge.yml` merges an upstream-sync pull request
-only after CI succeeded on its exact head.
+`.github/workflows/upstream-sync.yml` runs daily. It merges `upstream/main` into
+an `upstream-sync/<date>-<sha>` branch, checks that it builds, pushes the branch
+and opens a pull request: a normal one for a clean merge, a draft carrying the
+conflict markers otherwise. `.github/workflows/upstream-sync-merge.yml` merges an
+upstream-sync pull request only after CI succeeded on its exact head.
+
+Both workflows push and merge with the `UPSTREAM_SYNC_TOKEN` repository secret, a
+personal access token with contents, pull requests and workflows write on this
+repository, and fall back to `GITHUB_TOKEN` without it:
+
+- GitHub does not start workflows for events raised by `GITHUB_TOKEN`, so a
+  pull request it opens runs no CI until someone pushes to it or reopens it.
+- `GITHUB_TOKEN` can never push or merge a commit that changes
+  `.github/workflows`, whatever the job's permissions. Without the secret, a sync
+  that brings in such a Silo commit fails at its push.
+
+The sync's checkout keeps no credential. The push supplies the token for that
+one command, so it is not on disk while the merged upstream tree builds.
 
 ## PostgreSQL version
 
