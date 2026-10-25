@@ -38,7 +38,6 @@ func planWithOverridesV3(file *models.MediaFile, req StartRequestV3, o PlanOverr
 	return PlanPlaybackV3(PlannerInputV3{
 		Request: ApplyPlanOverridesV3(req, o), RequestedFile: file, EffectiveFile: file, AudioTrackIndex: 0,
 		Settings: PlannerSettingsV3{TranscodeEnabled: true, Allow4KTranscode: true}, Registry: testTransformationRegistryV3(),
-		ForceTranscode: o.ForceTranscode(),
 	})
 }
 
@@ -48,14 +47,6 @@ func TestPlanOverridesV3(t *testing.T) {
 	baseline := planWithOverridesV3(file, req, PlanOverridesV3{})
 	if baseline.Plan == nil || baseline.Plan.Delivery != DeliveryOriginalHTTPV3 {
 		t.Fatalf("baseline should direct play: %s", ExplainPlannerResultV3(baseline))
-	}
-
-	forced := planWithOverridesV3(file, req, PlanOverridesV3{Transcode: PlanOverrideTranscodeForce})
-	if forced.Plan == nil || forced.Plan.Delivery != DeliveryTranscodeHLSV3 || forced.PlayMethod != PlayTranscode {
-		t.Fatalf("transcode=force did not take the transcode route: %s", ExplainPlannerResultV3(forced))
-	}
-	if forced.Plan.DecisionReason != "admin_transcode_forced" {
-		t.Fatalf("decision reason = %q", forced.Plan.DecisionReason)
 	}
 
 	capped := planWithOverridesV3(file, req, PlanOverridesV3{Transcode: PlanOverrideTranscodeAuto, MaxBitrateKbps: 4_000})

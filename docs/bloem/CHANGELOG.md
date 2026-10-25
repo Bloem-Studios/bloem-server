@@ -3,6 +3,28 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 25, 2026 — Silo integration through 6de6d5e5e
+
+Bloem merges 63 more Silo commits after `31fabc723`, through `6de6d5e5e`, with
+Silo winning every conflict. The seam ledger stands at 350: Silo's planner file
+returns to Silo's bytes, while the buffering version switch, two generated
+decision fixtures and the breaking-change approvals Bloem's older main still
+needs become seams.
+
+The admin remote-control replan drops its `force` transcode mode, so Silo's
+planner carries no Bloem input: Silo now lowers Auto quality itself when
+playback keeps buffering, and `max_bitrate_kbps` below the source's bitrate
+still forces a transcode; a `force` override is refused as an invalid payload.
+The SQLite user store takes Silo's version numbers outright: Bloem's repair
+step runs inside Silo's migration without a version of its own, and a store
+Bloem left at its former v34 or v35 still resumes after v33.
+
+Bloem adapts its own code to Silo's new behavior: library deletion recomputes
+surviving series inside Bloem's deletion guard, buffering version switches and
+version fallbacks preflight through Bloem's native-storage check, progress uses
+Silo's shared client-clock clamp, and Bloem's catalog calls Silo's renamed
+series recompute.
+
 ## October 23, 2026 — Silo integration through 31fabc723
 
 Bloem merges 125 Silo commits after `b430099ff`, through `31fabc723`. Silo wins

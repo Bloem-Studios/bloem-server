@@ -172,7 +172,11 @@ export interface CompatConnectInfo {
     server_name: string;
   };
   account: {
-    /** False for SSO/plugin-provisioned accounts, which cannot use compat login. */
+    /**
+     * False when the account's local password can't sign in: SSO/plugin-provisioned
+     * accounts, and accounts that aren't break-glass while the server turns
+     * password sign-in off.
+     */
     password_login_available: boolean;
   };
 }
@@ -3374,6 +3378,7 @@ export interface AdminDeviceSummary {
 }
 
 export interface AdminDeviceDetail {
+  connections?: V2Components["schemas"]["AdminDeviceConnection"][];
   user_id: number;
   username: string;
   email: string;
@@ -5235,6 +5240,7 @@ export type MarkerProviderConfig =
 export interface MarkerProviderUpdateRequest {
   fetch_enabled?: boolean;
   fetch_priority?: number;
+  fetch_min_confidence?: number;
   contribute_enabled?: boolean;
   contribute_auto_local?: boolean;
   contribute_min_confidence?: number;

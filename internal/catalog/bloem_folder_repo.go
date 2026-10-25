@@ -121,17 +121,30 @@ func (g *folderDeletionGuard) Rollback(ctx context.Context) error {
 }
 
 // finishFolderDeletion moves shared collections off the folder, releases live
-// grants and removes the root atomically. Immutable bundle members and
+// grants, removes the root and recomputes surviving series atomically. Immutable bundle members and
 // entitlement audit events are never rewritten.
 func finishFolderDeletion(ctx context.Context, tx pgx.Tx, id int) error {
 	if err := moveCollectionsOffGuardedFolder(ctx, tx, id); err != nil {
 		return fmt.Errorf("deleting folder: %w", err)
+	}
+	// The folder's episode memberships cascade with it; series that survive in
+	// other libraries recompute the denorms read from them, as Silo does.
+	var seriesIDs []string
+	if err := tx.QueryRow(ctx, `
+		SELECT COALESCE(array_agg(DISTINCT e.series_id), ARRAY[]::text[])
+		FROM episode_libraries el
+		JOIN episodes e ON e.content_id = el.episode_id
+		WHERE el.media_folder_id = $1`, id).Scan(&seriesIDs); err != nil {
+		return fmt.Errorf("listing folder series: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM organization_entitlements WHERE media_folder_id=$1`, id); err != nil {
 		return fmt.Errorf("releasing folder entitlements: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM media_folders WHERE id=$1`, id); err != nil {
 		return fmt.Errorf("deleting folder: %w", err)
+	}
+	if err := RecomputeSeriesEpisodeMembershipDenorms(ctx, tx, seriesIDs); err != nil {
+		return fmt.Errorf("recomputing series membership: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit folder deletion: %w", err)

@@ -31,7 +31,7 @@ func (r *EpisodeLibraryRepository) restoreMaintenanceEpisodesOnce(ctx context.Co
 	if err != nil {
 		return err
 	}
-	if err = RecomputeSeriesLatestEpisodeAdded(ctx, tx, seriesIDs); err != nil {
+	if err = RecomputeSeriesEpisodeMembershipDenorms(ctx, tx, seriesIDs); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

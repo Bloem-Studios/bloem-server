@@ -545,6 +545,27 @@
       "fingerprint": "e4bc11660c8a608d16525b3898be55009cd80cb25052f9f07791341bb37e2825",
       "reason": "Declares source_url as a URI before the v2 lock (#2903). Huma checks uri and uri-reference with url.Parse, so only values that do not parse as a URL, including padded values the handler used to trim, are newly refused; the web app trims what it sends.",
       "approved_in": "#2903"
+    },
+    {
+      "operation_id": "replaceAdminUserProfileSectionOverrides",
+      "change_id": "request-property-max-set",
+      "fingerprint": "ad0e4dfe3dbac0fb307918aac32bff7c46ff2255f4e2a1a99a970c15cff679ff",
+      "reason": "Pre-lock fix: an uncapped profile item_limit made every home load allocate buffers of that size, so one profile could exhaust server memory. The cap matches the admin section maximum of 500. The web editor caps at 100; silo-apple and silo-android never write section overrides.",
+      "approved_in": "#3050"
+    },
+    {
+      "operation_id": "replaceProfileSectionOverrides",
+      "change_id": "request-property-max-set",
+      "fingerprint": "28407764607e02fd70af193e2c444376eb743293f03fbb4e302a5a90a0740b74",
+      "reason": "Pre-lock fix: an uncapped profile item_limit made every home load allocate buffers of that size, so one profile could exhaust server memory. The cap matches the admin section maximum of 500. The web editor caps at 100; silo-apple and silo-android never write section overrides.",
+      "approved_in": "#3050"
+    },
+    {
+      "operation_id": "updateAdminItemMetadata",
+      "change_id": "request-property-became-enum",
+      "fingerprint": "11d6d72799842704d7dc478fc3139a1e50945a2fb14a662b3f6717eeebc34030",
+      "reason": "Pre-lock fix: status is the item's match status, and any other string hides the item from search, enrichment and sidecar queries until a refresh. The bundled web client no longer sends it; silo-apple and silo-android never send it.",
+      "approved_in": "#2940"
     }
   ]
 }

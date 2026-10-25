@@ -320,7 +320,7 @@ func TestNativeVideoStartEffectsAvoidFilesystemJobs(t *testing.T) {
 	h.IntroAnalyzer = analyzer
 	h.MarkerLazyContext = context.Background()
 	h.EpisodeLookup = testEpisodeLookup{episode: &models.Episode{ContentID: file.EpisodeID, SeriesID: "series"}}
-	h.enqueuePlaybackStartSideEffectsV3(context.Background(), session, file, session.UserID, session.ProfileID, 0)
+	h.enqueuePlaybackStartSideEffectsV3(context.Background(), session, file, session.UserID, session.ProfileID, new(0))
 	h.waitForPlaybackStartSideEffectsV3(context.Background(), session.ID)
 	if thumbnails.calls != 0 || analyzer.callCount() != 0 {
 		t.Fatalf("native source sent to filesystem jobs: thumbnails %d markers %d", thumbnails.calls, analyzer.callCount())

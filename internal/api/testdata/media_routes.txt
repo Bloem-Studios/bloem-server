@@ -13,6 +13,7 @@ OPTIONS /api/v2/*	non-media
 PATCH /api/v2/*	non-media
 POST /api/v2/*	non-media
 PUT /api/v2/*	non-media
+QUERY /api/v2/*	non-media
 TRACE /api/v2/*	non-media
 GET /api/v2/account/identities	non-media
 POST /api/v2/account/identities/link-complete	non-media
@@ -111,6 +112,7 @@ PUT /api/v2/admin/dashboard/layout	non-media
 GET /api/v2/admin/devices	non-media
 GET /api/v2/admin/devices/capabilities	non-media
 GET /api/v2/admin/devices/{user_id}/{device_id}	non-media
+DELETE /api/v2/admin/devices/{user_id}/{device_id}/connections/{connection_id}/learned-limit	non-media
 GET /api/v2/admin/diagnostics/reports	non-media
 DELETE /api/v2/admin/diagnostics/reports/{id}	non-media
 GET /api/v2/admin/diagnostics/reports/{id}	non-media
@@ -468,6 +470,7 @@ GET /api/v2/capabilities/ebooks	non-media
 GET /api/v2/capabilities/metadata-ai	non-media
 GET /api/v2/capabilities/not-interested	non-media
 GET /api/v2/capabilities/password-reset	non-media
+GET /api/v2/capabilities/personal-lists	non-media
 GET /api/v2/capabilities/ratings	non-media
 GET /api/v2/capabilities/trailers	non-media
 GET /api/v2/catalog	non-media
@@ -591,6 +594,7 @@ GET /api/v2/favorites	non-media
 DELETE /api/v2/favorites/{item_id}	non-media
 GET /api/v2/favorites/{item_id}	non-media
 PUT /api/v2/favorites/{item_id}	non-media
+GET /api/v2/favorites/{item_id}/membership	non-media
 GET /api/v2/history	non-media
 GET /api/v2/history-imports/capability	non-media
 POST /api/v2/history-imports/emby-connect/login	non-media
@@ -709,7 +713,10 @@ POST /api/v2/password-resets	non-media
 GET /api/v2/password-resets/{token}	non-media
 POST /api/v2/password-resets/{token}/complete	non-media
 GET /api/v2/playback/bandwidth-probe	media	transfer	viewer_egress	false	true
+POST /api/v2/playback/bandwidth-probe/results	non-media
 GET /api/v2/playback/capabilities	non-media
+GET /api/v2/playback/connection	non-media
+DELETE /api/v2/playback/connection/learned-limit	non-media
 POST /api/v2/playback/route-events	non-media
 GET /api/v2/playback/sessions/control/capabilities	non-media
 GET /api/v2/playback/sessions/{session_id}/control/ws	non-media
@@ -906,6 +913,7 @@ PUT /api/v2/watchlist/titles/{media_type}/{tmdb_id}	non-media
 DELETE /api/v2/watchlist/{item_id}	non-media
 GET /api/v2/watchlist/{item_id}	non-media
 PUT /api/v2/watchlist/{item_id}	non-media
+GET /api/v2/watchlist/{item_id}/membership	non-media
 GET /api/v2/webhook-sync/capabilities	non-media
 GET /api/v2/webhook-sync/connections	non-media
 POST /api/v2/webhook-sync/connections	non-media
@@ -925,6 +933,7 @@ OPTIONS /api/bloem/v1/admin/*	non-media
 PATCH /api/bloem/v1/admin/*	non-media
 POST /api/bloem/v1/admin/*	non-media
 PUT /api/bloem/v1/admin/*	non-media
+QUERY /api/bloem/v1/admin/*	non-media
 TRACE /api/bloem/v1/admin/*	non-media
 GET /api/bloem/v1/admin/organization/activity	non-media
 GET /api/bloem/v1/admin/organization/audiobook-request-integrations	non-media
@@ -1006,6 +1015,7 @@ OPTIONS /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs	non-m
 PATCH /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs	non-media
 POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs	non-media
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs	non-media
+QUERY /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs	non-media
 TRACE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs	non-media
 CONNECT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}	non-media
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}	non-media
@@ -1015,6 +1025,7 @@ OPTIONS /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_
 PATCH /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}	non-media
 POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}	non-media
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}	non-media
+QUERY /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}	non-media
 TRACE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}	non-media
 CONNECT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
@@ -1024,6 +1035,7 @@ OPTIONS /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_
 PATCH /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
 POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
+QUERY /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
 TRACE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
 CONNECT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews	non-media
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews	non-media
@@ -1033,6 +1045,7 @@ OPTIONS /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews	n
 PATCH /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews	non-media
 POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews	non-media
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews	non-media
+QUERY /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews	non-media
 TRACE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews	non-media
 CONNECT /api/bloem/v1/admin/platform/accounts/entitlement-snapshots	non-media
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-snapshots	non-media
@@ -1042,6 +1055,7 @@ OPTIONS /api/bloem/v1/admin/platform/accounts/entitlement-snapshots	non-media
 PATCH /api/bloem/v1/admin/platform/accounts/entitlement-snapshots	non-media
 POST /api/bloem/v1/admin/platform/accounts/entitlement-snapshots	non-media
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-snapshots	non-media
+QUERY /api/bloem/v1/admin/platform/accounts/entitlement-snapshots	non-media
 TRACE /api/bloem/v1/admin/platform/accounts/entitlement-snapshots	non-media
 CONNECT /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement	non-media
 DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement	non-media
@@ -1051,6 +1065,7 @@ OPTIONS /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement	non-media
 PATCH /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement	non-media
 POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement	non-media
 PUT /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement	non-media
+QUERY /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement	non-media
 TRACE /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement	non-media
 POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/apply	non-media
 POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run	non-media
@@ -1110,6 +1125,7 @@ OPTIONS /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{a
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement	non-media
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement	non-media
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement	non-media
+QUERY /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement	non-media
 TRACE /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement	non-media
 CONNECT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs	non-media
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs	non-media
@@ -1119,6 +1135,7 @@ OPTIONS /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs	non-media
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs	non-media
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs	non-media
+QUERY /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs	non-media
 TRACE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs	non-media
 CONNECT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}	non-media
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}	non-media
@@ -1128,6 +1145,7 @@ OPTIONS /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}	non-media
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}	non-media
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}	non-media
+QUERY /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}	non-media
 TRACE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}	non-media
 CONNECT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
@@ -1137,6 +1155,7 @@ OPTIONS /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
+QUERY /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
 TRACE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel	non-media
 CONNECT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews	non-media
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews	non-media
@@ -1146,6 +1165,7 @@ OPTIONS /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews	non-media
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews	non-media
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews	non-media
+QUERY /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews	non-media
 TRACE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews	non-media
 CONNECT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts	non-media
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts	non-media
@@ -1155,6 +1175,7 @@ OPTIONS /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts	non-media
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts	non-media
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts	non-media
+QUERY /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts	non-media
 TRACE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts	non-media
 CONNECT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}	non-media
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}	non-media
@@ -1164,6 +1185,7 @@ OPTIONS /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}	non-media
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}	non-media
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}	non-media
+QUERY /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}	non-media
 TRACE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}	non-media
 CONNECT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
@@ -1173,6 +1195,7 @@ OPTIONS /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
 POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
 PUT /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
+QUERY /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
 TRACE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots	non-media
 POST /api/bloem/v1/admin/platform/preview/account	non-media
 PUT /api/bloem/v1/admin/platform/preview/accounts/{account_id}/presentation	non-media
@@ -1616,6 +1639,7 @@ OPTIONS /api/v2/*	non-media
 PATCH /api/v2/*	non-media
 POST /api/v2/*	non-media
 PUT /api/v2/*	non-media
+QUERY /api/v2/*	non-media
 TRACE /api/v2/*	non-media
 GET /api/v2/account/identities	non-media
 POST /api/v2/account/identities/link-complete	non-media
@@ -1714,6 +1738,7 @@ PUT /api/v2/admin/dashboard/layout	non-media
 GET /api/v2/admin/devices	non-media
 GET /api/v2/admin/devices/capabilities	non-media
 GET /api/v2/admin/devices/{user_id}/{device_id}	non-media
+DELETE /api/v2/admin/devices/{user_id}/{device_id}/connections/{connection_id}/learned-limit	non-media
 GET /api/v2/admin/diagnostics/reports	non-media
 DELETE /api/v2/admin/diagnostics/reports/{id}	non-media
 GET /api/v2/admin/diagnostics/reports/{id}	non-media
@@ -2071,6 +2096,7 @@ GET /api/v2/capabilities/ebooks	non-media
 GET /api/v2/capabilities/metadata-ai	non-media
 GET /api/v2/capabilities/not-interested	non-media
 GET /api/v2/capabilities/password-reset	non-media
+GET /api/v2/capabilities/personal-lists	non-media
 GET /api/v2/capabilities/ratings	non-media
 GET /api/v2/capabilities/trailers	non-media
 GET /api/v2/catalog	non-media
@@ -2194,6 +2220,7 @@ GET /api/v2/favorites	non-media
 DELETE /api/v2/favorites/{item_id}	non-media
 GET /api/v2/favorites/{item_id}	non-media
 PUT /api/v2/favorites/{item_id}	non-media
+GET /api/v2/favorites/{item_id}/membership	non-media
 GET /api/v2/history	non-media
 GET /api/v2/history-imports/capability	non-media
 POST /api/v2/history-imports/emby-connect/login	non-media
@@ -2312,7 +2339,10 @@ POST /api/v2/password-resets	non-media
 GET /api/v2/password-resets/{token}	non-media
 POST /api/v2/password-resets/{token}/complete	non-media
 GET /api/v2/playback/bandwidth-probe	media	transfer	viewer_egress	false	true
+POST /api/v2/playback/bandwidth-probe/results	non-media
 GET /api/v2/playback/capabilities	non-media
+GET /api/v2/playback/connection	non-media
+DELETE /api/v2/playback/connection/learned-limit	non-media
 POST /api/v2/playback/route-events	non-media
 GET /api/v2/playback/sessions/control/capabilities	non-media
 GET /api/v2/playback/sessions/{session_id}/control/ws	non-media
@@ -2509,6 +2539,7 @@ PUT /api/v2/watchlist/titles/{media_type}/{tmdb_id}	non-media
 DELETE /api/v2/watchlist/{item_id}	non-media
 GET /api/v2/watchlist/{item_id}	non-media
 PUT /api/v2/watchlist/{item_id}	non-media
+GET /api/v2/watchlist/{item_id}/membership	non-media
 GET /api/v2/webhook-sync/capabilities	non-media
 GET /api/v2/webhook-sync/connections	non-media
 POST /api/v2/webhook-sync/connections	non-media

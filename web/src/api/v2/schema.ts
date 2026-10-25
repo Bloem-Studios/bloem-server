@@ -1281,6 +1281,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/admin/devices/{user_id}/{device_id}/connections/{connection_id}/learned-limit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Clear a device connection's learned limit, preserving measurements. */
+    delete: operations["resetAdminDeviceLearnedLimit"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/admin/devices/capabilities": {
     parameters: {
       query?: never;
@@ -6458,6 +6475,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v2/capabilities/personal-lists": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Discover the favorites and watchlist membership reads. */
+    get: operations["getPersonalListCapability"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v2/capabilities/ratings": {
     parameters: {
       query?: never;
@@ -8016,6 +8050,23 @@ export interface paths {
     post?: never;
     /** Remove the item from the acting profile's favorites. An absent entry succeeds and changes nothing, so a retry repeats no change or notification; it cannot resend notifications an interrupted earlier call never sent. */
     delete: operations["deleteFavorite"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/favorites/{item_id}/membership": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Answer whether the item is one of the acting profile's favorites as is_member, 200 either way; 404 only when the viewer may not see the item. */
+    get: operations["getFavoriteMembership"];
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -9734,10 +9785,27 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Download random bytes to measure throughput to this server. Clients time the transfer and send the result as bandwidth_estimate_kbps; the bytes count as transfer egress, not playback. A server runs at most 32 probes at once; an account may run two of them and draw up to 400 MB per 10 minutes. Beyond any limit the request gets 429 with Retry-After. */
+    /** Download random bytes to measure throughput to this server. Clients time the transfer and send the result as bandwidth_estimate_kbps; the bytes count as transfer egress, not playback. A server runs at most 4 probes at once; an account may run two of them and draw up to 2,000,000,000 bytes per 10 minutes. Beyond any limit the request gets 429 with Retry-After. */
     get: operations["getPlaybackBandwidthProbe"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/playback/bandwidth-probe/results": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Store the calling device's latest measured connection speed. */
+    post: operations["reportPlaybackBandwidthProbe"];
     delete?: never;
     options?: never;
     head?: never;
@@ -9756,6 +9824,40 @@ export interface paths {
     put?: never;
     post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/playback/connection": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read or reset the calling device's learned connection limit. */
+    get: operations["getPlaybackConnection"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/playback/connection/learned-limit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Read or reset the calling device's learned connection limit. */
+    delete: operations["resetPlaybackLearnedLimit"];
     options?: never;
     head?: never;
     patch?: never;
@@ -12188,9 +12290,9 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Mark an item watched for the acting profile; a season or series marks every episode. Marking an already watched item is a no-op. */
+    /** Mark an item watched for the acting profile; a season or series marks every episode. Marking an already watched item is a no-op, except a movie or episode with a resume position from a rewatch: that records another play and clears the position. A season or series mark leaves such episodes alone. */
     post: operations["markWatched"];
-    /** Mark an item unwatched for the acting profile; a season or series clears every episode. The server chooses the history cutoff when this request runs. */
+    /** Mark an item unwatched for the acting profile; a season or series clears every episode. Clears the watched state and resume position and keeps watch history. Plays at or before the cutoff the server chooses when this request runs no longer count as watched. */
     delete: operations["unmarkWatched"];
     options?: never;
     head?: never;
@@ -12228,6 +12330,23 @@ export interface paths {
     post?: never;
     /** Remove the item from the acting profile's watchlist. An absent entry succeeds and changes nothing, so a retry repeats no change or notification; it cannot resend notifications an interrupted earlier call never sent. */
     delete: operations["deleteWatchlistEntry"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v2/watchlist/{item_id}/membership": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Answer whether the item is on the acting profile's watchlist as is_member, 200 either way; 404 only when the viewer may not see the item. */
+    get: operations["getWatchlistMembership"];
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -14239,7 +14358,58 @@ export interface components {
        */
       state: "available" | "disabled" | "not_configured" | "unsupported";
     };
+    AdminDeviceConnection: {
+      connection: string;
+      id: string;
+      learned_limit: {
+        /**
+         * Format: date-time
+         * @description RFC 3339 instant in UTC with millisecond precision
+         */
+        expires_at: string;
+        /** Format: int64 */
+        kbps: number;
+        /**
+         * Format: date-time
+         * @description RFC 3339 instant in UTC with millisecond precision
+         */
+        observed_at: string;
+      } | null;
+      plan_summary: {
+        diagnostics: {
+          [key: string]: string;
+        };
+        plan_id: string;
+        /**
+         * Format: date-time
+         * @description RFC 3339 instant in UTC with millisecond precision
+         */
+        reported_at: string;
+      } | null;
+      playback_sample: {
+        /** Format: int64 */
+        kbps: number;
+        /**
+         * Format: date-time
+         * @description RFC 3339 instant in UTC with millisecond precision
+         */
+        measured_at: string;
+      } | null;
+      probe: {
+        /** Format: int64 */
+        kbps: number;
+        /** @description The test proved only that the link carries at least kbps. */
+        lower_bound: boolean;
+        /**
+         * Format: date-time
+         * @description RFC 3339 instant in UTC with millisecond precision
+         */
+        measured_at: string;
+        transport: string;
+      } | null;
+    };
     AdminDeviceDetail: {
+      connections?: components["schemas"]["AdminDeviceConnection"][];
       device_id: string;
       device_name: string;
       device_platform: string;
@@ -15249,6 +15419,13 @@ export interface components {
       guarded_configuration: boolean;
       /** Format: int64 */
       max_bulk_mappings: number;
+      /**
+       * Format: int64
+       * @description Largest accepted lookback_hours.
+       */
+      max_lookback_hours: number;
+      /** @description Run and bulk-run accept lookback_hours for Jellyfin sources. */
+      played_lookback: boolean;
       /** @description Opaque revision of this document */
       revision: string;
       /**
@@ -15371,6 +15548,11 @@ export interface components {
        */
       matched: number;
       /**
+       * Format: date-time
+       * @description The lookback cutoff: the run imports only items last played at or after it. Absent for a full import.
+       */
+      played_since?: string;
+      /**
        * @description The profile the history is written to
        * @example p-owner
        */
@@ -15421,6 +15603,14 @@ export interface components {
        * @example 0
        */
       watchlist_added: number;
+    };
+    AdminHistoryImportRunCreate: {
+      /**
+       * Format: int64
+       * @description Import only items last played within this many hours before the run is queued. Resume positions and favorites are still read in full. Jellyfin sources only. Write it as a plain JSON integer; 72.0 and 1e2 are refused. Omit it or send null for a full import.
+       * @example 72
+       */
+      lookback_hours?: number | null;
     };
     AdminHistoryImportSource: {
       /** Format: uri-reference */
@@ -15754,7 +15944,11 @@ export interface components {
       /** Format: int64 */
       season_number?: number | null;
       sort_title?: string | null;
-      status?: string | null;
+      /**
+       * @description Match status; null leaves it unchanged
+       * @enum {string|null}
+       */
+      status?: "pending" | "matched" | "unmatched" | null;
       studios?: string[] | null;
       tagline?: string | null;
       title?: string | null;
@@ -16108,8 +16302,15 @@ export interface components {
       contribute_enabled: boolean;
       /** Format: double */
       contribute_min_confidence: number;
+      /** @description The provider's plugin manifest turns sharing on when the provider is first configured, unless the markers.share_by_default server setting is false. Turning that setting off also turns sharing off for these providers. */
+      default_contribute_enabled: boolean;
       display_name?: string;
       fetch_enabled: boolean;
+      /**
+       * Format: double
+       * @description Markers the provider rates below this confidence are left out of lookups, so another provider or local detection can fill their kind. 0 keeps every marker.
+       */
+      fetch_min_confidence: number;
       /** Format: int64 */
       fetch_priority: number;
       is_submitter: boolean;
@@ -16131,6 +16332,8 @@ export interface components {
       /** Format: double */
       contribute_min_confidence?: number | null;
       fetch_enabled?: boolean | null;
+      /** Format: double */
+      fetch_min_confidence?: number | null;
       /** Format: int64 */
       fetch_priority?: number | null;
     };
@@ -17211,6 +17414,7 @@ export interface components {
        * @description RFC 3339 instant in UTC with millisecond precision
        */
       updated_at: string;
+      /** @description True while the installation's repository is disabled. Silo does not check it for new versions or install from it, so available_version cannot be applied until the repository is enabled again. */
       updates_paused: boolean;
       user_config_schema: components["schemas"]["AdminPluginConfigSchema"][];
       version: string;
@@ -21442,6 +21646,8 @@ export interface components {
        * @description Fixed Meilisearch ranking-session lifetime; requests do not extend it
        */
       session_ttl_seconds?: number;
+      /** @description Rule groups accept show_title to compare an episode parent show title using the text operators; non-episode rows do not match */
+      show_title_rules?: boolean;
       /**
        * @description Support and configuration state, not health
        * @enum {string}
@@ -23199,7 +23405,7 @@ export interface components {
       status: "downloading" | "completed";
       /**
        * Format: date-time
-       * @description Time of the local status event; retain on retry. Future times are rejected.
+       * @description Time of the local status event; retain on retry. Times more than two minutes ahead of the server clock are rejected.
        */
       updated_at: string;
     };
@@ -23482,6 +23688,7 @@ export interface components {
       frame_rate?: number;
       /** Format: int64 */
       height?: number;
+      segment_container?: string;
       video_codec?: string;
       video_sample_entry?: string;
       /** Format: int64 */
@@ -27440,6 +27647,34 @@ export interface components {
        */
       sync_schedule?: "" | "daily" | "weekly" | "monthly";
     };
+    PersonalListCapability: {
+      /** @description Whether the current principal may use the capability */
+      allowed: boolean;
+      /** @description Whether getFavoriteMembership and getWatchlistMembership answer 200 with is_member for every item the viewer may see */
+      membership_supported: boolean;
+      /** @description Opaque revision of this document */
+      revision: string;
+      /**
+       * @description Support and configuration state, not health
+       * @enum {string}
+       */
+      state: "available" | "disabled" | "not_configured" | "unsupported";
+    };
+    PersonalListMembership: {
+      /**
+       * Format: date-time
+       * @description When the item joined the list; absent when it is not on it
+       * @example 2026-01-02T03:04:05.000Z
+       */
+      added_at?: string;
+      /** @description Whether the item is on the list */
+      is_member: boolean;
+      /**
+       * @description The catalog item
+       * @example movie:heat-1995
+       */
+      item_id: string;
+    };
     PersonCollection: {
       /** @description The page's items; empty, never null */
       items: components["schemas"]["Person"][];
@@ -27462,9 +27697,31 @@ export interface components {
       /** Format: int64 */
       sequence: number;
     };
+    PlaybackBandwidthLimit: {
+      /** Format: date-time */
+      expires_at: string;
+      /** Format: int64 */
+      kbps: number;
+      /** @enum {string} */
+      source: "observed_rebuffer";
+    };
     PlaybackCapabilities: {
       /** @description Whether the current principal may use the capability */
       allowed: boolean;
+      /** @description With connection_speed_v1: false when the administrator turned automatic speed tests off. Test speed still works. */
+      bandwidth_probe_automatic?: boolean;
+      /**
+       * Format: int64
+       * @description With connection_speed_v1: how long a speed reading stays current.
+       */
+      bandwidth_probe_max_age_seconds?: number;
+      /**
+       * Format: int64
+       * @description With connection_speed_v1: the rate a quick speed test has to prove, the highest bitrate the server would plan for this viewer plus 25%. Absent when the server has no bitrates to set it from.
+       */
+      bandwidth_probe_target_kbps?: number;
+      /** Format: uri */
+      bandwidth_probe_url?: string;
       deliveries: string[];
       denial?: components["schemas"]["BloemPreviewDenial"];
       features: string[];
@@ -27481,6 +27738,29 @@ export interface components {
        * @enum {string}
        */
       state: "available" | "disabled" | "not_configured" | "unsupported";
+    };
+    PlaybackConnection: {
+      /** Format: int64 */
+      auto_budget_kbps?: number;
+      connection: string;
+      /** @description The learned limit on this connection; null when there is none. */
+      learned_limit: {
+        /**
+         * Format: date-time
+         * @description RFC 3339 instant in UTC with millisecond precision
+         */
+        expires_at: string;
+        /** Format: int64 */
+        kbps: number;
+        /**
+         * Format: date-time
+         * @description RFC 3339 instant in UTC with millisecond precision
+         */
+        observed_at: string;
+      } | null;
+      /** @description The best recent playback throughput on this connection, a lower bound on its speed. A Test speed result clears it. */
+      playback_sample?: components["schemas"]["PlaybackSample"];
+      probe?: components["schemas"]["PlaybackProbe"];
     };
     PlaybackControlSocketCapabilitiesOutputBody: {
       /** @description Whether the current principal may use the capability */
@@ -27527,8 +27807,23 @@ export interface components {
       /** Format: int64 */
       protocol_version: number;
       server_features: string[];
+      /** @description Present only when outcome is playable. A terminal decision (adaptation_unavailable), from start or replan, carries none; read outcome before comparing sessions. */
       session_id?: string;
       terminal?: components["schemas"]["TerminalV3"];
+    };
+    PlaybackLearnedLimit: {
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      expires_at: string;
+      /** Format: int64 */
+      kbps: number;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      observed_at: string;
     };
     PlaybackMutation: {
       accepted?: components["schemas"]["PlaybackAccepted"];
@@ -27550,6 +27845,7 @@ export interface components {
       applied_quirks: components["schemas"]["AppliedQuirkV3"][];
       /** @description Fixed quality rungs a quality_change replan may request, in menu order. The source is not listed: quality_preference auto returns to it. Empty when no rung applies. */
       available_qualities: components["schemas"]["AvailableQualityV3"][];
+      bandwidth_limit?: components["schemas"]["PlaybackBandwidthLimit"];
       claims: components["schemas"]["ValidationClaimsV3"];
       decision_reason: string;
       degradation_warnings: components["schemas"]["DegradationWarningV3"][];
@@ -27580,6 +27876,46 @@ export interface components {
       timeline: components["schemas"]["TimelineV3"];
       transformations: components["schemas"]["TransformationV3"][];
     };
+    PlaybackPlanSummary: {
+      diagnostics: {
+        [key: string]: string;
+      };
+      plan_id: string;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      reported_at: string;
+    };
+    PlaybackProbe: {
+      /** Format: int64 */
+      kbps: number;
+      /** @description The test proved only that the link carries at least kbps. */
+      lower_bound: boolean;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      measured_at: string;
+      transport: string;
+    };
+    PlaybackProbeResultsInputBody: {
+      /** Format: int64 */
+      bytes: number;
+      /** Format: int64 */
+      duration_ms: number;
+      /**
+       * Format: int64
+       * @description The bounds of bandwidth_estimate_kbps, so a kept reading is one a start can send.
+       */
+      kbps: number;
+      /** @description The test proved only that the link carries at least kbps: a quick test that reached its target, or a rate above the bound. */
+      lower_bound?: boolean;
+      /** @description The viewer started this test with Test speed; never set for the automatic test. A manual result clears the connection's playback sample, so the reading becomes this result, and one above the device's learned limit on this connection also clears the limit, as a reset does. */
+      manual?: boolean;
+      /** @enum {string} */
+      transport: "wifi" | "ethernet" | "cellular" | "other";
+    };
     PlaybackProgressBody: {
       /**
        * @description Opaque identifier
@@ -27603,6 +27939,8 @@ export interface components {
        * @description Measured throughput to this server, such as a bandwidth probe result. auto sends a source whose bitrate fits 80% of it as-is and lowers only one that does not. Omit it rather than send a guess.
        */
       bandwidth_estimate_kbps?: number;
+      /** @enum {string} */
+      bandwidth_estimate_source?: "probe" | "observed_rebuffer";
       client_capabilities: components["schemas"]["ClientCodecCapabilitiesV3"];
       client_features?: string[];
       client_playback_context: components["schemas"]["ClientPlaybackContextV3"];
@@ -27613,12 +27951,19 @@ export interface components {
        * @example 1
        */
       installation_id: string;
+      /** @enum {string} */
+      learned_limit?: "ignore" | "clear";
       local_mutations?: string[];
       /**
        * @deprecated
        * @description Deprecated; ignored. A client on a metered link sends its cellular quality as quality_preference and bandwidth_cap_kbps instead.
        */
       metered?: boolean;
+      /**
+       * Format: int64
+       * @description What the plan that kept buffering received, measured as plan_summary throughput_kbps. Only with bandwidth_estimate_source observed_rebuffer; the server plans with, and learns, the lower of it and bandwidth_estimate_kbps.
+       */
+      observed_throughput_kbps?: number;
       /** @enum {string} */
       operation?:
         | "failure_recovery"
@@ -27657,7 +28002,8 @@ export interface components {
         | "runtime_correction_succeeded"
         | "runtime_correction_failed"
         | "seek_reanchor_requested"
-        | "seek_reanchored";
+        | "seek_reanchored"
+        | "plan_summary";
       /**
        * @description Client-minted UUID; a retry with the same id after a lost 202 is recorded once
        * @example 1
@@ -27688,6 +28034,15 @@ export interface components {
       event_id: string;
       /** @enum {string} */
       outcome: "accepted";
+    };
+    PlaybackSample: {
+      /** Format: int64 */
+      kbps: number;
+      /**
+       * Format: date-time
+       * @description RFC 3339 instant in UTC with millisecond precision
+       */
+      measured_at: string;
     };
     PlaybackSession: {
       /**
@@ -28066,6 +28421,8 @@ export interface components {
        * @description Measured throughput to this server, such as a bandwidth probe result. auto sends a source whose bitrate fits 80% of it as-is and lowers only one that does not. Omit it rather than send a guess.
        */
       bandwidth_estimate_kbps?: number;
+      /** @enum {string} */
+      bandwidth_estimate_source?: "probe" | "observed_rebuffer";
       client_capabilities: components["schemas"]["ClientCodecCapabilitiesV3"];
       client_features: string[];
       client_playback_context: components["schemas"]["ClientPlaybackContextV3"];
@@ -28079,11 +28436,18 @@ export interface components {
        * @example 1
        */
       installation_id: string;
+      /** @enum {string} */
+      learned_limit?: "ignore" | "clear";
       /**
        * @deprecated
        * @description Deprecated; ignored. A client on a metered link sends its cellular quality as quality_preference and bandwidth_cap_kbps instead.
        */
       metered?: boolean;
+      /**
+       * Format: int64
+       * @description What the plan that kept buffering received, measured as plan_summary throughput_kbps. Only with bandwidth_estimate_source observed_rebuffer; the server plans with, and learns, the lower of it and bandwidth_estimate_kbps.
+       */
+      observed_throughput_kbps?: number;
       playback_attempt_id: string;
       /**
        * @description Opaque identifier
@@ -28921,6 +29285,11 @@ export interface components {
        * @example true
        */
       clear_resume_position: boolean;
+      /**
+       * @description Whether markWatched on a watched movie or episode that has a resume position (a rewatch in progress) records another play and clears the position; otherwise that mark is a no-op
+       * @example true
+       */
+      mark_watched_records_rewatch: boolean;
       /** @description Opaque revision of this document */
       revision: string;
       /**
@@ -31316,6 +31685,11 @@ export interface components {
       /** @description Stable links to the contract and to capability documents */
       links: components["schemas"]["SystemInfoLinks"];
       /**
+       * @description The origin this request reached, scheme://host[:port]: scheme and host in lower case, the scheme's default port omitted, IPv6 hosts in brackets, no path or trailing slash. It is the transport scheme and Host header, replaced by X-Forwarded-Proto and X-Forwarded-Host only when the request came from a configured trusted proxy, derived the same way as the OAuth iss. A client compares it with its configured server origin before sending credentials, to detect a redirect or a proxy that delivered the request elsewhere. Always present on servers that serve it; absent on older servers.
+       * @example https://silo.example.com
+       */
+      request_origin?: string;
+      /**
        * @description Server build identity (short revision, +dirty when built from a modified tree, or "unavailable"). Diagnostic only: never feature-detect on it.
        * @example 1.0.0-dev
        */
@@ -32216,6 +32590,7 @@ export interface components {
     WatchProviderCapabilities: {
       export_favorites: boolean;
       export_ratings: boolean;
+      /** @description Always false: mark unwatched keeps watch history, so Silo sends providers no history removals. */
       export_unwatched: boolean;
       export_watched: boolean;
       export_watchlist: boolean;
@@ -32240,6 +32615,7 @@ export interface components {
       display_name: string;
       export_favorites_enabled: boolean;
       export_ratings_enabled: boolean;
+      /** @description Has no effect: mark unwatched keeps watch history, so Silo sends providers no history removals. */
       export_unwatched_enabled: boolean;
       export_watched_enabled: boolean;
       export_watchlist_enabled: boolean;
@@ -32330,6 +32706,7 @@ export interface components {
       export_favorites_enabled: boolean;
       /** @description Send the profile's star ratings to the provider (stars times two) and clear removed ones. */
       export_ratings_enabled: boolean;
+      /** @description Has no effect: mark unwatched keeps watch history, so Silo sends providers no history removals. */
       export_unwatched_enabled: boolean;
       export_watched_enabled: boolean;
       export_watchlist_enabled: boolean;
@@ -45651,6 +46028,115 @@ export interface operations {
       };
     };
   };
+  resetAdminDeviceLearnedLimit: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description Optional. When present, it must name the authenticated account's primary profile; an absent header is accepted. */
+        "X-Profile-Id"?: string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        connection_id: string;
+        device_id: string;
+        /** @description Opaque identifier */
+        user_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   getAdminDeviceCapabilities: {
     parameters: {
       query?: never;
@@ -50042,7 +50528,11 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminHistoryImportRunCreate"];
+      };
+    };
     responses: {
       /** @description Accepted */
       202: {
@@ -50094,6 +50584,33 @@ export interface operations {
       };
       /** @description Not Acceptable */
       406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
         headers: {
           [name: string]: unknown;
         };
@@ -50660,7 +51177,11 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminHistoryImportRunCreate"];
+      };
+    };
     responses: {
       /** @description OK */
       200: {
@@ -50709,6 +51230,33 @@ export interface operations {
       };
       /** @description Not Acceptable */
       406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
         headers: {
           [name: string]: unknown;
         };
@@ -89603,6 +90151,138 @@ export interface operations {
       };
     };
   };
+  getPersonalListCapability: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Optional first precondition, evaluated before If-None-Match: a tag that does not match the current representation is 412 precondition_failed. */
+        "If-Match"?: string;
+        "If-None-Match"?: string;
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          "Cache-Control"?: string;
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonalListCapability"];
+        };
+      };
+      /** @description The representation named by If-None-Match is current; no body. */
+      304: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description The strong, opaque validator of the representation; send it back in If-Match on a guarded mutation or If-None-Match on a conditional read. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   getRatingsCapability: {
     parameters: {
       query?: never;
@@ -104910,6 +105590,115 @@ export interface operations {
       };
     };
   };
+  getFavoriteMembership: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description Catalog item identifier */
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonalListMembership"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   listHistory: {
     parameters: {
       query?: {
@@ -118726,6 +119515,8 @@ export interface operations {
         "X-Silo-Client-Channel"?: string;
         /** @description Marketing version paired with X-Silo-Client */
         "X-Silo-Client-Version"?: string;
+        /** @description The client's stable device identifier; a successful start records it in the profile's device registry (first 128 characters) */
+        "X-Silo-Device-Id"?: string;
       };
       path: {
         /** @description Opaque identifier */
@@ -118893,6 +119684,8 @@ export interface operations {
         "X-Silo-Client-Channel"?: string;
         /** @description Marketing version paired with X-Silo-Client */
         "X-Silo-Client-Version"?: string;
+        /** @description The client's stable device identifier; a successful start records it in the profile's device registry (first 128 characters) */
+        "X-Silo-Device-Id"?: string;
       };
       path: {
         /** @description Opaque identifier */
@@ -119060,6 +119853,8 @@ export interface operations {
         "X-Silo-Client-Channel"?: string;
         /** @description Marketing version paired with X-Silo-Client */
         "X-Silo-Client-Version"?: string;
+        /** @description The client's stable device identifier; a successful start records it in the profile's device registry (first 128 characters) */
+        "X-Silo-Device-Id"?: string;
       };
       path: {
         /** @description Opaque identifier */
@@ -119204,6 +119999,8 @@ export interface operations {
   getPlaybackBandwidthProbe: {
     parameters: {
       query?: {
+        /** @description Use the client media egress route. */
+        media_path?: boolean;
         /** @description Number of bytes to send. A client may close the connection early once it has timed enough of the transfer. */
         size?: number;
       };
@@ -119224,6 +120021,14 @@ export interface operations {
           "application/octet-stream": string;
         };
       };
+      /** @description Selected media proxy; follow the short-lived probe URL */
+      307: {
+        headers: {
+          Location?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
       /** @description Unauthorized */
       401: {
         headers: {
@@ -119235,6 +120040,142 @@ export interface operations {
       };
       /** @description Forbidden */
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  reportPlaybackBandwidthProbe: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PlaybackProbeResultsInputBody"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Timeout */
+      408: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Request Entity Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unsupported Media Type */
+      415: {
         headers: {
           [name: string]: unknown;
         };
@@ -119412,6 +120353,219 @@ export interface operations {
       };
     };
   };
+  getPlaybackConnection: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlaybackConnection"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  resetPlaybackLearnedLimit: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+        "X-Silo-Device-Id": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
   reportPlaybackRouteEvent: {
     parameters: {
       query?: never;
@@ -119438,6 +120592,8 @@ export interface operations {
         "X-Silo-Client-Channel"?: string;
         /** @description Marketing version paired with X-Silo-Client */
         "X-Silo-Client-Version"?: string;
+        /** @description The client's stable device identifier; a successful start records it in the profile's device registry (first 128 characters) */
+        "X-Silo-Device-Id"?: string;
       };
       path?: never;
       cookie?: never;
@@ -140632,6 +141788,115 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Not Acceptable */
+      406: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Unprocessable Entity */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["Problem"];
+        };
+      };
+    };
+  };
+  getWatchlistMembership: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description The household profile acting for this request; it must belong to the authenticated account. */
+        "X-Profile-Id": string;
+        /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
+        "X-Profile-Token"?: string;
+      };
+      path: {
+        /** @description Catalog item identifier */
+        item_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonalListMembership"];
+        };
       };
       /** @description Bad Request */
       400: {

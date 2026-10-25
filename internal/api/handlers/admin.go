@@ -180,6 +180,10 @@ type AdminHandler struct {
 	OnServerSettingUpdated       func(ctx context.Context, key, value string)
 	RestartStatus                *ServerRestartStatusTracker
 	CatalogSearchStatus          catalog.CatalogSearchStatusProvider
+	// BeforeServerSettingCommit runs inside the settings transaction for each
+	// setting whose effective value changes. An error rolls the save back. tx
+	// is nil when the settings store has no transactional update.
+	BeforeServerSettingCommit func(ctx context.Context, tx pgx.Tx, key, value string) error
 	// WatchlistTitlesSweeper deletes watchlist titles no entry references.
 	// Deleting an account drops its entries through the users foreign key,
 	// which can leave such titles behind. Nil skips the sweep.
@@ -2372,7 +2376,7 @@ func (h *AdminHandler) normalizeBatchSetting(
 
 	switch key {
 	case markers.SettingMode, markers.SettingLazyPlayback, markers.SettingOnlineStorage,
-		markers.SettingDetectIntros, markers.SettingDetectCredits:
+		markers.SettingDetectIntros, markers.SettingDetectCredits, markers.SettingShareByDefault:
 		normalized, err = markers.NormalizeSetting(key, normalized)
 	case clientip.SettingTrustedProxies:
 		normalized, err = clientip.NormalizeCIDRList(normalized)
@@ -2645,6 +2649,13 @@ func (h *AdminHandler) checkLocalLoginSetting(ctx context.Context, tx pgx.Tx, be
 	return breakGlassError(auth.CheckLocalLoginSettingChange(ctx, h.pool, before[key], after[key]))
 }
 
+func (h *AdminHandler) beforeServerSettingCommit(ctx context.Context, tx pgx.Tx, key, value string) error {
+	if h.BeforeServerSettingCommit == nil {
+		return nil
+	}
+	return h.BeforeServerSettingCommit(ctx, tx, key, value)
+}
+
 // HandleUpdateSettings handles PUT /admin/settings. Every requested value is
 // normalized and validated with the prospective values it depends on before
 // SetMany performs one transaction, so a multi-field save is all-or-nothing.
@@ -2789,6 +2800,14 @@ func (h *AdminHandler) UpdateAdminSettings(ctx context.Context, values map[strin
 					effectiveChanges[key] = true
 				}
 			}
+			for _, key := range keys {
+				if !effectiveChanges[key] {
+					continue
+				}
+				if err := h.beforeServerSettingCommit(ctx, tx, key, after[key]); err != nil {
+					return nil, err
+				}
+			}
 			if guard != nil {
 				committed := maps.Clone(stored)
 				maps.Copy(committed, writes)
@@ -2919,7 +2938,7 @@ func (h *AdminHandler) UpdateAdminSetting(ctx context.Context, key, value string
 
 	switch key {
 	case markers.SettingMode, markers.SettingLazyPlayback, markers.SettingOnlineStorage,
-		markers.SettingDetectIntros, markers.SettingDetectCredits:
+		markers.SettingDetectIntros, markers.SettingDetectCredits, markers.SettingShareByDefault:
 		if normalized, err := markers.NormalizeSetting(key, req.Value); err != nil {
 			return AdminSettingUpdateResult{}, &APIError{Status: http.StatusBadRequest, Code: "bad_request", Message: err.Error()}
 		} else {
@@ -3190,6 +3209,11 @@ func (h *AdminHandler) UpdateAdminSetting(ctx context.Context, key, value string
 				return nil, err
 			}
 			effectiveChanged = before[key] != after[key]
+			if effectiveChanged {
+				if err := h.beforeServerSettingCommit(ctx, tx, key, after[key]); err != nil {
+					return nil, err
+				}
+			}
 			if shouldPersistAdminSetting(stored, key, row, effectiveChanged) {
 				return map[string]string{key: row}, nil
 			}

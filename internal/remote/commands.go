@@ -161,7 +161,6 @@ type TranscodeMode string
 
 const (
 	TranscodeAuto   TranscodeMode = "auto"
-	TranscodeForce  TranscodeMode = "force"
 	TranscodeDirect TranscodeMode = "direct"
 )
 
@@ -341,11 +340,14 @@ func ValidateSessionPayload(name playback.CommandName, raw json.RawMessage, reas
 // ValidateReplanOverrides checks the replan override block.
 func ValidateReplanOverrides(o ReplanOverrides) error {
 	switch o.Transcode {
-	case TranscodeAuto, TranscodeForce, TranscodeDirect:
+	case TranscodeAuto, TranscodeDirect:
 	case "":
-		return fmt.Errorf("%w: overrides.transcode is required (auto|force|direct)", ErrInvalidPayload)
+		return fmt.Errorf("%w: overrides.transcode is required (auto|direct)", ErrInvalidPayload)
 	default:
-		return fmt.Errorf("%w: overrides.transcode must be auto, force or direct", ErrInvalidPayload)
+		// "force" was retired: Silo's planner lowers Auto quality on its own
+		// when playback keeps buffering, and max_bitrate_kbps still forces a
+		// transcode below the source's bitrate.
+		return fmt.Errorf("%w: overrides.transcode must be auto or direct", ErrInvalidPayload)
 	}
 	if o.MaxBitrateKbps < 0 || o.MaxBitrateKbps > maxBitrateKbps {
 		return fmt.Errorf("%w: max_bitrate_kbps must be 0..%d", ErrInvalidPayload, maxBitrateKbps)

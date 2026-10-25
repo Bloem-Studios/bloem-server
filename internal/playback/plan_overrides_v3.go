@@ -7,11 +7,9 @@ import "strings"
 // client advertised: they narrow the durable start request the planner sees,
 // so every plan they produce is one the client could have negotiated itself.
 //
-//   - Transcode "force" makes the planner take the adapted (transcode) route
-//     even when a source-preserving route validates; "direct" drops the
-//     bandwidth cap, estimate and metered flag and asks for original quality
-//     so a validated direct route wins when one exists; "auto" changes
-//     nothing.
+//   - Transcode "direct" drops the bandwidth cap, estimate and metered flag and
+//     asks for original quality so a validated direct route wins when one
+//     exists; "auto" changes nothing.
 //   - MaxBitrateKbps lowers the request's bandwidth cap (never raises it).
 //   - VideoCodec / AudioCodec / Container restrict the advertised decode
 //     capabilities to the named codec or container, which decides what counts
@@ -26,7 +24,6 @@ type PlanOverridesV3 struct {
 
 const (
 	PlanOverrideTranscodeAuto   = "auto"
-	PlanOverrideTranscodeForce  = "force"
 	PlanOverrideTranscodeDirect = "direct"
 )
 
@@ -34,11 +31,6 @@ const (
 func (o PlanOverridesV3) IsZero() bool {
 	return (o.Transcode == "" || o.Transcode == PlanOverrideTranscodeAuto) &&
 		o.MaxBitrateKbps <= 0 && o.VideoCodec == "" && o.AudioCodec == "" && o.Container == ""
-}
-
-// ForceTranscode reports whether the planner must take the adapted route.
-func (o PlanOverridesV3) ForceTranscode() bool {
-	return o.Transcode == PlanOverrideTranscodeForce
 }
 
 // ApplyPlanOverridesV3 returns a copy of request narrowed by the overrides.

@@ -2548,6 +2548,54 @@
     {
       "type": "internal/apiv2.SeasonalVibe",
       "reason": "Upstream Silo wire type taken as shipped in the 2026-10-23 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.PlaybackPlanSummary",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.PlaybackProbe",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.PlaybackSample",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/playback.DesiredAudioTrackV3",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/playback.DesiredSubtitleTrackV3",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/playback.DesiredTracksV3",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.AdminDeviceConnection",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.AdminHistoryImportRunCreate",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.PersonalListCapability",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.PersonalListMembership",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.PlaybackConnection",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.PlaybackLearnedLimit",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
     }
   ]
 }

@@ -91,7 +91,8 @@ func TestValidateSessionPayloadPerCommand(t *testing.T) {
 		{playback.CommandDisplayMessage, `{"title":"Hi","body":"Dinner","severity":"info","timeout_ms":5000}`, "", nil},
 		{playback.CommandDisplayMessage, `{"body":"x","severity":"loud"}`, "", ErrInvalidPayload},
 		{playback.CommandDisplayMessage, `{"title":"no body"}`, "", ErrInvalidPayload},
-		{CommandReplan, `{"overrides":{"transcode":"force","max_bitrate_kbps":4000},"reason":"buffering"}`, "", nil},
+		{CommandReplan, `{"overrides":{"transcode":"auto","max_bitrate_kbps":4000},"reason":"buffering"}`, "", nil},
+		{CommandReplan, `{"overrides":{"transcode":"force","max_bitrate_kbps":4000},"reason":"buffering"}`, "", ErrInvalidPayload},
 		{CommandReplan, `{"overrides":{"transcode":"sometimes"}}`, "", ErrInvalidPayload},
 		{CommandReplan, `{"overrides":{"transcode":"direct","max_bitrate_kbps":4000}}`, "", ErrInvalidPayload},
 		{CommandReplan, `{"overrides":{"transcode":"auto","video_codec":"h264;drop"}}`, "", ErrInvalidPayload},
@@ -266,14 +267,14 @@ func TestRateLimitPerIssuer(t *testing.T) {
 func TestReplanPinsOverridesAndCompletesOnPlanFetch(t *testing.T) {
 	svc, _, sender := newTestService(t)
 	ctx := context.Background()
-	cmd, err := svc.SendToSession(ctx, adminInput("s1", CommandReplan, `{"overrides":{"transcode":"force","max_bitrate_kbps":4000,"video_codec":"H264"},"reason":"buffering"}`, ""))
+	cmd, err := svc.SendToSession(ctx, adminInput("s1", CommandReplan, `{"overrides":{"transcode":"auto","max_bitrate_kbps":4000,"video_codec":"H264"},"reason":"buffering"}`, ""))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(sender.replans) != 1 || len(sender.dispatched) != 0 {
 		t.Fatalf("replans = %d dispatched = %d", len(sender.replans), len(sender.dispatched))
 	}
-	if got := sender.replans[0]; got.Transcode != "force" || got.MaxBitrateKbps != 4000 || got.VideoCodec != "h264" {
+	if got := sender.replans[0]; got.Transcode != "auto" || got.MaxBitrateKbps != 4000 || got.VideoCodec != "h264" {
 		t.Fatalf("overrides = %+v", got)
 	}
 	svc.OnAck(ctx, cmd.ID)
@@ -319,13 +320,13 @@ func TestOpenReplanOverridesReadsNewestLiveRowFromStore(t *testing.T) {
 	if _, ok := svc.OpenReplanOverrides(ctx, "s1"); ok {
 		t.Fatal("pin without any replan")
 	}
-	first, err := svc.SendToSession(ctx, adminInput("s1", CommandReplan, `{"overrides":{"transcode":"force","max_bitrate_kbps":2000}}`, "buffering"))
+	first, err := svc.SendToSession(ctx, adminInput("s1", CommandReplan, `{"overrides":{"transcode":"auto","max_bitrate_kbps":2000}}`, "buffering"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// A second service over the same store (another instance) sees the pin.
 	other := NewService(store, &fakeSender{}, nil, DefaultConfig())
-	if got, ok := other.OpenReplanOverrides(ctx, "s1"); !ok || got.MaxBitrateKbps != 2000 || !got.ForceTranscode() {
+	if got, ok := other.OpenReplanOverrides(ctx, "s1"); !ok || got.MaxBitrateKbps != 2000 || got.Transcode != "auto" {
 		t.Fatalf("other instance pin = %+v ok=%v", got, ok)
 	}
 	// Completion keeps the pin; a newer replan replaces it.
@@ -363,7 +364,7 @@ func TestOpenReplanOverridesReadsNewestLiveRowFromStore(t *testing.T) {
 	// An unanswered replan past its TTL is not a pin.
 	base := time.Now()
 	svc.SetClock(func() time.Time { return base })
-	if _, err := svc.SendToSession(ctx, adminInput("s1", CommandReplan, `{"overrides":{"transcode":"force","max_bitrate_kbps":500}}`, "late")); err != nil {
+	if _, err := svc.SendToSession(ctx, adminInput("s1", CommandReplan, `{"overrides":{"transcode":"auto","max_bitrate_kbps":500}}`, "late")); err != nil {
 		t.Fatal(err)
 	}
 	svc.SetClock(func() time.Time { return base.Add(2 * time.Minute) })

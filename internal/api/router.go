@@ -64,6 +64,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/opslog"
 	"github.com/Silo-Server/silo-server/internal/passwordreset"
 	"github.com/Silo-Server/silo-server/internal/playback"
+	"github.com/Silo-Server/silo-server/internal/playback/connectionstore"
 	"github.com/Silo-Server/silo-server/internal/playback/planstore"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 	"github.com/Silo-Server/silo-server/internal/policy"
@@ -286,6 +287,9 @@ type Dependencies struct {
 	v2Wiring               func(apiv2.Dependencies)
 	v2RouteSnapshot        func([]streamtelemetry.WalkedRoute)
 	OnServerSettingUpdated func(ctx context.Context, key, value string)
+	// BeforeServerSettingCommit runs inside an admin settings save's
+	// transaction for each changed setting; an error rolls the save back.
+	BeforeServerSettingCommit func(ctx context.Context, tx pgx.Tx, key, value string) error
 	// AdminDefaults is the node's shared snapshot of the administrator's
 	// setting defaults. Without it the router builds one from its settings
 	// repo, which then refreshes only on its own admin writes and its TTL.
@@ -1219,6 +1223,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			profileHandler.RecommendationsPurger = recommendations.NewRepo(deps.DB)
 			// Ebook reading data lives there too.
 			profileHandler.EbookReaderPurger = handlers.NewPGEbookReaderProgressStore(deps.DB)
+			profileHandler.Connections = &connectionstore.Store{Pool: deps.DB}
 		}
 		if watchlistRequestWithdrawer != nil {
 			profileHandler.WatchlistRequestWithdrawer = watchlistRequestWithdrawer
@@ -1328,6 +1333,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		deviceHandler = handlers.NewDeviceHandler(deps.UserStoreProvider)
 		deviceHandler.EventsHub = deps.EventsHub
 		deviceHandler.ProfileTokens = profileTokenService
+		if deps.DB != nil {
+			deviceHandler.Connections = &connectionstore.Store{Pool: deps.DB}
+		}
 		homeDismissalHandler = handlers.NewHomeDismissalHandler(deps.UserStoreProvider)
 		homeDismissalHandler.EventsHub = deps.EventsHub
 		if deps.DB != nil {
@@ -1408,6 +1416,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		playbackHandler.StreamTelemetry = deps.StreamTelemetry
 		if deps.DB != nil {
 			playbackHandler.PlanStoreV3 = planstore.NewPostgres(deps.DB)
+			playbackHandler.Connections = &connectionstore.Store{Pool: deps.DB}
+			playbackHandler.SourceBitrates = &catalog.SourceBitrates{Pool: deps.DB}
 			// The v2 playback contract binds every mutation to this server's
 			// installation identity; a client that read capabilities from a
 			// different installation is refused. Nothing else depends on it, so a
@@ -1737,6 +1747,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 				deps.OnServerSettingUpdated(ctx, key, value)
 			}
 		}
+		adminHandler.BeforeServerSettingCommit = deps.BeforeServerSettingCommit
 		if deps.RecWorker != nil {
 			adminHandler.RecWorker = deps.RecWorker
 		}
@@ -2275,7 +2286,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 			recsRepo = recommendations.NewRepo(deps.DB)
 			recsReader = deps.recommendationReader(recsRepo, ratingsRepo)
 		}
-		recsHandler = handlers.NewRecommendationsHandler(deps.Recommender, recsReader, deps.UserStoreProvider, ratingsRepo, recsRepo, deps.Recommender != nil)
+		recsHandler = handlers.NewRecommendationsHandler(deps.Recommender, recsReader, deps.UserStoreProvider, ratingsRepo, recsRepo, deps.Recommender != nil).
+			WithUserStoreOutsidePostgres(deps.Config != nil && deps.Config.UserDB.Backend == "sqlite")
 		if deps.DB != nil {
 			recsFetcher := sections.NewFetcher(deps.DB)
 			recsFetcher.StoreProvider = deps.UserStoreProvider
@@ -2529,7 +2541,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// userRepo is a concrete pointer, so it has to stay out of the
 	// interface parameter when unset — a typed nil would satisfy the
 	// handler's nil check and panic on first use.
-	var compatUsers handlers.UserRepository
+	var compatUsers handlers.CompatConnectUsers
 	if userRepo != nil {
 		compatUsers = userRepo
 	}
@@ -2738,8 +2750,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		// Raw v2 delivery shares the byte-protocol handlers; fonts use the typed
 		// service. Both retain token-carried reconstruction and deny markers.
 		v2deps.PlaybackMedia = &apiv2.PlaybackMediaHandlers{
-			Manifest: observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v2/playback/transcode/{session_id}/master.m3u8", playbackHandler.HandleGetTranscodeManifest),
-			Segment:  observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v2/playback/transcode/{session_id}/segment/{name}", playbackHandler.HandleGetTranscodeSegment),
+			Manifest: observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v2/playback/transcode/{session_id}/master.m3u8", handlers.RefuseRelayRedirects(playbackHandler.HandleGetTranscodeManifest)),
+			Segment:  observeNative(deps.StreamTelemetry, http.MethodGet, "/api/v2/playback/transcode/{session_id}/segment/{name}", handlers.RefuseRelayRedirects(playbackHandler.HandleGetTranscodeSegment)),
 		}
 		if streamHandler != nil {
 			v2deps.PlaybackMedia.Original = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

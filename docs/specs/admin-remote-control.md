@@ -5,7 +5,7 @@
 
 Server-side control of client apps by a server admin (and, in a reduced form, by household
 members): see every device and playback session, and act on them — pause, stop, seek, switch
-tracks, force a transcode replan with overrides, push a message, start playback on a device,
+tracks, replan a session with overrides, push a message, start playback on a device,
 collect diagnostics. Status: DRAFT for owner approval, owner direction recorded 2026-09-01.
 
 ## Owner direction (binding)
@@ -79,7 +79,7 @@ block (every v2 client) is shown in the admin UI as "not controllable" and recei
 | `set_audio_track` / `set_subtitle_track` | session | `{track_id}` or `{off: true}` | existing |
 | `display_message` | session or device | `{title, body, severity, timeout_ms?}` | existing name; device scope new |
 | `play_media` | device | `{item_id, position_ms?, audio_track?, subtitle_track?}` | existing name; device scope new — this is "play on that device" |
-| `replan` | session | `{overrides: {transcode: auto|force|direct, max_bitrate_kbps?, video_codec?, audio_codec?, container?}, reason}` | **new** — the admin "fix this playback" command: the server re-plans the session with the overrides pinned, then sends `plan_invalidated` as today; the client reloads the new plan without leaving the player |
+| `replan` | session | `{overrides: {transcode: auto|direct, max_bitrate_kbps?, video_codec?, audio_codec?, container?}, reason}` | **new** — the admin "fix this playback" command: the server re-plans the session with the overrides pinned, then sends `plan_invalidated` as today; the client reloads the new plan without leaving the player |
 | `collect_diagnostics` | device | `{include_logs: bool, note?}` | **new** — client uploads a diagnostics bundle to the self-hosted collector and returns the report id in `result` |
 | `refresh_settings` | device | — | **new** — client re-fetches device/profile settings |
 | `sign_out` | device | `{reason?}` | **new** — client drops its tokens and returns to login (pairs with the existing admin auth-session revoke) |
@@ -202,7 +202,7 @@ command is `400 invalid_payload`, not ignored.
 
 ### `replan` (§C, new)
 
-`{name:"replan", payload:{overrides:{transcode: auto|force|direct, max_bitrate_kbps?, video_codec?,
+`{name:"replan", payload:{overrides:{transcode: auto|direct, max_bitrate_kbps?, video_codec?,
 audio_codec?, container?}, reason}}` pins `playback.PlanOverridesV3` on the session and emits
 `plan_invalidated` (`reason: admin_replan`, `plan_id` = the current plan) with the command's own
 `command_id`, through the same negotiation the copy-safety notifier applies: the attempt must have
@@ -210,8 +210,10 @@ negotiated `plan_invalidated_v1` and the socket must be live, otherwise **409 `r
 The client's next `POST /playback/{session_id}/replan` sees the durable start request narrowed by
 `ApplyPlanOverridesV3` (bandwidth cap lowered, never raised; `direct` clears cap/estimate/metered
 and asks for original quality; codec/container pins filter the advertised decode capabilities, so
-they decide what counts as directly playable — the transcode recipe stays the server's h264/aac)
-plus `PlannerInputV3.ForceTranscode` for `force`. Household members cannot send `replan`.
+they decide what counts as directly playable — the transcode recipe stays the server's h264/aac).
+`force` was retired on 2026-10-25 so the planner stays Silo's: Silo lowers Auto quality itself when
+playback keeps buffering, and `max_bitrate_kbps` below the source's bitrate still forces a transcode;
+a `force` override is refused as an invalid payload. Household members cannot send `replan`.
 
 The pin is not process memory: the replan handler reads the session's newest replan command row in
 `sent | accepted | done` from the remote store (`Service.OpenReplanOverrides`) and derives the

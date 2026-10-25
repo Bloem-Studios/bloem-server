@@ -11,6 +11,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/clientclock"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -151,8 +152,8 @@ func (h *ProgressHandler) HandleBloemSyncProgress(w http.ResponseWriter, r *http
 				continue
 			}
 			now := time.Now()
-			eventAt := clampEventAt(client, now)
-			if !client.IsZero() && client.After(now.Add(progressClockSkew)) {
+			eventAt := clientclock.Clamp(client, now)
+			if !client.IsZero() && clientclock.TooFarAhead(client, now) {
 				slog.WarnContext(r.Context(), "clamped future-dated progress event time", "component", "api",
 					"profile_id", profileID, "media_item_id", item.MediaItemID)
 			}

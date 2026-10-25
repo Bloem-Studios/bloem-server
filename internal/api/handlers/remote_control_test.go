@@ -212,7 +212,7 @@ func TestRemoteControlStatusCodes(t *testing.T) {
 		{`{"name":"seek","payload":{"position_ms":-5}}`, http.StatusBadRequest, "invalid_payload"},
 		{`{"name":"play_media","payload":{}}`, http.StatusBadRequest, "unknown_command"},
 		{`{"name":"reboot"}`, http.StatusBadRequest, "unknown_command"},
-		{`{"name":"replan","payload":{"overrides":{"transcode":"force"}},"reason":"x"}`, http.StatusCreated, ""}, // device did not list replan
+		{`{"name":"replan","payload":{"overrides":{"transcode":"auto"}},"reason":"x"}`, http.StatusCreated, ""}, // device did not list replan
 		{`not json`, http.StatusBadRequest, "bad_request"},
 	}
 	for _, tc := range cases {
@@ -276,7 +276,7 @@ func TestRemoteControlHouseholdScopeAndReducedSet(t *testing.T) {
 	if rr := h.householdRequest(t, 7, `{"name":"terminate","reason":"no"}`); rr.Code != http.StatusForbidden {
 		t.Fatalf("household terminate = %d %s", rr.Code, rr.Body.String())
 	}
-	if rr := h.householdRequest(t, 7, `{"name":"replan","payload":{"overrides":{"transcode":"force"}}}`); rr.Code != http.StatusForbidden {
+	if rr := h.householdRequest(t, 7, `{"name":"replan","payload":{"overrides":{"transcode":"auto"}}}`); rr.Code != http.StatusForbidden {
 		t.Fatalf("household replan = %d %s", rr.Code, rr.Body.String())
 	}
 	// A non-primary profile cannot control the household at all.
@@ -334,7 +334,7 @@ func TestRemoteControlReplanEmitsPlanInvalidatedAndCompletesOnPlanFetch(t *testi
 		t.Fatal(err)
 	}
 	// No negotiated plan_invalidated support → 409 replan_unavailable.
-	rr := h.adminRequest(t, `{"name":"replan","payload":{"overrides":{"transcode":"force","max_bitrate_kbps":3000}},"reason":"buffering"}`)
+	rr := h.adminRequest(t, `{"name":"replan","payload":{"overrides":{"transcode":"auto","max_bitrate_kbps":3000}},"reason":"buffering"}`)
 	if rr.Code != http.StatusConflict {
 		t.Fatalf("replan without a negotiated attempt = %d %s", rr.Code, rr.Body.String())
 	}
@@ -347,7 +347,7 @@ func TestRemoteControlReplanEmitsPlanInvalidatedAndCompletesOnPlanFetch(t *testi
 		t.Fatalf("seed attempt: %v", err)
 	}
 
-	rr = h.adminRequest(t, `{"name":"replan","payload":{"overrides":{"transcode":"force","max_bitrate_kbps":3000}},"reason":"buffering"}`)
+	rr = h.adminRequest(t, `{"name":"replan","payload":{"overrides":{"transcode":"auto","max_bitrate_kbps":3000}},"reason":"buffering"}`)
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("replan = %d %s", rr.Code, rr.Body.String())
 	}
@@ -364,12 +364,12 @@ func TestRemoteControlReplanEmitsPlanInvalidatedAndCompletesOnPlanFetch(t *testi
 		t.Fatalf("plan_invalidated payload = %+v", payload)
 	}
 	overrides, ok := h.playback.remotePlanOverridesV3(ctx, h.session.ID)
-	if !ok || overrides.Transcode != "force" || overrides.MaxBitrateKbps != 3000 || !overrides.ForceTranscode() {
+	if !ok || overrides.Transcode != "auto" || overrides.MaxBitrateKbps != 3000 {
 		t.Fatalf("pinned overrides = %+v ok=%v", overrides, ok)
 	}
-	narrowed, applied := h.playback.applyRemotePlanOverridesV3(ctx, h.session.ID, playback.StartRequestV3{})
-	if narrowed.BandwidthCapKbps == nil || *narrowed.BandwidthCapKbps != 3000 || !applied.ForceTranscode() {
-		t.Fatalf("replan request not narrowed: %+v %+v", narrowed.BandwidthCapKbps, applied)
+	narrowed := h.playback.applyRemotePlanOverridesV3(ctx, h.session.ID, playback.StartRequestV3{})
+	if narrowed.BandwidthCapKbps == nil || *narrowed.BandwidthCapKbps != 3000 {
+		t.Fatalf("replan request not narrowed: %+v", narrowed.BandwidthCapKbps)
 	}
 
 	// The client's plan fetch completes the command; the pin survives it so
@@ -387,9 +387,9 @@ func TestRemoteControlReplanEmitsPlanInvalidatedAndCompletesOnPlanFetch(t *testi
 	// serving the client's /replan) applies the same pin.
 	other := NewPlaybackHandler(h.sessions)
 	other.RemoteObserver = remote.NewService(h.store, NewPlaybackRemoteSender(other), nil, remote.DefaultConfig())
-	otherNarrowed, otherApplied := other.applyRemotePlanOverridesV3(ctx, h.session.ID, playback.StartRequestV3{})
-	if otherNarrowed.BandwidthCapKbps == nil || *otherNarrowed.BandwidthCapKbps != 3000 || !otherApplied.ForceTranscode() {
-		t.Fatalf("second instance did not apply the pin: %+v %+v", otherNarrowed.BandwidthCapKbps, otherApplied)
+	otherNarrowed := other.applyRemotePlanOverridesV3(ctx, h.session.ID, playback.StartRequestV3{})
+	if otherNarrowed.BandwidthCapKbps == nil || *otherNarrowed.BandwidthCapKbps != 3000 {
+		t.Fatalf("second instance did not apply the pin: %+v", otherNarrowed.BandwidthCapKbps)
 	}
 }
 
@@ -406,7 +406,7 @@ func TestRemoteControlReplanStillOpenAtSessionEndIsExpiredAndReleasesPin(t *test
 	if err := planStore.SaveAttempt(ctx, record); err != nil {
 		t.Fatal(err)
 	}
-	command := decodeRemoteCommand(t, h.adminRequest(t, `{"name":"replan","payload":{"overrides":{"transcode":"force"}},"reason":"buffering"}`))
+	command := decodeRemoteCommand(t, h.adminRequest(t, `{"name":"replan","payload":{"overrides":{"transcode":"auto"}},"reason":"buffering"}`))
 	if _, ok := h.playback.remotePlanOverridesV3(ctx, h.session.ID); !ok {
 		t.Fatal("pin not readable while the replan is open")
 	}
