@@ -36,7 +36,6 @@ var householdGateExemptRoutes = map[string]string{
 	"GET /api/v1/downloads/{id}/subtitles/{ref}":         "managed download: the handler requires a profile",
 	"GET /api/v1/events/capability":                      "capability probe",
 	"GET /api/v1/events/ws":                              "account event socket",
-	"POST /api/v1/events/ws-ticket":                      "Bloem: ticket for the account event socket",
 	"GET /api/v1/images/capability":                      "capability probe",
 	"GET /api/v1/items/trailers/capability":              "capability probe",
 	"GET /api/v1/metadata/ai/status":                     "capability probe",

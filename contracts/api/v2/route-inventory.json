@@ -41,7 +41,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1122
+      "route_count": 1120
     },
     {
       "id": "api_v2",
@@ -63,8 +63,8 @@
     }
   ],
   "totals": {
-    "routes": 1307,
-    "conditional_routes": 889,
+    "routes": 1305,
+    "conditional_routes": 887,
     "streaming_routes": 45,
     "websocket_routes": 4
   },
@@ -31579,15 +31579,16 @@
       "method": "POST",
       "path": "/api/v1/events/ws-ticket",
       "route_group": "/api/v1",
-      "handler": "(*internal/api/handlers.EventsHandler).HandleMintWSTicket",
-      "handler_expr": "eventsHandler.HandleMintWSTicket",
+      "handler": "(*internal/api/handlers.NotificationsHandler).HandleMintWSTicket",
+      "handler_expr": "notificationsHandler.HandleMintWSTicket",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 17,
+      "middleware_chain": 18,
       "auth_class": "profile_scoped",
       "auth_traits": [
         "authenticated",
         "demo_guarded",
+        "profile_required",
         "rate_limited",
         "stream_token",
         "tenant_scoped",
@@ -31595,7 +31596,7 @@
       ],
       "conditions": [
         "authMiddleware != nil",
-        "deps.EventsHub != nil"
+        "deps.Notifications != nil"
       ],
       "conditional": true,
       "request_kind": "unknown",
@@ -35515,41 +35516,6 @@
       "delegates_to": "",
       "streams": false,
       "upgrades_websocket": true,
-      "method_origin": "explicit",
-      "success_statuses": null,
-      "error_codes": null,
-      "source_file": "internal/api/router.go"
-    },
-    {
-      "listener": "api",
-      "namespace": "api_v1",
-      "method": "POST",
-      "path": "/api/v1/playback/sessions/{session_id}/control/ws-ticket",
-      "route_group": "/api/v1/playback",
-      "handler": "(*internal/api/handlers.PlaybackHandler).HandleMintSessionWSTicket",
-      "handler_expr": "playbackHandler.HandleMintSessionWSTicket",
-      "handler_kind": "method",
-      "handler_resolved": true,
-      "middleware_chain": 17,
-      "auth_class": "profile_scoped",
-      "auth_traits": [
-        "authenticated",
-        "demo_guarded",
-        "rate_limited",
-        "stream_token",
-        "tenant_scoped",
-        "viewer_access"
-      ],
-      "conditions": [
-        "authMiddleware != nil",
-        "playbackHandler != nil"
-      ],
-      "conditional": true,
-      "request_kind": "unknown",
-      "response_media_kind": "json",
-      "delegates_to": "",
-      "streams": false,
-      "upgrades_websocket": false,
       "method_origin": "explicit",
       "success_statuses": null,
       "error_codes": null,
@@ -41172,42 +41138,6 @@
       "delegates_to": "",
       "streams": false,
       "upgrades_websocket": true,
-      "method_origin": "explicit",
-      "success_statuses": null,
-      "error_codes": null,
-      "source_file": "internal/api/router.go"
-    },
-    {
-      "listener": "api",
-      "namespace": "api_v1",
-      "method": "POST",
-      "path": "/api/v1/watch-together/rooms/{room_id}/ws-ticket",
-      "route_group": "/api/v1/watch-together",
-      "handler": "(*internal/api/handlers.WatchTogetherHandler).HandleMintRoomWSTicket",
-      "handler_expr": "watchTogetherHandler.HandleMintRoomWSTicket",
-      "handler_kind": "method",
-      "handler_resolved": true,
-      "middleware_chain": 18,
-      "auth_class": "profile_scoped",
-      "auth_traits": [
-        "authenticated",
-        "demo_guarded",
-        "profile_required",
-        "rate_limited",
-        "stream_token",
-        "tenant_scoped",
-        "viewer_access"
-      ],
-      "conditions": [
-        "authMiddleware != nil",
-        "watchTogetherHandler != nil"
-      ],
-      "conditional": true,
-      "request_kind": "json",
-      "response_media_kind": "json",
-      "delegates_to": "",
-      "streams": false,
-      "upgrades_websocket": false,
       "method_origin": "explicit",
       "success_statuses": null,
       "error_codes": null,

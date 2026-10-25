@@ -11,14 +11,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/websocket"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/watchtogether"
-	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/websocket"
 )
 
 type WatchTogetherScopeResolver interface {
@@ -29,7 +30,6 @@ type WatchTogetherHandler struct {
 	Service       *watchtogether.Service
 	ScopeResolver WatchTogetherScopeResolver
 	TokenService  *watchtogether.RoomTokenService
-	Tickets       auth.AudienceTicketStore
 	// MemberState and Details serve the v2 member-state and picker reads.
 	// Both may be nil, in which case those operations fail closed.
 	MemberState        *watchtogether.MemberStateReader
@@ -801,7 +801,7 @@ func (h *WatchTogetherHandler) validateRoomAccessToken(
 }
 
 func (h *WatchTogetherHandler) HandleRoomWebSocket(w http.ResponseWriter, r *http.Request) {
-	if h == nil || h.Service == nil {
+	if h == nil || h.Service == nil || h.ScopeResolver == nil {
 		http.Error(w, "watch together unavailable", http.StatusServiceUnavailable)
 		return
 	}
@@ -818,9 +818,29 @@ func (h *WatchTogetherHandler) HandleRoomWebSocket(w http.ResponseWriter, r *htt
 		return
 	}
 
-	profileID := claims.ProfileID
+	profileID := r.URL.Query().Get("profile_id")
 	if profileID == "" {
 		http.Error(w, "profile_id required", http.StatusBadRequest)
+		return
+	}
+	if err := h.validateRoomAccessToken(r, roomID, claims.UserID, profileID); err != nil {
+		http.Error(w, "room access token required", http.StatusForbidden)
+		return
+	}
+
+	_, err := h.ScopeResolver.Resolve(r.Context(), access.ResolveInput{
+		UserID:              claims.UserID,
+		SessionID:           claims.SessionID,
+		ProfileID:           profileID,
+		ProfileToken:        r.URL.Query().Get("profile_token"),
+		SkipPINVerification: claims.TokenType == auth.TokenTypeAPIKey,
+	})
+	if err != nil {
+		status := http.StatusForbidden
+		if errors.Is(err, access.ErrProfileNotFound) {
+			status = http.StatusNotFound
+		}
+		http.Error(w, "profile verification failed", status)
 		return
 	}
 

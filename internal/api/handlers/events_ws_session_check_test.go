@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/cache"
 	evt "github.com/Silo-Server/silo-server/internal/events"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/notifications"
 )
 
 // sessionRoleFixture answers ActiveSession from values a test changes
@@ -134,14 +136,19 @@ func TestEventsWebSocketV1RechecksTicketProfileProof(t *testing.T) {
 	}
 	connect := func(t *testing.T, proofs *profileProofFixture, token string) (*websocket.Conn, func(string) map[string]json.RawMessage) {
 		t.Helper()
+		tickets := notifications.NewTicketStore(nil)
+		ticket, _, err := tickets.Mint(t.Context(), notifications.Ticket{UserID: 1, ProfileID: "parent", ProfileToken: token})
+		if err != nil {
+			t.Fatal(err)
+		}
 		sessions := new(sessionRoleFixture)
 		sessions.role.Store("admin")
 		handler := &EventsHandler{hub: evt.NewHub("test", &cache.NoopEventBus{}), sessionCheckInterval: 10 * time.Millisecond}
+		handler.SetNotificationsSystem(&notifications.System{Tickets: tickets})
 		handler.SetSessionRoles(sessions)
 		handler.SetProfileVerifier(proofs)
-		// Bloem: RequireAuth consumed the audience ticket minted for "parent".
-		return bloemEventsWSTestConnAfterTicket(t, handler, &auth.Claims{UserID: 1, Role: "admin", SessionID: "session", ProfileID: "parent"},
-			token, "?channels=user_settings", decide)
+		return eventsWSTestConnActing(t, handler, &auth.Claims{UserID: 1, Role: "admin", SessionID: "session"},
+			"?channels=user_settings&ticket="+url.QueryEscape(ticket), decide)
 	}
 	adminChannels := func(hello map[string]json.RawMessage) bool {
 		return strings.Contains(string(hello["available_channels"]), `"sessions"`)

@@ -74,13 +74,11 @@ func (m *ViewerAccessMiddleware) RequireViewerAccess(next http.Handler) http.Han
 			// direct-download link was issued to an already verified profile
 			// and carries the profile in its claims; the profile still has
 			// to exist and be owned by the user, which Resolve checks. A
-			// direct-profile session authenticated as its one profile, and an
-			// audience ticket was minted for an already verified viewer.
+			// direct-profile session authenticated as its one profile.
 			SkipPINVerification: claims.TokenType == auth.TokenTypeAPIKey ||
 				claims.TokenType == auth.TokenTypeApplePushDisplay ||
 				claims.TokenType == auth.TokenTypeDirectDownloadLink ||
-				claims.AuthMethod == auth.AuthMethodDirectProfile ||
-				IsAudienceTicketAuthorized(r.Context()),
+				claims.AuthMethod == auth.AuthMethodDirectProfile,
 		}
 
 		scope, err := m.resolver.Resolve(r.Context(), input)

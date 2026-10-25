@@ -3,6 +3,17 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 25, 2026 — v1 sockets use Silo's tickets
+
+The v1 events, watch-together and playback-control sockets run Silo's handshake
+again. Bloem's audience-ticket system and its two extra v1 ticket routes
+(`/playback/sessions/{session_id}/control/ws-ticket` and
+`/watch-together/rooms/{room_id}/ws-ticket`) are gone, and
+`POST /api/v1/events/ws-ticket` is Silo's own route again, which requires a
+profile. No Bloem client used the v1 sockets: the web app, bloem-apple and
+bloem-android use v2, whose tenant authority is unchanged. The seam ledger
+drops from 350 to 344.
+
 ## October 25, 2026 — Merge follow-ups: CI and the daily sync
 
 CI on the merged main caught what the pre-push gates had not run. The eager

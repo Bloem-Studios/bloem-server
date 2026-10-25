@@ -3015,13 +3015,6 @@ public data class watchTogetherSuggestionsResponse(
     public val suggestions: List<Suggestion> = emptyList(),
 )
 
-/** Wire type `internal/api/handlers.watchTogetherWSTicketRequest`. Direction: request. Dialect: upstream-compat. Registered root. */
-@Serializable
-public data class watchTogetherWSTicketRequest(
-    @SerialName("room_access_token")
-    public val roomAccessToken: String,
-)
-
 /** Wire type `internal/api/handlers.watchTonightItemResponse`. Direction: response. Dialect: upstream-compat. */
 @Serializable
 public data class watchTonightItemResponse(

@@ -5,8 +5,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/Silo-Server/silo-server/internal/auth"
 )
 
 func intPtr(v int) *int { return &v }
@@ -201,32 +199,32 @@ func TestMemoryTicketStore(t *testing.T) {
 	store := NewTicketStore(nil)
 	ctx := context.Background()
 
-	ticket, ttl, err := store.Mint(ctx, auth.AudienceTicket{Audience: auth.AudienceEventsWS, AccountID: 7, ProfileID: "profile-1"})
+	minted := Ticket{UserID: 7, ProfileID: "profile-1", ProfileToken: "proof"}
+	ticket, ttl, err := store.Mint(ctx, minted)
 	if err != nil || ticket == "" || ttl <= 0 {
 		t.Fatalf("mint failed: %q %v %v", ticket, ttl, err)
 	}
 
-	principal, err := store.Consume(ctx, ticket, auth.AudienceEventsWS, "")
-	if err != nil || principal.AccountID != 7 || principal.ProfileID != "profile-1" {
-		t.Fatalf("consume returned %#v %v", principal, err)
+	binding, ok := store.Consume(ctx, ticket)
+	if !ok || binding != minted {
+		t.Fatalf("consume returned %+v %v", binding, ok)
 	}
 
-	if _, err := store.Consume(ctx, ticket, auth.AudienceEventsWS, ""); err == nil {
+	if _, ok := store.Consume(ctx, ticket); ok {
 		t.Fatal("tickets must be single-use")
 	}
-	if _, err := store.Consume(ctx, "unknown", auth.AudienceEventsWS, ""); err == nil {
+	if _, ok := store.Consume(ctx, "unknown"); ok {
 		t.Fatal("unknown tickets must be rejected")
 	}
 
 	// A token no signed one could be is not kept: the viewer gate does not
 	// read X-Profile-Token for a profile without a PIN.
-	oversized := auth.AudienceTicket{Audience: auth.AudienceEventsWS, AccountID: 7, ProfileID: "profile-1"}.
-		WithProfileProof(strings.Repeat("x", 4<<10+1))
+	oversized := Ticket{UserID: 7, ProfileID: "profile-1", ProfileToken: strings.Repeat("x", maxTicketProofBytes+1)}
 	ticket, _, err = store.Mint(ctx, oversized)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if principal, err := store.Consume(ctx, ticket, auth.AudienceEventsWS, ""); err != nil || principal.ProfileToken != "" {
-		t.Fatalf("oversized proof consumed as %#v %v", principal, err)
+	if binding, ok := store.Consume(ctx, ticket); !ok || binding != (Ticket{UserID: 7, ProfileID: "profile-1"}) {
+		t.Fatalf("oversized proof consumed as %+v %v", binding, ok)
 	}
 }

@@ -548,10 +548,6 @@
           "direction": "request"
         },
         {
-          "type": "watchTogetherWSTicketRequest",
-          "direction": "request"
-        },
-        {
           "type": "updateWatchTogetherPolicyRequest",
           "direction": "request"
         },

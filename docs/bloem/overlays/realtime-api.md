@@ -14,14 +14,3 @@ fail closed. The binding is neither client input nor part of the public ticket r
 One-use consumption, expiry, Origin, PIN, policy fingerprint and revocation checks above
 remain in force. See [security invariants](../../architecture/bloem-security-foundation.md#native-seasonal-delivery-and-events-authority)
 and [bounded browser evidence](../../architecture/bloem-web-feature-coverage.md#acceptance-evidence-and-limits).
-
-**Location:** section “Personal event recipients”, after the paragraph beginning “On the bridge socket, only a ticket from `POST /api/v1/events/ws-ticket` binds a profile…”. **Bloem replaces the ticket mechanics; the recipient rules are Silo's:**
-
-On Bloem, the bridge ticket is a route-bound audience ticket and is itself the
-handshake credential. Connect with `?ticket=` and no `Authorization` header or
-`token` query parameter; either of those authenticates the handshake instead,
-the `ticket` parameter is not read, and the socket is unbound. The ticket's
-profile replaces the handshake's `X-Profile-Id` and `X-Profile-Token`, so it both
-binds the socket and decides administrator access. Bloem's mint route does not
-require a profile; a ticket minted without one opens an unbound socket. See
-[derived websocket credentials](../../architecture/multitenant-administration.md#derived-websocket-credentials).

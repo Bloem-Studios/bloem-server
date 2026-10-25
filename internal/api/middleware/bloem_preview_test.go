@@ -116,31 +116,6 @@ func (p previewUsers) GetByID(_ context.Context, id int) (*models.User, error) {
 	return nil, auth.ErrNotFound
 }
 
-func TestRequireAuthRechecksPreviewForAnExistingAudienceTicket(t *testing.T) {
-	for _, preview := range []bool{false, true} {
-		sessions := previewSessions{accounts: map[int]bool{9: preview}}
-		am := NewAuthMiddleware(nil, sessions, nil, nil)
-		am.SetPreviewPrincipals(sessions)
-		am.SetPreviewRouteGuard(func(*http.Request) bool { return false })
-		store := auth.NewAudienceTicketStore(nil)
-		am.SetAudienceTicketStore(store)
-		ticket, _, err := store.Mint(t.Context(), auth.AudienceTicket{Audience: auth.AudienceEventsWS, AccountID: 9, Role: "user", SessionID: "old-session", TokenType: auth.TokenTypeAccess})
-		if err != nil {
-			t.Fatal(err)
-		}
-		called := false
-		w := httptest.NewRecorder()
-		am.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { called = true; w.WriteHeader(http.StatusNoContent) })).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/events/ws?ticket="+ticket, nil))
-		if preview {
-			if called || w.Code != http.StatusForbidden || w.Header().Get("X-Bloem-Denial") != CodePreviewOnly {
-				t.Fatalf("old ticket bypassed preview boundary: called=%v status=%d", called, w.Code)
-			}
-		} else if !called || w.Code != http.StatusNoContent {
-			t.Fatalf("standard ticket refused: %d", w.Code)
-		}
-	}
-}
-
 type guestSettings struct{ s auth.PreviewGuestSettings }
 
 func (g guestSettings) PreviewGuestSettings(context.Context) (auth.PreviewGuestSettings, error) {
@@ -226,22 +201,5 @@ func TestPreviewGuestLimiterCapsOneGuestAndAllGuests(t *testing.T) {
 	}
 	if total > 140 {
 		t.Fatalf("all guests together got %d immediate requests, want about the burst of 120", total)
-	}
-}
-
-func TestGuestCannotConsumeAnAudienceTicket(t *testing.T) {
-	store := auth.NewAudienceTicketStore(nil)
-	raw, _, err := store.Mint(t.Context(), auth.AudienceTicket{Audience: auth.AudienceEventsWS, AccountID: 7, SessionID: "s-guest", Role: "user", TokenType: auth.TokenTypeAccess, AuthMethod: auth.AuthMethodPreviewGuest})
-	if err != nil {
-		t.Fatal(err)
-	}
-	am := guestMiddleware(auth.PreviewGuestSettings{Enabled: true, Host: "browse.example.test", AccountID: 7}, true)
-	am.SetAudienceTicketStore(store)
-	r := httptest.NewRequest("GET", "/api/v1/events/ws?ticket="+raw, nil)
-	r.Host = "browse.example.test"
-	w := httptest.NewRecorder()
-	am.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) })).ServeHTTP(w, r)
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("guest audience ticket accepted: %d", w.Code)
 	}
 }

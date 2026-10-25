@@ -1,18 +1,8 @@
 package handlers
 
 import (
-	"encoding/json"
-	"net/http"
-
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/watchtogether"
-	"github.com/go-chi/chi/v5"
 )
-
-type watchTogetherWSTicketRequest struct {
-	RoomAccessToken string `json:"room_access_token"`
-}
 
 // watchTogetherRoomResponseV1 is the wire shape MarshalJSON writes. Bloem
 // names it (upstream uses an anonymous struct) so the client DTO registry can
@@ -57,53 +47,4 @@ type watchTogetherPongFrame struct {
 	ServerReceivedAt string `json:"server_received_at"`
 	ServerSentAt     string `json:"server_sent_at"`
 	Type             string `json:"type"`
-}
-
-func (h *WatchTogetherHandler) validateRoomAccessTokenValue(
-	rawToken string,
-	roomID string,
-	userID int,
-	profileID string,
-) error {
-	if h == nil || h.TokenService == nil {
-		return nil
-	}
-
-	claims, err := h.TokenService.Validate(rawToken)
-	if err != nil {
-		return err
-	}
-	if claims.RoomID != roomID || claims.UserID != userID || claims.ProfileID != profileID {
-		return watchtogether.ErrRoomForbidden
-	}
-	return nil
-}
-
-func (h *WatchTogetherHandler) HandleMintRoomWSTicket(w http.ResponseWriter, r *http.Request) {
-	claims := apimw.GetClaims(r.Context())
-	profileID := apimw.GetProfileID(r.Context())
-	roomID := chi.URLParam(r, "room_id")
-	if claims == nil || profileID == "" || roomID == "" {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return
-	}
-	if h == nil || h.TokenService == nil || h.Tickets == nil {
-		writeError(w, http.StatusServiceUnavailable, "service_unavailable", "Watch Together websocket tickets are unavailable")
-		return
-	}
-	var request watchTogetherWSTicketRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
-		return
-	}
-	if err := h.validateRoomAccessTokenValue(request.RoomAccessToken, roomID, claims.UserID, profileID); err != nil {
-		writeError(w, http.StatusForbidden, "forbidden", "Room access token required")
-		return
-	}
-	ticket, ttl, err := h.Tickets.Mint(r.Context(), auth.NewAudienceTicket(auth.AudienceWatchTogetherWS, claims, profileID, roomID))
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mint websocket ticket")
-		return
-	}
-	writeJSON(w, http.StatusOK, wsTicketResponse{Ticket: ticket, ExpiresIn: int(ttl.Seconds())})
 }

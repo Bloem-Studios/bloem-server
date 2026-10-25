@@ -47,19 +47,6 @@ func bloemServerIdentity(deps Dependencies) *serverid.Resolver {
 	return serverid.FromService(serveridentity.New(store))
 }
 
-// bloemAudienceTickets returns the audience-ticket store every websocket
-// handshake shares, adopting the notifications system's store when it has one
-// and otherwise installing this one on it.
-func bloemAudienceTickets(deps Dependencies) auth.AudienceTicketStore {
-	audienceTickets := auth.NewAudienceTicketStore(deps.RedisClient)
-	if deps.Notifications != nil && deps.Notifications.AudienceTickets != nil {
-		audienceTickets = deps.Notifications.AudienceTickets
-	} else if deps.Notifications != nil {
-		deps.Notifications.AudienceTickets = audienceTickets
-	}
-	return audienceTickets
-}
-
 // useBloemLifecyclePreflight installs the lifecycle-idempotency preflight in
 // the base chain (after header normalization, before client-IP resolution).
 func useBloemLifecyclePreflight(r chi.Router, deps Dependencies) {

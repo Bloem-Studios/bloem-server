@@ -18,6 +18,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/cache"
 	evt "github.com/Silo-Server/silo-server/internal/events"
+	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/taskmanager"
 )
 
@@ -301,8 +302,15 @@ func TestEventsWebSocketAdminDecisionUsesTicketProfile(t *testing.T) {
 	}
 	for profile, wantAdmin := range map[string]bool{"parent": true, "kid": false} {
 		t.Run(profile, func(t *testing.T) {
+			tickets := notifications.NewTicketStore(nil)
+			ticket, _, err := tickets.Mint(t.Context(), notifications.Ticket{UserID: 1, ProfileID: profile})
+			if err != nil {
+				t.Fatal(err)
+			}
 			handler := &EventsHandler{hub: evt.NewHub("test", &cache.NoopEventBus{})}
-			_, readFrame := eventsWSTestConnActing(t, handler, &auth.Claims{UserID: 1, Role: "admin", ProfileID: profile}, "", decide)
+			handler.SetNotificationsSystem(&notifications.System{Tickets: tickets})
+			_, readFrame := eventsWSTestConnActing(t, handler, &auth.Claims{UserID: 1, Role: "admin"},
+				"?ticket="+url.QueryEscape(ticket), decide)
 			hello := readFrame("hello")
 			if got := strings.Contains(string(hello["available_channels"]), `"sessions"`); got != wantAdmin {
 				t.Fatalf("admin channels offered = %v, want %v: %s", got, wantAdmin, hello["available_channels"])

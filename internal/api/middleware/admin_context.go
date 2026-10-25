@@ -46,6 +46,16 @@ type AdminContextMiddleware struct {
 	sessions SessionValidator
 }
 
+// LoginSessions returns the validator this middleware checks login sessions
+// with, so a credential derived from a login session (an administrative
+// context) is revoked by exactly the same check. Nil when unwired.
+func (am *AuthMiddleware) LoginSessions() SessionValidator {
+	if am == nil {
+		return nil
+	}
+	return am.sessionValidator
+}
+
 func NewAdminContextMiddleware(tokens auth.AdminContextTokenService, resolver TenantResolver, memberships AdminContextMembershipStore, platform auth.PlatformAdminAuthorizer, sessions SessionValidator) *AdminContextMiddleware {
 	return &AdminContextMiddleware{tokens: tokens, resolver: resolver, memberships: memberships, platform: platform, sessions: sessions}
 }

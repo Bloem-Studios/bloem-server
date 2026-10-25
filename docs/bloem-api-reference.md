@@ -3177,7 +3177,7 @@ Session responses and status are not cacheable; status exposes no capacity.
 Exchange errors are `400 invalid_request`, `403 preview_ticket_invalid`,
 `404 preview_unavailable`, `429 rate_limited` or `503 preview_busy`. Rate and
 capacity refusals include `Retry-After`. Guest traffic remains host-bound and
-cannot obtain ordinary sessions, account-management authority or audience tickets.
+cannot obtain ordinary sessions, account-management authority or websocket tickets.
 
 ### Preview account and capability fields
 
