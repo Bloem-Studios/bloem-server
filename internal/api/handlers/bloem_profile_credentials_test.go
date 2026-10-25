@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/auth/passwordhash"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
 
@@ -160,6 +162,7 @@ func TestBloemProfileCredentialsWriteErrors(t *testing.T) {
 		{"email in use", auth.ErrCredentialEmailInUse, 409, "credential_email_in_use"},
 		{"ownership changed", auth.ErrProfileCredentialNotFound, 404, "not_found"},
 		{"internal failure", errors.New("private backend detail"), 503, "unavailable"},
+		{"busy hashing", fmt.Errorf("hashing profile password: %w", passwordhash.ErrBusy), 503, "service_unavailable"},
 	} {
 		for _, method := range []string{http.MethodPut, http.MethodDelete} {
 			t.Run(test.name+method, func(t *testing.T) {
@@ -181,6 +184,9 @@ func TestBloemProfileCredentialsWriteErrors(t *testing.T) {
 				}
 				if body.Error != test.code {
 					t.Fatalf("missing error code %s: %s", test.code, rec.Body.String())
+				}
+				if busy := errors.Is(test.err, passwordhash.ErrBusy); busy != (rec.Header().Get("Retry-After") == "1") {
+					t.Fatalf("Retry-After = %q for %v", rec.Header().Get("Retry-After"), test.err)
 				}
 				for _, secret := range []string{"account-secret", "profile-secret", "reader@example.test", "private backend detail"} {
 					if strings.Contains(rec.Body.String(), secret) {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/Silo-Server/silo-server/internal/auth/passwordhash"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
@@ -154,6 +156,7 @@ func TestAdminTenantMemberCreateMapsQuotaAndCommandConflicts(t *testing.T) {
 		{"idempotency", tenancy.ErrIdempotencyConflict, http.StatusConflict},
 		{"validation", tenancy.ErrInvalidMemberCommand, http.StatusBadRequest},
 		{"tenant", tenancy.ErrMemberNotFound, http.StatusNotFound},
+		{"busy hashing", fmt.Errorf("tenancy: create member account: %w", passwordhash.ErrBusy), http.StatusServiceUnavailable},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -162,6 +165,9 @@ func TestAdminTenantMemberCreateMapsQuotaAndCommandConflicts(t *testing.T) {
 			rec := tenantMemberRequest(t, router, http.MethodPost, path, body, map[string]string{"Idempotency-Key": "command-1"})
 			if rec.Code != tc.want {
 				t.Fatalf("status = %d, want %d: %s", rec.Code, tc.want, rec.Body.String())
+			}
+			if busy := errors.Is(tc.err, passwordhash.ErrBusy); busy != (rec.Header().Get("Retry-After") == "1") {
+				t.Fatalf("Retry-After = %q for %v", rec.Header().Get("Retry-After"), tc.err)
 			}
 			if strings.Contains(rec.Body.String(), "create-secret") {
 				t.Fatal("password appeared in create error")

@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/Silo-Server/silo-server/internal/auth/passwordhash"
 )
 
 var (
@@ -19,23 +21,6 @@ var (
 )
 
 const AuthMethodDirectProfile = "direct_profile"
-
-// unknownLoginDummyHash is a valid bcrypt hash of an unguessable value,
-// compared against when a login email is not registered so an unknown email
-// costs the same bcrypt work as a known one with a wrong password. Without it,
-// response timing separates registered direct-profile emails from everything
-// else regardless of the uniform error body.
-// bcryptCompare is swapped by tests to prove the equal-cost property: every
-// authentication failure path performs exactly one comparison.
-var bcryptCompare = bcrypt.CompareHashAndPassword
-
-var unknownLoginDummyHash = func() []byte {
-	hash, err := bcrypt.GenerateFromPassword([]byte("bloem-unknown-login-equalizer"), bcrypt.DefaultCost)
-	if err != nil {
-		panic(err)
-	}
-	return hash
-}()
 
 // statusActive is the organization and membership status a direct-profile
 // subject must hold for its session to be valid.
@@ -103,7 +88,7 @@ func (s *ProfileCredentialService) set(ctx context.Context, accountID int, profi
 		return s.clear(ctx, accountID, profileID, expectedRevision)
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := passwordhash.Generate(ctx, []byte(password), passwordHashCost)
 	if err != nil {
 		return fmt.Errorf("hashing profile password: %w", err)
 	}
@@ -217,8 +202,11 @@ func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, pass
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// Pay the same bcrypt cost as a real comparison so an unknown
-			// email is not distinguishable from a wrong password by timing.
-			_ = bcryptCompare(unknownLoginDummyHash, []byte(password))
+			// email is not distinguishable from a wrong password by timing,
+			// and answer a busy server the same way for every email.
+			if err := comparePasswordHash(ctx, placeholderPasswordHash(), []byte(password)); errors.Is(err, passwordhash.ErrBusy) {
+				return SessionSubject{}, err
+			}
 			return SessionSubject{}, ErrInvalidCredentials
 		}
 		return SessionSubject{}, fmt.Errorf("load profile login subject: %w", err)
@@ -226,11 +214,14 @@ func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, pass
 	comparedHash := []byte(passwordHash)
 	if _, costErr := bcrypt.Cost(comparedHash); costErr != nil {
 		// A malformed stored hash fails instantly inside bcrypt; substitute
-		// the dummy so it costs the same as a real mismatch.
-		comparedHash = unknownLoginDummyHash
+		// the placeholder so it costs the same as a real mismatch.
+		comparedHash = placeholderPasswordHash()
 	}
-	if bcryptCompare(comparedHash, []byte(password)) != nil ||
-		!enabled || orgStatus != statusActive || memberStatus != statusActive {
+	err = comparePasswordHash(ctx, comparedHash, []byte(password))
+	if errors.Is(err, passwordhash.ErrBusy) {
+		return SessionSubject{}, err
+	}
+	if err != nil || !enabled || orgStatus != statusActive || memberStatus != statusActive {
 		return SessionSubject{}, ErrInvalidCredentials
 	}
 	subject.Device = device

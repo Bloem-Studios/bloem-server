@@ -13,6 +13,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/auth/passwordhash"
 	"github.com/Silo-Server/silo-server/internal/clientip"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -96,6 +97,10 @@ func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			writeError(w, http.StatusUnauthorized, "invalid_credentials", "Invalid email or password")
+			return
+		}
+		if errors.Is(err, passwordhash.ErrBusy) {
+			writeAPIError(w, busyError(err))
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
