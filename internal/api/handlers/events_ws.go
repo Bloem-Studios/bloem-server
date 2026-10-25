@@ -84,8 +84,6 @@ type EventsHandler struct {
 	persistedScans activeScanLister
 	historyImports historyImportActiveLister
 	notifications  *notifications.System
-
-	audienceTickets auth.AudienceTicketStore
 	// sessionRoles and sessionCheckInterval drive the v1 connection's
 	// periodic login-session check; see SetSessionRoles.
 	sessionRoles         sessionRoleChecker
@@ -162,10 +160,29 @@ func (h *EventsHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// RequireAuth has already atomically consumed the route-bound ticket and
-	// reconstructed its authenticated principal, restoring the profile's PIN
-	// proof as X-Profile-Token.
-	bound := struct{ ProfileID, ProfileToken string }{claims.ProfileID, r.Header.Get("X-Profile-Token")}
+	// Browsers cannot set custom headers on websocket handshakes, so profile
+	// identity arrives as a short-lived single-use ticket minted via
+	// POST /events/ws-ticket. An unbound connection cannot subscribe to
+	// notifications or receive profile-addressed state and settings events.
+	var bound notifications.Ticket
+	if ticket := r.URL.Query().Get("ticket"); ticket != "" && h.notifications != nil {
+		binding, ok := h.notifications.Tickets.Consume(r.Context(), ticket)
+		if ok && binding.UserID == claims.UserID {
+			bound = binding
+		} else {
+			// Expired, reused, consumed on a different node, or minted for
+			// another user: degrade to an unbound connection instead of
+			// failing the handshake, which would take down every realtime
+			// channel. An unbound connection cannot subscribe to
+			// notifications, and on an admin account it is judged as acting
+			// with no profile below, so a household that requires a profile
+			// gets the user channels. Both fail closed: the client gets the
+			// binding back by reconnecting with a fresh ticket, which it does
+			// when its notifications subscription is rejected.
+			slog.WarnContext(r.Context(), "events: websocket ticket rejected; connection unbound", "component", "api",
+				"user_id", claims.UserID)
+		}
+	}
 
 	// Admin channels follow the acting profile, as
 	// on the v2 socket: another profile on an admin's account connects with

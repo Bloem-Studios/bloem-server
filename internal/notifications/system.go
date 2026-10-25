@@ -47,6 +47,7 @@ type System struct {
 	Detector    *AvailabilityDetector
 	Interest    *InterestUpdater
 	Fanout      *FanoutWorker
+	Tickets     TicketStore
 	bloemSystem
 	// Webhooks is nil when no at-rest cipher is configured (webhook URLs are
 	// credentials and must not be stored in plaintext).
@@ -240,7 +241,8 @@ func NewSystem(
 		Detector:            detector,
 		Interest:            interest,
 		Fanout:              fanout,
-		bloemSystem:         bloemSystem{AudienceTickets: NewTicketStore(redisClient), scopes: scopes, hub: hub},
+		Tickets:             NewTicketStore(redisClient),
+		bloemSystem:         bloemSystem{scopes: scopes, hub: hub},
 		Webhooks:            webhookService,
 		ServerChannels:      serverChannelService,
 		WebPush:             webPushService,

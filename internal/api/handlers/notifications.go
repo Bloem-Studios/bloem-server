@@ -463,3 +463,24 @@ func (h *NotificationsHandler) NotificationCapabilities(ctx context.Context) Not
 	h.bloemDecorateCapabilities(ctx, &resp)
 	return resp
 }
+
+// HandleMintWSTicket handles POST /events/ws-ticket: mints a short-lived
+// single-use websocket handshake ticket bound to (user, profile). Long-lived
+// tokens must never ride the websocket query string — reverse-proxy access
+// logs capture it. The profile's PIN proof stays server-side with the ticket,
+// so the socket can recheck it after the PIN changes.
+func (h *NotificationsHandler) HandleMintWSTicket(w http.ResponseWriter, r *http.Request) {
+	ticket, ttl, err := h.system.Tickets.Mint(r.Context(), notifications.Ticket{
+		UserID:       apimw.GetUserID(r.Context()),
+		ProfileID:    apimw.GetProfileID(r.Context()),
+		ProfileToken: r.Header.Get("X-Profile-Token"),
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to mint websocket ticket")
+		return
+	}
+	writeJSON(w, http.StatusOK, wsTicketResponse{
+		Ticket:    ticket,
+		ExpiresIn: int(ttl.Seconds()),
+	})
+}

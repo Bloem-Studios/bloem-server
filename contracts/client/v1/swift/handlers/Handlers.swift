@@ -9644,31 +9644,6 @@ public enum Handlers {
         }
     }
 
-    /// Wire type `internal/api/handlers.watchTogetherWSTicketRequest`. Direction: request. Dialect: upstream-compat. Registered root.
-    public struct watchTogetherWSTicketRequest: Codable, Hashable, Sendable {
-        public let roomAccessToken: String
-
-        public enum CodingKeys: String, CodingKey {
-            case roomAccessToken = "room_access_token"
-        }
-
-        public init(
-            roomAccessToken: String
-        ) {
-            self.roomAccessToken = roomAccessToken
-        }
-
-        public init(from decoder: any Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            self.roomAccessToken = try container.decode(String.self, forKey: .roomAccessToken)
-        }
-
-        public func encode(to encoder: any Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(self.roomAccessToken, forKey: .roomAccessToken)
-        }
-    }
-
     /// Wire type `internal/api/handlers.watchTonightItemResponse`. Direction: response. Dialect: upstream-compat.
     public struct watchTonightItemResponse: Codable, Hashable, Sendable {
         public let contentId: String

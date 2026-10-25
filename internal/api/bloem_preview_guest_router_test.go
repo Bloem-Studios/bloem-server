@@ -145,7 +145,7 @@ func TestPreviewGuestJourneyThroughTheRouter(t *testing.T) {
 		t.Fatalf("guest account/me is not minimized: %+v", me)
 	}
 	if w := do("browse.example.test", "POST", "/api/v2/events/ws-ticket", session.AccessToken, map[string]string{}); w.Code != http.StatusForbidden {
-		t.Fatalf("guest audience ticket mint: %d", w.Code)
+		t.Fatalf("guest socket ticket mint: %d", w.Code)
 	}
 
 	if w := do("browse.example.test", "GET", "/api/v2/user/libraries", session.AccessToken, nil); w.Code != http.StatusOK {

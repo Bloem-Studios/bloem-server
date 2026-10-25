@@ -78,7 +78,7 @@ func (am *AuthMiddleware) sessionAuthority(ctx context.Context, sessionID string
 }
 
 // accountPreview reports whether an account is a preview principal, for the
-// credentials that carry no session: API keys and audience tickets.
+// credentials that carry no session: API keys.
 func (am *AuthMiddleware) accountPreview(ctx context.Context, accountID int) (bool, error) {
 	if am.previewPrincipals == nil {
 		return false, nil

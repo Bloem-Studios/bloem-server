@@ -12,7 +12,7 @@ public enum GeneratedContract {
     public static let SERVER_REVISION: String = "bef52f411a740f7c8bfbdcb2b57ecf8f57704c9b"
     public static let GENERATOR_VERSION: Int = 1
     /// Digest of the normalised type graph; changes only when a wire shape changes.
-    public static let CONTRACT_DIGEST: String = "sha256:7353b9a3cd48e3aa64ef1a95d329dc0caba8147422b1ac444fca8d65953f7a4e"
+    public static let CONTRACT_DIGEST: String = "sha256:e64a48110ff4ad9284decd0ef88ffa773129748db991929f7b81a7463fe9c8c2"
     /// Qualified type name → direction (request, response or both).
     public static let DIRECTION: [String: String] = [
         "Ambience.Assets": "response",
@@ -912,7 +912,6 @@ public enum GeneratedContract {
         "Handlers.watchTogetherRoomSnapshotV1": "response",
         "Handlers.watchTogetherSnapshotFrame": "response",
         "Handlers.watchTogetherSuggestionsResponse": "response",
-        "Handlers.watchTogetherWSTicketRequest": "request",
         "Handlers.watchTonightItemResponse": "response",
         "Handlers.watchTonightResponse": "response",
         "Handlers.watchedStateResponse": "response",
@@ -2016,7 +2015,6 @@ public enum GeneratedContract {
         "Handlers.watchTogetherRoomSnapshotV1": "upstream-compat",
         "Handlers.watchTogetherSnapshotFrame": "upstream-compat",
         "Handlers.watchTogetherSuggestionsResponse": "upstream-compat",
-        "Handlers.watchTogetherWSTicketRequest": "upstream-compat",
         "Handlers.watchTonightItemResponse": "upstream-compat",
         "Handlers.watchTonightResponse": "upstream-compat",
         "Handlers.watchedStateResponse": "upstream-compat",

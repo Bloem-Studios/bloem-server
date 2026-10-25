@@ -218,15 +218,14 @@ left at its former version 34 or 35 has not run Silo's 34 or 35, so
 steps run. With no number of its own, the repair cannot collide with a later
 Silo version.
 
-## Realtime ticket PIN proof
+## Realtime socket tickets
 
-Bloem's events, watch-together and playback-control sockets authenticate with
-route-bound audience tickets ([`internal/auth/audience_ticket.go`](../../internal/auth/audience_ticket.go)).
-The events ticket also keeps the minting request's `X-Profile-Token`, at most
-4 KiB, inside the single stored ticket value. `RequireAuth` restores it as the
-handshake's `X-Profile-Token` and drops any token the caller sent. Silo's v1
-events socket then rechecks that PIN proof at the handshake and on every
-session check, so a PIN change still removes the administrator channels.
+The v1 events, watch-together and playback-control sockets run Silo's
+handshake unchanged: the ordinary login credential authenticates the socket,
+and Silo's `POST /api/v1/events/ws-ticket` binds the profile and its PIN proof.
+The v2 events and playback-control sockets keep Silo's ticket store and add
+Bloem's tenant authority through Silo's `Validate` hook
+([`bloem_socket_authority.go`](../../internal/api/handlers/bloem_socket_authority.go)).
 
 ## Recommendation scope
 

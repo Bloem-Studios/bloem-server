@@ -75,12 +75,6 @@ type AuthMiddleware struct {
 	previewRoutes     PreviewRouteGuard
 	previewGuests     auth.PreviewGuestSettingsSource
 	previewGuestLimit *PreviewGuestLimiter
-
-	audienceTickets auth.AudienceTicketStore
-}
-
-func (am *AuthMiddleware) SetAudienceTicketStore(store auth.AudienceTicketStore) {
-	am.audienceTickets = store
 }
 
 // DirectProfileRouteGuard reports whether a direct-profile session may use the
@@ -140,33 +134,10 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		var previewOnly bool
 		token, ok := extractBearerToken(r)
 		if !ok {
-			ticket := strings.TrimSpace(r.URL.Query().Get("ticket"))
-			audience, resourceID, routeOK := audienceTicketRoute(r)
-			if ticket == "" || !routeOK || am.audienceTickets == nil {
-				writeUnauthorized(w, "Missing or malformed authorization header", "authentication_required")
-				return
-			}
-			principal, err := am.audienceTickets.Consume(r.Context(), ticket, audience, resourceID)
-			if err != nil {
-				writeUnauthorized(w, "Invalid or expired audience ticket", "invalid_token")
-				return
-			}
-			claims, ok = audienceTicketPrincipal(w, r, am, principal)
-			if !ok {
-				return
-			}
-			preview, err := am.accountPreview(r.Context(), claims.UserID)
-			if err != nil {
-				writeCredentialCheckUnavailable(w, r, err)
-				return
-			}
-			if preview && claims.TokenType == auth.TokenTypeAPIKey {
-				WritePreviewOnly(w)
-				return
-			}
-			previewOnly = preview
-			r = r.WithContext(withAudienceTicketAuthorized(r.Context()))
-		} else if strings.HasPrefix(token, "sa_") {
+			writeUnauthorized(w, "Missing or malformed authorization header", ReasonAuthenticationRequired)
+			return
+		}
+		if strings.HasPrefix(token, "sa_") {
 			// API key authentication.
 			if am.apiKeyValidator == nil {
 				writeUnauthorized(w, "API key authentication not available", ReasonAuthenticationRequired)
@@ -575,35 +546,6 @@ func extractBearerToken(r *http.Request) (string, bool) {
 	}
 
 	return "", false
-}
-
-func audienceTicketRoute(r *http.Request) (auth.Audience, string, bool) {
-	path := strings.TrimSuffix(r.URL.Path, "/")
-	// These tickets belong only to the v1 bridge, not arbitrary paths with
-	// a websocket-looking suffix (v2 has its own handshake credentials).
-	if r.Method != http.MethodGet {
-		return "", "", false
-	}
-	// Also accept the prefix-stripped form used by the bridge mount.
-	path = strings.TrimPrefix(path, "/api/v1")
-	if path == "/events/ws" {
-		return auth.AudienceEventsWS, "", true
-	}
-	const roomMarker = "/watch-together/rooms/"
-	if index := strings.Index(path, roomMarker); index == 0 && strings.HasSuffix(path, "/ws") {
-		resource := strings.TrimSuffix(path[index+len(roomMarker):], "/ws")
-		if resource != "" && !strings.Contains(resource, "/") {
-			return auth.AudienceWatchTogetherWS, resource, true
-		}
-	}
-	const playbackMarker = "/playback/sessions/"
-	if index := strings.Index(path, playbackMarker); index == 0 && strings.HasSuffix(path, "/control/ws") {
-		resource := strings.TrimSuffix(path[index+len(playbackMarker):], "/control/ws")
-		if resource != "" && !strings.Contains(resource, "/") {
-			return auth.AudiencePlaybackControlWS, resource, true
-		}
-	}
-	return "", "", false
 }
 
 // parseBearerHeader parses only the captured Authorization header, without

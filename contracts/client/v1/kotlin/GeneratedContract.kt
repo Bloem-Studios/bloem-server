@@ -12,7 +12,7 @@ public object GeneratedContract {
     public const val SERVER_REVISION: String = "bef52f411a740f7c8bfbdcb2b57ecf8f57704c9b"
     public const val GENERATOR_VERSION: Int = 1
     /** Digest of the normalised type graph; changes only when a wire shape changes. */
-    public const val CONTRACT_DIGEST: String = "sha256:7353b9a3cd48e3aa64ef1a95d329dc0caba8147422b1ac444fca8d65953f7a4e"
+    public const val CONTRACT_DIGEST: String = "sha256:e64a48110ff4ad9284decd0ef88ffa773129748db991929f7b81a7463fe9c8c2"
     /** Fully qualified class name → direction (request, response or both). */
     public val DIRECTION: Map<String, String> = mapOf(
         "org.bloemserver.bloem.contract.ambience.Assets" to "response",
@@ -912,7 +912,6 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.handlers.watchTogetherRoomSnapshotV1" to "response",
         "org.bloemserver.bloem.contract.handlers.watchTogetherSnapshotFrame" to "response",
         "org.bloemserver.bloem.contract.handlers.watchTogetherSuggestionsResponse" to "response",
-        "org.bloemserver.bloem.contract.handlers.watchTogetherWSTicketRequest" to "request",
         "org.bloemserver.bloem.contract.handlers.watchTonightItemResponse" to "response",
         "org.bloemserver.bloem.contract.handlers.watchTonightResponse" to "response",
         "org.bloemserver.bloem.contract.handlers.watchedStateResponse" to "response",
@@ -2016,7 +2015,6 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.handlers.watchTogetherRoomSnapshotV1" to "upstream-compat",
         "org.bloemserver.bloem.contract.handlers.watchTogetherSnapshotFrame" to "upstream-compat",
         "org.bloemserver.bloem.contract.handlers.watchTogetherSuggestionsResponse" to "upstream-compat",
-        "org.bloemserver.bloem.contract.handlers.watchTogetherWSTicketRequest" to "upstream-compat",
         "org.bloemserver.bloem.contract.handlers.watchTonightItemResponse" to "upstream-compat",
         "org.bloemserver.bloem.contract.handlers.watchTonightResponse" to "upstream-compat",
         "org.bloemserver.bloem.contract.handlers.watchedStateResponse" to "upstream-compat",

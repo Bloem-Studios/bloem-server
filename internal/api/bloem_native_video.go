@@ -168,7 +168,7 @@ func nativeVideoCapture(ctx context.Context, p nativeVideoPolicy) (*nativeVideoS
 		frozen := *claims
 		frozen.APIKeyScopes = append([]string(nil), claims.APIKeyScopes...)
 		subject.claims = &frozen
-		subject.skipPIN = claims.TokenType == auth.TokenTypeAPIKey || claims.TokenType == auth.TokenTypeApplePushDisplay || claims.TokenType == auth.TokenTypeDirectDownloadLink || claims.AuthMethod == auth.AuthMethodDirectProfile || middleware.IsAudienceTicketAuthorized(ctx)
+		subject.skipPIN = claims.TokenType == auth.TokenTypeAPIKey || claims.TokenType == auth.TokenTypeApplePushDisplay || claims.TokenType == auth.TokenTypeDirectDownloadLink || claims.AuthMethod == auth.AuthMethodDirectProfile
 	}
 	capturedTenant, hasTenant := tenancy.FromContext(ctx)
 	if hasTenant {

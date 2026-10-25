@@ -58,3 +58,15 @@ that move is tracked in the
 ## Retired Bloem playback proxy policy
 
 A fork-only enum (`always` / `transcode_only` / `never`) that answered "may a pooled proxy serve these bytes" for every delivery at once. The upstream per-delivery routing settings state the same policy exactly, per delivery and per direction, so keeping both would leave two authorities over one decision. Migrated before removal: `never` becomes `api_only` on all three egress settings, `transcode_only` becomes `api_only` on direct play and remux while transcoded output keeps its `prefer_proxy` default, and `always` needs no rows because it already is the default. The migration matters because the setting existed to keep direct play off a remote transcode node with no view of the media storage; defaulting those deployments back to `prefer_proxy` would restore exactly that misconfiguration.
+
+## Retired Bloem v1 socket ticket routes
+
+Removed on 2026-10-25: `POST /api/v1/playback/sessions/{session_id}/control/ws-ticket`,
+`POST /api/v1/watch-together/rooms/{room_id}/ws-ticket` and their request type
+`watchTogetherWSTicketRequest`. Bloem had added these routes, and replaced the
+handshake of Silo's v1 events, watch-together and playback-control sockets, with
+its own audience tickets. The v1 sockets now run Silo's handshake:
+`POST /api/v1/events/ws-ticket` is Silo's route again, which requires a profile,
+and the other two sockets authenticate as Silo's do. No first-party client
+called the removed routes, because the web app, bloem-apple and bloem-android
+use the v2 sockets. Silo's removals table is unchanged.

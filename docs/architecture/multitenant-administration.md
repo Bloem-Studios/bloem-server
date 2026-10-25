@@ -26,20 +26,18 @@ The web client keeps the token in memory, qualifies cache keys with `platform`
 or `organization:<uuid>`, removes the old context's queries before switching,
 and persists only the non-secret context key.
 
-## Derived websocket credentials
+## Websocket credentials
 
-A single-use audience ticket preserves the minting credential's auth method,
-account incarnation, tenant/revisions, device, impersonator and API-key scopes.
-It is accepted only on its specific websocket audience/resource, never because
-an unrelated route happens to end with the same path suffix. Its verified
-profile replaces the caller's profile header; a profileless ticket cannot
-select a PIN-protected profile during the handshake.
+The v1 bridge sockets use Silo's handshake unchanged: the socket authenticates
+with the ordinary login credential, and `POST /api/v1/events/ws-ticket`
+(profile required) binds only the profile. Bloem adds no v1 ticket routes.
 
-Login-derived tickets recheck the source login session. API-key-derived tickets
-recheck the key by ID and its enabled, same-incarnation owner, including the
-current role and scopes. Missing validation support fails closed. Capturing an
-unscoped key in a ticket does not preserve access after that key is revoked or
-restricted. These checks do not introduce a new client token format or endpoint.
+The v2 events and playback-control sockets use Silo's socket tickets with a
+Bloem adapter (`internal/api/handlers/bloem_socket_authority.go`) on Silo's
+`Validate` hook. Minting binds the caller's organization, membership and
+revisions to the ticket server-side, and the handshake and periodic checks
+revalidate that same tenant instead of resolving one from a bare
+account/profile. An unbound ticket fails closed.
 
 ## Administrative controls
 

@@ -73,8 +73,6 @@ internal/api/handlers/collections_service.go
 internal/api/handlers/devices.go
 internal/api/handlers/downloads.go
 internal/api/handlers/downloads_test.go
-internal/api/handlers/events_ws.go
-internal/api/handlers/events_ws_session_check_test.go  # the PIN-proof recheck test connects as RequireAuth leaves a Bloem audience-ticket handshake
 internal/api/handlers/home_dismissals.go
 internal/api/handlers/home_views_service.go
 internal/api/handlers/household.go
@@ -101,7 +99,6 @@ internal/api/handlers/settings_values_admin.go
 internal/api/handlers/settings_values_seam.go
 internal/api/handlers/stream.go
 internal/api/handlers/watch_together.go
-internal/api/household_profile_gate_routes_test.go  # exempts Bloem's events ws-ticket route, the ticket for the already-exempt account event socket
 internal/api/middleware/api_key_scopes.go
 internal/api/middleware/api_key_scopes_test.go
 internal/api/middleware/auth.go
@@ -198,7 +195,6 @@ internal/models/user.go
 internal/notifications/delivery_repo.go
 internal/notifications/dispatcher.go
 internal/notifications/display.go
-internal/notifications/fanout_logic_test.go
 internal/notifications/interest_repo.go
 internal/notifications/release_types.go
 internal/notifications/settings.go
@@ -206,7 +202,6 @@ internal/notifications/system.go
 internal/notifications/webhook_payload_discord.go
 internal/notifications/webhook_payload_generic.go
 internal/notifications/webpush_sender.go
-internal/notifications/ws_ticket.go
 internal/opslog/cleanup.go
 internal/playback/contract/contract_test.go
 internal/playback/gpudetect.go
@@ -355,7 +350,6 @@ internal/userdb/migrate.go # Bloem's SQLite step (v36) runs after Silo's v35; a 
 internal/jellycompat/dv_strip_test.go # the no-route cases turn off Bloem's tone-mapping defaults explicitly
 
 internal/database/migrate.go # apply owned migration adapters at the provider boundary
-internal/api/handlers/events_ws_declared_channels_test.go # exercise Silo acting-admin selection after Bloem middleware consumed the v1 ticket
 internal/api/handlers/profiles_test.go # adapt Silo inherited-limit fixture to organization-aware group interface
 web/src/components/admin/libraries/useLibraryForm.localMetadata.test.tsx # supply query context for the owned storage-location hook
 web/src/hooks/admin/useSettingsHealth.ts # include owned announcements

@@ -84,7 +84,7 @@ by default, including new upstream operations. Preview refusals carry
 `X-Bloem-Denial: preview_only`; v2 retains the `permission_denied` problem type.
 Boot and catalogue reads pass their existing profile, tenant and library gates.
 Personal previews retain session housekeeping and device approval. Guests
-are refused those operations and audience-ticket minting and consumption.
+are refused those operations and websocket-ticket minting.
 
 Both plugin authentication paths treat preview principals as anonymous, whether
 the credential is a bearer token, query token, plugin cookie or API key. Existing
