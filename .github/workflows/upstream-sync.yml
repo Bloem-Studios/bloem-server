@@ -45,6 +45,9 @@ jobs:
           # The merge needs real history, not a shallow clone, or git cannot
           # find the merge base and reports every upstream file as a conflict.
           fetch-depth: 0
+          # The push step authenticates on its own, so no credential sits in
+          # .git/config while the merged upstream tree builds.
+          persist-credentials: false
 
       - name: Configure git identity
         run: |
@@ -155,11 +158,15 @@ jobs:
           # CI, and the whole CI-is-the-gate design silently stalls with the PR
           # sitting there forever.
           #
-          # UPSTREAM_SYNC_TOKEN is a PAT (repo scope) that does raise events, so
-          # CI runs and upstream-sync-merge.yml can land the PR. Without it this
-          # still works, just not unattended: the PR is opened and flagged as
-          # needing CI kicked off by hand. That is the safe way to degrade —
-          # nothing merges without a green run either way.
+          # UPSTREAM_SYNC_TOKEN is a PAT (contents, pull requests and workflows
+          # write) that does raise events, so CI runs and
+          # upstream-sync-merge.yml can land the PR. It also pushes the branch:
+          # GITHUB_TOKEN can never push a commit that changes .github/workflows,
+          # and Silo's history does. Without it this still works, just not
+          # unattended: the PR is opened and flagged as needing CI kicked off by
+          # hand, and a merge that touches workflows cannot be pushed at all.
+          # That is the safe way to degrade — nothing merges without a green
+          # run either way.
           GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
           HAS_PAT: ${{ secrets.UPSTREAM_SYNC_TOKEN != '' }}
           BRANCH: ${{ steps.merge.outputs.branch }}
@@ -171,7 +178,9 @@ jobs:
           UPSTREAM_SHA: ${{ steps.count.outputs.upstream_sha }}
         run: |
           branch="$BRANCH"
-          git push -u origin "$branch"
+          # The same header actions/checkout writes, supplied for this push only.
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth" push -u origin "$branch"
 
           if [ "$HAS_PAT" = "true" ]; then
             ci_note="CI runs automatically and this merges itself once it is green."

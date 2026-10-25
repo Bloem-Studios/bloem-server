@@ -51,7 +51,11 @@ jobs:
       - name: Merge the exact head tested by CI
         id: merge
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN cannot merge a PR that changes .github/workflows, and
+          # Silo's history does, so the sync PAT merges when it is configured.
+          # A merge pushed with it also starts CI on main, which the default
+          # token's would not.
+          GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
           UPSTREAM_SYNC_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           UPSTREAM_SYNC_REPOSITORY: ${{ github.repository }}
           UPSTREAM_SYNC_HEAD_REPOSITORY: ${{ github.event.workflow_run.head_repository.full_name }}
