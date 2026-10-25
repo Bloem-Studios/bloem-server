@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/mediasource"
-	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/Silo-Server/silo-server/internal/mediasource"
+	"github.com/Silo-Server/silo-server/internal/storageplugin"
+	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 )
 
 // maxChangeTokenAge bounds incremental listing: a directory whose change token
@@ -56,9 +58,12 @@ func fetchPage(ctx context.Context, client storagev1.StorageProviderClient, sour
 	if client == nil || !validText(sourceID, 1024, true) || !validText(checkpoint.DirectoryID, 1024, true) || !validText(checkpoint.Cursor, 4096, false) || checkpoint.Complete {
 		return nil, fmt.Errorf("invalid storage discovery request")
 	}
-	requestContext, cancel := context.WithTimeout(ctx, 30*time.Second)
+	// A provider may fill one page from several backend requests, so the page
+	// gets longer than the storage session's default RPC deadline.
+	const pageTimeout = 30 * time.Second
+	requestContext, cancel := context.WithTimeout(ctx, pageTimeout)
 	defer cancel()
-	page, err := client.List(requestContext, &storagev1.ListRequest{SourceId: sourceID, DirectoryId: checkpoint.DirectoryID, Cursor: checkpoint.Cursor, MaxEntries: 512, ChangesSince: changesSince}, grpc.MaxCallRecvMsgSize(1<<20))
+	page, err := client.List(requestContext, &storagev1.ListRequest{SourceId: sourceID, DirectoryId: checkpoint.DirectoryID, Cursor: checkpoint.Cursor, MaxEntries: 512, ChangesSince: changesSince}, grpc.MaxCallRecvMsgSize(1<<20), storageplugin.RPCLimit(pageTimeout))
 	if err != nil {
 		return nil, err
 	}
