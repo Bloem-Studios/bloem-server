@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/apiresponse"
+	"github.com/Silo-Server/silo-server/internal/auth/passwordhash"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -478,6 +479,8 @@ func (h *AdminTenantMembersHandler) writeError(w http.ResponseWriter, err error,
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid tenant member request")
 	case errors.Is(err, tenancy.ErrMembershipPolicyWriteUnavailable):
 		apiresponse.WriteRetryableUnavailable(w, "membership_policy_rollout_pending", "Membership policy rollout is not ready for this mutation", 1)
+	case errors.Is(err, passwordhash.ErrBusy):
+		writeAPIError(w, busyError(err))
 	default:
 		writeError(w, http.StatusInternalServerError, "internal_error", fallback)
 	}

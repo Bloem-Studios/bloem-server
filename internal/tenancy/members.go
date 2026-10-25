@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/Silo-Server/silo-server/internal/auth/passwordhash"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 )
@@ -207,7 +208,9 @@ func (s *MemberService) Create(
 		Scan(&requestHash, &existingAccountID, &existingUsername, &existingEmail, &deletedAt)
 	switch {
 	case err == nil:
-		if bcrypt.CompareHashAndPassword([]byte(requestHash), digest) != nil {
+		if err := passwordhash.Compare(ctx, []byte(requestHash), digest); errors.Is(err, passwordhash.ErrBusy) {
+			return models.User{}, false, err
+		} else if err != nil {
 			return models.User{}, false, ErrIdempotencyConflict
 		}
 		return models.User{ID: existingAccountID, Username: existingUsername, Email: existingEmail, Enabled: true}, true, nil
@@ -225,10 +228,15 @@ func (s *MemberService) Create(
 		if loadErr != nil {
 			return models.User{}, false, fmt.Errorf("tenancy: load legacy replayed member: %w", loadErr)
 		}
-		if existing.Username != input.Username || existing.Email != input.Email || bcrypt.CompareHashAndPassword([]byte(existing.PasswordHash), []byte(input.Password)) != nil {
+		if existing.Username != input.Username || existing.Email != input.Email {
 			return models.User{}, false, ErrIdempotencyConflict
 		}
-		requestHashBytes, hashErr := bcrypt.GenerateFromPassword(digest, bcrypt.DefaultCost)
+		if err := passwordhash.Compare(ctx, []byte(existing.PasswordHash), []byte(input.Password)); errors.Is(err, passwordhash.ErrBusy) {
+			return models.User{}, false, err
+		} else if err != nil {
+			return models.User{}, false, ErrIdempotencyConflict
+		}
+		requestHashBytes, hashErr := passwordhash.Generate(ctx, digest, bcrypt.DefaultCost)
 		if hashErr != nil {
 			return models.User{}, false, fmt.Errorf("tenancy: hash legacy member command: %w", hashErr)
 		}
@@ -290,7 +298,7 @@ func (s *MemberService) Create(
 		uuid.New(), tenantID, created.ID, MembershipActive, legacyRoleUser); err != nil {
 		return models.User{}, false, fmt.Errorf("tenancy: create member membership: %w", err)
 	}
-	requestHashBytes, err := bcrypt.GenerateFromPassword(digest, bcrypt.DefaultCost)
+	requestHashBytes, err := passwordhash.Generate(ctx, digest, bcrypt.DefaultCost)
 	if err != nil {
 		return models.User{}, false, fmt.Errorf("tenancy: hash member command: %w", err)
 	}
@@ -698,7 +706,7 @@ func (s *MemberService) DeleteInTransaction(ctx context.Context, tx pgx.Tx, tena
 		// reserved (control-prefixed, therefore API-invalid) deletion tombstone so
 		// their DELETE retry is just as durable and idempotent.
 		tombstoneDigest := sha256.Sum256([]byte("tenant-member-delete-tombstone-v1"))
-		tombstoneHash, hashErr := bcrypt.GenerateFromPassword(tombstoneDigest[:], bcrypt.DefaultCost)
+		tombstoneHash, hashErr := passwordhash.Generate(ctx, tombstoneDigest[:], bcrypt.DefaultCost)
 		if hashErr != nil {
 			return fmt.Errorf("tenancy: hash member delete tombstone: %w", hashErr)
 		}

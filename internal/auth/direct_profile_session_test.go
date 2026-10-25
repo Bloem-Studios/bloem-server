@@ -6,9 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/Silo-Server/silo-server/internal/auth/passwordhash"
+	"github.com/Silo-Server/silo-server/internal/models"
 )
 
 // newDirectProfileService wires a real service over the credential fixture's
@@ -773,12 +775,11 @@ func TestAuthenticateCostsOneComparisonOnEveryFailurePath(t *testing.T) {
 	}
 
 	comparisons := 0
-	original := bcryptCompare
-	bcryptCompare = func(hash, password []byte) error {
+	t.Cleanup(func() { comparePasswordHash = passwordhash.Compare })
+	comparePasswordHash = func(ctx context.Context, hash, password []byte) error {
 		comparisons++
-		return original(hash, password)
+		return passwordhash.Compare(ctx, hash, password)
 	}
-	defer func() { bcryptCompare = original }()
 
 	for name, email := range map[string]string{
 		"registered email, wrong password": "timing@example.test",
@@ -812,4 +813,43 @@ func TestAuthenticateCostsOneComparisonOnEveryFailurePath(t *testing.T) {
 			t.Fatalf("bcrypt comparisons = %d, want exactly 1", comparisons)
 		}
 	})
+}
+
+// A server too busy to compare answers every email the same way, with
+// passwordhash.ErrBusy: the password is then neither right nor wrong, and the
+// answer does not tell a stranger which emails are registered.
+func TestAuthenticateReportsBusyHashingForEveryEmail(t *testing.T) {
+	ctx := context.Background()
+	credentials := newProfileCredentialService(t)
+	accountID, profileID := newProfileCredentialFixture(t, credentials.pool, "busy")
+	if err := credentials.Set(ctx, accountID, profileID, "busy@example.test", "profile-password"); err != nil {
+		t.Fatalf("Set credential: %v", err)
+	}
+	t.Cleanup(func() { comparePasswordHash = passwordhash.Compare })
+	comparePasswordHash = func(context.Context, []byte, []byte) error { return passwordhash.ErrBusy }
+
+	for name, email := range map[string]string{
+		"registered email": "busy@example.test",
+		"unknown email":    "nobody@example.test",
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := credentials.Authenticate(ctx, email, "profile-password", DeviceClaim{ID: "busy-device"})
+			if !errors.Is(err, passwordhash.ErrBusy) {
+				t.Fatalf("Authenticate = %v, want passwordhash.ErrBusy", err)
+			}
+		})
+	}
+}
+
+// Setting a profile password hashes it under passwordhash's limit, so a request
+// that cannot get a turn is refused as busy instead of hashing regardless.
+func TestSetHashesUnderTheHashingLimit(t *testing.T) {
+	credentials := newProfileCredentialService(t)
+	accountID, profileID := newProfileCredentialFixture(t, credentials.pool, "limit")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := credentials.Set(ctx, accountID, profileID, "limit@example.test", "profile-password")
+	if !errors.Is(err, passwordhash.ErrBusy) {
+		t.Fatalf("Set = %v, want passwordhash.ErrBusy", err)
+	}
 }

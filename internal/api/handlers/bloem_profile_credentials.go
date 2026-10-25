@@ -7,11 +7,13 @@ import (
 	"net/mail"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/auth/passwordhash"
 	"github.com/Silo-Server/silo-server/internal/userstore"
-	"github.com/go-chi/chi/v5"
 )
 
 type profileCredentialManager interface {
@@ -130,6 +132,8 @@ func writeProfileCredentialError(w http.ResponseWriter, err error) {
 		writeError(w, 409, "credential_email_in_use", "This login email is already registered")
 	case errors.Is(err, auth.ErrProfileCredentialRevisionConflict):
 		writeError(w, 409, "credential_revision_conflict", "Profile credentials changed. Reload and review before trying again")
+	case errors.Is(err, passwordhash.ErrBusy):
+		writeAPIError(w, busyError(err))
 	default:
 		writeError(w, 503, "unavailable", "Profile credential operation failed")
 	}
