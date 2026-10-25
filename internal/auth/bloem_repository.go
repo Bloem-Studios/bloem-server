@@ -90,6 +90,75 @@ var membershipPolicyColumns = map[string]bool{
 	"download_transcode_allowed": true, "requests_allowed": true, "access_group_id": true,
 }
 
+// userUpdateSplit is an account update divided between the users row and the
+// account's default-organization membership, which holds the policy columns.
+type userUpdateSplit struct {
+	setClauses           []string
+	args                 []any
+	membershipSet        []string
+	membershipPredicates []string
+	membershipArgs       []any
+	// role and enabled still live on users, but the revision they bump is
+	// the membership's. Comparing across tables afterwards would see the
+	// value already written, so the intent is recorded instead.
+	bumpFromAccountColumns bool
+	defaultGroupCTE        string
+}
+
+// splitUserUpdateColumns assigns each set column to the users row or to the
+// membership, numbering each side's placeholders from $1.
+func splitUserUpdateColumns(columns []userUpdateColumn, input models.UpdateUserInput) userUpdateSplit {
+	var split userUpdateSplit
+	for _, col := range columns {
+		if !col.set {
+			continue
+		}
+		if membershipPolicyColumns[col.column] {
+			placeholder := fmt.Sprintf("$%d", len(split.membershipArgs)+1)
+			split.membershipSet = append(split.membershipSet, fmt.Sprintf("%s = %s", col.column, placeholder))
+			if col.bumpsAccessPolicy {
+				split.membershipPredicates = append(
+					split.membershipPredicates,
+					fmt.Sprintf("%s IS DISTINCT FROM %s", col.column, placeholder),
+				)
+			}
+			split.membershipArgs = append(split.membershipArgs, col.value)
+			continue
+		}
+		split.setClauses = append(split.setClauses, fmt.Sprintf("%s = $%d", col.column, len(split.args)+1))
+		if col.mirrorsToMembership != "" {
+			split.membershipSet = append(split.membershipSet, fmt.Sprintf("%s = $%d", col.mirrorsToMembership, len(split.membershipArgs)+1))
+			mirrored := col.value
+			if role, ok := col.value.(*string); ok && role != nil {
+				mirrored = membershipLegacyRole(*role)
+			}
+			split.membershipArgs = append(split.membershipArgs, mirrored)
+		}
+		if col.bumpsAccessPolicy {
+			split.bumpFromAccountColumns = true
+		}
+		split.args = append(split.args, col.value)
+	}
+
+	// access_group_id is not a plain userUpdateColumn: what gets written
+	// depends on the row's current role, so it is assembled directly rather
+	// than through the generic column loop above. It moved to the membership
+	// with the rest of the policy, so its clause is built against the
+	// membership placeholder sequence.
+	if setClause, predicate, cte, groupArgs, _ := accessGroupSetClause(input, len(split.membershipArgs)+1); setClause != "" {
+		split.membershipSet = append(split.membershipSet, setClause)
+		split.membershipPredicates = append(split.membershipPredicates, predicate)
+		split.defaultGroupCTE = cte
+		split.membershipArgs = append(split.membershipArgs, groupArgs...)
+	}
+	return split
+}
+
+// applyMembership writes the update's policy half.
+func (split userUpdateSplit) applyMembership(ctx context.Context, querier userMutationQuerier, id int) error {
+	return applyMembershipPolicyUpdate(ctx, querier, id, split.membershipSet, split.membershipPredicates, split.membershipArgs, split.bumpFromAccountColumns, split.defaultGroupCTE)
+}
+
 // UpdateInTransaction applies the canonical normalization, hashing and access
 // revision behavior while participating in the caller's transaction.
 // The caller already holds its transaction, so a new password is hashed inside

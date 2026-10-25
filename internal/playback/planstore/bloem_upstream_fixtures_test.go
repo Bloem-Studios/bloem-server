@@ -1,7 +1,7 @@
 package planstore
 
 // Fixtures Bloem's tests share with Silo tests that upstream has since
-// removed. They are copied unchanged so the Silo files stay deleted.
+// removed. They are copied from those tests so the Silo files stay deleted.
 
 import (
 	"context"
@@ -10,8 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/Silo-Server/silo-server/internal/playback"
 )
 
 // planstoreFixture holds the minimal FK graph (user + media files) that
@@ -158,17 +159,4 @@ func (f *planstoreFixture) attemptRecord(sessionID, attemptID, digest string) pl
 		PlaybackPlan:    &record.CurrentPlan,
 	}
 	return record
-}
-
-func (f *planstoreFixture) expireAttempt(t *testing.T, attemptID string) {
-	t.Helper()
-	tag, err := f.pool.Exec(context.Background(), `
-		UPDATE playback_v3_attempts SET expires_at = NOW() - INTERVAL '1 minute'
-		WHERE playback_attempt_id = $1`, attemptID)
-	if err != nil {
-		t.Fatalf("expire attempt %s: %v", attemptID, err)
-	}
-	if tag.RowsAffected() != 1 {
-		t.Fatalf("expire attempt %s: affected %d rows", attemptID, tag.RowsAffected())
-	}
 }

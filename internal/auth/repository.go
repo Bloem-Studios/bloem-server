@@ -492,87 +492,27 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 		breakGlassUpdateColumn(input),
 	}
 
-	setClauses := []string{}
-	accessPolicyPredicates := []string{}
-	args := []any{}
-	argIndex := 1
-	// Policy columns live on the account's membership now, so they are collected
-	// separately and applied in their own statement below.
-	membershipSet := []string{}
-	membershipPredicates := []string{}
-	membershipArgs := []any{}
-	bumpFromAccountColumns := false
-	for _, col := range columns {
-		if !col.set {
-			continue
-		}
-		if membershipPolicyColumns[col.column] {
-			placeholder := fmt.Sprintf("$%d", len(membershipArgs)+1)
-			membershipSet = append(membershipSet, fmt.Sprintf("%s = %s", col.column, placeholder))
-			if col.bumpsAccessPolicy {
-				membershipPredicates = append(
-					membershipPredicates,
-					fmt.Sprintf("%s IS DISTINCT FROM %s", col.column, placeholder),
-				)
-			}
-			membershipArgs = append(membershipArgs, col.value)
-			continue
-		}
-		placeholder := fmt.Sprintf("$%d", argIndex)
-		setClauses = append(setClauses, fmt.Sprintf("%s = %s", col.column, placeholder))
-		if col.mirrorsToMembership != "" {
-			membershipSet = append(membershipSet, fmt.Sprintf("%s = $%d", col.mirrorsToMembership, len(membershipArgs)+1))
-			mirrored := col.value
-			if role, ok := col.value.(*string); ok && role != nil {
-				mirrored = membershipLegacyRole(*role)
-			}
-			membershipArgs = append(membershipArgs, mirrored)
-		}
-		if col.bumpsAccessPolicy {
-			// role and enabled still live on users, but the revision they bump is
-			// the membership's. Comparing across tables afterwards would see the
-			// value already written, so record the intent instead.
-			bumpFromAccountColumns = true
-			accessPolicyPredicates = append(
-				accessPolicyPredicates,
-				fmt.Sprintf("%s IS DISTINCT FROM %s", col.column, placeholder),
-			)
-		}
-		args = append(args, col.value)
-		argIndex++
-	}
-
-	// access_group_id is not a plain userUpdateColumn: what gets written
-	// depends on the row's current role, so it is assembled directly rather
-	// than through the generic column loop above.
-	// access_group_id moved to the membership with the rest of the policy, so
-	// its clause is built against the membership placeholder sequence.
-	var defaultGroupCTE string
-	if setClause, predicate, cte, groupArgs, _ := accessGroupSetClause(input, len(membershipArgs)+1); setClause != "" {
-		membershipSet = append(membershipSet, setClause)
-		membershipPredicates = append(membershipPredicates, predicate)
-		defaultGroupCTE = cte
-		membershipArgs = append(membershipArgs, groupArgs...)
-	}
-
-	if len(setClauses) == 0 {
+	// Policy columns live on the account's membership now, so they are split
+	// off and applied in their own statement below.
+	split := splitUserUpdateColumns(columns, input)
+	if len(split.setClauses) == 0 {
 		// Nothing left on the account row itself. Verify it exists, then apply
 		// the policy half: an update that only touches policy columns now
 		// changes nothing on users, and returning here would silently drop it.
 		if _, err := scanUser(querier.QueryRow(ctx, `SELECT `+allColumns+userSource+` WHERE u.id = $1`, id)); err != nil {
 			return err
 		}
-		return applyMembershipPolicyUpdate(ctx, querier, id, membershipSet, membershipPredicates, membershipArgs, bumpFromAccountColumns, defaultGroupCTE)
+		return split.applyMembership(ctx, querier, id)
 	}
 
 	// Always bump updated_at.
-	setClauses = append(setClauses, "updated_at = NOW()")
+	split.setClauses = append(split.setClauses, "updated_at = NOW()")
 
 	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d",
-		strings.Join(setClauses, ", "), argIndex)
-	args = append(args, id)
+		strings.Join(split.setClauses, ", "), len(split.args)+1)
+	split.args = append(split.args, id)
 
-	tag, err := querier.Exec(ctx, query, args...)
+	tag, err := querier.Exec(ctx, query, split.args...)
 	if err != nil {
 		if isDuplicateKeyError(err) {
 			return fmt.Errorf("%w: %s", ErrDuplicate, extractConstraint(err))
@@ -583,7 +523,7 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
-	if err := applyMembershipPolicyUpdate(ctx, querier, id, membershipSet, membershipPredicates, membershipArgs, bumpFromAccountColumns, defaultGroupCTE); err != nil {
+	if err := split.applyMembership(ctx, querier, id); err != nil {
 		return err
 	}
 	if roleChanging {
