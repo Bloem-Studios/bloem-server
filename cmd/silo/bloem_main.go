@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"net"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -196,77 +194,6 @@ func (a proxySourceAccess) AllowMediaSource(ctx context.Context, accountID int, 
 		return proxy.ErrSourceHidden
 	}
 	return nil
-}
-
-// publicServer builds the public listener: the composed handler from
-// publicMux plus the timeouts the public port runs with. It exists so the
-// thing production serves is a value a test can construct and drive, rather
-// than a shape assembled inline in main — TestPublicServerRoutesEachLayer
-// exercises this exact function.
-//
-// It is called from exactly one place, servePublic, and the guard tests in
-// main_test.go fail if that stops being true.
-func publicServer(addr string, router, frontend http.Handler) *http.Server {
-	return &http.Server{
-		Addr:         addr,
-		Handler:      publicMux(router, frontend),
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 120 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-}
-
-func publicMux(router, frontend http.Handler) http.Handler {
-	return bloemRootHandler(router, frontend)
-}
-
-// publicPort is a bound, serving public listener. Only servePublic can build
-// one, and the composed *http.Server never escapes it: what a caller holds is
-// a handle that can stop the port and do nothing else. That is deliberate —
-// every previous shape of this code handed main a *http.Server, and a
-// *http.Server in main's scope is a handler that a later statement can
-// replace, discard, or serve a second time.
-type publicPort struct {
-	srv  *http.Server
-	addr string
-}
-
-// shutdown stops the public port gracefully, refusing new connections and
-// draining the in-flight ones until ctx expires.
-func (p *publicPort) shutdown(ctx context.Context) error {
-	return p.srv.Shutdown(ctx)
-}
-
-// listenPublic binds the canonical public address. It is the only listener
-// this package opens: everything else that answers on a port either receives
-// an already-bound address from configuration through its own constructor, or
-// does not exist. TestConfiguredPublicAddressIsBoundOnlyByTheBlessedListener
-// pins that.
-func listenPublic(addr string) (net.Listener, error) {
-	return net.Listen("tcp", addr)
-}
-
-// servePublic is the composition root of the public port: it composes the
-// public handler with publicServer and starts serving it on ln, reporting any
-// non-graceful serve failure on errCh exactly as the inline goroutine it
-// replaces did.
-//
-// It returns a handle because main owns the ordered shutdown sequence:
-// stop accepting public requests, then clean up sessions.
-func servePublic(
-	ln net.Listener,
-	router, frontend http.Handler,
-	errCh chan<- error,
-) *publicPort {
-	addr := ln.Addr().String()
-	port := &publicPort{srv: publicServer(addr, router, frontend), addr: addr}
-	go func() {
-		slog.Info("HTTP server listening", "addr", port.addr)
-		if listenErr := port.srv.Serve(ln); listenErr != nil && listenErr != http.ErrServerClosed {
-			errCh <- fmt.Errorf("HTTP server error: %w", listenErr)
-		}
-	}()
-	return port
 }
 
 type adminPeopleBackgroundWorker interface {

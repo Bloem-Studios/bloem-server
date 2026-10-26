@@ -139,7 +139,8 @@ will drift — which is exactly the bug the helper exists to prevent.
   upstream's function names as string constants.
   **Guidance at merge time:** take upstream's file split and re-apply our gateway and `publicPort`
   handling *inside* it, rather than keeping our names. That leaves `internal/routeinventory/config.go`
-  untouched, which is the file we least want to own. Our ABS router is still inline at
+  untouched, which is the file we least want to own. (Resolved October 26, 2026: the gateway is
+  gone and the public port runs Silo's `newRootHandler` and `http.Server` unchanged.) Our ABS router is still inline at
   `cmd/silo/main.go:3452` and will need the same treatment, or it trips the stray-router audit.
 - **The four new gates arrive already-failing** even after Tasks 1–3: the migration ledger wants a
   row per route and we have roughly 372 more registration sites in `internal/api` than upstream

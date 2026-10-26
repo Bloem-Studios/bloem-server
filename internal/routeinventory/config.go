@@ -123,15 +123,6 @@ func DefaultConfig(root string) Config {
 					"out of scope for the native v2 migration",
 			},
 			{
-				File: "cmd/silo/bloem_root_handler.go",
-				Func: "bloemRootMux",
-				Reason: "Bloem's root listener mux. It registers three delegating patterns " +
-					"(/metrics, /api/, /) and no API routes of its own; the routes behind /api/ " +
-					"are inventoried through the api listener. The lockstep with upstream's " +
-					"newRootMux that makes this exclusion safe is enforced by " +
-					"TestBloemRootMuxStaysInLockstepWithUpstream in cmd/silo.",
-			},
-			{
 				File:   "cmd/silo/metrics_listener.go",
 				Func:   "newMetricsMux",
 				Reason: "Prometheus scrape listener: one /metrics route on its own port, operational rather than part of the native API surface.",

@@ -7,7 +7,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -98,17 +97,4 @@ func (r bloemNativeStorageFiles) GetByID(ctx context.Context, id int) (*models.M
 		return nil, scanner.ErrFileNotFound
 	}
 	return file, err
-}
-
-// serveAux starts a compatibility protocol listener on its own port, never
-// the public one, and reports a non-graceful failure on errCh. main holds no
-// Serve call of its own: the listener guard tests allow one only in the named
-// functions that own a listener.
-func serveAux(name string, srv *http.Server, errCh chan<- error) {
-	go func() {
-		slog.Info("compat server listening", "server", name, "addr", srv.Addr)
-		if listenErr := srv.ListenAndServe(); listenErr != nil && listenErr != http.ErrServerClosed {
-			errCh <- fmt.Errorf("%s server error: %w", name, listenErr)
-		}
-	}()
 }

@@ -3720,7 +3720,9 @@ func main() {
 	api.ConfigureNativeStorageArtwork(&deps)
 	router := api.NewRouter(deps)
 
-	// Start the separate metrics listener.
+	// Step 8: Build the handler the primary port serves — the API router and
+	// frontend. Metrics use a separate opt-in listener; see newRootHandler.
+	rootHandler := newRootHandler(router)
 	stopMetricsListener, err := startMetricsListener(true)
 	if err != nil {
 		log.Fatalf("metrics listener: %v", err)
@@ -3823,12 +3825,15 @@ func main() {
 		slog.Info("background workers started")
 	}
 
-	// Step 10: Start the listeners. The public port is bound and composed by
-	// listenPublic/servePublic below; main composes no handler and holds no
-	// http.Server of its own, so there is no second wiring here that could
-	// drift from the one the tests drive. The Jellyfin and Audiobookshelf
-	// compatibility listeners are separate servers on their own configured
-	// ports.
+	// Step 10: Create and start the HTTP server.
+	srv := &http.Server{
+		Addr:         cfg.Server.Listen,
+		Handler:      rootHandler,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 120 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
 	var compatSrv *http.Server
 	if (mode == "integrated" || mode == "api") && cfg.JellyfinCompat.Enabled && cfg.JellyfinCompat.Listen != "" {
 		compatDeps := jellycompat.Dependencies{
@@ -4062,21 +4067,18 @@ func main() {
 	lanCtx, stopLANDiscovery := context.WithCancel(appCtx)
 	defer stopLANDiscovery()
 
-	// The public port. One statement binds cfg.Server.Listen and one composes
-	// and serves it; main never holds the server, so there is nothing here to
-	// rewire, discard, or shadow with a second listener on the same address.
-	// A bind failure travels the same path a serve failure always did — onto
-	// errCh, into the graceful shutdown below — rather than aborting past the
-	// deferred cleanup.
-	var public *publicPort
-	if publicLn, bindErr := listenPublic(cfg.Server.Listen); bindErr != nil {
-		errCh <- fmt.Errorf("HTTP server error: %w", bindErr)
+	// Bind before serving so resident plugins, which reverse-proxy to this
+	// listener, are only started once it exists.
+	apiListener, apiListenErr := net.Listen("tcp", cfg.Server.Listen)
+	if apiListenErr != nil {
+		errCh <- fmt.Errorf("HTTP server listen: %w", apiListenErr)
 	} else {
-		// Connections that open with a TLS handshake get the pinned LAN
-		// certificate on the same port (internal/lantls).
-		public = servePublic(lantls.NewListener(publicLn, lanTLS.Config(), 0), router, server.FrontendHandler(), errCh)
-		// Bound before serving so resident plugins, which reverse-proxy to
-		// this listener, are only started once it exists.
+		go func() {
+			slog.Info("HTTP server listening", "addr", cfg.Server.Listen)
+			if serveErr := srv.Serve(lantls.NewListener(apiListener, lanTLS.Config(), 0)); serveErr != nil && serveErr != http.ErrServerClosed {
+				errCh <- fmt.Errorf("HTTP server error: %w", serveErr)
+			}
+		}()
 		go func() {
 			if reconcileErr := storageTransitionSvc.RunPostRestartWork(appCtx); reconcileErr != nil && appCtx.Err() == nil {
 				slog.Error("post-restart storage transition reconciliation paused; it will resume on the next start", "error", reconcileErr)
@@ -4086,7 +4088,7 @@ func main() {
 			lanDiscoveryDone = make(chan struct{})
 			go func() {
 				defer close(lanDiscoveryDone)
-				advertiseOnLAN(lanCtx, publicLn.Addr(), serveridentity.New(catalog.NewServerSettingsRepo(pool)), brandingSvc)
+				advertiseOnLAN(lanCtx, apiListener.Addr(), serveridentity.New(catalog.NewServerSettingsRepo(pool)), brandingSvc)
 			}()
 		}
 		if pluginService != nil {
@@ -4098,13 +4100,23 @@ func main() {
 	}
 
 	if compatSrv != nil {
-		serveAux("jellyfin compat", compatSrv, errCh)
+		go func() {
+			slog.Info("Jellyfin compat server listening", "addr", compatSrv.Addr)
+			if listenErr := compatSrv.ListenAndServe(); listenErr != nil && listenErr != http.ErrServerClosed {
+				errCh <- fmt.Errorf("jellyfin compat server error: %w", listenErr)
+			}
+		}()
 	}
 	if absSrv != nil {
-		serveAux("abs compat", absSrv, errCh)
+		go func() {
+			slog.Info("ABS compat server listening", "addr", absSrv.Addr)
+			if listenErr := absSrv.ListenAndServe(); listenErr != nil && listenErr != http.ErrServerClosed {
+				errCh <- fmt.Errorf("abs compat server error: %w", listenErr)
+			}
+		}()
 	}
 
-	lanAdvertiser := bloemStartListeners(appCtx, cfg, public != nil, pool, brandingSvc)
+	lanAdvertiser := bloemStartListeners(appCtx, cfg, apiListenErr == nil, pool, brandingSvc)
 
 	// Step 11: Wait for termination signal.
 	sigCh := make(chan os.Signal, 1)
@@ -4155,10 +4167,8 @@ func main() {
 	}
 
 	// 1. Stop accepting new requests.
-	if public != nil {
-		if shutdownErr := public.shutdown(shutdownCtx); shutdownErr != nil {
-			slog.Error("HTTP shutdown error", "error", shutdownErr)
-		}
+	if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
+		slog.Error("HTTP shutdown error", "error", shutdownErr)
 	}
 	if compatSrv != nil {
 		if shutdownErr := compatSrv.Shutdown(shutdownCtx); shutdownErr != nil {
