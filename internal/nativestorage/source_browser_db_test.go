@@ -660,18 +660,28 @@ func TestSourceBrowserReferencesRejectOtherAuthorizedOrganizationDB(t *testing.T
 	if _, err := b.pool.Exec(t.Context(), `UPDATE organizations SET slug='first-browse-org' WHERE id=$1`, org); err != nil {
 		t.Fatal(err)
 	}
-	org, membership, policy, security = discoveryOrganization(t, b.pool, a.AccountID)
-	a.OrganizationID = org
-	a.MembershipID = membership
-	a.PolicyRevision = policy
-	a.SecurityRevision = security
+	// An account belongs to one organization, so the second organization's
+	// admin is another account.
+	other := a
+	if err := b.pool.QueryRow(t.Context(), `INSERT INTO users(username,email,password_hash,role,enabled) VALUES('second-browse-admin','second-browse@example.test','synthetic','admin',true) RETURNING id,account_incarnation_id`).Scan(&other.AccountID, &other.AccountIncarnationID); err != nil {
+		t.Fatal(err)
+	}
+	other.SessionID = uuid.NewString()
+	if _, err := b.pool.Exec(t.Context(), `INSERT INTO auth_sessions(id,user_id,device_name,expires_at) VALUES($1,$2,'Synthetic second browse admin',now()+interval '1 hour')`, other.SessionID, other.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	org, membership, policy, security = discoveryOrganization(t, b.pool, other.AccountID)
+	other.OrganizationID = org
+	other.MembershipID = membership
+	other.PolicyRevision = policy
+	other.SecurityRevision = security
 	if _, err := b.pool.Exec(t.Context(), `INSERT INTO organization_entitlements(organization_id,entitlement_kind,root_kind,root_owner_id,plugin_installation_id,status,granted_by_service) VALUES($1,'plugin_availability','plugin_installation',$2,$3,'active','browse-test')`, org, s.OwnerID, s.InstallationID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := b.Browse(t.Context(), a, s.Key, BrowseRequest{}); err != nil {
+	if _, err := b.Browse(t.Context(), other, s.Key, BrowseRequest{}); err != nil {
 		t.Fatal("second organization is independently authorized", err)
 	}
-	if _, err := b.Browse(t.Context(), a, s.Key, BrowseRequest{DirectoryRef: page.Current.SelectionRef}); err == nil {
+	if _, err := b.Browse(t.Context(), other, s.Key, BrowseRequest{DirectoryRef: page.Current.SelectionRef}); err == nil {
 		t.Fatal("first organization's reference accepted by second organization")
 	}
 }
