@@ -59,7 +59,6 @@ internal/api/handlers/admin_login_sessions.go  # sign-out-everywhere reports a f
 internal/api/handlers/admin_login_sessions_test.go  # the revocation hook returns an error in Bloem
 internal/api/handlers/admin_sections_service.go
 internal/api/handlers/admin_session_revocation_test.go  # exercise upstream session policy against organization-aware group fixture
-internal/api/handlers/admin_user_policy_test.go
 internal/api/handlers/admin_users_service.go
 internal/api/handlers/auth.go
 internal/api/handlers/auth_registration.go

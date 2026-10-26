@@ -76,8 +76,8 @@ func TestToAdminUserResponseReportsOverridesAndEffectivePolicy(t *testing.T) {
 		TranscodeAllowed:         true,
 		AudioTranscodeAllowed:    true,
 		MaxStreams:               2,
-		MaxProfiles:              3,
 		MaxTranscodes:            1,
+		MaxProfiles:              3,
 		RequestsAllowed:          true,
 	}
 
@@ -98,8 +98,8 @@ func TestToAdminUserResponseReportsOverridesAndEffectivePolicy(t *testing.T) {
 		LibraryIDs:               []int{1, 2},
 		MaxPlaybackQuality:       access.PlaybackQualityStandard,
 		MaxStreams:               6,
-		MaxProfiles:              3,
 		MaxTranscodes:            1,
+		MaxProfiles:              3,
 		TranscodeAllowed:         true,
 		AudioTranscodeAllowed:    true,
 		DownloadAllowed:          true,
