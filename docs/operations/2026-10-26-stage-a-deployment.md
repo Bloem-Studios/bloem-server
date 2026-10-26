@@ -114,7 +114,7 @@ image on the new schema.
 
 ## Follow-up deployment: account provisioning (06:41 UTC)
 
-`main` at `d064644a8b`, image `bloem-server:release-d064644a8`, server binary
+`main` at `d064644a899fd9824ec0e45f89ed30c56520908c`, image `bloem-server:release-d064644a8`, server binary
 SHA-256 `976593ba6104b7cf68bfa6fa1ba052de750c441662bfae2f68d3d097600af8c5`.
 
 What it changes:
