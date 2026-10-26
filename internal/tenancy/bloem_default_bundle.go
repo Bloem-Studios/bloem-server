@@ -52,97 +52,19 @@ func GrantDefaultBundleInTransaction(ctx context.Context, tx pgx.Tx, organizatio
 		WHERE bundle_id=$1 AND bundle_revision=$2`, grant.BundleID, grant.Revision).Scan(&memberCount); err != nil {
 		return DefaultBundleGrant{}, true, fmt.Errorf("count default bundle members: %w", err)
 	}
-
-	command, err := tx.Exec(ctx, `
-		INSERT INTO organization_entitlements (
-			organization_id,
-			entitlement_kind,
-			root_kind,
-			root_owner_id,
-			media_folder_id,
-			status,
-			source_bundle_id,
-			source_bundle_revision,
-			granted_by_account_id,
-			granted_by_service
-		)
-		SELECT
-			$1,
-			members.entitlement_kind,
-			members.root_kind,
-			members.root_owner_id,
-			members.media_folder_id,
-			'active',
-			members.bundle_id,
-			members.bundle_revision,
-			$3,
-			$4
-		FROM entitlement_bundle_members AS members
-		WHERE members.bundle_id=$2
-		  AND members.bundle_revision=$5
-		  AND members.root_kind='media_folder'
-		ORDER BY members.media_folder_id
-		ON CONFLICT (organization_id, media_folder_id)
-			WHERE status IN ('active', 'suspended') AND media_folder_id IS NOT NULL
-			DO NOTHING`, organizationID, grant.BundleID, accountID, service, grant.Revision)
-	if err != nil {
-		return DefaultBundleGrant{}, true, fmt.Errorf("materialize library entitlements: %w", err)
+	for _, statement := range []struct{ label, sql string }{
+		{"library", grantBundleLibrariesSQL},
+		{"plugin", grantBundlePluginsSQL},
+	} {
+		command, err := tx.Exec(ctx, statement.sql, organizationID, grant.BundleID, accountID, service, grant.Revision)
+		if err != nil {
+			return DefaultBundleGrant{}, true, fmt.Errorf("materialize %s entitlements: %w", statement.label, err)
+		}
+		grant.Created += command.RowsAffected()
 	}
-	grant.Created += command.RowsAffected()
-
-	command, err = tx.Exec(ctx, `
-		INSERT INTO organization_entitlements (
-			organization_id,
-			entitlement_kind,
-			root_kind,
-			root_owner_id,
-			plugin_installation_id,
-			status,
-			source_bundle_id,
-			source_bundle_revision,
-			granted_by_account_id,
-			granted_by_service
-		)
-		SELECT
-			$1,
-			members.entitlement_kind,
-			members.root_kind,
-			members.root_owner_id,
-			members.plugin_installation_id,
-			'active',
-			members.bundle_id,
-			members.bundle_revision,
-			$3,
-			$4
-		FROM entitlement_bundle_members AS members
-		WHERE members.bundle_id=$2
-		  AND members.bundle_revision=$5
-		  AND members.root_kind='plugin_installation'
-		ORDER BY members.plugin_installation_id
-		ON CONFLICT (organization_id, plugin_installation_id)
-			WHERE status IN ('active', 'suspended') AND plugin_installation_id IS NOT NULL
-			DO NOTHING`, organizationID, grant.BundleID, accountID, service, grant.Revision)
-	if err != nil {
-		return DefaultBundleGrant{}, true, fmt.Errorf("materialize plugin entitlements: %w", err)
-	}
-	grant.Created += command.RowsAffected()
 
 	var coveredCount int64
-	if err = tx.QueryRow(ctx, `
-		SELECT count(*)
-		FROM entitlement_bundle_members AS members
-		WHERE members.bundle_id=$1
-		  AND members.bundle_revision=$2
-		  AND EXISTS (
-			SELECT 1
-			FROM organization_entitlements AS entitlements
-			WHERE entitlements.organization_id=$3
-			  AND entitlements.status='active'
-			  AND entitlements.root_owner_id=members.root_owner_id
-			  AND entitlements.root_kind=members.root_kind
-			  AND entitlements.media_folder_id IS NOT DISTINCT FROM members.media_folder_id
-			  AND entitlements.plugin_installation_id IS NOT DISTINCT FROM members.plugin_installation_id
-		  )`, grant.BundleID, grant.Revision, organizationID).Scan(&coveredCount); err != nil {
+	if err = tx.QueryRow(ctx, bundleCoverageSQL, grant.BundleID, grant.Revision, organizationID).Scan(&coveredCount); err != nil {
 		return DefaultBundleGrant{}, true, fmt.Errorf("verify bundle materialization: %w", err)
 	}
 	if coveredCount != memberCount || grant.Created > memberCount {
@@ -151,6 +73,59 @@ func GrantDefaultBundleInTransaction(ctx context.Context, tx pgx.Tx, organizatio
 	grant.Existing = memberCount - grant.Created
 	return grant, true, nil
 }
+
+// grantBundleLibrariesSQL and grantBundlePluginsSQL grant ($1) the bundle
+// ($2, revision $5) members of one root kind, granted by account $3 or
+// service $4, leaving live rows the organization already holds alone.
+const grantBundleLibrariesSQL = `
+	INSERT INTO organization_entitlements (
+		organization_id, entitlement_kind, root_kind, root_owner_id, media_folder_id, status,
+		source_bundle_id, source_bundle_revision, granted_by_account_id, granted_by_service
+	)
+	SELECT $1, members.entitlement_kind, members.root_kind, members.root_owner_id, members.media_folder_id,
+	       'active', members.bundle_id, members.bundle_revision, $3, $4
+	FROM entitlement_bundle_members AS members
+	WHERE members.bundle_id=$2
+	  AND members.bundle_revision=$5
+	  AND members.root_kind='media_folder'
+	ORDER BY members.media_folder_id
+	ON CONFLICT (organization_id, media_folder_id)
+		WHERE status IN ('active', 'suspended') AND media_folder_id IS NOT NULL
+		DO NOTHING`
+
+const grantBundlePluginsSQL = `
+	INSERT INTO organization_entitlements (
+		organization_id, entitlement_kind, root_kind, root_owner_id, plugin_installation_id, status,
+		source_bundle_id, source_bundle_revision, granted_by_account_id, granted_by_service
+	)
+	SELECT $1, members.entitlement_kind, members.root_kind, members.root_owner_id, members.plugin_installation_id,
+	       'active', members.bundle_id, members.bundle_revision, $3, $4
+	FROM entitlement_bundle_members AS members
+	WHERE members.bundle_id=$2
+	  AND members.bundle_revision=$5
+	  AND members.root_kind='plugin_installation'
+	ORDER BY members.plugin_installation_id
+	ON CONFLICT (organization_id, plugin_installation_id)
+		WHERE status IN ('active', 'suspended') AND plugin_installation_id IS NOT NULL
+		DO NOTHING`
+
+// bundleCoverageSQL counts the bundle ($1, revision $2) members the
+// organization ($3) holds an active entitlement for.
+const bundleCoverageSQL = `
+	SELECT count(*)
+	FROM entitlement_bundle_members AS members
+	WHERE members.bundle_id=$1
+	  AND members.bundle_revision=$2
+	  AND EXISTS (
+		SELECT 1
+		FROM organization_entitlements AS entitlements
+		WHERE entitlements.organization_id=$3
+		  AND entitlements.status='active'
+		  AND entitlements.root_owner_id=members.root_owner_id
+		  AND entitlements.root_kind=members.root_kind
+		  AND entitlements.media_folder_id IS NOT DISTINCT FROM members.media_folder_id
+		  AND entitlements.plugin_installation_id IS NOT DISTINCT FROM members.plugin_installation_id
+	  )`
 
 // grantCreationDefaultBundle gives a newly created organization the
 // creation-default bundle. Creation does not depend on a bundle existing.
