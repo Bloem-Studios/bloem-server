@@ -111,3 +111,33 @@ After start:
 All three migrations are forward-only. To go back, restore the database to the
 restore point above, with the container snapshot, rather than starting the old
 image on the new schema.
+
+## Follow-up deployment: account provisioning (06:41 UTC)
+
+`main` at `d064644a8b`, image `bloem-server:release-d064644a8`, server binary
+SHA-256 `976593ba6104b7cf68bfa6fa1ba052de750c441662bfae2f68d3d097600af8c5`.
+
+What it changes:
+
+- Account creation gives an account its one membership in the account
+  repository, so the `MembershipProvisioner` seam goes.
+- Tenant accounts are created directly in their tenant.
+- An account's default profile lands in the organization it is created in.
+- The seam ledger goes from 309 to 306.
+
+There were no migrations. Before the restart:
+
+- container snapshot `pre-main-d064644a8`;
+- restore point `pre-main-d064644a8`, LSN `3B4/98A6A558`.
+
+The server stopped in 32 seconds and was ready 42 seconds after the stop began,
+healthy with no restarts. The runtime fingerprint did not change. Afterwards:
+
+- system info reports `d064644a`;
+- ready and the public site returned 200;
+- 722 applied migrations, max `20261026030000`;
+- Silo switching is enabled;
+- 128 accounts and 128 memberships;
+- the policy checksum is still `917ce605e96ee17f5b7d66408c6cde18`;
+- an active stream continued;
+- no ERROR or panic lines.
