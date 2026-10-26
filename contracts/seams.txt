@@ -21,7 +21,6 @@ contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/create_library_validation_failed.json  # generated: createLibrary accepts storage_source instead of paths, so paths is no longer required
 contracts/api/v2/fixtures/get_device_login_ok.json  # upstream device approval now includes the Bloem server brand
-contracts/api/v2/breaking-approvals.json  # keeps Silo approvals Silo pruned after its own merges while Bloem's main still predates them; returns to Silo's bytes once main includes them
 contracts/api/v2/migration.json
 contracts/api/v2/migration.schema.json  # section and auth-trait enums Bloem's own namespaces and middleware add
 contracts/api/v2/offline-routes.txt  # generated: Bloem registers more routes than Silo, so this artifact necessarily differs
@@ -184,8 +183,6 @@ internal/playback/gpudetect_test.go
 internal/playback/protocol_v3.go
 internal/playback/session.go
 internal/playback/session_test.go
-internal/playback/subtitle_fonts.go  # temporary backport of Silo-Server/silo-server#2262; remove after upstream merges the font extraction fix
-internal/playback/subtitle_fonts_test.go  # temporary backport of Silo-Server/silo-server#2262; remove after upstream merges the font extraction fix
 internal/playback/testdata/protocol_v3/decision_response.json
 internal/playback/testdata/protocol_v3/hls-subtitle-rendition-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 internal/playback/testdata/protocol_v3/learned-limit-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features

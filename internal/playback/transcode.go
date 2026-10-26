@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/Silo-Server/silo-server/internal/fspath"
 	"github.com/Silo-Server/silo-server/internal/mediaprobe"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/processmetrics"
@@ -531,7 +532,7 @@ func StartTranscode(ctx context.Context, opts TranscodeOpts) (*TranscodeSession,
 	}
 	s.logFFmpegEvent(ctx, "ffmpeg process starting", "")
 
-	cmd := exec.CommandContext(commandCtx, bin, args...)
+	cmd := fspath.CommandContext(commandCtx, bin, args...)
 	configureTranscodeInputCommand(cmd, input)
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
@@ -2140,14 +2141,15 @@ func prepareSubtitleFilterInput(opts *TranscodeOpts) error {
 	}
 
 	aliasPath := filepath.Join(opts.OutputDir, subtitleFilterAliasName)
-	target, err := os.Readlink(aliasPath)
+	// InputPath is fspath-encoded; the link must point at the real file name.
+	target, err := fspath.Readlink(aliasPath)
 	switch {
 	case err == nil:
 		if target != opts.InputPath {
 			return fmt.Errorf("prepare subtitle filter input: alias targets unexpected source")
 		}
 	case errors.Is(err, os.ErrNotExist):
-		if err := os.Symlink(opts.InputPath, aliasPath); err != nil {
+		if err := os.Symlink(fspath.Decode(opts.InputPath), aliasPath); err != nil {
 			return fmt.Errorf("prepare subtitle filter input: %w", err)
 		}
 	default:
@@ -3570,7 +3572,7 @@ func (s *TranscodeSession) restart(
 	// As on initial start, the caller bounds synchronous validation; the new
 	// FFmpeg process keeps running after the segment request completes.
 	ctx = restartCtx
-	cmd := exec.CommandContext(commandCtx, bin, args...)
+	cmd := fspath.CommandContext(commandCtx, bin, args...)
 	configureTranscodeInputCommand(cmd, input)
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {

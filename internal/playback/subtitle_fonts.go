@@ -7,11 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/Silo-Server/silo-server/internal/fspath"
 )
 
 const (
@@ -174,11 +175,8 @@ func dumpFontAttachments(ctx context.Context, inputPath string, ffmpegPath strin
 	for _, stream := range streams {
 		args = append(args, fmt.Sprintf("-dump_attachment:%d", stream.Index), "pipe:1")
 	}
-	// Attachments are dumped while opening the container. Use a synthetic input
-	// for the zero-duration output so FFmpeg exits without waiting for packets
-	// from the media, including sparse or delayed tracks.
-	args = append(args, "-i", inputPath, "-f", "lavfi", "-i", "anullsrc=r=8000:cl=mono", "-map", "1:a:0", "-c", "copy", "-t", "0", "-f", "null", "-")
-	cmd := exec.CommandContext(ctx, ffmpegPath, args...)
+	args = append(args, "-i", inputPath, "-map", "0:t?", "-c", "copy", "-f", "null", "-")
+	cmd := fspath.CommandContext(ctx, ffmpegPath, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err
@@ -220,7 +218,7 @@ func probeFontAttachmentStreams(ctx context.Context, inputPath string, ffprobePa
 	if strings.TrimSpace(bin) == "" {
 		bin = "ffprobe"
 	}
-	cmd := exec.CommandContext(ctx, bin,
+	cmd := fspath.CommandContext(ctx, bin,
 		"-v", "error",
 		"-select_streams", "t",
 		"-show_entries", "stream=index,codec_name,codec_type,extradata_size:stream_tags=filename,mimetype",
