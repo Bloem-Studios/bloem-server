@@ -27,35 +27,6 @@ base_decision := decision if {
 	}
 }
 
-# tenant_valid validates the additive tenant document. Trusted Go adapters
-# reject invalid tenant context before evaluation; the tenant library bound
-# below then constrains every resolved scope.
-tenant_valid(i) if {
-	tenant := object.get(i, "tenant", {})
-	object.get(tenant, "present", false) == true
-	organization_id := object.get(tenant, "organization_id", "")
-	is_string(organization_id)
-	organization_id != ""
-	membership_id := object.get(tenant, "membership_id", "")
-	is_string(membership_id)
-	membership_id != ""
-	object.get(tenant, "membership_status", "") == "active"
-	tenant_organization_status_valid(tenant)
-	organization_revision := object.get(tenant, "organization_policy_revision", 0)
-	is_number(organization_revision)
-	organization_revision > 0
-	membership_revision := object.get(tenant, "membership_security_revision", 0)
-	is_number(membership_revision)
-	membership_revision > 0
-}
-
-tenant_organization_status_valid(tenant) if {
-	object.get(tenant, "organization_status", "") == "active"
-} else if {
-	object.get(tenant, "legacy", false) == true
-	object.get(tenant, "organization_status", "") == "initializing"
-}
-
 # Bloem tenancy is opt-in on the viewer resolver. With a tenant present every
 # scope is bounded by the tenant's libraries, so an otherwise unrestricted
 # profile reports the tenant libraries it hid. Without one, Silo's rules apply.

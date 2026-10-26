@@ -218,10 +218,7 @@ internal/policy/permission_parity_test.go
 internal/policy/scope_parity_test.go
 internal/policy/simulate.go
 internal/policy/store_test.go
-internal/policy/vendor/action.rego
-internal/policy/vendor/action_test.rego
 internal/policy/vendor/permission.rego
-internal/policy/vendor/permission_test.rego
 internal/policy/vendor/scope.rego
 internal/policy/viewer_resolver.go
 internal/progresssync/service.go

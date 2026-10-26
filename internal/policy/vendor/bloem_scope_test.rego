@@ -19,16 +19,6 @@ bloem_tenant_input := object.union(base_input, {
 	"tenant_library_ids": [1, 2, 3, 4, 5, 7],
 })
 
-test_bloem_tenant_input_is_valid if {
-	tenant_valid(bloem_tenant_input)
-}
-
-test_bloem_tenant_validation_rejects_malformed_status if {
-	not tenant_valid(object.union(bloem_tenant_input, {
-		"tenant": object.union(bloem_tenant_input.tenant, {"organization_status": "broken"}),
-	}))
-}
-
 test_bloem_tenant_absent_keeps_silo_unrestricted if {
 	got := decision with input as object.union(base_input, {"tenant_library_ids": [1, 2]})
 	got.unrestricted
