@@ -372,9 +372,6 @@ func (s *Service) RegisterProvider(info LoginProviderInfo, provider AuthProvider
 	}
 	s.providers[info.ID] = provider
 	s.metadata[info.ID] = info
-	if pluginProvider, ok := provider.(*PluginProvider); ok && s.memberships != nil {
-		pluginProvider.SetMembershipProvisioner(s.memberships)
-	}
 }
 
 // SetProviderRecheck makes Refresh re-check sessions opened through an
@@ -886,7 +883,7 @@ func (s *Service) SetupInitialUser(
 		if err != nil {
 			return err
 		}
-		pair, user = tokens, created.User
+		pair, user = tokens, created
 		return nil
 	})
 	if err != nil {

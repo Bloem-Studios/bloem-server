@@ -41,7 +41,6 @@ func TestDirectProfileSessionBoundary(t *testing.T) {
 		Config:                cfg,
 		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
-		MembershipProvisioner: bootstrap,
 		SessionMgr:            playback.NewSessionManager(4, 2),
 		FileRepo:              scanner.NewFileRepository(pool),
 		FolderRepo:            catalog.NewFolderRepository(pool),
@@ -416,7 +415,6 @@ func TestDirectProfileSessionOnPrimaryProfileCannotManageHousehold(t *testing.T)
 		Config:                cfg,
 		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
-		MembershipProvisioner: bootstrap,
 	})
 
 	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{
@@ -488,7 +486,6 @@ func TestDirectProfileSessionIsRejectedOnV1WhenItsTenancyGoesStale(t *testing.T)
 		}},
 		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
-		MembershipProvisioner: bootstrap,
 		SessionMgr:            playback.NewSessionManager(4, 2),
 		FileRepo:              scanner.NewFileRepository(pool),
 		FolderRepo:            catalog.NewFolderRepository(pool),

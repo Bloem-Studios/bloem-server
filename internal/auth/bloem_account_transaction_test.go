@@ -80,9 +80,7 @@ func TestBloemAccountTransactionProviderPreflight(t *testing.T) {
 							provider = bloemTransactionalAccountProvider{observed, inner.(bloemProviderProfileWriter)}
 						}
 					}
-					memberships := &bloemAccountMemberships{store: tenants}
 					accounts := auth.NewAccountProvisioner(auth.NewUserRepository(pool), provider)
-					accounts.SetMembershipProvisioner(memberships)
 					tx, err := pool.Begin(ctx)
 					if err != nil {
 						t.Fatal(err)
@@ -98,10 +96,10 @@ func TestBloemAccountTransactionProviderPreflight(t *testing.T) {
 						User:           models.CreateUserInput{Username: name, Email: name + "@example.test", Password: "fixture-password", Role: "user"},
 						DefaultProfile: auth.DefaultProfileOptions{Enabled: enabled, Name: "Home"},
 					}
-					var created auth.CreatedAccount
+					var created *models.User
 					expectedOrganization := organization.ID
 					if entrypoint == "default" {
-						created, err = accounts.CreateAccountWithMembershipInTransaction(ctx, tx, input)
+						created, err = accounts.CreateAccountInTransaction(ctx, tx, input)
 					} else {
 						if entrypoint == "organization" {
 							expectedOrganization = foreignID
@@ -113,8 +111,8 @@ func TestBloemAccountTransactionProviderPreflight(t *testing.T) {
 						if !errors.Is(err, auth.ErrTransactionalProfileUnavailable) {
 							t.Errorf("error = %v, want ErrTransactionalProfileUnavailable", err)
 						}
-						if created != (auth.CreatedAccount{}) {
-							t.Errorf("rejected create returned identities: %+v", created)
+						if created != nil {
+							t.Errorf("rejected create returned an account: %+v", created)
 						}
 						if after := bloemAccountTransactionCounts(t, tx); after != before {
 							t.Errorf("writes before rejection: before=%v after=%v", before, after)
@@ -126,78 +124,63 @@ func TestBloemAccountTransactionProviderPreflight(t *testing.T) {
 						if sequenceAfter != sequenceBefore {
 							t.Errorf("account insert attempted: sequence %d -> %d", sequenceBefore, sequenceAfter)
 						}
-						if memberships.calls != 0 {
-							t.Errorf("membership calls = %d, want 0", memberships.calls)
-						}
 						if observed != nil && observed.calls != 0 {
 							t.Errorf("ForUser calls = %d, want 0", observed.calls)
-						}
-					} else if enabled && backend == "provider-only" {
-						// A whole-provider advertisement never replaces validation of the
-						// actual store that will perform the transactional profile write.
-						if err == nil || !strings.Contains(err.Error(), "user store does not support transactional profile creation") {
-							t.Fatalf("store capability validation = %v", err)
-						}
-						if observed.calls != 1 || memberships.calls != 1 {
-							t.Fatalf("store validation did not follow provisioning: store=%d memberships=%d", observed.calls, memberships.calls)
 						}
 					} else {
 						if err != nil {
 							t.Fatal(err)
 						}
-						if created.User == nil || created.User.AccountIncarnationID == uuid.Nil || created.OrganizationID != expectedOrganization || created.MembershipID == uuid.Nil {
-							t.Fatalf("created identities = %+v", created)
+						if created == nil || created.AccountIncarnationID == uuid.Nil {
+							t.Fatalf("created account = %+v", created)
 						}
-						wantStoreCalls := 0
+						// The provider's transactional writer makes the profile;
+						// no per-user store is opened.
+						if observed != nil && observed.calls != 0 {
+							t.Errorf("ForUser calls = %d, want 0", observed.calls)
+						}
+						wantProfiles := 0
 						if enabled {
-							wantStoreCalls = 1
-						}
-						if observed != nil && observed.calls != wantStoreCalls {
-							t.Errorf("ForUser calls = %d, want %d", observed.calls, wantStoreCalls)
-						}
-						if memberships.calls != 1 {
-							t.Errorf("membership calls = %d, want 1", memberships.calls)
+							wantProfiles = 1
 						}
 						if err := tx.Commit(ctx); err != nil {
 							t.Fatal(err)
 						}
 						var totalMemberships int
-						if err := pool.QueryRow(ctx, `SELECT count(*) FROM organization_memberships WHERE account_id=$1`, created.User.ID).Scan(&totalMemberships); err != nil {
+						if err := pool.QueryRow(ctx, `SELECT count(*) FROM organization_memberships WHERE account_id=$1`, created.ID).Scan(&totalMemberships); err != nil {
 							t.Fatal(err)
 						}
 						if totalMemberships != 1 {
 							t.Fatalf("created account has %d memberships, want only the selected organization", totalMemberships)
 						}
 						var groupOrganization string
-						if err := pool.QueryRow(ctx, `SELECT g.organization_id::text FROM organization_memberships m JOIN users mu ON mu.id = m.account_id JOIN access_groups g ON g.id = mu.access_group_id WHERE m.id=$1`, created.MembershipID).Scan(&groupOrganization); err != nil {
+						if err := pool.QueryRow(ctx, `SELECT g.organization_id::text FROM organization_memberships m JOIN users mu ON mu.id = m.account_id JOIN access_groups g ON g.id = mu.access_group_id WHERE m.account_id=$1`, created.ID).Scan(&groupOrganization); err != nil {
 							t.Fatal(err)
 						}
 						if groupOrganization != expectedOrganization.String() {
 							t.Fatalf("default access group belongs to %s, not selected organization", groupOrganization)
 						}
 						var accountCount, membershipCount, profileCount int
-						if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE id=$1`, created.User.ID).Scan(&accountCount); err != nil {
+						if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE id=$1`, created.ID).Scan(&accountCount); err != nil {
 							t.Fatal(err)
 						}
-						if err := pool.QueryRow(ctx, `SELECT count(*) FROM organization_memberships WHERE id=$1 AND account_id=$2 AND organization_id=$3`, created.MembershipID, created.User.ID, expectedOrganization).Scan(&membershipCount); err != nil {
+						if err := pool.QueryRow(ctx, `SELECT count(*) FROM organization_memberships WHERE account_id=$1 AND organization_id=$2`, created.ID, expectedOrganization).Scan(&membershipCount); err != nil {
 							t.Fatal(err)
 						}
-						if err := pool.QueryRow(ctx, `SELECT count(*) FROM user_profiles WHERE user_id=$1`, created.User.ID).Scan(&profileCount); err != nil {
+						if err := pool.QueryRow(ctx, `SELECT count(*) FROM user_profiles WHERE user_id=$1`, created.ID).Scan(&profileCount); err != nil {
 							t.Fatal(err)
 						}
-						if accountCount != 1 || membershipCount != 1 || profileCount != wantStoreCalls {
+						if accountCount != 1 || membershipCount != 1 || profileCount != wantProfiles {
 							t.Fatalf("committed account/membership/profile counts = %d/%d/%d", accountCount, membershipCount, profileCount)
 						}
 						if enabled {
 							var profileName, profileOrganization string
-							if err := pool.QueryRow(ctx, `SELECT name,organization_id::text FROM user_profiles WHERE id=$1 AND user_id=$2`, created.ProfileID, created.User.ID).Scan(&profileName, &profileOrganization); err != nil {
+							if err := pool.QueryRow(ctx, `SELECT name,organization_id::text FROM user_profiles WHERE user_id=$1`, created.ID).Scan(&profileName, &profileOrganization); err != nil {
 								t.Fatal(err)
 							}
 							if profileName != "Home" || profileOrganization != expectedOrganization.String() {
 								t.Fatalf("profile name/organization = %q/%q", profileName, profileOrganization)
 							}
-						} else if created.ProfileID != "" {
-							t.Fatalf("profile-disabled result contains profile %q", created.ProfileID)
 						}
 					}
 					files, err := os.ReadDir(dir)
@@ -235,25 +218,7 @@ type bloemTransactionalAccountProvider struct {
 	*bloemObservedAccountProvider
 	bloemProviderProfileWriter
 }
-type bloemAccountMemberships struct {
-	store *tenancy.Store
-	calls int
-}
 
-func (p *bloemAccountMemberships) ProvisionDefaultMembership(ctx context.Context, id int, role string) error {
-	_, err := p.store.ProvisionDefaultMembership(ctx, id, role)
-	return err
-}
-func (p *bloemAccountMemberships) ProvisionDefaultMembershipInTransaction(ctx context.Context, tx pgx.Tx, id int, role string) (uuid.UUID, uuid.UUID, error) {
-	p.calls++
-	m, err := p.store.ProvisionDefaultMembershipInTransaction(ctx, tx, id, role)
-	return m.OrganizationID, m.ID, err
-}
-func (p *bloemAccountMemberships) ProvisionMembershipInTransaction(ctx context.Context, tx pgx.Tx, organization uuid.UUID, id int, role string) (uuid.UUID, uuid.UUID, error) {
-	p.calls++
-	m, err := p.store.ProvisionMembershipInTransaction(ctx, tx, organization, id, role)
-	return m.OrganizationID, m.ID, err
-}
 func bloemAccountTransactionCounts(t *testing.T, tx pgx.Tx) [4]int {
 	t.Helper()
 	var counts [4]int

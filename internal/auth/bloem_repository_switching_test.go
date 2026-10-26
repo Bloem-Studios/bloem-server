@@ -57,7 +57,6 @@ func TestBloemAccountCreateWhenSwitchable(t *testing.T) {
 	ctx, pool, _ := bloemSwitchableDatabase(t)
 	users := auth.NewUserRepository(pool)
 	accounts := auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(pool))
-	accounts.SetMembershipProvisioner(&bloemAccountMemberships{store: tenancy.NewStore(pool)})
 	maxStreams := 4
 	created, err := accounts.CreateAccount(ctx, auth.CreateAccountInput{
 		User: models.CreateUserInput{

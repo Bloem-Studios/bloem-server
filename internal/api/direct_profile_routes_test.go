@@ -38,7 +38,6 @@ func newRouteInventoryRouter(t *testing.T) chi.Routes {
 		Config:                &config.Config{Auth: config.AuthConfig{JWTSecret: "route-inventory", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour}},
 		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
-		MembershipProvisioner: bootstrap,
 		SessionMgr:            playback.NewSessionManager(4, 2),
 		FileRepo:              scanner.NewFileRepository(pool),
 		FolderRepo:            catalog.NewFolderRepository(pool),

@@ -34,13 +34,12 @@ const (
 	provisioningMasterKey = "initial-setup-atomic-fixture-master-key-0000000000"
 )
 
-// With FOR UPDATE on the organization, both transactions retain the seeded
-// membership's FK KEY SHARE lock while waiting to upgrade it: one must abort.
-// The barrier observes both real inserts before either real provisioner runs.
+// Two accounts created at once into one organization both commit, each with
+// its one membership: the organization is locked before any account row, so
+// no transaction waits to upgrade a lock its membership's foreign key holds.
 func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 	pool := bloemAccountTransactionDatabase(t)
-	tenants, organizationID, ownerID := bloemConcurrentOrganization(t, pool, true)
-	memberships := newBloemSeededMembershipBarrier(tenants, organizationID)
+	organizationID, ownerID := bloemConcurrentOrganization(t, pool, true)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	cfg, err := config.LoadFromDB(map[string]string{
@@ -59,7 +58,6 @@ func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 		Config: cfg, AppContext: ctx, DB: pool, SecretCipher: cipher,
 		ClientIPResolver: clientip.NewResolver(nil), NodeID: "concurrency-fixture",
 		PublicURL: "https://silo.example.test", UserStoreProvider: pgstore.NewPostgresProvider(pool),
-		MembershipProvisioner: memberships,
 	})
 
 	var tokens [2]string
@@ -80,7 +78,7 @@ func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 		tokens[i], invitationIDs[i] = token, invitation.ID
 	}
 
-	seeds, outcomes := bloemRunPolicySerializedProvisioningPair(t, memberships, func(ctx context.Context, i int) bloemProvisioningOutcome {
+	outcomes := bloemRunConcurrentProvisioningPair(t, func(ctx context.Context, i int) bloemProvisioningOutcome {
 		request := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/invitations/"+tokens[i]+"/accept",
 			bytes.NewBufferString(`{"password":"concurrent-invitation-password"}`))
 		request.Header.Set("Content-Type", "application/json")
@@ -107,8 +105,7 @@ func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 		if outcome.err != nil || outcome.status != http.StatusCreated {
 			t.Fatalf("invitation %d: status=%d error=%s, want 201", outcome.index, outcome.status, bloemProvisioningError(outcome.err))
 		}
-		seed := seeds[outcome.accountID]
-		bloemAssertProvisionedAccount(t, pool, emails[outcome.index], organizationID, seed)
+		bloemAssertProvisionedAccount(t, pool, emails[outcome.index], organizationID, outcome.accountID)
 		var accepted, profile, session int
 		if err := pool.QueryRow(ctx, `SELECT
 			(SELECT count(*) FROM invitations WHERE id=$1 AND organization_id=$2
@@ -128,12 +125,10 @@ func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 
 func TestBloemDefaultOrganizationProvisioningConcurrent(t *testing.T) {
 	pool := bloemAccountTransactionDatabase(t)
-	tenants, organizationID, _ := bloemConcurrentOrganization(t, pool, false)
-	memberships := newBloemSeededMembershipBarrier(tenants, organizationID)
+	organizationID, _ := bloemConcurrentOrganization(t, pool, false)
 	accounts := auth.NewAccountProvisioner(auth.NewUserRepository(pool), pgstore.NewPostgresProvider(pool))
-	accounts.SetMembershipProvisioner(memberships)
 	emails := [2]string{"first-account@example.test", "second-account@example.test"}
-	seeds, outcomes := bloemRunSeededProvisioningPair(t, memberships, func(ctx context.Context, i int) bloemProvisioningOutcome {
+	outcomes := bloemRunConcurrentProvisioningPair(t, func(ctx context.Context, i int) bloemProvisioningOutcome {
 		outcome := bloemProvisioningOutcome{index: i}
 		tx, err := pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
 		if err != nil {
@@ -141,14 +136,14 @@ func TestBloemDefaultOrganizationProvisioningConcurrent(t *testing.T) {
 			return outcome
 		}
 		defer func() { _ = tx.Rollback(ctx) }()
-		created, err := accounts.CreateAccountWithMembershipInTransaction(ctx, tx, auth.CreateAccountInput{
+		created, err := accounts.CreateAccountInTransaction(ctx, tx, auth.CreateAccountInput{
 			User: models.CreateUserInput{Username: emails[i], Email: emails[i], Password: "concurrent-account-password", Role: models.RoleUser},
 		})
 		if err == nil {
 			// Commit each caller immediately; waiting for its peer before commit
 			// would itself deadlock the correctly serialized organization locks.
 			err = tx.Commit(ctx)
-			outcome.accountID = created.User.ID
+			outcome.accountID = created.ID
 		}
 		outcome.err = err
 		return outcome
@@ -157,76 +152,7 @@ func TestBloemDefaultOrganizationProvisioningConcurrent(t *testing.T) {
 		if outcome.err != nil {
 			t.Fatalf("default account %d: %s", outcome.index, bloemProvisioningError(outcome.err))
 		}
-		bloemAssertProvisionedAccount(t, pool, emails[outcome.index], organizationID, seeds[outcome.accountID])
-	}
-}
-
-type bloemMembershipSeed struct {
-	accountID    int
-	membershipID uuid.UUID
-	backendPID   int
-}
-
-type bloemSeededMembershipBarrier struct {
-	store          *tenancy.Store
-	organizationID uuid.UUID
-	arrived        chan bloemMembershipSeed
-	release        chan struct{}
-}
-
-func newBloemSeededMembershipBarrier(store *tenancy.Store, organizationID uuid.UUID) *bloemSeededMembershipBarrier {
-	return &bloemSeededMembershipBarrier{store: store, organizationID: organizationID,
-		arrived: make(chan bloemMembershipSeed, 2), release: make(chan struct{})}
-}
-
-func (b *bloemSeededMembershipBarrier) ProvisionDefaultMembership(ctx context.Context, accountID int, role string) error {
-	_, err := b.store.ProvisionDefaultMembership(ctx, accountID, role)
-	return err
-}
-
-func (b *bloemSeededMembershipBarrier) ProvisionDefaultMembershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
-	if err := b.waitForPeer(ctx, tx, b.organizationID, accountID, role); err != nil {
-		return uuid.Nil, uuid.Nil, err
-	}
-	m, err := b.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, role)
-	return m.OrganizationID, m.ID, err
-}
-
-func (b *bloemSeededMembershipBarrier) ProvisionMembershipInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
-	if err := b.waitForPeer(ctx, tx, organizationID, accountID, role); err != nil {
-		return uuid.Nil, uuid.Nil, err
-	}
-	m, err := b.store.ProvisionMembershipInTransaction(ctx, tx, organizationID, accountID, role)
-	return m.OrganizationID, m.ID, err
-}
-
-func (b *bloemSeededMembershipBarrier) waitForPeer(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, role string) error {
-	if organizationID != b.organizationID {
-		return errors.New("provisioner selected the wrong organization")
-	}
-	seed := bloemMembershipSeed{accountID: accountID}
-	var count int
-	if err := tx.QueryRow(ctx, `SELECT m.id, pg_backend_pid(),
-		(SELECT count(*) FROM organization_memberships WHERE account_id=$1)
-		FROM organization_memberships m JOIN users u ON u.id=m.account_id
-		WHERE m.account_id=$1 AND m.organization_id=$2 AND m.status='active' AND m.legacy_role=$3
-		AND u.account_incarnation_id IS NOT NULL`, accountID, organizationID, role).
-		Scan(&seed.membershipID, &seed.backendPID, &count); err != nil {
-		return fmt.Errorf("observe seeded account and membership: %w", err)
-	}
-	if count != 1 {
-		return errors.New("barrier requires exactly one seeded membership")
-	}
-	select {
-	case b.arrived <- seed:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-	select {
-	case <-b.release:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+		bloemAssertProvisionedAccount(t, pool, emails[outcome.index], organizationID, outcome.accountID)
 	}
 }
 
@@ -235,47 +161,37 @@ type bloemProvisioningOutcome struct {
 	err                      error
 }
 
-func bloemRunSeededProvisioningPair(t *testing.T, barrier *bloemSeededMembershipBarrier, run func(context.Context, int) bloemProvisioningOutcome) (map[int]bloemMembershipSeed, [2]bloemProvisioningOutcome) {
+func bloemRunConcurrentProvisioningPair(t *testing.T, run func(context.Context, int) bloemProvisioningOutcome) [2]bloemProvisioningOutcome {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	var workers sync.WaitGroup
 	defer func() { cancel(); workers.Wait() }()
+	start := make(chan struct{})
 	results := make(chan bloemProvisioningOutcome, 2)
 	for i := range 2 {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
+			<-start
 			results <- run(ctx, i)
 		}()
 	}
-	seeds := make(map[int]bloemMembershipSeed, 2)
-	var previous bloemMembershipSeed
-	for range 2 {
-		select {
-		case seed := <-barrier.arrived:
-			if seed.accountID == previous.accountID || seed.membershipID == previous.membershipID || seed.backendPID == previous.backendPID {
-				t.Fatal("barrier must observe distinct accounts, memberships and database connections")
-			}
-			seeds[seed.accountID], previous = seed, seed
-		case early := <-results:
-			t.Fatalf("caller %d finished before both memberships were seeded: status=%d error=%s", early.index, early.status, bloemProvisioningError(early.err))
-		case <-ctx.Done():
-			t.Fatal("two seeded memberships did not reach the organization provisioning barrier")
-		}
-	}
-	close(barrier.release)
+	close(start)
 	var outcomes [2]bloemProvisioningOutcome
 	for i := range outcomes {
 		select {
 		case outcomes[i] = <-results:
 		case <-ctx.Done():
-			t.Fatal("concurrent organization provisioning did not finish")
+			t.Fatal("concurrent account provisioning did not finish")
 		}
 	}
-	return seeds, outcomes
+	if outcomes[0].accountID != 0 && outcomes[0].accountID == outcomes[1].accountID {
+		t.Fatal("concurrent provisioning must create distinct accounts")
+	}
+	return outcomes
 }
 
-func bloemConcurrentOrganization(t *testing.T, pool *pgxpool.Pool, nonDefault bool) (*tenancy.Store, uuid.UUID, int) {
+func bloemConcurrentOrganization(t *testing.T, pool *pgxpool.Pool, nonDefault bool) (uuid.UUID, int) {
 	t.Helper()
 	ctx := t.Context()
 	tenants := tenancy.NewStore(pool)
@@ -296,7 +212,7 @@ func bloemConcurrentOrganization(t *testing.T, pool *pgxpool.Pool, nonDefault bo
 		t.Fatal(err)
 	}
 	if !nonDefault {
-		return tenants, organization.ID, owner.ID
+		return organization.ID, owner.ID
 	}
 	organizationID := uuid.New()
 	if _, err := pool.Exec(ctx, `INSERT INTO organizations (id,slug,name,status,owner_account_id)
@@ -306,17 +222,17 @@ func bloemConcurrentOrganization(t *testing.T, pool *pgxpool.Pool, nonDefault bo
 	if _, err := pool.Exec(ctx, `INSERT INTO access_groups (organization_id,name,is_default) VALUES ($1,'Default',true)`, organizationID); err != nil {
 		t.Fatal(err)
 	}
-	return tenants, organizationID, owner.ID
+	return organizationID, owner.ID
 }
 
-func bloemAssertProvisionedAccount(t *testing.T, pool *pgxpool.Pool, email string, organizationID uuid.UUID, seed bloemMembershipSeed) {
+func bloemAssertProvisionedAccount(t *testing.T, pool *pgxpool.Pool, email string, organizationID uuid.UUID, accountID int) {
 	t.Helper()
 	var accounts, memberships, intended int
 	if err := pool.QueryRow(t.Context(), `SELECT
 		(SELECT count(*) FROM users WHERE email=$1 AND id=$2),
 		(SELECT count(*) FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE u.email=$1),
 		(SELECT count(*) FROM organization_memberships WHERE account_id=$2 AND organization_id=$3
-		 AND id=$4 AND status='active' AND legacy_role='user')`, email, seed.accountID, organizationID, seed.membershipID).
+		 AND status='active' AND legacy_role='user')`, email, accountID, organizationID).
 		Scan(&accounts, &memberships, &intended); err != nil {
 		t.Fatal(err)
 	}
@@ -332,41 +248,4 @@ func bloemProvisioningError(err error) string {
 		return "SQLSTATE " + pgErr.Code
 	}
 	return fmt.Sprintf("%T", err)
-}
-
-// Invitation acceptance holds the server-settings admission lock, so the
-// callers overlap at the API but intentionally serialize before provisioning.
-// The default-account test above retains the two-insert deadlock barrier.
-func bloemRunPolicySerializedProvisioningPair(t *testing.T, barrier *bloemSeededMembershipBarrier, run func(context.Context, int) bloemProvisioningOutcome) (map[int]bloemMembershipSeed, [2]bloemProvisioningOutcome) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
-	var workers sync.WaitGroup
-	defer func() { cancel(); workers.Wait() }()
-	close(barrier.release)
-	results := make(chan bloemProvisioningOutcome, 2)
-	for i := range 2 {
-		workers.Add(1)
-		go func() { defer workers.Done(); results <- run(ctx, i) }()
-	}
-	var outcomes [2]bloemProvisioningOutcome
-	for i := range outcomes {
-		select {
-		case outcomes[i] = <-results:
-		case <-ctx.Done():
-			t.Fatal("concurrent invitation acceptance did not finish")
-		}
-	}
-	seeds := map[int]bloemMembershipSeed{}
-	for range 2 {
-		select {
-		case seed := <-barrier.arrived:
-			seeds[seed.accountID] = seed
-		case <-ctx.Done():
-			t.Fatal("invitation account membership was not observed")
-		}
-	}
-	if len(seeds) != 2 {
-		t.Fatal("invitations must create distinct account memberships")
-	}
-	return seeds, outcomes
 }

@@ -288,7 +288,6 @@ func New(t testing.TB) *Env {
 	sessionRepo := auth.NewSessionRepository(pool)
 	e.auth = auth.NewService(auth.NewLocalProvider(userRepo, sessionRepo), e.jwt, sessionRepo, userRepo,
 		auth.NewInviteCodeRepository(pool), e.settings, e.stores)
-	e.auth.SetMembershipProvisioner(bloemFixtureMembershipsFor(pool))
 
 	e.policy = policy.NewSystem(policy.NewPolicyStore(pool), nil, slog.Default())
 	if err := e.policy.Start(ctx); err != nil {
@@ -321,7 +320,6 @@ func New(t testing.TB) *Env {
 				Provider: rejectingProvider{},
 			}},
 		}
-		d.MembershipProvisioner = bloemFixtureMembershipsFor(pool)
 		if limited {
 			d.RateLimitMW = e.limiter
 		}

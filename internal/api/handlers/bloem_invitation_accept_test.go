@@ -16,7 +16,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/invitations"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/go-chi/chi/v5"
@@ -147,23 +146,6 @@ func TestBloemInvitationAcceptDuplicateAccountRemainsConflict(t *testing.T) {
 	}
 }
 
-type invitationTestMemberships struct{ store *tenancy.Store }
-
-func (a invitationTestMemberships) ProvisionDefaultMembership(ctx context.Context, accountID int, role string) error {
-	_, err := a.store.ProvisionDefaultMembership(ctx, accountID, role)
-	return err
-}
-
-func (a invitationTestMemberships) ProvisionDefaultMembershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
-	membership, err := a.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, role)
-	return membership.OrganizationID, membership.ID, err
-}
-
-func (a invitationTestMemberships) ProvisionMembershipInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
-	membership, err := a.store.ProvisionMembershipInTransaction(ctx, tx, organizationID, accountID, role)
-	return membership.OrganizationID, membership.ID, err
-}
-
 func newInvitationTestFixture(t *testing.T, ctx context.Context, pool *pgxpool.Pool) (*InvitationHandler, string, uuid.UUID) {
 	t.Helper()
 	users := auth.NewUserRepository(pool)
@@ -200,7 +182,6 @@ func newInvitationTestFixture(t *testing.T, ctx context.Context, pool *pgxpool.P
 		t.Fatal(err)
 	}
 	accounts := auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(pool))
-	accounts.SetMembershipProvisioner(invitationTestMemberships{store: tenancy.NewStore(pool)})
 	sessions := auth.NewSessionRepository(pool)
 	authService := auth.NewService(auth.NewLocalProvider(users, sessions), auth.NewJWTService("invitation-test-secret", time.Hour, 24*time.Hour), sessions, users, auth.NewInviteCodeRepository(pool), nil, pgstore.NewPostgresProvider(pool))
 	service := invitations.NewService(repository, users, accounts, authService, nil, nil, nil, "")

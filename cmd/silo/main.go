@@ -3131,7 +3131,6 @@ func main() {
 		// The resolver stores the plugins' refresh_state encrypted with the
 		// server secret, for the provider re-check at session refresh.
 		providerAccounts := auth.NewAccountProvisioner(auth.NewUserRepository(deps.DB), userStoreProvider)
-		providerAccounts.SetMembershipProvisioner(deps.MembershipProvisioner)
 		accountResolver := auth.NewAccountResolver(deps.DB,
 			providerAccounts,
 			func(ctx context.Context, userID int) {

@@ -163,12 +163,12 @@ type fakeAccounts struct {
 	err     error
 }
 
-func (f *fakeAccounts) CreateAccountWithMembershipInTransaction(_ context.Context, _ pgx.Tx, input auth.CreateAccountInput) (auth.CreatedAccount, error) {
+func (f *fakeAccounts) CreateAccountInTransaction(_ context.Context, _ pgx.Tx, input auth.CreateAccountInput) (*models.User, error) {
 	if f.err != nil {
-		return auth.CreatedAccount{}, f.err
+		return nil, f.err
 	}
 	f.created = append(f.created, input)
-	return auth.CreatedAccount{User: &models.User{ID: 100 + len(f.created), Username: input.User.Username, Email: input.User.Email}}, nil
+	return &models.User{ID: 100 + len(f.created), Username: input.User.Username, Email: input.User.Email}, nil
 }
 
 type fakeSessions struct {

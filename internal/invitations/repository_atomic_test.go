@@ -78,8 +78,7 @@ func (f atomicInvitationFixture) invite(t *testing.T, name string) *models.Invit
 func (f atomicInvitationFixture) provision(provider userstore.UserStoreProvider) func(*models.Invitation, pgx.Tx) (*models.User, error) {
 	accounts := f.accounts(provider)
 	return func(inv *models.Invitation, tx pgx.Tx) (*models.User, error) {
-		created, err := accounts.CreateAccountWithMembershipInTransaction(f.ctx, tx, auth.CreateAccountInput{User: models.CreateUserInput{Username: inv.Email, Email: inv.Email, Password: "fixture-password", Role: inv.Role}, DefaultProfile: auth.DefaultProfileOptions{Enabled: inv.CreateProfile, Name: "Home"}})
-		return created.User, err
+		return accounts.CreateAccountInTransaction(f.ctx, tx, auth.CreateAccountInput{User: models.CreateUserInput{Username: inv.Email, Email: inv.Email, Password: "fixture-password", Role: inv.Role}, DefaultProfile: auth.DefaultProfileOptions{Enabled: inv.CreateProfile, Name: "Home"}})
 	}
 }
 func (f atomicInvitationFixture) counts(t *testing.T, inv *models.Invitation, wantUsers, wantProfiles, wantClaims int) {

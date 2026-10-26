@@ -7,23 +7,12 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
 // Match the production Bloem adapter, including both transactional seams.
 // These callbacks must use the caller's transaction, not a second pool write.
 type atomicSetupTenancy struct{ store *tenancy.Store }
-
-func (b atomicSetupTenancy) ProvisionDefaultMembership(ctx context.Context, accountID int, role string) error {
-	_, err := b.store.ProvisionDefaultMembership(ctx, accountID, role)
-	return err
-}
-
-func (b atomicSetupTenancy) ProvisionDefaultMembershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
-	membership, err := b.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, role)
-	return membership.OrganizationID, membership.ID, err
-}
 
 func (b atomicSetupTenancy) ActivateInitialOwnership(ctx context.Context, accountID int) error {
 	_, err := b.store.ActivateInitialOwnership(ctx, accountID)

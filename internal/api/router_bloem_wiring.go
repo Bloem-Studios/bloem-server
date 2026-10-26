@@ -51,7 +51,6 @@ func bloemServerIdentity(deps Dependencies) *serverid.Resolver {
 func wireBloemAuthService(authService *auth.Service, profileCredentials *auth.ProfileCredentialService, deps Dependencies) {
 	authService.SetProfileCredentialService(profileCredentials)
 	authService.SetOwnershipBootstrapper(deps.OwnershipBootstrapper)
-	authService.SetMembershipProvisioner(deps.MembershipProvisioner)
 	if reader := bloemPreviewReader(deps); reader != nil {
 		authService.EnablePreviewGuests(deps.DB, reader)
 	}
@@ -218,7 +217,6 @@ func wireBloemAdmin(
 	profileHandler *handlers.ProfileHandler,
 ) (*handlers.AdminTenantsHandler, *handlers.AdminTenantMembersHandler) {
 	adminHandler.SetProfileHandler(profileHandler)
-	adminHandler.SetMembershipProvisioner(deps.MembershipProvisioner)
 	adminHandler.HostStatsSource = deps.HostStatsSource
 	if deps.OnUserProfileSessionsRevoked != nil {
 		adminHandler.OnUserProfileSessionsRevoked = deps.OnUserProfileSessionsRevoked

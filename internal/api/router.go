@@ -256,7 +256,6 @@ type Dependencies struct {
 	PluginUserConfig        *plugins.UserConfigStore
 	AuthProviders           []auth.RegisteredProvider
 	OwnershipBootstrapper   auth.OwnershipBootstrapper
-	MembershipProvisioner   auth.MembershipProvisioner
 	// AuthProviderSource supplies the auth-plugin sign-in providers, rebuilt
 	// without a restart; OnAuthProvidersChanged rebuilds them on every node
 	// after an auth binding write.
@@ -673,12 +672,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		authService.SetSignInAttempts(signInAttempts)
 		if settingsRepo != nil {
-			invitationAccounts := auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider)
-			invitationAccounts.SetMembershipProvisioner(deps.MembershipProvisioner)
 			invitationService = invitations.NewService(
 				invitations.NewRepository(deps.DB),
 				userRepo,
-				invitationAccounts,
+				auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider),
 				authService,
 				mail.NewSMTPSender(settingsRepo),
 				settingsRepo,

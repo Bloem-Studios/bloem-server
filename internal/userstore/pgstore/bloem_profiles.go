@@ -33,10 +33,20 @@ func (s *PostgresUserStore) DeleteProfileInTransaction(ctx context.Context, tx p
 }
 
 // resolveProfileTenancy stamps a new profile with its organization and access
-// group: a legacy caller (no organization) resolves the account's legacy
-// identity, an explicit organization must be an active, visible membership,
-// and a profile without a group joins the organization's default group.
+// group: a profile written while its account is created joins the creation
+// organization in the account's group; otherwise a legacy caller (no
+// organization) resolves the account's legacy identity, an explicit
+// organization must be an active, visible membership, and a profile without a
+// group joins the organization's default group.
 func resolveProfileTenancy(ctx context.Context, exec preferenceSettingsExecutor, userID int, p *userstore.Profile) error {
+	if organizationID, ok := tenancy.CreationOrganization(ctx); ok && p.OrganizationID == "" {
+		p.OrganizationID = organizationID.String()
+		if p.AccessGroupID == nil {
+			if err := exec.QueryRow(ctx, `SELECT access_group_id FROM users WHERE id = $1`, userID).Scan(&p.AccessGroupID); err != nil {
+				return fmt.Errorf("resolving account group for profile %s: %w", p.ID, err)
+			}
+		}
+	}
 	if p.OrganizationID == "" {
 		organizationID, legacyGroupID, err := tenancy.NewProfileIdentityResolver(exec).ResolveLegacyProfileIdentity(ctx, userID)
 		if err != nil {

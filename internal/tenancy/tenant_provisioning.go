@@ -572,9 +572,8 @@ func (s *Store) TenantOverQuota(ctx context.Context, id uuid.UUID) (bool, error)
 }
 
 // ProvisionTenantMembership creates a membership in a specific tenant
-// organization — the admin-user-creation path's counterpart to
-// ProvisionDefaultMembership, for a member being provisioned into a park
-// tenant rather than this deployment's default organization. The FIRST
+// organization, for a member being provisioned into a park tenant rather than
+// this deployment's default organization. The FIRST
 // admin membership an 'initializing' tenant organization receives activates
 // it (assigns the owner, moves it to 'active') — a tenant is sold before any
 // admin account exists for it, so nothing else ever would.
@@ -598,7 +597,10 @@ func (s *Store) ProvisionTenantMembership(ctx context.Context, organizationID uu
 }
 
 // ProvisionTenantMembershipInTransaction locks the tenant, enforces its slot
-// fence, and creates the membership on a caller-owned transaction.
+// fence, and gives the account its tenant membership on a caller-owned
+// transaction. An account created for the tenant in that transaction already
+// holds the membership (account creation links it); it is adopted, and the
+// fence counts every other member.
 func (s *Store) ProvisionTenantMembershipInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, legacyRole string) (Membership, error) {
 	if legacyRole != legacyRoleAdmin && legacyRole != legacyRoleUser {
 		return Membership{}, fmt.Errorf("tenancy: provision tenant membership: invalid legacy role %q", legacyRole)
@@ -607,9 +609,11 @@ func (s *Store) ProvisionTenantMembershipInTransaction(ctx context.Context, tx p
 	if err != nil {
 		return Membership{}, err
 	}
-	used, err := tenantMembershipCount(ctx, tx, organizationID)
-	if err != nil {
-		return Membership{}, err
+	var used int
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*) FROM organization_memberships WHERE organization_id = $1 AND account_id <> $2`,
+		organizationID, accountID).Scan(&used); err != nil {
+		return Membership{}, fmt.Errorf("tenancy: tenant membership count: %w", err)
 	}
 	if organization.Frozen || used >= organization.Slots {
 		return Membership{}, ErrTenantSlotsExhausted
@@ -617,8 +621,18 @@ func (s *Store) ProvisionTenantMembershipInTransaction(ctx context.Context, tx p
 	membership, err := scanMembership(tx.QueryRow(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		SELECT $1, $2, $3, $4
+		ON CONFLICT (organization_id, account_id) DO NOTHING
 		RETURNING id, organization_id, account_id, status, legacy_role, security_revision`,
 		organizationID, accountID, MembershipActive, legacyRole))
+	if errors.Is(err, pgx.ErrNoRows) {
+		membership, err = scanMembership(tx.QueryRow(ctx, `
+			SELECT id, organization_id, account_id, status, legacy_role, security_revision
+			FROM organization_memberships WHERE organization_id = $1 AND account_id = $2
+			FOR UPDATE`, organizationID, accountID))
+		if err == nil && (membership.Status != MembershipActive || membership.LegacyRole != legacyRole) {
+			return Membership{}, ErrMembershipConflict
+		}
+	}
 	if err != nil {
 		return Membership{}, fmt.Errorf("tenancy: create tenant membership: %w", err)
 	}

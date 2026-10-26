@@ -81,7 +81,6 @@ func TestV1TenancyCompatibility(t *testing.T) {
 		Config:                cfg,
 		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
-		MembershipProvisioner: bootstrap,
 	})
 
 	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{

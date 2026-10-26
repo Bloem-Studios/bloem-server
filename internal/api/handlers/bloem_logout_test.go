@@ -11,7 +11,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -68,13 +67,12 @@ func TestBloemLogoutRevokesOnlyCallerSession(t *testing.T) {
 	pool := newInvitationTestDatabase(t, ctx)
 	users := auth.NewUserRepository(pool)
 	accounts := auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(pool))
-	accounts.SetMembershipProvisioner(invitationTestMemberships{store: tenancy.NewStore(pool)})
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
-	created, err := accounts.CreateAccountWithMembershipInTransaction(ctx, tx, auth.CreateAccountInput{
+	account, err := accounts.CreateAccountInTransaction(ctx, tx, auth.CreateAccountInput{
 		User:           models.CreateUserInput{Username: "logout", Email: "logout@example.test", Password: "logout-test-password", Role: models.RoleUser},
 		DefaultProfile: auth.DefaultProfileOptions{Enabled: true, Name: "Logout"},
 	})
@@ -85,29 +83,31 @@ func TestBloemLogoutRevokesOnlyCallerSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	var revision int64
-	if err := pool.QueryRow(ctx, `SELECT credential_revision FROM user_profiles WHERE user_id=$1 AND id=$2`, created.User.ID, created.ProfileID).Scan(&revision); err != nil {
+	var profileID, organizationID, membershipID string
+	if err := pool.QueryRow(ctx, `SELECT p.credential_revision, p.id, m.organization_id::text, m.id::text
+		FROM user_profiles p JOIN organization_memberships m ON m.account_id = p.user_id WHERE p.user_id=$1`, account.ID).Scan(&revision, &profileID, &organizationID, &membershipID); err != nil {
 		t.Fatal(err)
 	}
 	sessions := auth.NewSessionRepository(pool)
 	const secret = "bloem-logout-test-secret"
 	tokens := auth.NewJWTService(secret, time.Hour, 24*time.Hour)
 	handler := NewAuthHandler(auth.NewService(nil, tokens, sessions, users, nil, nil, nil), tokens, nil)
-	control := models.AuthSession{ID: uuid.NewString(), UserID: created.User.ID, ExpiresAt: time.Now().Add(time.Hour)}
+	control := models.AuthSession{ID: uuid.NewString(), UserID: account.ID, ExpiresAt: time.Now().Add(time.Hour)}
 	if err := sessions.Create(ctx, control); err != nil {
 		t.Fatal(err)
 	}
 	for _, method := range []string{"account", auth.AuthMethodDirectProfile} {
 		t.Run(method, func(t *testing.T) {
-			session := models.AuthSession{ID: uuid.NewString(), UserID: created.User.ID, ExpiresAt: time.Now().Add(time.Hour), AuthMethod: method}
+			session := models.AuthSession{ID: uuid.NewString(), UserID: account.ID, ExpiresAt: time.Now().Add(time.Hour), AuthMethod: method}
 			claims := auth.Claims{
-				UserID: created.User.ID, AccountIncarnationID: created.User.AccountIncarnationID.String(), Role: created.User.Role,
+				UserID: account.ID, AccountIncarnationID: account.AccountIncarnationID.String(), Role: account.Role,
 				SessionID: session.ID, TokenType: auth.TokenTypeAccess, AuthMethod: method,
 				RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(session.ExpiresAt)},
 			}
 			if method == auth.AuthMethodDirectProfile {
-				session.ProfileID, session.ProfileCredentialRevision, session.DeviceID = &created.ProfileID, &revision, "logout-device"
-				claims.ProfileID, claims.CredentialRevision, claims.DeviceID = created.ProfileID, revision, session.DeviceID
-				claims.OrganizationID, claims.MembershipID = created.OrganizationID.String(), created.MembershipID.String()
+				session.ProfileID, session.ProfileCredentialRevision, session.DeviceID = &profileID, &revision, "logout-device"
+				claims.ProfileID, claims.CredentialRevision, claims.DeviceID = profileID, revision, session.DeviceID
+				claims.OrganizationID, claims.MembershipID = organizationID, membershipID
 			}
 			if err := sessions.Create(ctx, session); err != nil {
 				t.Fatal(err)

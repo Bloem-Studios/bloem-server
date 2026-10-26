@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -23,40 +23,13 @@ type tenancyProvisioningAdapter struct {
 	store *tenancy.Store
 }
 
-type failingMembershipProvisioner struct {
-	err error
-}
-
 type staticAuthSettings map[string]string
 
 func (s staticAuthSettings) Get(_ context.Context, key string) (string, error) { return s[key], nil }
 
-func (p failingMembershipProvisioner) ProvisionDefaultMembership(context.Context, int, string) error {
-	return p.err
-}
-
-func (p failingMembershipProvisioner) ProvisionDefaultMembershipInTransaction(context.Context, pgx.Tx, int, string) (uuid.UUID, uuid.UUID, error) {
-	return uuid.Nil, uuid.Nil, p.err
-}
-
 func (a tenancyProvisioningAdapter) ActivateInitialOwnership(ctx context.Context, accountID int) error {
 	_, err := a.store.ActivateInitialOwnership(ctx, accountID)
 	return err
-}
-
-func (a tenancyProvisioningAdapter) ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) error {
-	_, err := a.store.ProvisionDefaultMembership(ctx, accountID, legacyRole)
-	return err
-}
-
-func (a tenancyProvisioningAdapter) ProvisionDefaultMembershipInTransaction(
-	ctx context.Context,
-	tx pgx.Tx,
-	accountID int,
-	legacyRole string,
-) (uuid.UUID, uuid.UUID, error) {
-	membership, err := a.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, legacyRole)
-	return membership.OrganizationID, membership.ID, err
 }
 
 func (a tenancyProvisioningAdapter) ActivateInitialOwnershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int) error {
@@ -64,7 +37,7 @@ func (a tenancyProvisioningAdapter) ActivateInitialOwnershipInTransaction(ctx co
 	return err
 }
 
-func TestAccountProvisionerCreateAccountWithMembershipInTransactionRollsBackEveryGeneratedTarget(t *testing.T) {
+func TestAccountProvisionerCreateAccountInTransactionLinksMembershipAndRollsBack(t *testing.T) {
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
@@ -76,12 +49,11 @@ func TestAccountProvisionerCreateAccountWithMembershipInTransactionRollsBackEver
 	}
 
 	provisioner := NewAccountProvisioner(NewUserRepository(pool), pgstore.NewPostgresProvider(pool))
-	provisioner.SetMembershipProvisioner(tenancyProvisioningAdapter{store: tenancy.NewStore(pool)})
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatalf("begin: %v", err)
 	}
-	created, err := provisioner.CreateAccountWithMembershipInTransaction(ctx, tx, CreateAccountInput{
+	account, err := provisioner.CreateAccountInTransaction(ctx, tx, CreateAccountInput{
 		User: models.CreateUserInput{
 			Username: "transactional-account",
 			Email:    "transactional-account@example.test",
@@ -92,22 +64,34 @@ func TestAccountProvisionerCreateAccountWithMembershipInTransactionRollsBackEver
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		t.Fatalf("CreateAccountWithMembershipInTransaction: %v", err)
+		t.Fatalf("CreateAccountInTransaction: %v", err)
 	}
-	if created.User == nil || created.User.AccountIncarnationID == uuid.Nil ||
-		created.OrganizationID == uuid.Nil || created.MembershipID == uuid.Nil || created.ProfileID == "" {
+	if account == nil || account.AccountIncarnationID == uuid.Nil {
 		_ = tx.Rollback(ctx)
-		t.Fatalf("generated targets incomplete: %+v", created)
+		t.Fatalf("created account incomplete: %+v", account)
+	}
+	var memberships, profiles int
+	if err := tx.QueryRow(ctx, `
+		SELECT (SELECT count(*) FROM organization_memberships m JOIN organizations o ON o.id = m.organization_id
+		        WHERE m.account_id = $1 AND o.is_default AND m.status = 'active' AND m.legacy_role = 'admin'),
+		       (SELECT count(*) FROM user_profiles p JOIN organizations o ON o.id = p.organization_id
+		        WHERE p.user_id = $1 AND o.is_default)`, account.ID).Scan(&memberships, &profiles); err != nil {
+		_ = tx.Rollback(ctx)
+		t.Fatal(err)
+	}
+	if memberships != 1 || profiles != 1 {
+		_ = tx.Rollback(ctx)
+		t.Fatalf("default-organization memberships=%d profiles=%d, want 1 and 1", memberships, profiles)
 	}
 	sessionID := uuid.NewString()
 	if err := NewSessionRepository(pool).CreateInTransaction(ctx, tx, models.AuthSession{
-		ID: sessionID, UserID: created.User.ID, ExpiresAt: time.Now().Add(time.Hour),
+		ID: sessionID, UserID: account.ID, ExpiresAt: time.Now().Add(time.Hour),
 	}); err != nil {
 		_ = tx.Rollback(ctx)
 		t.Fatalf("CreateInTransaction session: %v", err)
 	}
 	if err := (tenancyProvisioningAdapter{store: tenancy.NewStore(pool)}).
-		ActivateInitialOwnershipInTransaction(ctx, tx, created.User.ID); err != nil {
+		ActivateInitialOwnershipInTransaction(ctx, tx, account.ID); err != nil {
 		_ = tx.Rollback(ctx)
 		t.Fatalf("ActivateInitialOwnershipInTransaction: %v", err)
 	}
@@ -117,8 +101,8 @@ func TestAccountProvisionerCreateAccountWithMembershipInTransactionRollsBackEver
 
 	for name, query := range map[string]string{
 		"account":    `SELECT count(*) FROM users WHERE username='transactional-account'`,
-		"membership": `SELECT count(*) FROM organization_memberships WHERE id='` + created.MembershipID.String() + `'`,
-		"profile":    `SELECT count(*) FROM user_profiles WHERE id='` + created.ProfileID + `'`,
+		"membership": `SELECT count(*) FROM organization_memberships WHERE account_id=` + strconv.Itoa(account.ID),
+		"profile":    `SELECT count(*) FROM user_profiles WHERE user_id=` + strconv.Itoa(account.ID),
 		"session":    `SELECT count(*) FROM auth_sessions WHERE id='` + sessionID + `'`,
 	} {
 		var count int
@@ -138,7 +122,7 @@ func TestAccountProvisionerCreateAccountWithMembershipInTransactionRollsBackEver
 	}
 }
 
-func TestSetupInitialUserInTransactionReturnsReplayTargetsAndCommitsAtomically(t *testing.T) {
+func TestSetupInitialUserInTransactionCommitsAtomically(t *testing.T) {
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
@@ -160,7 +144,6 @@ func TestSetupInitialUserInTransactionReturnsReplayTargetsAndCommitsAtomically(t
 		pgstore.NewPostgresProvider(pool),
 	)
 	adapter := tenancyProvisioningAdapter{store: tenancy.NewStore(pool)}
-	service.SetMembershipProvisioner(adapter)
 	service.SetOwnershipBootstrapper(adapter)
 
 	tx, err := pool.Begin(ctx)
@@ -174,10 +157,20 @@ func TestSetupInitialUserInTransactionReturnsReplayTargetsAndCommitsAtomically(t
 		_ = tx.Rollback(ctx)
 		t.Fatalf("SetupInitialUserInTransaction: %v", err)
 	}
-	if pair == nil || pair.AccessToken == "" || pair.RefreshToken == "" || created.User == nil ||
-		created.OrganizationID == uuid.Nil || created.MembershipID == uuid.Nil || created.ProfileID == "" {
+	if pair == nil || pair.AccessToken == "" || pair.RefreshToken == "" || created == nil || !created.IsOwner {
 		_ = tx.Rollback(ctx)
 		t.Fatalf("incomplete setup result: pair=%+v created=%+v", pair, created)
+	}
+	var memberships, profiles int
+	if err := tx.QueryRow(ctx, `
+		SELECT (SELECT count(*) FROM organization_memberships WHERE account_id = $1 AND legacy_role = 'admin'),
+		       (SELECT count(*) FROM user_profiles WHERE user_id = $1)`, created.ID).Scan(&memberships, &profiles); err != nil {
+		_ = tx.Rollback(ctx)
+		t.Fatal(err)
+	}
+	if memberships != 1 || profiles != 1 {
+		_ = tx.Rollback(ctx)
+		t.Fatalf("setup memberships=%d profiles=%d, want 1 and 1", memberships, profiles)
 	}
 	if err := tx.Rollback(ctx); err != nil {
 		t.Fatalf("rollback: %v", err)
@@ -242,67 +235,6 @@ func TestStartImpersonationInTransactionRollsBackSession(t *testing.T) {
 	}
 }
 
-func TestSignupInTransactionRollsBackInviteAccountAndSessionTogether(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
-	ctx := context.Background()
-	pool := newAuthTenancyDisposableDatabase(t, ctx, dsn)
-	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
-		t.Fatalf("migrate database: %v", err)
-	}
-	users := NewUserRepository(pool)
-	owner, err := users.Create(ctx, models.CreateUserInput{
-		Username: "invite-owner", Email: "invite-owner@example.test", Password: "password", Role: models.RoleAdmin,
-	})
-	if err != nil {
-		t.Fatalf("create invite owner: %v", err)
-	}
-	invites := NewInviteCodeRepository(pool)
-	if _, err := invites.Create(ctx, models.CreateInviteCodeInput{Code: "TXSIGNUP", MaxUses: 1, CreatedBy: owner.ID}); err != nil {
-		t.Fatalf("create invite: %v", err)
-	}
-	sessions := NewSessionRepository(pool)
-	service := NewService(
-		NewLocalProvider(users, sessions), NewJWTService("test-secret", time.Hour, 24*time.Hour),
-		sessions, users, invites, staticAuthSettings{"signup.enabled": "true"}, pgstore.NewPostgresProvider(pool),
-	)
-	service.SetMembershipProvisioner(tenancyProvisioningAdapter{store: tenancy.NewStore(pool)})
-
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		t.Fatalf("begin: %v", err)
-	}
-	pair, created, err := service.SignupInTransaction(
-		ctx, tx, "signed-up", "signed-up@example.test", "password", "TXSIGNUP", true, "Viewer", "phone", "127.0.0.1",
-	)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		t.Fatalf("SignupInTransaction: %v", err)
-	}
-	if pair == nil || pair.RefreshToken == "" || created.User == nil || created.MembershipID == uuid.Nil || created.ProfileID == "" {
-		_ = tx.Rollback(ctx)
-		t.Fatalf("incomplete signup result: pair=%+v created=%+v", pair, created)
-	}
-	if err := tx.Rollback(ctx); err != nil {
-		t.Fatalf("rollback: %v", err)
-	}
-	var useCount, accountCount, sessionCount int
-	if err := pool.QueryRow(ctx, `SELECT use_count FROM invite_codes WHERE code='TXSIGNUP'`).Scan(&useCount); err != nil {
-		t.Fatalf("read invite: %v", err)
-	}
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE username='signed-up'`).Scan(&accountCount); err != nil {
-		t.Fatalf("count account: %v", err)
-	}
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM auth_sessions WHERE user_id <> $1`, owner.ID).Scan(&sessionCount); err != nil {
-		t.Fatalf("count sessions: %v", err)
-	}
-	if useCount != 0 || accountCount != 0 || sessionCount != 0 {
-		t.Fatalf("signup escaped rollback: use_count=%d accounts=%d sessions=%d", useCount, accountCount, sessionCount)
-	}
-}
-
 func TestSetupInitialUserOwnership_ProvisionsDefaultMembershipAndActivatesOwnership(t *testing.T) {
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -326,7 +258,6 @@ func TestSetupInitialUserOwnership_ProvisionsDefaultMembershipAndActivatesOwners
 		nil,
 	)
 	adapter := tenancyProvisioningAdapter{store: tenancy.NewStore(pool)}
-	service.SetMembershipProvisioner(adapter)
 	service.SetOwnershipBootstrapper(adapter)
 
 	pair, admin, err := service.SetupInitialUser(
@@ -354,7 +285,6 @@ func TestSetupInitialUserOwnership_ProvisionsDefaultMembershipAndActivatesOwners
 	}
 
 	provisioner := NewAccountProvisioner(users, nil)
-	provisioner.SetMembershipProvisioner(adapter)
 	ordinary, err := provisioner.CreateAccount(ctx, CreateAccountInput{
 		User: models.CreateUserInput{
 			Username: "moderator-user",
@@ -375,49 +305,6 @@ func TestSetupInitialUserOwnership_ProvisionsDefaultMembershipAndActivatesOwners
 	}
 	if membership.Status != tenancy.MembershipActive || membership.LegacyRole != "user" {
 		t.Fatalf("moderator user membership = %#v, want active user", membership)
-	}
-}
-
-func TestSetupInitialUserOwnership_CleansUpAccountWhenMembershipProvisioningFails(t *testing.T) {
-	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("SILO_TEST_DATABASE_URL is not set")
-	}
-	ctx := context.Background()
-	pool := newAuthTenancyDisposableDatabase(t, ctx, dsn)
-	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
-		t.Fatalf("migrate database: %v", err)
-	}
-
-	users := NewUserRepository(pool)
-	sessions := NewSessionRepository(pool)
-	service := NewService(
-		NewLocalProvider(users, sessions),
-		NewJWTService("test-secret", time.Hour, 24*time.Hour),
-		sessions,
-		users,
-		NewInviteCodeRepository(pool),
-		nil,
-		nil,
-	)
-	provisionErr := errors.New("default membership unavailable")
-	service.SetMembershipProvisioner(failingMembershipProvisioner{err: provisionErr})
-
-	pair, user, err := service.SetupInitialUser(
-		ctx, "setup-admin", "setup-admin@example.test", "password", false, "", "browser", "127.0.0.1",
-	)
-	if !errors.Is(err, provisionErr) {
-		t.Fatalf("SetupInitialUser error = %v, want membership provisioning error", err)
-	}
-	if pair != nil || user != nil {
-		t.Fatalf("setup result = (%#v, %#v), want no tokens or user", pair, user)
-	}
-	needsSetup, err := service.NeedsSetup(ctx)
-	if err != nil {
-		t.Fatalf("NeedsSetup: %v", err)
-	}
-	if !needsSetup {
-		t.Fatal("failed setup left an account behind")
 	}
 }
 

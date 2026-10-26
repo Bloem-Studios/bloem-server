@@ -74,7 +74,6 @@ func newClientSurfaceFixture(t *testing.T) clientSurfaceFixture {
 		UserStoreProvider:     provider,
 		FileRepo:              scanner.NewFileRepository(pool),
 		OwnershipBootstrapper: bootstrap,
-		MembershipProvisioner: bootstrap,
 	})
 
 	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{

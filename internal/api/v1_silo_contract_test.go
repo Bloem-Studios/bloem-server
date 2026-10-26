@@ -48,7 +48,6 @@ func TestV1SiloRouteContractIsNeverNarrowed(t *testing.T) {
 		UserStoreProvider:     provider,
 		FileRepo:              scanner.NewFileRepository(pool),
 		OwnershipBootstrapper: bootstrap,
-		MembershipProvisioner: bootstrap,
 	})
 	live := map[string]struct{}{}
 	for _, route := range walkV1Routes(t, router) {

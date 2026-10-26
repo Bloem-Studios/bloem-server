@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -39,10 +38,6 @@ func (r *customRoleAdminUserRepo) GetByID(context.Context, int) (*models.User, e
 	return r.created, nil
 }
 
-type strictLegacyRoleProvisioner struct {
-	legacyRole string
-}
-
 type recordingDirectEntitlements struct {
 	accountID int
 	key       string
@@ -55,19 +50,9 @@ func (r *recordingDirectEntitlements) ApplyDefaultAccountTemplate(_ context.Cont
 	return entitlements.ApplyResult{AccountID: accountID, TemplateKey: key, TemplateRevision: revision, GroupID: 44}, nil
 }
 
-func (p *strictLegacyRoleProvisioner) ProvisionDefaultMembership(_ context.Context, _ int, legacyRole string) error {
-	p.legacyRole = legacyRole
-	if legacyRole != "user" {
-		return errors.New("unexpected membership legacy role")
-	}
-	return nil
-}
-
-func TestAdminHandlerCreateUser_CustomRoleUsesUserMembershipLegacyRole(t *testing.T) {
+func TestAdminHandlerCreateUser_CustomRoleIsPreserved(t *testing.T) {
 	users := &customRoleAdminUserRepo{}
-	memberships := &strictLegacyRoleProvisioner{}
 	handler := NewAdminHandler(users, nil, nil)
-	handler.SetMembershipProvisioner(memberships)
 
 	request := httptest.NewRequest(http.MethodPost, "/admin/users", strings.NewReader(`{
 		"username":"moderator",
@@ -84,17 +69,12 @@ func TestAdminHandlerCreateUser_CustomRoleUsesUserMembershipLegacyRole(t *testin
 	if users.created == nil || users.created.Role != "moderator" {
 		t.Fatalf("created user = %#v, want preserved moderator role", users.created)
 	}
-	if memberships.legacyRole != "user" {
-		t.Fatalf("membership legacy role = %q, want user", memberships.legacyRole)
-	}
 }
 
 func TestAdminHandlerCreateUser_AppliesDirectEntitlementRevision(t *testing.T) {
 	users := &customRoleAdminUserRepo{}
-	memberships := &strictLegacyRoleProvisioner{}
 	direct := &recordingDirectEntitlements{}
 	handler := NewAdminHandler(users, nil, nil)
-	handler.SetMembershipProvisioner(memberships)
 	handler.SetDirectEntitlements(direct)
 
 	request := httptest.NewRequest(http.MethodPost, "/admin/users", strings.NewReader(`{

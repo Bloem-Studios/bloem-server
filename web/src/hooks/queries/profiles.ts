@@ -131,11 +131,7 @@ export function createProfile(
   body: ProfileCreate,
   profileContext?: ProfileRequestContextSnapshot,
 ): Promise<Profile> {
-  return v2("POST /api/v2/profiles", {
-    body,
-    profileContext,
-    headers: { "Idempotency-Key": crypto.randomUUID() },
-  }).then(profileFromV2);
+  return v2("POST /api/v2/profiles", { body, profileContext }).then(profileFromV2);
 }
 
 export function verifyProfilePIN(profileId: string, pin: string): Promise<ProfileVerification> {
@@ -205,11 +201,7 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: ProfileUpdate }) =>
-      v2("PATCH /api/v2/profiles/{id}", {
-        path: { id },
-        body,
-        headers: { "Idempotency-Key": crypto.randomUUID() },
-      }).then(profileFromV2),
+      v2("PATCH /api/v2/profiles/{id}", { path: { id }, body }).then(profileFromV2),
     onSuccess: (updatedProfile) => {
       queryClient.setQueryData<ProfileList | undefined>(profileKeys.list(), (current) => {
         const profiles = replaceProfileInList(current?.profiles, updatedProfile);
@@ -295,11 +287,7 @@ export function useDeleteProfileAvatar() {
 export function useDeleteProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      v2("DELETE /api/v2/profiles/{id}", {
-        path: { id },
-        headers: { "Idempotency-Key": crypto.randomUUID() },
-      }),
+    mutationFn: (id: string) => v2("DELETE /api/v2/profiles/{id}", { path: { id } }),
     onSuccess: () => {
       toast.success("Profile deleted");
       queryClient.invalidateQueries({ queryKey: profileKeys.list() });

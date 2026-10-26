@@ -3,9 +3,10 @@ package auth
 import (
 	"context"
 	"errors"
-	"github.com/jackc/pgx/v5"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/google/uuid"
@@ -25,18 +26,6 @@ func (b *recordingOwnershipBootstrapper) ActivateInitialOwnership(_ context.Cont
 	}
 	b.accountIDs = append(b.accountIDs, accountID)
 	return b.err
-}
-
-type setupMembershipProvisioner struct {
-	accountIDs  []int
-	legacyRoles []string
-	err         error
-}
-
-func (p *setupMembershipProvisioner) ProvisionDefaultMembership(_ context.Context, accountID int, legacyRole string) error {
-	p.accountIDs = append(p.accountIDs, accountID)
-	p.legacyRoles = append(p.legacyRoles, legacyRole)
-	return p.err
 }
 
 type setupUserRepository struct {
@@ -149,15 +138,8 @@ func newSetupInitialUserService(bootstrapper *recordingOwnershipBootstrapper) (*
 }
 
 func TestSetupInitialUserOwnership_ActivatesCreatedAccountBeforeSession(t *testing.T) {
-	memberships := &setupMembershipProvisioner{}
 	bootstrapper := &recordingOwnershipBootstrapper{}
-	bootstrapper.onActivate = func() {
-		if len(memberships.accountIDs) != 1 || memberships.accountIDs[0] != 47 || memberships.legacyRoles[0] != "admin" {
-			t.Fatalf("membership provisioning = accounts %v roles %v, want account 47 as admin before ownership", memberships.accountIDs, memberships.legacyRoles)
-		}
-	}
 	service, users, provider, sessions := newSetupInitialUserService(bootstrapper)
-	service.SetMembershipProvisioner(memberships)
 	provider.user = &models.User{ID: 47, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"), Username: "admin", Role: "admin", Enabled: true}
 
 	pair, user, err := service.SetupInitialUser(
@@ -182,9 +164,6 @@ func TestSetupInitialUserOwnership_ActivatesCreatedAccountBeforeSession(t *testi
 	if len(bootstrapper.accountIDs) != 1 || bootstrapper.accountIDs[0] != 47 {
 		t.Fatalf("activated accounts = %v, want [47]", bootstrapper.accountIDs)
 	}
-	if len(memberships.accountIDs) != 1 || memberships.accountIDs[0] != 47 || len(memberships.legacyRoles) != 1 || memberships.legacyRoles[0] != "admin" {
-		t.Fatalf("membership provisioning = accounts %v roles %v, want [47] [admin]", memberships.accountIDs, memberships.legacyRoles)
-	}
 	if provider.authenticateCalls != 0 {
 		t.Fatalf("login calls = %d, want 0; setup creates its session in the transaction", provider.authenticateCalls)
 	}
@@ -208,36 +187,6 @@ func TestSetupInitialUserOwnership_RollsBackAndDoesNotIssueTokensWhenActivationF
 	}
 	if users.user != nil || users.deletedID != 0 {
 		t.Fatal("failed setup must roll back account creation without a compensating delete")
-	}
-	if provider.authenticateCalls != 0 {
-		t.Fatalf("login calls = %d, want 0", provider.authenticateCalls)
-	}
-	if len(sessions.created) != 0 {
-		t.Fatalf("created sessions = %d, want 0", len(sessions.created))
-	}
-}
-
-func TestSetupInitialUserOwnership_RollsBackAndDoesNotIssueTokensWhenMembershipProvisioningFails(t *testing.T) {
-	provisionErr := errors.New("membership provisioning failed")
-	bootstrapper := &recordingOwnershipBootstrapper{}
-	service, users, provider, sessions := newSetupInitialUserService(bootstrapper)
-	provider.user = &models.User{ID: 47, Username: "admin", Role: "admin", Enabled: true}
-	service.SetMembershipProvisioner(&setupMembershipProvisioner{err: provisionErr})
-
-	pair, user, err := service.SetupInitialUser(
-		context.Background(), "admin", "admin@example.test", "password", false, "", "browser", "127.0.0.1",
-	)
-	if !errors.Is(err, provisionErr) {
-		t.Fatalf("SetupInitialUser error = %v, want membership provisioning error", err)
-	}
-	if pair != nil || user != nil {
-		t.Fatalf("setup result = (%#v, %#v), want no tokens or user", pair, user)
-	}
-	if users.user != nil || users.deletedID != 0 {
-		t.Fatal("failed setup must roll back account creation without a compensating delete")
-	}
-	if len(bootstrapper.accountIDs) != 0 {
-		t.Fatalf("ownership activation calls = %v, want none", bootstrapper.accountIDs)
 	}
 	if provider.authenticateCalls != 0 {
 		t.Fatalf("login calls = %d, want 0", provider.authenticateCalls)
@@ -272,9 +221,6 @@ func (r *setupUserRepository) CreateInTransaction(ctx context.Context, _ pgx.Tx,
 }
 func (b *recordingOwnershipBootstrapper) ActivateInitialOwnershipInTransaction(ctx context.Context, _ pgx.Tx, id int) error {
 	return b.ActivateInitialOwnership(ctx, id)
-}
-func (p *setupMembershipProvisioner) ProvisionDefaultMembershipInTransaction(ctx context.Context, _ pgx.Tx, id int, role string) (uuid.UUID, uuid.UUID, error) {
-	return uuid.Nil, uuid.Nil, p.ProvisionDefaultMembership(ctx, id, role)
 }
 func (s *setupSessions) CreateInTransaction(ctx context.Context, _ pgx.Tx, session models.AuthSession) error {
 	return s.Create(ctx, session)

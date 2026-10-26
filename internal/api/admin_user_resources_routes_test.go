@@ -43,7 +43,7 @@ func TestAdminUserResourceRoutesUseProductionAdminBoundary(t *testing.T) {
 	bootstrap := v1TenancyBootstrap{store: store}
 	router := newChiRouter(Dependencies{
 		DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
-		OwnershipBootstrapper: bootstrap, MembershipProvisioner: bootstrap,
+		OwnershipBootstrapper: bootstrap,
 	})
 
 	routes := walkV1Routes(t, router)
@@ -127,7 +127,7 @@ func TestProfileRoutesWithoutS3PreserveNilAvatarStore(t *testing.T) {
 	// servers that do not enable uploaded-avatar object storage.
 	router := newChiRouter(Dependencies{
 		DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
-		OwnershipBootstrapper: bootstrap, MembershipProvisioner: bootstrap,
+		OwnershipBootstrapper: bootstrap,
 	})
 	setup := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/setup", `{
 		"username":"no-s3-admin","email":"no-s3-admin@example.test","password":"correct horse battery staple",

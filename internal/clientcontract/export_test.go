@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -273,7 +272,6 @@ func startBloemServer(t *testing.T, pool *pgxpool.Pool) *httptest.Server {
 	bootstrap := fixtureTenancyBootstrap{store: tenancy.NewStore(pool)}
 	server := httptest.NewUnstartedServer(api.NewRouter(api.Dependencies{
 		OwnershipBootstrapper: bootstrap,
-		MembershipProvisioner: bootstrap,
 		Config:                cfg,
 		AppContext:            appCtx,
 		DB:                    pool,
@@ -310,16 +308,6 @@ func (b fixtureTenancyBootstrap) ActivateInitialOwnership(ctx context.Context, a
 func (b fixtureTenancyBootstrap) ActivateInitialOwnershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int) error {
 	_, err := b.store.ActivateInitialOwnershipInTransaction(ctx, tx, accountID)
 	return err
-}
-
-func (b fixtureTenancyBootstrap) ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) error {
-	_, err := b.store.ProvisionDefaultMembership(ctx, accountID, legacyRole)
-	return err
-}
-
-func (b fixtureTenancyBootstrap) ProvisionDefaultMembershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int, legacyRole string) (uuid.UUID, uuid.UUID, error) {
-	membership, err := b.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, legacyRole)
-	return membership.OrganizationID, membership.ID, err
 }
 
 func setupFixtureAccount(t *testing.T, baseURL string) {

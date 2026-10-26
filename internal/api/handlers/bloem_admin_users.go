@@ -77,12 +77,6 @@ func (h *AdminHandler) SetPlatformEntitlementBulk(
 	h.platformEntitlementWorker = worker
 }
 
-// SetMembershipProvisioner configures default-organization provisioning for
-// accounts created by the admin API.
-func (h *AdminHandler) SetMembershipProvisioner(provisioner auth.MembershipProvisioner) {
-	h.accountProvisioner.SetMembershipProvisioner(provisioner)
-}
-
 // createTenantUser creates an account inside a specific tenant organization
 // (bloem-park growth G2) rather than the deployment's default one —
 // AccountProvisioner.CreateAccount always provisions the default
@@ -166,15 +160,12 @@ func (h *AdminHandler) createTenantAccount(ctx context.Context, organizationID u
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	user, conflict, err := h.accountProvisioner.CreateUserInTransaction(ctx, tx, input)
+	user, conflict, err := h.accountProvisioner.CreateUserForOrganizationInTransaction(ctx, tx, organizationID, input)
 	if err != nil {
 		return nil, err
 	}
 	if conflict {
 		return nil, auth.ErrDuplicate
-	}
-	if err := releaseTenantAccountLink(ctx, tx, organizationID, user.ID); err != nil {
-		return nil, err
 	}
 	if _, err := h.tenantStore.ProvisionTenantMembershipInTransaction(ctx, tx, organizationID, user.ID, auth.MembershipLegacyRole(input.Role)); err != nil {
 		return nil, fmt.Errorf("%w: %w", errTenantMembership, err)
@@ -183,27 +174,6 @@ func (h *AdminHandler) createTenantAccount(ctx context.Context, organizationID u
 		return nil, err
 	}
 	return user, nil
-}
-
-// releaseTenantAccountLink removes the membership account creation gave a new
-// account in the creating transaction, so the tenant membership provisioned
-// next, with its slot fence, is the account's one membership. Creation links an
-// account to the organization owning its access group, else the default
-// organization, and an access group outside the tenant gives way to the
-// tenant's default group.
-func releaseTenantAccountLink(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int) error {
-	if _, err := tx.Exec(ctx, `DELETE FROM organization_memberships WHERE account_id = $1`, accountID); err != nil {
-		return fmt.Errorf("release new account membership: %w", err)
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE users SET access_group_id = (
-			SELECT g.id FROM access_groups g WHERE g.organization_id = $2 AND g.is_default)
-		WHERE id = $1 AND access_group_id IS NOT NULL
-		  AND NOT EXISTS (SELECT 1 FROM access_groups g WHERE g.id = users.access_group_id AND g.organization_id = $2)`,
-		accountID, organizationID); err != nil {
-		return fmt.Errorf("move new account to the tenant's default group: %w", err)
-	}
-	return nil
 }
 
 // bloemAdminHandlerExt holds every Bloem-only AdminHandler dependency so the

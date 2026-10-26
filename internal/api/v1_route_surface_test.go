@@ -79,7 +79,6 @@ func TestV1RouteSurfaceWithADatabaseIsUnchanged(t *testing.T) {
 		UserStoreProvider:     provider,
 		FileRepo:              scanner.NewFileRepository(pool),
 		OwnershipBootstrapper: bootstrap,
-		MembershipProvisioner: bootstrap,
 	})
 	assertV1RouteSurface(t, v1RouteGoldenDatabase, router)
 }

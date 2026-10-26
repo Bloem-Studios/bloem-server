@@ -35,7 +35,6 @@ func TestDirectProfileIdentityContractAgainstRealRouter(t *testing.T) {
 		}},
 		UserStoreProvider:     pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
-		MembershipProvisioner: bootstrap,
 	})
 	server := httptest.NewServer(router)
 	defer server.Close()

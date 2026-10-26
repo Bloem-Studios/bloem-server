@@ -213,53 +213,6 @@ func (s *Store) ProvisionDefaultMembershipInTransaction(
 	return membership, nil
 }
 
-// ProvisionMembershipInTransaction creates an active membership in one
-// explicit organization on a caller-owned transaction.
-func (s *Store) ProvisionMembershipInTransaction(
-	ctx context.Context,
-	tx pgx.Tx,
-	organizationID uuid.UUID,
-	accountID int,
-	legacyRole string,
-) (Membership, error) {
-	if organizationID == uuid.Nil || (legacyRole != legacyRoleAdmin && legacyRole != legacyRoleUser) {
-		return Membership{}, fmt.Errorf("provision membership: invalid organization or legacy role %q", legacyRole)
-	}
-	var status OrganizationStatus
-	// Serialize provisioning without conflicting with the KEY SHARE locks
-	// already held by seeded membership FKs; no organization key changes here.
-	if err := tx.QueryRow(ctx, `SELECT status FROM organizations WHERE id=$1 FOR NO KEY UPDATE`, organizationID).Scan(&status); errors.Is(err, pgx.ErrNoRows) {
-		return Membership{}, ErrOrganizationNotFound
-	} else if err != nil {
-		return Membership{}, fmt.Errorf("lock organization for membership: %w", err)
-	}
-	if status != OrganizationActive {
-		return Membership{}, ErrTenantNotFoundOrHidden
-	}
-	membership, err := scanMembership(tx.QueryRow(ctx, `
-		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-		SELECT $1,$2,$3,$4
-		ON CONFLICT (organization_id, account_id) DO NOTHING
-		RETURNING id,organization_id,account_id,status,legacy_role,security_revision`,
-		organizationID, accountID, MembershipActive, legacyRole))
-	if errors.Is(err, pgx.ErrNoRows) {
-		// Identity creation may already have seeded this exact membership's
-		// policy in the caller's transaction. Adopt it without resetting policy
-		// or restoring a suspended/invited membership, just as default setup does.
-		membership, err = scanMembership(tx.QueryRow(ctx, `
-			SELECT id,organization_id,account_id,status,legacy_role,security_revision
-			FROM organization_memberships WHERE organization_id=$1 AND account_id=$2
-			FOR UPDATE`, organizationID, accountID))
-		if err == nil && (membership.Status != MembershipActive || membership.LegacyRole != legacyRole) {
-			return Membership{}, ErrMembershipConflict
-		}
-	}
-	if err != nil {
-		return Membership{}, fmt.Errorf("create organization membership: %w", err)
-	}
-	return membership, nil
-}
-
 // ActivateInitialOwnership atomically assigns the initial platform and default
 // organization owner. Repeating the operation for that same owner is a no-op.
 func (s *Store) ActivateInitialOwnership(ctx context.Context, accountID int) (state OwnershipState, err error) {

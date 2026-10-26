@@ -51,7 +51,7 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 	var extensionInvalidationErr error
 	router := newChiRouter(Dependencies{
 		DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
-		OwnershipBootstrapper: bootstrap, MembershipProvisioner: bootstrap,
+		OwnershipBootstrapper: bootstrap,
 		OnUserSessionsRevoked: func(ctx context.Context, userID int) error { return extensionInvalidationErr },
 	})
 

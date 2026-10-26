@@ -17,10 +17,6 @@ type AccountUserRepository interface {
 	Delete(ctx context.Context, id int) error
 }
 
-type transactionalProfileCreator interface {
-	CreateProfileInTransaction(context.Context, pgx.Tx, userstore.Profile) error
-}
-
 type DefaultProfileOptions struct {
 	Enabled bool
 	Name    string
@@ -34,7 +30,6 @@ type CreateAccountInput struct {
 type AccountProvisioner struct {
 	users         AccountUserRepository
 	storeProvider userstore.UserStoreProvider
-	memberships   MembershipProvisioner
 }
 
 func NewAccountProvisioner(
@@ -56,10 +51,6 @@ func (p *AccountProvisioner) CreateAccount(
 		return nil, err
 	}
 
-	if err := p.provisionDefaultMembershipOrRollback(ctx, user.ID, input); err != nil {
-		return nil, err
-	}
-
 	if !input.DefaultProfile.Enabled {
 		return user, nil
 	}
@@ -67,7 +58,7 @@ func (p *AccountProvisioner) CreateAccount(
 	if err := p.createDefaultProfile(ctx, user.ID, input); err != nil {
 		if deleteErr := p.users.Delete(ctx, user.ID); deleteErr != nil {
 			return nil, fmt.Errorf(
-				"create default profile: %w (cleanup user: %w)",
+				"create default profile: %w (cleanup user: %v)",
 				err,
 				deleteErr, //nolint:errorlint // callers classify the profile error; the cleanup failure is only reported
 			)
@@ -76,13 +67,6 @@ func (p *AccountProvisioner) CreateAccount(
 	}
 
 	return user, nil
-}
-
-// CreateAccountInTransaction creates an account and its default profile using
-// the caller's transaction. Bloem membership provisioning commits with them.
-func (p *AccountProvisioner) CreateAccountInTransaction(ctx context.Context, tx pgx.Tx, input CreateAccountInput) (*models.User, error) {
-	created, err := p.CreateAccountWithMembershipInTransaction(ctx, tx, input)
-	return created.User, err
 }
 
 func (p *AccountProvisioner) createDefaultProfile(
@@ -119,20 +103,7 @@ func (p *AccountProvisioner) CreateInvitedAccount(ctx context.Context, input Cre
 		return nil, fmt.Errorf("invited account provisioning unavailable")
 	}
 	return users.CreateInvited(ctx, input.User, code, func(user *models.User, tx pgx.Tx) error {
-		created := CreatedAccount{User: user}
-		if p.memberships != nil {
-			memberships, ok := p.memberships.(transactionalMembershipProvisioner)
-			if !ok {
-				return fmt.Errorf("membership provisioner does not support transactional creation")
-			}
-			var err error
-			created.OrganizationID, created.MembershipID, err = memberships.ProvisionDefaultMembershipInTransaction(ctx, tx, user.ID, MembershipLegacyRole(input.User.Role))
-			if err != nil {
-				return err
-			}
-		}
-		_, err := p.createProfileInTransaction(ctx, tx, input, created)
-		return err
+		return p.createProfileInTransactionOrBridge(ctx, tx, user.ID, input)
 	})
 }
 
@@ -143,15 +114,18 @@ func (p *AccountProvisioner) CreateInvitedAccount(ctx context.Context, input Cre
 // their separate profile writer; the account still does not commit if that
 // writer fails.
 func (p *AccountProvisioner) CreateInitialAccountInTransaction(ctx context.Context, tx pgx.Tx, input CreateAccountInput) (*models.User, error) {
-	created, err := p.CreateAccountWithMembershipInTransaction(ctx, tx, input)
+	user, err := createUser(ctx, tx, input.User)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE users SET is_owner = true, break_glass = true WHERE id = $1`, created.User.ID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE users SET is_owner = true, break_glass = true WHERE id = $1`, user.ID); err != nil {
 		return nil, fmt.Errorf("marking server owner: %w", err)
 	}
-	created.User.IsOwner, created.User.BreakGlass = true, true
-	return created.User, nil
+	user.IsOwner, user.BreakGlass = true, true
+	if err := p.createProfileInTransactionOrBridge(ctx, tx, user.ID, input); err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 // createProfileInTransactionOrBridge writes the requested default profile
@@ -161,7 +135,7 @@ func (p *AccountProvisioner) createProfileInTransactionOrBridge(ctx context.Cont
 	if !input.DefaultProfile.Enabled {
 		return nil
 	}
-	if provider, ok := p.storeProvider.(transactionalProviderProfileCreator); ok {
+	if provider, ok := p.storeProvider.(transactionalProfileCreator); ok {
 		profile, err := defaultAccountProfile(input)
 		if err != nil {
 			return err
@@ -181,8 +155,38 @@ func (p *AccountProvisioner) createProfileInTransactionOrBridge(ctx context.Cont
 // participate in account creation's transaction. No account has been inserted.
 var ErrTransactionalProfileUnavailable = errors.New("transactional profile creation unavailable")
 
-type transactionalProviderProfileCreator interface {
+type transactionalProfileCreator interface {
 	CreateProfileInTransaction(context.Context, pgx.Tx, int, userstore.Profile) error
+}
+
+// CreateAccountInTransaction creates an account and its requested profile in
+// the caller's transaction. The caller owns commit and rollback. Unlike the
+// legacy signup bridge, this operation never writes a separate SQLite store.
+func (p *AccountProvisioner) CreateAccountInTransaction(ctx context.Context, tx pgx.Tx, input CreateAccountInput) (*models.User, error) {
+	var profile userstore.Profile
+	var provider transactionalProfileCreator
+	if input.DefaultProfile.Enabled {
+		var ok bool
+		provider, ok = p.storeProvider.(transactionalProfileCreator)
+		if !ok {
+			return nil, ErrTransactionalProfileUnavailable
+		}
+		var err error
+		profile, err = defaultAccountProfile(input)
+		if err != nil {
+			return nil, err
+		}
+	}
+	user, err := createUser(ctx, tx, input.User)
+	if err != nil {
+		return nil, err
+	}
+	if provider != nil {
+		if err := provider.CreateProfileInTransaction(ctx, tx, user.ID, profile); err != nil {
+			return nil, fmt.Errorf("store profile: %w", err)
+		}
+	}
+	return user, nil
 }
 
 func defaultAccountProfile(input CreateAccountInput) (userstore.Profile, error) {
@@ -199,6 +203,6 @@ func defaultAccountProfile(input CreateAccountInput) (userstore.Profile, error) 
 // SupportsTransactionalProfiles reports the selected provider's capability,
 // including wrappers that preserve its transaction-aware profile writer.
 func (p *AccountProvisioner) SupportsTransactionalProfiles() bool {
-	_, ok := p.storeProvider.(transactionalProviderProfileCreator)
+	_, ok := p.storeProvider.(transactionalProfileCreator)
 	return ok
 }

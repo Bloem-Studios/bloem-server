@@ -3,38 +3,22 @@ package invitations
 // Bloem fixture plumbing and coverage for Silo's repository_atomic_test.go.
 
 import (
-	"context"
 	"errors"
 	"os"
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Match the production membership seam so generated profiles receive the
 // organization ID returned by the real tenancy store in the same transaction.
-type invitationMembershipProvisioner struct{ store *tenancy.Store }
-
-func (p invitationMembershipProvisioner) ProvisionDefaultMembership(ctx context.Context, accountID int, role string) error {
-	_, err := p.store.ProvisionDefaultMembership(ctx, accountID, role)
-	return err
-}
-
-func (p invitationMembershipProvisioner) ProvisionDefaultMembershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
-	membership, err := p.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, role)
-	return membership.OrganizationID, membership.ID, err
-}
 
 func (f atomicInvitationFixture) accounts(provider userstore.UserStoreProvider) *auth.AccountProvisioner {
 	accounts := auth.NewAccountProvisioner(auth.NewUserRepository(f.pool), provider)
-	accounts.SetMembershipProvisioner(invitationMembershipProvisioner{tenancy.NewStore(f.pool)})
 	return accounts
 }
 
@@ -82,9 +66,4 @@ func assertInvitationTriggerFailure(t *testing.T, err error, message string) {
 	if !errors.As(err, &pgErr) || pgErr.Code != "P0001" || pgErr.Message != message {
 		t.Fatalf("expected trigger failure %q, got %v", message, err)
 	}
-}
-
-func (p invitationMembershipProvisioner) ProvisionMembershipInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
-	membership, err := p.store.ProvisionMembershipInTransaction(ctx, tx, organizationID, accountID, role)
-	return membership.OrganizationID, membership.ID, err
 }

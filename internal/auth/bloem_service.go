@@ -15,7 +15,6 @@ import (
 // bloemServiceDeps holds Bloem's tenancy collaborators on Service.
 type bloemServiceDeps struct {
 	ownership          OwnershipBootstrapper
-	memberships        MembershipProvisioner
 	profileCredentials directProfileCredentials
 }
 
@@ -156,46 +155,9 @@ func (s *Service) SetOwnershipBootstrapper(bootstrapper OwnershipBootstrapper) {
 	s.ownership = bootstrapper
 }
 
-// SetMembershipProvisioner installs default-organization provisioning for all
-// accounts created through this service and its registered plugin providers.
-func (s *Service) SetMembershipProvisioner(provisioner MembershipProvisioner) {
-	s.memberships = provisioner
-	s.accounts.SetMembershipProvisioner(provisioner)
-	for _, provider := range s.providers {
-		if pluginProvider, ok := provider.(*PluginProvider); ok {
-			pluginProvider.SetMembershipProvisioner(provisioner)
-		}
-	}
-}
-
-// StartAccountSessionInTransaction creates a login session and mints its token
-// pair on a caller-owned transaction for an account created in that same unit.
-func (s *Service) StartAccountSessionInTransaction(ctx context.Context, tx pgx.Tx, user *models.User, deviceName, ip string) (*TokenPair, error) {
-	if user == nil {
-		return nil, ErrInvalidCredentials
-	}
-	sessions, ok := s.sessions.(transactionalSessionRepository)
-	if !ok {
-		return nil, fmt.Errorf("session repository does not support transactional creation")
-	}
-	sessionID := uuid.NewString()
-	if err := sessions.CreateInTransaction(ctx, tx, models.AuthSession{
-		ID: sessionID, UserID: user.ID, DeviceName: deviceName, IPAddress: ip,
-		ExpiresAt: time.Now().Add(s.jwt.RefreshExpiry()),
-	}); err != nil {
-		return nil, fmt.Errorf("creating session: %w", err)
-	}
-	return s.generateTokenPair(Claims{
-		UserID: user.ID, AccountIncarnationID: user.AccountIncarnationID.String(), Role: user.Role, SessionID: sessionID,
-	})
-}
-
-// SetupInitialUserInTransaction creates the initial account, membership,
-// optional profile, ownership state and login session in the caller's
-// transaction. The returned generated identities are the exact lifecycle
-// receipt targets. A repeatable-read caller must also acquire setup admission
-// before beginning its transaction, so a waiting caller observes the winner's
-// committed account rather than an earlier empty snapshot.
+// SetupInitialUserInTransaction creates the initial account (the server owner),
+// its optional profile, ownership state and login session in the caller's
+// transaction.
 func (s *Service) SetupInitialUserInTransaction(
 	ctx context.Context,
 	tx pgx.Tx,
@@ -203,15 +165,15 @@ func (s *Service) SetupInitialUserInTransaction(
 	createDefaultProfile bool,
 	defaultProfileName string,
 	deviceName, ip string,
-) (*TokenPair, CreatedAccount, error) {
+) (*TokenPair, *models.User, error) {
 	users, ok := s.users.(transactionalSetupUserRepository)
 	if !ok {
-		return nil, CreatedAccount{}, fmt.Errorf("account repository does not support transactional setup")
+		return nil, nil, errors.New("account repository does not support transactional setup")
 	}
 	if err := users.ClaimInitialSetupInTransaction(ctx, tx); err != nil {
-		return nil, CreatedAccount{}, err
+		return nil, nil, err
 	}
-	created, err := s.accounts.CreateAccountWithMembershipInTransaction(ctx, tx, CreateAccountInput{
+	input := CreateAccountInput{
 		User: models.CreateUserInput{
 			Username: username,
 			Email:    email,
@@ -219,107 +181,49 @@ func (s *Service) SetupInitialUserInTransaction(
 			Role:     legacyRoleAdmin,
 		},
 		DefaultProfile: DefaultProfileOptions{Enabled: createDefaultProfile, Name: defaultProfileName},
-	})
+	}
+	user, conflict, err := s.accounts.CreateUserInTransaction(ctx, tx, input.User)
+	if err == nil && conflict {
+		err = ErrDuplicate
+	}
 	if err != nil {
-		return nil, CreatedAccount{}, fmt.Errorf("creating initial user: %w", err)
+		return nil, nil, fmt.Errorf("creating initial user: %w", err)
 	}
-	if _, err := tx.Exec(ctx, `UPDATE users SET is_owner = true, break_glass = true WHERE id = $1`, created.User.ID); err != nil {
-		return nil, CreatedAccount{}, fmt.Errorf("claiming initial owner: %w", err)
+	if _, err := tx.Exec(ctx, `UPDATE users SET is_owner = true, break_glass = true WHERE id = $1`, user.ID); err != nil {
+		return nil, nil, fmt.Errorf("claiming initial owner: %w", err)
 	}
-	created.User.IsOwner = true
-	created.User.BreakGlass = true
+	user.IsOwner, user.BreakGlass = true, true
+	if err := s.accounts.createProfileInTransactionOrBridge(ctx, tx, user.ID, input); err != nil {
+		return nil, nil, err
+	}
 	ownership, ok := s.ownership.(transactionalOwnershipBootstrapper)
 	if !ok {
-		return nil, CreatedAccount{}, fmt.Errorf("ownership bootstrapper does not support transactional setup")
+		return nil, nil, errors.New("ownership bootstrapper does not support transactional setup")
 	}
-	if err := ownership.ActivateInitialOwnershipInTransaction(ctx, tx, created.User.ID); err != nil {
-		return nil, CreatedAccount{}, fmt.Errorf("activating initial ownership: %w", err)
-	}
-	sessions, ok := s.sessions.(transactionalSessionRepository)
-	if !ok {
-		return nil, CreatedAccount{}, fmt.Errorf("session repository does not support transactional setup")
-	}
-	sessionID := uuid.NewString()
-	if err := sessions.CreateInTransaction(ctx, tx, models.AuthSession{
-		ID: sessionID, UserID: created.User.ID, DeviceName: deviceName, IPAddress: ip,
-		ExpiresAt: time.Now().Add(s.jwt.RefreshExpiry()),
-	}); err != nil {
-		return nil, CreatedAccount{}, fmt.Errorf("creating session: %w", err)
-	}
-	pair, err := s.generateTokenPair(Claims{
-		UserID:               created.User.ID,
-		AccountIncarnationID: created.User.AccountIncarnationID.String(),
-		Role:                 created.User.Role,
-		SessionID:            sessionID,
-	})
-	if err != nil {
-		return nil, CreatedAccount{}, err
-	}
-	return pair, created, nil
-}
-
-// SignupInTransaction redeems the invite and creates every account/session
-// target on the lifecycle coordinator's transaction.
-func (s *Service) SignupInTransaction(
-	ctx context.Context,
-	tx pgx.Tx,
-	username, email, password, code string,
-	createDefaultProfile bool,
-	defaultProfileName string,
-	deviceName, ip string,
-) (*TokenPair, CreatedAccount, error) {
-	if s.settings == nil {
-		return nil, CreatedAccount{}, ErrSignupDisabled
-	}
-	enabled, err := s.settings.Get(ctx, "signup.enabled")
-	if err != nil {
-		return nil, CreatedAccount{}, fmt.Errorf("checking signup setting: %w", err)
-	}
-	if enabled != "true" {
-		return nil, CreatedAccount{}, ErrSignupDisabled
-	}
-	if err := EnsureLocalPasswordLoginAllowedInTransaction(ctx, tx); err != nil {
-		return nil, CreatedAccount{}, err
-	}
-	if s.inviteCodes == nil {
-		return nil, CreatedAccount{}, ErrInviteCodeNotFound
-	}
-	if err := s.inviteCodes.RedeemCodeInTransaction(ctx, tx, code); err != nil {
-		return nil, CreatedAccount{}, err
-	}
-	created, err := s.accounts.CreateAccountWithMembershipInTransaction(ctx, tx, CreateAccountInput{
-		User: models.CreateUserInput{
-			Username: username,
-			Email:    email,
-			Password: password,
-			Role:     legacyRoleUser,
-		},
-		DefaultProfile: DefaultProfileOptions{Enabled: createDefaultProfile, Name: defaultProfileName},
-	})
-	if err != nil {
-		return nil, CreatedAccount{}, fmt.Errorf("creating user: %w", err)
+	if err := ownership.ActivateInitialOwnershipInTransaction(ctx, tx, user.ID); err != nil {
+		return nil, nil, fmt.Errorf("activating initial ownership: %w", err)
 	}
 	sessions, ok := s.sessions.(transactionalSessionRepository)
 	if !ok {
-		return nil, CreatedAccount{}, fmt.Errorf("session repository does not support transactional signup")
+		return nil, nil, errors.New("session repository does not support transactional setup")
 	}
 	sessionID := uuid.NewString()
 	if err := sessions.CreateInTransaction(ctx, tx, models.AuthSession{
-		ID: sessionID, UserID: created.User.ID, DeviceName: deviceName, IPAddress: ip,
+		ID: sessionID, UserID: user.ID, DeviceName: deviceName, IPAddress: ip,
 		ExpiresAt: time.Now().Add(s.jwt.RefreshExpiry()),
 	}); err != nil {
-		return nil, CreatedAccount{}, fmt.Errorf("creating session: %w", err)
+		return nil, nil, fmt.Errorf("creating session: %w", err)
 	}
 	pair, err := s.generateTokenPair(Claims{
-		UserID:               created.User.ID,
-		AccountIncarnationID: created.User.AccountIncarnationID.String(),
-		Role:                 created.User.Role,
+		UserID:               user.ID,
+		AccountIncarnationID: user.AccountIncarnationID.String(),
+		Role:                 user.Role,
 		SessionID:            sessionID,
 	})
 	if err != nil {
-		return nil, CreatedAccount{}, err
+		return nil, nil, err
 	}
-	return pair, created, nil
+	return pair, user, nil
 }
 
 // StartImpersonationInTransaction creates the impersonated login session on a

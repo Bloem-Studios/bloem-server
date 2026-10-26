@@ -288,7 +288,6 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrgani
 		UserStoreProvider:     userStores,
 		PolicySystem:          policySystem,
 		OwnershipBootstrapper: bootstrap,
-		MembershipProvisioner: bootstrap,
 	})
 
 	login := performJSONRequest(t, router, http.MethodPost, "/api/v1/auth/login", `{"username":"`+username+`","password":"`+password+`"}`, "", nil)

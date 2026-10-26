@@ -112,7 +112,7 @@ runs the upstream Silo image and a Bloem image in turn against one database
 (`KEEP_ON_FAILURE=1` leaves the stack up for inspection). Local test databases need `max_locks_per_transaction = 512`, as in CI,
 and `make lint-changed` needs a golangci-lint built with the toolchain `go.mod` names.
 
-Run `make verify-seams` after an upstream merge. Bloem currently declares 309
+Run `make verify-seams` after an upstream merge. Bloem currently declares 306
 seams (modified or deleted upstream files); additions belong in owned modules
 wherever possible. CI's changed-line lint gate, `scripts/bloem-lint-changed-ci.sh`,
 reports a finding only on a line that changed in the push and differs from Silo's

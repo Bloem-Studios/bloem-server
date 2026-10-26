@@ -15,6 +15,21 @@ request context would not return `repository.go` to Silo's bytes, and would let
 Silo's admin handlers, which also issue admin invitations, act on an
 organization. The seam ledger stays at 309.
 
+## October 26, 2026 — One way to give an account its membership
+
+Account creation now gives an account its one membership in a single place:
+the account repository links it when the user row is written, in the
+organization the creating flow names, else the one owning the account's group,
+else the default organization. The `MembershipProvisioner` seam and the
+account provisioner's separate membership paths are gone from Silo's
+`router.go`, `service.go` and `main.go`. Tenant creation no longer deletes a
+default-organization link before inserting the tenant membership: the account
+is created for the tenant, and the tenant's slot fence adopts that link while
+counting every other member. Silo's `account_provisioner.go`,
+`invitations/service_test.go` and the web `profiles.ts` (which no longer sends
+the `Idempotency-Key` the server ignores since the receipts went) return to
+Silo's bytes, so the seam ledger drops from 309 to 306.
+
 ## October 26, 2026 — Web organization admin closer to Silo
 
 The admin route table in `App.tsx` is Silo's again apart from two insertion

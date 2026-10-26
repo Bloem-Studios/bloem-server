@@ -109,11 +109,15 @@ func (a *Admin) EnsureAccount(ctx context.Context, actor int, issuer string) (in
 	}
 	disabled := false
 	p := auth.NewAccountProvisioner(auth.NewUserRepository(a.pool), pgstore.NewPostgresProvider(a.pool))
-	created, err := p.CreateAccountWithMembershipInTransaction(ctx, tx, auth.CreateAccountInput{
+	account, err := p.CreateAccountInTransaction(ctx, tx, auth.CreateAccountInput{
 		User:           models.CreateUserInput{Username: SharedUsername, Email: SharedUsername + "@preview.invalid", Password: base64.RawURLEncoding.EncodeToString(random[:]), Role: "user", LocalPasswordLoginEnabled: &disabled, Permissions: []string{}},
 		DefaultProfile: auth.DefaultProfileOptions{Enabled: true, Name: "Preview"},
 	})
 	if err != nil {
+		return 0, err
+	}
+	var profileID string
+	if err = tx.QueryRow(ctx, `SELECT id FROM user_profiles WHERE user_id=$1 AND is_primary`, account.ID).Scan(&profileID); err != nil {
 		return 0, err
 	}
 	templates := entitlements.NewTemplateStore(a.pool)
@@ -125,13 +129,13 @@ func (a *Admin) EnsureAccount(ctx context.Context, actor int, issuer string) (in
 	if err != nil {
 		return 0, err
 	}
-	if _, err = templates.ApplyDefaultAccountTemplateInTransaction(ctx, tx, actor, created.User.ID, accesspolicy.PreviewTemplateKey, template.Revision, false); err != nil {
+	if _, err = templates.ApplyDefaultAccountTemplateInTransaction(ctx, tx, actor, account.ID, accesspolicy.PreviewTemplateKey, template.Revision, false); err != nil {
 		return 0, err
 	}
-	if _, err = tx.Exec(ctx, `INSERT INTO user_profile_onboarding(user_id,profile_id,tour_id,completed_at,updated_at) VALUES($1,$2,'welcome',$3,$3)`, created.User.ID, created.ProfileID, time.Now().UTC().Format(time.RFC3339)); err != nil {
+	if _, err = tx.Exec(ctx, `INSERT INTO user_profile_onboarding(user_id,profile_id,tour_id,completed_at,updated_at) VALUES($1,$2,'welcome',$3,$3)`, account.ID, profileID, time.Now().UTC().Format(time.RFC3339)); err != nil {
 		return 0, err
 	}
-	s.AccountID, s.Issuer = created.User.ID, issuer
+	s.AccountID, s.Issuer = account.ID, issuer
 	if err = a.store.putInTransaction(ctx, tx, s); err != nil {
 		return 0, err
 	}

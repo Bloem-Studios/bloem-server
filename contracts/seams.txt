@@ -110,7 +110,6 @@ internal/apiv2/parity_test.go
 internal/apiv2/registry.go
 internal/apiv2/router.go
 internal/audiobooks/enrichment_state.go  # preserve unclaimed repair attempt history while resetting only a new no-match streak
-internal/auth/account_provisioner.go  # tenant provisioning and early transactional-provider check before account or SQLite side effects
 internal/auth/admin_users_test.go  # complete isolated tenant schema for account paging, revision and session-revocation regressions
 internal/auth/api_key_scopes.go
 internal/auth/client_device.go  # a reported device never replaces the device a direct-profile session is bound to
@@ -157,7 +156,6 @@ internal/invitations/repository.go
 internal/invitations/repository_atomic_test.go  # fully migrated isolated databases preserve tenant FKs/triggers and strengthen rollback checks
 internal/invitations/service.go
 internal/invitations/service_atomic_test.go  # reuse real tenant membership provisioning in the atomic acceptance fixture
-internal/invitations/service_test.go
 internal/libraryingest/executor.go
 internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
 internal/mail/layout_test.go  # default alt text and logo size derive from branding.DefaultServerName and the embedded default wordmark; Bloem pins its own in bloem_brand_test.go
@@ -279,7 +277,6 @@ web/src/hooks/queries/admin/plugins.ts
 web/src/hooks/queries/admin/policy.ts
 web/src/hooks/queries/admin/stats.ts
 web/src/hooks/queries/admin/system.ts
-web/src/hooks/queries/profiles.ts
 web/src/hooks/useAuth.tsx
 web/src/lib/adminNavigation.test.ts  # covers the organization Storage sources entry
 web/src/lib/adminNavigation.ts

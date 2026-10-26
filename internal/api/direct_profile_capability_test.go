@@ -46,7 +46,7 @@ func TestDirectProfileCapabilityMatchesRouteWiring(t *testing.T) {
 			p := withDB()
 			b := v1TenancyBootstrap{store: tenancy.NewStore(p)}
 			return Dependencies{DB: p, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(p),
-				OwnershipBootstrapper: b, MembershipProvisioner: b}
+				OwnershipBootstrapper: b}
 		}},
 		"db without config": {requiresDatabase: true, dependencies: func() Dependencies {
 			return Dependencies{DB: withDB()}

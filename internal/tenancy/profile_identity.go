@@ -61,6 +61,22 @@ func NewProfileIdentityResolver(query profileIdentityQuerier) *ProfileIdentityRe
 	return resolver
 }
 
+type creationOrganizationKey struct{}
+
+// WithCreationOrganization names the organization an account is being created
+// in, so the writes that follow in the creating transaction, such as its
+// default profile, land there too. Only server-owned account creation sets
+// it, never request input.
+func WithCreationOrganization(ctx context.Context, id uuid.UUID) context.Context {
+	return context.WithValue(ctx, creationOrganizationKey{}, id)
+}
+
+// CreationOrganization reports the organization WithCreationOrganization named.
+func CreationOrganization(ctx context.Context) (uuid.UUID, bool) {
+	id, ok := ctx.Value(creationOrganizationKey{}).(uuid.UUID)
+	return id, ok && id != uuid.Nil
+}
+
 // ResolveLegacyProfileIdentity resolves only the default organization. It
 // rejects missing or ambiguous state instead of choosing an arbitrary tenant.
 func (r *ProfileIdentityResolver) ResolveLegacyProfileIdentity(ctx context.Context, accountID int) (uuid.UUID, *int64, error) {

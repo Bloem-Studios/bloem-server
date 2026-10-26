@@ -121,7 +121,6 @@ func (d *atomicSetupDB) router(t *testing.T, stores userstore.UserStoreProvider)
 		NodeID:                "fixture-node",
 		PublicURL:             "https://silo.example.test",
 		UserStoreProvider:     stores,
-		MembershipProvisioner: bootstrapper,
 		OwnershipBootstrapper: bootstrapper,
 	}))
 	t.Cleanup(server.Close)
@@ -138,7 +137,6 @@ func (d *atomicSetupDB) service(t *testing.T, stores userstore.UserStoreProvider
 	sessions := auth.NewSessionRepository(d.pool)
 	service := auth.NewService(auth.NewLocalProvider(users, sessions), d.jwt(), sessions, users, auth.NewInviteCodeRepository(d.pool), nil, stores)
 	bootstrapper := atomicSetupTenancy{store: tenancy.NewStore(d.pool)}
-	service.SetMembershipProvisioner(bootstrapper)
 	service.SetOwnershipBootstrapper(bootstrapper)
 	return service
 }

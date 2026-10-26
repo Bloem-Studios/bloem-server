@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
@@ -55,10 +54,6 @@ func bloemOfflineAppContext() context.Context {
 func (e *Env) bloemRegisterCleanups() {
 	e.t.Cleanup(func() { e.t.Logf("scenario executor timing: %s", &e.reseedStats) })
 	e.t.Cleanup(e.dropSnapshot)
-}
-
-func bloemFixtureMembershipsFor(pool *pgxpool.Pool) bloemFixtureMemberships {
-	return bloemFixtureMemberships{store: tenancy.NewStore(pool)}
 }
 
 // bloemActivateFixtureOwnership makes the fixture admin the initial

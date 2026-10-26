@@ -81,7 +81,7 @@ type userDirectory interface {
 // accountCreator provisions the account plus optional default profile.
 // Satisfied by *auth.AccountProvisioner.
 type accountCreator interface {
-	CreateAccountWithMembershipInTransaction(ctx context.Context, tx pgx.Tx, input auth.CreateAccountInput) (auth.CreatedAccount, error)
+	CreateAccountInTransaction(ctx context.Context, tx pgx.Tx, input auth.CreateAccountInput) (*models.User, error)
 }
 
 // sessionStarter logs the newly created user in. Satisfied by *auth.Service.
@@ -462,11 +462,10 @@ func (s *Service) Accept(ctx context.Context, token, email, password, deviceName
 		if address == "" {
 			address = entered
 		}
-		created, err := s.createInvitedAccount(ctx, tx, inv, auth.CreateAccountInput{
+		return s.createInvitedAccount(ctx, tx, inv, auth.CreateAccountInput{
 			User:           models.CreateUserInput{Username: address, Email: address, Password: password, Role: inv.Role, LibraryIDs: inv.LibraryIDs, AccessGroupID: inv.AccessGroupID},
 			DefaultProfile: auth.DefaultProfileOptions{Enabled: inv.CreateProfile, Name: profileNameFromEmail(address)},
 		})
-		return created.User, err
 	})
 	if err != nil {
 		if auth.IsDuplicate(err) {

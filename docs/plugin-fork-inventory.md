@@ -2,6 +2,11 @@
 
 > Historical snapshot: preserve the dated revisions, results and proposals below.
 > For current status, see the [maintained reference](architecture/bloem-sdk-compatibility.md).
+>
+> 2026-10-26: the Ebook Metadata and Audiobook Metadata forks, and the
+> requests-arr and requests-seerr forks, are archived. Production installs
+> Silo's catalog builds of `silo.ebook-metadata`, `silo.audiobook-metadata` and
+> `silo.requests.arr`.
 
 Verified on 2026-08-12. The active private plugin and future catalog scope contains exactly six retained plugins: TMDB, TVDB, Ebook Metadata, Audiobook Metadata, Manga Metadata, and Autoscan ARR.
 

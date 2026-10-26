@@ -2,14 +2,19 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/userstore"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
+
+// Account creation gives the new account its one membership itself (see
+// linkAccountMembership), so Silo's AccountProvisioner paths need no Bloem
+// step. These additions place an account in a named organization and let a
+// caller-owned transaction create, update or delete an account.
 
 type accountUserUpdater interface {
 	Update(ctx context.Context, id int, input models.UpdateUserInput) error
@@ -27,37 +32,9 @@ type transactionalAccountUserDeleter interface {
 	DeleteInTransaction(ctx context.Context, tx pgx.Tx, id int) error
 }
 
-// MembershipProvisioner assigns an account to the deployment's default
-// organization immediately after account creation.
-type MembershipProvisioner interface {
-	ProvisionDefaultMembership(ctx context.Context, accountID int, legacyRole string) error
-}
-
-type transactionalMembershipProvisioner interface {
-	ProvisionDefaultMembershipInTransaction(context.Context, pgx.Tx, int, string) (uuid.UUID, uuid.UUID, error)
-}
-
-type transactionalOrganizationMembershipProvisioner interface {
-	ProvisionMembershipInTransaction(context.Context, pgx.Tx, uuid.UUID, int, string) (uuid.UUID, uuid.UUID, error)
-}
-
-// CreatedAccount contains every database-generated identity produced by one
-// account create. Lifecycle receipts persist these exact values before commit
-// so a replay never rediscovers a replacement numeric account.
-type CreatedAccount struct {
-	User           *models.User
-	OrganizationID uuid.UUID
-	MembershipID   uuid.UUID
-	ProfileID      string
-}
-
-// CreateDefaultProfile is createDefaultProfile, exported for
-// AdminHandler.HandleCreateUser's park-tenant branch (bloem-park growth
-// G2): that path provisions its own membership directly against a specific
-// organization instead of going through CreateAccount's default-membership
-// step, but still wants the identical default-profile creation (and the
-// identical cleanup-on-failure) CreateAccount already implements — so it
-// calls this rather than duplicate it.
+// CreateDefaultProfile is createDefaultProfile, exported for the tenant
+// account path in AdminHandler.HandleCreateUser, which creates the account in
+// its own transaction and then wants CreateAccount's exact default profile.
 func (p *AccountProvisioner) CreateDefaultProfile(ctx context.Context, userID int, input CreateAccountInput) error {
 	return p.createDefaultProfile(ctx, userID, input)
 }
@@ -67,18 +44,12 @@ const (
 	legacyRoleUser  = "user"
 )
 
-// SetMembershipProvisioner installs the default-membership provisioning seam.
-// Nil remains valid for isolated compatibility fixtures without tenant state.
-func (p *AccountProvisioner) SetMembershipProvisioner(provisioner MembershipProvisioner) {
-	p.memberships = provisioner
-}
-
 // CreateUserInTransaction creates a user through the same validation,
 // normalization, defaults, and password hashing as CreateAccount while using
-// the caller's transaction. Membership is intentionally left to that caller:
-// it is the tenant service's quota-bearing write in the same transaction. The
-// boolean distinguishes a uniqueness conflict without coupling the tenant
-// package back to auth's repository sentinels.
+// the caller's transaction; the account joins the organization owning its
+// access group, else the default one. The boolean distinguishes a uniqueness
+// conflict without coupling the tenant package back to auth's repository
+// sentinels.
 func (p *AccountProvisioner) CreateUserInTransaction(
 	ctx context.Context,
 	tx pgx.Tx,
@@ -95,79 +66,48 @@ func (p *AccountProvisioner) CreateUserInTransaction(
 	return user, false, err
 }
 
-// CreateAccountForOrganizationInTransaction creates an account, membership,
-// and optional profile in the organization selected by a stored invitation.
+// CreateUserForOrganizationInTransaction is CreateUserInTransaction for an
+// account that joins organizationID, in that organization's default group
+// unless input names one of its groups. The caller owns any quota the
+// organization enforces.
+func (p *AccountProvisioner) CreateUserForOrganizationInTransaction(
+	ctx context.Context,
+	tx pgx.Tx,
+	organizationID uuid.UUID,
+	input models.CreateUserInput,
+) (*models.User, bool, error) {
+	if organizationID == uuid.Nil {
+		return nil, false, errors.New("organization is required for account creation")
+	}
+	return p.CreateUserInTransaction(withAccountCreationOrganization(ctx, organizationID), tx, input)
+}
+
+// CreateAccountForOrganizationInTransaction creates an account and its
+// optional default profile in organizationID, which must be active. Stored
+// invitations name their organization this way.
 func (p *AccountProvisioner) CreateAccountForOrganizationInTransaction(
 	ctx context.Context,
 	tx pgx.Tx,
 	organizationID uuid.UUID,
 	input CreateAccountInput,
-) (CreatedAccount, error) {
-	if input.DefaultProfile.Enabled && !p.SupportsTransactionalProfiles() {
-		return CreatedAccount{}, ErrTransactionalProfileUnavailable
-	}
-
+) (*models.User, error) {
 	if organizationID == uuid.Nil {
-		return CreatedAccount{}, fmt.Errorf("organization is required for account creation")
+		return nil, errors.New("organization is required for account creation")
 	}
-	user, conflict, err := p.CreateUserInTransaction(withAccountCreationOrganization(ctx, organizationID), tx, input.User)
+	var status string
+	// Serialize with other writers of the organization without blocking the
+	// KEY SHARE locks membership foreign keys take.
+	err := tx.QueryRow(ctx, `SELECT status FROM organizations WHERE id = $1 FOR NO KEY UPDATE`, organizationID).Scan(&status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, tenancy.ErrOrganizationNotFound
+	}
 	if err != nil {
-		return CreatedAccount{}, err
+		return nil, fmt.Errorf("lock organization for account creation: %w", err)
 	}
-	if conflict {
-		return CreatedAccount{}, ErrDuplicate
+	if status != string(tenancy.OrganizationActive) {
+		return nil, tenancy.ErrTenantNotFoundOrHidden
 	}
-	created := CreatedAccount{User: user, OrganizationID: organizationID}
-	memberships, ok := p.memberships.(transactionalOrganizationMembershipProvisioner)
-	if !ok {
-		return CreatedAccount{}, fmt.Errorf("membership provisioner does not support organization transactional creation")
-	}
-	created.OrganizationID, created.MembershipID, err = memberships.ProvisionMembershipInTransaction(
-		ctx, tx, organizationID, user.ID, MembershipLegacyRole(input.User.Role),
-	)
-	if err != nil {
-		return CreatedAccount{}, fmt.Errorf("provision organization membership: %w", err)
-	}
-	return p.createProfileInTransaction(ctx, tx, input, created)
-}
-
-func (p *AccountProvisioner) createProfileInTransaction(ctx context.Context, tx pgx.Tx, input CreateAccountInput, created CreatedAccount) (CreatedAccount, error) {
-	if !input.DefaultProfile.Enabled {
-		return created, nil
-	}
-	if p.storeProvider == nil {
-		return CreatedAccount{}, fmt.Errorf("user store provider unavailable")
-	}
-	store, err := p.storeProvider.ForUser(ctx, created.User.ID)
-	if err != nil {
-		return CreatedAccount{}, fmt.Errorf("open user store: %w", err)
-	}
-	profiles, ok := store.(transactionalProfileCreator)
-	if !ok {
-		return CreatedAccount{}, fmt.Errorf("user store does not support transactional profile creation")
-	}
-	name := strings.TrimSpace(input.DefaultProfile.Name)
-	if name == "" {
-		name = strings.TrimSpace(input.User.Username)
-	}
-	if name == "" {
-		return CreatedAccount{}, fmt.Errorf("default profile name is required")
-	}
-	organizationID := ""
-	if created.OrganizationID != uuid.Nil {
-		organizationID = created.OrganizationID.String()
-	}
-	created.ProfileID = uuid.NewString()
-	if err := profiles.CreateProfileInTransaction(ctx, tx, userstore.Profile{
-		ID:                  created.ProfileID,
-		OrganizationID:      organizationID,
-		AccessGroupID:       input.User.AccessGroupID,
-		Name:                name,
-		ShowForcedSubtitles: true,
-	}); err != nil {
-		return CreatedAccount{}, fmt.Errorf("store profile: %w", err)
-	}
-	return created, nil
+	return p.CreateAccountInTransaction(withAccountCreationOrganization(ctx, organizationID), tx, input)
 }
 
 // UpdateUser applies the native repository update and reports uniqueness
@@ -221,60 +161,4 @@ func MembershipLegacyRole(role string) string {
 		return legacyRoleAdmin
 	}
 	return legacyRoleUser
-}
-
-// provisionDefaultMembershipOrRollback gives a freshly created account its
-// default membership; on failure the account is deleted again so CreateAccount
-// never leaves an identity without tenancy.
-func (p *AccountProvisioner) provisionDefaultMembershipOrRollback(ctx context.Context, userID int, input CreateAccountInput) error {
-	if p.memberships == nil {
-		return nil
-	}
-	if err := p.memberships.ProvisionDefaultMembership(ctx, userID, MembershipLegacyRole(input.User.Role)); err != nil {
-		if deleteErr := p.users.Delete(ctx, userID); deleteErr != nil {
-			return fmt.Errorf(
-				"provision default membership: %w (cleanup user: %w)",
-				err,
-				deleteErr,
-			)
-		}
-		return fmt.Errorf("provision default membership: %w", err)
-	}
-	return nil
-}
-
-// CreateAccountWithMembershipInTransaction creates the identity, default membership and
-// optional default profile on a caller-owned transaction.
-func (p *AccountProvisioner) CreateAccountWithMembershipInTransaction(
-	ctx context.Context,
-	tx pgx.Tx,
-	input CreateAccountInput,
-) (CreatedAccount, error) {
-	if input.DefaultProfile.Enabled && !p.SupportsTransactionalProfiles() {
-		return CreatedAccount{}, ErrTransactionalProfileUnavailable
-	}
-
-	user, conflict, err := p.CreateUserInTransaction(ctx, tx, input.User)
-	if err != nil {
-		return CreatedAccount{}, err
-	}
-	if conflict {
-		return CreatedAccount{}, ErrDuplicate
-	}
-	created := CreatedAccount{User: user}
-
-	if p.memberships != nil {
-		memberships, ok := p.memberships.(transactionalMembershipProvisioner)
-		if !ok {
-			return CreatedAccount{}, fmt.Errorf("membership provisioner does not support transactional creation")
-		}
-		created.OrganizationID, created.MembershipID, err = memberships.ProvisionDefaultMembershipInTransaction(
-			ctx, tx, user.ID, MembershipLegacyRole(input.User.Role),
-		)
-		if err != nil {
-			return CreatedAccount{}, fmt.Errorf("provision default membership: %w", err)
-		}
-	}
-
-	return p.createProfileInTransaction(ctx, tx, input, created)
 }

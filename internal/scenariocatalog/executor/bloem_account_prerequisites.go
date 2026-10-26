@@ -1,34 +1,10 @@
 package executor
 
 import (
-	"context"
-
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
-
-// Match the command's transaction-preserving tenancy adapter. Signup and
-// invitation acceptance must not use an incomplete account provisioner merely
-// because their catalog is executed through a test router.
-type bloemFixtureMemberships struct{ store *tenancy.Store }
-
-func (b bloemFixtureMemberships) ProvisionDefaultMembership(ctx context.Context, accountID int, role string) error {
-	_, err := b.store.ProvisionDefaultMembership(ctx, accountID, role)
-	return err
-}
-
-func (b bloemFixtureMemberships) ProvisionDefaultMembershipInTransaction(ctx context.Context, tx pgx.Tx, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
-	membership, err := b.store.ProvisionDefaultMembershipInTransaction(ctx, tx, accountID, role)
-	return membership.OrganizationID, membership.ID, err
-}
-
-func (b bloemFixtureMemberships) ProvisionMembershipInTransaction(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int, role string) (uuid.UUID, uuid.UUID, error) {
-	membership, err := b.store.ProvisionMembershipInTransaction(ctx, tx, organizationID, accountID, role)
-	return membership.OrganizationID, membership.ID, err
-}
 
 // Bind the existing seeded session to its real account incarnation, as the
 // production auth service does. Preserve all generated expiry/type/session

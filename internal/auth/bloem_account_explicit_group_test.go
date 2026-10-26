@@ -54,7 +54,6 @@ func TestBloemAccountExplicitOrganizationGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	accounts := auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(pool))
-	accounts.SetMembershipProvisioner(&bloemAccountMemberships{store: tenants})
 
 	for _, tc := range []struct {
 		name    string
@@ -82,14 +81,14 @@ func TestBloemAccountExplicitOrganizationGroup(t *testing.T) {
 				},
 				DefaultProfile: auth.DefaultProfileOptions{Enabled: true, Name: "Home"},
 			}
-			created, err := accounts.CreateAccountForOrganizationInTransaction(ctx, tx, organizationID, input)
+			user, err := accounts.CreateAccountForOrganizationInTransaction(ctx, tx, organizationID, input)
 			if tc.foreign {
 				var pgErr *pgconn.PgError
 				if !errors.As(err, &pgErr) || pgErr.Code != "23503" || pgErr.ConstraintName != "users_access_group_organization" {
 					t.Fatalf("foreign group error = %v, want organization/group foreign key rejection", err)
 				}
-				if created != (auth.CreatedAccount{}) {
-					t.Fatal("foreign group rejection returned account identities")
+				if user != nil {
+					t.Fatal("foreign group rejection returned an account")
 				}
 				if err := tx.Rollback(ctx); err != nil {
 					t.Fatal(err)
@@ -119,10 +118,9 @@ func TestBloemAccountExplicitOrganizationGroup(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if created.User == nil || created.User.AccountIncarnationID == uuid.Nil || created.OrganizationID != organizationID || created.MembershipID == uuid.Nil || created.ProfileID == "" {
-				t.Fatal("successful provisioning omitted or changed an intended identity")
+			if user == nil || user.AccountIncarnationID == uuid.Nil {
+				t.Fatal("successful provisioning omitted the account")
 			}
-			user := created.User
 			if user.AccessGroupID == nil || *user.AccessGroupID != intendedGroupID ||
 				user.MaxStreams == nil || *user.MaxStreams != maxStreams || (user.MaxProfiles == nil || *user.MaxProfiles != maxProfiles) ||
 				user.DownloadAllowed == nil || *user.DownloadAllowed != downloadAllowed ||
@@ -153,7 +151,7 @@ func TestBloemAccountExplicitOrganizationGroup(t *testing.T) {
 				SELECT m.organization_id, u.access_group_id, m.status, m.legacy_role,
 				       u.max_streams, u.max_transcodes, u.max_profiles, u.download_allowed, u.requests_allowed
 				FROM organization_memberships m JOIN users u ON u.id = m.account_id
-				WHERE m.id = $1 AND m.account_id = $2`, created.MembershipID, user.ID).Scan(
+				WHERE m.account_id = $1 AND m.organization_id = $2`, user.ID, organizationID).Scan(
 				&membershipOrganization, &membershipGroup, &status, &role,
 				&storedMaxStreams, &storedMaxTranscodes, &storedMaxProfiles, &storedDownload, &storedRequests); err != nil {
 				t.Fatal(err)
@@ -169,7 +167,7 @@ func TestBloemAccountExplicitOrganizationGroup(t *testing.T) {
 			var primary bool
 			if err := pool.QueryRow(ctx, `
 				SELECT organization_id, access_group_id, is_primary
-				FROM user_profiles WHERE id = $1 AND user_id = $2`, created.ProfileID, user.ID).Scan(&profileOrganization, &profileGroup, &primary); err != nil {
+				FROM user_profiles WHERE user_id = $1`, user.ID).Scan(&profileOrganization, &profileGroup, &primary); err != nil {
 				t.Fatal(err)
 			}
 			if profileOrganization != organizationID || profileGroup != intendedGroupID || !primary {

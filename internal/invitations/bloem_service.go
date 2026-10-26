@@ -2,7 +2,7 @@ package invitations
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -10,19 +10,19 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type transactionalInvitationAccountCreator interface {
-	CreateAccountForOrganizationInTransaction(context.Context, pgx.Tx, uuid.UUID, auth.CreateAccountInput) (auth.CreatedAccount, error)
+type organizationAccountCreator interface {
+	CreateAccountForOrganizationInTransaction(context.Context, pgx.Tx, uuid.UUID, auth.CreateAccountInput) (*models.User, error)
 }
 
 // createInvitedAccount creates the invited account in the invitation's
-// organization, so accepting joins the organization that issued it.
-func (s *Service) createInvitedAccount(ctx context.Context, tx pgx.Tx, inv *models.Invitation, input auth.CreateAccountInput) (auth.CreatedAccount, error) {
-	if inv.OrganizationID != uuid.Nil {
-		accounts, ok := s.accounts.(transactionalInvitationAccountCreator)
-		if !ok {
-			return auth.CreatedAccount{}, fmt.Errorf("account provisioner does not support organization invitations")
-		}
-		return accounts.CreateAccountForOrganizationInTransaction(ctx, tx, inv.OrganizationID, input)
+// organization, or in the default one for an invitation that names none.
+func (s *Service) createInvitedAccount(ctx context.Context, tx pgx.Tx, inv *models.Invitation, input auth.CreateAccountInput) (*models.User, error) {
+	if inv.OrganizationID == uuid.Nil {
+		return s.accounts.CreateAccountInTransaction(ctx, tx, input)
 	}
-	return s.accounts.CreateAccountWithMembershipInTransaction(ctx, tx, input)
+	accounts, ok := s.accounts.(organizationAccountCreator)
+	if !ok {
+		return nil, errors.New("account provisioner does not support organization invitations")
+	}
+	return accounts.CreateAccountForOrganizationInTransaction(ctx, tx, inv.OrganizationID, input)
 }

@@ -143,7 +143,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organ
 	bootstrap := v1TenancyBootstrap{store: store}
 	fixture.router = NewRouter(Dependencies{
 		AppContext: ctx, DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
-		OwnershipBootstrapper: bootstrap, MembershipProvisioner: bootstrap,
+		OwnershipBootstrapper: bootstrap,
 	})
 	for index, organizationID := range fixture.organizationIDs {
 		login := performJSONRequest(t, fixture.router, http.MethodPost, "/api/v1/auth/login", `{"username":"`+adminUsernames[index]+`","password":"`+password+`"}`, "", nil)
