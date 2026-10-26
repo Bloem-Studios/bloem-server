@@ -49,11 +49,7 @@ func ExtractSourceSubtitleFonts(ctx context.Context, opts TranscodeOpts) ([]Subt
 	if expected == 0 {
 		return nil, nil
 	}
-	// Match Silo's extractor: attachments are dumped from the first input while
-	// a synthetic zero-duration output avoids waiting for real media packets.
-	args = append(args, "-i", opts.InputPath,
-		"-f", "lavfi", "-i", "anullsrc=r=8000:cl=mono",
-		"-map", "1:a:0", "-c", "copy", "-t", "0", "-f", "null", "-")
+	args = append(args, "-i", opts.InputPath, "-map", "0:t?", "-c", "copy", "-f", "null", "-")
 	data, err = sourceVideoTool(ctx, opts, ResolveFFmpegPath(opts.FFmpegPath), int(expected), args...)
 	if err != nil {
 		return nil, err
