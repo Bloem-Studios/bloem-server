@@ -98,7 +98,7 @@ func TestPreviewAdminEmptyLibrarySelectionGrantsNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	var libs []int
-	if err = pool.QueryRow(ctx, `SELECT g.library_ids FROM organization_memberships m JOIN access_groups g ON g.id=m.access_group_id WHERE m.account_id=$1`, id).Scan(&libs); err != nil {
+	if err = pool.QueryRow(ctx, `SELECT g.library_ids FROM organization_memberships m JOIN users mu ON mu.id = m.account_id JOIN access_groups g ON g.id = mu.access_group_id WHERE m.account_id=$1`, id).Scan(&libs); err != nil {
 		t.Fatal(err)
 	}
 	if libs == nil || len(libs) != 0 {

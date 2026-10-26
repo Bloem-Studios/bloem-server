@@ -49,7 +49,7 @@ func TestPreviewAdminCatalogFiltersKeywordAndProviderLookup(t *testing.T) {
 		got, e := a.Catalog(ctx, actor, in.query, in.provider, in.id)
 		if e != nil || len(got) != 1 || got[0].ContentID != "picker-ok" {
 			var libs []int
-			_ = pool.QueryRow(ctx, `SELECT g.library_ids FROM organization_memberships m JOIN access_groups g ON g.id=m.access_group_id WHERE m.account_id=$1`, id).Scan(&libs)
+			_ = pool.QueryRow(ctx, `SELECT g.library_ids FROM organization_memberships m JOIN users mu ON mu.id = m.account_id JOIN access_groups g ON g.id = mu.access_group_id WHERE m.account_id=$1`, id).Scan(&libs)
 			t.Fatalf("picker scope (%+v), libs=%v: %+v %v", in, libs, got, e)
 		}
 	}

@@ -29,11 +29,6 @@ import (
 func testTenantPool(t *testing.T) (context.Context, *pgxpool.Pool, *tenancy.Store) {
 	t.Helper()
 	ctx, pool, store := buildTenantPool(t)
-	// The compatibility phase freezes every policy write. Hand the authority
-	// over so these tests exercise the state that follows the rollout.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 	return ctx, pool, store
 }
 

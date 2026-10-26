@@ -10,7 +10,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -69,9 +68,6 @@ func bloemClusterGuardSessionDatabase(t *testing.T) (*pgxpool.Pool, *models.User
 	}
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
-	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 	account, err := auth.NewUserRepository(pool).Create(ctx, models.CreateUserInput{
 		Username: "reconciler-session-account",

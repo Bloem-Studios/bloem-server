@@ -46,14 +46,12 @@ func newProfileLimitDBFixture(t *testing.T, maxProfiles int) *profileLimitDBFixt
 	name := fmt.Sprintf("profile-limit-%d", time.Now().UnixNano())
 	var userID int
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO users (username, email, password_hash, role)
-		 VALUES ($1, $2, 'x', 'user') RETURNING id`,
-		name, name+"@example.invalid",
+		`INSERT INTO users (username, email, password_hash, role, max_profiles)
+		 VALUES ($1, $2, 'x', 'user', $3) RETURNING id`,
+		name, name+"@example.invalid", maxProfiles,
 	).Scan(&userID); err != nil {
 		t.Fatal(err)
 	}
-	// Bloem: the profile limit lives on the account's membership.
-	execMembershipPolicy(t, ctx, pool, `UPDATE organization_memberships SET max_profiles = $2 WHERE account_id = $1`, userID, maxProfiles)
 	t.Cleanup(func() {
 		bg := context.Background()
 		_, _ = pool.Exec(bg, `DELETE FROM user_profiles WHERE user_id = $1`, userID)

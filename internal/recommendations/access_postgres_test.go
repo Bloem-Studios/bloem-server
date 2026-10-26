@@ -185,10 +185,15 @@ func TestProfileAccessFilterMatchesTheResolverPostgres(t *testing.T) {
 	f := newAccessFixture(t, pool, prefix, 2400)
 	userID, profileID := newTasteTestAccount(t, pool, prefix)
 
-	// Bloem: account access groups live on organization memberships, so the
-	// group comes from a fixed provider instead of Silo's GroupStore.
-	group := &access.GroupPolicy{ID: 1, LibraryIDs: []int{f.kidsLib}, PlaybackAllowed: true}
-	groups := bloemFixedGroupPolicy{group}
+	groups := access.NewGroupStore(pool)
+	group, err := groups.Create(ctx, access.CreateGroupInput{Name: prefix + time.Now().Format(time.RFC3339Nano), LibraryIDs: []int{f.kidsLib}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM access_groups WHERE id = $1`, group.ID) })
+	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = $2 WHERE id = $1`, userID, group.ID); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := pool.Exec(ctx, `UPDATE user_profiles SET max_content_rating = 'PG' WHERE user_id = $1 AND id = $2`, userID, profileID); err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,5 @@
 // Package bloemtestdb prepares a shared PostgreSQL database for the Go test
-// suite: it migrates the schema, finalizes the membership policy authority the
-// way a production operator does, declares the fixture session markers at the
+// suite: it migrates the schema, declares the fixture session marker at the
 // database level, and installs the Bloem fixture-compatibility triggers in
 // sql/fixture_compat.sql.
 //
@@ -20,7 +19,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/database"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
@@ -28,12 +26,8 @@ import (
 var fixtureCompatSQL string
 
 // DatabaseSettings are applied with ALTER DATABASE .. SET, so every session
-// opened afterwards carries them. The two writer markers are what the
-// packages' own TestMain helpers already declare; fixture_compat arms the
-// triggers.
+// opened afterwards carries them; fixture_compat arms the triggers.
 var DatabaseSettings = [][2]string{
-	{"bloem.membership_policy_writer", "v1"},
-	{"bloem.schema_capability_writer", "v1"},
 	{"bloem.fixture_compat", "on"},
 }
 
@@ -91,12 +85,6 @@ func Prepare(ctx context.Context, dsn string, opts Options) error {
 		return fmt.Errorf("bloemtestdb: migrate: %w", err)
 	}
 	logf("migrations applied")
-
-	changed, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool)
-	if err != nil {
-		return fmt.Errorf("bloemtestdb: finalize membership policy authority: %w", err)
-	}
-	logf("membership policy authority finalized (changed=%t)", changed)
 
 	for _, setting := range DatabaseSettings {
 		if _, err := pool.Exec(ctx, fmt.Sprintf("ALTER DATABASE %s SET %s = %s",

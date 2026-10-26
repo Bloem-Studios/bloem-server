@@ -187,16 +187,12 @@ func (r *AccountResolver) resolve(ctx context.Context, tx pgx.Tx, in ResolveInpu
 			return err
 		}
 		if autoMatch {
-			user, err := scanUser(tx.QueryRow(ctx, `SELECT `+allColumns+userSource+`
-				WHERE u.email = $1 AND u.role = 'user' AND NOT u.is_owner AND NOT u.break_glass FOR UPDATE OF u`, NormalizeEmail(identity.Email)))
+			user, err := scanUser(tx.QueryRow(ctx, `SELECT `+allColumns+` FROM users
+				WHERE email = $1 AND role = 'user' AND NOT is_owner AND NOT break_glass FOR UPDATE`, NormalizeEmail(identity.Email)))
 			if err != nil && !IsNotFound(err) {
 				return err
 			}
 			if user != nil {
-				user, err = lockUser(ctx, tx, user.ID)
-				if err != nil {
-					return err
-				}
 				alreadyLinked, err := accountHasIdentityAt(ctx, tx, user.ID, in.InstallationID)
 				if err != nil {
 					return err
@@ -277,17 +273,7 @@ func (r *AccountResolver) finish(ctx context.Context, tx pgx.Tx, in ResolveInput
 }
 
 func lockUser(ctx context.Context, tx rowQuerier, id int) (*models.User, error) {
-	// Lock the account first, then read its joined membership in a fresh
-	// READ COMMITTED statement. A join evaluated before waiting on the
-	// account lock can retain the previous membership policy snapshot.
-	var lockedID int
-	if err := tx.QueryRow(ctx, `SELECT id FROM users WHERE id=$1 FOR UPDATE`, id).Scan(&lockedID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-	return scanUser(tx.QueryRow(ctx, `SELECT `+allColumns+userSource+` WHERE u.id=$1`, lockedID))
+	return scanUser(tx.QueryRow(ctx, `SELECT `+allColumns+` FROM users WHERE id = $1 FOR UPDATE`, id))
 }
 
 // linkIdentityTx links identity to user. An account holds at most one

@@ -138,7 +138,7 @@ func TestProfileScopedPreludeStatementBudget(t *testing.T) {
 				t.Fatalf("create access group: %v", err)
 			}
 			t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM access_groups WHERE id = $1`, group.ID) })
-			if _, err := pool.Exec(ctx, `UPDATE organization_memberships SET access_group_id = $1 WHERE account_id = $2 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, group.ID, userID); err != nil {
+			if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = $1 WHERE id = $2`, group.ID, userID); err != nil {
 				t.Fatalf("assign access group: %v", err)
 			}
 		}

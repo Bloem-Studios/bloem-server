@@ -133,11 +133,11 @@ func (e *externalSignInEnv) localAccount(t *testing.T, label, role string) *mode
 	if role != models.RoleAdmin {
 		permissions = DefaultUserPermissions()
 	}
-	// Use the canonical writer: Bloem keeps policy on organization memberships.
-	user, err := NewUserRepository(e.pool).Create(t.Context(), models.CreateUserInput{
-		Username: e.name(label), Email: e.name(label) + "@example.test",
-		Password: "correct horse battery", Role: role, Permissions: permissions,
-	})
+	user, err := scanUser(e.pool.QueryRow(t.Context(), `INSERT INTO users
+		(username, email, password_hash, role, permissions, local_password_login_enabled, access_group_id)
+		VALUES ($1, $2, $3, $4, $5, true,
+			CASE WHEN $4 = 'admin' THEN NULL ELSE (SELECT id FROM access_groups WHERE is_default) END)
+		RETURNING `+allColumns, e.name(label), e.name(label)+"@example.test", externalSignInPasswordHash, role, permissions))
 	if err != nil {
 		t.Fatalf("seed %s: %v", label, err)
 	}

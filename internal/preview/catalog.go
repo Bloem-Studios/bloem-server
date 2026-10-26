@@ -35,7 +35,7 @@ func (a *Admin) Catalog(ctx context.Context, actor int, query, provider, provide
 	err = a.pool.QueryRow(ctx, `SELECT ARRAY(SELECT f.id FROM media_folders f WHERE f.enabled AND f.id=ANY(g.library_ids) ORDER BY f.id),p.id FROM users u
  JOIN organization_memberships m ON m.account_id=u.id AND m.status='active'
  JOIN organizations o ON o.id=m.organization_id AND o.is_default
- JOIN access_groups g ON g.id=m.access_group_id AND g.organization_id=m.organization_id AND g.managed_template_key='bloem-preview'
+ JOIN access_groups g ON g.id=u.access_group_id AND g.organization_id=m.organization_id AND g.managed_template_key='bloem-preview'
  JOIN user_profiles p ON p.user_id=u.id AND p.is_primary AND p.organization_id=m.organization_id AND p.access_group_id=g.id
  WHERE u.id=$1 AND u.enabled AND u.role='user' AND NOT u.local_password_login_enabled AND g.library_ids IS NOT NULL`, s.AccountID).Scan(&libraries, &profileID)
 	if err != nil || libraries == nil {

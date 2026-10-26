@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -22,10 +21,6 @@ func (db *passwordHashCapture) QueryRow(_ context.Context, _ string, args ...any
 	return passwordHashRow{}
 }
 
-func (db *passwordHashCapture) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
-	return pgconn.CommandTag{}, errors.New("unexpected membership write after failed account insert")
-}
-
 type passwordHashRow struct{}
 
 func (passwordHashRow) Scan(...any) error { return pgx.ErrNoRows }
@@ -36,8 +31,8 @@ func TestCreateUserPasswordHashCost(t *testing.T) {
 	_, err := createUser(t.Context(), db, models.CreateUserInput{
 		Username: "cost-test", Email: "cost@example.test", Password: password, Role: models.RoleUser,
 	})
-	if !errors.Is(err, pgx.ErrNoRows) {
-		t.Fatalf("createUser() error = %v, want %v", err, pgx.ErrNoRows)
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("createUser() error = %v, want %v", err, ErrNotFound)
 	}
 	assertTestPasswordHash(t, db.hash, password)
 }

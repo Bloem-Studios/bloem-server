@@ -41,7 +41,7 @@ func TestPreviewGuestJourneyThroughTheRouter(t *testing.T) {
 		t.Fatal(err)
 	}
 	profileID := uuid.NewString()
-	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,is_primary,organization_id,access_group_id) SELECT $1,$2,'Preview',true,organization_id,access_group_id FROM organization_memberships WHERE account_id=$2 AND status='active'`, profileID, shared.ID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,is_primary,organization_id,access_group_id) SELECT $1,u.id,'Preview',true,m.organization_id,u.access_group_id FROM users u JOIN organization_memberships m ON m.account_id=u.id WHERE u.id=$2 AND m.status='active'`, profileID, shared.ID); err != nil {
 		t.Fatal(err)
 	}
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)

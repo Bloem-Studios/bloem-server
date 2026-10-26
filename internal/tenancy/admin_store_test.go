@@ -11,16 +11,18 @@ import (
 
 func TestAdminStoreCreateOrganizationCreatesOwnerMembership(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
+	// An account belongs to one organization, so the owner is a new account.
+	owner := fixture.insertAccount(t, "owner", "user")
 	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{
-		Name: "North Sea Media", Slug: "north-sea-media", OwnerAccountID: fixture.otherID,
+		Name: "North Sea Media", Slug: "north-sea-media", OwnerAccountID: owner,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.Status != OrganizationActive || created.PolicyRevision != 1 || created.OwnerAccountID == nil || *created.OwnerAccountID != fixture.otherID {
+	if created.Status != OrganizationActive || created.PolicyRevision != 1 || created.OwnerAccountID == nil || *created.OwnerAccountID != owner {
 		t.Fatalf("organization = %+v", created)
 	}
-	membership, err := store.GetMembership(fixture.ctx, fixture.otherID, created.ID)
+	membership, err := store.GetMembership(fixture.ctx, owner, created.ID)
 	if err != nil || membership.LegacyRole != "admin" || membership.Status != MembershipActive {
 		t.Fatalf("membership = %+v, err = %v", membership, err)
 	}
@@ -30,7 +32,7 @@ func TestAdminStoreCreateOrganizationCreatesOwnerMembership(t *testing.T) {
 	}
 
 	_, err = store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{
-		Name: "Duplicate", Slug: "NORTH-SEA-MEDIA", OwnerAccountID: fixture.adminID,
+		Name: "Duplicate", Slug: "NORTH-SEA-MEDIA", OwnerAccountID: fixture.insertAccount(t, "owner-1", "user"),
 	})
 	if !errors.Is(err, ErrOrganizationSlugConflict) {
 		t.Fatalf("duplicate slug error = %v, want ErrOrganizationSlugConflict", err)
@@ -40,9 +42,9 @@ func TestAdminStoreCreateOrganizationCreatesOwnerMembership(t *testing.T) {
 func TestAdminStoreListOrganizationsUsesStableCursorAndExactCounts(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
 	for _, input := range []CreateOrganizationInput{
-		{Name: "alpha", Slug: "alpha", OwnerAccountID: fixture.adminID},
-		{Name: "Alpha", Slug: "alpha-two", OwnerAccountID: fixture.otherID},
-		{Name: "Zulu", Slug: "zulu", OwnerAccountID: fixture.adminID},
+		{Name: "alpha", Slug: "alpha", OwnerAccountID: fixture.insertAccount(t, "owner-2", "user")},
+		{Name: "Alpha", Slug: "alpha-two", OwnerAccountID: fixture.insertAccount(t, "owner-3", "user")},
+		{Name: "Zulu", Slug: "zulu", OwnerAccountID: fixture.insertAccount(t, "owner-4", "user")},
 	} {
 		if _, err := store.CreateOrganization(adminMutationContext(fixture), input); err != nil {
 			t.Fatalf("CreateOrganization(%q): %v", input.Name, err)
@@ -72,7 +74,7 @@ func TestAdminStoreListOrganizationsUsesStableCursorAndExactCounts(t *testing.T)
 
 func TestAdminStoreUpdateAndSuspensionAreRevisionGuardedAndReversible(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
-	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "North Sea", Slug: "north-sea", OwnerAccountID: fixture.adminID})
+	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "North Sea", Slug: "north-sea", OwnerAccountID: fixture.insertAccount(t, "owner-5", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +104,7 @@ func TestAdminStoreUpdateAndSuspensionAreRevisionGuardedAndReversible(t *testing
 
 func TestAdminStoreOrganizationUpdateCallerOwnedTransactionRollsBack(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
-	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Before", Slug: "rollback-update", OwnerAccountID: fixture.adminID})
+	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Before", Slug: "rollback-update", OwnerAccountID: fixture.insertAccount(t, "owner-6", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,11 +130,11 @@ func TestAdminStoreOrganizationUpdateCallerOwnedTransactionRollsBack(t *testing.
 
 func TestAdminStoreMembershipLifecycleIsOrganizationBounded(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
-	first, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "First", Slug: "first", OwnerAccountID: fixture.adminID})
+	first, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "First", Slug: "first", OwnerAccountID: fixture.insertAccount(t, "owner-7", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Second", Slug: "second", OwnerAccountID: fixture.otherID})
+	second, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Second", Slug: "second", OwnerAccountID: fixture.insertAccount(t, "owner-8", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,22 +179,23 @@ func TestAdminStoreMembershipLifecycleIsOrganizationBounded(t *testing.T) {
 
 func TestAdminStoreTransferOwnershipIncrementsOrganizationAndMembershipRevisions(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
-	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Transfer", Slug: "transfer", OwnerAccountID: fixture.adminID})
+	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Transfer", Slug: "transfer", OwnerAccountID: fixture.insertAccount(t, "owner-9", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	membership, organization, err := store.CreateMembership(adminMutationContext(fixture), created.ID, created.PolicyRevision, CreateMembershipInput{AccountID: fixture.otherID, LegacyRole: "user"})
+	next := fixture.insertAccount(t, "next-owner", "user")
+	membership, organization, err := store.CreateMembership(adminMutationContext(fixture), created.ID, created.PolicyRevision, CreateMembershipInput{AccountID: next, LegacyRole: "user"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	transferred, err := store.TransferOwnership(adminMutationContext(fixture), created.ID, organization.PolicyRevision, fixture.otherID)
+	transferred, err := store.TransferOwnership(adminMutationContext(fixture), created.ID, organization.PolicyRevision, next)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if transferred.OwnerAccountID == nil || *transferred.OwnerAccountID != fixture.otherID || transferred.PolicyRevision != organization.PolicyRevision+1 {
+	if transferred.OwnerAccountID == nil || *transferred.OwnerAccountID != next || transferred.PolicyRevision != organization.PolicyRevision+1 {
 		t.Fatalf("transferred organization = %+v", transferred)
 	}
-	newOwnerMembership, err := store.GetMembership(fixture.ctx, fixture.otherID, created.ID)
+	newOwnerMembership, err := store.GetMembership(fixture.ctx, next, created.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +209,7 @@ func TestAdminStoreTransferOwnershipIncrementsOrganizationAndMembershipRevisions
 
 func TestAdminStoreAuditFailureRollsBackOrganizationMutation(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
-	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Atomic", Slug: "atomic", OwnerAccountID: fixture.adminID})
+	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Atomic", Slug: "atomic", OwnerAccountID: fixture.insertAccount(t, "owner-10", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +236,7 @@ func TestAdminStoreAuditFailureRollsBackOrganizationMutation(t *testing.T) {
 
 func TestAdminStoreAuditCapturesLockedBeforeAfterStateAndStaleAttemptDoesNotAudit(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
-	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Before", Slug: "accurate", OwnerAccountID: fixture.adminID})
+	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Before", Slug: "accurate", OwnerAccountID: fixture.insertAccount(t, "owner-11", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +267,7 @@ func TestAdminStoreAuditCapturesLockedBeforeAfterStateAndStaleAttemptDoesNotAudi
 
 func TestAdminStoreUnchangedOrganizationUpdateIsNoOpWithoutAudit(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
-	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Unchanged", Slug: "unchanged", OwnerAccountID: fixture.adminID})
+	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Unchanged", Slug: "unchanged", OwnerAccountID: fixture.insertAccount(t, "owner-12", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,25 +304,26 @@ func TestAdminStoreUnchangedOrganizationUpdateIsNoOpWithoutAudit(t *testing.T) {
 
 func TestAdminStoreTransferOwnershipRejectsDisabledTarget(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
-	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Disabled", Slug: "disabled", OwnerAccountID: fixture.adminID})
+	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Disabled", Slug: "disabled", OwnerAccountID: fixture.insertAccount(t, "owner-13", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, organization, err := store.CreateMembership(adminMutationContext(fixture), created.ID, created.PolicyRevision, CreateMembershipInput{AccountID: fixture.otherID, LegacyRole: "user"})
+	member := fixture.insertAccount(t, "disabled-member", "user")
+	_, organization, err := store.CreateMembership(adminMutationContext(fixture), created.ID, created.PolicyRevision, CreateMembershipInput{AccountID: member, LegacyRole: "user"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET enabled=false WHERE id=$1`, fixture.otherID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET enabled=false WHERE id=$1`, member); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.TransferOwnership(adminMutationContext(fixture), created.ID, organization.PolicyRevision, fixture.otherID); !errors.Is(err, ErrOwnerNotEligible) {
+	if _, err := store.TransferOwnership(adminMutationContext(fixture), created.ID, organization.PolicyRevision, member); !errors.Is(err, ErrOwnerNotEligible) {
 		t.Fatalf("disabled owner transfer error = %v, want ErrOwnerNotEligible", err)
 	}
 }
 
 func TestAdminStoreCreateMembershipDistinguishesMissingAccount(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
-	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Missing", Slug: "missing", OwnerAccountID: fixture.adminID})
+	created, err := store.CreateOrganization(adminMutationContext(fixture), CreateOrganizationInput{Name: "Missing", Slug: "missing", OwnerAccountID: fixture.insertAccount(t, "owner-14", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -232,8 +232,7 @@ func TestMemberServiceDeleteRetryIsDurableForPreReceiptMember(t *testing.T) {
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships
 		(organization_id,account_id,status,legacy_role)
-		SELECT $1,$2,'active','user'
-		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, tenant.ID, userID); err != nil {
+		SELECT $1,$2,'active','user'`, tenant.ID, userID); err != nil {
 		t.Fatalf("seed pre-receipt membership: %v", err)
 	}
 
@@ -247,48 +246,6 @@ func TestMemberServiceDeleteRetryIsDurableForPreReceiptMember(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM tenant_member_command_receipts
 		WHERE organization_id=$1 AND result_account_id=$2 AND deleted_at IS NOT NULL)`, tenant.ID, userID).Scan(&tombstoned); err != nil || !tombstoned {
 		t.Fatalf("pre-receipt delete tombstone = %v, %v", tombstoned, err)
-	}
-}
-
-func TestMemberServiceDeletePreservesGlobalUserWithAnotherMembership(t *testing.T) {
-	ctx, pool, store, service, _ := newMemberService(t)
-	tenantA := createMemberTenant(t, ctx, store, 2)
-	tenantB := createMemberTenant(t, ctx, store, 2)
-	input := memberInput(fmt.Sprintf("shared-member-%d", time.Now().UnixNano()))
-	member, _, err := service.Create(ctx, tenantA.ID, "shared-command", input)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-		SELECT $1, $2, 'active', 'user'
-		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, tenantB.ID, member.ID); err != nil {
-		t.Fatalf("seed second membership: %v", err)
-	}
-	var groupB int64
-	if err := pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, tenantB.ID).Scan(&groupB); err != nil {
-		t.Fatal(err)
-	}
-	profileB := uuid.NewString()
-	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,'Tenant B',$3,$4)`, profileB, member.ID, tenantB.ID, groupB); err != nil {
-		t.Fatalf("seed tenant B profile: %v", err)
-	}
-
-	if err := service.Delete(ctx, tenantA.ID, member.ID); err != nil {
-		t.Fatalf("delete tenant A membership: %v", err)
-	}
-	var userPresent, membershipBPresent, profileBPresent bool
-	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id=$1)`, member.ID).Scan(&userPresent); err != nil {
-		t.Fatal(err)
-	}
-	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=$1 AND account_id=$2)`, tenantB.ID, member.ID).Scan(&membershipBPresent); err != nil {
-		t.Fatal(err)
-	}
-	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM user_profiles WHERE organization_id=$1 AND user_id=$2 AND id=$3)`, tenantB.ID, member.ID, profileB).Scan(&profileBPresent); err != nil {
-		t.Fatal(err)
-	}
-	if !userPresent || !membershipBPresent || !profileBPresent {
-		t.Fatalf("cross-tenant data was deleted: user=%v membership_b=%v profile_b=%v", userPresent, membershipBPresent, profileBPresent)
 	}
 }
 

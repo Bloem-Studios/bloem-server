@@ -125,14 +125,14 @@ func TestGroupSwitchAndLegacyBlockBothBlock(t *testing.T) {
 	store := newFakeStore()
 	svc := newTestService(store)
 	svc.SetGroupPolicyProvider(requestGroupProvider{group: &access.GroupPolicy{RequestsAllowed: false}})
-	if policy, err := svc.EffectivePolicy(actingIn(1, orgAlpha), 1); err != nil || !policy.Blocked {
+	if policy, err := svc.EffectivePolicy(context.Background(), 1); err != nil || !policy.Blocked {
 		t.Fatalf("group switch off: %+v, %v; want blocked", policy, err)
 	}
 
 	store.groupLimits = map[int64]*GroupLimit{1: {GroupID: 1, LimitMode: LimitModeUnlimited, ApprovalMode: ApprovalModeAuto}}
 	store.limit = &UserLimit{UserID: 1, LimitMode: LimitModeBlocked, ApprovalMode: ApprovalModeInherit}
 	svc = groupedService(store, nil)
-	if policy, err := svc.EffectivePolicy(actingIn(1, orgAlpha), 1); err != nil || !policy.Blocked {
+	if policy, err := svc.EffectivePolicy(context.Background(), 1); err != nil || !policy.Blocked {
 		t.Fatalf("legacy blocked account over an unlimited group: %+v, %v; want blocked", policy, err)
 	}
 }

@@ -16,10 +16,13 @@ import (
 func TestBloemSeasonalViewerFiltersCurrentTenantAndActiveMembership(t *testing.T) {
 	pool := newMigratedTestPool(t)
 	ctx := context.Background()
+	// An account belongs to one organization, so each organization's viewer is
+	// its own account.
 	account := seedAccount(t, pool, "seasonal-viewer")
+	otherAccount := seedAccount(t, pool, "seasonal-other-viewer")
 	stranger := seedAccount(t, pool, "seasonal-stranger")
 	current := seedOrganization(t, pool, "seasonal-current", account, account)
-	other := seedOrganization(t, pool, "seasonal-other", account, account)
+	other := seedOrganization(t, pool, "seasonal-other", otherAccount, otherAccount)
 	foreign := seedOrganization(t, pool, "seasonal-foreign", stranger, stranger)
 	svc := NewService(pool, bloemtestclock.Fixed(winterStart), nil)
 	for _, in := range []Input{winterInput("public", nil), winterInput("current", &current), winterInput("other", &other), winterInput("foreign", &foreign)} {
@@ -27,9 +30,9 @@ func TestBloemSeasonalViewerFiltersCurrentTenantAndActiveMembership(t *testing.T
 			t.Fatal(err)
 		}
 	}
-	check := func(org uuid.UUID, want ...string) {
+	check := func(viewer int, org uuid.UUID, want ...string) {
 		t.Helper()
-		packs, err := svc.ActiveForBloemViewer(ctx, account, org)
+		packs, err := svc.ActiveForBloemViewer(ctx, viewer, org)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -43,9 +46,10 @@ func TestBloemSeasonalViewerFiltersCurrentTenantAndActiveMembership(t *testing.T
 			t.Fatalf("effects = %v, want %v", got, want)
 		}
 	}
-	check(current, "public", "current")
-	check(other, "public", "other")
-	check(foreign, "public")
+	check(account, current, "public", "current")
+	check(otherAccount, other, "public", "other")
+	check(account, other, "public")
+	check(account, foreign, "public")
 	// The native adapter must not broaden the public branding contract.
 	public, err := svc.ActivePublic(ctx)
 	if err != nil || len(public) != 1 || public[0].EffectID != "public" {
@@ -54,11 +58,11 @@ func TestBloemSeasonalViewerFiltersCurrentTenantAndActiveMembership(t *testing.T
 	if _, err := pool.Exec(ctx, `UPDATE organization_memberships SET status='suspended' WHERE organization_id=$1 AND account_id=$2`, current, account); err != nil {
 		t.Fatal(err)
 	}
-	check(current, "public")
+	check(account, current, "public")
 	if _, err := pool.Exec(ctx, `UPDATE organizations SET status='suspended' WHERE id=$1`, other); err != nil {
 		t.Fatal(err)
 	}
-	check(other, "public")
+	check(otherAccount, other, "public")
 }
 
 func TestBloemSeasonalViewerRejectsMissingSubject(t *testing.T) {
@@ -78,8 +82,9 @@ func TestBloemSeasonalViewerRejectsMissingSubject(t *testing.T) {
 func TestBloemSeasonalViewerRetargetDoesNotExposePreviousOrganization(t *testing.T) {
 	pool := newMigratedTestPool(t)
 	account := seedAccount(t, pool, "retarget-viewer")
+	otherOwner := seedAccount(t, pool, "retarget-other-owner")
 	current := seedOrganization(t, pool, "retarget-current", account, account)
-	other := seedOrganization(t, pool, "retarget-other", account, account)
+	other := seedOrganization(t, pool, "retarget-other", otherOwner, otherOwner)
 	svc := NewService(pool, bloemtestclock.Fixed(winterStart), nil)
 	pack, err := svc.Create(t.Context(), account, winterInput("other-private-content", &other))
 	if err != nil {

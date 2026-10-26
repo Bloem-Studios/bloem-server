@@ -315,9 +315,9 @@ func bloemWireCoreDependencies(ctx context.Context, deps *api.Dependencies, pool
 // runBloemCommand runs a Bloem maintenance subcommand named by args[1] and
 // reports whether it did; main returns when it has.
 func runBloemCommand(args []string) bool {
-	if len(args) > 1 && args[1] == "membership-policy" {
-		if err := runMembershipPolicyCommand(context.Background(), args[2:]); err != nil {
-			log.Fatalf("membership-policy: %v", err)
+	if len(args) > 1 && args[1] == "silo-switching" {
+		if err := runSiloSwitchingCommand(context.Background(), args[2:]); err != nil {
+			log.Fatalf("silo-switching: %v", err)
 		}
 		return true
 	}

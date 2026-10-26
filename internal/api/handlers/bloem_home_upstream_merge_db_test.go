@@ -16,11 +16,12 @@ func TestBloemBundledHomeLayoutAppliesOwnedTransformerDB(t *testing.T) {
 	f := newPagingIntegrationFixture(t)
 	// Raw upstream paging accounts need a visible default membership before
 	// Bloem's profile writer can resolve their tenant identity.
-	f.exec(t, `INSERT INTO organization_memberships
-		(organization_id, account_id, status, legacy_role, access_group_id)
-		SELECT organizations.id, $1, 'active', 'user', access_groups.id
+	f.exec(t, `INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		SELECT id, $1, 'active', 'user' FROM organizations WHERE is_default
+		ON CONFLICT (account_id) DO NOTHING`, f.account)
+	f.exec(t, `UPDATE users SET access_group_id = access_groups.id
 		FROM organizations JOIN access_groups ON access_groups.organization_id = organizations.id
-		WHERE organizations.is_default AND access_groups.is_default`, f.account)
+		WHERE organizations.is_default AND access_groups.is_default AND users.id = $1`, f.account)
 	store, err := pgstore.NewPostgresProvider(f.pool).ForUser(t.Context(), f.account)
 	if err != nil {
 		t.Fatal(err)

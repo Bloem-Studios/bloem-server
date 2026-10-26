@@ -1,8 +1,8 @@
 package auth_test
 
-// Bloem's own account writes on a database mirrored for Silo switching: they
-// must succeed (compatibility froze them) and reach the users policy columns
-// that upstream Silo reads.
+// Bloem's own account writes while Silo switching is enabled: they must
+// succeed, within the guards, and land on the users policy columns upstream
+// Silo reads.
 
 import (
 	"context"
@@ -16,8 +16,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 )
 
-// bloemMirroredDatabase holds one account Silo created, then enables switching.
-func bloemMirroredDatabase(t *testing.T) (context.Context, *pgxpool.Pool, int) {
+// bloemSwitchableDatabase holds one account Silo created, then enables switching.
+func bloemSwitchableDatabase(t *testing.T) (context.Context, *pgxpool.Pool, int) {
 	t.Helper()
 	ctx := t.Context()
 	pool := newBloemAccountDatabase(t)
@@ -34,14 +34,14 @@ func bloemMirroredDatabase(t *testing.T) (context.Context, *pgxpool.Pool, int) {
 	return ctx, pool, account
 }
 
-func TestBloemAccountPolicyUpdateMirrorsToUsersWhenMirrored(t *testing.T) {
-	ctx, pool, account := bloemMirroredDatabase(t)
+func TestBloemAccountPolicyUpdateWhenSwitchable(t *testing.T) {
+	ctx, pool, account := bloemSwitchableDatabase(t)
 	users := auth.NewUserRepository(pool)
 	if err := users.Update(ctx, account, models.UpdateUserInput{
 		MaxStreams:       models.SetValue(6),
 		TranscodeAllowed: models.SetValue(false),
 	}); err != nil {
-		t.Fatalf("bloem policy update while mirrored: %v", err)
+		t.Fatalf("bloem policy update while switchable: %v", err)
 	}
 	var streams int
 	var transcode bool
@@ -53,8 +53,8 @@ func TestBloemAccountPolicyUpdateMirrorsToUsersWhenMirrored(t *testing.T) {
 	}
 }
 
-func TestBloemAccountCreateWhenMirrored(t *testing.T) {
-	ctx, pool, _ := bloemMirroredDatabase(t)
+func TestBloemAccountCreateWhenSwitchable(t *testing.T) {
+	ctx, pool, _ := bloemSwitchableDatabase(t)
 	users := auth.NewUserRepository(pool)
 	accounts := auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(pool))
 	accounts.SetMembershipProvisioner(&bloemAccountMemberships{store: tenancy.NewStore(pool)})
@@ -67,20 +67,17 @@ func TestBloemAccountCreateWhenMirrored(t *testing.T) {
 		DefaultProfile: auth.DefaultProfileOptions{Enabled: true, Name: "Main"},
 	})
 	if err != nil {
-		t.Fatalf("bloem create account while mirrored: %v", err)
+		t.Fatalf("bloem create account while switchable: %v", err)
 	}
-	var memberships, userStreams, membershipStreams int
+	var memberships, streams int
 	if err := pool.QueryRow(ctx, `
-		SELECT (SELECT count(*) FROM organization_memberships WHERE account_id = $1),
-		       (SELECT max_streams FROM users WHERE id = $1),
-		       (SELECT max_streams FROM organization_memberships WHERE account_id = $1)`, created.ID,
-	).Scan(&memberships, &userStreams, &membershipStreams); err != nil {
+		SELECT (SELECT count(*) FROM organization_memberships
+		        WHERE account_id = $1 AND organization_id = public.bloem_default_organization_id()),
+		       (SELECT max_streams FROM users WHERE id = $1)`, created.ID,
+	).Scan(&memberships, &streams); err != nil {
 		t.Fatal(err)
 	}
-	if memberships != 1 {
-		t.Fatalf("memberships = %d, want 1", memberships)
-	}
-	if userStreams != 4 || membershipStreams != 4 {
-		t.Fatalf("max_streams users=%d membership=%d, want 4 and 4", userStreams, membershipStreams)
+	if memberships != 1 || streams != 4 {
+		t.Fatalf("default memberships=%d max_streams=%d, want 1 and 4", memberships, streams)
 	}
 }

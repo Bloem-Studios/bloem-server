@@ -94,9 +94,6 @@ func atomicSetupDatabase(t *testing.T, name string) *atomicSetupDB {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatal(err)
-	}
 	cfg, err := config.LoadFromDB(map[string]string{
 		"auth.jwt_secret":             atomicJWTSecret,
 		"jellyfin_compat.server_name": "Silo Fixture",

@@ -126,8 +126,11 @@ func (c *SessionCleaner) CleanStale(ctx context.Context) (int, error) {
 	totalDeleted += tag.RowsAffected()
 
 	// 2. Clean up stale heartbeat rows.
-	if err := c.purgeStaleHeartbeats(ctx); err != nil {
-		return int(totalDeleted), err
+	if _, err := c.pool.Exec(ctx, `
+		DELETE FROM node_heartbeats
+		WHERE updated_at < NOW() - make_interval(secs => $1::double precision)
+	`, nodeHeartbeatCleanup.Seconds()); err != nil {
+		return int(totalDeleted), fmt.Errorf("cleaning stale heartbeats: %w", err)
 	}
 
 	// 3. Active sessions: 45s grace on last_sync_at.

@@ -18,9 +18,6 @@ func TestBloemEbookRequestSetupPolicyDurableDefaultAndAuthorityDatabase(t *testi
 	if err := database.RunMigrations(t.Context(), pool, migrations.BloemFS, "sql"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(t.Context(), pool); err != nil {
-		t.Fatal(err)
-	}
 	var v bookrequests.Viewer
 	v.Admin = true
 	if err := pool.QueryRow(t.Context(), `SELECT id FROM organizations WHERE is_default`).Scan(&v.OrganizationID); err != nil {
@@ -34,9 +31,6 @@ func TestBloemEbookRequestSetupPolicyDurableDefaultAndAuthorityDatabase(t *testi
 		t.Fatal(err)
 	}
 	defer tx.Rollback(t.Context())
-	if err := tenancy.MarkMembershipPolicyWriter(t.Context(), tx); err != nil {
-		t.Fatal(err)
-	}
 	if _, err = tx.Exec(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role) VALUES($1,$2,'active','admin') ON CONFLICT DO NOTHING`, v.OrganizationID, v.UserID); err != nil {
 		t.Fatal(err)
 	}

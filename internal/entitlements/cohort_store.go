@@ -440,9 +440,9 @@ const cohortSelect = `
 	       r.download_transcode_allowed,r.max_playback_quality,
 	       r.allowed_permissions,r.requests_allowed,r.policy_digest,c.archived,
 	       (SELECT count(*)
-	          FROM organization_memberships m
+	          FROM organization_memberships m JOIN users pu ON pu.id = m.account_id
 	         WHERE m.organization_id=r.organization_id
-	           AND m.access_group_id=r.access_group_id) AS member_count,
+	           AND pu.access_group_id=r.access_group_id) AS member_count,
 	       COALESCE(r.created_by_account_id,0),r.created_at
 	FROM entitlement_policy_cohort_revisions r
 	JOIN entitlement_policy_cohorts c

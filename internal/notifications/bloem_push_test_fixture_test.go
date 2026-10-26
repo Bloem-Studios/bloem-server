@@ -6,8 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
 // The shared push regression needs live recipients because Bloem rechecks
@@ -33,12 +31,12 @@ func seedPushTestProfiles(t *testing.T, pool *pgxpool.Pool, accounts []int, prof
 		t.Fatal(err)
 	}
 	defer tx.Rollback(ctx)
-	if err := tenancy.MarkMembershipPolicyWriter(ctx, tx); err != nil {
-		t.Fatal(err)
-	}
 	for _, account := range accounts {
-		if _, err := tx.Exec(ctx, `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role,access_group_id)
-			VALUES($1,$2,'active','user',$3)`, organizationID, account, groupID); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role)
+			VALUES($1,$2,'active','user')`, organizationID, account); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tx.Exec(ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, account, groupID); err != nil {
 			t.Fatal(err)
 		}
 		for i, profile := range profiles {

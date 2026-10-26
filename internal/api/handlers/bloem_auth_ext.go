@@ -229,7 +229,7 @@ func (h *AuthHandler) lifecycleLoginResult(ctx context.Context, tx pgx.Tx, pair 
 	var groupPolicy *access.GroupPolicy
 	if created.User.Role != models.RoleAdmin && h.accessGroups != nil {
 		var groupID *int64
-		if err := tx.QueryRow(ctx, `SELECT access_group_id FROM organization_memberships WHERE id=$1`, created.MembershipID).Scan(&groupID); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT u.access_group_id FROM organization_memberships m JOIN users u ON u.id=m.account_id WHERE m.id=$1`, created.MembershipID).Scan(&groupID); err != nil {
 			return lifecycleidempotency.Result{}, err
 		}
 		if groupID != nil {

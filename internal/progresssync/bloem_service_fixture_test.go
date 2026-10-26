@@ -61,9 +61,6 @@ func bloemProgressDatabase(t *testing.T, dsn string) *pgxpool.Pool {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate progress fixture database: %v", err)
 	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize progress fixture membership policy: %v", err)
-	}
 	owner, err := auth.NewUserRepository(pool).Create(ctx, models.CreateUserInput{
 		Username: "bootstrap-owner", Email: "bootstrap-owner@example.test",
 		Password: "synthetic-bootstrap-owner-password", Role: models.RoleAdmin,

@@ -18,7 +18,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/apiresponse"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -667,8 +666,6 @@ var (
 
 func (h *AdminHandler) writeAccountResourceLifecycleError(w http.ResponseWriter, err error, fallback string) {
 	switch {
-	case errors.Is(err, tenancy.ErrMembershipPolicyWriteUnavailable):
-		apiresponse.WriteRetryableUnavailable(w, "membership_policy_rollout_pending", "Membership policy rollout is not ready for this mutation", 1)
 	case errors.Is(err, lifecycleidempotency.ErrKeyRequired):
 		writeError(w, http.StatusPreconditionRequired, "idempotency_key_required", "Idempotency-Key is required for this lifecycle mutation")
 	case errors.Is(err, lifecycleidempotency.ErrKeyMalformed):

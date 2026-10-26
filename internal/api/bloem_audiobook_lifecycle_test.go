@@ -688,9 +688,6 @@ func newAudiobookLifecycle(t *testing.T, tools lifecycleTools) *audiobookLifecyc
 	if err := database.RunMigrations(ctx, pool, migrations.BloemFS, "sql"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatal(err)
-	}
 	sqlExec := func(sql string, args ...any) {
 		t.Helper()
 		if _, err := pool.Exec(ctx, sql, args...); err != nil {
@@ -711,9 +708,6 @@ func newAudiobookLifecycle(t *testing.T, tools lifecycleTools) *audiobookLifecyc
 	}
 	tx, err := pool.Begin(ctx)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if err = tenancy.MarkMembershipPolicyWriter(ctx, tx); err != nil {
 		t.Fatal(err)
 	}
 	for account, role := range map[int]string{l.admin.UserID: "admin", l.reader.UserID: "user"} {

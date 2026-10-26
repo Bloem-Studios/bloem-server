@@ -40,12 +40,12 @@ func TestPreviewPrincipalRouterBoundary(t *testing.T) {
 	}
 	if preview, err := auth.NewSessionRepository(pool).AccountPreviewOnly(ctx, user.ID); err != nil || !preview {
 		var detail string
-		_ = pool.QueryRow(ctx, `SELECT row_to_json(x)::text FROM (SELECT u.id,u.role,m.status,g.managed_template_key FROM users u LEFT JOIN organization_memberships m ON m.account_id=u.id LEFT JOIN access_groups g ON g.id=m.access_group_id WHERE u.id=$1) x`, user.ID).Scan(&detail)
+		_ = pool.QueryRow(ctx, `SELECT row_to_json(x)::text FROM (SELECT u.id,u.role,m.status,g.managed_template_key FROM users u LEFT JOIN organization_memberships m ON m.account_id=u.id LEFT JOIN access_groups g ON g.id=u.access_group_id WHERE u.id=$1) x`, user.ID).Scan(&detail)
 		t.Fatalf("preview assignment did not make a preview principal: preview=%v err=%v %s", preview, err, detail)
 	}
 
 	profileID := uuid.NewString()
-	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,is_primary,organization_id,access_group_id) SELECT $1,$2,'Preview',true,organization_id,access_group_id FROM organization_memberships WHERE account_id=$2 AND status='active'`, profileID, user.ID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,is_primary,organization_id,access_group_id) SELECT $1,u.id,'Preview',true,m.organization_id,u.access_group_id FROM users u JOIN organization_memberships m ON m.account_id=u.id WHERE u.id=$2 AND m.status='active'`, profileID, user.ID); err != nil {
 		t.Fatal(err)
 	}
 	sessions := auth.NewSessionRepository(pool)

@@ -61,7 +61,7 @@ func TestLoginSessionActivityAndAdminRevocationDB(t *testing.T) {
 		if _, err := pool.Exec(ctx, `
 			INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 			SELECT id, $1, 'active', CASE WHEN $2 = 'admin' THEN 'admin' ELSE 'user' END FROM organizations
-			WHERE is_default AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+			WHERE is_default
 			ON CONFLICT (organization_id, account_id) DO NOTHING`, id, role); err != nil {
 			t.Fatalf("seed account membership: %v", err)
 		}

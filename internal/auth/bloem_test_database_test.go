@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/database"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
@@ -163,14 +162,30 @@ func prepareAuthTestDatabase(ctx context.Context, dsn string) (string, func() er
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		return "", nil, fmt.Errorf("migrate auth scratch database: %w", err)
 	}
-	if err := markTestDatabaseAsPolicyWriter(ctx, pool, scratchDSN); err != nil {
-		return "", nil, fmt.Errorf("mark auth scratch policy writer: %w", err)
-	}
-	// ALTER DATABASE settings apply to new sessions, not migration connections.
-	pool.Reset()
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		return "", nil, fmt.Errorf("finalize auth scratch policy authority: %w", err)
-	}
 	prepared = true
 	return scratchDSN, cleanup, nil
+}
+
+// runAuthTests gives the package a fully migrated scratch database. The
+// configured URL may point at an empty maintenance database (as in CI), not an
+// application schema, so package fixtures use their own disposable database.
+func runAuthTests(m *testing.M) (code int) {
+	if dsn := os.Getenv("SILO_TEST_DATABASE_URL"); dsn != "" {
+		scratchDSN, cleanup, err := prepareAuthTestDatabase(context.Background(), dsn)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "prepare auth test database: %v\n", err)
+			return 1
+		}
+		defer func() {
+			if err := cleanup(); err != nil {
+				fmt.Fprintf(os.Stderr, "drop auth test database: %v\n", err)
+				code = 1
+			}
+		}()
+		if err := os.Setenv("SILO_TEST_DATABASE_URL", scratchDSN); err != nil {
+			fmt.Fprintf(os.Stderr, "configure auth test database: %v\n", err)
+			return 1
+		}
+	}
+	return m.Run()
 }

@@ -48,11 +48,6 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	if err := database.RunMigrations(ctx, pool, opaCompatibilityBaselineFS(t), "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
-	// A freshly migrated database is in the compatibility phase, which freezes
-	// every policy write including the membership a new account is given.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 	if err := database.MigrateDownTo(ctx, pool, opaCompatibilityBaselineFS(t), "sql", opaTenantIdentityPredecessor); err != nil {
 		t.Fatalf("migrate to tenant-identity predecessor: %v", err)
 	}
@@ -102,11 +97,6 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	// Match a fresh application connection after the ID-widening migrations;
 	// legacy prepared result types must not survive the schema transition.
 	pool.Reset()
-	// A freshly migrated database is in the compatibility phase, which freezes
-	// every policy write including the membership a new account is given.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 
 	tenantStore := tenancy.NewStore(pool)
 	tenantResolver := tenancy.NewResolver(tenantStore)
@@ -146,7 +136,6 @@ func TestOPATenantFoundationWithDisposablePostgres(t *testing.T) {
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 SELECT $1, $2, 'active', 'admin'
-WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
 ON CONFLICT (organization_id, account_id) DO UPDATE
 SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, foreignOrganizationID, foreignAccountID); err != nil {
 		t.Fatalf("create second organization membership: %v", err)
@@ -845,7 +834,8 @@ func opaCompatibilityBaselineFS(t *testing.T) fs.FS {
 			return err
 		}
 		if d.IsDir() || strings.HasSuffix(path, "_remove_bloem_compatibility.sql") ||
-			strings.HasSuffix(path, "_remove_pastime_managed_tracking.sql") {
+			strings.HasSuffix(path, "_remove_pastime_managed_tracking.sql") ||
+			strings.HasSuffix(path, "_bloem_account_policy_on_users.sql") {
 			return nil
 		}
 		data, err := migrations.FS.ReadFile(path)

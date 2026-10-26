@@ -6,8 +6,8 @@ import (
 	"github.com/Silo-Server/silo-server/internal/config"
 )
 
-func TestMirroredSiloEbookPolicyObserversAcceptSettingsWrites(t *testing.T) {
-	ctx, pool, _, _ := mirroredPool(t)
+func TestSwitchableSiloEbookPolicyObserversAcceptSettingsWrites(t *testing.T) {
+	ctx, pool, _, _ := switchablePool(t)
 	epoch := func() int64 {
 		t.Helper()
 		var n int64

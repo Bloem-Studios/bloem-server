@@ -21,9 +21,8 @@ verify-bloem-api-catalogue:
 GO_TEST_PACKAGES = $(shell go list -e ./... | grep -v '/internal/scenariocatalog/executor$$')
 
 # Prepare the shared Go test database named by SILO_TEST_DATABASE_URL:
-# migrate, finalize the membership policy authority as production does, set
-# the fixture session markers, and install the test-only Bloem fixture
-# triggers (internal/bloemtestdb/sql, not a migration). The tool refuses a
+# migrate, set the fixture session markers, and install the test-only Bloem
+# fixture triggers (internal/bloemtestdb/sql, not a migration). The tool refuses a
 # database whose name neither contains "test" nor ends in "_ci".
 # TEST_DB_RECREATE=1 drops and recreates the database first. Tests that create their own disposable
 # databases (tenancy, migration tests) never receive the shim.

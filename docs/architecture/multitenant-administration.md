@@ -167,21 +167,12 @@ reassign-to-default behaviour is kept even though it costs a divergence from
 upstream. Do not resolve a future upstream conflict here by taking Silo's
 `SET NULL`.
 
-Known gap: `GroupStore.DeleteWithImpact` reassigns `user_profiles`, but
-`20260829085838_membership_policy_isolation` backfilled
-`organization_memberships.access_group_id` as a second holder of the same
-reference, and that column is frozen until the membership policy authority
-reaches its `finalized` phase. The membership half of the reassignment
-therefore has to land together with the authority handoff, not before it.
+## Silo switching
 
-## Mirrored phase
-
-A database shared with upstream Silo runs in the `mirrored` membership policy
-phase instead of `finalized`: the legacy `users` policy columns and the
-default-organization membership are kept identical by triggers, and the
-database is limited to a single organization. Membership `access_group_id`
-writes, including the reassignment above, are open in that phase and are copied
-to `users`. See [Silo backend switching](silo-backend-switching.md).
+An account's policy, including its access group, lives on `users`, as in Silo;
+its one membership links it to its organization. A database shared with
+upstream Silo has `public.bloem_silo_switching` enabled and is limited to a
+single organization. See [Silo backend switching](silo-backend-switching.md).
 
 ## Compatibility and audit
 

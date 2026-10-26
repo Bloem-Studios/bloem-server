@@ -300,16 +300,7 @@ func updateProfile(
 		}
 	}
 	if accessPolicyChanged {
-		// The revision lives on the account's membership now. The v1 writer
-		// marker is transaction-local and this exec may be a pool, so it rides
-		// in the statement that needs it.
-		if _, err := exec.Exec(ctx, `
-			UPDATE organization_memberships
-			SET access_policy_revision = access_policy_revision + 1
-			WHERE account_id = $1
-			  AND organization_id = (SELECT organization_id FROM user_profiles WHERE user_id = $1 AND id = $2)
-			  AND set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true) IS NOT NULL`, userID, id); err != nil {
+		if _, err := exec.Exec(ctx, "UPDATE users SET access_policy_revision = access_policy_revision + 1 WHERE id = $1", userID); err != nil {
 			return fmt.Errorf("bumping access policy revision for user %d: %w", userID, err)
 		}
 	}

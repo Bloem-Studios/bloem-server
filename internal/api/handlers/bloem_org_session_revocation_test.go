@@ -22,7 +22,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
 )
@@ -30,18 +29,17 @@ import (
 type orgRevocationFixture struct {
 	pool                     *pgxpool.Pool
 	actor, target            *models.User
-	orgA, orgB               uuid.UUID
+	orgA                     uuid.UUID
 	profileA                 string
 	sessionA, accountSession string
 	wholeUserCalls           int
 	profileInvalidations     []string
 	handler                  *AdminHandler
 	router                   chi.Router
-	revisionA, revisionB     int64
-	targetInOrgB             bool
+	revisionA                int64
 }
 
-func newOrgRevocationFixture(t *testing.T, targetInOrgB, lifecycle bool) *orgRevocationFixture {
+func newOrgRevocationFixture(t *testing.T, lifecycle bool) *orgRevocationFixture {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -56,10 +54,7 @@ func newOrgRevocationFixture(t *testing.T, targetInOrgB, lifecycle bool) *orgRev
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
-	f := &orgRevocationFixture{pool: pool, targetInOrgB: targetInOrgB}
+	f := &orgRevocationFixture{pool: pool}
 	users := auth.NewUserRepository(pool)
 	if f.actor, err = users.Create(ctx, models.CreateUserInput{Username: "orgrev-actor-" + uuid.NewString(), Email: uuid.NewString() + "@orgrev.test", Password: "test-password", Role: models.RoleAdmin}); err != nil {
 		t.Fatalf("create actor: %v", err)
@@ -67,41 +62,34 @@ func newOrgRevocationFixture(t *testing.T, targetInOrgB, lifecycle bool) *orgRev
 	if f.target, err = users.Create(ctx, models.CreateUserInput{Username: "orgrev-target-" + uuid.NewString(), Email: uuid.NewString() + "@orgrev.test", Password: "test-password", Role: models.RoleUser}); err != nil {
 		t.Fatalf("create target: %v", err)
 	}
-	f.orgA, f.orgB = uuid.New(), uuid.New()
+	f.orgA = uuid.New()
 	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), `DELETE FROM organizations WHERE id=ANY($1::uuid[])`, []uuid.UUID{f.orgA, f.orgB})
+		_, _ = pool.Exec(context.Background(), `DELETE FROM organizations WHERE id=$1`, f.orgA)
 		_, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id=ANY($1::integer[])`, []int{f.actor.ID, f.target.ID})
 	})
 	// A freshly created account is given a default-organization membership;
-	// remove the target's so its only memberships are the ones seeded here.
-	if _, err := pool.Exec(ctx, `DELETE FROM organization_memberships WHERE account_id=$1`, f.target.ID); err != nil {
-		t.Fatalf("clear target memberships: %v", err)
+	// remove both so their one membership is the one seeded here.
+	if _, err := pool.Exec(ctx, `DELETE FROM organization_memberships WHERE account_id=ANY($1::integer[])`, []int{f.actor.ID, f.target.ID}); err != nil {
+		t.Fatalf("clear default memberships: %v", err)
 	}
-	groupIDs := map[uuid.UUID]int64{}
-	for _, organizationID := range []uuid.UUID{f.orgA, f.orgB} {
-		if _, err := pool.Exec(ctx, `INSERT INTO organizations (id,name,slug,status,owner_account_id) VALUES ($1,$2,$3,'active',$4)`, organizationID, "OrgRev "+organizationID.String(), "orgrev-"+organizationID.String(), f.actor.ID); err != nil {
-			t.Fatalf("create organization: %v", err)
-		}
-		var groupID int64
-		if err := pool.QueryRow(ctx, `INSERT INTO access_groups (organization_id,name,is_default) VALUES ($1,'Default',true) RETURNING id`, organizationID).Scan(&groupID); err != nil {
-			t.Fatalf("create default access group: %v", err)
-		}
-		groupIDs[organizationID] = groupID
-		members := []int{f.actor.ID}
-		if organizationID == f.orgA || targetInOrgB {
-			members = append(members, f.target.ID)
-		}
-		for _, accountID := range members {
-			if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-SELECT $1,$2,'active',$3
-WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
-ON CONFLICT (organization_id, account_id) DO UPDATE SET status = EXCLUDED.status`, organizationID, accountID, map[bool]string{true: "admin", false: "user"}[accountID == f.actor.ID]); err != nil {
-				t.Fatalf("create membership: %v", err)
-			}
+	if _, err := pool.Exec(ctx, `INSERT INTO organizations (id,name,slug,status,owner_account_id) VALUES ($1,$2,$3,'active',$4)`, f.orgA, "OrgRev "+f.orgA.String(), "orgrev-"+f.orgA.String(), f.actor.ID); err != nil {
+		t.Fatalf("create organization: %v", err)
+	}
+	var groupID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO access_groups (organization_id,name,is_default) VALUES ($1,'Default',true) RETURNING id`, f.orgA).Scan(&groupID); err != nil {
+		t.Fatalf("create default access group: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id=NULL WHERE id=ANY($1::integer[])`, []int{f.actor.ID, f.target.ID}); err != nil {
+		t.Fatalf("clear default-organization groups: %v", err)
+	}
+	for _, accountID := range []int{f.actor.ID, f.target.ID} {
+		if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+SELECT $1,$2,'active',$3`, f.orgA, accountID, map[bool]string{true: "admin", false: "user"}[accountID == f.actor.ID]); err != nil {
+			t.Fatalf("create membership: %v", err)
 		}
 	}
 	f.profileA = uuid.NewString()
-	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,$3,$4,$5)`, f.profileA, f.target.ID, f.profileA, f.orgA, groupIDs[f.orgA]); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,$3,$4,$5)`, f.profileA, f.target.ID, f.profileA, f.orgA, groupID); err != nil {
 		t.Fatalf("create profile: %v", err)
 	}
 	f.sessionA, f.accountSession = uuid.NewString(), uuid.NewString()
@@ -111,9 +99,6 @@ ON CONFLICT (organization_id, account_id) DO UPDATE SET status = EXCLUDED.status
 		}
 	}
 	f.revisionA = f.revision(t, f.orgA)
-	if targetInOrgB {
-		f.revisionB = f.revision(t, f.orgB)
-	}
 
 	f.handler = NewAdminHandler(users, pool, pgstore.NewPostgresProvider(pool))
 	if lifecycle {
@@ -177,36 +162,10 @@ func TestBloemOrganizationRevokeAllInvalidatesMembership(t *testing.T) {
 	for _, lifecycle := range []bool{true, false} {
 		name := map[bool]string{true: "lifecycle", false: "direct"}[lifecycle]
 
-		// The member belongs to another organization too: the account-login
-		// session serves that organization and survives, but the membership's
-		// security revision moves so every session bound to it is stale.
-		t.Run(name+"/other membership", func(t *testing.T) {
-			f := newOrgRevocationFixture(t, true, lifecycle)
-			f.revokeAll(t, lifecycle)
-			if f.active(t, f.sessionA) {
-				t.Fatal("organization profile session survived")
-			}
-			if !f.active(t, f.accountSession) {
-				t.Fatal("account session revoked although the account has another active membership")
-			}
-			if got := f.revision(t, f.orgA); got <= f.revisionA {
-				t.Fatalf("organization A security revision = %d, want > %d", got, f.revisionA)
-			}
-			if got := f.revision(t, f.orgB); got != f.revisionB {
-				t.Fatalf("organization B security revision = %d, want unchanged %d", got, f.revisionB)
-			}
-			if f.wholeUserCalls != 0 {
-				t.Fatalf("whole-account compat invalidations = %d, want 0", f.wholeUserCalls)
-			}
-			if len(f.profileInvalidations) != 1 || f.profileInvalidations[0] != f.profileA {
-				t.Fatalf("profile invalidations = %v, want [%s]", f.profileInvalidations, f.profileA)
-			}
-		})
-
-		// The organization is the member's only one: the account-login session
+		// An account belongs to one organization: the account-login session
 		// can reach nothing but this organization, so it is revoked too.
-		t.Run(name+"/only membership", func(t *testing.T) {
-			f := newOrgRevocationFixture(t, false, lifecycle)
+		t.Run(name, func(t *testing.T) {
+			f := newOrgRevocationFixture(t, lifecycle)
 			f.revokeAll(t, lifecycle)
 			if f.active(t, f.sessionA) {
 				t.Fatal("organization profile session survived")

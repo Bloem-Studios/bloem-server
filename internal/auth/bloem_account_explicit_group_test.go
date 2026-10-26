@@ -85,7 +85,7 @@ func TestBloemAccountExplicitOrganizationGroup(t *testing.T) {
 			created, err := accounts.CreateAccountForOrganizationInTransaction(ctx, tx, organizationID, input)
 			if tc.foreign {
 				var pgErr *pgconn.PgError
-				if !errors.As(err, &pgErr) || pgErr.Code != "23503" || pgErr.ConstraintName != "organization_memberships_organization_access_group_fkey" {
+				if !errors.As(err, &pgErr) || pgErr.Code != "23503" || pgErr.ConstraintName != "users_access_group_organization" {
 					t.Fatalf("foreign group error = %v, want organization/group foreign key rejection", err)
 				}
 				if created != (auth.CreatedAccount{}) {
@@ -150,9 +150,10 @@ func TestBloemAccountExplicitOrganizationGroup(t *testing.T) {
 			var storedMaxProfiles int
 			var storedDownload, storedRequests *bool
 			if err := pool.QueryRow(ctx, `
-				SELECT organization_id, access_group_id, status, legacy_role,
-				       max_streams, max_transcodes, max_profiles, download_allowed, requests_allowed
-				FROM organization_memberships WHERE id = $1 AND account_id = $2`, created.MembershipID, user.ID).Scan(
+				SELECT m.organization_id, u.access_group_id, m.status, m.legacy_role,
+				       u.max_streams, u.max_transcodes, u.max_profiles, u.download_allowed, u.requests_allowed
+				FROM organization_memberships m JOIN users u ON u.id = m.account_id
+				WHERE m.id = $1 AND m.account_id = $2`, created.MembershipID, user.ID).Scan(
 				&membershipOrganization, &membershipGroup, &status, &role,
 				&storedMaxStreams, &storedMaxTranscodes, &storedMaxProfiles, &storedDownload, &storedRequests); err != nil {
 				t.Fatal(err)
@@ -163,7 +164,7 @@ func TestBloemAccountExplicitOrganizationGroup(t *testing.T) {
 			if storedMaxStreams == nil || *storedMaxStreams != maxStreams || storedMaxProfiles != maxProfiles ||
 				storedDownload == nil || *storedDownload != downloadAllowed ||
 				storedRequests == nil || *storedRequests != requestsAllowed || storedMaxTranscodes != nil {
-				t.Fatal("committed membership lost policy overrides or inherited policy")
+				t.Fatal("committed account lost policy overrides or inherited policy")
 			}
 			var primary bool
 			if err := pool.QueryRow(ctx, `

@@ -65,11 +65,6 @@ func newRemainingLifecycleFixture(t *testing.T) remainingLifecycleFixture {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	// A freshly migrated database is in the compatibility phase, which freezes
-	// every policy write including the membership a new account is given.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 	users := auth.NewUserRepository(pool)
 	actor, err := users.Create(ctx, models.CreateUserInput{Username: "remaining-actor-" + uuid.NewString(), Email: uuid.NewString() + "@lifecycle.test", Password: "password", Role: models.RoleAdmin})
 	if err != nil {
@@ -81,7 +76,6 @@ func newRemainingLifecycleFixture(t *testing.T) remainingLifecycleFixture {
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
 SELECT $1,$2,'active','admin'
-WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
 ON CONFLICT (organization_id, account_id) DO UPDATE
 SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, orgID, actor.ID); err != nil {
 		t.Fatalf("actor membership: %v", err)
@@ -144,7 +138,6 @@ func TestAdminSettingLifecycleSetAndDeleteReplay(t *testing.T) {
 	t.Cleanup(func() { _ = f.users.Delete(context.Background(), target.ID) })
 	if _, err := f.pool.Exec(f.ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
 SELECT $1,$2,'active','user'
-WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
 ON CONFLICT (organization_id, account_id) DO UPDATE
 SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, f.orgID, target.ID); err != nil {
 		t.Fatal(err)
@@ -195,7 +188,6 @@ func TestAdminImpersonationLifecycleReplayDoesNotCreateReplacementSession(t *tes
 	}
 	if _, err := f.pool.Exec(f.ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
 SELECT $1,$2,'active','user'
-WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
 ON CONFLICT (organization_id, account_id) DO UPDATE
 SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, f.orgID, target.ID); err != nil {
 		t.Fatal(err)
@@ -237,7 +229,6 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, f.orgID, targ
 	}
 	if _, err := f.pool.Exec(f.ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
 SELECT $1,$2,'active','user'
-WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
 ON CONFLICT (organization_id, account_id) DO UPDATE
 SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, f.orgID, target.ID); err != nil {
 		t.Fatalf("replacement membership: %v", err)

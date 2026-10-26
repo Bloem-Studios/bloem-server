@@ -39,9 +39,6 @@ func atomicInvitationDB(t *testing.T) atomicInvitationFixture {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := pool.Exec(ctx, `INSERT INTO users(username,email,password_hash,role,enabled) VALUES('inviter','inviter@example.invalid','x','admin',true)`); err != nil {
 		t.Fatal(err)
 	}

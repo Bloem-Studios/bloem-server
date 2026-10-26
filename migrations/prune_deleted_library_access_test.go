@@ -2,6 +2,7 @@ package migrations
 
 import (
 	"context"
+	"os"
 	"slices"
 	"testing"
 
@@ -28,7 +29,7 @@ func requireLibraryIDs(t *testing.T, tx pgx.Tx, table string, id int64, want []i
 // stays an empty restriction rather than widening to every library, and NULL
 // stays NULL.
 func TestDeletingLibraryPrunesAccessPolicyReferencesPostgres(t *testing.T) {
-	dsn := bloemPruningFixtureDSN(t)
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
@@ -125,7 +126,7 @@ func TestDeletingLibraryPrunesAccessPolicyReferencesPostgres(t *testing.T) {
 // waits for the delete, as it would behind a foreign key, and stores only the
 // libraries that still exist.
 func TestLibraryDeleteRacingAccessWritePostgres(t *testing.T) {
-	dsn := bloemPruningFixtureDSN(t)
+	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}

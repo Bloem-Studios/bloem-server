@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/Silo-Server/silo-server/internal/models"
 )
@@ -50,9 +49,6 @@ func (s *MemberService) SetSuspendedInTransaction(ctx context.Context, tx pgx.Tx
 	}
 	enabled := !suspended
 	if _, err := s.accounts.UpdateUserInTransaction(ctx, tx, userID, models.UpdateUserInput{Enabled: &enabled}); err != nil {
-		if isMembershipPolicyFence(err) {
-			return models.User{}, ErrMembershipPolicyWriteUnavailable
-		}
 		return models.User{}, fmt.Errorf("tenancy: update member enabled state: %w", err)
 	}
 	status := MembershipActive
@@ -75,12 +71,6 @@ WHERE organization_id=$1 AND account_id=$2`, tenantID, userID, status)
 		}
 	}
 	return loadLifecycleMember(ctx, tx, tenantID, userID)
-}
-
-func isMembershipPolicyFence(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "P0001" &&
-		(pgErr.Message == "membership_policy_fenced" || pgErr.Message == "membership_policy_not_finalized")
 }
 
 // ResetPasswordInTransaction replaces the password and revokes native login

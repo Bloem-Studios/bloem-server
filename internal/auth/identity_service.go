@@ -183,7 +183,7 @@ func (s *IdentityService) AdminUnlink(ctx context.Context, userID int, identityI
 // ownership transfer, so a promotion or transfer cannot change their
 // standing between authorization and the write.
 func lockAdminIdentityTarget(ctx context.Context, tx pgx.Tx, userID, actorID int, scopedAPIKey bool) (*models.User, error) {
-	rows, err := tx.Query(ctx, `SELECT `+allColumns+userSource+` WHERE u.id = ANY($1) ORDER BY u.id FOR UPDATE OF u`, []int{userID, actorID})
+	rows, err := tx.Query(ctx, `SELECT `+allColumns+` FROM users WHERE id = ANY($1) ORDER BY id FOR UPDATE`, []int{userID, actorID})
 	if err != nil {
 		return nil, fmt.Errorf("locking identity management accounts: %w", err)
 	}

@@ -80,7 +80,7 @@ stop_backend silo
 
 # Bloem migrates it, then the operator enables Silo switching.
 start_backend bloem "$BLOEM_PORT"
-compose exec -T bloem silo membership-policy enable-silo-switching --env /dev/null
+compose exec -T bloem silo silo-switching enable --env /dev/null
 stop_backend bloem
 
 start_backend bloem "$BLOEM_PORT"

@@ -29,11 +29,14 @@ import (
 // composition, authentication, tenant resolution, acting-admin and viewer gates.
 func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 	pool := newV1TenancyDatabase(t)
-	var platform, member int
+	// An account belongs to one organization: the platform administrator is a
+	// member of the default organization, and the tenant-bound platform-role
+	// administrator is its own account.
+	var platform, hosted, member int
 	for _, row := range []struct {
 		name, role string
 		id         *int
-	}{{"platform", "admin", &platform}, {"tenant-admin", "user", &member}} {
+	}{{"platform", "admin", &platform}, {"hosted-admin", "admin", &hosted}, {"tenant-admin", "user", &member}} {
 		if err := pool.QueryRow(t.Context(), `INSERT INTO users(username,email,password_hash,role,enabled)
 			VALUES($1,$2,'x',$3,true) RETURNING id`, row.name, row.name+"@example.test", row.role).Scan(row.id); err != nil {
 			t.Fatal(err)
@@ -54,9 +57,9 @@ func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 	if err := pool.QueryRow(t.Context(), `INSERT INTO access_groups(organization_id,name) VALUES($1,'Routing tenant group') RETURNING id`, organization).Scan(&tenantGroup); err != nil {
 		t.Fatal(err)
 	}
-	for _, account := range []int{platform, member} {
+	for _, account := range []int{hosted, member} {
 		if _, err := pool.Exec(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role)
-			SELECT $1,$2,'active','admin' WHERE set_config('bloem.membership_policy_writer',public.bloem_membership_policy_writer_marker(),true) IS NOT NULL`, organization, account); err != nil {
+			SELECT $1,$2,'active','admin'`, organization, account); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := pool.Exec(t.Context(), `INSERT INTO user_profiles(id,user_id,name,organization_id,is_primary,access_group_id)
@@ -65,7 +68,7 @@ func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 		}
 	}
 	if _, err := pool.Exec(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role)
-		SELECT $1,$2,'active','admin' WHERE set_config('bloem.membership_policy_writer',public.bloem_membership_policy_writer_marker(),true) IS NOT NULL
+		SELECT $1,$2,'active','admin'
 		ON CONFLICT(organization_id,account_id) DO NOTHING`, defaults, platform); err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +132,7 @@ func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 	// issuers use RoleUser. This signed fixture exercises a conditional service
 	// boundary if an admin context is tenant-bound; it does not demonstrate an
 	// organization-only admin obtaining platform authority through login.
-	platformTenant := token(platform, models.RoleAdmin, true)
+	platformTenant := token(hosted, models.RoleAdmin, true)
 	platformDefault := token(platform, models.RoleAdmin, false)
 	tenantOnly := token(member, models.RoleUser, true)
 	request := func(method, path, body, token, profile, match string) *httptest.ResponseRecorder {
@@ -164,7 +167,7 @@ func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 		name, token, profile string
 	}{
 		{"organization_only_admin", tenantOnly, fmt.Sprintf("routing-profile-%d", member)},
-		{"conditional_hosted_bound_platform_admin", platformTenant, fmt.Sprintf("routing-profile-%d", platform)},
+		{"conditional_hosted_bound_platform_admin", platformTenant, fmt.Sprintf("routing-profile-%d", hosted)},
 	} {
 		t.Run(actor.name, func(t *testing.T) {
 			for _, endpoint := range []struct {
@@ -205,7 +208,7 @@ func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 
 	// Search reads TMDB, not global routing configuration, and retains its
 	// existing acting-admin authorization even from the conditional context.
-	search := request(http.MethodGet, "/admin/request-routes/titles?media_type=movie&q=fixture", "", platformTenant, fmt.Sprintf("routing-profile-%d", platform), "")
+	search := request(http.MethodGet, "/admin/request-routes/titles?media_type=movie&q=fixture", "", platformTenant, fmt.Sprintf("routing-profile-%d", hosted), "")
 	var titles apiv2.Collection[apiv2.AdminRequestRouteTitle]
 	if err := json.Unmarshal(search.Body.Bytes(), &titles); err != nil || search.Code != http.StatusOK || len(titles.Items) != 1 || titles.Items[0].TMDBID != 550 {
 		t.Fatalf("hosted admin TMDB search: status=%d body=%s error=%v", search.Code, search.Body, err)

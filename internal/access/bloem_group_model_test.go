@@ -37,7 +37,7 @@ func TestTenantGroupCanonicalExtendedPolicyMutationDB(t *testing.T) {
 	account := fixture.createUser(&group.ID, 10)
 	fixture.createProfile(account, fixture.orgA, &group.ID)
 	var before int64
-	if err := fixture.pool.QueryRow(ctx, "SELECT access_policy_revision FROM organization_memberships WHERE organization_id=$1 AND account_id=$2", fixture.orgA, account).Scan(&before); err != nil {
+	if err := fixture.pool.QueryRow(ctx, "SELECT access_policy_revision FROM users WHERE id = $2 AND EXISTS (SELECT 1 FROM organization_memberships m WHERE m.account_id = users.id AND m.organization_id = $1)", fixture.orgA, account).Scan(&before); err != nil {
 		t.Fatal(err)
 	}
 	updated, err := fixture.store.UpdatePolicyConditional(ctx, fixture.orgA, group.ID, TenantUpdateGroupInput{PlaybackAllowed: new(false), MaxProfiles: new(3)}, GroupPrecondition{Revision: group.Revision})
@@ -45,7 +45,7 @@ func TestTenantGroupCanonicalExtendedPolicyMutationDB(t *testing.T) {
 		t.Fatalf("extended policy update: %+v %v", updated, err)
 	}
 	var after int64
-	if err := fixture.pool.QueryRow(ctx, "SELECT access_policy_revision FROM organization_memberships WHERE organization_id=$1 AND account_id=$2", fixture.orgA, account).Scan(&after); err != nil {
+	if err := fixture.pool.QueryRow(ctx, "SELECT access_policy_revision FROM users WHERE id = $2 AND EXISTS (SELECT 1 FROM organization_memberships m WHERE m.account_id = users.id AND m.organization_id = $1)", fixture.orgA, account).Scan(&after); err != nil {
 		t.Fatal(err)
 	}
 	if after != before+1 {
@@ -55,7 +55,7 @@ func TestTenantGroupCanonicalExtendedPolicyMutationDB(t *testing.T) {
 	if err != nil || noop.Revision <= updated.Revision {
 		t.Fatalf("same-value write did not advance timestamp/configuration revision: %+v %v", noop, err)
 	}
-	if err := fixture.pool.QueryRow(ctx, "SELECT access_policy_revision FROM organization_memberships WHERE organization_id=$1 AND account_id=$2", fixture.orgA, account).Scan(&after); err != nil {
+	if err := fixture.pool.QueryRow(ctx, "SELECT access_policy_revision FROM users WHERE id = $2 AND EXISTS (SELECT 1 FROM organization_memberships m WHERE m.account_id = users.id AND m.organization_id = $1)", fixture.orgA, account).Scan(&after); err != nil {
 		t.Fatal(err)
 	}
 	if after != before+1 {

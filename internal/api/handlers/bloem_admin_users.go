@@ -119,11 +119,10 @@ func (h *AdminHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.
 // organization, so this replicates its steps against tenancy.Store's
 // tenant-specific ones instead, with the same cleanup-on-failure shape.
 //
-// Creating an account is a multi-step application operation that cannot run
-// inside a tenancy transaction, so the slot quota is checked before AND
-// recounted after: two racing creates both pass the pre-check at the
-// boundary, and the recount removes the account that broke the quota — the
-// breach self-heals instead of standing.
+// The account and its tenant membership commit together, the membership under
+// the tenant's slot fence. The default profile is a separate step, so the slot
+// quota is still checked before AND recounted after: the recount removes an
+// account that broke the quota — the breach self-heals instead of standing.
 //
 // Returns nil once it has already written the HTTP response itself, so the
 // caller's own error-writing path is not duplicated for this branch.
@@ -145,23 +144,17 @@ func (h *AdminHandler) createTenantUser(ctx context.Context, w http.ResponseWrit
 		return nil
 	}
 
-	user, err := h.userRepo.Create(ctx, input.User)
+	user, err := h.createTenantAccount(ctx, organizationID, input.User)
 	if err != nil {
 		if apiErr := busyError(err); apiErr != nil {
 			writeAPIError(w, apiErr)
 			return nil
 		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
-		return nil
-	}
-
-	legacyRole := auth.MembershipLegacyRole(input.User.Role)
-	if _, err := h.tenantStore.ProvisionTenantMembership(ctx, organizationID, user.ID, legacyRole); err != nil {
-		if deleteErr := h.userRepo.Delete(ctx, user.ID); deleteErr != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to enforce tenant capacity")
+		if errors.Is(err, errTenantMembership) {
+			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to provision tenant membership")
 			return nil
 		}
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to provision tenant membership")
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create user")
 		return nil
 	}
 
@@ -188,6 +181,59 @@ func (h *AdminHandler) createTenantUser(ctx context.Context, w http.ResponseWrit
 	}
 
 	return user
+}
+
+var errTenantMembership = errors.New("tenant membership")
+
+// createTenantAccount creates the account and its tenant membership in one
+// transaction, so the account never commits without the membership.
+func (h *AdminHandler) createTenantAccount(ctx context.Context, organizationID uuid.UUID, input models.CreateUserInput) (*models.User, error) {
+	if h.pool == nil {
+		return nil, errors.New("tenant account creation needs a database pool")
+	}
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	user, conflict, err := h.accountProvisioner.CreateUserInTransaction(ctx, tx, input)
+	if err != nil {
+		return nil, err
+	}
+	if conflict {
+		return nil, auth.ErrDuplicate
+	}
+	if err := releaseTenantAccountLink(ctx, tx, organizationID, user.ID); err != nil {
+		return nil, err
+	}
+	if _, err := h.tenantStore.ProvisionTenantMembershipInTransaction(ctx, tx, organizationID, user.ID, auth.MembershipLegacyRole(input.Role)); err != nil {
+		return nil, fmt.Errorf("%w: %w", errTenantMembership, err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// releaseTenantAccountLink removes the membership account creation gave a new
+// account in the creating transaction, so the tenant membership provisioned
+// next, with its slot fence, is the account's one membership. Creation links an
+// account to the organization owning its access group, else the default
+// organization, and an access group outside the tenant gives way to the
+// tenant's default group.
+func releaseTenantAccountLink(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM organization_memberships WHERE account_id = $1`, accountID); err != nil {
+		return fmt.Errorf("release new account membership: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE users SET access_group_id = (
+			SELECT g.id FROM access_groups g WHERE g.organization_id = $2 AND g.is_default)
+		WHERE id = $1 AND access_group_id IS NOT NULL
+		  AND NOT EXISTS (SELECT 1 FROM access_groups g WHERE g.id = users.access_group_id AND g.organization_id = $2)`,
+		accountID, organizationID); err != nil {
+		return fmt.Errorf("move new account to the tenant's default group: %w", err)
+	}
+	return nil
 }
 
 var errLifecycleUpdateInsufficientScope = errors.New("lifecycle account update insufficient scope")

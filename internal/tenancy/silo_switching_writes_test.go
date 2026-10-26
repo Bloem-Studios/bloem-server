@@ -1,7 +1,6 @@
 package tenancy_test
 
-// Silo-shaped account and profile writes while the database is mirrored for
-// Silo switching: upstream creates accounts and profiles without an
+// Silo-shaped account and profile writes while Silo switching is enabled: upstream creates accounts and profiles without an
 // organization, and the database places them in the default organization.
 
 import (
@@ -44,8 +43,8 @@ func siloCreateProfileTx(t *testing.T, ctx context.Context, tx pgx.Tx, account i
 	}
 }
 
-func TestMirroredSiloCreatesAccountAndProfile(t *testing.T) {
-	ctx, pool, _, _ := mirroredPool(t)
+func TestSwitchableSiloCreatesAccountAndProfile(t *testing.T) {
+	ctx, pool, _, _ := switchablePool(t)
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -71,13 +70,10 @@ func TestMirroredSiloCreatesAccountAndProfile(t *testing.T) {
 	if profileGroup != accountGroup {
 		t.Fatalf("profile access group = %d, want the account's %d", profileGroup, accountGroup)
 	}
-	if got := membershipPolicy(t, ctx, pool, account); got.streams == nil || *got.streams != 4 {
-		t.Fatalf("membership max_streams = %v, want 4 (seeded from users)", got.streams)
-	}
 }
 
-func TestMirroredSiloAccountWithoutProfileGetsMembershipAtCommit(t *testing.T) {
-	ctx, pool, _, _ := mirroredPool(t)
+func TestSwitchableSiloAccountWithoutProfileGetsMembershipAtCommit(t *testing.T) {
+	ctx, pool, _, _ := switchablePool(t)
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +95,7 @@ func TestMirroredSiloAccountWithoutProfileGetsMembershipAtCommit(t *testing.T) {
 	}
 }
 
-func TestAccountInsertQueuesNoDeferredWorkOutsideMirrored(t *testing.T) {
+func TestAccountInsertQueuesNoDeferredWorkWhenNotSwitchable(t *testing.T) {
 	ctx, pool, _ := buildTenantPool(t)
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -111,12 +107,12 @@ func TestAccountInsertQueuesNoDeferredWorkOutsideMirrored(t *testing.T) {
 	}
 	// A deferred trigger event would make this fail with "pending trigger events".
 	if _, err := tx.Exec(ctx, `ALTER TABLE users DISABLE TRIGGER users_login_identifiers`); err != nil {
-		t.Fatalf("alter users after an insert outside mirrored: %v", err)
+		t.Fatalf("alter users after an insert while not switchable: %v", err)
 	}
 }
 
-func TestMirroredSiloDeleteAccountCascades(t *testing.T) {
-	ctx, pool, _, _ := mirroredPool(t)
+func TestSwitchableSiloDeleteAccountCascades(t *testing.T) {
+	ctx, pool, _, _ := switchablePool(t)
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -141,8 +137,8 @@ func TestMirroredSiloDeleteAccountCascades(t *testing.T) {
 	}
 }
 
-func TestMirroredSiloGroupMoveCarriesProfiles(t *testing.T) {
-	ctx, pool, _, _ := mirroredPool(t)
+func TestSwitchableSiloGroupMoveCarriesProfiles(t *testing.T) {
+	ctx, pool, _, _ := switchablePool(t)
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -185,28 +181,28 @@ func TestMirroredSiloGroupMoveCarriesProfiles(t *testing.T) {
 	}
 }
 
-func TestMirroredSiloCreatedAdminStaysUngrouped(t *testing.T) {
-	ctx, pool, _, _ := mirroredPool(t)
+func TestSwitchableSiloCreatedAdminStaysUngrouped(t *testing.T) {
+	ctx, pool, _, _ := switchablePool(t)
 	var admin int
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO users (username, email, password_hash, role, enabled, access_group_id)
 		VALUES ('a2', 'a2@example.invalid', 'x', 'admin', true, NULL) RETURNING id`).Scan(&admin); err != nil {
 		t.Fatal(err)
 	}
-	var userGroup, membershipGroup *int64
+	var group *int64
 	if err := pool.QueryRow(ctx, `
-		SELECT u.access_group_id, m.access_group_id FROM users u
+		SELECT u.access_group_id FROM users u
 		JOIN organization_memberships m ON m.account_id = u.id AND m.organization_id = public.bloem_default_organization_id()
-		WHERE u.id = $1`, admin).Scan(&userGroup, &membershipGroup); err != nil {
-		t.Fatalf("read admin groups: %v", err)
+		WHERE u.id = $1`, admin).Scan(&group); err != nil {
+		t.Fatalf("read admin group: %v", err)
 	}
-	if userGroup != nil || membershipGroup != nil {
-		t.Fatalf("admin groups users=%v membership=%v, want both NULL", deref(userGroup), deref(membershipGroup))
+	if group != nil {
+		t.Fatalf("admin access group = %d, want NULL", *group)
 	}
 }
 
-func TestMirroredRoleChangesReachTheOtherSide(t *testing.T) {
-	ctx, pool, user, admin := mirroredPool(t)
+func TestSwitchableRoleChangesReachTheOtherSide(t *testing.T) {
+	ctx, pool, user, admin := switchablePool(t)
 	if _, err := pool.Exec(ctx, `UPDATE users SET role = 'admin', access_group_id = NULL WHERE id = $1`, user); err != nil {
 		t.Fatalf("silo promotes: %v", err)
 	}
@@ -227,11 +223,4 @@ func TestMirroredRoleChangesReachTheOtherSide(t *testing.T) {
 	if role != "user" {
 		t.Fatalf("users role after bloem demotion = %s, want user", role)
 	}
-}
-
-func deref(p *int64) any {
-	if p == nil {
-		return nil
-	}
-	return *p
 }

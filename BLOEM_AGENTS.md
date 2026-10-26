@@ -50,15 +50,15 @@ and [docs/architecture/xtream-live-tv.md](docs/architecture/xtream-live-tv.md) f
 
 ## Silo switching
 
-A database can be shared with upstream Silo in the `mirrored` membership-policy
-phase ([docs/architecture/silo-backend-switching.md](docs/architecture/silo-backend-switching.md)).
-Keep it working:
+A database with `public.bloem_silo_switching` enabled can be served by upstream
+Silo too, one server at a time
+([docs/architecture/silo-backend-switching.md](docs/architecture/silo-backend-switching.md)).
+Account policy lives on `users`, as in Silo; a membership only links an account
+to its one organization. Keep it working:
 
-- A policy writer sets `bloem.membership_policy_writer` from
-  `public.bloem_membership_policy_writer_marker()`, never from an inline phase check.
 - A new NOT NULL column, constraint or trigger on a table upstream Silo writes
   (`users`, `user_profiles`, `auth_sessions`, `access_groups`, ...) must accept Silo's
-  writes while mirrored, with a test beside the existing mirrored-phase tests.
+  writes while switchable, with a test beside the existing switching tests.
 - Run `make silo-switch-check` against the pinned Silo digest when a change touches
   those tables or merges upstream writes to them.
 

@@ -60,13 +60,13 @@ func TestBloemXtreamMountedAuthority(t *testing.T) {
 		exec(t, "CREATE TEMP TABLE "+pgx.Identifier{table}.Sanitize()+" (LIKE public."+pgx.Identifier{table}.Sanitize()+" INCLUDING DEFAULTS INCLUDING INDEXES) ON COMMIT PRESERVE ROWS")
 	}
 	org := uuid.New()
-	exec(t, `INSERT INTO users (id,email,username,password_hash,role) VALUES
-		(7,'xtream-admin@example.test','xtream-admin','unused','admin'),
-		(8,'xtream-user@example.test','xtream-user','unused','user')`)
+	exec(t, `INSERT INTO users (id,email,username,password_hash,role,access_group_id,permissions) VALUES
+		(7,'xtream-admin@example.test','xtream-admin','unused','admin',1,'{}'),
+		(8,'xtream-user@example.test','xtream-user','unused','user',1,'{}')`)
 	exec(t, `INSERT INTO organizations (id,slug,name,status,owner_account_id,is_default) VALUES ($1,'xtream-fixture','Xtream fixture','active',7,true)`, org)
 	exec(t, `INSERT INTO access_groups (id,organization_id,name,allowed_permissions,configuration_revision) VALUES (1,$1,'Fixture','{}',1)`, org)
-	exec(t, `INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role,access_group_id,permissions) VALUES
-		($1,$3,7,'active','admin',1,'{}'),($2,$3,8,'active','user',1,'{}')`, uuid.New(), uuid.New(), org)
+	exec(t, `INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role) VALUES
+		($1,$3,7,'active','admin'),($2,$3,8,'active','user')`, uuid.New(), uuid.New(), org)
 	exec(t, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id,is_primary,is_child) VALUES
 		('primary',7,'Primary',$1,1,true,false),('secondary',7,'Secondary',$1,1,false,false),
 		('child',7,'Child',$1,1,false,true),('foreign',8,'Foreign',$1,1,true,false)`, org)

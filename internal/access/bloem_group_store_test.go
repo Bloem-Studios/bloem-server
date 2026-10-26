@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -304,17 +303,6 @@ func prepareAccessGroupTestDatabase(ctx context.Context, dsn string) (*pgxpool.C
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO media_folders(id,type,name) VALUES(1,'movies','One'),(2,'movies','Two'),(3,'movies','Three')`); err != nil {
 		return nil, nil, err
-	}
-	// 20260829085838_membership_policy_isolation leaves a freshly migrated
-	// database in the compatibility phase, which is a policy FREEZE: writes are
-	// fenced on users and frozen on organization_memberships. These tests
-	// exercise policy mutation, so they run in the steady state the handover
-	// produces rather than mid-freeze.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		pool.Close()
-		_, _ = admin.Exec(ctx, "DROP DATABASE "+pgx.Identifier{name}.Sanitize())
-		admin.Close()
-		return nil, nil, fmt.Errorf("finalize membership policy authority: %w", err)
 	}
 	pool.Close()
 	cleanup := func() error {

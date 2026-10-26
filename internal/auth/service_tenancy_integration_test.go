@@ -74,11 +74,6 @@ func TestAccountProvisionerCreateAccountWithMembershipInTransactionRollsBackEver
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
-	// The compatibility phase freezes every policy write, including the
-	// membership a new account is given. Hand the authority over first.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 
 	provisioner := NewAccountProvisioner(NewUserRepository(pool), pgstore.NewPostgresProvider(pool))
 	provisioner.SetMembershipProvisioner(tenancyProvisioningAdapter{store: tenancy.NewStore(pool)})
@@ -153,11 +148,6 @@ func TestSetupInitialUserInTransactionReturnsReplayTargetsAndCommitsAtomically(t
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
-	// The compatibility phase freezes every policy write, including the
-	// membership a new account is given. Hand the authority over first.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 	users := NewUserRepository(pool)
 	sessions := NewSessionRepository(pool)
 	service := NewService(
@@ -211,11 +201,6 @@ func TestStartImpersonationInTransactionRollsBackSession(t *testing.T) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
-	// The compatibility phase freezes every policy write, including the
-	// membership a new account is given. Hand the authority over first.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 	users := NewUserRepository(pool)
 	sessions := NewSessionRepository(pool)
 	service := NewService(nil, NewJWTService("test-secret", time.Hour, 24*time.Hour), sessions, users, NewInviteCodeRepository(pool), nil, pgstore.NewPostgresProvider(pool))
@@ -266,11 +251,6 @@ func TestSignupInTransactionRollsBackInviteAccountAndSessionTogether(t *testing.
 	pool := newAuthTenancyDisposableDatabase(t, ctx, dsn)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate database: %v", err)
-	}
-	// The compatibility phase freezes every policy write, including the
-	// membership a new account is given. Hand the authority over first.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 	users := NewUserRepository(pool)
 	owner, err := users.Create(ctx, models.CreateUserInput{
@@ -332,11 +312,6 @@ func TestSetupInitialUserOwnership_ProvisionsDefaultMembershipAndActivatesOwners
 	pool := newAuthTenancyDisposableDatabase(t, ctx, dsn)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate database: %v", err)
-	}
-	// The compatibility phase freezes every policy write, including the
-	// membership a new account is given. Hand the authority over first.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 
 	users := NewUserRepository(pool)
@@ -412,11 +387,6 @@ func TestSetupInitialUserOwnership_CleansUpAccountWhenMembershipProvisioningFail
 	pool := newAuthTenancyDisposableDatabase(t, ctx, dsn)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate database: %v", err)
-	}
-	// The compatibility phase freezes every policy write, including the
-	// membership a new account is given. Hand the authority over first.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 
 	users := NewUserRepository(pool)

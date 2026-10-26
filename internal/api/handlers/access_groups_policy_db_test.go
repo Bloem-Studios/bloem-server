@@ -13,34 +13,24 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
-	"github.com/google/uuid"
 )
 
 func TestAccessGroupUpdateLibraryPolicyDB(t *testing.T) {
 	f := newPagingIntegrationFixture(t)
 	f.exec(t, `UPDATE users SET email=username||'@example.invalid', password_hash='' WHERE id=$1`, f.account)
-	// Bloem: groups belong to an organization and are assigned on the
-	// account's membership, so the policy runs through Bloem's tenant store.
-	var org uuid.UUID
-	if err := f.pool.QueryRow(t.Context(), `SELECT id FROM organizations WHERE is_default`).Scan(&org); err != nil {
-		t.Fatal(err)
-	}
-	store := access.NewTenantGroupStore(f.pool)
-	group, err := store.Create(t.Context(), org, access.CreateGroupInput{Name: fmt.Sprintf("Library policy %d", f.account)})
+	store := access.NewGroupStore(f.pool)
+	group, err := store.Create(t.Context(), access.CreateGroupInput{Name: fmt.Sprintf("Library policy %d", f.account)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		ctx := context.WithoutCancel(t.Context())
-		execMembershipPolicy(t, ctx, f.pool, `UPDATE organization_memberships SET access_group_id=NULL WHERE account_id=$1 AND organization_id=$2`, f.account, org)
-		if err := store.Delete(ctx, org, group.ID); err != nil {
+		if err := store.Delete(context.WithoutCancel(t.Context()), group.ID); err != nil {
 			t.Error(err)
 		}
 	})
-	execMembershipPolicy(t, t.Context(), f.pool, `UPDATE organization_memberships SET access_group_id=$2 WHERE account_id=$1 AND organization_id=$3`, f.account, group.ID, org)
-	h := NewTenantAccessGroupHandler(store)
+	f.exec(t, `UPDATE users SET access_group_id=$2 WHERE id=$1`, f.account, group.ID)
+	h := NewAccessGroupHandler(store)
 	resolver := access.NewResolver(auth.NewUserRepository(f.pool), pgstore.NewPostgresProvider(f.pool), nil, store)
 	executor := &catalog.QueryExecutor{Pool: f.pool}
 	for _, tc := range []struct {
@@ -55,13 +45,12 @@ func TestAccessGroupUpdateLibraryPolicyDB(t *testing.T) {
 		{"populated", fmt.Sprintf(`{"library_ids":[%d]}`, f.hidden), []int{f.hidden}, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := store.Update(t.Context(), org, group.ID, access.UpdateGroupInput{LibraryIDs: new([]int{f.library})}); err != nil {
+			if _, err := store.Update(t.Context(), group.ID, access.UpdateGroupInput{LibraryIDs: new([]int{f.library})}); err != nil {
 				t.Fatal(err)
 			}
 			id := strconv.FormatInt(group.ID, 10)
 			rec := httptest.NewRecorder()
-			req := accessGroupRequestWithID(http.MethodPut, "/api/v1/admin/access-groups/"+id, strings.NewReader(tc.body), id)
-			h.HandleUpdate(rec, req.WithContext(tenancy.WithContext(req.Context(), tenancy.Context{OrganizationID: org, AccountID: f.account, Legacy: true})))
+			h.HandleUpdate(rec, accessGroupRequestWithID(http.MethodPut, "/api/v1/admin/access-groups/"+id, strings.NewReader(tc.body), id))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("update status = %d, body %s", rec.Code, rec.Body.String())
 			}
@@ -75,7 +64,7 @@ func TestAccessGroupUpdateLibraryPolicyDB(t *testing.T) {
 			if !reflect.DeepEqual(ids, tc.want) {
 				t.Errorf("stored library_ids = %#v, want %#v", ids, tc.want)
 			}
-			scope, err := resolver.Resolve(tenancy.WithContext(t.Context(), tenancy.Context{OrganizationID: org, AccountID: f.account, Legacy: true}), access.ResolveInput{UserID: f.account})
+			scope, err := resolver.Resolve(t.Context(), access.ResolveInput{UserID: f.account})
 			if err != nil {
 				t.Fatal(err)
 			}

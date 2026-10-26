@@ -149,7 +149,9 @@ func TestEncryptedCoordinatorDoesNotPersistIssuedTokensInPlaintext(t *testing.T)
 	}
 }
 
-func TestResolveAccountTargetsCapturesEveryMembershipInCanonicalOrder(t *testing.T) {
+// An account belongs to one organization, so it resolves to exactly the target
+// of its one membership.
+func TestResolveAccountTargetsCapturesTheAccountMembership(t *testing.T) {
 	ctx := context.Background()
 	pool := newLifecycleStoreDatabase(t)
 
@@ -165,26 +167,11 @@ RETURNING id,account_incarnation_id`).Scan(&accountID, &incarnation); err != nil
 	if err := pool.QueryRow(ctx, `SELECT id FROM organizations WHERE is_default`).Scan(&defaultOrganization); err != nil {
 		t.Fatalf("load default organization: %v", err)
 	}
-	if _, err := pool.Exec(ctx, `
+	var membershipID uuid.UUID
+	if err := pool.QueryRow(ctx, `
 INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-VALUES ($1,$2,'active','user')`, defaultOrganization, accountID); err != nil {
+VALUES ($1,$2,'active','user') RETURNING id`, defaultOrganization, accountID).Scan(&membershipID); err != nil {
 		t.Fatalf("create default membership: %v", err)
-	}
-	secondOrganization := uuid.New()
-	if _, err := pool.Exec(ctx, `
-INSERT INTO organizations (id,slug,name,status,owner_account_id)
-VALUES ($1,$2,'Target Resolution','active',$3)`, secondOrganization, "target-resolution-"+uuid.NewString(), accountID); err != nil {
-		t.Fatalf("create second organization: %v", err)
-	}
-	if _, err := pool.Exec(ctx, `
-INSERT INTO access_groups (organization_id,name,is_default)
-VALUES ($1,$2,true)`, secondOrganization, "target-resolution-"+uuid.NewString()); err != nil {
-		t.Fatalf("create second organization default group: %v", err)
-	}
-	if _, err := pool.Exec(ctx, `
-INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-VALUES ($1,$2,'active','user')`, secondOrganization, accountID); err != nil {
-		t.Fatalf("create second membership: %v", err)
 	}
 
 	tx, err := pool.Begin(ctx)
@@ -196,18 +183,12 @@ VALUES ($1,$2,'active','user')`, secondOrganization, accountID); err != nil {
 	if err != nil {
 		t.Fatalf("ResolveAccountTargets() error: %v", err)
 	}
-	if len(targets) != 2 {
-		t.Fatalf("targets = %+v, want two memberships", targets)
+	if len(targets) != 1 {
+		t.Fatalf("targets = %+v, want the one membership", targets)
 	}
-	for index, target := range targets {
-		if target.AccountID != accountID || target.AccountIncarnationID != incarnation ||
-			target.OrganizationID == uuid.Nil || target.MembershipID == uuid.Nil {
-			t.Fatalf("target[%d] = %+v", index, target)
-		}
-	}
-	if targets[0].OrganizationID.String() > targets[1].OrganizationID.String() ||
-		(targets[0].OrganizationID == targets[1].OrganizationID && targets[0].MembershipID.String() > targets[1].MembershipID.String()) {
-		t.Fatalf("targets are not canonical: %+v", targets)
+	if target := targets[0]; target.AccountID != accountID || target.AccountIncarnationID != incarnation ||
+		target.OrganizationID != defaultOrganization || target.MembershipID != membershipID {
+		t.Fatalf("target = %+v", target)
 	}
 }
 

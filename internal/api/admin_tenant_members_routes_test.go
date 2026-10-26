@@ -44,11 +44,6 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 	if err := database.RunMigrations(context.Background(), pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
-	// A freshly migrated database is in the compatibility phase, which freezes
-	// every policy write including the membership first-run setup creates.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(context.Background(), pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 	cfg := &config.Config{Auth: config.AuthConfig{
 		JWTSecret: "admin-tenant-member-route-secret", AccessTokenExpiry: time.Hour, RefreshTokenExpiry: time.Hour,
 	}}
@@ -205,11 +200,24 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		if err := json.Unmarshal(createdTenantB.Body.Bytes(), &tenantB); err != nil || tenantB.TenantID == "" {
 			t.Fatalf("decode tenant B: %+v %v", tenantB, err)
 		}
-		if _, err := pool.Exec(context.Background(), `INSERT INTO organization_memberships
-			(organization_id,account_id,status,legacy_role) SELECT $1,$2,'active','user' WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, tenantB.TenantID, member.UserID); err != nil {
-			t.Fatalf("seed shared tenant membership: %v", err)
+		// An account belongs to one organization, so tenant B's data belongs to
+		// its own member.
+		memberPathB := "/api/v1/admin/tenants/" + tenantB.TenantID + "/members"
+		createdMemberB := performJSONRequest(t, router, http.MethodPost, memberPathB, `{
+			"username":"production-route-member-b",
+			"email":"production-route-member-b@example.test",
+			"password":"correct horse battery staple"
+		}`, adminLogin.AccessToken, map[string]string{"Idempotency-Key": "production-route-member-b-command"})
+		if createdMemberB.Code != http.StatusCreated {
+			t.Fatalf("create tenant B member = %d %s", createdMemberB.Code, createdMemberB.Body.String())
 		}
-		profilesPathB := "/api/v1/admin/tenants/" + tenantB.TenantID + "/members/" + strconv.Itoa(member.UserID) + "/profiles"
+		var memberB struct {
+			UserID int `json:"user_id"`
+		}
+		if err := json.Unmarshal(createdMemberB.Body.Bytes(), &memberB); err != nil || memberB.UserID <= 0 {
+			t.Fatalf("decode tenant B member: %+v %v", memberB, err)
+		}
+		profilesPathB := memberPathB + "/" + strconv.Itoa(memberB.UserID) + "/profiles"
 		createdProfileB := performJSONRequest(t, router, http.MethodPost, profilesPathB,
 			`{"name":"Production Member Profile B"}`, adminLogin.AccessToken, nil)
 		if createdProfileB.Code != http.StatusCreated {
@@ -234,7 +242,7 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 
 		if _, err := pool.Exec(context.Background(), `INSERT INTO user_devices
 			(user_id,profile_id,device_id,device_name,device_platform) VALUES
-			($1,$2,'tenant-device-a','A device','test'),($1,$3,'tenant-device-b','B device','test')`, member.UserID, profileA.ID, profileB.ID); err != nil {
+			($1,$2,'tenant-device-a','A device','test'),($3,$4,'tenant-device-b','B device','test')`, member.UserID, profileA.ID, memberB.UserID, profileB.ID); err != nil {
 			t.Fatalf("seed tenant devices: %v", err)
 		}
 		devicesAPath := memberPath + "/" + strconv.Itoa(member.UserID) + "/devices"
@@ -252,8 +260,8 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 			(id,user_id,device_name,expires_at,profile_id,profile_credential_revision,device_id,auth_method) VALUES
 			('tenant-session-a',$1,'A session',$2,$3,1,'tenant-device-a','direct_profile'),
 			('tenant-session-a-single',$1,'A single session',$2,$3,1,'tenant-device-a','direct_profile'),
-			('tenant-session-b',$1,'B session',$2,$4,1,'tenant-device-b','direct_profile'),
-			('tenant-account-session',$1,'Account session',$2,NULL,NULL,'','account')`, member.UserID, expires, profileA.ID, profileB.ID); err != nil {
+			('tenant-session-b',$5,'B session',$2,$4,1,'tenant-device-b','direct_profile'),
+			('tenant-account-session',$1,'Account session',$2,NULL,NULL,'','account')`, member.UserID, expires, profileA.ID, profileB.ID, memberB.UserID); err != nil {
 			t.Fatalf("seed tenant sessions: %v", err)
 		}
 
@@ -347,12 +355,12 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 			args  []any
 			out   *bool
 		}{
-			{`SELECT EXISTS(SELECT 1 FROM users WHERE id=$1)`, []any{member.UserID}, &userPresent},
-			{`SELECT EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=$1 AND account_id=$2)`, []any{tenantB.TenantID, member.UserID}, &membershipBPresent},
+			{`SELECT EXISTS(SELECT 1 FROM users WHERE id=$1)`, []any{memberB.UserID}, &userPresent},
+			{`SELECT EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=$1 AND account_id=$2)`, []any{tenantB.TenantID, memberB.UserID}, &membershipBPresent},
 			{`SELECT EXISTS(SELECT 1 FROM user_profiles WHERE user_id=$1 AND id=$2)`, []any{member.UserID, profileA.ID}, &profileAPresent},
-			{`SELECT EXISTS(SELECT 1 FROM user_profiles WHERE user_id=$1 AND id=$2)`, []any{member.UserID, profileB.ID}, &profileBPresent},
+			{`SELECT EXISTS(SELECT 1 FROM user_profiles WHERE user_id=$1 AND id=$2)`, []any{memberB.UserID, profileB.ID}, &profileBPresent},
 			{`SELECT EXISTS(SELECT 1 FROM user_devices WHERE user_id=$1 AND profile_id=$2)`, []any{member.UserID, profileA.ID}, &deviceAPresent},
-			{`SELECT EXISTS(SELECT 1 FROM user_devices WHERE user_id=$1 AND profile_id=$2)`, []any{member.UserID, profileB.ID}, &deviceBPresent},
+			{`SELECT EXISTS(SELECT 1 FROM user_devices WHERE user_id=$1 AND profile_id=$2)`, []any{memberB.UserID, profileB.ID}, &deviceBPresent},
 		}
 		for _, check := range checks {
 			if err := pool.QueryRow(context.Background(), check.query, check.args...).Scan(check.out); err != nil {
@@ -360,7 +368,7 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 			}
 		}
 		if !userPresent || !membershipBPresent || profileAPresent || !profileBPresent || deviceAPresent || !deviceBPresent {
-			t.Fatalf("scoped delete state user=%v membership_b=%v profile_a=%v profile_b=%v device_a=%v device_b=%v",
+			t.Fatalf("scoped delete state user_b=%v membership_b=%v profile_a=%v profile_b=%v device_a=%v device_b=%v",
 				userPresent, membershipBPresent, profileAPresent, profileBPresent, deviceAPresent, deviceBPresent)
 		}
 	})

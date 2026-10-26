@@ -73,9 +73,6 @@ func newBloemLifecycleFixture(t *testing.T) *Repository {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		bloemLifecycleFixtureError(t, "migrate admin-job fixture database", err)
 	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		bloemLifecycleFixtureError(t, "finalize admin-job fixture membership policy", err)
-	}
 	actor, err := auth.NewUserRepository(pool).Create(ctx, models.CreateUserInput{
 		Username: "admin-job-owner",
 		Email:    "admin-job-owner@example.test",

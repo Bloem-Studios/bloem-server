@@ -579,13 +579,13 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 	// would incorrectly exclude rows when database and application clocks skew.
 	conditions, args := buildPeopleConditions(organizationID, canonical.toFilter(), nil)
 	rows, err := tx.Query(ctx, `
-		SELECT m.account_id,u.account_incarnation_id,m.id,m.status,m.security_revision,m.access_policy_revision,
-		       COALESCE(m.access_group_id,0),COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),COALESCE(r.revision,0),
+		SELECT m.account_id,u.account_incarnation_id,m.id,m.status,m.security_revision,u.access_policy_revision,
+		       COALESCE(u.access_group_id,0),COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),COALESCE(r.revision,0),
 		       COALESCE(r.source_template_key,g.managed_template_key,''),COALESCE(r.source_template_revision,g.managed_template_revision,0),
-		       COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'group_id',p.access_group_id,'inherits_account',p.access_group_id IS NOT DISTINCT FROM m.access_group_id,'updated_at',p.updated_at) ORDER BY p.id) FROM user_profiles p WHERE p.organization_id=m.organization_id AND p.user_id=m.account_id),'[]'::jsonb)
+		       COALESCE((SELECT jsonb_agg(jsonb_build_object('id',p.id,'group_id',p.access_group_id,'inherits_account',p.access_group_id IS NOT DISTINCT FROM u.access_group_id,'updated_at',p.updated_at) ORDER BY p.id) FROM user_profiles p WHERE p.organization_id=m.organization_id AND p.user_id=m.account_id),'[]'::jsonb)
 		FROM organization_memberships m
 		JOIN users u ON u.id=m.account_id
-		LEFT JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=m.access_group_id
+		LEFT JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=u.access_group_id
 		LEFT JOIN entitlement_policy_cohort_revisions r ON r.organization_id=g.organization_id AND r.id=g.managed_cohort_id AND r.access_group_id=g.id
 		WHERE `+strings.Join(conditions, " AND ")+` ORDER BY m.account_id LIMIT `+strconv.Itoa(maximumSelectionTargets+1), args...)
 	if err != nil {
@@ -1492,7 +1492,7 @@ func (s *Service) executeBulkRecord(ctx context.Context, tx pgx.Tx, organization
 	var status tenancy.MembershipStatus
 	var revision, accountRevision int64
 	var protected bool
-	err := tx.QueryRow(ctx, `SELECT m.id,m.status,m.security_revision,m.access_policy_revision,(o.owner_account_id=m.account_id) FROM organization_memberships m JOIN organizations o ON o.id=m.organization_id JOIN users u ON u.id=m.account_id WHERE m.organization_id=$1 AND m.account_id=$2 FOR UPDATE OF m`, organizationID, snapshot.AccountID).Scan(&membershipID, &status, &revision, &accountRevision, &protected)
+	err := tx.QueryRow(ctx, `SELECT m.id,m.status,m.security_revision,u.access_policy_revision,(o.owner_account_id=m.account_id) FROM organization_memberships m JOIN organizations o ON o.id=m.organization_id JOIN users u ON u.id=m.account_id WHERE m.organization_id=$1 AND m.account_id=$2 FOR UPDATE OF m, u`, organizationID, snapshot.AccountID).Scan(&membershipID, &status, &revision, &accountRevision, &protected)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "failed", ReasonNotFound, nil
 	}
@@ -1564,11 +1564,7 @@ func (s *Service) executeBulkRecord(ctx context.Context, tx pgx.Tx, organization
 		if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET status=$2,security_revision=security_revision+1,updated_at=now() WHERE id=$1`, membershipID, target); err != nil {
 			return "", "", err
 		}
-		if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true)`); err != nil {
-			return "", "", err
-		}
-		if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, membershipID); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=(SELECT account_id FROM organization_memberships WHERE id=$1)`, membershipID); err != nil {
 			return "", "", err
 		}
 		if err := recordPeopleAudit(ctx, tx, actorID, actionName, "membership", membershipID.String(), organizationID, snapshot.AccountID, revision, revision+1, "success", map[string]any{auditStatusField: status}, map[string]any{auditStatusField: target}); err != nil {
@@ -1588,24 +1584,24 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	var sourceRevision int64
 	var hasManagedOverrides bool
 	err := tx.QueryRow(ctx, `
-		SELECT m.id,m.status,m.security_revision,m.access_policy_revision,COALESCE(m.access_group_id,0),
+		SELECT m.id,m.status,m.security_revision,u.access_policy_revision,COALESCE(u.access_group_id,0),
 		       COALESCE(g.managed_cohort_id,'00000000-0000-0000-0000-000000000000'::uuid),COALESCE(r.revision,0),
 		       COALESCE(r.source_template_key,g.managed_template_key,''),COALESCE(r.source_template_revision,g.managed_template_revision,0),
-		       m.library_ids IS NOT NULL OR m.max_playback_quality IS NOT NULL OR
-		       m.max_streams IS NOT NULL OR m.max_transcodes IS NOT NULL OR
-		       m.max_profiles IS DISTINCT FROM CASE
+		       u.library_ids IS NOT NULL OR u.max_playback_quality IS NOT NULL OR
+		       u.max_streams IS NOT NULL OR u.max_transcodes IS NOT NULL OR
+		       u.max_profiles IS DISTINCT FROM CASE
 		           WHEN g.max_profiles > 0 THEN g.max_profiles
 		           WHEN g.managed_template_key IS NOT NULL OR g.managed_cohort_id IS NOT NULL THEN 1
-		           ELSE m.max_profiles
+		           ELSE u.max_profiles
 		       END OR
-		       m.transcode_allowed IS NOT NULL OR m.audio_transcode_allowed IS NOT NULL OR
-		       m.download_allowed IS NOT NULL OR m.download_transcode_allowed IS NOT NULL OR
-		       m.requests_allowed IS NOT NULL
+		       u.transcode_allowed IS NOT NULL OR u.audio_transcode_allowed IS NOT NULL OR
+		       u.download_allowed IS NOT NULL OR u.download_transcode_allowed IS NOT NULL OR
+		       u.requests_allowed IS NOT NULL
 		FROM organization_memberships m
 		JOIN users u ON u.id=m.account_id
-		LEFT JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=m.access_group_id
+		LEFT JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=u.access_group_id
 		LEFT JOIN entitlement_policy_cohort_revisions r ON r.organization_id=g.organization_id AND r.id=g.managed_cohort_id AND r.access_group_id=g.id
-		WHERE m.organization_id=$1 AND m.account_id=$2 FOR UPDATE OF m`, organizationID, snapshot.AccountID).Scan(
+		WHERE m.organization_id=$1 AND m.account_id=$2 FOR UPDATE OF m, u`, organizationID, snapshot.AccountID).Scan(
 		&membershipID, &status, &membershipRevision, &accountRevision, &currentGroupID,
 		&currentCohortID, &currentCohortRevision, &sourceKey, &sourceRevision, &hasManagedOverrides,
 	)
@@ -1655,23 +1651,20 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	} else if _, err := tx.Exec(ctx, `UPDATE user_profiles SET access_group_id=$3,updated_at=now() WHERE organization_id=$1 AND user_id=$2 AND access_group_id=$4 AND access_group_id<>$3`, organizationID, snapshot.AccountID, targetGroupID, currentGroupID); err != nil {
 		return "", "", err
 	}
-	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true)`); err != nil {
-		return "", "", err
-	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE organization_memberships AS memberships SET
+		UPDATE users AS accounts SET
 			access_group_id=$2,
 			max_profiles=(SELECT CASE
 				WHEN groups.max_profiles > 0 THEN groups.max_profiles
 				WHEN groups.managed_template_key IS NOT NULL OR groups.managed_cohort_id IS NOT NULL THEN 1
-				ELSE memberships.max_profiles
+				ELSE accounts.max_profiles
 			END FROM access_groups AS groups WHERE groups.organization_id=$3 AND groups.id=$2),
 			library_ids=NULL,max_playback_quality=NULL,max_streams=NULL,max_transcodes=NULL,
 			transcode_allowed=NULL,audio_transcode_allowed=NULL,download_allowed=NULL,
 			download_transcode_allowed=NULL,requests_allowed=NULL,
 			access_policy_revision=access_policy_revision+1,updated_at=now()
-		WHERE memberships.account_id=$1 AND memberships.organization_id=$3`,
+		WHERE accounts.id=$1 AND EXISTS (
+			SELECT 1 FROM organization_memberships m WHERE m.account_id=accounts.id AND m.organization_id=$3)`,
 		snapshot.AccountID, targetGroupID, organizationID); err != nil {
 		return "", "", err
 	}
@@ -1714,7 +1707,7 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 	}
 	var accountPermissions []string
 	var accountMaxProfiles *int
-	if err := tx.QueryRow(ctx, `SELECT permissions,max_profiles FROM organization_memberships WHERE organization_id=$1 AND account_id=$2`, organizationID, snapshot.AccountID).Scan(&accountPermissions, &accountMaxProfiles); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT permissions,max_profiles FROM users WHERE id=$2 AND EXISTS (SELECT 1 FROM organization_memberships m WHERE m.account_id=users.id AND m.organization_id=$1)`, organizationID, snapshot.AccountID).Scan(&accountPermissions, &accountMaxProfiles); err != nil {
 		return "", "", err
 	}
 	targetEffectivePolicy := accesspolicy.ApplyGroupPolicy(
@@ -1784,11 +1777,7 @@ func bumpPersonRevisions(ctx context.Context, tx pgx.Tx, membershipID uuid.UUID,
 	if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET security_revision=security_revision+1,updated_at=now() WHERE id=$1`, membershipID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true)`); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx, `UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, membershipID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=(SELECT account_id FROM organization_memberships WHERE id=$1)`, membershipID); err != nil {
 		return err
 	}
 	return nil
@@ -1912,11 +1901,7 @@ func (s *Service) UpdateMembershipInTransaction(ctx context.Context, tx pgx.Tx, 
 		if _, err = tx.Exec(ctx, `UPDATE organization_memberships SET status=$2,security_revision=security_revision+1,updated_at=now() WHERE id=$1`, id, status); err != nil {
 			return PersonSummary{}, err
 		}
-		if _, err = tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true)`); err != nil {
-			return PersonSummary{}, err
-		}
-		if _, err = tx.Exec(ctx, `UPDATE organization_memberships SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=$1`, id); err != nil {
+		if _, err = tx.Exec(ctx, `UPDATE users SET access_policy_revision=access_policy_revision+1,updated_at=now() WHERE id=(SELECT account_id FROM organization_memberships WHERE id=$1)`, id); err != nil {
 			return PersonSummary{}, err
 		}
 		if err = recordPeopleAudit(ctx, tx, actorID, "people.membership_updated", "membership", id.String(), organizationID, accountID, revision, revision+1, "success", map[string]any{auditStatusField: current}, map[string]any{auditStatusField: status}); err != nil {

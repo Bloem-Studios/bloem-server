@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 )
 
@@ -224,14 +223,11 @@ func (s *TenantGroupStore) UpdatePolicyConditional(ctx context.Context, organiza
 		return nil, ErrGroupNotFound
 	}
 	if authorizationChanged {
-		if err := tenancy.MarkMembershipPolicyWriter(ctx, tx); err != nil {
-			return nil, err
-		}
 		if _, err := tx.Exec(ctx, `
-			UPDATE organization_memberships
+			UPDATE users
 			SET access_policy_revision = access_policy_revision + 1
-			WHERE organization_id = $1
-			  AND account_id IN (
+			WHERE id IN (SELECT account_id FROM organization_memberships WHERE organization_id = $1)
+			  AND id IN (
 				SELECT DISTINCT user_id
 				FROM user_profiles
 				WHERE organization_id = $1

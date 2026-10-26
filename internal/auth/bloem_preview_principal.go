@@ -13,8 +13,8 @@ import (
 // profiles' groups is materialized from the protected preview template.
 // Read on every request, so a conversion takes effect on the next one.
 const previewAccountSQL = `(u.role <> 'admin' AND (
-	EXISTS (SELECT 1 FROM organization_memberships m
-		JOIN access_groups g ON g.organization_id = m.organization_id AND g.id = m.access_group_id
+	EXISTS (SELECT 1 FROM organization_memberships m JOIN users pu ON pu.id = m.account_id
+		JOIN access_groups g ON g.organization_id = m.organization_id AND g.id = pu.access_group_id
 		WHERE m.account_id = u.id AND m.status = 'active' AND g.managed_template_key = 'bloem-preview')
 	OR EXISTS (SELECT 1 FROM user_profiles p
 		JOIN access_groups g ON g.organization_id = p.organization_id AND g.id = p.access_group_id

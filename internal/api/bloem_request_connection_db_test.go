@@ -54,9 +54,6 @@ func newRequestConnectionEnv(t *testing.T) *requestConnectionEnv {
 	if err := database.RunMigrations(t.Context(), pool, migrations.BloemFS, "sql"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(t.Context(), pool); err != nil {
-		t.Fatal(err)
-	}
 	cipher, err := secret.New([]byte("synthetic-request-connection-key!!"))
 	if err != nil {
 		t.Fatal(err)
@@ -74,9 +71,6 @@ func newRequestConnectionEnv(t *testing.T) *requestConnectionEnv {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(t.Context())
-	if err = tenancy.MarkMembershipPolicyWriter(t.Context(), tx); err != nil {
-		t.Fatal(err)
-	}
 	if _, err = tx.Exec(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role) VALUES($1,$2,'active','admin') ON CONFLICT DO NOTHING`, env.admin.OrganizationID, env.admin.UserID); err != nil {
 		t.Fatal(err)
 	}

@@ -134,10 +134,9 @@ in the [completion handoff](../docs/architecture/bloem-web-completion-handoff.md
   Silo-compatible `/api/v1` projection remains available alongside
   `/api/bloem/v1`; reviewed differences are documented in the
   [v1 compatibility policy](../docs/architecture/v1-scope.md).
-- **Silo backend switching:** a database shared with upstream Silo runs in a
-  `mirrored` policy phase that keeps Silo's account columns and Bloem's
-  membership policy identical in both directions, limited to one organization;
-  `silo membership-policy enable-silo-switching` turns it on. See
+- **Silo backend switching:** account policy lives on Silo's own `users`
+  columns, so a database limited to one organization can be served by upstream
+  Silo or Bloem, one at a time; `silo silo-switching enable` turns it on. See
   [Silo backend switching](../docs/architecture/silo-backend-switching.md).
 - **Revisioned entitlement templates:** reusable playback, stream, profile,
   transcode, download, request, permission, quality and library policy for an

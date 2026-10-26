@@ -622,10 +622,9 @@ working on the same data; only one runs at a time.
 
 1. Stop Silo and start Bloem. Bloem applies its migrations to the Silo database
    during startup; on the first takeover this is one-off schema work.
-2. Run `silo membership-policy enable-silo-switching` in the Bloem container. It
-   needs exactly one organization and no profile logins, creates missing
-   memberships, reconciles permissions and roles from Silo's columns, and prints
-   `phase: mirrored`.
+2. Run `silo silo-switching enable` in the Bloem container. It needs exactly
+   one organization and no profile logins, creates missing memberships,
+   reconciles roles from Silo's accounts, and prints `silo switching: enabled`.
 3. Restart Bloem and point your reverse proxy at it.
 
 **Switching either way afterwards**
@@ -640,9 +639,9 @@ without signing in again.
 
 While Silo serves, Bloem-only features are unused but kept: additional
 organizations and profile logins are refused, and Live TV, DVR and entitlement
-templates wait for Bloem. `silo membership-policy finalize --end-silo-switching`
-ends switching permanently: it moves policy to Bloem's tables and retires the
-columns Silo needs. See
+templates wait for Bloem. `silo silo-switching disable` ends switching: it lifts
+the one-organization and profile-login guards, and Silo must not serve the
+database afterwards. See
 [Silo backend switching](../../../../architecture/silo-backend-switching.md).
 
 ## Migrating from Continuum

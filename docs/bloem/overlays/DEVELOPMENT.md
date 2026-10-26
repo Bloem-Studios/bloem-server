@@ -99,23 +99,20 @@ interrupted or failed broad runs remain historical failures. Check the
 contract generation and consumer adoption; a generated file alone is not a client feature.
 
 Bloem's migration commands use `migrations.BloemFS`, including status and rollback
-entrypoints. Test the finalized membership state with
-`TestBloemRequestGroupMigrationAfterPolicyFinalization`, not only fresh migrations.
-The [adapter guide](../../architecture/bloem-upstream-adapters.md) explains the
+entrypoints. The [adapter guide](../../architecture/bloem-upstream-adapters.md) explains the
 transaction marker, preserved account scope and exact-statement guard.
 
-Silo switching (the `mirrored` membership-policy phase) has database tests in
+Silo switching (`public.bloem_silo_switching`) has database tests in
 `internal/tenancy/silo_switching_test.go`, `silo_switching_writes_test.go`,
-`membership_policy_mirror_test.go` and `internal/auth/bloem_repository_mirrored_test.go`.
+`internal/auth/bloem_repository_switching_test.go` and
+`migrations/bloem_account_policy_on_users_test.go`.
 They build their own disposable databases. End to end,
 `make silo-switch-check SILO_IMAGE=ghcr.io/silo-server/silo-server@sha256:<digest> BLOEM_IMAGE=<tag>`
 runs the upstream Silo image and a Bloem image in turn against one database
-(`KEEP_ON_FAILURE=1` leaves the stack up for inspection). A policy writer sets its
-marker from `public.bloem_membership_policy_writer_marker()`, never from an inline
-phase check. Local test databases need `max_locks_per_transaction = 512`, as in CI,
+(`KEEP_ON_FAILURE=1` leaves the stack up for inspection). Local test databases need `max_locks_per_transaction = 512`, as in CI,
 and `make lint-changed` needs a golangci-lint built with the toolchain `go.mod` names.
 
-Run `make verify-seams` after an upstream merge. Bloem currently declares 350
+Run `make verify-seams` after an upstream merge. Bloem currently declares 331
 seams (modified or deleted upstream files); additions belong in owned modules
 wherever possible. CI's changed-line lint gate, `scripts/bloem-lint-changed-ci.sh`,
 reports a finding only on a line that changed in the push and differs from Silo's

@@ -40,11 +40,6 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	// A freshly migrated database is in the compatibility phase, which freezes
-	// every policy write including the membership a new account is given.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 	users := auth.NewUserRepository(pool)
 	actor, err := users.Create(ctx, models.CreateUserInput{
 		Username: "tenant-lifecycle-actor-" + uuid.NewString(), Email: uuid.NewString() + "@tenant-lifecycle.test",
@@ -59,7 +54,6 @@ func TestTenantMemberLifecycleReplaysStoredResultWithoutRemutatingReplacement(t 
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
 SELECT $1,$2,'active','admin'
-WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
 ON CONFLICT (organization_id, account_id) DO UPDATE
 SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, defaultOrganization, actor.ID); err != nil {
 		t.Fatalf("create actor membership: %v", err)
@@ -80,7 +74,10 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, defaultOrgani
 		t.Fatalf("create member: %v", err)
 	}
 	seedProfileID := "tenant-member-profile-" + uuid.NewString()
-	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,organization_id,name,is_primary,access_group_id) SELECT $1,$2,$3,'Member',true,access_group_id FROM organization_memberships WHERE organization_id=$3 AND account_id=$2`, seedProfileID, member.ID, tenant.ID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,organization_id,name,is_primary,access_group_id)
+SELECT $1,users.id,m.organization_id,'Member',true,users.access_group_id
+FROM users JOIN organization_memberships m ON m.account_id = users.id
+WHERE users.id = $2 AND m.organization_id = $3`, seedProfileID, member.ID, tenant.ID); err != nil {
 		t.Fatalf("create member profile: %v", err)
 	}
 	t.Cleanup(func() {
@@ -432,7 +429,6 @@ VALUES ($1,$2,$3,'x','user') RETURNING account_incarnation_id`, member.ID,
 	if _, err := pool.Exec(ctx, `
 INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
 SELECT $1,$2,'active','user'
-WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
 ON CONFLICT (organization_id, account_id) DO UPDATE
 SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, tenant.ID, member.ID); err != nil {
 		t.Fatalf("create replacement membership: %v", err)

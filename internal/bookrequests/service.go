@@ -58,7 +58,7 @@ func readPolicyFor(ctx context.Context, q querier, v Viewer, mediaType string) (
 	var max, days *int
 	err := q.QueryRow(ctx, `
  SELECT s.requests_enabled, s.global_max_requests, s.global_window_days, s.global_auto_approval_enabled,
-   COALESCE(m.requests_allowed, CASE WHEN m.legacy_role='admin' THEN true ELSE COALESCE(g.requests_allowed,true) END),
+   COALESCE(u.requests_allowed, CASE WHEN m.legacy_role='admin' THEN true ELSE COALESCE(g.requests_allowed,true) END),
    COALESCE(NULLIF(ul.limit_mode,'inherit'), CASE WHEN m.legacy_role<>'admin' THEN NULLIF(gl.limit_mode,'inherit') END,'inherit'),
    CASE WHEN COALESCE(ul.limit_mode,'inherit')<>'inherit' THEN ul.max_requests WHEN m.legacy_role<>'admin' THEN gl.max_requests END,
    CASE WHEN COALESCE(ul.limit_mode,'inherit')<>'inherit' THEN ul.window_days WHEN m.legacy_role<>'admin' THEN gl.window_days END,

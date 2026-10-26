@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/Silo-Server/silo-server/internal/apiresponse"
 	"github.com/Silo-Server/silo-server/internal/auth/passwordhash"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -477,8 +476,6 @@ func (h *AdminTenantMembersHandler) writeError(w http.ResponseWriter, err error,
 		writeError(w, http.StatusConflict, "idempotency_conflict", "The idempotency key was used for a different command")
 	case errors.Is(err, tenancy.ErrInvalidMemberCommand):
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid tenant member request")
-	case errors.Is(err, tenancy.ErrMembershipPolicyWriteUnavailable):
-		apiresponse.WriteRetryableUnavailable(w, "membership_policy_rollout_pending", "Membership policy rollout is not ready for this mutation", 1)
 	case errors.Is(err, passwordhash.ErrBusy):
 		writeAPIError(w, busyError(err))
 	default:

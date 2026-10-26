@@ -18,7 +18,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
@@ -38,11 +37,6 @@ func TestDirectProfileLifecycleReplaysAndRollsBack(t *testing.T) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatal(err)
 	}
-	// A freshly migrated database is in the compatibility phase, which freezes
-	// every policy write including the membership a new account is given.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 	users := auth.NewUserRepository(pool)
 	account, err := users.Create(ctx, models.CreateUserInput{
 		Username: "profile-lifecycle-" + uuid.NewString(), Email: uuid.NewString() + "@profile-lifecycle.test",
@@ -54,7 +48,7 @@ func TestDirectProfileLifecycleReplaysAndRollsBack(t *testing.T) {
 	t.Cleanup(func() { _ = users.Delete(context.Background(), account.ID) })
 	if _, err := pool.Exec(ctx, `
 INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-SELECT id,$1,'active','admin' FROM organizations WHERE is_default AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
+SELECT id,$1,'active','admin' FROM organizations WHERE is_default
 ON CONFLICT (organization_id, account_id) DO UPDATE
 SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, account.ID); err != nil {
 		t.Fatal(err)

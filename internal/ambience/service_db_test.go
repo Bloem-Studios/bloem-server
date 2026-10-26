@@ -100,8 +100,7 @@ func seedOrganization(t *testing.T, pool *pgxpool.Pool, slug string, owner int, 
 		VALUES ($1, $1, 'active', $2) RETURNING id`, slug, owner).Scan(&id); err != nil {
 		t.Fatalf("seed organization: %v", err)
 	}
-	// The legacy membership-policy trigger requires a default access group
-	// for non-admin active members.
+	// Every organization has a default access group.
 	if _, err := pool.Exec(ctx, `INSERT INTO access_groups (organization_id, name, is_default) VALUES ($1, $2, true)`, id, slug+" default"); err != nil {
 		t.Fatalf("seed access group: %v", err)
 	}

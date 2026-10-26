@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
 var (
@@ -76,9 +77,10 @@ func getTenantGroupForAccount(ctx context.Context, querier groupQueryRower, acco
 		WHERE g.id = $2
 		  AND EXISTS (
 			SELECT 1 FROM organization_memberships m
+			JOIN users u ON u.id = m.account_id
 			WHERE m.account_id = $1
 			  AND m.organization_id = g.organization_id
-			  AND m.access_group_id = g.id
+			  AND u.access_group_id = g.id
 		  )
 		GROUP BY g.id`, accountID, id))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -196,8 +198,9 @@ func (s *TenantGroupStore) deleteConditionalWithImpact(ctx context.Context, orga
 	var moved []int
 	if len(onMoved) > 0 {
 		rows, err := tx.Query(ctx, `
-			SELECT account_id FROM organization_memberships
-			WHERE organization_id = $1 AND access_group_id = $2
+			SELECT u.id FROM users u
+			JOIN organization_memberships m ON m.account_id = u.id
+			WHERE m.organization_id = $1 AND u.access_group_id = $2
 			UNION
 			SELECT user_id FROM user_profiles
 			WHERE organization_id = $1 AND access_group_id = $2`, organizationID, id)
@@ -210,14 +213,11 @@ func (s *TenantGroupStore) deleteConditionalWithImpact(ctx context.Context, orga
 		}
 	}
 
-	if err := tenancy.MarkMembershipPolicyWriter(ctx, tx); err != nil {
-		return GroupDeletionImpact{}, err
-	}
 	if _, err := tx.Exec(ctx, `
-		UPDATE organization_memberships
+		UPDATE users
 		SET access_policy_revision = access_policy_revision + 1
-		WHERE organization_id = $1
-		  AND (access_group_id = $2 OR account_id IN (
+		WHERE id IN (SELECT account_id FROM organization_memberships WHERE organization_id = $1)
+		  AND (access_group_id = $2 OR id IN (
 			SELECT DISTINCT user_id
 			FROM user_profiles
 			WHERE organization_id = $1
@@ -234,24 +234,20 @@ func (s *TenantGroupStore) deleteConditionalWithImpact(ctx context.Context, orga
 	if err != nil {
 		return GroupDeletionImpact{}, fmt.Errorf("reassigning deleted access group profiles: %w", err)
 	}
-	// Memberships hold access_group_id too, under
-	// organization_memberships_organization_access_group_fkey ON DELETE RESTRICT.
-	// Reassigning only the profiles leaves memberships pointing at the doomed
-	// group and the DELETE below fails with a raw 23001.
-	//
-	// Upstream Silo declares users.access_group_id ON DELETE SET NULL, so a
+	// Accounts hold access_group_id too. Upstream Silo declares
+	// users.access_group_id ON DELETE SET NULL, so a
 	// delete there silently detaches members and drops them to "no group", which
 	// reads downstream as no access-group restrictions at all. Reassigning to the
 	// organization default instead is deliberate: deleting a group must never
 	// silently widen what its members can reach. See
 	// docs/architecture/multitenant-administration.md.
 	if _, err := tx.Exec(ctx, `
-		UPDATE organization_memberships
+		UPDATE users
 		SET access_group_id = $3,
 			updated_at = NOW()
-		WHERE organization_id = $1
-		  AND access_group_id = $2`, organizationID, id, defaultGroupID); err != nil {
-		return GroupDeletionImpact{}, fmt.Errorf("reassigning deleted access group memberships: %w", err)
+		WHERE access_group_id = $2
+		  AND id IN (SELECT account_id FROM organization_memberships WHERE organization_id = $1)`, organizationID, id, defaultGroupID); err != nil {
+		return GroupDeletionImpact{}, fmt.Errorf("reassigning deleted access group accounts: %w", err)
 	}
 	for _, callback := range onMoved {
 		if err := callback(ctx, tx, moved); err != nil {
@@ -339,15 +335,16 @@ func resolveGroupPolicy(ctx context.Context, db interface {
 			g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
 			g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed, g.managed_template_key IS NOT NULL,
 			g.managed_template_key IS NOT DISTINCT FROM 'bloem-preview'
-		FROM organization_memberships u
+		FROM organization_memberships m
+		JOIN users u ON u.id = m.account_id
 		JOIN organizations o
 		  ON o.id = $1
 		 AND o.is_default
-		 AND o.id = u.organization_id
+		 AND o.id = m.organization_id
 		LEFT JOIN access_groups g
 		  ON g.organization_id = o.id
 		 AND g.id = u.access_group_id
-		WHERE u.account_id = $2`, subject.OrganizationID, subject.AccountID))
+		WHERE m.account_id = $2`, subject.OrganizationID, subject.AccountID))
 }
 
 func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
@@ -618,18 +615,19 @@ func bloemAccountGroupPolicy(ctx context.Context, db groupQueryRower, accountID 
 		organizationID = &tenant.OrganizationID
 	}
 	policy, err := nullableGroupPolicy(db.QueryRow(ctx, `
-		SELECT m.access_group_id, g.id, g.library_ids, g.max_playback_quality,
+		SELECT u.access_group_id, g.id, g.library_ids, g.max_playback_quality,
 			g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 			g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
 			g.max_transcodes, g.max_remote_stream_bitrate_kbps, g.max_local_stream_bitrate_kbps, g.allowed_permissions, g.requests_allowed, g.managed_template_key IS NOT NULL,
 			g.managed_template_key IS NOT DISTINCT FROM 'bloem-preview'
 		FROM organization_memberships m
+		JOIN users u ON u.id = m.account_id
 		JOIN organizations o
 		  ON o.id = m.organization_id
 		 AND (o.id = $2::uuid OR ($2::uuid IS NULL AND o.is_default))
 		LEFT JOIN access_groups g
 		  ON g.organization_id = o.id
-		 AND g.id = m.access_group_id
+		 AND g.id = u.access_group_id
 		WHERE m.account_id = $1`, accountID, organizationID))
 	if errors.Is(err, ErrGroupNotFound) {
 		return nil, nil

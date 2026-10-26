@@ -19,9 +19,8 @@ type heartbeatStore interface {
 // Stop cancels an in-flight beat, Start/Stop are idempotent, and
 // StopAndWait can wait for the single loop to finish.
 type bloemHB struct {
-	// instanceID identifies THIS process. The rollout observations key a capable
-	// node by (node_id, instance_id) so a restart is a new observation rather
-	// than a silent reuse of the old one.
+	// instanceID identifies THIS process, so a restart is told apart from the
+	// process that came before it under the same node id.
 	instanceID string
 
 	lifecycleCtx context.Context
@@ -47,41 +46,17 @@ func newHeartbeatWriter(store heartbeatStore, nodeID, nodeType, nodeURL string) 
 	return hw
 }
 
-// bloemHeartbeatUpsertSQL is the heartbeat upsert.
-//
-// Once the membership policy authority is finalized,
-// register_membership_policy_heartbeat rejects any heartbeat that does not
-// declare the membership_policy_v1 capability, because a node that still
-// speaks the legacy protocol must not silently pass for a capable one.
-//
-// The marker is transaction-local (SET LOCAL), and this store only exposes
-// Exec, so it rides in the statement itself: the WHERE is evaluated while
-// producing the row, which is before the trigger fires, and a lone statement
-// is its own transaction.
+// bloemHeartbeatUpsertSQL is Silo's heartbeat upsert plus this process's
+// instance id, which live TV routing matches so a restarted node is not taken
+// for the process that owns a session.
 const bloemHeartbeatUpsertSQL = `
-		INSERT INTO node_heartbeats (node_id, node_type, node_url, updated_at, schema_capabilities, instance_id)
-		SELECT $1, $2, $3, NOW(), ARRAY['membership_policy_v1'], $4::uuid
-		WHERE set_config('bloem.schema_capability_writer', 'v1', true) IS NOT NULL
+		INSERT INTO node_heartbeats (node_id, node_type, node_url, updated_at, instance_id)
+		VALUES ($1, $2, $3, NOW(), $4::uuid)
 		ON CONFLICT (node_id) DO UPDATE SET
-			node_type           = EXCLUDED.node_type,
-			node_url            = EXCLUDED.node_url,
-			updated_at          = NOW(),
-			schema_capabilities = EXCLUDED.schema_capabilities,
-			instance_id         = EXCLUDED.instance_id
-	`
-
-// bloemHeartbeatCleanupSQL deletes this node's heartbeat row.
-//
-// A heartbeat may only be deleted by a session that names the exact node and
-// instance it is retiring, so a sweep cannot blindly drop another node's row.
-// This node knows both. The markers are transaction-local and this store
-// only exposes Exec, so they ride in the statement itself.
-const bloemHeartbeatCleanupSQL = `
-		DELETE FROM node_heartbeats
-		WHERE node_id = $1
-		  AND set_config('bloem.heartbeat_cleanup_writer', 'v1', true) IS NOT NULL
-		  AND set_config('bloem.heartbeat_cleanup_node_id', $1, true) IS NOT NULL
-		  AND set_config('bloem.heartbeat_cleanup_instance_id', $2, true) IS NOT NULL
+			node_type   = EXCLUDED.node_type,
+			node_url    = EXCLUDED.node_url,
+			updated_at  = NOW(),
+			instance_id = EXCLUDED.instance_id
 	`
 
 // bloemStart begins the background heartbeat loop exactly once. It reports

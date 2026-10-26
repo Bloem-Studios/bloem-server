@@ -53,7 +53,6 @@ internal/activitylog/cleanup.go
 internal/adminjob/catalog_import.go
 internal/adminjob/lifecycle_test.go  # isolate durable job fixtures and create their real actor account
 internal/adminjob/runner.go
-internal/api/handlers/access_groups_policy_db_test.go # run Silo's library-policy cases through Bloem's tenant group store and membership assignment
 internal/api/handlers/access_groups_test.go
 internal/api/handlers/admin.go
 internal/api/handlers/admin_access_group_delete_test.go  # Run upstream group-delete callback tests through organization-aware interface
@@ -90,7 +89,6 @@ internal/api/handlers/playback_v3.go
 internal/api/handlers/playback_v3_test.go
 internal/api/handlers/plugins.go  # installation store becomes an interface so native storage installations can be hidden (bloem_plugins_native_storage.go)
 internal/api/handlers/profiles.go
-internal/api/handlers/profiles_limit_db_test.go # seed the account's profile limit on its membership, where Bloem keeps account policy
 internal/api/handlers/requests.go
 internal/api/handlers/sections.go
 internal/api/handlers/session_ws.go
@@ -128,21 +126,15 @@ internal/apiv2/registry.go
 internal/apiv2/router.go
 internal/audiobooks/enrichment_state.go  # preserve unclaimed repair attempt history while resetting only a new no-match streak
 internal/auth/account_provisioner.go  # tenant provisioning and early transactional-provider check before account or SQLite side effects
-internal/auth/account_resolution.go  # current-account locking and verified-email matching use the membership-aware projection
-internal/auth/admin_users.go  # reuse Bloem membership-policy projection and lock only the account during revision-CAS mutations
 internal/auth/admin_users_test.go  # complete isolated tenant schema for account paging, revision and session-revocation regressions
 internal/auth/api_key_scopes.go
 internal/auth/client_device.go  # a reported device never replaces the device a direct-profile session is bound to
-internal/auth/external_sign_in_db_test.go # Identity fixtures use the canonical membership-aware account writer; upstream raw legacy policy columns are retired.
-internal/auth/identity_service.go  # actor and target locks use the membership-aware account projection
 internal/auth/jwt.go
 internal/auth/login_session_device_db_test.go  # auth_sessions.device_id is NOT NULL DEFAULT '' in Bloem, so no device is '' rather than NULL
 internal/auth/login_sessions_db_test.go  # directly inserted accounts get the default-organization membership Bloem profiles require
 internal/auth/password_hash_test.go  # compose upstream bcrypt test initialization with isolated Bloem auth database lifecycle
-internal/auth/password_test.go  # password hashing fixture follows canonical Bloem account creation
 internal/auth/permissions.go
 internal/auth/repository.go
-internal/auth/repository_access_group_test.go  # insertAuthAccessGroupTestUser seeds a group-less membership: the shim gives raw accounts the default group, which the update/revision assertions do not expect
 internal/auth/service.go
 internal/auth/session.go
 internal/branding/branding.go
@@ -165,7 +157,6 @@ internal/downloads/artifact_test.go
 internal/downloads/offline.go
 internal/downloads/policy.go
 internal/downloads/policy_action_test.go
-internal/downloads/preparation_controls_test.go # Preserve cancellation race tests using Bloem membership policy instead of retired user policy column.
 internal/downloads/repo.go  # preserve quota serialization on a single connection with bounded, fail-closed session-lock cleanup
 internal/downloads/repo_managed_test.go
 internal/downloads/service.go
@@ -241,11 +232,9 @@ internal/proxy/mediagrant_test.go
 internal/proxy/router_socket_test.go
 internal/proxy/segment_completion_test.go
 internal/proxy/server.go
-internal/recommendations/access_postgres_test.go  # the access-group scope test reads its group from a fixed provider: account groups live on organization memberships in the finalized Bloem schema
 internal/requests/capability.go
 internal/requests/editor_concurrency.go
 internal/requests/follows.go # Tenant/profile hooks for new upstream request following; implementations stay Bloem-owned.
-internal/requests/group_limits_test.go  # Run historical migration against historical user policy column and group policy with validated tenant
 internal/requests/lifecycle_guard_test.go  # Adapt isolated upstream request tables to Bloem required organization column
 internal/requests/repository.go
 internal/requests/service.go
@@ -267,7 +256,6 @@ internal/sections/fetcher.go
 internal/sections/types.go
 internal/transcodenode/server_test.go
 internal/userstore/pgstore/profile_libraries.go
-internal/userstore/pgstore/profile_pin_revision_test.go  # the account policy revision lives on the default-organization membership in Bloem
 internal/userstore/pgstore/profiles.go
 internal/userstore/types.go
 internal/worker/cleanup.go
@@ -358,7 +346,6 @@ internal/apiv2/admin_scoped_email_db_test.go # exercise upstream scoped-key secu
 
 internal/notifications/push_test_send_db_test.go # supply real active tenant profiles to the upstream push regression
 
-migrations/prune_deleted_library_access_test.go # run Silo account-policy assertions on an isolated mirrored database
 
 
 

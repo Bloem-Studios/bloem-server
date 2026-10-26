@@ -186,8 +186,6 @@ func (s *Store) ProvisionDefaultMembershipInTransaction(
 	membership, err := scanMembership(tx.QueryRow(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		SELECT $1, $2, $3, $4
-		WHERE set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true) IS NOT NULL
 		ON CONFLICT (organization_id, account_id) DO NOTHING
 		RETURNING id, organization_id, account_id, status, legacy_role, security_revision`,
 		organization.ID, accountID, MembershipActive, legacyRole))
@@ -241,8 +239,6 @@ func (s *Store) ProvisionMembershipInTransaction(
 	membership, err := scanMembership(tx.QueryRow(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		SELECT $1,$2,$3,$4
-		WHERE set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true) IS NOT NULL
 		ON CONFLICT (organization_id, account_id) DO NOTHING
 		RETURNING id,organization_id,account_id,status,legacy_role,security_revision`,
 		organizationID, accountID, MembershipActive, legacyRole))

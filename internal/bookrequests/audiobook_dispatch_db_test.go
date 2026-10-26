@@ -394,7 +394,7 @@ func TestAudiobookIntegrationScopeAndBindingDatabase(t *testing.T) {
 	}
 	_ = install
 	// D1: a platform integration serves only the default organization.
-	hosted, _ := hostedBookViewer(t, pool, v.UserID)
+	hosted, _ := hostedBookViewer(t, pool)
 	if ok, err := AudiobookAcquisitionAvailable(t.Context(), pool, hosted.OrganizationID); err != nil || ok {
 		t.Fatalf("platform integration served a hosted organization: %v %v", ok, err)
 	}
@@ -410,7 +410,7 @@ func TestAudiobookIntegrationScopeAndBindingDatabase(t *testing.T) {
 
 func TestAudiobookHostedOrganizationStaysManualDatabase(t *testing.T) {
 	env := audiobookFixture(t)
-	hosted, _ := hostedBookViewer(t, env.pool, env.v.UserID)
+	hosted, _ := hostedBookViewer(t, env.pool)
 	r, _, err := env.s.Create(t.Context(), hosted, CreateInput{Title: "Hosted saga", Author: "Test Author"}, uuid.NewString())
 	if err != nil {
 		t.Fatal(err)

@@ -84,11 +84,13 @@ func TestBloemRouterScopesRequestGroupLimitsWithoutLifecycleConfig(t *testing.T)
 	}, 0); err != nil {
 		t.Fatal(err)
 	}
-	if err := pool.QueryRow(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role,access_group_id)
-		SELECT $1,$2,'active','user',$3
-		WHERE set_config('bloem.membership_policy_writer',public.bloem_membership_policy_writer_marker(),true) IS NOT NULL
-		RETURNING id,status,security_revision`, tenant.OrganizationID, accountID, blockedGroup).Scan(
+	if err := pool.QueryRow(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role)
+		SELECT $1,$2,'active','user'
+		RETURNING id,status,security_revision`, tenant.OrganizationID, accountID).Scan(
 		&tenant.MembershipID, &tenant.MembershipStatus, &tenant.SecurityRevision); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(t.Context(), `UPDATE users SET access_group_id=$2 WHERE id=$1`, accountID, blockedGroup); err != nil {
 		t.Fatal(err)
 	}
 	profiles := []struct {
@@ -221,10 +223,12 @@ func TestBloemRouterAdminRequestUsageAccountTarget(t *testing.T) {
 		}
 		var membership uuid.UUID
 		var revision int64
-		if err := pool.QueryRow(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role,access_group_id)
-			SELECT $1,$2,$3,$4,$5
-			WHERE set_config('bloem.membership_policy_writer',public.bloem_membership_policy_writer_marker(),true) IS NOT NULL
-			RETURNING id,security_revision`, org, account, status, role, group).Scan(&membership, &revision); err != nil {
+		if err := pool.QueryRow(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role)
+			SELECT $1,$2,$3,$4
+			RETURNING id,security_revision`, org, account, status, role).Scan(&membership, &revision); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(t.Context(), `UPDATE users SET access_group_id=$2 WHERE id=$1`, account, group); err != nil {
 			t.Fatal(err)
 		}
 		if i == 0 {
@@ -318,9 +322,7 @@ func TestBloemRouterAdminRequestUsageAccountTarget(t *testing.T) {
 		})
 	}
 	t.Run("target membership override", func(t *testing.T) {
-		if _, err := pool.Exec(t.Context(), `UPDATE organization_memberships SET requests_allowed=false
-			WHERE organization_id=$1 AND account_id=$2
-			AND set_config('bloem.membership_policy_writer',public.bloem_membership_policy_writer_marker(),true) IS NOT NULL`, actor.OrganizationID, accounts[1]); err != nil {
+		if _, err := pool.Exec(t.Context(), `UPDATE users SET requests_allowed=false WHERE id = $2 AND EXISTS (SELECT 1 FROM organization_memberships m WHERE m.account_id = users.id AND m.organization_id = $1)`, actor.OrganizationID, accounts[1]); err != nil {
 			t.Fatal(err)
 		}
 		response := read(accounts[1])
@@ -363,7 +365,7 @@ func TestBloemRouterAdminRequestUsageAccountTarget(t *testing.T) {
 	})
 	t.Run("live admin demotion rejects stale admin claims", func(t *testing.T) {
 		if err := pool.QueryRow(t.Context(), `UPDATE organization_memberships SET legacy_role='user'
-			WHERE id=$1 AND set_config('bloem.membership_policy_writer',public.bloem_membership_policy_writer_marker(),true) IS NOT NULL
+			WHERE id=$1
 			RETURNING security_revision`, actor.MembershipID).Scan(&actor.SecurityRevision); err != nil {
 			t.Fatal(err)
 		}

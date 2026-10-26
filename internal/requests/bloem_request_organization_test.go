@@ -1,10 +1,8 @@
 package requests
 
-// Bloem-owned. A request belongs to the organization it was filed in, not to
-// the requester's primary membership. The failure these tests pin: an account
-// in organizations T (older) and E files a request while acting in E; under
-// the old rule it was filed under T, so T's administrators could act on it and
-// E's never saw it.
+// Bloem-owned. A request belongs to the organization it was filed in. The
+// failure these tests pin: a request filed while acting in E must be E's, so
+// E's administrators see and act on it and T's do not.
 
 import (
 	"context"
@@ -132,19 +130,15 @@ func newRequestOrgDisposableDatabase(t *testing.T, ctx context.Context, dsn stri
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 	return pool
 }
 
-// requestOrgFixture seeds two organizations and an account that belongs to
-// both, the T membership older, in a disposable migrated database.
+// requestOrgFixture seeds two organizations, each with one member account,
+// in a disposable migrated database.
 type requestOrgFixture struct {
-	pool        *pgxpool.Pool
-	orgT, orgE  uuid.UUID
-	accountID   int
-	singleOrgID int
+	pool               *pgxpool.Pool
+	orgT, orgE         uuid.UUID
+	accountT, accountE int
 }
 
 func newRequestOrgFixture(t *testing.T) requestOrgFixture {
@@ -179,21 +173,19 @@ func newRequestOrgFixture(t *testing.T) requestOrgFixture {
 		t.Cleanup(func() { _, _ = pool.Exec(context.Background(), `DELETE FROM users WHERE id = $1`, id) })
 		return id
 	}
-	insertMembership := func(org uuid.UUID, account int, age string) {
+	insertMembership := func(org uuid.UUID, account int) {
 		if _, err := pool.Exec(ctx, `
-			INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role, created_at)
-			SELECT $1, $2, 'active', 'user', now() - $3::interval
-			WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, org, account, age); err != nil {
+			INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+			VALUES ($1, $2, 'active', 'user')`, org, account); err != nil {
 			t.Fatalf("insert membership: %v", err)
 		}
 	}
 	f.orgT = insertOrg("t")
 	f.orgE = insertOrg("e")
-	f.accountID = insertAccount("multi")
-	f.singleOrgID = insertAccount("single")
-	insertMembership(f.orgT, f.accountID, "2 days")
-	insertMembership(f.orgE, f.accountID, "1 day")
-	insertMembership(f.orgE, f.singleOrgID, "1 day")
+	f.accountT = insertAccount("t")
+	f.accountE = insertAccount("e")
+	insertMembership(f.orgT, f.accountT)
+	insertMembership(f.orgE, f.accountE)
 	return f
 }
 
@@ -216,25 +208,25 @@ func TestBloemRequestFiledInTheActingOrganizationDatabase(t *testing.T) {
 	repo := NewRepository(f.pool, nil)
 	base := int(time.Now().UnixNano()%1_000_000_000) + 1
 
-	// Acting in E, the younger membership: filed in E.
-	acting := tenancy.WithContext(context.Background(), tenancy.Context{AccountID: f.accountID, OrganizationID: f.orgE})
-	inE := f.create(t, acting, repo, f.accountID, base)
+	// Acting in E: filed in E.
+	acting := tenancy.WithContext(context.Background(), tenancy.Context{AccountID: f.accountE, OrganizationID: f.orgE})
+	inE := f.create(t, acting, repo, f.accountE, base)
 	if got, err := repo.RequestOrganization(context.Background(), inE.ID); err != nil || got != f.orgE {
 		t.Fatalf("request filed acting in E recorded under %v (%v), want E %v", got, err, f.orgE)
 	}
 
-	// No tenant (outside an HTTP request): the primary membership, T.
-	noTenant := f.create(t, context.Background(), repo, f.accountID, base+1)
+	// No tenant (outside an HTTP request): the account's membership, T.
+	noTenant := f.create(t, context.Background(), repo, f.accountT, base+1)
 	if got, err := repo.RequestOrganization(context.Background(), noTenant.ID); err != nil || got != f.orgT {
 		t.Fatalf("request filed without a tenant recorded under %v (%v), want T %v", got, err, f.orgT)
 	}
 
 	// A tenant resolved for another account is a wiring fault.
-	wrong := tenancy.WithContext(context.Background(), tenancy.Context{AccountID: f.singleOrgID, OrganizationID: f.orgE})
+	wrong := tenancy.WithContext(context.Background(), tenancy.Context{AccountID: f.accountE, OrganizationID: f.orgE})
 	if _, err := repo.CreateRequest(wrong, CreateRequestRecord{
 		ID:        fmt.Sprintf("reqorg-wrong-%d", base),
 		Input:     CreateRequestInput{MediaType: MediaTypeMovie, TMDBID: base + 2, Title: "Fixture"},
-		Requester: Viewer{UserID: f.accountID, ProfileID: "p"},
+		Requester: Viewer{UserID: f.accountT, ProfileID: "p"},
 	}); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("CreateRequest with another account's tenant = %v, want ErrForbidden", err)
 	}

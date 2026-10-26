@@ -605,8 +605,6 @@ func (s *Store) ProvisionTenantMembershipInTransaction(ctx context.Context, tx p
 	membership, err := scanMembership(tx.QueryRow(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		SELECT $1, $2, $3, $4
-		WHERE set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true) IS NOT NULL
 		RETURNING id, organization_id, account_id, status, legacy_role, security_revision`,
 		organizationID, accountID, MembershipActive, legacyRole))
 	if err != nil {

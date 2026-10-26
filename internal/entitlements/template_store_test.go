@@ -472,18 +472,18 @@ func TestSharedDynamicDirectExactCohortRemainsImmutableOnLibraryChange(t *testin
 	_, err = store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), organizationID, secondID, template.Key, template.Revision, false)
 	require.NoError(t, err)
 	var firstRevision int64
-	require.NoError(t, pool.QueryRow(ctx, `SELECT access_policy_revision FROM organization_memberships WHERE account_id=$1`, firstID).Scan(&firstRevision))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_policy_revision FROM users WHERE id = $1`, firstID).Scan(&firstRevision))
 	newLibraryID := insertEntitlementLibrary(t, ctx, pool, "dynamic-added-"+uuid.NewString(), true)
 	_, err = store.ApplyAccountTemplate(ctx, insertEntitlementActor(t, ctx, pool), organizationID, secondID, template.Key, template.Revision, false)
 	require.NoError(t, err)
 	var invalidatedRevision int64
-	require.NoError(t, pool.QueryRow(ctx, `SELECT access_policy_revision FROM organization_memberships WHERE account_id=$1`, firstID).Scan(&invalidatedRevision))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_policy_revision FROM users WHERE id = $1`, firstID).Scan(&invalidatedRevision))
 	require.Equal(t, firstRevision, invalidatedRevision, "exact cohort members must not be invalidated by later library discovery")
 	var attributed int
 	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM entitlement_audit_events WHERE action='account.entitlement_shared_policy_changed' AND target_account_id=$1 AND template_key=$2`, firstID, template.Key).Scan(&attributed))
 	require.Equal(t, 0, attributed, "immutable exact cohorts must not emit shared-policy mutation audits")
 	var libraries []int
-	require.NoError(t, pool.QueryRow(ctx, `SELECT g.library_ids FROM access_groups g JOIN organization_memberships u ON u.access_group_id=g.id WHERE u.account_id=$1`, firstID).Scan(&libraries))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT g.library_ids FROM access_groups g JOIN users u ON u.access_group_id=g.id WHERE u.id=$1`, firstID).Scan(&libraries))
 	if slices.Contains(libraries, newLibraryID) {
 		t.Fatalf("shared exact cohort libraries = %v, unexpectedly includes later library %d", libraries, newLibraryID)
 	}
@@ -550,7 +550,7 @@ func TestTenantApplyMovesFormerDefaultAssignmentsToExactCohort(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, preview.ProfilesMoved)
 	var previewAccountGroupID int64
-	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM organization_memberships WHERE account_id=$1`, legacyAccountID).Scan(&previewAccountGroupID))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM users WHERE id = $1`, legacyAccountID).Scan(&previewAccountGroupID))
 	require.Equal(t, formerDefaultID, previewAccountGroupID, "dry-run must not move the former-default account")
 
 	result, err := store.ApplyTemplate(ctx, tenant.ID, template.Key, template.Revision, false)
@@ -559,7 +559,7 @@ func TestTenantApplyMovesFormerDefaultAssignmentsToExactCohort(t *testing.T) {
 	require.Equal(t, 1, result.ProfilesMoved)
 
 	var accountGroupID, inheritedGroupID, customProfileGroupID int64
-	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM organization_memberships WHERE account_id=$1`, legacyAccountID).Scan(&accountGroupID))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM users WHERE id = $1`, legacyAccountID).Scan(&accountGroupID))
 	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='Inherited former default'`, legacyAccountID).Scan(&inheritedGroupID))
 	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='Explicit custom'`, legacyAccountID).Scan(&customProfileGroupID))
 	require.Equal(t, exact.GroupID, accountGroupID)
@@ -600,19 +600,19 @@ func TestTenantApplyPreservesAdministratorOwnedCustomDefaultAssignments(t *testi
 	require.Equal(t, 0, result.ProfilesMoved)
 
 	var accountGroupID, profileGroupID int64
-	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM organization_memberships WHERE account_id=$1`, customAccountID).Scan(&accountGroupID))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM users WHERE id = $1`, customAccountID).Scan(&accountGroupID))
 	require.NoError(t, pool.QueryRow(ctx, `SELECT access_group_id FROM user_profiles WHERE user_id=$1 AND name='Administrator default profile'`, customAccountID).Scan(&profileGroupID))
 	require.Equal(t, customDefault.ID, accountGroupID)
 	require.Equal(t, customDefault.ID, profileGroupID)
 }
 
-func TestProfileEntitlementLimitIsOrganizationScopedAndConcurrentSafe(t *testing.T) {
+func TestProfileEntitlementLimitIsConcurrentSafe(t *testing.T) {
 	ctx, pool, _ := entitlementTestStore(t)
 	var firstOrganizationID uuid.UUID
 	var firstGroupID int64
 	require.NoError(t, pool.QueryRow(ctx, `SELECT o.id,g.id FROM organizations o JOIN access_groups g ON g.organization_id=o.id AND g.is_default WHERE o.is_default`).Scan(&firstOrganizationID, &firstGroupID))
 	accountID := insertDirectEntitlementAccount(t, ctx, pool, firstOrganizationID, firstGroupID, "profile-cap")
-	_, err := pool.Exec(ctx, `UPDATE organization_memberships SET max_profiles=1 WHERE account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, accountID)
+	_, err := pool.Exec(ctx, `UPDATE users SET max_profiles=1 WHERE id = $1`, accountID)
 	require.NoError(t, err)
 
 	start := make(chan struct{})
@@ -632,17 +632,6 @@ func TestProfileEntitlementLimitIsOrganizationScopedAndConcurrentSafe(t *testing
 		}
 	}
 	require.Equal(t, 1, succeeded, "concurrent inserts must serialize at the hard cap")
-
-	tenant, err := tenancy.NewStore(pool).CreateTenantOrganization(ctx, tenancy.CreateTenantOrganizationInput{
-		Name: "Second cap tenant", ExternalOperatorID: "cap-" + uuid.NewString(), ExternalServiceID: "cap-" + uuid.NewString(), Slots: 1, Transcodes: 1,
-	})
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role) SELECT $1,$2,$3,'active','user' WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, uuid.New(), tenant.ID, accountID)
-	require.NoError(t, err)
-	var secondGroupID int64
-	require.NoError(t, pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, tenant.ID).Scan(&secondGroupID))
-	_, err = pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,'Other tenant',$3,$4)`, uuid.NewString(), accountID, tenant.ID, secondGroupID)
-	require.NoError(t, err, "a profile in another organization must not consume this organization's cap")
 }
 
 func TestManagedZeroProfileLimitAllowsPrimaryAndRejectsAdditional(t *testing.T) {
@@ -755,12 +744,11 @@ func insertDirectEntitlementAccount(t *testing.T, ctx context.Context, pool *pgx
 	require.NoError(t, pool.QueryRow(ctx, `
 		INSERT INTO users (email,username,password_hash,role)
 		VALUES ($1,$2,'test-hash','user') RETURNING id`, label+"-"+suffix+"@example.test", label+"-"+suffix).Scan(&accountID))
-	// The account's group lives on its membership now, so the direct-account
-	// fixture has to place it there rather than on users.
 	_, err := pool.Exec(ctx, `
-		INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role,access_group_id)
-		SELECT $1,$2,$3,'active','user',$4
-		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, uuid.New(), organizationID, accountID, defaultGroupID)
+		INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role)
+		VALUES ($1,$2,$3,'active','user')`, uuid.New(), organizationID, accountID)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, accountID, defaultGroupID)
 	require.NoError(t, err)
 	return accountID
 }

@@ -11,11 +11,11 @@ import (
 
 func TestOrganizationAuditScopedRedactedStablePagination(t *testing.T) {
 	store, f := newTenancyFixture(t)
-	org, err := store.CreateOrganization(adminMutationContext(f), CreateOrganizationInput{Name: "Audit owner", Slug: "audit-owner", OwnerAccountID: f.otherID})
+	org, err := store.CreateOrganization(adminMutationContext(f), CreateOrganizationInput{Name: "Audit owner", Slug: "audit-owner", OwnerAccountID: f.insertAccount(t, "audit-owner", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	foreign, err := store.CreateOrganization(adminMutationContext(f), CreateOrganizationInput{Name: "Other audit", Slug: "other-audit", OwnerAccountID: f.adminID})
+	foreign, err := store.CreateOrganization(adminMutationContext(f), CreateOrganizationInput{Name: "Other audit", Slug: "other-audit", OwnerAccountID: f.insertAccount(t, "other-audit-owner", "user")})
 	if err != nil {
 		t.Fatal(err)
 	}

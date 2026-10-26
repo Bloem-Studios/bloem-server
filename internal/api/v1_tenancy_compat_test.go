@@ -140,7 +140,7 @@ func TestV1TenancyCompatibility(t *testing.T) {
 	if _, err := pool.Exec(context.Background(), `UPDATE organizations SET policy_revision = policy_revision + 1 WHERE is_default`); err != nil {
 		t.Fatalf("advance organization policy revision: %v", err)
 	}
-	if _, err := pool.Exec(context.Background(), `UPDATE organization_memberships SET security_revision = security_revision + 1 WHERE account_id = $1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, userID); err != nil {
+	if _, err := pool.Exec(context.Background(), `UPDATE organization_memberships SET security_revision = security_revision + 1 WHERE account_id = $1`, userID); err != nil {
 		t.Fatalf("advance membership security revision: %v", err)
 	}
 
@@ -461,11 +461,6 @@ func newV1TenancyDatabase(t *testing.T) *pgxpool.Pool {
 	pool := newDisposableAPIDatabase(t, "bloem_tenancy_", false)
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
-	}
-	// A freshly migrated database is in the compatibility phase, which freezes
-	// every policy write including the membership a new account is given.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
 	}
 	return pool
 }

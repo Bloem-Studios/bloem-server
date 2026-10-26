@@ -11,7 +11,6 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/database"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
@@ -22,13 +21,13 @@ func (r *countingViewerResolver) Resolve(context.Context, access.ResolveInput) (
 	return access.Scope{}, nil
 }
 
-// orgRevocationFixture is one account with a membership and a profile in each
-// of two organizations, and an account-login session created an hour ago.
-// Every case seeds its own account into one shared disposable database.
+// orgRevocationFixture is one account with its membership and a profile in its
+// organization, and an account-login session created an hour ago. Every case
+// seeds its own account into one shared disposable database.
 type orgRevocationFixture struct {
-	pool                 *pgxpool.Pool
-	account              int
-	revokedOrg, otherOrg uuid.UUID
+	pool       *pgxpool.Pool
+	account    int
+	revokedOrg uuid.UUID
 }
 
 const orgRevocationSession = "account-login"
@@ -38,7 +37,7 @@ func (f orgRevocationFixture) id(name string) string { return fmt.Sprintf("%s-%d
 func seedOrgRevocationFixture(t *testing.T, pool *pgxpool.Pool, account int) orgRevocationFixture {
 	t.Helper()
 	ctx := context.Background()
-	f := orgRevocationFixture{pool: pool, account: account, revokedOrg: uuid.New(), otherOrg: uuid.New()}
+	f := orgRevocationFixture{pool: pool, account: account, revokedOrg: uuid.New()}
 	exec := func(query string, args ...any) {
 		t.Helper()
 		if _, err := pool.Exec(ctx, query, args...); err != nil {
@@ -46,18 +45,14 @@ func seedOrgRevocationFixture(t *testing.T, pool *pgxpool.Pool, account int) org
 		}
 	}
 	exec(`INSERT INTO users (id,email,username,password_hash,role) VALUES ($1,$2,$2,'unused','user')`, account, fmt.Sprintf("member-%d@example.test", account))
-	for i, org := range []uuid.UUID{f.revokedOrg, f.otherOrg} {
-		name := []string{"revoked", "other"}[i]
-		exec(`INSERT INTO organizations (id,slug,name,status,owner_account_id,is_default) VALUES ($1,$2,$2,'active',$3,false)`, org, f.id(name), account)
-		var group int64
-		if err := pool.QueryRow(ctx, `INSERT INTO access_groups (organization_id,name,is_default) VALUES ($1,'Viewers',false) RETURNING id`, org).Scan(&group); err != nil {
-			t.Fatalf("seed access group: %v", err)
-		}
-		exec(`INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
-			SELECT $1,$2,'active','user'
-			WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, org, account)
-		exec(`INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,$1,$3,$4)`, f.id(name+"-profile"), account, org, group)
+	exec(`INSERT INTO organizations (id,slug,name,status,owner_account_id,is_default) VALUES ($1,$2,$2,'active',$3,false)`, f.revokedOrg, f.id("revoked"), account)
+	var group int64
+	if err := pool.QueryRow(ctx, `INSERT INTO access_groups (organization_id,name,is_default) VALUES ($1,'Viewers',false) RETURNING id`, f.revokedOrg).Scan(&group); err != nil {
+		t.Fatalf("seed access group: %v", err)
 	}
+	exec(`INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+		SELECT $1,$2,'active','user'`, f.revokedOrg, account)
+	exec(`INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,$1,$3,$4)`, f.id("revoked-profile"), account, f.revokedOrg, group)
 	exec(`INSERT INTO auth_sessions (id,user_id,created_at,expires_at) VALUES ($1,$2,now()-interval '1 hour',now()+interval '1 hour')`, f.id(orgRevocationSession), account)
 	return f
 }
@@ -90,9 +85,6 @@ func TestOrgSessionRevocation(t *testing.T) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 
 	t.Run("refuses the revoked organization's profiles", func(t *testing.T) {
 		f := seedOrgRevocationFixture(t, pool, 41)
@@ -106,11 +98,6 @@ func TestOrgSessionRevocation(t *testing.T) {
 		calls, err := f.resolve(t, session, f.id("revoked-profile"))
 		if !errors.Is(err, access.ErrProfileNotFound) || calls != 0 {
 			t.Fatalf("revoked organization's profile: err=%v calls=%d, want ErrProfileNotFound before viewer resolution", err, calls)
-		}
-		// The member still belongs to the other organization, and that
-		// tenant's profiles stay reachable from the same session.
-		if calls, err := f.resolve(t, session, f.id("other-profile")); err != nil || calls != 1 {
-			t.Fatalf("other organization's profile: err=%v calls=%d, want it selectable", err, calls)
 		}
 		// A profile-less request selects nothing and is not checked.
 		if calls, err := f.resolve(t, session, ""); err != nil || calls != 1 {

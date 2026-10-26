@@ -2,8 +2,8 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -12,24 +12,10 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// userSource joins an account to the membership that represents it.
-//
-// models.User is account-shaped while policy is per-membership, so one row has
-// to stand for the account. The default organization wins when the account
-// belongs to it, which reproduces the pre-handoff behavior for every ordinary
-// deployment; a tenant member that exists only inside its own organization
-// projects that membership instead, which is the only one it has. Callers that
-// need a specific organization's policy query organization_memberships directly
-// and never come through here.
-const userSource = ` FROM users u
-	LEFT JOIN LATERAL (
-		SELECT memberships.*
-		FROM organization_memberships AS memberships
-		JOIN organizations AS orgs ON orgs.id = memberships.organization_id
-		WHERE memberships.account_id = u.id
-		ORDER BY orgs.is_default DESC, memberships.created_at ASC, memberships.id ASC
-		LIMIT 1
-	) m ON TRUE`
+// Account policy lives on users, as in Silo. A membership only links the
+// account to its one organization, so Bloem adds three things to Silo's
+// account path: a new account joins an organization, the default access group
+// is that organization's, and the account's role reaches its membership.
 
 type userCreateQuerier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
@@ -41,11 +27,84 @@ type userMutationQuerier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
+// createAccount is Create in one transaction, so an account never commits
+// without its membership.
+func (r *UserRepository) createAccount(ctx context.Context, input models.CreateUserInput) (*models.User, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("creating user: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	user, err := createUser(ctx, tx, input)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("creating user: %w", err)
+	}
+	return user, nil
+}
+
 // CreateInTransaction applies the canonical user creation path on an existing
 // transaction. Tenant member provisioning uses this so the account and its
-// quota-bearing membership commit, or roll back, as one unit.
+// membership commit, or roll back, as one unit.
 func (r *UserRepository) CreateInTransaction(ctx context.Context, tx pgx.Tx, input models.CreateUserInput) (*models.User, error) {
-	return r.createWithQuerier(ctx, tx, input)
+	return createUser(ctx, tx, input)
+}
+
+// linkAccountMembership gives a new account its membership: in the
+// organization the creating request names, else the one owning the account's
+// access group, else the default organization.
+func linkAccountMembership(ctx context.Context, db interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, account *models.User) error {
+	var id uuid.UUID
+	err := db.QueryRow(ctx, `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		SELECT COALESCE(
+			$2::uuid,
+			(SELECT g.organization_id FROM access_groups g WHERE g.id = $3),
+			(SELECT id FROM organizations WHERE is_default)
+		), $1, 'active', $4
+		ON CONFLICT (account_id) DO NOTHING
+		RETURNING id`,
+		account.ID, accountCreationOrganization(ctx), account.AccessGroupID, membershipLegacyRole(account.Role),
+	).Scan(&id)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("creating account membership: %w", err)
+	}
+	return nil
+}
+
+// defaultAccessGroup is the default group of the organization a new account
+// joins. Each organization has its own default group, so Silo's unscoped
+// "the default group" names more than one.
+func defaultAccessGroup(ctx context.Context, args *[]any) string {
+	*args = append(*args, accountCreationOrganization(ctx))
+	return fmt.Sprintf(`(SELECT g.id FROM access_groups g WHERE g.is_default
+		AND g.organization_id = COALESCE($%d::uuid, (SELECT id FROM organizations WHERE is_default)))`, len(*args))
+}
+
+// accountDefaultAccessGroup is the default group of the updated account's own
+// organization, for an account demoted from admin.
+const accountDefaultAccessGroup = `(SELECT g.id FROM access_groups g
+	JOIN organization_memberships m ON m.organization_id = g.organization_id
+	WHERE g.is_default AND m.account_id = users.id)`
+
+// syncMembershipRole carries an account's role to its membership, which keeps
+// the two roles organization membership understands.
+func syncMembershipRole(ctx context.Context, db interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}, id int, input models.UpdateUserInput) error {
+	if input.Role == nil {
+		return nil
+	}
+	if _, err := db.Exec(ctx, `
+		UPDATE organization_memberships SET legacy_role = $2, updated_at = now()
+		WHERE account_id = $1 AND legacy_role IS DISTINCT FROM $2`, id, membershipLegacyRole(*input.Role)); err != nil {
+		return fmt.Errorf("updating account membership role: %w", err)
+	}
+	return nil
 }
 
 // TenantUserInTransaction reads the signed-in account through the exact
@@ -60,103 +119,17 @@ func TenantUserInTransaction(ctx context.Context, tx pgx.Tx, id int) (*models.Us
 	if !ok || tenant.AccountID != id || tenant.OrganizationID == uuid.Nil || tenant.MembershipID == uuid.Nil {
 		return nil, pgx.ErrNoRows
 	}
-	return scanUser(tx.QueryRow(ctx, `SELECT `+allColumns+`
- FROM users u JOIN organization_memberships m ON m.account_id=u.id
- JOIN organizations o ON o.id=m.organization_id
- WHERE u.id=$1 AND m.organization_id=$2 AND m.id=$3
- AND o.status='active' AND m.status='active'
- AND o.policy_revision=$4 AND m.security_revision=$5`,
+	return scanUser(tx.QueryRow(ctx, `SELECT `+allColumns+` FROM users WHERE id = $1 AND EXISTS (
+		SELECT 1 FROM organization_memberships m JOIN organizations o ON o.id = m.organization_id
+		WHERE m.account_id = users.id AND m.organization_id = $2 AND m.id = $3
+		  AND o.status = 'active' AND m.status = 'active'
+		  AND o.policy_revision = $4 AND m.security_revision = $5)`,
 		id, tenant.OrganizationID, tenant.MembershipID, tenant.PolicyRevision, tenant.SecurityRevision))
 }
 
 // GetByIDInTransaction reads an account through a caller-owned transaction.
 func (r *UserRepository) GetByIDInTransaction(ctx context.Context, tx pgx.Tx, id int) (*models.User, error) {
-	query := `SELECT ` + allColumns + userSource + ` WHERE u.id = $1`
-	return scanUser(tx.QueryRow(ctx, query, id))
-}
-
-// userUpdateColumn is one candidate column of a user update: it is written
-// only when set, and bumpsAccessPolicy marks the columns whose change has to
-// invalidate durable session/profile tokens by bumping
-// access_policy_revision. Values are pre-computed, so every entry is safe to
-// build even when set is false.
-// membershipPolicyColumns are the columns 20260829085838_membership_policy_isolation
-// moved off users, so an update naming one has to target the account's
-// default-organization membership instead.
-var membershipPolicyColumns = map[string]bool{
-	"permissions": true, "library_ids": true, "max_playback_quality": true,
-	"max_streams": true, "max_transcodes": true, "transcode_allowed": true,
-	"audio_transcode_allowed": true, "max_profiles": true, "download_allowed": true,
-	"download_transcode_allowed": true, "requests_allowed": true, "access_group_id": true,
-}
-
-// userUpdateSplit is an account update divided between the users row and the
-// account's default-organization membership, which holds the policy columns.
-type userUpdateSplit struct {
-	setClauses           []string
-	args                 []any
-	membershipSet        []string
-	membershipPredicates []string
-	membershipArgs       []any
-	// role and enabled still live on users, but the revision they bump is
-	// the membership's. Comparing across tables afterwards would see the
-	// value already written, so the intent is recorded instead.
-	bumpFromAccountColumns bool
-	defaultGroupCTE        string
-}
-
-// splitUserUpdateColumns assigns each set column to the users row or to the
-// membership, numbering each side's placeholders from $1.
-func splitUserUpdateColumns(columns []userUpdateColumn, input models.UpdateUserInput) userUpdateSplit {
-	var split userUpdateSplit
-	for _, col := range columns {
-		if !col.set {
-			continue
-		}
-		if membershipPolicyColumns[col.column] {
-			placeholder := fmt.Sprintf("$%d", len(split.membershipArgs)+1)
-			split.membershipSet = append(split.membershipSet, fmt.Sprintf("%s = %s", col.column, placeholder))
-			if col.bumpsAccessPolicy {
-				split.membershipPredicates = append(
-					split.membershipPredicates,
-					fmt.Sprintf("%s IS DISTINCT FROM %s", col.column, placeholder),
-				)
-			}
-			split.membershipArgs = append(split.membershipArgs, col.value)
-			continue
-		}
-		split.setClauses = append(split.setClauses, fmt.Sprintf("%s = $%d", col.column, len(split.args)+1))
-		if col.mirrorsToMembership != "" {
-			split.membershipSet = append(split.membershipSet, fmt.Sprintf("%s = $%d", col.mirrorsToMembership, len(split.membershipArgs)+1))
-			mirrored := col.value
-			if role, ok := col.value.(*string); ok && role != nil {
-				mirrored = membershipLegacyRole(*role)
-			}
-			split.membershipArgs = append(split.membershipArgs, mirrored)
-		}
-		if col.bumpsAccessPolicy {
-			split.bumpFromAccountColumns = true
-		}
-		split.args = append(split.args, col.value)
-	}
-
-	// access_group_id is not a plain userUpdateColumn: what gets written
-	// depends on the row's current role, so it is assembled directly rather
-	// than through the generic column loop above. It moved to the membership
-	// with the rest of the policy, so its clause is built against the
-	// membership placeholder sequence.
-	if setClause, predicate, cte, groupArgs, _ := accessGroupSetClause(input, len(split.membershipArgs)+1); setClause != "" {
-		split.membershipSet = append(split.membershipSet, setClause)
-		split.membershipPredicates = append(split.membershipPredicates, predicate)
-		split.defaultGroupCTE = cte
-		split.membershipArgs = append(split.membershipArgs, groupArgs...)
-	}
-	return split
-}
-
-// applyMembership writes the update's policy half.
-func (split userUpdateSplit) applyMembership(ctx context.Context, querier userMutationQuerier, id int) error {
-	return applyMembershipPolicyUpdate(ctx, querier, id, split.membershipSet, split.membershipPredicates, split.membershipArgs, split.bumpFromAccountColumns, split.defaultGroupCTE)
+	return userByID(ctx, tx, id)
 }
 
 // UpdateInTransaction applies the canonical normalization, hashing and access
@@ -168,60 +141,19 @@ func (r *UserRepository) UpdateInTransaction(ctx context.Context, tx pgx.Tx, id 
 	if err != nil {
 		return err
 	}
-	return r.updateWithQuerier(ctx, tx, id, input, passwordHash)
-}
-
-// applyMembershipPolicyUpdate writes the policy half of an account update to the
-// account's default-organization membership, which is where those columns moved.
-func applyMembershipPolicyUpdate(ctx context.Context, querier userMutationQuerier, id int, set, predicates []string, args []any, alwaysBump bool, defaultGroupCTE string) error {
-	if len(set) == 0 && !alwaysBump {
-		return nil
-	}
-	switch {
-	case alwaysBump:
-		set = append(set, "access_policy_revision = access_policy_revision + 1")
-	case len(predicates) > 0:
-		set = append(set, fmt.Sprintf(
-			"access_policy_revision = CASE WHEN %s THEN access_policy_revision + 1 ELSE access_policy_revision END",
-			strings.Join(predicates, " OR "),
-		))
-	}
-	set = append(set, "updated_at = NOW()")
-	args = append(args, id)
-	prefix := ""
-	if defaultGroupCTE != "" {
-		prefix = "WITH " + defaultGroupCTE + " "
-	}
-	// The v1 writer marker is transaction-local, and this querier is often a
-	// pool rather than a transaction, so a separate SET LOCAL would not survive
-	// to this statement. Evaluating set_config in the WHERE marks the same
-	// implicit transaction that performs the update.
-	statement := fmt.Sprintf(
-		`%sUPDATE organization_memberships SET %s
-		 WHERE id = (
-			SELECT memberships.id
-			FROM organization_memberships AS memberships
-			JOIN organizations AS orgs ON orgs.id = memberships.organization_id
-			WHERE memberships.account_id = $%d
-			ORDER BY orgs.is_default DESC, memberships.created_at ASC, memberships.id ASC
-			LIMIT 1
-		   )
-		   AND set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true) IS NOT NULL`,
-		prefix, strings.Join(set, ", "), len(args),
-	)
-	if _, err := querier.Exec(ctx, statement, args...); err != nil {
-		if isDuplicateKeyError(err) {
-			return fmt.Errorf("%w: %s", ErrDuplicate, extractConstraint(err))
-		}
-		return fmt.Errorf("updating account membership policy: %w", err)
-	}
-	return nil
+	return updateUser(ctx, tx, id, input, passwordHash)
 }
 
 // DeleteInTransaction removes a user as part of a larger lifecycle change.
 func (r *UserRepository) DeleteInTransaction(ctx context.Context, tx pgx.Tx, id int) error {
-	return r.deleteWithQuerier(ctx, tx, id)
+	tag, err := tx.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
+	if err != nil {
+		return fmt.Errorf("deleting user: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // CountInTransaction reads account cardinality on a caller-owned transaction.
@@ -233,46 +165,6 @@ func (r *UserRepository) CountInTransaction(ctx context.Context, tx pgx.Tx) (int
 	return count, nil
 }
 
-// insertDefaultMembershipPolicy places a new account's policy on its membership
-// in the default organization, which is where the authority moved.
-// seed_legacy_membership_policy requires the v1 writer marker once the authority
-// is finalized, and the marker is transaction-local, so it is set on the same
-// querier immediately before the insert.
-func insertDefaultMembershipPolicy(ctx context.Context, querier userCreateQuerier, accountID int, legacyRole string, explicitGroupID *int64, cols []string, args []any, defaultGroupExpr string) error {
-	// The membership belongs to the organization that owns the account's group,
-	// not necessarily the default one: tenancy creates member accounts against a
-	// tenant organization and hands us that organization's group, and
-	// organization_memberships_organization_access_group_fkey ties the pair
-	// together. Fall back to the default organization only when no group was
-	// supplied. Organization-specific provisioning overrides that legacy
-	// selection; the membership/group foreign key still rejects a foreign group.
-	organizationExpr := `(SELECT COALESCE(
-		$4::uuid,
-		(SELECT g.organization_id FROM access_groups g WHERE g.id = $3),
-		(SELECT id FROM organizations WHERE is_default)
-	) WHERE set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true) IS NOT NULL)`
-	columns := append([]string{"organization_id", "account_id", "status", "legacy_role"}, cols...)
-	values := []string{organizationExpr, "$1", "'active'", "$2"}
-	insertArgs := []any{accountID, legacyRole, explicitGroupID, accountCreationOrganization(ctx)}
-	for i, value := range args {
-		values = append(values, fmt.Sprintf("$%d", i+5))
-		insertArgs = append(insertArgs, value)
-	}
-	if defaultGroupExpr != "" {
-		columns = append(columns, "access_group_id")
-		values = append(values, defaultGroupExpr)
-	}
-	statement := fmt.Sprintf(
-		"INSERT INTO organization_memberships (%s) VALUES (%s) ON CONFLICT (organization_id, account_id) DO NOTHING",
-		strings.Join(columns, ", "), strings.Join(values, ", "),
-	)
-	if _, err := querier.Exec(ctx, statement, insertArgs...); err != nil {
-		return fmt.Errorf("creating account membership policy: %w", err)
-	}
-	return nil
-}
-
 // membershipLegacyRole narrows an account role to the two values
 // organization_memberships.legacy_role accepts. Roles beyond admin are ordinary
 // members as far as tenant membership is concerned; the account keeps its full
@@ -282,19 +174,6 @@ func membershipLegacyRole(role string) string {
 		return models.RoleAdmin
 	}
 	return "user"
-}
-
-func (r *UserRepository) deleteWithQuerier(ctx context.Context, querier userMutationQuerier, id int) error {
-	tag, err := querier.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
-	if err != nil {
-		return fmt.Errorf("deleting user: %w", err)
-	}
-
-	if tag.RowsAffected() == 0 {
-		return ErrNotFound
-	}
-
-	return nil
 }
 
 // Begin supplies the transaction boundary used by upstream local sign-in.

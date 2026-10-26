@@ -66,7 +66,7 @@ func (a *Admin) SetPersonalPresentation(ctx context.Context, actor int, issuer s
 	// Match the same current principal predicate used by auth, inside this write transaction.
 	var marked bool
 	err = tx.QueryRow(ctx, `SELECT $2<>'admin' AND (
- EXISTS(SELECT 1 FROM organization_memberships m JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=m.access_group_id WHERE m.account_id=$1 AND m.status='active' AND g.managed_template_key='bloem-preview')
+ EXISTS(SELECT 1 FROM organization_memberships m JOIN users pu ON pu.id = m.account_id JOIN access_groups g ON g.organization_id=m.organization_id AND g.id=pu.access_group_id WHERE m.account_id=$1 AND m.status='active' AND g.managed_template_key='bloem-preview')
  OR EXISTS(SELECT 1 FROM user_profiles p JOIN access_groups g ON g.organization_id=p.organization_id AND g.id=p.access_group_id WHERE p.user_id=$1 AND g.managed_template_key='bloem-preview'))`, account, role).Scan(&marked)
 	if err != nil {
 		return err

@@ -55,29 +55,16 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 
 // allColumns is the list of columns returned by all SELECT queries.
 // Kept in one place so scanUser stays in sync.
-//
-// Identity stays on users; the policy columns were moved to
-// organization_memberships by 20260829085838_membership_policy_isolation and are
-// read back through userSource. models.User is an account-shaped view, so it
-// projects the membership in the DEFAULT organization -- which is the same row
-// these columns held before the handoff for any deployment with one
-// organization. Callers that need a specific tenant's policy (adminpeople,
-// entitlements) already query organization_memberships directly and do not come
-// through here.
-//
-// COALESCE mirrors the pre-handoff nullability: an account with no default-org
-// membership reads as the unset policy it used to have on users.
-const allColumns = `u.id, u.account_incarnation_id, u.email, u.username, u.password_hash, u.local_password_login_enabled, u.password_change_required, u.role, COALESCE(m.permissions, '{}'), u.enabled,
-	m.library_ids, m.max_playback_quality, COALESCE(m.access_policy_revision, 1),
-	m.max_streams, m.max_transcodes, u.max_remote_stream_bitrate_kbps, u.max_local_stream_bitrate_kbps, m.transcode_allowed, m.audio_transcode_allowed, m.max_profiles, m.download_allowed,
-	m.download_transcode_allowed, m.requests_allowed, m.access_group_id, u.is_owner, u.break_glass, u.created_at, u.updated_at`
+const allColumns = `id, email, username, password_hash, local_password_login_enabled, password_change_required, role, permissions, enabled,
+	library_ids, max_playback_quality, access_policy_revision,
+	max_streams, max_transcodes, max_remote_stream_bitrate_kbps, max_local_stream_bitrate_kbps, transcode_allowed, audio_transcode_allowed, max_profiles, download_allowed,
+	download_transcode_allowed, requests_allowed, access_group_id, is_owner, break_glass, created_at, updated_at, account_incarnation_id`
 
 // scanUser scans a single row into a *models.User.
 func scanUser(row pgx.Row) (*models.User, error) {
 	var u models.User
 	err := row.Scan(
 		&u.ID,
-		&u.AccountIncarnationID,
 		&u.Email,
 		&u.Username,
 		&u.PasswordHash,
@@ -104,6 +91,7 @@ func scanUser(row pgx.Row) (*models.User, error) {
 		&u.BreakGlass,
 		&u.CreatedAt,
 		&u.UpdatedAt,
+		&u.AccountIncarnationID,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -121,7 +109,6 @@ func scanUsers(rows pgx.Rows) ([]*models.User, error) {
 		var u models.User
 		err := rows.Scan(
 			&u.ID,
-			&u.AccountIncarnationID,
 			&u.Email,
 			&u.Username,
 			&u.PasswordHash,
@@ -148,6 +135,7 @@ func scanUsers(rows pgx.Rows) ([]*models.User, error) {
 			&u.BreakGlass,
 			&u.CreatedAt,
 			&u.UpdatedAt,
+			&u.AccountIncarnationID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning user row: %w", err)
@@ -162,26 +150,12 @@ func scanUsers(rows pgx.Rows) ([]*models.User, error) {
 
 // Create inserts a new user with a bcrypt-hashed password and returns the created user.
 func (r *UserRepository) Create(ctx context.Context, input models.CreateUserInput) (*models.User, error) {
-	// The account and its membership policy commit together: a membership
-	// insert that fails must not leave an account behind, and on a database
-	// mirrored for Silo switching an account committed alone is given a
-	// Silo-style membership at commit before this one could be written.
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("creating user: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	user, err := r.createWithQuerier(ctx, tx, input)
-	if err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("creating user: %w", err)
-	}
-	return user, nil
+	return r.createAccount(ctx, input)
 }
 
-func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCreateQuerier, input models.CreateUserInput) (*models.User, error) {
+func createUser(ctx context.Context, db interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, input models.CreateUserInput) (*models.User, error) {
 	hash, err := passwordhash.Generate(ctx, []byte(input.Password), passwordHashCost)
 	if err != nil {
 		return nil, fmt.Errorf("hashing password: %w", err)
@@ -202,12 +176,13 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 		return nil, err
 	}
 
-	// Identity lives on users; the policy columns moved to
-	// organization_memberships, so they are inserted there afterwards. A nil
-	// pointer still stores NULL, which means "inherit from the access group".
+	// Policy columns are written explicitly: a nil pointer stores NULL, which
+	// means "inherit from the access group" (the columns carry no defaults).
 	cols := []string{
-		"email", "username", "password_hash", "local_password_login_enabled", "password_change_required", "role",
-		"max_remote_stream_bitrate_kbps", "max_local_stream_bitrate_kbps",
+		"email", "username", "password_hash", "local_password_login_enabled", "password_change_required", "role", "permissions",
+		"library_ids", "max_playback_quality", "max_streams", "max_transcodes", "max_remote_stream_bitrate_kbps", "max_local_stream_bitrate_kbps",
+		"transcode_allowed", "audio_transcode_allowed", "max_profiles", "download_allowed", "download_transcode_allowed",
+		"requests_allowed",
 	}
 	args := []any{
 		NormalizeEmail(input.Email),
@@ -216,20 +191,13 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 		localPasswordLoginEnabled,
 		input.PasswordChangeRequired,
 		input.Role,
-		input.MaxRemoteStreamBitrateKbps,
-		input.MaxLocalStreamBitrateKbps,
-	}
-	policyCols := []string{
-		"permissions", "library_ids", "max_playback_quality", "max_streams", "max_transcodes",
-		"transcode_allowed", "audio_transcode_allowed", "max_profiles", "download_allowed",
-		"download_transcode_allowed", "requests_allowed",
-	}
-	policyArgs := []any{
 		permissions,
 		input.LibraryIDs,
 		normalizeQualityOverride(input.MaxPlaybackQuality),
 		input.MaxStreams,
 		input.MaxTranscodes,
+		input.MaxRemoteStreamBitrateKbps,
+		input.MaxLocalStreamBitrateKbps,
 		input.TranscodeAllowed,
 		input.AudioTranscodeAllowed,
 		input.MaxProfiles,
@@ -243,8 +211,8 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 		accessGroupID = nil
 	}
 	if accessGroupID != nil {
-		policyCols = append(policyCols, "access_group_id")
-		policyArgs = append(policyArgs, *accessGroupID)
+		cols = append(cols, "access_group_id")
+		args = append(args, *accessGroupID)
 	}
 
 	// Build placeholders: $1, $2, ..., $N
@@ -255,33 +223,18 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 	// Admins stay ungrouped: scope/action decisions are role-blind, so the
 	// default group's ceilings would cap the server owner (mirrors the
 	// exclusion in the assign_default_group_to_existing_users migration).
-	defaultGroupExpr := ""
 	if accessGroupID == nil && input.Role != models.RoleAdmin {
-		defaultGroupExpr = `(SELECT g.id
-			FROM access_groups g
-			JOIN organizations o ON o.id = g.organization_id
-			WHERE (($4::uuid IS NULL AND o.is_default) OR o.id = $4::uuid)
-			  AND g.is_default)`
+		cols = append(cols, "access_group_id")
+		placeholders = append(placeholders, defaultAccessGroup(ctx, &args))
 	}
 
-	// The account row carries identity only now, so it is created first and the
-	// policy lands on its selected or legacy default-organization membership.
-	query := fmt.Sprintf("INSERT INTO users (%s) VALUES (%s) RETURNING id",
+	query := fmt.Sprintf("INSERT INTO users (%s) VALUES (%s) RETURNING %s",
 		strings.Join(cols, ", "),
 		strings.Join(placeholders, ", "),
+		allColumns,
 	)
-	var accountID int
-	if err := querier.QueryRow(ctx, query, args...).Scan(&accountID); err != nil {
-		if isDuplicateKeyError(err) {
-			return nil, fmt.Errorf("%w: %s", ErrDuplicate, extractConstraint(err))
-		}
-		return nil, fmt.Errorf("creating user: %w", err)
-	}
-	if err := insertDefaultMembershipPolicy(ctx, querier, accountID, membershipLegacyRole(input.Role), accessGroupID, policyCols, policyArgs, defaultGroupExpr); err != nil {
-		return nil, err
-	}
 
-	row := querier.QueryRow(ctx, `SELECT `+allColumns+userSource+` WHERE u.id = $1`, accountID)
+	row := db.QueryRow(ctx, query, args...)
 
 	user, err := scanUser(row)
 	if err != nil {
@@ -291,7 +244,7 @@ func (r *UserRepository) createWithQuerier(ctx context.Context, querier userCrea
 		return nil, fmt.Errorf("creating user: %w", err)
 	}
 
-	return user, nil
+	return user, linkAccountMembership(ctx, db, user)
 }
 
 // GetByID retrieves a user by their numeric ID.
@@ -306,18 +259,18 @@ func UserInTransaction(ctx context.Context, tx pgx.Tx, id int) (*models.User, er
 func userByID(ctx context.Context, db interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, id int) (*models.User, error) {
-	return scanUser(db.QueryRow(ctx, `SELECT `+allColumns+userSource+` WHERE u.id=$1`, id))
+	return scanUser(db.QueryRow(ctx, `SELECT `+allColumns+` FROM users WHERE id=$1`, id))
 }
 
 // GetByUsername retrieves a user by their username (case-insensitive).
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*models.User, error) {
-	query := `SELECT ` + allColumns + userSource + ` WHERE u.username = $1`
+	query := `SELECT ` + allColumns + ` FROM users WHERE username = $1`
 	return scanUser(r.pool.QueryRow(ctx, query, NormalizeUsername(username)))
 }
 
 // GetByEmail retrieves a user by their email address (case-insensitive).
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
-	query := `SELECT ` + allColumns + userSource + ` WHERE u.email = $1`
+	query := `SELECT ` + allColumns + ` FROM users WHERE email = $1`
 	return scanUser(r.pool.QueryRow(ctx, query, NormalizeEmail(email)))
 }
 
@@ -331,10 +284,6 @@ type userUpdateColumn struct {
 	set               bool
 	value             any
 	bumpsAccessPolicy bool
-	// mirrorsToMembership names the organization_memberships column that has to
-	// track this users column. role/legacy_role are the same fact in two places,
-	// and accessGroupSetClause reads legacy_role to decide an admin's group.
-	mirrorsToMembership string
 }
 
 // accessGroupSetClause builds the SET clause and access-policy predicate for
@@ -360,10 +309,7 @@ type userUpdateColumn struct {
 // literal subselect it would run twice per UPDATE, but a CTE referenced more
 // than once is materialized once by Postgres.
 func accessGroupSetClause(input models.UpdateUserInput, argIndex int) (setClause, predicate, defaultGroupCTE string, args []any, nextArgIndex int) {
-	// The clause now runs against organization_memberships, whose role column is
-	// legacy_role; role itself stayed on users. The two are kept in step by
-	// createWithQuerier and by the role branch of this same update.
-	const isAdmin = "legacy_role = '" + models.RoleAdmin + "'"
+	const isAdmin = "role = '" + models.RoleAdmin + "'"
 	nextArgIndex = argIndex
 	switch {
 	case input.Role != nil && *input.Role == models.RoleAdmin:
@@ -372,8 +318,7 @@ func accessGroupSetClause(input models.UpdateUserInput, argIndex int) (setClause
 		args = []any{(*int64)(nil)}
 		nextArgIndex++
 	case input.Role != nil && !input.AccessGroupID.Set:
-		defaultGroupCTE = "default_group AS (SELECT g.id FROM access_groups g JOIN organizations o ON o.id = g.organization_id WHERE o.is_default AND g.is_default)"
-		expr := "(CASE WHEN " + isAdmin + " THEN (SELECT id FROM default_group) ELSE access_group_id END)"
+		expr := "(CASE WHEN " + isAdmin + " THEN " + accountDefaultAccessGroup + " ELSE access_group_id END)"
 		setClause = "access_group_id = " + expr
 	case input.Role == nil && input.AccessGroupID.Set && input.AccessGroupID.Value != nil:
 		placeholder := fmt.Sprintf("$%d", argIndex)
@@ -431,11 +376,13 @@ func hashUpdatePassword(ctx context.Context, input *models.UpdateUserInput) (*st
 	return &hashed, nil
 }
 
-// updateWithQuerier writes input's fields. passwordHash is input.Password
-// prepared by hashUpdatePassword before the transaction; input.Password itself
-// is not read.
-func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMutationQuerier, id int, input models.UpdateUserInput, passwordHash *string) error {
-	currentRole, err := updateCurrentRole(ctx, querier, id, input)
+// updateUser writes input's fields. passwordHash is input.Password prepared by
+// hashUpdatePassword before the transaction; input.Password itself is not read.
+func updateUser(ctx context.Context, db interface {
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, id int, input models.UpdateUserInput, passwordHash *string) error {
+	currentRole, err := updateCurrentRole(ctx, db, id, input)
 	if err != nil {
 		return err
 	}
@@ -469,7 +416,7 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 		{column: "password_hash", set: passwordHash != nil, value: passwordHash},
 		{column: "password_change_required", set: passwordHash != nil, value: input.PasswordChangeRequired},
 		{column: "local_password_login_enabled", set: input.LocalPasswordLoginEnabled != nil, value: input.LocalPasswordLoginEnabled},
-		{column: "role", set: input.Role != nil, value: input.Role, bumpsAccessPolicy: true, mirrorsToMembership: "legacy_role"},
+		{column: "role", set: input.Role != nil, value: input.Role, bumpsAccessPolicy: true},
 		{column: "permissions", set: input.Permissions != nil, value: permissions, bumpsAccessPolicy: true},
 		{column: "enabled", set: input.Enabled != nil, value: input.Enabled, bumpsAccessPolicy: true},
 		{column: "library_ids", set: input.LibraryIDs.Set, value: derefSlice(input.LibraryIDs.Value)},
@@ -492,27 +439,65 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 		breakGlassUpdateColumn(input),
 	}
 
-	// Policy columns live on the account's membership now, so they are split
-	// off and applied in their own statement below.
-	split := splitUserUpdateColumns(columns, input)
-	if len(split.setClauses) == 0 {
-		// Nothing left on the account row itself. Verify it exists, then apply
-		// the policy half: an update that only touches policy columns now
-		// changes nothing on users, and returning here would silently drop it.
-		if _, err := scanUser(querier.QueryRow(ctx, `SELECT `+allColumns+userSource+` WHERE u.id = $1`, id)); err != nil {
-			return err
+	setClauses := []string{}
+	accessPolicyPredicates := []string{}
+	args := []any{}
+	argIndex := 1
+	for _, col := range columns {
+		if !col.set {
+			continue
 		}
-		return split.applyMembership(ctx, querier, id)
+		placeholder := fmt.Sprintf("$%d", argIndex)
+		setClauses = append(setClauses, fmt.Sprintf("%s = %s", col.column, placeholder))
+		if col.bumpsAccessPolicy {
+			accessPolicyPredicates = append(
+				accessPolicyPredicates,
+				fmt.Sprintf("%s IS DISTINCT FROM %s", col.column, placeholder),
+			)
+		}
+		args = append(args, col.value)
+		argIndex++
+	}
+
+	// access_group_id is not a plain userUpdateColumn: what gets written
+	// depends on the row's current role, so it is assembled directly rather
+	// than through the generic column loop above.
+	var defaultGroupCTE string
+	if setClause, predicate, cte, groupArgs, nextArgIndex := accessGroupSetClause(input, argIndex); setClause != "" {
+		setClauses = append(setClauses, setClause)
+		accessPolicyPredicates = append(accessPolicyPredicates, predicate)
+		defaultGroupCTE = cte
+		args = append(args, groupArgs...)
+		argIndex = nextArgIndex
+	}
+
+	if len(setClauses) == 0 {
+		// Nothing to update; still verify the user exists.
+		_, err := scanUser(db.QueryRow(ctx, `SELECT `+allColumns+` FROM users WHERE id=$1`, id))
+		return err
+	}
+
+	if len(accessPolicyPredicates) > 0 {
+		setClauses = append(setClauses, fmt.Sprintf(
+			"access_policy_revision = CASE WHEN %s THEN access_policy_revision + 1 ELSE access_policy_revision END",
+			strings.Join(accessPolicyPredicates, " OR "),
+		))
 	}
 
 	// Always bump updated_at.
-	split.setClauses = append(split.setClauses, "updated_at = NOW()")
+	setClauses = append(setClauses, "updated_at = NOW()")
 
-	query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d",
-		strings.Join(split.setClauses, ", "), len(split.args)+1)
-	split.args = append(split.args, id)
+	var query string
+	if defaultGroupCTE != "" {
+		query = fmt.Sprintf("WITH %s UPDATE users SET %s WHERE id = $%d",
+			defaultGroupCTE, strings.Join(setClauses, ", "), argIndex)
+	} else {
+		query = fmt.Sprintf("UPDATE users SET %s WHERE id = $%d",
+			strings.Join(setClauses, ", "), argIndex)
+	}
+	args = append(args, id)
 
-	tag, err := querier.Exec(ctx, query, split.args...)
+	tag, err := db.Exec(ctx, query, args...)
 	if err != nil {
 		if isDuplicateKeyError(err) {
 			return fmt.Errorf("%w: %s", ErrDuplicate, extractConstraint(err))
@@ -523,16 +508,16 @@ func (r *UserRepository) updateWithQuerier(ctx context.Context, querier userMuta
 	if tag.RowsAffected() == 0 {
 		return ErrNotFound
 	}
-	if err := split.applyMembership(ctx, querier, id); err != nil {
+	if err := syncMembershipRole(ctx, db, id, input); err != nil {
 		return err
 	}
 	if roleChanging {
-		if err := endImpersonationsInvolving(ctx, querier, id); err != nil {
+		if err := endImpersonationsInvolving(ctx, db, id); err != nil {
 			return err
 		}
 	}
 	if promoting {
-		return revokeCredentialsIssuedToNonAdmin(ctx, querier, id)
+		return revokeCredentialsIssuedToNonAdmin(ctx, db, id)
 	}
 	return nil
 }
@@ -674,7 +659,7 @@ func (r *UserRepository) Delete(ctx context.Context, id int) error {
 
 // List returns all users ordered by ID ascending.
 func (r *UserRepository) List(ctx context.Context) ([]*models.User, error) {
-	query := `SELECT ` + allColumns + userSource + ` ORDER BY u.id ASC`
+	query := `SELECT ` + allColumns + ` FROM users ORDER BY id ASC`
 	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("listing users: %w", err)
@@ -688,13 +673,13 @@ func (r *UserRepository) List(ctx context.Context) ([]*models.User, error) {
 // It is the keyset page behind the v2 account listing; List stays the
 // unbounded v1 listing.
 func (r *UserRepository) ListPage(ctx context.Context, afterID, limit int, identity string) ([]*models.User, error) {
-	query := `SELECT ` + allColumns + userSource + ` WHERE u.id > $1`
+	query := `SELECT ` + allColumns + ` FROM users WHERE id > $1`
 	args := []any{afterID, limit}
 	if identity != "" {
-		query += ` AND (u.username = $3 OR u.email = $3)`
+		query += ` AND (username = $3 OR email = $3)`
 		args = append(args, NormalizeUsername(identity))
 	}
-	query += ` ORDER BY u.id ASC LIMIT $2`
+	query += ` ORDER BY id ASC LIMIT $2`
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("listing users page: %w", err)
@@ -770,8 +755,15 @@ func (r *UserRepository) ClaimInitialSetup(ctx context.Context, provision func(t
 		return fmt.Errorf("beginning initial setup: %w", err)
 	}
 	defer tx.Rollback(context.WithoutCancel(ctx)) //nolint:errcheck
-	if err := r.ClaimInitialSetupInTransaction(ctx, tx); err != nil {
-		return err
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", InitialSetupAdvisoryLock); err != nil {
+		return fmt.Errorf("acquiring initial setup lock: %w", err)
+	}
+	var count int
+	if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM users").Scan(&count); err != nil {
+		return fmt.Errorf("counting users: %w", err)
+	}
+	if count > 0 {
+		return ErrSetupAlreadyComplete
 	}
 	if err := provision(tx); err != nil {
 		return err
@@ -807,12 +799,4 @@ func (r *UserRepository) CreateInvited(ctx context.Context, input models.CreateU
 		return nil, fmt.Errorf("committing invited account: %w", err)
 	}
 	return user, nil
-}
-
-// Shared v2 services use the canonical membership-aware mutation paths.
-func createUser(ctx context.Context, db userCreateQuerier, input models.CreateUserInput) (*models.User, error) {
-	return (&UserRepository{}).createWithQuerier(ctx, db, input)
-}
-func updateUser(ctx context.Context, db userMutationQuerier, id int, input models.UpdateUserInput, passwordHash *string) error {
-	return (&UserRepository{}).updateWithQuerier(ctx, db, id, input, passwordHash)
 }

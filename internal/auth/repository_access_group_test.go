@@ -215,12 +215,6 @@ func newAccessGroupUserRepoDBTest(t *testing.T) (context.Context, *pgxpool.Pool,
 		t.Skip("test database has not applied default access group migration")
 	}
 
-	// Silo now validates each policy library against an actual catalog row.
-	if _, err := pool.Exec(ctx, `INSERT INTO media_folders(id,type,name) VALUES(1,'movies','Policy library one'),(3,'movies','Policy library three') ON CONFLICT(id) DO NOTHING;
-        SELECT setval(pg_get_serial_sequence('media_folders','id'),GREATEST((SELECT last_value FROM media_folders_id_seq),3),true)`); err != nil {
-		t.Fatal(err)
-	}
-
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	t.Cleanup(func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE username LIKE $1`, "auth-access-group-test-"+suffix+"%")
@@ -332,15 +326,6 @@ func insertAuthAccessGroupTestUser(t *testing.T, ctx context.Context, pool *pgxp
 		"auth-access-group-test-"+suffix+"@example.invalid",
 	).Scan(&id); err != nil {
 		t.Fatalf("insert user: %v", err)
-	}
-	// The account's policy lives on its default-organization membership now, so
-	// a directly-inserted account needs one or every policy update matches no row.
-	if _, err := pool.Exec(ctx, `
-		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-		SELECT id, $1, 'active', 'user' FROM organizations
-		WHERE is_default AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
-		ON CONFLICT (organization_id, account_id) DO NOTHING`, id); err != nil {
-		t.Fatalf("seed account membership: %v", err)
 	}
 	return id
 }

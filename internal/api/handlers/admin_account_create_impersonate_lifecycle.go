@@ -104,6 +104,9 @@ func (h *AdminHandler) createLifecycleAccountInTransaction(ctx context.Context, 
 	if conflict {
 		return auth.CreatedAccount{}, auth.ErrDuplicate
 	}
+	if err := releaseTenantAccountLink(ctx, tx, *organizationID, user.ID); err != nil {
+		return auth.CreatedAccount{}, err
+	}
 	membership, err := h.tenantStore.ProvisionTenantMembershipInTransaction(ctx, tx, *organizationID, user.ID, auth.MembershipLegacyRole(input.User.Role))
 	if err != nil {
 		return auth.CreatedAccount{}, err

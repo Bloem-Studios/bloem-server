@@ -169,7 +169,7 @@ func TestBloemAccountTransactionProviderPreflight(t *testing.T) {
 							t.Fatalf("created account has %d memberships, want only the selected organization", totalMemberships)
 						}
 						var groupOrganization string
-						if err := pool.QueryRow(ctx, `SELECT g.organization_id::text FROM organization_memberships m JOIN access_groups g ON g.id=m.access_group_id WHERE m.id=$1`, created.MembershipID).Scan(&groupOrganization); err != nil {
+						if err := pool.QueryRow(ctx, `SELECT g.organization_id::text FROM organization_memberships m JOIN users mu ON mu.id = m.account_id JOIN access_groups g ON g.id = mu.access_group_id WHERE m.id=$1`, created.MembershipID).Scan(&groupOrganization); err != nil {
 							t.Fatal(err)
 						}
 						if groupOrganization != expectedOrganization.String() {
@@ -265,9 +265,6 @@ func bloemAccountTransactionCounts(t *testing.T, tx pgx.Tx) [4]int {
 func bloemAccountTransactionDatabase(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	pool := newBloemAccountDatabase(t)
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(t.Context(), pool); err != nil {
-		t.Fatal(err)
-	}
 	return pool
 }
 

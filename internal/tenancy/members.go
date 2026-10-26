@@ -23,13 +23,12 @@ import (
 )
 
 var (
-	ErrMemberNotFound                   = errors.New("tenancy: member not found")
-	ErrSlotQuotaExceeded                = errors.New("tenancy: member slot quota exceeded")
-	ErrTenantFrozen                     = errors.New("tenancy: tenant is frozen")
-	ErrIdempotencyConflict              = errors.New("tenancy: idempotency command conflicts with prior request")
-	ErrUsernameConflict                 = errors.New("tenancy: member username conflicts")
-	ErrInvalidMemberCommand             = errors.New("tenancy: invalid member command")
-	ErrMembershipPolicyWriteUnavailable = errors.New("tenancy: membership policy rollout is not writable")
+	ErrMemberNotFound       = errors.New("tenancy: member not found")
+	ErrSlotQuotaExceeded    = errors.New("tenancy: member slot quota exceeded")
+	ErrTenantFrozen         = errors.New("tenancy: tenant is frozen")
+	ErrIdempotencyConflict  = errors.New("tenancy: idempotency command conflicts with prior request")
+	ErrUsernameConflict     = errors.New("tenancy: member username conflicts")
+	ErrInvalidMemberCommand = errors.New("tenancy: invalid member command")
 )
 
 // CreateMemberInput is the credential-bearing command for a tenant member.
@@ -291,8 +290,6 @@ func (s *MemberService) Create(
 	if _, err = tx.Exec(ctx, `
 		INSERT INTO organization_memberships (id, organization_id, account_id, status, legacy_role)
 		SELECT $1, $2, $3, $4, $5
-		WHERE set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true) IS NOT NULL
 		ON CONFLICT (organization_id, account_id) DO UPDATE
 		SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`,
 		uuid.New(), tenantID, created.ID, MembershipActive, legacyRoleUser); err != nil {
@@ -364,11 +361,13 @@ func (s *MemberService) CreateInTransaction(ctx context.Context, tx pgx.Tx, tena
 	if err != nil {
 		return models.User{}, uuid.Nil, fmt.Errorf("tenancy: create member account: %w", err)
 	}
-	membershipID := uuid.New()
-	if _, err := tx.Exec(ctx, `INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role) SELECT $1,$2,$3,$4,$5 WHERE set_config('bloem.membership_policy_writer',
-				public.bloem_membership_policy_writer_marker(), true) IS NOT NULL
+	// Account creation already links the account to the tenant that owns its
+	// access group; read back that membership's id rather than assuming ours.
+	var membershipID uuid.UUID
+	if err := tx.QueryRow(ctx, `INSERT INTO organization_memberships (id,organization_id,account_id,status,legacy_role) SELECT $1,$2,$3,$4,$5
 		ON CONFLICT (organization_id, account_id) DO UPDATE
-		SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, membershipID, tenantID, created.ID, MembershipActive, legacyRoleUser); err != nil {
+		SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role
+		RETURNING id`, uuid.New(), tenantID, created.ID, MembershipActive, legacyRoleUser).Scan(&membershipID); err != nil {
 		return models.User{}, uuid.Nil, fmt.Errorf("tenancy: create member membership: %w", err)
 	}
 	if tenant.ownerAccountID == nil {

@@ -93,7 +93,9 @@ func (hw *HeartbeatWriter) CleanupSelf(ctx context.Context) error {
 		return fmt.Errorf("deleting sessions for node %s: %w", hw.nodeID, err)
 	}
 
-	_, err = hw.pool.Exec(ctx, bloemHeartbeatCleanupSQL, hw.nodeID, hw.instanceID)
+	_, err = hw.pool.Exec(ctx, `
+		DELETE FROM node_heartbeats WHERE node_id = $1
+	`, hw.nodeID)
 	if err != nil {
 		return fmt.Errorf("deleting heartbeat for node %s: %w", hw.nodeID, err)
 	}

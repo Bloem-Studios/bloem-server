@@ -13,7 +13,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
-func TestTenantOrganizationDeletePreservesSharedAccounts(t *testing.T) {
+// An account belongs to one organization, so deleting one tenant must leave
+// another tenant's account, membership and profile exactly as they were.
+func TestTenantOrganizationDeletePreservesOtherOrganizations(t *testing.T) {
 	for _, lifecycle := range []bool{true, false} {
 		name := "legacy"
 		if lifecycle {
@@ -42,26 +44,28 @@ func TestTenantOrganizationDeletePreservesSharedAccounts(t *testing.T) {
 			}
 			a, b := createTenant(), createTenant()
 			members := tenancy.NewMemberService(pool, auth.NewAccountProvisioner(users, nil), users, auth.NewSessionRepository(pool))
-			member, _, err := members.Create(ctx, a.ID, "shared-retirement-"+uuid.NewString(), tenancy.CreateMemberInput{
-				Username: "retirement-member-" + uuid.NewString(), Email: uuid.NewString() + "@retirement.test", Password: "test-password",
-			})
-			if err != nil {
-				t.Fatal(err)
+			createMember := func(tenant uuid.UUID) int {
+				t.Helper()
+				member, _, err := members.Create(ctx, tenant, "retirement-"+uuid.NewString(), tenancy.CreateMemberInput{
+					Username: "retirement-member-" + uuid.NewString(), Email: uuid.NewString() + "@retirement.test", Password: "test-password",
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = users.Delete(context.Background(), member.ID) })
+				return member.ID
 			}
-			t.Cleanup(func() { _ = users.Delete(context.Background(), member.ID) })
-			if _, err := store.ProvisionTenantMembership(ctx, b.ID, member.ID, "user"); err != nil {
-				t.Fatal(err)
-			}
+			retired, kept := createMember(a.ID), createMember(b.ID)
 			var group int64
 			if err := pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE organization_id=$1 AND is_default`, b.ID).Scan(&group); err != nil {
 				t.Fatal(err)
 			}
 			profile := uuid.NewString()
-			if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,'Surviving profile',$3,$4)`, profile, member.ID, b.ID, group); err != nil {
+			if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id) VALUES ($1,$2,'Surviving profile',$3,$4)`, profile, kept, b.ID, group); err != nil {
 				t.Fatal(err)
 			}
 			path := "/api/v1/admin/tenants/" + a.ID.String()
-			key := "retire-shared-" + uuid.NewString()
+			key := "retire-isolated-" + uuid.NewString()
 			got := lifecycleTenantRequest(t, router, http.MethodDelete, path, key, nil)
 			if got.Code != http.StatusNoContent {
 				t.Fatalf("tenant delete = %d: %s", got.Code, got.Body.String())
@@ -71,7 +75,7 @@ func TestTenantOrganizationDeletePreservesSharedAccounts(t *testing.T) {
 				EXISTS(SELECT 1 FROM users WHERE id=$1),
 				EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=$2 AND account_id=$1),
 				EXISTS(SELECT 1 FROM user_profiles WHERE id=$3 AND user_id=$1 AND organization_id=$2),
-				EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=$4 AND account_id=$1)`, member.ID, b.ID, profile, a.ID).
+				EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=$4 AND account_id=$5)`, kept, b.ID, profile, a.ID, retired).
 				Scan(&account, &membership, &keptProfile, &removedMembership); err != nil {
 				t.Fatal(err)
 			}

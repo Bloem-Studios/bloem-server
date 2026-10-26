@@ -121,9 +121,6 @@ func discoveryOrganization(t *testing.T, pool *pgxpool.Pool, account int) (uuid.
 		t.Fatal(err)
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	if _, err := tx.Exec(t.Context(), `SELECT set_config('bloem.membership_policy_writer',public.bloem_membership_policy_writer_marker(),true)`); err != nil {
-		t.Fatal(err)
-	}
 	var org, membership uuid.UUID
 	var policy, security int64
 	if err := tx.QueryRow(t.Context(), `INSERT INTO organizations(slug,name,status,owner_account_id) VALUES('discovery-org','Synthetic organization','active',$1) RETURNING id,policy_revision`, account).Scan(&org, &policy); err != nil {
@@ -144,9 +141,6 @@ func discoveryMembershipRevoke(t *testing.T, pool *pgxpool.Pool, membership uuid
 		t.Fatal(err)
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	if _, err := tx.Exec(t.Context(), `SELECT set_config('bloem.membership_policy_writer',public.bloem_membership_policy_writer_marker(),true)`); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := tx.Exec(t.Context(), `UPDATE organization_memberships SET status='suspended' WHERE id=$1`, membership); err != nil {
 		t.Fatal(err)
 	}

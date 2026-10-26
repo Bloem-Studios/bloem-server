@@ -10,9 +10,6 @@ import (
 
 func TestBloemMembershipProvisioningPreservesExistingAuthority(t *testing.T) {
 	store, f := newTenancyFixture(t)
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(t.Context(), f.pool); err != nil {
-		t.Fatal(err)
-	}
 	ownership, err := store.ActivateInitialOwnership(f.ctx, f.adminID)
 	if err != nil {
 		t.Fatal(err)
@@ -32,10 +29,7 @@ func TestBloemMembershipProvisioningPreservesExistingAuthority(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer func() { _ = tx.Rollback(context.Background()) }()
-			if _, err := tx.Exec(t.Context(), `SELECT set_config('bloem.membership_policy_writer','v1',true)`); err != nil {
-				t.Fatal(err)
-			}
-			if _, err = tx.Exec(t.Context(), `UPDATE organization_memberships SET status=$1, download_allowed=false WHERE account_id=$2 AND organization_id=$3`, tc.status, f.otherID, ownership.Organization.ID); err != nil {
+			if _, err = tx.Exec(t.Context(), `UPDATE organization_memberships SET status=$1 WHERE account_id=$2 AND organization_id=$3`, tc.status, f.otherID, ownership.Organization.ID); err != nil {
 				t.Fatal(err)
 			}
 			read := func() string {
@@ -54,7 +48,7 @@ func TestBloemMembershipProvisioningPreservesExistingAuthority(t *testing.T) {
 				t.Fatal(err)
 			}
 			if after := read(); after != before {
-				t.Fatal("existing membership policy/status/revision changed during provisioning")
+				t.Fatal("existing membership status/revision changed during provisioning")
 			}
 		})
 	}

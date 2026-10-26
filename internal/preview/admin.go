@@ -223,7 +223,7 @@ type Capacity struct {
 const sharedAccountReadySQL = `EXISTS(SELECT 1 FROM users u
  JOIN organization_memberships m ON m.account_id=u.id AND m.status='active'
  JOIN organizations o ON o.id=m.organization_id AND o.is_default
- JOIN access_groups g ON g.id=m.access_group_id AND g.organization_id=m.organization_id
+ JOIN access_groups g ON g.id=u.access_group_id AND g.organization_id=m.organization_id
  JOIN user_profiles p ON p.user_id=u.id AND p.organization_id=m.organization_id AND p.access_group_id=g.id AND p.is_primary
  WHERE u.id=$1 AND u.enabled AND u.role='user' AND NOT u.local_password_login_enabled
  AND g.managed_template_key='bloem-preview' AND g.library_ids IS NOT NULL)`

@@ -57,14 +57,6 @@ func (e *Env) bloemRegisterCleanups() {
 	e.t.Cleanup(e.dropSnapshot)
 }
 
-// bloemFinalizeFixtureMembership finalizes the membership policy authority on
-// the freshly migrated scratch database.
-func (e *Env) bloemFinalizeFixtureMembership(pool *pgxpool.Pool) {
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(e.ctx, pool); err != nil {
-		e.t.Fatalf("scenario executor: finalize fixture membership policy: %v", err)
-	}
-}
-
 func bloemFixtureMembershipsFor(pool *pgxpool.Pool) bloemFixtureMemberships {
 	return bloemFixtureMemberships{store: tenancy.NewStore(pool)}
 }

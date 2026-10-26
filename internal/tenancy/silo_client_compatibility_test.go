@@ -43,8 +43,9 @@ func TestSiloClientSubjectResolutionMatrix(t *testing.T) {
 		memberProfile = uuid.NewString()
 		if _, err := pool.Exec(ctx, `
 			INSERT INTO user_profiles (id, user_id, name, organization_id, access_group_id, is_primary)
-			SELECT $1, $2, 'Matrix', $3, memberships.access_group_id, true
+			SELECT $1, $2, 'Matrix', $3, accounts.access_group_id, true
 			FROM organization_memberships AS memberships
+			JOIN users AS accounts ON accounts.id = memberships.account_id
 			WHERE memberships.account_id = $2 AND memberships.organization_id = $3`,
 			memberProfile, member.ID, tenantA.ID); err != nil {
 			t.Fatalf("seed member profile: %v", err)
@@ -92,29 +93,26 @@ func TestSiloClientSubjectResolutionMatrix(t *testing.T) {
 
 	t.Run("a tenant member's account-level policy is its tenant's, not empty", func(t *testing.T) {
 		// A Silo client has no concept of organizations: it asks account-shaped
-		// questions and needs an answer every time. models.User therefore
-		// projects the membership representing the account, and for a tenant's
-		// own end user that is the tenant's. An empty answer here would read to
-		// the client as "no entitlements".
+		// questions and needs an answer every time. models.User carries the
+		// account's own policy, and for a tenant's end user its group is one of
+		// the tenant's. An empty answer here would read to the client as "no
+		// entitlements".
 		users := auth.NewUserRepository(pool)
 		loaded, err := users.GetByID(ctx, member.ID)
 		if err != nil {
 			t.Fatalf("load tenant member: %v", err)
 		}
-		var tenantGroup *int64
-		if err := pool.QueryRow(ctx,
-			`SELECT access_group_id FROM organization_memberships WHERE account_id = $1 AND organization_id = $2`,
-			member.ID, tenantA.ID).Scan(&tenantGroup); err != nil {
-			t.Fatalf("read tenant membership group: %v", err)
-		}
-		switch {
-		case loaded.AccessGroupID == nil && tenantGroup == nil:
-			// Both unset is consistent.
-		case loaded.AccessGroupID == nil || tenantGroup == nil:
-			t.Fatalf("account-level group = %v but the tenant membership holds %v; "+
-				"a Silo client would see the wrong entitlements", loaded.AccessGroupID, tenantGroup)
-		case *loaded.AccessGroupID != *tenantGroup:
-			t.Fatalf("account-level group = %d, want the tenant's %d", *loaded.AccessGroupID, *tenantGroup)
+		if loaded.AccessGroupID != nil {
+			var inTenant bool
+			if err := pool.QueryRow(ctx,
+				`SELECT EXISTS (SELECT 1 FROM access_groups WHERE id = $1 AND organization_id = $2)`,
+				*loaded.AccessGroupID, tenantA.ID).Scan(&inTenant); err != nil {
+				t.Fatalf("read account group organization: %v", err)
+			}
+			if !inTenant {
+				t.Fatalf("account-level group = %d is not one of the tenant's; "+
+					"a Silo client would see the wrong entitlements", *loaded.AccessGroupID)
+			}
 		}
 		if loaded.MaxProfiles != nil && *loaded.MaxProfiles <= 0 {
 			t.Fatalf("account-level max_profiles = %d; a Silo client would read that as no profiles allowed", *loaded.MaxProfiles)

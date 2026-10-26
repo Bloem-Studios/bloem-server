@@ -113,15 +113,14 @@ web branding and bundle allowances stay in owned files. The
 contracts; the [changelog](docs/bloem/CHANGELOG.md) records the integration milestone.
 
 Use the Bloem binary for migration status and execution. Its `migrations.BloemFS`
-adapter is required when upstream request-group migration meets finalized Bloem
-membership policy. Test finalized-schema upgrades as well as fresh databases;
-the latter alone cannot catch renamed legacy policy columns.
+adapter rewrites historical migrations a fresh database still replays before
+`20261026003000_bloem_account_policy_on_users` moves account policy back onto
+`users`, where Silo keeps it.
 
-A Silo database taken over by Bloem can stay switchable: the `mirrored`
-membership-policy phase keeps upstream Silo's `users` policy columns and Bloem's
-default-organization membership identical, so either binary can serve it, one at
-a time. Upstream merges that add Silo writes to tables Bloem constrains need a
-mirrored-phase test and a passing `make silo-switch-check`; see
+A Silo database taken over by Bloem can stay switchable: with
+`public.bloem_silo_switching` enabled, either binary can serve it, one at a
+time. Upstream merges that add Silo writes to tables Bloem constrains need a
+switching test and a passing `make silo-switch-check`; see
 [Silo backend switching](docs/architecture/silo-backend-switching.md).
 
 The historical October 5 merge-reduction pass restored six shared files and

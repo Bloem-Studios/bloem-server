@@ -138,6 +138,27 @@ func watchSyncRows(t *testing.T, ctx context.Context, pool *pgxpool.Pool) map[st
 	return fingerprint
 }
 
+// enterMirrored puts a database migrated to before the account policy moved
+// back onto users into the 'mirrored' phase, which those migrations kept for
+// Silo switching.
+func enterMirrored(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+	t.Helper()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_mirror_enabler', 'v1', true)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE public.membership_policy_authority SET phase = 'mirrored', mirrored_at = now() WHERE singleton`); err != nil {
+		t.Fatalf("enter mirrored phase: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestPastimeRemovalLeavesNoManagedObjects(t *testing.T) {
 	ctx, pool, _ := buildTenantPool(t)
 	assertNoPastimeObjects(t, ctx, pool)

@@ -29,7 +29,7 @@ func TestBloemGroupLimitsOrganizationBoundaryDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	viewer := Viewer{UserID: f.accountID, IsAdmin: true}
+	viewer := Viewer{UserID: f.accountT, IsAdmin: true}
 	var defaultOrg uuid.UUID
 	if err := f.pool.QueryRow(t.Context(), `SELECT id FROM organizations WHERE is_default`).Scan(&defaultOrg); err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestBloemGroupLimitsOrganizationBoundaryDatabase(t *testing.T) {
 		}
 	}
 	for i, org := range orgs {
-		ctx := tenancy.WithContext(t.Context(), groupLimitTestTenant(f.accountID, org, org == defaultOrg))
+		ctx := tenancy.WithContext(t.Context(), groupLimitTestTenant(f.accountT, org, org == defaultOrg))
 		for j, groupID := range groups {
 			t.Run(fmt.Sprintf("organization-%d/group-%d", i, j), func(t *testing.T) {
 				read, err := service.GetGroupLimit(ctx, viewer, groupID)
@@ -94,13 +94,13 @@ func TestBloemGroupLimitScopeAndRevisionDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	viewer := Viewer{UserID: f.accountID, IsAdmin: true}
+	viewer := Viewer{UserID: f.accountT, IsAdmin: true}
 	var groupID int64
 	if err := f.pool.QueryRow(t.Context(), `INSERT INTO access_groups (organization_id,name) VALUES ($1,'Unsaved request limit') RETURNING id`, f.orgT).Scan(&groupID); err != nil {
 		t.Fatal(err)
 	}
 	in := GroupLimit{GroupID: groupID, LimitMode: LimitModeUnlimited, ApprovalMode: ApprovalModeAuto}
-	for i, ctx := range []context.Context{t.Context(), tenancy.WithContext(t.Context(), tenancy.Context{AccountID: f.accountID}), tenancy.WithContext(t.Context(), tenancy.Context{OrganizationID: f.orgT})} {
+	for i, ctx := range []context.Context{t.Context(), tenancy.WithContext(t.Context(), tenancy.Context{AccountID: f.accountT}), tenancy.WithContext(t.Context(), tenancy.Context{OrganizationID: f.orgT})} {
 		t.Run(fmt.Sprintf("missing-scope-%d", i), func(t *testing.T) {
 			if _, err := service.GetGroupLimit(ctx, viewer, groupID); !errors.Is(err, ErrForbidden) {
 				t.Errorf("unscoped read = %v, want ErrForbidden", err)
@@ -113,7 +113,7 @@ func TestBloemGroupLimitScopeAndRevisionDatabase(t *testing.T) {
 			}
 		})
 	}
-	valid := groupLimitTestTenant(f.accountID, f.orgT, false)
+	valid := groupLimitTestTenant(f.accountT, f.orgT, false)
 	for _, tc := range []struct {
 		name   string
 		mutate func(*tenancy.Context)
@@ -144,17 +144,17 @@ func TestBloemGroupLimitScopeAndRevisionDatabase(t *testing.T) {
 		})
 	}
 	ctx := tenancy.WithContext(t.Context(), valid)
-	mismatched := Viewer{UserID: f.singleOrgID, IsAdmin: true}
+	mismatched := Viewer{UserID: f.accountE, IsAdmin: true}
 	if _, err := service.GetGroupLimit(ctx, mismatched, groupID); !errors.Is(err, ErrForbidden) {
 		t.Errorf("another viewer's tenant read = %v, want ErrForbidden", err)
 	}
 	if _, err := service.UpsertGroupLimitConditional(ctx, mismatched, in, -1); !errors.Is(err, ErrForbidden) {
 		t.Errorf("another viewer's tenant write = %v, want ErrForbidden", err)
 	}
-	if _, err := service.GetGroupLimit(ctx, Viewer{UserID: f.accountID}, groupID); !errors.Is(err, ErrForbidden) {
+	if _, err := service.GetGroupLimit(ctx, Viewer{UserID: f.accountT}, groupID); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("non-admin read = %v", err)
 	}
-	if _, err := service.UpsertGroupLimitConditional(ctx, Viewer{UserID: f.accountID}, in, -1); !errors.Is(err, ErrForbidden) {
+	if _, err := service.UpsertGroupLimitConditional(ctx, Viewer{UserID: f.accountT}, in, -1); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("non-admin write = %v", err)
 	}
 	fresh, err := service.GetGroupLimit(ctx, viewer, groupID)

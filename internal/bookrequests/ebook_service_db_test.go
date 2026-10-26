@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/config"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -33,8 +32,8 @@ func TestInternalEbookAdmissionGateDatabase(t *testing.T) {
 		}
 	}
 	setEbookOptIn(t, pool, "true")
-	hosted, _ := hostedBookViewer(t, pool, v.UserID)
-	bookSQL(t, pool, `UPDATE users SET role='admin' WHERE id=$1`, v.UserID)
+	hosted, _ := hostedBookViewer(t, pool)
+	bookSQL(t, pool, `UPDATE users SET role='admin' WHERE id=$1`, hosted.UserID)
 	hosted.Admin = true
 	if _, _, err := s.CreateEbook(t.Context(), hosted, in, uuid.NewString()); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("platform-admin account bypassed hosted restriction: %v", err)
@@ -117,9 +116,6 @@ func otherEbookViewer(t *testing.T, pool *pgxpool.Pool, v Viewer) Viewer {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(t.Context())
-	if err = tenancy.MarkMembershipPolicyWriter(t.Context(), tx); err != nil {
-		t.Fatal(err)
-	}
 	if _, err = tx.Exec(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role) VALUES($1,$2,'active','user')`, v.OrganizationID, account); err != nil {
 		t.Fatal(err)
 	}
@@ -256,9 +252,6 @@ func TestInternalEbookRevokedMembershipDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(t.Context())
-	if err = tenancy.MarkMembershipPolicyWriter(t.Context(), tx); err != nil {
-		t.Fatal(err)
-	}
 	if _, err = tx.Exec(t.Context(), `UPDATE organization_memberships SET status='suspended' WHERE account_id=$1 AND organization_id=$2`, v.UserID, v.OrganizationID); err != nil {
 		t.Fatal(err)
 	}

@@ -3,6 +3,25 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Account policy back on users
+
+An account's policy (access group, permissions, libraries, quality, stream,
+transcode, download and request limits, profile limit and policy revision)
+lives on `users` again, where Silo keeps it. A membership only links an account
+to its one organization: `organization_memberships` loses the 13 policy columns
+and gains `UNIQUE (account_id)`, so making an account that already belongs to
+one organization the owner or member of another is refused. The three-phase membership-policy authority,
+its writer markers, rollout observations, heartbeat capability fence, rollback
+snapshots and the `silo membership-policy` command are gone.
+`20261026003000_bloem_account_policy_on_users` moves a finalized database's
+policy back onto `users` and keeps a mirrored one switchable. Silo switching
+is now one flag, `public.bloem_silo_switching`, driven by
+`silo silo-switching {status|enable|disable}`; its guards and Silo-shaped write
+placement are unchanged. Silo's `identity_service.go`, `account_resolution.go`,
+`admin_users.go` and ten of its tests return to Silo's bytes, and the account
+repository's Bloem hooks shrink to the membership link, the organization's
+default group and the role sync. The seam ledger drops from 344 to 331.
+
 ## October 25, 2026 — v1 sockets use Silo's tickets
 
 The v1 events, watch-together and playback-control sockets run Silo's handshake

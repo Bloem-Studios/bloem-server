@@ -182,7 +182,8 @@ func (s bloemEbookSetup) Test(ctx context.Context, v bookrequests.Viewer, id str
 }
 
 // ResolvePlatformViewer binds only ebook setup to the deployment's default
-// organization. Initializing organizations qualify only while Silo is mirrored.
+// organization. Initializing organizations qualify only while Silo switching is
+// enabled.
 func (s bloemEbookSetup) ResolvePlatformViewer(ctx context.Context, accountID int) (bookrequests.Viewer, error) {
 	tenant, err := tenancy.NewResolver(tenancy.NewStore(s.pool)).Resolve(ctx, accountID, nil, true)
 	if err != nil {
@@ -192,11 +193,11 @@ func (s bloemEbookSetup) ResolvePlatformViewer(ctx context.Context, accountID in
 		return bookrequests.Viewer{}, bookrequests.ErrForbidden
 	}
 	if tenant.OrganizationStatus == tenancy.OrganizationInitializing {
-		var phase string
-		if err := s.pool.QueryRow(ctx, `SELECT phase FROM membership_policy_authority WHERE singleton`).Scan(&phase); err != nil {
+		switchable, err := tenancy.SiloSwitchingEnabled(ctx, s.pool)
+		if err != nil {
 			return bookrequests.Viewer{}, err
 		}
-		if phase != "mirrored" {
+		if !switchable {
 			return bookrequests.Viewer{}, bookrequests.ErrForbidden
 		}
 	} else if tenant.OrganizationStatus != tenancy.OrganizationActive {

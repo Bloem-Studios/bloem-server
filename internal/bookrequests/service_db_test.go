@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/database"
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -60,9 +59,6 @@ func databaseFixtureWithMigrations(t *testing.T, migrationFS fs.FS) (*Service, V
 	if err = database.RunMigrations(t.Context(), pool, migrationFS, "sql"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = tenancy.FinalizeMembershipPolicyAuthority(t.Context(), pool); err != nil {
-		t.Fatal(err)
-	}
 	var org uuid.UUID
 	if err = pool.QueryRow(t.Context(), `SELECT id FROM organizations WHERE is_default`).Scan(&org); err != nil {
 		t.Fatal(err)
@@ -73,9 +69,6 @@ func databaseFixtureWithMigrations(t *testing.T, migrationFS fs.FS) (*Service, V
 	}
 	tx, err := pool.Begin(t.Context())
 	if err != nil {
-		t.Fatal(err)
-	}
-	if err = tenancy.MarkMembershipPolicyWriter(t.Context(), tx); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = tx.Exec(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role) VALUES($1,$2,'active','user') ON CONFLICT DO NOTHING`, org, user); err != nil {
@@ -211,9 +204,6 @@ func TestBookRequestConcurrentIdempotencyAndCrossAccountDedupeDatabase(t *testin
 		t.Fatal(err)
 	}
 	defer tx.Rollback(t.Context())
-	if err = tenancy.MarkMembershipPolicyWriter(t.Context(), tx); err != nil {
-		t.Fatal(err)
-	}
 	if _, err = tx.Exec(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role) VALUES($1,$2,'active','user')`, v.OrganizationID, other); err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +287,7 @@ func TestBookRequestQuotaAndDedupeConcurrencyDatabase(t *testing.T) {
 
 func TestBookRequestOnlyAccessibleAudiobookCompletesDatabase(t *testing.T) {
 	s, v, pool := databaseFixture(t)
-	v, _ = hostedBookViewer(t, pool, v.UserID)
+	v, _ = hostedBookViewer(t, pool)
 	r := submit(t, s, v, CreateInput{Title: "Stable book", ISBN: "9780306406157"})
 	exec := func(sql string, args ...any) {
 		t.Helper()
@@ -343,18 +333,21 @@ func bookSQL(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) {
 	}
 }
 
-func hostedBookViewer(t *testing.T, pool *pgxpool.Pool, account int) (Viewer, int64) {
+// hostedBookViewer is a viewer in a hosted organization, with its own account:
+// an account belongs to one organization.
+func hostedBookViewer(t *testing.T, pool *pgxpool.Pool) (Viewer, int64) {
 	t.Helper()
-	var org uuid.UUID
-	if err := pool.QueryRow(t.Context(), `INSERT INTO organizations(slug,name,status,owner_account_id) VALUES('hosted','Hosted','active',$1) RETURNING id`, account).Scan(&org); err != nil {
-		t.Fatal(err)
-	}
 	tx, err := pool.Begin(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(t.Context())
-	if err = tenancy.MarkMembershipPolicyWriter(t.Context(), tx); err != nil {
+	var account int
+	if err = tx.QueryRow(t.Context(), `INSERT INTO users(username,email,password_hash,role) VALUES('hosted-viewer','hosted-viewer@example.test','x','user') RETURNING id`).Scan(&account); err != nil {
+		t.Fatal(err)
+	}
+	var org uuid.UUID
+	if err = tx.QueryRow(t.Context(), `INSERT INTO organizations(slug,name,status,owner_account_id) VALUES('hosted','Hosted','active',$1) RETURNING id`, account).Scan(&org); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = tx.Exec(t.Context(), `INSERT INTO organization_memberships(organization_id,account_id,status,legacy_role) VALUES($1,$2,'active','user')`, org, account); err != nil {
@@ -373,7 +366,7 @@ func hostedBookViewer(t *testing.T, pool *pgxpool.Pool, account int) (Viewer, in
 
 func TestBookRequestHostedProfilePolicyAndIndependentLaneDatabase(t *testing.T) {
 	s, defaultViewer, pool := databaseFixture(t)
-	v, group := hostedBookViewer(t, pool, defaultViewer.UserID)
+	v, group := hostedBookViewer(t, pool)
 	bookSQL(t, pool, `UPDATE access_groups SET requests_allowed=false WHERE organization_id=$1`, defaultViewer.OrganizationID)
 	bookSQL(t, pool, `INSERT INTO request_group_limits(group_id,limit_mode,max_requests,window_days,approval_mode) VALUES($1,'custom',2,3,'auto')`, group)
 	bookSQL(t, pool, `INSERT INTO media_requests(id,media_type,tmdb_id,title,status,requested_by_user_id,requested_by_profile_id) VALUES('silo-request','movie',101,'Movie','pending',$1,$2)`, v.UserID, v.ProfileID)

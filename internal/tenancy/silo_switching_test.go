@@ -1,9 +1,8 @@
 package tenancy_test
 
-// The 'mirrored' membership policy phase, which lets upstream Silo and Bloem
-// each serve one database: the legacy users policy columns (Silo's) and the
-// default-organization membership (Bloem's) are copied into each other in the
-// same transaction, and nothing Silo could not honor is allowed.
+// Silo switching keeps one database servable by upstream Silo and by Bloem,
+// one at a time: account policy already lives on users, where both read it,
+// and while switching is enabled nothing Silo could not honor is allowed.
 
 import (
 	"context"
@@ -12,17 +11,13 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/Silo-Server/silo-server/internal/testutil/migrationfixture"
-	"github.com/Silo-Server/silo-server/migrations"
 )
 
 // siloAccount inserts an account the way upstream Silo does: every policy
 // column on users, non-admins in the default access group, admins ungrouped.
-// A Silo-origin database migrated by Bloem gives each such account a
-// default-organization membership seeded from users; the unmarked insert here
-// reproduces that seed.
+// It is given the default-organization membership a Bloem migration gives
+// each Silo-origin account.
 func siloAccount(t *testing.T, ctx context.Context, pool *pgxpool.Pool, username, role string) int {
 	t.Helper()
 	group := "(SELECT id FROM access_groups WHERE is_default)"
@@ -45,66 +40,26 @@ func siloAccount(t *testing.T, ctx context.Context, pool *pgxpool.Pool, username
 	return id
 }
 
-func enterMirrored(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
-	t.Helper()
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_mirror_enabler', 'v1', true)`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := tx.Exec(ctx, `UPDATE public.membership_policy_authority SET phase = 'mirrored', mirrored_at = now() WHERE singleton`); err != nil {
-		t.Fatalf("enter mirrored phase: %v", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// mirroredPool returns a database in the 'mirrored' phase with one Silo user
+// switchablePool returns a database with Silo switching enabled, one Silo user
 // and one Silo admin.
-func mirroredPool(t *testing.T) (context.Context, *pgxpool.Pool, int, int) {
+func switchablePool(t *testing.T) (context.Context, *pgxpool.Pool, int, int) {
 	t.Helper()
 	ctx, pool, _ := buildTenantPool(t)
 	user := siloAccount(t, ctx, pool, "u1", "user")
 	admin := siloAccount(t, ctx, pool, "admin1", "admin")
-	enterMirrored(t, ctx, pool)
+	if _, err := tenancy.EnableSiloSwitching(ctx, pool); err != nil {
+		t.Fatalf("enable silo switching: %v", err)
+	}
 	return ctx, pool, user, admin
 }
 
-type policySnapshot struct {
-	group     *int64
-	streams   *int
-	transcode *bool
-	requests  *bool
-	libraries []int32
-}
-
-func membershipPolicy(t *testing.T, ctx context.Context, pool *pgxpool.Pool, account int) policySnapshot {
+func switching(t *testing.T, ctx context.Context, pool *pgxpool.Pool) bool {
 	t.Helper()
-	var p policySnapshot
-	if err := pool.QueryRow(ctx, `
-		SELECT access_group_id, max_streams, transcode_allowed, requests_allowed, library_ids
-		FROM organization_memberships
-		WHERE account_id = $1 AND organization_id = public.bloem_default_organization_id()`, account,
-	).Scan(&p.group, &p.streams, &p.transcode, &p.requests, &p.libraries); err != nil {
-		t.Fatalf("read membership policy: %v", err)
+	enabled, err := tenancy.SiloSwitchingEnabled(ctx, pool)
+	if err != nil {
+		t.Fatal(err)
 	}
-	return p
-}
-
-func userPolicy(t *testing.T, ctx context.Context, pool *pgxpool.Pool, account int) policySnapshot {
-	t.Helper()
-	var p policySnapshot
-	if err := pool.QueryRow(ctx, `
-		SELECT access_group_id, max_streams, transcode_allowed, requests_allowed, library_ids
-		FROM users WHERE id = $1`, account,
-	).Scan(&p.group, &p.streams, &p.transcode, &p.requests, &p.libraries); err != nil {
-		t.Fatalf("read users policy: %v", err)
-	}
-	return p
+	return enabled
 }
 
 func wantError(t *testing.T, err error, code string) {
@@ -114,115 +69,101 @@ func wantError(t *testing.T, err error, code string) {
 	}
 }
 
-func TestMirroredUserPolicyWriteReachesMembership(t *testing.T) {
-	ctx, pool, user, _ := mirroredPool(t)
-	if _, err := pool.Exec(ctx, `UPDATE users SET max_streams = 7, transcode_allowed = false, requests_allowed = false WHERE id = $1`, user); err != nil {
-		t.Fatalf("silo policy write: %v", err)
-	}
-	got := membershipPolicy(t, ctx, pool, user)
-	if got.streams == nil || *got.streams != 7 {
-		t.Fatalf("membership max_streams = %v, want 7", got.streams)
-	}
-	if got.transcode == nil || *got.transcode {
-		t.Fatalf("membership transcode_allowed = %v, want false", got.transcode)
-	}
-	if got.requests == nil || *got.requests {
-		t.Fatalf("membership requests_allowed = %v, want false", got.requests)
-	}
-}
-
-func TestMirroredMembershipPolicyWriteReachesUser(t *testing.T) {
-	ctx, pool, user, _ := mirroredPool(t)
-	if _, err := pool.Exec(ctx, `INSERT INTO media_folders(id,type,name) VALUES(1,'movies','One'),(2,'movies','Two')`); err != nil {
-		t.Fatal(err)
-	}
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err := tx.Exec(ctx, `SELECT set_config('bloem.membership_policy_writer', public.bloem_membership_policy_writer_marker(), true)`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE organization_memberships SET max_streams = 3, library_ids = '{1,2}'
-		WHERE account_id = $1 AND organization_id = public.bloem_default_organization_id()`, user); err != nil {
-		t.Fatalf("bloem policy write: %v", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		t.Fatal(err)
-	}
-	got := userPolicy(t, ctx, pool, user)
-	if got.streams == nil || *got.streams != 3 {
-		t.Fatalf("users max_streams = %v, want 3", got.streams)
-	}
-	if len(got.libraries) != 2 || got.libraries[0] != 1 || got.libraries[1] != 2 {
-		t.Fatalf("users library_ids = %v, want [1 2]", got.libraries)
-	}
-}
-
-func TestMirroredGroupMoveFollowsToMembership(t *testing.T) {
-	ctx, pool, user, _ := mirroredPool(t)
-	var group int64
-	if err := pool.QueryRow(ctx, `INSERT INTO access_groups (name) VALUES ('second') RETURNING id`).Scan(&group); err != nil {
-		t.Fatalf("create group: %v", err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = $1 WHERE id = $2`, group, user); err != nil {
-		t.Fatalf("move to group: %v", err)
-	}
-	if got := membershipPolicy(t, ctx, pool, user); got.group == nil || *got.group != group {
-		t.Fatalf("membership access_group_id = %v, want %d", got.group, group)
-	}
-	// What Silo does before deleting a group: move its members to the default.
-	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = (SELECT id FROM access_groups WHERE is_default) WHERE access_group_id = $1`, group); err != nil {
-		t.Fatalf("move members back: %v", err)
-	}
-	if _, err := pool.Exec(ctx, `DELETE FROM access_groups WHERE id = $1`, group); err != nil {
-		t.Fatalf("delete group: %v", err)
-	}
-	var defaultGroup int64
-	if err := pool.QueryRow(ctx, `SELECT id FROM access_groups WHERE is_default`).Scan(&defaultGroup); err != nil {
-		t.Fatal(err)
-	}
-	if got := membershipPolicy(t, ctx, pool, user); got.group == nil || *got.group != defaultGroup {
-		t.Fatalf("membership access_group_id = %v, want default %d", got.group, defaultGroup)
-	}
-}
-
-func TestMirroredAdminKeepsNullGroup(t *testing.T) {
-	ctx, pool, _, admin := mirroredPool(t)
-	if _, err := pool.Exec(ctx, `UPDATE users SET max_streams = 9 WHERE id = $1`, admin); err != nil {
-		t.Fatalf("admin policy write: %v", err)
-	}
-	got := membershipPolicy(t, ctx, pool, admin)
-	if got.group != nil {
-		t.Fatalf("admin membership access_group_id = %d, want NULL", *got.group)
-	}
-	if got.streams == nil || *got.streams != 9 {
-		t.Fatalf("admin membership max_streams = %v, want 9", got.streams)
-	}
-}
-
-func TestMirroredWriterMarker(t *testing.T) {
+// Accounts Silo created hold only a users row; enabling gives each its
+// default-organization membership.
+func TestEnableSiloSwitchingCreatesMissingMemberships(t *testing.T) {
 	ctx, pool, _ := buildTenantPool(t)
-	var marker string
-	if err := pool.QueryRow(ctx, `SELECT public.bloem_membership_policy_writer_marker()`).Scan(&marker); err != nil {
-		t.Fatal(err)
+	for _, account := range []struct{ name, role, group string }{
+		{"u1", "user", "(SELECT id FROM access_groups WHERE is_default)"},
+		{"admin1", "admin", "NULL"},
+	} {
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO users (username, email, password_hash, role, enabled, max_streams, access_group_id)
+			VALUES ($1::text, $1::text || '@example.invalid', 'x', $2, true, 3, `+account.group+`)`,
+			account.name, account.role); err != nil {
+			t.Fatalf("insert %s: %v", account.name, err)
+		}
 	}
-	if marker != "" {
-		t.Fatalf("compatibility marker = %q, want empty", marker)
+	if switching(t, ctx, pool) {
+		t.Fatal("a fresh database is switchable")
 	}
-	enterMirrored(t, ctx, pool)
-	if err := pool.QueryRow(ctx, `SELECT public.bloem_membership_policy_writer_marker()`).Scan(&marker); err != nil {
-		t.Fatal(err)
+	report, err := tenancy.EnableSiloSwitching(ctx, pool)
+	if err != nil {
+		t.Fatalf("enable silo switching: %v", err)
 	}
-	if marker != "v1" {
-		t.Fatalf("mirrored marker = %q, want v1", marker)
+	if report.AlreadyEnabled || report.MembershipsCreated != 2 {
+		t.Fatalf("report = %+v, want 2 created memberships", report)
+	}
+	if !switching(t, ctx, pool) {
+		t.Fatal("switching not enabled")
+	}
+	var role string
+	if err := pool.QueryRow(ctx, `
+		SELECT m.legacy_role FROM organization_memberships m JOIN users u ON u.id = m.account_id
+		WHERE u.username = 'admin1' AND m.organization_id = public.bloem_default_organization_id()`).Scan(&role); err != nil {
+		t.Fatalf("read admin membership: %v", err)
+	}
+	if role != "admin" {
+		t.Fatalf("admin membership role = %s, want admin", role)
 	}
 }
 
-func TestMirroredAcceptsDefaultOrganizationMembership(t *testing.T) {
-	ctx, pool, _, _ := mirroredPool(t)
+func TestEnableSiloSwitchingIsIdempotent(t *testing.T) {
+	ctx, pool, _, _ := switchablePool(t)
+	report, err := tenancy.EnableSiloSwitching(ctx, pool)
+	if err != nil {
+		t.Fatalf("second enable: %v", err)
+	}
+	if !report.AlreadyEnabled {
+		t.Fatalf("report = %+v, want AlreadyEnabled", report)
+	}
+}
+
+func TestEnableSiloSwitchingRefusesTwoOrganizations(t *testing.T) {
+	ctx, pool, _ := buildTenantPool(t)
+	admin := siloAccount(t, ctx, pool, "admin1", "admin")
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO organizations (slug, name, status, owner_account_id, is_default)
+		VALUES ('two', 'Two', 'active', $1, false)`, admin); err != nil {
+		t.Fatalf("second organization: %v", err)
+	}
+	_, err := tenancy.EnableSiloSwitching(ctx, pool)
+	wantError(t, err, "exactly one organization")
+	if switching(t, ctx, pool) {
+		t.Fatal("switching enabled with two organizations")
+	}
+}
+
+func TestEnableSiloSwitchingRefusesDirectProfileLogins(t *testing.T) {
+	ctx, pool, _ := buildTenantPool(t)
+	user := siloAccount(t, ctx, pool, "u1", "user")
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO user_profiles (id, user_id, name, is_primary, organization_id, access_group_id, login_email, password_hash)
+		SELECT 'p1', id, 'Main', true, public.bloem_default_organization_id(), access_group_id, 'p1@example.invalid', 'x'
+		FROM users WHERE id = $1`, user); err != nil {
+		t.Fatalf("profile with login: %v", err)
+	}
+	_, err := tenancy.EnableSiloSwitching(ctx, pool)
+	wantError(t, err, "direct profile login")
+	if switching(t, ctx, pool) {
+		t.Fatal("switching enabled with a direct profile login")
+	}
+}
+
+func TestDisableSiloSwitchingLiftsTheGuards(t *testing.T) {
+	ctx, pool, _, admin := switchablePool(t)
+	if err := tenancy.DisableSiloSwitching(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO organizations (slug, name, status, owner_account_id, is_default)
+		VALUES ('two', 'Two', 'active', $1, false)`, admin); err != nil {
+		t.Fatalf("second organization after disabling: %v", err)
+	}
+}
+
+func TestSwitchableAcceptsDefaultOrganizationMembership(t *testing.T) {
+	ctx, pool, _, _ := switchablePool(t)
 	// Bloem's account path: the account and its membership in one transaction.
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -238,23 +179,23 @@ func TestMirroredAcceptsDefaultOrganizationMembership(t *testing.T) {
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		VALUES (public.bloem_default_organization_id(), $1, 'active', 'user')`, account); err != nil {
-		t.Fatalf("default-organization membership while mirrored: %v", err)
+		t.Fatalf("default-organization membership while switchable: %v", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		t.Fatalf("commit account and membership: %v", err)
 	}
 }
 
-func TestMirroredRefusesSecondOrganization(t *testing.T) {
-	ctx, pool, _, admin := mirroredPool(t)
+func TestSwitchableRefusesSecondOrganization(t *testing.T) {
+	ctx, pool, _, admin := switchablePool(t)
 	_, err := pool.Exec(ctx, `
 		INSERT INTO organizations (slug, name, status, owner_account_id, is_default)
 		VALUES ('two', 'Two', 'active', $1, false)`, admin)
 	wantError(t, err, "bloem_silo_switching_single_organization")
 }
 
-func TestMirroredRefusesDirectProfileLogin(t *testing.T) {
-	ctx, pool, user, _ := mirroredPool(t)
+func TestSwitchableRefusesDirectProfileLogin(t *testing.T) {
+	ctx, pool, user, _ := switchablePool(t)
 	if _, err := pool.Exec(ctx, `
 		INSERT INTO user_profiles (id, user_id, name, is_primary, organization_id, access_group_id)
 		VALUES ('p1', $1, 'Main', true, public.bloem_default_organization_id(), (SELECT id FROM access_groups WHERE is_default))`, user); err != nil {
@@ -262,34 +203,4 @@ func TestMirroredRefusesDirectProfileLogin(t *testing.T) {
 	}
 	_, err := pool.Exec(ctx, `UPDATE user_profiles SET login_email = 'p@example.invalid', password_hash = 'x' WHERE id = 'p1'`)
 	wantError(t, err, "bloem_silo_switching_direct_profile_login")
-}
-
-func TestCompatibilityStillFreezesPolicy(t *testing.T) {
-	ctx, pool, _ := buildTenantPool(t)
-	user := siloAccount(t, ctx, pool, "u1", "user")
-	_, err := pool.Exec(ctx, `UPDATE users SET max_streams = 4 WHERE id = $1`, user)
-	wantError(t, err, "membership_policy_fenced")
-}
-
-func TestEnablingMirroredRequiresMarker(t *testing.T) {
-	ctx, pool, _ := buildTenantPool(t)
-	_, err := pool.Exec(ctx, `UPDATE public.membership_policy_authority SET phase = 'mirrored', mirrored_at = now() WHERE singleton`)
-	wantError(t, err, "membership_policy_authority_immutable")
-}
-
-// A Bloem installation finalized before Silo switching existed has renamed the
-// users policy columns; upgrading it must still apply the switching migrations.
-func TestSwitchingMigrationsApplyToFinalizedDatabase(t *testing.T) {
-	baseline := migrationfixture.Before(t, migrations.FS, migrationfixture.CompatibilityRemoval)
-	ctx, pool, _ := buildTenantPoolWithMigrations(t, baseline)
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatal(err)
-	}
-	const beforeSwitching = 20261009130019
-	if err := database.MigrateDownTo(ctx, pool, baseline, "sql", beforeSwitching); err != nil {
-		t.Fatalf("roll back to before the switching migrations: %v", err)
-	}
-	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
-		t.Fatalf("apply the switching migrations to a finalized database: %v", err)
-	}
 }

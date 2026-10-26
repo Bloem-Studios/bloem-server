@@ -137,7 +137,7 @@ func TestServiceSelectionPersistsCanonicalSnapshotServerSideAndIsImmutable(t *te
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE admin_people_selections SET matched_count=0 WHERE id=$1`, reference); err == nil || !strings.Contains(err.Error(), "immutable") {
 		t.Fatalf("immutable selection update error = %v", err)
 	}
-	if _, err := fixture.service.ExecuteBulk(fixture.ctx, fixture.orgB, fixture.ownerID, BulkAction{SelectionToken: selection.Token, Kind: BulkSuspendMemberships}); !errors.Is(err, ErrInvalidSelection) {
+	if _, err := fixture.service.ExecuteBulk(fixture.ctx, fixture.orgB, fixture.ownerBID, BulkAction{SelectionToken: selection.Token, Kind: BulkSuspendMemberships}); !errors.Is(err, ErrInvalidSelection) {
 		t.Fatalf("cross-organization selection error = %v, want ErrInvalidSelection", err)
 	}
 	fixture.service.now = func() time.Time { return expires.Add(time.Second) }
@@ -283,8 +283,8 @@ func TestServiceBulkActorAuthorityLocksSerializeConcurrentRevocation(t *testing.
 		platform  bool
 		revokeSQL string
 	}{
-		{name: "membership suspension", revokeSQL: `UPDATE organization_memberships SET status='suspended',security_revision=security_revision+1 WHERE id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`},
-		{name: "membership demotion", revokeSQL: `UPDATE organization_memberships SET legacy_role='user',security_revision=security_revision+1 WHERE id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`},
+		{name: "membership suspension", revokeSQL: `UPDATE organization_memberships SET status='suspended',security_revision=security_revision+1 WHERE id=$1`},
+		{name: "membership demotion", revokeSQL: `UPDATE organization_memberships SET legacy_role='user',security_revision=security_revision+1 WHERE id=$1`},
 		{name: "organization policy", revokeSQL: `UPDATE organizations SET policy_revision=policy_revision+1 WHERE id=$1`},
 		{name: "platform disable", platform: true, revokeSQL: `UPDATE users SET enabled=false WHERE id=$1`},
 	}
@@ -505,7 +505,7 @@ func TestServiceBulkJobFailsBeforeMutationWhenOrganizationAuthorityRevoked(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET status='suspended',security_revision=security_revision+1 WHERE id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.ownerMembershipID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET status='suspended',security_revision=security_revision+1 WHERE id=$1`, fixture.ownerMembershipID); err != nil {
 		t.Fatal(err)
 	}
 	result, err := fixture.service.ProcessBulkJob(fixture.ctx, fixture.orgA, queued.JobID)
@@ -634,7 +634,7 @@ func TestServiceBulkSkipsAuthorizationStateChangedAfterSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET security_revision=security_revision+1 WHERE organization_id=$1 AND account_id=$2 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.orgA, fixture.sharedAccountID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET security_revision=security_revision+1 WHERE organization_id=$1 AND account_id=$2`, fixture.orgA, fixture.sharedAccountID); err != nil {
 		t.Fatal(err)
 	}
 	completed, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID)
@@ -777,9 +777,9 @@ func TestServiceBulkGroupAssignmentIsOrganizationBoundAndRevisionGuarded(t *test
 		t.Fatalf("bulk result = %+v", result)
 	}
 	fixture.assertProfileGroup(t, fixture.sharedAccountID, fixture.profileA, groupA2)
-	fixture.assertProfileGroup(t, fixture.sharedAccountID, fixture.profileB, fixture.groupB)
+	fixture.assertProfileGroup(t, fixture.foreignAccountID, fixture.profileB, fixture.groupB)
 	fixture.assertMembershipRevision(t, fixture.orgA, fixture.sharedAccountID, 2)
-	fixture.assertMembershipRevision(t, fixture.orgB, fixture.sharedAccountID, 1)
+	fixture.assertMembershipRevision(t, fixture.orgB, fixture.foreignAccountID, 1)
 	fixture.assertAccountPolicyRevision(t, fixture.sharedAccountID, 2)
 	stored, err := fixture.service.GetBulkJob(fixture.ctx, fixture.orgA, result.JobID)
 	if err != nil || stored.JobID != result.JobID || stored.Succeeded != 1 {
@@ -855,7 +855,7 @@ func TestPolicyBulkJobMovesInheritedProfilesAndPreservesCustomProfiles(t *testin
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
 	customGroup := fixture.addGroup(t, fixture.orgA, "Policy custom", false)
 	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Custom policy", customGroup)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2 AND id<>$4`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID, customProfile); err != nil {
@@ -917,12 +917,14 @@ func TestPolicyBulkJobClearsManagedAccountOverridesAndAuditsEffectivePolicy(t *t
 	customGroup := fixture.addGroup(t, fixture.orgA, "Override custom", false)
 	customProfile := fixture.addProfile(t, fixture.sharedAccountID, fixture.orgA, "Override custom profile", customGroup)
 	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), standard.AccessGroupID)
-	execMembershipPolicy(t, fixture.ctx, fixture.pool, `
-		UPDATE organization_memberships SET
+	if _, err := fixture.pool.Exec(fixture.ctx, `
+		UPDATE users SET
 			library_ids='{}'::integer[],max_playback_quality='720p',max_streams=1,max_transcodes=1,
 			transcode_allowed=false,audio_transcode_allowed=false,download_allowed=false,
 			download_transcode_allowed=false,requests_allowed=false
-		WHERE organization_id=$2 AND account_id=$1`, fixture.sharedAccountID, fixture.orgA)
+		WHERE id=$1`, fixture.sharedAccountID); err != nil {
+		t.Fatal(err)
+	}
 
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
 	if err != nil {
@@ -968,7 +970,7 @@ func TestPolicyBulkJobClearsManagedAccountOverridesAndAuditsEffectivePolicy(t *t
 		       transcode_allowed IS NULL AND audio_transcode_allowed IS NULL AND
 		       download_allowed IS NULL AND download_transcode_allowed IS NULL AND
 		       requests_allowed IS NULL
-		FROM organization_memberships WHERE organization_id=$2 AND account_id=$1`, fixture.sharedAccountID, fixture.orgA).Scan(&managedOverridesCleared); err != nil {
+		FROM users WHERE id = $1 AND EXISTS (SELECT 1 FROM organization_memberships m WHERE m.account_id = users.id AND m.organization_id = $2)`, fixture.sharedAccountID, fixture.orgA).Scan(&managedOverridesCleared); err != nil {
 		t.Fatal(err)
 	}
 	if !managedOverridesCleared {
@@ -1001,7 +1003,7 @@ func TestPolicyBulkJobReconcilesOverridesOnAlreadyAssignedCohort(t *testing.T) {
 	store := entitlements.NewTemplateStore(fixture.pool)
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
 	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), premium.AccessGroupID)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET max_streams=1 WHERE account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET max_streams=1 WHERE id = $1`, fixture.sharedAccountID); err != nil {
 		t.Fatal(err)
 	}
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "shared@example.test"})
@@ -1023,7 +1025,7 @@ func TestPolicyBulkJobReconcilesOverridesOnAlreadyAssignedCohort(t *testing.T) {
 		t.Fatalf("completed=%+v err=%v", completed, err)
 	}
 	var maxStreams *int
-	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT max_streams FROM organization_memberships WHERE account_id=$1`, fixture.sharedAccountID).Scan(&maxStreams); err != nil {
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT max_streams FROM users WHERE id = $1`, fixture.sharedAccountID).Scan(&maxStreams); err != nil {
 		t.Fatal(err)
 	}
 	if maxStreams != nil {
@@ -1040,7 +1042,7 @@ func TestPolicyBulkJobReconcilesNonNullableMaxProfilesOnAlreadyAssignedCohort(t 
 	store := entitlements.NewTemplateStore(fixture.pool)
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
 	assignAccountAndInheritedProfiles(t, fixture, fixture.sharedAccountID, int64(fixture.groupA), premium.AccessGroupID)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET max_profiles=1 WHERE account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET max_profiles=1 WHERE id = $1`, fixture.sharedAccountID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1083,7 +1085,7 @@ func TestPolicyBulkJobReconcilesNonNullableMaxProfilesOnAlreadyAssignedCohort(t 
 		}
 	}
 	var persisted int
-	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT max_profiles FROM organization_memberships WHERE account_id=$1`, fixture.sharedAccountID).Scan(&persisted); err != nil {
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT max_profiles FROM users WHERE id = $1`, fixture.sharedAccountID).Scan(&persisted); err != nil {
 		t.Fatal(err)
 	}
 	if persisted != preview.Target.Policy.MaxProfiles {
@@ -1277,7 +1279,7 @@ func TestPolicyBulkJobRestartResumesWithoutRepeatingCompletedTargets(t *testing.
 		accountID, _ := fixture.addAccount(t, fixture.orgA, fmt.Sprintf("policy-restart-%d@example.test", index), fmt.Sprintf("Policy Restart %d", index), fmt.Sprintf("Policy Restart Profile %d", index), int(standard.AccessGroupID), false)
 		accountIDs = append(accountIDs, accountID)
 	}
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=ANY($1::integer[]) AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, accountIDs, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=ANY($1::integer[])`, accountIDs, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "policy-restart-"})
@@ -1324,7 +1326,7 @@ func TestPolicyBulkJobRejectsPayloadMismatchAndCancelsWithoutEffects(t *testing.
 	store := entitlements.NewTemplateStore(fixture.pool)
 	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2`, fixture.orgA, fixture.sharedAccountID, standard.AccessGroupID); err != nil {
@@ -1592,7 +1594,7 @@ func TestPolicyBulkJobFailsBeforeMutationWhenActorRevoked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET legacy_role='user' WHERE id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, fixture.ownerMembershipID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships SET legacy_role='user' WHERE id=$1`, fixture.ownerMembershipID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.service.ProcessBulkJob(ctx, fixture.orgA, queued.JobID); !errors.Is(err, ErrAuthorizationStateChanged) {
@@ -1611,7 +1613,7 @@ func TestPolicyBulkJobCommitsSuccessfulTargetsAcrossPartialFailure(t *testing.T)
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
 	first, _ := fixture.addAccount(t, fixture.orgA, "partial-policy-a@example.test", "Partial A", "Partial A", int(standard.AccessGroupID), false)
 	second, _ := fixture.addAccount(t, fixture.orgA, "partial-policy-b@example.test", "Partial B", "Partial B", int(standard.AccessGroupID), false)
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=ANY($1::integer[]) AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, []int{first, second}, standard.AccessGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=ANY($1::integer[])`, []int{first, second}, standard.AccessGroupID); err != nil {
 		t.Fatal(err)
 	}
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "partial-policy-"})
@@ -1636,9 +1638,9 @@ func TestPolicyBulkJobCommitsSuccessfulTargetsAcrossPartialFailure(t *testing.T)
 		t.Fatalf("partial completion=%+v err=%v", completed, err)
 	}
 	fixture.assertAccountGroup(t, first, int(premium.AccessGroupID))
-	// The second target's membership was deleted above to make it not-found, and
-	// the group lives on the membership now, so there is no stale account-level
-	// group left to assert. What matters is that the failed target gained none.
+	// The second target's membership was deleted above to make it not-found; its
+	// account keeps the group it had and gains no membership.
+	fixture.assertAccountGroup(t, second, int(standard.AccessGroupID))
 	var secondMemberships int
 	if err := fixture.pool.QueryRow(fixture.ctx,
 		`SELECT count(*) FROM organization_memberships WHERE organization_id=$1 AND account_id=$2`,
@@ -1758,17 +1760,15 @@ func TestPolicyBulkJobExecutesTenThousandTargetsExactlyOnce(t *testing.T) {
 	standard := ensurePreviewCohort(t, fixture, store, "standard", 1)
 	premium := ensurePreviewCohort(t, fixture, store, "premium", 1)
 	if _, err := fixture.pool.Exec(fixture.ctx, `
-		INSERT INTO users (email,username,password_hash,role,enabled)
-		SELECT 'policy-10k-'||n||'@example.test','Policy 10k '||n,'hash','user',true
-		FROM generate_series(1,10000) n`); err != nil {
+		INSERT INTO users (email,username,password_hash,role,enabled,access_group_id,permissions)
+		SELECT 'policy-10k-'||n||'@example.test','Policy 10k '||n,'hash','user',true,$1,$2
+		FROM generate_series(1,10000) n`, standard.AccessGroupID, auth.DefaultUserPermissions()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `
-		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,access_group_id,permissions)
-		SELECT $1,id,'active','user',$2,$3 FROM users
-		WHERE email LIKE 'policy-10k-%@example.test'
-		  AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`,
-		fixture.orgA, standard.AccessGroupID, auth.DefaultUserPermissions()); err != nil {
+		INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+		SELECT $1,id,'active','user' FROM users
+		WHERE email LIKE 'policy-10k-%@example.test'`, fixture.orgA); err != nil {
 		t.Fatal(err)
 	}
 	selection, err := fixture.service.CreateSelection(fixture.ctx, fixture.orgA, Filter{Query: "policy-10k-"})
@@ -1797,7 +1797,7 @@ func TestPolicyBulkJobExecutesTenThousandTargetsExactlyOnce(t *testing.T) {
 
 func assignAccountAndInheritedProfiles(t *testing.T, fixture *peopleFixture, accountID int, oldGroupID, newGroupID int64) {
 	t.Helper()
-	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organization_memberships m SET access_group_id=$2 FROM access_groups g WHERE g.id=$2 AND m.organization_id=g.organization_id AND m.account_id=$1 AND set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`, accountID, newGroupID); err != nil {
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE users SET access_group_id=$2 WHERE id=$1`, accountID, newGroupID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE user_profiles SET access_group_id=$3 WHERE organization_id=$1 AND user_id=$2 AND access_group_id=$4`, fixture.orgA, accountID, newGroupID, oldGroupID); err != nil {
@@ -1814,7 +1814,9 @@ type peopleFixture struct {
 	orgB              uuid.UUID
 	ownerID           int
 	ownerMembershipID uuid.UUID
+	ownerBID          int
 	sharedAccountID   int
+	foreignAccountID  int
 	groupA            int
 	groupB            int
 	profileA          string
@@ -1835,12 +1837,6 @@ func newPeopleFixture(t *testing.T) *peopleFixture {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
-	// A freshly migrated database is in the compatibility phase, which freezes
-	// every policy write. Hand the authority over so these tests run against
-	// the state the handoff produces.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 	f := &peopleFixture{t: t, ctx: ctx, pool: pool, service: NewService(pool, "people-postgres-test-secret")}
 	f.ownerID = f.insertUser(t, "owner@example.test", "Owner")
 	if err := pool.QueryRow(ctx, `SELECT id FROM organizations WHERE is_default`).Scan(&f.orgA); err != nil {
@@ -1849,21 +1845,23 @@ func newPeopleFixture(t *testing.T) *peopleFixture {
 	if _, err := pool.Exec(ctx, `UPDATE organizations SET status='active', owner_account_id=$2 WHERE id=$1`, f.orgA, f.ownerID); err != nil {
 		t.Fatal(err)
 	}
-	if err := pool.QueryRow(ctx, `INSERT INTO organizations (slug,name,status,owner_account_id) VALUES ('people-org-b','People B','active',$1) RETURNING id`, f.ownerID).Scan(&f.orgB); err != nil {
+	// An account belongs to one organization, so organization B has its own
+	// owner and its own member, whose profiles must never surface in A.
+	f.ownerBID = f.insertUser(t, "owner-b@example.test", "Owner B")
+	if err := pool.QueryRow(ctx, `INSERT INTO organizations (slug,name,status,owner_account_id) VALUES ('people-org-b','People B','active',$1) RETURNING id`, f.ownerBID).Scan(&f.orgB); err != nil {
 		t.Fatal(err)
 	}
 	f.groupA = f.defaultGroup(t, f.orgA)
 	f.groupB = f.addGroup(t, f.orgB, "B Default", true)
 	f.ownerMembershipID = f.addMembership(t, f.orgA, f.ownerID, "admin")
-	f.addMembership(t, f.orgB, f.ownerID, "admin")
+	f.addMembership(t, f.orgB, f.ownerBID, "admin")
 	f.sharedAccountID = f.insertUser(t, "shared@example.test", "Shared Account")
 	f.addMembership(t, f.orgA, f.sharedAccountID, "user")
-	f.addMembership(t, f.orgB, f.sharedAccountID, "user")
 	f.profileA = f.addProfile(t, f.sharedAccountID, f.orgA, "Alpha Profile", f.groupA)
-	f.profileB = f.addProfile(t, f.sharedAccountID, f.orgB, "Foreign Profile", f.groupB)
-	foreignID := f.insertUser(t, "shared-foreign@example.test", "Foreign Only")
-	f.addMembership(t, f.orgB, foreignID, "user")
-	f.addProfile(t, foreignID, f.orgB, "Foreign Shared", f.groupB)
+	f.foreignAccountID = f.insertUser(t, "shared-foreign@example.test", "Foreign Only")
+	f.addMembership(t, f.orgB, f.foreignAccountID, "user")
+	f.profileB = f.addProfile(t, f.foreignAccountID, f.orgB, "Foreign Profile", f.groupB)
+	f.addProfile(t, f.foreignAccountID, f.orgB, "Foreign Shared", f.groupB)
 	return f
 }
 
@@ -1879,12 +1877,7 @@ func (f *peopleFixture) insertUser(t *testing.T, email, username string) int {
 func (f *peopleFixture) addMembership(t *testing.T, org uuid.UUID, accountID int, role string) uuid.UUID {
 	t.Helper()
 	var id uuid.UUID
-	// permissions on a membership is a MASK over the group's allowed_permissions,
-	// and the column defaults to an empty array where users.permissions defaulted
-	// to the standard set. A fixture creating a membership directly has to supply
-	// what the account repository would have, or every effective policy computes
-	// to no permissions at all.
-	if err := f.pool.QueryRow(f.ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,permissions) SELECT $1,$2,'active',$3,$4 WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL RETURNING id`, org, accountID, role, auth.DefaultUserPermissions()).Scan(&id); err != nil {
+	if err := f.pool.QueryRow(f.ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role) VALUES ($1,$2,'active',$3) RETURNING id`, org, accountID, role).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
 	return id
@@ -1941,18 +1934,8 @@ func (f *peopleFixture) assertProfileGroup(t *testing.T, accountID int, profileI
 
 func (f *peopleFixture) assertAccountGroup(t *testing.T, accountID, want int) {
 	t.Helper()
-	// The group is per membership now, so an account that is not a member of the
-	// organization under test has no group here rather than a stale account-level
-	// one. Read the membership that represents the account, the same precedence
-	// the account policy projection uses.
 	var got int
-	if err := f.pool.QueryRow(f.ctx, `
-		SELECT memberships.access_group_id
-		FROM organization_memberships AS memberships
-		JOIN organizations AS orgs ON orgs.id = memberships.organization_id
-		WHERE memberships.account_id = $1
-		ORDER BY (memberships.organization_id = $2) DESC, orgs.is_default DESC, memberships.id ASC
-		LIMIT 1`, accountID, f.orgA).Scan(&got); err != nil {
+	if err := f.pool.QueryRow(f.ctx, `SELECT access_group_id FROM users WHERE id=$1`, accountID).Scan(&got); err != nil {
 		t.Fatal(err)
 	}
 	if got != want {
@@ -1974,7 +1957,7 @@ func (f *peopleFixture) assertMembershipRevision(t *testing.T, org uuid.UUID, ac
 func (f *peopleFixture) assertAccountPolicyRevision(t *testing.T, accountID int, want int64) {
 	t.Helper()
 	var got int64
-	if err := f.pool.QueryRow(f.ctx, `SELECT access_policy_revision FROM organization_memberships WHERE account_id=$1`, accountID).Scan(&got); err != nil {
+	if err := f.pool.QueryRow(f.ctx, `SELECT access_policy_revision FROM users WHERE id = $1`, accountID).Scan(&got); err != nil {
 		t.Fatal(err)
 	}
 	if got != want {

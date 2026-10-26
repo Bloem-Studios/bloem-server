@@ -23,7 +23,6 @@ import (
 type multitenantAdminAcceptanceFixture struct {
 	pool               *pgxpool.Pool
 	router             http.Handler
-	accountToken       string
 	organizationIDs    [2]uuid.UUID
 	membershipIDs      [2]uuid.UUID
 	organizationTokens [2]string
@@ -47,11 +46,6 @@ func newMultitenantAdminAcceptanceFixture(t *testing.T) *multitenantAdminAccepta
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate disposable database: %v", err)
 	}
-	// A freshly migrated database is in the compatibility phase, which freezes
-	// every policy write including the membership a new account is given.
-	if _, err := tenancy.FinalizeMembershipPolicyAuthority(ctx, pool); err != nil {
-		t.Fatalf("finalize membership policy authority: %v", err)
-	}
 
 	password := "correct horse battery staple"
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
@@ -72,7 +66,10 @@ func newMultitenantAdminAcceptanceFixture(t *testing.T) *multitenantAdminAccepta
 		}
 		return id
 	}
-	sharedAccountID := insertAccount("shared-admin")
+	// An account belongs to one organization, so each organization has its
+	// own administrator.
+	adminUsernames := [2]string{"north-admin", "canal-admin"}
+	adminIDs := [2]int{insertAccount(adminUsernames[0]), insertAccount(adminUsernames[1])}
 	organizationOnly := [2]int{insertAccount("north-only"), insertAccount("canal-only")}
 
 	fixture := &multitenantAdminAcceptanceFixture{pool: pool}
@@ -84,21 +81,19 @@ func newMultitenantAdminAcceptanceFixture(t *testing.T) *multitenantAdminAccepta
 	for index := range fixture.organizationIDs {
 		if err := pool.QueryRow(ctx, `
 			INSERT INTO organizations (slug,name,status,owner_account_id)
-			VALUES ($1,$2,'active',$3) RETURNING id`, organizationSlugs[index], organizationNames[index], sharedAccountID).Scan(&fixture.organizationIDs[index]); err != nil {
+			VALUES ($1,$2,'active',$3) RETURNING id`, organizationSlugs[index], organizationNames[index], adminIDs[index]).Scan(&fixture.organizationIDs[index]); err != nil {
 			t.Fatalf("create organization %d: %v", index, err)
 		}
 		if err := pool.QueryRow(ctx, `
 			INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
 SELECT $1,$2,'active','admin'
-WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
 ON CONFLICT (organization_id, account_id) DO UPDATE
-SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role RETURNING id`, fixture.organizationIDs[index], sharedAccountID).Scan(&fixture.membershipIDs[index]); err != nil {
-			t.Fatalf("create shared membership %d: %v", index, err)
+SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role RETURNING id`, fixture.organizationIDs[index], adminIDs[index]).Scan(&fixture.membershipIDs[index]); err != nil {
+			t.Fatalf("create administrator membership %d: %v", index, err)
 		}
 		if _, err := pool.Exec(ctx, `
 			INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
 SELECT $1,$2,'active','user'
-WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL
 ON CONFLICT (organization_id, account_id) DO UPDATE
 SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organizationIDs[index], organizationOnly[index]); err != nil {
 			t.Fatalf("create organization-only membership %d: %v", index, err)
@@ -136,7 +131,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organ
 				session_id,request_id,node_id,allowed,eval_time_ns,input_digest,input_sample,result_sample
 			) VALUES ($1,$2,'playback.start',1,$3,$4,'acceptance','acceptance','acceptance',true,1,'digest',
 				jsonb_build_object('action','playback.start','resource',jsonb_build_object('title',$5::text)),
-				'{"allowed":true,"reason_code":"tenant_acceptance"}'::jsonb)`, fixture.organizationIDs[index], fixture.membershipIDs[index], sharedAccountID, fmt.Sprintf("acceptance-profile-%d", index), fixture.localMarkers[index]); err != nil {
+				'{"allowed":true,"reason_code":"tenant_acceptance"}'::jsonb)`, fixture.organizationIDs[index], fixture.membershipIDs[index], adminIDs[index], fmt.Sprintf("acceptance-profile-%d", index), fixture.localMarkers[index]); err != nil {
 			t.Fatalf("create policy decision %d: %v", index, err)
 		}
 	}
@@ -150,13 +145,13 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, fixture.organ
 		AppContext: ctx, DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap, MembershipProvisioner: bootstrap,
 	})
-	login := performJSONRequest(t, fixture.router, http.MethodPost, "/api/v1/auth/login", `{"username":"shared-admin","password":"`+password+`"}`, "", nil)
-	if login.Code != http.StatusOK {
-		t.Fatalf("login shared administrator = %d %s", login.Code, login.Body.String())
-	}
-	fixture.accountToken = decodeLogin(t, login).AccessToken
 	for index, organizationID := range fixture.organizationIDs {
-		response := performJSONRequest(t, fixture.router, http.MethodPost, NativeAPIPrefix+"/admin/session", `{"scope":"organization","organization_id":"`+organizationID.String()+`"}`, fixture.accountToken, nil)
+		login := performJSONRequest(t, fixture.router, http.MethodPost, "/api/v1/auth/login", `{"username":"`+adminUsernames[index]+`","password":"`+password+`"}`, "", nil)
+		if login.Code != http.StatusOK {
+			t.Fatalf("login administrator %d = %d %s", index, login.Code, login.Body.String())
+		}
+		accountToken := decodeLogin(t, login).AccessToken
+		response := performJSONRequest(t, fixture.router, http.MethodPost, NativeAPIPrefix+"/admin/session", `{"scope":"organization","organization_id":"`+organizationID.String()+`"}`, accountToken, nil)
 		if response.Code != http.StatusOK {
 			t.Fatalf("mint organization context %d = %d %s", index, response.Code, response.Body.String())
 		}

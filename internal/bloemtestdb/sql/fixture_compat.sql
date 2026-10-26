@@ -12,8 +12,7 @@
 -- installations with bare INSERT/DELETE statements that predate Bloem's
 -- organizations. Bloem requires a membership and an organization on every
 -- profile and auto-entitles the default organization to every new media folder
--- and plugin installation (ON DELETE RESTRICT); it also fences node heartbeats
--- to writers that declare the membership policy protocol. These triggers perform the
+-- and plugin installation (ON DELETE RESTRICT). These triggers perform the
 -- tenancy bookkeeping the production write paths perform, so upstream test
 -- files stay byte-identical to Silo's.
 --
@@ -26,9 +25,9 @@ CREATE TABLE IF NOT EXISTS public.bloem_fixture_shim_memberships (
 );
 
 -- Insert the default-organization membership a production account-creation
--- path would have written. Mirrors auth.insertDefaultMembershipPolicy: role
--- from users.role, the default organization's default group for non-admins,
--- the v1 policy-writer marker for the insert.
+-- path would have written. Mirrors auth.linkAccountMembership: the role from
+-- users.role. The account's policy, its access group included, stays on users
+-- as the fixture wrote it.
 CREATE OR REPLACE FUNCTION public.bloem_fixture_ensure_default_membership(target_account bigint)
 RETURNS void
 LANGUAGE plpgsql
@@ -40,21 +39,16 @@ BEGIN
     IF NOT FOUND THEN
         RETURN;
     END IF;
-    PERFORM set_config('bloem.membership_policy_writer', 'v1', true);
     PERFORM set_config('bloem.fixture_shim_writing', 'on', true);
     WITH created AS (
-    INSERT INTO public.organization_memberships (organization_id, account_id, status, legacy_role, access_group_id)
+    INSERT INTO public.organization_memberships (organization_id, account_id, status, legacy_role)
     SELECT organizations.id,
            target_account,
            'active',
-           CASE WHEN account_role = 'admin' THEN 'admin' ELSE 'user' END,
-           CASE WHEN account_role = 'admin' THEN NULL ELSE (
-               SELECT groups.id FROM public.access_groups AS groups
-               WHERE groups.organization_id = organizations.id AND groups.is_default
-           ) END
+           CASE WHEN account_role = 'admin' THEN 'admin' ELSE 'user' END
     FROM public.organizations
     WHERE organizations.is_default
-    ON CONFLICT (organization_id, account_id) DO NOTHING
+    ON CONFLICT (account_id) DO NOTHING
     RETURNING id
     )
     INSERT INTO public.bloem_fixture_shim_memberships (membership_id)
@@ -140,7 +134,7 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     default_org uuid;
-    membership_group bigint;
+    account_group bigint;
 BEGIN
     IF current_setting('bloem.fixture_compat', true) IS DISTINCT FROM 'on'
        OR NEW.organization_id IS NOT NULL
@@ -152,12 +146,10 @@ BEGIN
         RETURN NEW;
     END IF;
     PERFORM public.bloem_fixture_ensure_default_membership(NEW.user_id);
-    SELECT access_group_id INTO membership_group
-    FROM public.organization_memberships
-    WHERE organization_id = default_org AND account_id = NEW.user_id;
+    SELECT access_group_id INTO account_group FROM public.users WHERE id = NEW.user_id;
     NEW.organization_id := default_org;
     IF NEW.access_group_id IS NULL THEN
-        NEW.access_group_id := COALESCE(membership_group, (
+        NEW.access_group_id := COALESCE(account_group, (
             SELECT groups.id FROM public.access_groups AS groups
             WHERE groups.organization_id = default_org AND groups.is_default
         ));
@@ -209,58 +201,9 @@ CREATE TRIGGER a_bloem_fixture_plugin_installation_entitlements
 BEFORE DELETE ON public.plugin_installations
 FOR EACH ROW EXECUTE FUNCTION public.bloem_fixture_release_plugin_installation_entitlements();
 
--- A bare node heartbeat (node_id, node_type, node_url, updated_at) is the shape
--- upstream fixtures write. The database-level schema_capability_writer marker
--- declares every session a capable writer, and once the membership policy
--- authority is finalized register_membership_policy_heartbeat requires a
--- capable writer to name its instance and advertise membership_policy_v1. Fill
--- both in the way worker.bloemHeartbeatUpsertSQL does, with an instance ID
--- derived from the node ID so a fixture that beats the same node again maps to
--- the same capable observation. A row that names either value itself is left
--- for the registration trigger to judge. Named to sort before
--- node_heartbeats_10_membership_policy_registration.
-CREATE OR REPLACE FUNCTION public.bloem_fixture_heartbeat_capability()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    IF current_setting('bloem.fixture_compat', true) IS DISTINCT FROM 'on'
-       OR current_setting('bloem.schema_capability_writer', true) IS DISTINCT FROM 'v1'
-       OR NEW.node_type NOT IN ('integrated', 'api')
-       OR NEW.instance_id IS NOT NULL
-       OR 'membership_policy_v1' = ANY(COALESCE(NEW.schema_capabilities, '{}'::text[])) THEN
-        RETURN NEW;
-    END IF;
-    NEW.schema_capabilities := ARRAY['membership_policy_v1'];
-    NEW.instance_id := md5('bloem-fixture-heartbeat:' || NEW.node_id)::uuid;
-    RETURN NEW;
-END;
-$$;
-
+-- Earlier versions armed node heartbeats for the membership policy rollout,
+-- which no longer exists.
 DROP TRIGGER IF EXISTS a_bloem_fixture_heartbeat_capability ON public.node_heartbeats;
-CREATE TRIGGER a_bloem_fixture_heartbeat_capability
-BEFORE INSERT OR UPDATE ON public.node_heartbeats
-FOR EACH ROW EXECUTE FUNCTION public.bloem_fixture_heartbeat_capability();
-
--- A bare DELETE of a heartbeat names the node and instance it retires, which
--- is what worker.bloemHeartbeatCleanupSQL does for its own row; the delete
--- fence then admits exactly that row. Named to sort before
--- node_heartbeats_membership_policy_delete_guard.
-CREATE OR REPLACE FUNCTION public.bloem_fixture_heartbeat_cleanup()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    IF current_setting('bloem.fixture_compat', true) = 'on' AND OLD.instance_id IS NOT NULL THEN
-        PERFORM set_config('bloem.heartbeat_cleanup_writer', 'v1', true);
-        PERFORM set_config('bloem.heartbeat_cleanup_node_id', OLD.node_id, true);
-        PERFORM set_config('bloem.heartbeat_cleanup_instance_id', OLD.instance_id::text, true);
-    END IF;
-    RETURN OLD;
-END;
-$$;
-
 DROP TRIGGER IF EXISTS a_bloem_fixture_heartbeat_cleanup ON public.node_heartbeats;
-CREATE TRIGGER a_bloem_fixture_heartbeat_cleanup
-BEFORE DELETE ON public.node_heartbeats
-FOR EACH ROW EXECUTE FUNCTION public.bloem_fixture_heartbeat_cleanup();
+DROP FUNCTION IF EXISTS public.bloem_fixture_heartbeat_capability();
+DROP FUNCTION IF EXISTS public.bloem_fixture_heartbeat_cleanup();

@@ -81,7 +81,7 @@ func (p *tenantRequestPolicyProvider) resolveRequestAccess(ctx context.Context, 
 	var groupID *int64
 	var limit GroupLimit
 	err := p.pool.QueryRow(ctx, `
-		SELECT m.legacy_role, m.requests_allowed, COALESCE(g.requests_allowed,true), g.id,
+		SELECT m.legacy_role, u.requests_allowed, COALESCE(g.requests_allowed,true), g.id,
 		       COALESCE(l.limit_mode,'inherit'), l.max_requests, l.window_days,
 		       COALESCE(l.approval_mode,'inherit'), COALESCE(l.updated_at,g.updated_at,now()), COALESCE(l.revision,0)
 		FROM organization_memberships m
@@ -89,7 +89,7 @@ func (p *tenantRequestPolicyProvider) resolveRequestAccess(ctx context.Context, 
 		JOIN users u ON u.id=m.account_id
 		LEFT JOIN user_profiles p ON p.organization_id=m.organization_id AND p.user_id=m.account_id AND p.id=$6
 		LEFT JOIN access_groups g ON g.organization_id=m.organization_id
-		  AND g.id=CASE WHEN $6='' THEN m.access_group_id ELSE p.access_group_id END
+		  AND g.id=CASE WHEN $6='' THEN u.access_group_id ELSE p.access_group_id END
 		LEFT JOIN request_group_limits l ON l.group_id=g.id
 		WHERE m.account_id=$1 AND m.organization_id=$2 AND m.id=$3
 		  AND m.status='active' AND u.enabled
@@ -97,7 +97,7 @@ func (p *tenantRequestPolicyProvider) resolveRequestAccess(ctx context.Context, 
 		  AND (o.status='active' OR ($7 AND o.is_default AND o.status='initializing'))
 		  AND ($6<>'' OR ($7 AND o.is_default))
 		  AND ($6='' OR p.id IS NOT NULL)
-		  AND (CASE WHEN $6='' THEN m.access_group_id ELSE p.access_group_id END IS NULL OR g.id IS NOT NULL)`,
+		  AND (CASE WHEN $6='' THEN u.access_group_id ELSE p.access_group_id END IS NULL OR g.id IS NOT NULL)`,
 		accountID, tenant.OrganizationID, tenant.MembershipID, tenant.SecurityRevision, tenant.PolicyRevision, profileID, tenant.Legacy).Scan(
 		&member.Role, &member.RequestsAllowed, &groupPolicy.RequestsAllowed, &groupID,
 		&limit.LimitMode, &limit.MaxRequests, &limit.WindowDays, &limit.ApprovalMode, &limit.UpdatedAt, &limit.Revision)

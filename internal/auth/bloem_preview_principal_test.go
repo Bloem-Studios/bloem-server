@@ -42,11 +42,10 @@ func previewFixture(t *testing.T, ctx context.Context, pool *pgxpool.Pool, role 
 	return user.ID, sessionID, previewGroupID
 }
 
-func assignMembershipGroup(t *testing.T, ctx context.Context, pool *pgxpool.Pool, accountID int, groupID int64) {
+func assignAccountGroup(t *testing.T, ctx context.Context, pool *pgxpool.Pool, accountID int, groupID int64) {
 	t.Helper()
 	if _, err := pool.Exec(ctx, `
-		UPDATE organization_memberships SET access_group_id=$2, access_policy_revision=access_policy_revision+1
-		WHERE account_id=$1 AND set_config('bloem.membership_policy_writer', public.bloem_membership_policy_writer_marker(), true) IS NOT NULL`,
+		UPDATE users SET access_group_id=$2, access_policy_revision=access_policy_revision+1 WHERE id = $1`,
 		accountID, groupID); err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +61,7 @@ func TestActiveSessionAuthorityReadsTheGroupLive(t *testing.T) {
 	if err != nil || !active || role != "user" || preview {
 		t.Fatalf("before: role=%q preview=%v active=%v err=%v", role, preview, active, err)
 	}
-	assignMembershipGroup(t, ctx, pool, accountID, previewGroupID)
+	assignAccountGroup(t, ctx, pool, accountID, previewGroupID)
 	if _, preview, _, _ = repo.ActiveSessionAuthority(ctx, sessionID); !preview {
 		t.Fatal("the same session did not become a preview principal after its group changed")
 	}
@@ -80,8 +79,9 @@ func TestActivePreviewSessionPreservesRemotePlaybackAuthority(t *testing.T) {
 	accountID, _, groupID := previewFixture(t, ctx, pool, "user")
 	profileID := uuid.NewString()
 	if _, err := pool.Exec(ctx, `INSERT INTO user_profiles (id, user_id, name, organization_id, access_group_id)
-		SELECT $1, $2, 'Remote', organization_id, access_group_id
-		FROM organization_memberships WHERE account_id = $2 AND status = 'active'`, profileID, accountID); err != nil {
+		SELECT $1, $2, 'Remote', m.organization_id, u.access_group_id
+		FROM organization_memberships m JOIN users u ON u.id = m.account_id
+		WHERE m.account_id = $2 AND m.status = 'active'`, profileID, accountID); err != nil {
 		t.Fatal(err)
 	}
 	repo := NewSessionRepository(pool)
@@ -94,7 +94,7 @@ func TestActivePreviewSessionPreservesRemotePlaybackAuthority(t *testing.T) {
 	}
 	for _, preview := range []bool{false, true} {
 		if preview {
-			assignMembershipGroup(t, ctx, pool, accountID, groupID)
+			assignAccountGroup(t, ctx, pool, accountID, groupID)
 		}
 		authority, restricted, active, err := repo.ActivePreviewSession(ctx, id)
 		if err != nil || !active || restricted != preview || !authority.IsRemotePlayback() ||
@@ -125,7 +125,7 @@ func TestAdminIsNeverAPreviewPrincipal(t *testing.T) {
 	ctx := context.Background()
 	pool := NewBloemAuthTestDatabase(t)
 	accountID, sessionID, previewGroupID := previewFixture(t, ctx, pool, "admin")
-	assignMembershipGroup(t, ctx, pool, accountID, previewGroupID)
+	assignAccountGroup(t, ctx, pool, accountID, previewGroupID)
 	if _, preview, _, err := NewSessionRepository(pool).ActiveSessionAuthority(ctx, sessionID); err != nil || preview {
 		t.Fatalf("admin: preview=%v err=%v", preview, err)
 	}

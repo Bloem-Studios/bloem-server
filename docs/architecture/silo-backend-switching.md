@@ -5,62 +5,49 @@ time, and the operator can switch between them in either direction without
 losing or corrupting data. This is what lets a Silo installation try Bloem and
 go back.
 
-## Phases
+## The switch
 
-The membership policy authority (`public.membership_policy_authority`) has
-three phases:
+Account policy lives on `users`, where Silo keeps it, so both servers read and
+write the same columns. What remains is what Silo cannot honor, and one flag,
+`public.bloem_silo_switching`, keeps the database inside it:
 
-| Phase | Policy authority | Who can run | Entered by |
-|---|---|---|---|
-| `compatibility` | frozen: no policy write succeeds on either binary | Silo and Bloem | the isolation migration |
-| `mirrored` | `users` policy columns and the default-organization membership, kept identical | Silo or Bloem | `silo membership-policy enable-silo-switching` |
-| `finalized` | `organization_memberships` only; the `users` columns are renamed `rollback_membership_*` | Bloem only | `silo membership-policy finalize` |
+| Command | Effect |
+|---|---|
+| `silo silo-switching status` | Reports whether the database is switchable. |
+| `silo silo-switching enable` | Refuses unless there is exactly one organization and no profile has its own login. Then gives every account its default-organization membership, reconciles membership roles from `users.role`, and sets the flag. Idempotent. |
+| `silo silo-switching disable` | Clears the flag, lifting the guards below. Silo must not serve the database afterwards. |
 
-Allowed transitions are `compatibility → mirrored`, `compatibility →
-finalized` and `mirrored → finalized`. Finalizing a mirrored database ends Silo
-switching for good, so the CLI requires `--end-silo-switching`. There is no way
-back to `compatibility`. Each phase change needs its own transaction-local
-marker (`bloem.membership_policy_mirror_enabler`,
-`bloem.membership_policy_finalizer`); the transition guard refuses anything
-else.
+`public.bloem_silo_switching_enabled()` reads the flag; every guard and
+placement trigger below checks it. A database that was in the `mirrored`
+membership-policy phase before `20261026003000_bloem_account_policy_on_users`
+kept switching enabled through that migration.
 
-## Invariants while mirrored
+## Invariants while switchable
 
 - **One organization.** Inserting a second organization, or a membership
   outside the default organization, raises
   `bloem_silo_switching_single_organization`. Silo has no organizations, so it
   cannot honor a second one.
-- **Policy is identical on both sides at every commit.** A write to any of the
-  13 policy columns on `users` (`users_policy_mirror_to_membership`) or on the
-  default-organization membership
-  (`organization_memberships_policy_mirror_to_user`) is copied to the other side
-  in the same transaction. The transaction-local setting
-  `bloem.membership_policy_mirroring = 'on'` stops the copy from bouncing back;
-  both triggers restore it afterwards.
 - **Group moves carry profiles; roles follow both ways.** Bloem applies a
   profile's own access group, so when Silo moves an account to another group,
-  the account's profiles that were on the old group move with it (which also
-  lets Silo delete a group after moving its members). `users.role` and the
-  membership's `legacy_role` are kept in step (admin or user; other account
-  roles are ordinary members). An ungrouped admin stays ungrouped.
-- **Bloem writers use `public.bloem_membership_policy_writer_marker()`.** It
-  returns `'v1'` in `mirrored` and `finalized` and `''` otherwise. Never write an
-  inline phase check in a policy writer.
+  the account's profiles that were on the old group move with it
+  (`users_silo_profiles_follow_group`, which also lets Silo delete a group
+  after moving its members). `users.role` and the membership's `legacy_role`
+  are kept in step (admin or user; other account roles are ordinary members).
+  An ungrouped admin stays ungrouped.
 - **No direct profile logins.** A profile with its own `login_email` or
   `password_hash` raises `bloem_silo_switching_direct_profile_login`. Silo would
   treat such a session as the whole account.
 - **Silo-shaped writes are placed in the default organization.** A profile
   inserted without an organization gets the default organization, the account's
-  membership (created if missing, its policy seeded from `users`) and that
-  membership's access group (`user_profiles_00_silo_tenancy`). An account still
-  without a membership at commit gets one (`users_silo_default_membership`, a
-  deferred trigger that exists only while mirrored). A Bloem transaction that
-  inserts an account and then alters the `users` table fails while mirrored,
-  because PostgreSQL refuses `ALTER TABLE` on a table with pending trigger
-  events.
-- **`auth_sessions.device_id` accepts NULL as `''`** in every phase. Upstream
-  writes NULL when a client sends no device headers.
-- **Heartbeats.** Silo nodes register as legacy nodes, as in `compatibility`.
+  membership (created if missing) and the account's access group
+  (`user_profiles_00_silo_tenancy`). An account still without a membership at
+  commit gets one (`users_silo_default_membership`, a deferred trigger that
+  exists only while switchable). A Bloem transaction that inserts an account
+  and then alters the `users` table fails while switchable, because PostgreSQL
+  refuses `ALTER TABLE` on a table with pending trigger events.
+- **`auth_sessions.device_id` accepts NULL as `''`.** Upstream writes NULL when
+  a client sends no device headers.
 
 ## What Silo does not see
 
@@ -81,9 +68,9 @@ point. Drop them only when Silo switching ends for good.
 
 ## Operating rules
 
-- **One backend at a time.** Stop one before starting the other. The policy
-  mirror keeps data consistent; running both at once is still not supported
-  (background jobs, caches and scheduled work assume one owner).
+- **One backend at a time.** Stop one before starting the other. Running both
+  at once is not supported (background jobs, caches and scheduled work assume
+  one owner).
 - **Separate caches.** Each backend has its own Redis, flushed before it starts.
 - **Silo version pin.** Run a Silo image whose source revision Bloem has
   already merged (an ancestor of the deployed Bloem commit) and that has every
@@ -109,5 +96,5 @@ Run it whenever a change touches a table that both servers write. Run it too
 after merging upstream changes that add Silo writes to tables Bloem constrains.
 The database-level tests are in `internal/tenancy/silo_switching_test.go`,
 `internal/tenancy/silo_switching_writes_test.go`,
-`internal/tenancy/membership_policy_mirror_test.go` and
-`internal/auth/bloem_repository_mirrored_test.go`.
+`internal/auth/bloem_repository_switching_test.go` and
+`migrations/bloem_account_policy_on_users_test.go`.

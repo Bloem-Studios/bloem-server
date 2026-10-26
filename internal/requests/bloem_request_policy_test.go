@@ -19,12 +19,15 @@ import (
 type requestPolicyFixture struct {
 	pool                  *pgxpool.Pool
 	account, otherAccount int
-	org, otherOrg         uuid.UUID
-	profile, blocked      string
-	foreignOrg, foreign   string
-	group, blockedGroup   int64
-	accountGroup          int64
-	foreignGroup          int64
+	// foreignAccount belongs to otherOrg and legacyAccount to the default
+	// organization; an account belongs to one organization.
+	foreignAccount, legacyAccount int
+	org, otherOrg                 uuid.UUID
+	profile, blocked              string
+	foreignOrg, foreign           string
+	group, blockedGroup           int64
+	accountGroup                  int64
+	foreignGroup                  int64
 }
 
 // Rows are unique and cleanup is scoped; these tests share the migrated database
@@ -42,24 +45,25 @@ func newRequestPolicyFixture(t *testing.T) requestPolicyFixture {
 	t.Cleanup(pool.Close)
 	f := requestPolicyFixture{pool: pool}
 	suffix := uuid.NewString()
-	for i, dest := range []*int{&f.account, &f.otherAccount} {
+	for i, dest := range []*int{&f.account, &f.otherAccount, &f.foreignAccount, &f.legacyAccount} {
 		if err := pool.QueryRow(t.Context(), `INSERT INTO users (username,email,password_hash,role,enabled)
 			VALUES ($1,$2,'x','user',true) RETURNING id`, fmt.Sprintf("reqpolicy-%s-%d", suffix, i), fmt.Sprintf("reqpolicy-%s-%d@example.test", suffix, i)).Scan(dest); err != nil {
 			t.Fatal(err)
 		}
 	}
+	accounts := []int{f.account, f.otherAccount, f.foreignAccount, f.legacyAccount}
 	t.Cleanup(func() {
 		ctx := context.Background()
 		for _, command := range []struct {
 			sql  string
 			args []any
 		}{
-			{`DELETE FROM media_requests WHERE requested_by_user_id=ANY($1)`, []any{[]int{f.account, f.otherAccount}}},
-			{`DELETE FROM user_profiles WHERE user_id=ANY($1)`, []any{[]int{f.account, f.otherAccount}}},
-			{`DELETE FROM organization_memberships WHERE account_id=ANY($1)`, []any{[]int{f.account, f.otherAccount}}},
+			{`DELETE FROM media_requests WHERE requested_by_user_id=ANY($1)`, []any{accounts}},
+			{`DELETE FROM user_profiles WHERE user_id=ANY($1)`, []any{accounts}},
+			{`DELETE FROM organization_memberships WHERE account_id=ANY($1)`, []any{accounts}},
 			{`DELETE FROM resource_owners WHERE organization_id=ANY($1)`, []any{[]uuid.UUID{f.org, f.otherOrg}}},
 			{`DELETE FROM organizations WHERE id=ANY($1)`, []any{[]uuid.UUID{f.org, f.otherOrg}}},
-			{`DELETE FROM users WHERE id=ANY($1)`, []any{[]int{f.account, f.otherAccount}}},
+			{`DELETE FROM users WHERE id=ANY($1)`, []any{accounts}},
 			{`DELETE FROM access_groups WHERE id=$1`, []any{f.accountGroup}},
 		} {
 			if _, err := pool.Exec(ctx, command.sql, command.args...); err != nil {
@@ -67,9 +71,12 @@ func newRequestPolicyFixture(t *testing.T) requestPolicyFixture {
 			}
 		}
 	})
-	for i, dest := range []*uuid.UUID{&f.org, &f.otherOrg} {
+	for i, row := range []struct {
+		dest  *uuid.UUID
+		owner int
+	}{{&f.org, f.account}, {&f.otherOrg, f.foreignAccount}} {
 		if err := pool.QueryRow(t.Context(), `INSERT INTO organizations (slug,name,status,owner_account_id)
-			VALUES ($1,'Request policy test','active',$2) RETURNING id`, fmt.Sprintf("reqpolicy-%s-%d", suffix, i), f.account).Scan(dest); err != nil {
+			VALUES ($1,'Request policy test','active',$2) RETURNING id`, fmt.Sprintf("reqpolicy-%s-%d", suffix, i), row.owner).Scan(row.dest); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -94,12 +101,15 @@ func newRequestPolicyFixture(t *testing.T) requestPolicyFixture {
 		account int
 		group   int64
 	}{
-		{f.org, f.account, f.blockedGroup}, {f.otherOrg, f.account, f.foreignGroup},
-		{f.org, f.otherAccount, f.group}, {defaultOrg, f.account, f.accountGroup},
+		{f.org, f.account, f.blockedGroup}, {f.otherOrg, f.foreignAccount, f.foreignGroup},
+		{f.org, f.otherAccount, f.group}, {defaultOrg, f.legacyAccount, f.accountGroup},
 	} {
-		if _, err := pool.Exec(t.Context(), `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role,access_group_id)
-			SELECT $1,$2,'active','user',$3 WHERE set_config('bloem.membership_policy_writer',public.bloem_membership_policy_writer_marker(),true) IS NOT NULL
-			ON CONFLICT (organization_id,account_id) DO UPDATE SET access_group_id=EXCLUDED.access_group_id`, row.org, row.account, row.group); err != nil {
+		if _, err := pool.Exec(t.Context(), `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+			VALUES ($1,$2,'active','user')
+			ON CONFLICT (organization_id,account_id) DO NOTHING`, row.org, row.account); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(t.Context(), `UPDATE users SET access_group_id=$2 WHERE id=$1`, row.account, row.group); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -110,7 +120,7 @@ func newRequestPolicyFixture(t *testing.T) requestPolicyFixture {
 		dest    *string
 	}{
 		{f.org, f.account, f.group, &f.profile}, {f.org, f.account, f.blockedGroup, &f.blocked},
-		{f.otherOrg, f.account, f.foreignGroup, &f.foreignOrg}, {f.org, f.otherAccount, f.group, &f.foreign},
+		{f.otherOrg, f.foreignAccount, f.foreignGroup, &f.foreignOrg}, {f.org, f.otherAccount, f.group, &f.foreign},
 	} {
 		*row.dest = fmt.Sprintf("reqpolicy-%s-%d", suffix, i)
 		if _, err := pool.Exec(t.Context(), `INSERT INTO user_profiles (id,user_id,name,organization_id,access_group_id)
@@ -129,17 +139,24 @@ func newRequestPolicyFixture(t *testing.T) requestPolicyFixture {
 
 func (f requestPolicyFixture) context(t *testing.T, org uuid.UUID, profile string) context.Context {
 	t.Helper()
+	return f.contextAs(t, f.account, org, profile)
+}
+
+// contextAs is the validated tenant and verified profile scope of account in
+// org.
+func (f requestPolicyFixture) contextAs(t *testing.T, account int, org uuid.UUID, profile string) context.Context {
+	t.Helper()
 	var tenant tenancy.Context
 	if err := f.pool.QueryRow(t.Context(), `SELECT o.id,o.status,o.is_default,o.policy_revision,m.id,m.status,m.security_revision
-		FROM organizations o JOIN organization_memberships m ON m.organization_id=o.id WHERE o.id=$1 AND m.account_id=$2`, org, f.account).Scan(
+		FROM organizations o JOIN organization_memberships m ON m.organization_id=o.id WHERE o.id=$1 AND m.account_id=$2`, org, account).Scan(
 		&tenant.OrganizationID, &tenant.OrganizationStatus, &tenant.OrganizationDefault, &tenant.PolicyRevision,
 		&tenant.MembershipID, &tenant.MembershipStatus, &tenant.SecurityRevision); err != nil {
 		t.Fatal(err)
 	}
-	tenant.AccountID = f.account
+	tenant.AccountID = account
 	tenant.Legacy = tenant.OrganizationDefault
 	ctx := tenancy.WithContext(t.Context(), tenant)
-	return access.SetScope(ctx, access.Scope{UserID: f.account, ProfileID: profile, ProfileVerified: true})
+	return access.SetScope(ctx, access.Scope{UserID: account, ProfileID: profile, ProfileVerified: true})
 }
 
 func (f requestPolicyFixture) service(t *testing.T) *Service {
@@ -262,24 +279,24 @@ func TestBloemRequestPolicyPreservesLegacyAndOrdinarySiloDatabase(t *testing.T) 
 	if err := f.pool.QueryRow(t.Context(), `SELECT id FROM organizations WHERE is_default`).Scan(&defaultOrg); err != nil {
 		t.Fatal(err)
 	}
-	ctx := f.context(t, defaultOrg, "")
-	policy, err := service.EffectivePolicy(ctx, f.account)
+	ctx := f.contextAs(t, f.legacyAccount, defaultOrg, "")
+	policy, err := service.EffectivePolicy(ctx, f.legacyAccount)
 	if err != nil || policy.Blocked || policy.MaxRequests != 90 || policy.WindowDays != 30 {
 		t.Fatalf("profile-less legacy policy = %+v, %v", policy, err)
 	}
 	legacy, _ := tenancy.FromContext(ctx)
-	policy, err = service.EffectivePolicy(tenancy.WithContext(t.Context(), legacy), f.account)
+	policy, err = service.EffectivePolicy(tenancy.WithContext(t.Context(), legacy), f.legacyAccount)
 	if err != nil || policy.Blocked || policy.MaxRequests != 90 || policy.WindowDays != 30 {
 		t.Fatalf("legacy account policy without viewer scope = %+v, %v", policy, err)
 	}
 	ordinary := NewService(NewRepository(f.pool, nil), nil, nil)
 	ordinary.SetUserRepository(auth.NewUserRepository(f.pool))
 	ordinary.SetGroupPolicyProvider(requestGroupProvider{group: &access.GroupPolicy{RequestsAllowed: true}})
-	policy, err = ordinary.EffectivePolicy(t.Context(), f.account)
+	policy, err = ordinary.EffectivePolicy(t.Context(), f.legacyAccount)
 	if err != nil || policy.Blocked || policy.MaxRequests != 90 || policy.WindowDays != 30 {
 		t.Fatalf("ordinary Silo account policy = %+v, %v", policy, err)
 	}
-	user, err := auth.NewUserRepository(f.pool).GetByID(t.Context(), f.account)
+	user, err := auth.NewUserRepository(f.pool).GetByID(t.Context(), f.legacyAccount)
 	if err != nil || user.Role != models.RoleUser || user.AccessGroupID == nil || *user.AccessGroupID != f.accountGroup {
 		t.Fatalf("stored account projection was changed: %+v, %v", user, err)
 	}
@@ -288,31 +305,27 @@ func TestBloemRequestPolicyPreservesLegacyAndOrdinarySiloDatabase(t *testing.T) 
 func TestBloemRequestPolicyMemberOverrideAndUserLimitPrecedenceDatabase(t *testing.T) {
 	f := newRequestPolicyFixture(t)
 	service := f.service(t)
-	ctx := f.context(t, f.org, f.profile)
-	// A different membership must not supply this tenant's account override.
-	if _, err := f.pool.Exec(t.Context(), `UPDATE organization_memberships SET requests_allowed=false
-		WHERE account_id=$1 AND organization_id<>$2
-		AND set_config('bloem.membership_policy_writer',public.bloem_membership_policy_writer_marker(),true) IS NOT NULL`, f.account, f.org); err != nil {
+	// Another account's deny is not this account's override.
+	if _, err := f.pool.Exec(t.Context(), `UPDATE users SET requests_allowed=false WHERE id=$1`, f.otherAccount); err != nil {
 		t.Fatal(err)
 	}
+	ctx := f.context(t, f.org, f.profile)
 	policy, err := service.EffectivePolicy(ctx, f.account)
 	if err != nil || policy.Blocked {
-		t.Fatalf("another membership's deny leaked: %+v, %v", policy, err)
+		t.Fatalf("another account's deny leaked: %+v, %v", policy, err)
 	}
 	for _, allowed := range []bool{false, true} {
-		if _, err := f.pool.Exec(t.Context(), `UPDATE organization_memberships SET requests_allowed=$3
-			WHERE organization_id=$1 AND account_id=$2
-			AND set_config('bloem.membership_policy_writer',public.bloem_membership_policy_writer_marker(),true) IS NOT NULL`, f.org, f.account, allowed); err != nil {
+		if _, err := f.pool.Exec(t.Context(), `UPDATE users SET requests_allowed=$2 WHERE id=$1`, f.account, allowed); err != nil {
 			t.Fatal(err)
 		}
 		ctx = f.context(t, f.org, f.blocked)
 		policy, err = service.EffectivePolicy(ctx, f.account)
 		if err != nil || policy.Blocked == allowed || policy.MaxRequests != 1 || policy.WindowDays != 21 {
-			t.Fatalf("membership override=%v policy=%+v error=%v", allowed, policy, err)
+			t.Fatalf("account override=%v policy=%+v error=%v", allowed, policy, err)
 		}
 		capability, err := service.RequestCapabilityAllowed(ctx, Viewer{UserID: f.account, ProfileID: f.blocked})
 		if err != nil || capability != allowed {
-			t.Fatalf("membership override capability=%v error=%v", capability, err)
+			t.Fatalf("account override capability=%v error=%v", capability, err)
 		}
 	}
 	if _, err := NewRepository(f.pool, nil).UpsertUserLimit(t.Context(), UserLimit{UserID: f.account, LimitMode: LimitModeCustom, MaxRequests: intPtr(8), WindowDays: intPtr(5), ApprovalMode: ApprovalModeAuto}); err != nil {

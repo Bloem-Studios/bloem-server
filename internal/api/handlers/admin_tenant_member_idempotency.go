@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/apiresponse"
 	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
@@ -328,8 +327,6 @@ func (h *AdminTenantMembersHandler) writeMemberLifecycleError(w http.ResponseWri
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Lifecycle request identity is no longer valid")
 	case errors.Is(err, lifecycleidempotency.ErrTargetNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "No such tenant member")
-	case errors.Is(err, tenancy.ErrMembershipPolicyWriteUnavailable):
-		apiresponse.WriteRetryableUnavailable(w, "membership_policy_rollout_pending", "Membership policy rollout is not ready for this mutation", 1)
 	case errors.Is(err, errTenantMemberAuthSessionNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
 	default:

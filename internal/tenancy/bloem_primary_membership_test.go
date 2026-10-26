@@ -4,8 +4,7 @@ package tenancy_test
 // question by different routes -- one indexed lookup per account, one set-based
 // projection over all of them. If they ever disagree, a guard that checks a
 // single request and a query that bounds a whole page will reach different
-// conclusions for the same account, which is precisely the multi-membership
-// case the bound exists for.
+// conclusions for the same account.
 
 import (
 	"errors"
@@ -20,9 +19,8 @@ func TestPrimaryMembershipSQLAgreesWithAccountOrganization(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
 
 	// A second, non-default organization ('initializing' because an active
-	// organization must have an owner), and a second membership for the
-	// admin account: the account now belongs to two organizations, so the
-	// selection rule decides which one owns its requests.
+	// organization must have an owner) with its own member: the accounts
+	// belong to different organizations.
 	var secondID uuid.UUID
 	if err := fixture.pool.QueryRow(fixture.ctx, `
 		INSERT INTO organizations (slug, name, status, is_default)
@@ -30,20 +28,14 @@ func TestPrimaryMembershipSQLAgreesWithAccountOrganization(t *testing.T) {
 		RETURNING id`, fixture.suffix+"-second").Scan(&secondID); err != nil {
 		t.Fatalf("insert second organization: %v", err)
 	}
-	// Backdated deliberately. The selection rule prefers the default
-	// organization FIRST and only then the oldest membership, so the second
-	// membership has to be the older one for this fixture to tell the two
-	// apart. Seeded the obvious way -- default organization joined first --
-	// both orderings agree and the test proves nothing.
+	secondMember := fixture.insertAccount(t, "second-member", "user")
 	if _, err := fixture.pool.Exec(fixture.ctx, `
-		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role, created_at)
-		SELECT $1, $2, 'active', 'user', now() - interval '1 day'
-		WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`,
-		secondID, fixture.adminID); err != nil {
-		t.Fatalf("add second membership: %v", err)
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		VALUES ($1, $2, 'active', 'user')`, secondID, secondMember); err != nil {
+		t.Fatalf("add second-organization membership: %v", err)
 	}
 
-	for _, accountID := range []int{fixture.adminID, fixture.otherID} {
+	for _, accountID := range []int{fixture.adminID, fixture.otherID, secondMember} {
 		want, err := store.AccountOrganization(fixture.ctx, accountID)
 		if err != nil {
 			t.Fatalf("AccountOrganization(%d): %v", accountID, err)
@@ -64,9 +56,8 @@ func TestPrimaryMembershipSQLAgreesWithAccountOrganization(t *testing.T) {
 	}
 }
 
-// A suspended membership grants nothing, so it must not pick the account's
-// organization. Before this rule, a suspended default-organization membership
-// still won the ordering and kept operator authority for the account.
+// A suspended or invited membership grants nothing, so it must not pick the
+// account's organization.
 func TestPrimaryMembershipSelectsOnlyActiveMemberships(t *testing.T) {
 	store, fixture := newTenancyFixture(t)
 	defaultOrganization := fixture.defaultOrganization(t)
@@ -83,23 +74,21 @@ func TestPrimaryMembershipSelectsOnlyActiveMemberships(t *testing.T) {
 		t.Helper()
 		if _, err := fixture.pool.Exec(fixture.ctx, `
 			INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
-			SELECT $1, $2, $3, 'admin'
-			WHERE set_config('bloem.membership_policy_writer','v1',true) IS NOT NULL`,
+			SELECT $1, $2, $3, 'admin'`,
 			organizationID, accountID, status); err != nil {
 			t.Fatalf("insert %s membership: %v", status, err)
 		}
 	}
 
-	// Suspended in the default organization, active in a tenant: the tenant
-	// is the only organization the account may act for.
-	demoted := fixture.insertAccount(t, "demoted", "admin")
-	insertMembership(defaultOrganization.ID, demoted, "suspended")
-	insertMembership(tenantID, demoted, "active")
+	// Active in a tenant: the tenant is the organization the account acts for.
+	active := fixture.insertAccount(t, "active", "admin")
+	insertMembership(tenantID, active, "active")
 
-	// Suspended and invited only: no organization represents the account.
-	inactive := fixture.insertAccount(t, "inactive", "admin")
-	insertMembership(defaultOrganization.ID, inactive, "suspended")
-	insertMembership(tenantID, inactive, "invited")
+	// Suspended, or invited only: no organization represents the account.
+	suspended := fixture.insertAccount(t, "suspended", "admin")
+	insertMembership(defaultOrganization.ID, suspended, "suspended")
+	invited := fixture.insertAccount(t, "invited", "admin")
+	insertMembership(tenantID, invited, "invited")
 
 	primaryOrganization := func(accountID int) (uuid.UUID, bool) {
 		t.Helper()
@@ -118,18 +107,20 @@ func TestPrimaryMembershipSelectsOnlyActiveMemberships(t *testing.T) {
 		return organizationID, true
 	}
 
-	got, err := store.AccountOrganization(fixture.ctx, demoted)
+	got, err := store.AccountOrganization(fixture.ctx, active)
 	if err != nil || got != tenantID {
-		t.Fatalf("AccountOrganization(demoted) = %v, %v; want tenant %v", got, err, tenantID)
+		t.Fatalf("AccountOrganization(active) = %v, %v; want tenant %v", got, err, tenantID)
 	}
-	if got, ok := primaryOrganization(demoted); !ok || got != tenantID {
-		t.Fatalf("PrimaryMembershipSQL(demoted) = %v, %t; want tenant %v", got, ok, tenantID)
+	if got, ok := primaryOrganization(active); !ok || got != tenantID {
+		t.Fatalf("PrimaryMembershipSQL(active) = %v, %t; want tenant %v", got, ok, tenantID)
 	}
 
-	if got, err := store.AccountOrganization(fixture.ctx, inactive); !errors.Is(err, tenancy.ErrMembershipNotFound) {
-		t.Fatalf("AccountOrganization(inactive) = %v, %v; want ErrMembershipNotFound", got, err)
-	}
-	if got, ok := primaryOrganization(inactive); ok {
-		t.Fatalf("PrimaryMembershipSQL(inactive) = %v; want no row", got)
+	for name, accountID := range map[string]int{"suspended": suspended, "invited": invited} {
+		if got, err := store.AccountOrganization(fixture.ctx, accountID); !errors.Is(err, tenancy.ErrMembershipNotFound) {
+			t.Fatalf("AccountOrganization(%s) = %v, %v; want ErrMembershipNotFound", name, got, err)
+		}
+		if got, ok := primaryOrganization(accountID); ok {
+			t.Fatalf("PrimaryMembershipSQL(%s) = %v; want no row", name, got)
+		}
 	}
 }

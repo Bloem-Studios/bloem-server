@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -72,9 +71,7 @@ func TestGroupStoreCRUDAndMemberCountsDB(t *testing.T) {
 	}
 	var assigned int
 	if err := pool.QueryRow(ctx, `
-		SELECT COUNT(*)
-		FROM organization_memberships
-		WHERE access_group_id = $1`, group.ID,
+		SELECT COUNT(*) FROM users WHERE access_group_id = $1`, group.ID,
 	).Scan(&assigned); err != nil {
 		t.Fatalf("count memberships still on the deleted group: %v", err)
 	}
@@ -287,8 +284,7 @@ func TestGroupStoreDeleteDefaultRejectedDB(t *testing.T) {
 	var hasGroup bool
 	if err := pool.QueryRow(ctx, `
 		SELECT access_group_id IS NOT NULL
-		FROM organization_memberships
-		WHERE account_id = $1`, userID).Scan(&hasGroup); err != nil {
+		FROM users WHERE id = $1`, userID).Scan(&hasGroup); err != nil {
 		t.Fatalf("load default group member: %v", err)
 	}
 	if !hasGroup {
@@ -309,8 +305,7 @@ func TestGroupStoreDeleteDefaultRejectedDB(t *testing.T) {
 	var reassignedMembershipGroupID int64
 	if err := pool.QueryRow(ctx, `
 		SELECT access_group_id
-		FROM organization_memberships
-		WHERE account_id = $1`, otherUserID).Scan(&reassignedMembershipGroupID); err != nil {
+		FROM users WHERE id = $1`, otherUserID).Scan(&reassignedMembershipGroupID); err != nil {
 		t.Fatalf("load deleted group member: %v", err)
 	}
 	if reassignedMembershipGroupID != group.ID {
@@ -520,9 +515,8 @@ func insertAccessGroupTestUser(
 		RETURNING id`, username).Scan(&id); err != nil {
 		t.Fatalf("insert test user: %v", err)
 	}
-	// The account's group and policy revision live on its membership now, not on
-	// users: finalization renames those columns away. Derive the organization
-	// from the group so no call site has to thread one through.
+	// The account belongs to the group's organization. Derive it from the
+	// group so no call site has to thread one through.
 	var organizationID uuid.UUID
 	if groupID != nil {
 		if err := pool.QueryRow(ctx,
@@ -533,26 +527,15 @@ func insertAccessGroupTestUser(
 		`SELECT id FROM organizations WHERE is_default`).Scan(&organizationID); err != nil {
 		t.Fatalf("resolve default organization: %v", err)
 	}
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		t.Fatalf("begin membership seed: %v", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if err := tenancy.MarkMembershipPolicyWriter(ctx, tx); err != nil {
-		t.Fatalf("mark membership policy writer: %v", err)
-	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO organization_memberships
-			(organization_id, account_id, status, legacy_role, access_group_id, access_policy_revision)
-		VALUES ($1, $2, 'active', 'user', $3, $4)
-		ON CONFLICT (organization_id, account_id) DO UPDATE
-		SET access_group_id = EXCLUDED.access_group_id,
-			access_policy_revision = EXCLUDED.access_policy_revision`,
-		organizationID, id, groupID, revision); err != nil {
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
+		VALUES ($1, $2, 'active', 'user')
+		ON CONFLICT (organization_id, account_id) DO NOTHING`, organizationID, id); err != nil {
 		t.Fatalf("seed account membership: %v", err)
 	}
-	if err := tx.Commit(ctx); err != nil {
-		t.Fatalf("commit membership seed: %v", err)
+	if _, err := pool.Exec(ctx, `UPDATE users SET access_group_id = $2, access_policy_revision = $3 WHERE id = $1`,
+		id, groupID, revision); err != nil {
+		t.Fatalf("seed account policy: %v", err)
 	}
 	return id
 }
@@ -562,8 +545,7 @@ func accessPolicyRevisionForUser(t *testing.T, ctx context.Context, pool *pgxpoo
 	var revision int64
 	if err := pool.QueryRow(ctx, `
 		SELECT access_policy_revision
-		FROM organization_memberships
-		WHERE account_id = $1`, userID).Scan(&revision); err != nil {
+		FROM users WHERE id = $1`, userID).Scan(&revision); err != nil {
 		t.Fatalf("load access_policy_revision for account %d: %v", userID, err)
 	}
 	return revision
@@ -582,7 +564,7 @@ func TestGroupStoreDeleteMovingMembersDB(t *testing.T) {
 	revisions := map[int]int64{}
 	for _, id := range []int{first, second} {
 		var revision int64
-		if err := pool.QueryRow(ctx, `SELECT access_policy_revision FROM organization_memberships WHERE account_id = $1`, id).Scan(&revision); err != nil {
+		if err := pool.QueryRow(ctx, `SELECT access_policy_revision FROM users WHERE id = $1`, id).Scan(&revision); err != nil {
 			t.Fatalf("load revision: %v", err)
 		}
 		revisions[id] = revision
@@ -612,7 +594,7 @@ func TestGroupStoreDeleteMovingMembersDB(t *testing.T) {
 		seen = append(seen, userIDs...)
 		// The callback runs inside the delete's transaction, after the move.
 		var groupID int64
-		if err := tx.QueryRow(ctx, `SELECT access_group_id FROM organization_memberships WHERE account_id = $1`, userIDs[0]).Scan(&groupID); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT access_group_id FROM users WHERE id = $1`, userIDs[0]).Scan(&groupID); err != nil {
 			return err
 		}
 		if groupID != seedID {
@@ -638,7 +620,7 @@ func TestGroupStoreDeleteMovingMembersDB(t *testing.T) {
 			groupID  *int64
 			revision int64
 		)
-		if err := pool.QueryRow(ctx, `SELECT access_group_id, access_policy_revision FROM organization_memberships WHERE account_id = $1`, id).Scan(&groupID, &revision); err != nil {
+		if err := pool.QueryRow(ctx, `SELECT access_group_id, access_policy_revision FROM users WHERE id = $1`, id).Scan(&groupID, &revision); err != nil {
 			t.Fatalf("load moved member: %v", err)
 		}
 		if groupID == nil || *groupID != seedID {

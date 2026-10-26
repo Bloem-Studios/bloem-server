@@ -34,10 +34,7 @@ func TestPostgresProfileEditsStillBumpAccountRevision(t *testing.T) {
 	accountRevision := func() int64 {
 		t.Helper()
 		var rev int64
-		// Bloem keeps the account's policy on its default-organization
-		// membership.
-		if err := pool.QueryRow(ctx, `SELECT COALESCE(m.access_policy_revision, 1) FROM organization_memberships m
-			JOIN organizations o ON o.id = m.organization_id WHERE m.account_id = $1 AND o.is_default`, userID).Scan(&rev); err != nil {
+		if err := pool.QueryRow(ctx, `SELECT access_policy_revision FROM users WHERE id = $1`, userID).Scan(&rev); err != nil {
 			t.Fatalf("read account revision: %v", err)
 		}
 		return rev
