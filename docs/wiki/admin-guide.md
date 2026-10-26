@@ -37,7 +37,7 @@ bottom in an afternoon; Part 2 is for looking things up.
 
 ### 1.1 What Bloem Server is
 
-Bloem Server is a media server: software that takes a folder of video, music, audiobook and ebook
+Bloem Server is a media server: software that takes a folder of video, audiobook and ebook
 files you already own, identifies what each file is, fetches artwork and descriptions for it, and
 streams it to phones, tablets, televisions and web browsers on demand. It runs on a computer you
 control — a home server, a spare PC, a rented virtual machine — and the people you invite connect to
@@ -131,7 +131,7 @@ The first time you open the address, Bloem walks you through setup. You will be 
    **Admin → Settings → General**.
 3. **Add your first library.** A library is one kind of media in one folder: "Films" pointing at
    `/media/films`, "Series" pointing at `/media/series`. The wizard asks for a name, a type (movies,
-   series, music, audiobooks, books, comics) and the folder. Because `MEDIA_ROOT` is mounted into the
+   series, audiobooks, books, comics) and the folder. Because `MEDIA_ROOT` is mounted into the
    container, the folder you pick here is the path *inside* the container — the wizard shows you the
    mounted tree so you can browse to it.
 

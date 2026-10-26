@@ -338,10 +338,6 @@ func (s *Scanner) ScanFolder(ctx context.Context, folder *models.MediaFolder) (*
 		return &ScanResult{}, nil
 	}
 
-	if librarykind.IsMusic(folder.Type) {
-		return s.scanMusicFolderResult(watchCtx, folder)
-	}
-
 	if librarykind.IsManga(folder.Type) {
 		if err := s.ScanMangaFolder(watchCtx, folder); err != nil {
 			return nil, err
@@ -392,9 +388,6 @@ func (s *Scanner) ScanSubtree(ctx context.Context, folder *models.MediaFolder, s
 			return nil, err
 		}
 		return &ScanResult{}, nil
-	}
-	if librarykind.IsMusic(folder.Type) {
-		return s.scanMusicSubtreeResult(watchCtx, folder, cleanSubtree)
 	}
 	if librarykind.IsManga(folder.Type) {
 		if err := s.scanMangaPaths(watchCtx, folder, []string{cleanSubtree}, false); err != nil {
@@ -448,8 +441,6 @@ func walkModeFor(folderType string) walkMode {
 		return walkModeAudiobook
 	case librarykind.IsPodcast(folderType):
 		return walkModePodcast
-	case librarykind.IsMusic(folderType):
-		return walkModeMusic
 	case librarykind.IsEbook(folderType):
 		return walkModeEbook
 	case librarykind.IsManga(folderType):
@@ -2504,7 +2495,7 @@ func (s *Scanner) syncFolderScopedAudioLibraryState(ctx context.Context, folderI
 		  AND mf.missing_since IS NULL
 		  AND mf.content_id IS NOT NULL
 		  AND COALESCE(mf.canonical_root_path, '') <> ''
-		  AND mi.type IN ('audiobook', 'podcast', 'music_album')
+		  AND mi.type IN ('audiobook', 'podcast')
 		ON CONFLICT (media_folder_id, canonical_root_path)
 		DO UPDATE SET content_id = EXCLUDED.content_id,
 			last_seen_at = NOW()
@@ -2707,9 +2698,6 @@ func (s *Scanner) ScanFile(ctx context.Context, filePath string, folder *models.
 			return err
 		}
 		return s.syncFolderScopedAudioLibraryState(ctx, folder.ID)
-	}
-	if librarykind.IsMusic(folder.Type) {
-		return s.scanMusicFile(ctx, folder, cleanFile)
 	}
 	if librarykind.IsManga(folder.Type) {
 		if !SupportsEbookFile(cleanFile) {

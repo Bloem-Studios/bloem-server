@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 889 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v1` | 217 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v1` | 213 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -223,10 +223,6 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v1/livetv/tuners/xtream` | `createBloemXtreamProvider` | Authenticate and import an encrypted Xtream live-TV provider. |
 | `DELETE /api/bloem/v1/livetv/tuners/{tunerId}` | `deleteBloemLiveTVTuner` | Delete a tuner. |
 | `POST /api/bloem/v1/livetv/tuners/{tunerId}/scan` | `scanBloemLiveTVTuner` | Scan a saved tuner and refresh its channel lineup. |
-| `GET /api/bloem/v1/music/albums/{id}` | `getBloemMusicAlbum` | One album and its tracks. |
-| `GET /api/bloem/v1/music/artists` | `listBloemMusicArtists` | Artists this viewer may see, paged. |
-| `GET /api/bloem/v1/music/artists/{id}` | `getBloemMusicArtist` | One artist and its albums. |
-| `GET /api/bloem/v1/music/status` | `getBloemMusicStatus` | Whether this build has a music library, and what it holds. |
 | `GET /api/bloem/v1/notifications` | `listBloemNotifications` | The acting profile's inbox, newest first, with the alert fields a row needs to render. |
 | `GET /api/bloem/v1/notifications/sync` | `syncBloemNotifications` | Rows newer than a cursor, for a client waking from a push or reconnecting across a gap. |
 | `GET /api/bloem/v1/notifications/{id}` | `getBloemNotification` | One inbox row. Another profile's row is absent, not forbidden. |

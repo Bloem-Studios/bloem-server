@@ -175,7 +175,6 @@ internal/invitations/service_atomic_test.go  # reuse real tenant membership prov
 internal/invitations/service_test.go
 internal/libraryingest/executor.go
 internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supplies a finite local reader for its selected library
-internal/librarykind/librarykind.go
 internal/mail/layout_test.go  # default alt text and logo size derive from branding.DefaultServerName and the embedded default wordmark; Bloem pins its own in bloem_brand_test.go
 internal/metadata/image_cache_job_repo.go
 internal/metadata/image_cache_processor.go

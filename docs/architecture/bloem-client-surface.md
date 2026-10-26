@@ -28,10 +28,6 @@ BLOEM_UPDATE_V1_ROUTE_GOLDEN=1 go test ./internal/api/ -run TestV1RouteSurface
 | `GET /api/bloem/v1/watch/search` | account + profile | Profile-scoped Watch search. |
 | `POST /api/bloem/v1/sync/progress` | account + profile | Per-item `updated` / `ignored` / `error`. |
 | `GET /api/bloem/v1/persons/{person_id}` | account + profile | Profile-scoped person detail and visible filmography. |
-| `GET /api/bloem/v1/music/status` | account + profile | Available music library IDs. |
-| `GET /api/bloem/v1/music/artists` | account + profile | Artists page; requires an allowed `library_id`. |
-| `GET /api/bloem/v1/music/artists/{id}` | account + profile | Artist and ordered albums; requires `library_id`. |
-| `GET /api/bloem/v1/music/albums/{id}` | account + profile | Album and ordered tracks; requires `library_id`. |
 
 The viewer route group uses `RequireAuth`, `optionalLegacyTenant`/`ResolveLegacy`,
 rate limiting, viewer-access resolution and
@@ -61,8 +57,7 @@ Direct-profile sessions are limited by the router's allowlist, which admits
 outside that allowlist: credential management does not imply direct-profile browser login.
 
 `feature_tokens` describe additive capabilities — including
-`watch_document_v1`, `device_pairing_v1`, `progress_sync_v1`, and
-`music_catalog_v1` — and clients must not use a server version for feature
+`watch_document_v1`, `device_pairing_v1` and `progress_sync_v1` — and clients must not use a server version for feature
 detection. Most tokens are build-level. `lifecycle_idempotency_v1` is present
 when the lifecycle coordinator is wired, while
 `lifecycle_idempotency_required_v1` additionally reflects the current rollout

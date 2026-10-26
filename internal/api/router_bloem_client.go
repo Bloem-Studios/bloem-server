@@ -11,7 +11,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/livetv"
-	"github.com/Silo-Server/silo-server/internal/music"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
@@ -38,7 +37,6 @@ type bloemClientSurface struct {
 	previewWatch *handlers.WatchHandler
 	progress     *handlers.ProgressHandler
 	persons      *handlers.PersonDetailHandler
-	music        *handlers.MusicHandler
 	liveTV       *handlers.LiveTVHandler
 
 	// itemCollections answers "which collections hold this title" for a
@@ -89,8 +87,6 @@ func newBloemClientSurface(deps Dependencies, authMW *apimw.AuthMiddleware, tena
 	if deps.DB == nil || deps.UserStoreProvider == nil {
 		return surface
 	}
-	surface.music = handlers.NewNativeMusicHandler(music.NewPostgresRepository(deps.DB))
-
 	// The Watch documents both TV clients consume. They need a catalog, a
 	// media-file repository and a progress store; without any one of them there
 	// is no document to compose. Search reuses the exact same reader — see
@@ -214,7 +210,7 @@ func (s bloemClientSurface) mount(r chi.Router) {
 	if s.identity != nil {
 		r.Get("/server/identity", s.identity.HandleGetServerIdentity)
 	}
-	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.itemCollections == nil && s.music == nil && s.liveTV == nil && s.notifications == nil) {
+	if s.auth == nil || (s.watch == nil && s.progress == nil && s.persons == nil && s.itemCollections == nil && s.liveTV == nil && s.notifications == nil) {
 		return
 	}
 
@@ -301,12 +297,6 @@ func (s bloemClientSurface) mount(r chi.Router) {
 		}
 		if s.itemCollections != nil {
 			r.Get("/catalog/items/{content_id}/collections", s.itemCollections.HandleListItemCollections)
-		}
-		if s.music != nil {
-			r.Get("/music/status", s.music.HandleStatus)
-			r.Get("/music/artists", s.music.HandleArtists)
-			r.Get("/music/artists/{id}", s.music.HandleArtist)
-			r.Get("/music/albums/{id}", s.music.HandleAlbum)
 		}
 	})
 }

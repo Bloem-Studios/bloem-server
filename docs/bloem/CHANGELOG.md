@@ -3,6 +3,16 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Music removed
+
+Bloem's music catalog is gone: the `music` and `songs` library types, the
+dedicated music scanner, the four `/api/bloem/v1/music/*` routes and the
+`music_catalog_v1` feature token. `media_types` no longer lists `music_album`.
+`20261026020000_bloem_remove_music` drops `music_artists`, `music_albums` and
+`music_tracks` and any music libraries, albums and tracks; production had none.
+Silo's `librarykind.go` returns to Silo's bytes, so the seam ledger drops from
+331 to 330.
+
 ## October 26, 2026 — Account policy back on users
 
 An account's policy (access group, permissions, libraries, quality, stream,

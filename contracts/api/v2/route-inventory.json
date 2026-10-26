@@ -41,7 +41,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1120
+      "route_count": 1116
     },
     {
       "id": "api_v2",
@@ -63,8 +63,8 @@
     }
   ],
   "totals": {
-    "routes": 1305,
-    "conditional_routes": 887,
+    "routes": 1301,
+    "conditional_routes": 883,
     "streaming_routes": 45,
     "websocket_routes": 4
   },
@@ -14238,142 +14238,6 @@
       "success_statuses": null,
       "error_codes": null,
       "source_file": "internal/api/router_livetv.go"
-    },
-    {
-      "listener": "api",
-      "namespace": "legacy_unversioned",
-      "method": "GET",
-      "path": "/api/bloem/v1/music/albums/{id}",
-      "route_group": "/api/bloem/v1",
-      "handler": "(*internal/api/handlers.MusicHandler).HandleAlbum",
-      "handler_expr": "s.music.HandleAlbum",
-      "handler_kind": "method",
-      "handler_resolved": true,
-      "middleware_chain": 29,
-      "auth_class": "profile_scoped",
-      "auth_traits": [
-        "authenticated",
-        "profile_required",
-        "rate_limited",
-        "stream_token",
-        "tenant_scoped",
-        "viewer_access"
-      ],
-      "conditions": [
-        "s.music != nil"
-      ],
-      "conditional": true,
-      "request_kind": "none",
-      "response_media_kind": "json",
-      "delegates_to": "",
-      "streams": false,
-      "upgrades_websocket": false,
-      "method_origin": "explicit",
-      "success_statuses": null,
-      "error_codes": null,
-      "source_file": "internal/api/router_bloem_client.go"
-    },
-    {
-      "listener": "api",
-      "namespace": "legacy_unversioned",
-      "method": "GET",
-      "path": "/api/bloem/v1/music/artists",
-      "route_group": "/api/bloem/v1",
-      "handler": "(*internal/api/handlers.MusicHandler).HandleArtists",
-      "handler_expr": "s.music.HandleArtists",
-      "handler_kind": "method",
-      "handler_resolved": true,
-      "middleware_chain": 29,
-      "auth_class": "profile_scoped",
-      "auth_traits": [
-        "authenticated",
-        "profile_required",
-        "rate_limited",
-        "stream_token",
-        "tenant_scoped",
-        "viewer_access"
-      ],
-      "conditions": [
-        "s.music != nil"
-      ],
-      "conditional": true,
-      "request_kind": "none",
-      "response_media_kind": "json",
-      "delegates_to": "",
-      "streams": false,
-      "upgrades_websocket": false,
-      "method_origin": "explicit",
-      "success_statuses": null,
-      "error_codes": null,
-      "source_file": "internal/api/router_bloem_client.go"
-    },
-    {
-      "listener": "api",
-      "namespace": "legacy_unversioned",
-      "method": "GET",
-      "path": "/api/bloem/v1/music/artists/{id}",
-      "route_group": "/api/bloem/v1",
-      "handler": "(*internal/api/handlers.MusicHandler).HandleArtist",
-      "handler_expr": "s.music.HandleArtist",
-      "handler_kind": "method",
-      "handler_resolved": true,
-      "middleware_chain": 29,
-      "auth_class": "profile_scoped",
-      "auth_traits": [
-        "authenticated",
-        "profile_required",
-        "rate_limited",
-        "stream_token",
-        "tenant_scoped",
-        "viewer_access"
-      ],
-      "conditions": [
-        "s.music != nil"
-      ],
-      "conditional": true,
-      "request_kind": "none",
-      "response_media_kind": "json",
-      "delegates_to": "",
-      "streams": false,
-      "upgrades_websocket": false,
-      "method_origin": "explicit",
-      "success_statuses": null,
-      "error_codes": null,
-      "source_file": "internal/api/router_bloem_client.go"
-    },
-    {
-      "listener": "api",
-      "namespace": "legacy_unversioned",
-      "method": "GET",
-      "path": "/api/bloem/v1/music/status",
-      "route_group": "/api/bloem/v1",
-      "handler": "(*internal/api/handlers.MusicHandler).HandleStatus",
-      "handler_expr": "s.music.HandleStatus",
-      "handler_kind": "method",
-      "handler_resolved": true,
-      "middleware_chain": 29,
-      "auth_class": "profile_scoped",
-      "auth_traits": [
-        "authenticated",
-        "profile_required",
-        "rate_limited",
-        "stream_token",
-        "tenant_scoped",
-        "viewer_access"
-      ],
-      "conditions": [
-        "s.music != nil"
-      ],
-      "conditional": true,
-      "request_kind": "none",
-      "response_media_kind": "json",
-      "delegates_to": "",
-      "streams": false,
-      "upgrades_websocket": false,
-      "method_origin": "explicit",
-      "success_statuses": null,
-      "error_codes": null,
-      "source_file": "internal/api/router_bloem_client.go"
     },
     {
       "listener": "api",

@@ -22,7 +22,6 @@ type Kinds struct {
 	Audiobook bool
 	Ebook     bool
 	Podcast   bool
-	Music     bool
 	Manga     bool
 }
 
@@ -35,7 +34,6 @@ func Of(libraryType string) Kinds {
 		Audiobook: IsAudiobook(libraryType),
 		Ebook:     IsEbook(libraryType),
 		Podcast:   IsPodcast(libraryType),
-		Music:     IsMusic(libraryType),
 		Manga:     IsManga(libraryType),
 	}
 }

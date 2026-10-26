@@ -120,7 +120,7 @@ public packs and packs for your current organisation; sign-in shows public packs
 
 ### Libraries
 
-Each **library** is one kind of thing: Films, Series, Music, Audiobooks, Books. Open one to browse
+Each **library** is one kind of thing: Films, Series, Audiobooks, Books. Open one to browse
 it as a grid. The controls at the top let you sort (by title, by date added, by rating, by year) and
 filter (by genre, by decade, by whether you have watched it). Filters stack.
 
@@ -196,11 +196,10 @@ format, a connection too slow for the original — the server converts it as it 
 to do anything; it is automatic. If a film that looks perfect at home looks worse away from home,
 that is the conversion adapting to the connection, and *Quality → Auto* is doing its job.
 
-### Listening: music and audiobooks
+### Listening: audiobooks
 
-Music plays in a queue with shuffle and repeat. Audiobooks remember your place per book, have their
-own speed control, a sleep timer, and chapter navigation. Both keep playing when your phone's screen
-is off, with controls on the lock screen.
+Audiobooks remember your place per book, have their own speed control, a sleep timer, and chapter
+navigation. They keep playing when your phone's screen is off, with controls on the lock screen.
 
 ### Reading: books and comics
 
@@ -330,7 +329,7 @@ username.
 ## Glossary
 
 - **Direct play** — the file is sent to your device unchanged.
-- **Library** — one kind of media: films, series, music, audiobooks, books.
+- **Library** — one kind of media: films, series, audiobooks, books.
 - **Profile** — one person within a login, with their own history and settings.
 - **Request** — asking the administrator for something the library does not have.
 - **Server address** — the web address of the particular Bloem server you use.

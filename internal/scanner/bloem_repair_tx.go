@@ -10,8 +10,8 @@ import (
 
 // repairTxKey carries an outer catalog-repair transaction through Silo's
 // pool-based repair helpers (syncPresentState and
-// syncFolderScopedAudioLibraryState) so Bloem can run them atomically, and
-// inside the music scanner's locked transaction, without forking their SQL.
+// syncFolderScopedAudioLibraryState) so Bloem can run them atomically without
+// forking their SQL.
 type repairTxKey struct{}
 
 func withRepairTx(ctx context.Context, tx pgx.Tx) context.Context {

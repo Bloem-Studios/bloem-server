@@ -104,7 +104,6 @@ func registerBloemAll(reg *Registry) {
 	registerBloemXtreamDocument(reg)
 	registerBloemIdentity(reg)
 	registerBloemWatch(reg)
-	registerBloemMusic(reg)
 	registerBloemNotifications(reg)
 	registerBloemPersons(reg)
 	registerBloemItemCollections(reg)

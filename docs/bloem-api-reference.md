@@ -50,8 +50,7 @@ clients depend on"), and splits into two genuinely different surfaces:
 
 - **System & Client** (`GET /api/bloem/v1/capabilities`, `GET /api/bloem/v1/organizations`,
   `POST /api/bloem/v1/admin/session`, plus the client-facing routes mounted by `router_bloem_client.go`:
-  server identity, native Watch home/item/search, native progress sync, person detail, and Music
-  status/artist/album reads) — reachable
+  server identity, native Watch home/item/search, native progress sync and person detail) — reachable
   by an ordinary authenticated user, no organization/admin context required. This is the part the
   native mobile/TV clients actually call.
 - **Admin** (operations under `/api/bloem/v1/admin`, except the account-session exchange) — a multi-tenant administration
@@ -79,11 +78,8 @@ ordinary account bearer token and an `X-Profile-Id` header:
 - `POST /api/bloem/v1/sync/progress`
 - `GET /api/bloem/v1/persons/{person_id}`
 - `GET /api/bloem/v1/catalog/items/{content_id}/collections`
-- `GET /api/bloem/v1/music/status`, `GET /api/bloem/v1/music/artists`,
-  `GET /api/bloem/v1/music/artists/{id}`, and `GET /api/bloem/v1/music/albums/{id}`
 
-Music artist and album reads additionally require an allowed positive
-`library_id`. Direct-profile sessions are admitted to `/api/bloem/v1` only for
+Direct-profile sessions are admitted to `/api/bloem/v1` only for
 the audiobook and ebook request viewer routes (capability, history, filing,
 read and withdrawal). Authentication rejects them on every other native route
 before `RequireProfile` runs. The
@@ -199,7 +195,7 @@ support token remains present and the required token is conservatively omitted.
     "shared_device_pairing": false,
     "delegated_admin_roles": false
   },
-  "media_types": ["movie", "series", "episode", "audiobook", "ebook", "manga", "music_album"],
+  "media_types": ["movie", "series", "episode", "audiobook", "ebook", "manga"],
   "feature_tokens": [
     "playback_plan_v3",
     "neutral_playback_v3_contract_v1",
@@ -218,7 +214,6 @@ support token remains present and the required token is conservatively omitted.
     "watch_document_v1",
     "device_pairing_v1",
     "progress_sync_v1",
-    "music_catalog_v1",
     "lifecycle_idempotency_v1"
   ]
 }
@@ -923,37 +918,6 @@ title.
 - `404 {"error":"not_found","message":"Item not found"}` — the item does not exist or the profile
   may not see it.
 - `500 {"error":"internal_error",…}` — store errors.
-
----
-
-### Music
-
-Music is a Bloem-native extension and is deliberately absent from the
-Silo-compatible `/api/v1` projection. Clients discover build support through
-the `music_catalog_v1` feature token and discover usable profile-scoped content
-through `GET /api/bloem/v1/music/status`.
-
-All routes below use the native authenticated viewer group (`RequireAuth`,
-legacy tenant projection, viewer policy scope, and `RequireProfile`). Every
-query requires membership in the requested positive `library_id`; disabled or
-out-of-scope libraries answer as not found.
-
-- `GET /api/bloem/v1/music/status` returns `{"available":true|false,"library_ids":[...]}`.
-  A library is advertised only when it is enabled and has at least one present
-  track.
-- `GET /api/bloem/v1/music/artists?library_id={id}&cursor={opaque}` returns a page of
-  artists with `items` and an optional `next_cursor`.
-- `GET /api/bloem/v1/music/artists/{id}?library_id={id}` returns an `artist` and its
-  ordered, non-empty `albums`.
-- `GET /api/bloem/v1/music/albums/{id}?library_id={id}` returns an `album` and its
-  ordered present `tracks`. Each track carries the positive `media_file_id`
-  used by the existing playback-start contract.
-
-Music libraries use the dedicated `music` (or `songs`) library type. The
-scanner reads embedded artist/album/title/year/disc/track tags, falls back to
-the `Artist/Album/file` layout when tags are absent, and never sends music
-through movie, series, or audiobook matching. Removing files removes their
-track visibility and reconciles the album membership.
 
 ---
 
