@@ -22,7 +22,8 @@ func (r *InterestRepository) WithBloemTenancy() *InterestRepository {
 }
 
 // listActiveBySeriesForTenants is ListActiveBySeries with Bloem's tenancy
-// join.
+// join. It keeps Silo's series-mute filter, so a profile that muted the series
+// is left out here too.
 //
 // A row's library_id is trusted only up to the moment it was written: an
 // interest row is not recomputed or invalidated when an entitlement is later
@@ -51,7 +52,10 @@ func (r *InterestRepository) listActiveBySeriesForTenants(ctx context.Context, t
 		WHERE psi.library_id = $1 AND psi.series_id = $2
 		  AND (psi.favorite OR psi.watchlist OR psi.continue_watching OR psi.next_up_candidate)
 		  AND ((owners.kind = 'organization' AND owners.organization_id = prof.organization_id)
-		       OR (owners.kind = 'platform' AND ent.id IS NOT NULL))`,
+		       OR (owners.kind = 'platform' AND ent.id IS NOT NULL))
+		  AND NOT EXISTS (
+			SELECT 1 FROM profile_series_notification_mutes m
+			WHERE m.series_id = psi.series_id AND m.user_id = psi.user_id AND m.profile_id = psi.profile_id)`,
 		libraryID, seriesID)
 	if err != nil {
 		return nil, fmt.Errorf("list series interest: %w", err)

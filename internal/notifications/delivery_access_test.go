@@ -301,6 +301,35 @@ func TestListActiveBySeriesRejectsRevokedEntitlement(t *testing.T) {
 	assertRecipients(t, got, nil)
 }
 
+// A profile that muted the series is not a recipient, under the tenancy join
+// as under Silo's query.
+func TestListActiveBySeriesForTenantsSkipsMutedSeries(t *testing.T) {
+	f := newDeliveryAccessFixture(t)
+	repo := NewInterestRepository(f.pool).WithBloemTenancy()
+	library := f.createOrgFolder(f.ownerA, "org-a-muted-library")
+	const seriesID = "dax-series-muted"
+	f.exec(`
+		INSERT INTO profile_series_interest (user_id, profile_id, library_id, series_id, favorite)
+		VALUES ($1, $2, $3, $4, true)`, f.userA, f.profileA, library, seriesID)
+	f.exec(`
+		INSERT INTO profile_series_notification_mutes (user_id, profile_id, series_id)
+		VALUES ($1, $2, $3)`, f.userA, f.profileA, seriesID)
+	t.Cleanup(func() {
+		_, _ = f.pool.Exec(context.Background(), `DELETE FROM profile_series_notification_mutes WHERE profile_id = $1`, f.profileA)
+	})
+
+	tx, err := f.pool.Begin(f.ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(t.Context()) }()
+	got, err := repo.ListActiveBySeries(f.ctx, tx, library, seriesID)
+	if err != nil {
+		t.Fatalf("ListActiveBySeries: %v", err)
+	}
+	assertRecipients(t, got, nil)
+}
+
 func assertRecipients(t *testing.T, got []SeriesInterest, wantProfiles []string) {
 	t.Helper()
 	gotProfiles := make([]string, 0, len(got))

@@ -3,6 +3,31 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Silo's public port; new organizations get the default catalog
+
+The public port runs Silo's own composition again: `newRootHandler` and the
+`http.Server` in `cmd/silo/main.go`, with Silo's compatibility listener
+goroutines. Bloem's copy (`bloemRootHandler`, `publicServer`, `servePublic`,
+`serveAux`), its route-inventory exclusion and its guard tests are gone; the
+route inventory is unchanged apart from that exclusion.
+
+A newly created organization, whether a platform administrator's or a
+provisioned tenant, now receives the platform's creation-default entitlement
+bundle in its creating transaction, so it sees the bundle's platform libraries.
+Before, nothing applied the bundle and new organizations saw no platform
+libraries. A re-provisioned tenant is adopted as it stands.
+
+Series notification mutes now apply under Bloem's tenancy filter: the tenant
+fanout query lacked Silo's mute check, so a muted series still notified.
+
+Three swaps stay Bloem's after review. Silo's `netguard` does not refuse the
+6to4, Teredo and other IPv6 special-use ranges `internal/outbound` refuses.
+Silo's poll-based download quota lock still needs a second connection while
+held, which Bloem's one-connection contention test rejects. And the fanout
+tenancy join stays, because Silo's per-recipient access check turns a
+suspended organization's recipients into a retried batch failure. The seam
+ledger stays at 325.
+
 ## October 26, 2026 — Dead code removed
 
 Code nothing called or ran is gone:
