@@ -2,18 +2,16 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/apiv2"
-	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
-	"github.com/go-chi/chi/v5"
 )
 
 func TestNativeOnboardingHTTPProtectedRouteRefusal(t *testing.T) {
@@ -68,25 +66,6 @@ func TestNativeOnboardingHTTPRemovedLibraryRoutesAreGone(t *testing.T) {
 		router.ServeHTTP(w, httptest.NewRequest(request.method, "/api/bloem/v1/admin/platform/native-storage"+request.path, nil))
 		if w.Code != request.status {
 			t.Fatalf("%s %s status=%d want=%d", request.method, request.path, w.Code, request.status)
-		}
-	}
-}
-
-func TestNativeOnboardingHTTPV2UsesNativeProblemTypes(t *testing.T) {
-	for _, code := range []string{"native_storage_unavailable", "artifact_rejected", "revision_conflict"} {
-		problem := nativeStorageProblem(&catalog.NativeOnboardingError{Code: code, Cause: errors.New("private-secret")})
-		var typed *apiv2.Problem
-		if !errors.As(problem, &typed) || typed == nil {
-			t.Fatal("v2 mapping lost direct Problem")
-		}
-		if typed.Type != "https://siloserver.org/docs/api/v2/problems/"+code {
-			t.Fatal("native-specific problem type lost")
-		}
-		if strings.Contains(typed.Detail, "private-secret") {
-			t.Fatal("v2 cause exposed")
-		}
-		if typed.GetHeaders().Get("Cache-Control") != "no-store" {
-			t.Fatal("v2 response may cache management error")
 		}
 	}
 }

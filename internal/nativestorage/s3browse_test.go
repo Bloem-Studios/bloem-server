@@ -811,39 +811,3 @@ func TestS3BrowseExtendedBlocklistAndHostAddresses(t *testing.T) {
 		t.Skip("no interface addresses visible")
 	}
 }
-
-func TestServiceBaseURLGuard(t *testing.T) {
-	for _, tc := range []struct {
-		raw string
-		ok  bool
-	}{
-		{"https://books.example.com/", true},
-		{"https://books.example.com/library/x", true},
-		{"https://93.184.216.34:8443/api", true},
-		{"http://books.example.com", false},
-		{"https://u:p@books.example.com/", false},
-		{"https://books.example.com/?q=1", false},
-		{"https://books.example.com/#f", false},
-		{"https://books.example.com:8080/", false},
-		{"https://10.0.0.140/x", false},
-		{"https://[::ffff:10.0.0.140]/x", false},
-	} {
-		_, err := ParseServiceBaseURL(tc.raw, true)
-		if (err == nil) != tc.ok {
-			t.Fatalf("%s: err=%v want ok=%v", tc.raw, err, tc.ok)
-		}
-	}
-	if _, err := ParseS3BrowseEndpoint("https://books.example.com/library", false); err == nil {
-		t.Fatal("S3 endpoint accepted a path")
-	}
-	resolver := &fakeS3Resolver{answers: map[string][][]netip.Addr{"books.example.com": {addrs(testPublicIPv4)}, "internal.example.com": {addrs(testPublicIPv4, "10.9.9.9")}}}
-	if err := checkGuardedURL(t.Context(), resolver, "https://books.example.com/lib", true, true); err != nil {
-		t.Fatalf("public base URL refused: %v", err)
-	}
-	if err := checkGuardedURL(t.Context(), resolver, "https://internal.example.com/lib", true, true); nativeCode(err) != S3EndpointRejectedCode {
-		t.Fatalf("internal base URL: %q", nativeCode(err))
-	}
-	if err := checkGuardedURL(t.Context(), resolver, "", true, true); err != nil {
-		t.Fatal("empty base URL must be left to the plugin")
-	}
-}

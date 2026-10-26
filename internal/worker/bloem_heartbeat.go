@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/nodeidentity"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/Silo-Server/silo-server/internal/nodeidentity"
 )
 
 type heartbeatStore interface {
@@ -38,12 +39,6 @@ func newBloemHB() bloemHB {
 		cancel:       cancel,
 		done:         make(chan struct{}),
 	}
-}
-
-func newHeartbeatWriter(store heartbeatStore, nodeID, nodeType, nodeURL string) *HeartbeatWriter {
-	hw := NewHeartbeatWriter(nil, nodeID, nodeType, nodeURL)
-	hw.pool = store
-	return hw
 }
 
 // bloemHeartbeatUpsertSQL is Silo's heartbeat upsert plus this process's

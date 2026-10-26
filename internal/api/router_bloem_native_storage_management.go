@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
-	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
-	"github.com/go-chi/chi/v5"
 )
 
 // mountBloemNativeStorageManagement registers only inside the existing
@@ -54,17 +54,6 @@ func mountNativeStorageScopeRoutes(r chi.Router, handler *handlers.BloemNativeSt
 	r.Post("/installations/{installation_id}/disable", handler.HandleDisable)
 	r.Post("/installations/{installation_id}/upgrade", handler.HandleUpgrade)
 	r.Delete("/installations/{installation_id}", handler.HandleUninstall)
-}
-
-// Native v2 adapters use this direct Problem; the generic status translator
-// would discard the native code. No mutation decorators are installed in C1.
-func nativeStorageProblem(err error) *apiv2.Problem {
-	decision := handlers.NativeStorageAPIError(err)
-	if decision == nil {
-		return nil
-	}
-	kind := apiv2.ProblemType{ID: decision.Code, Status: decision.Status, Title: decision.Message}
-	return apiv2.NewProblem(kind, decision.Message).WithHeader("Cache-Control", "no-store")
 }
 
 // Router fallbacks do not reach a handler, so they need the same bounded

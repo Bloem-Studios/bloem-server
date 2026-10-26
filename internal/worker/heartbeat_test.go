@@ -300,3 +300,9 @@ func TestHeartbeatWriterStopAndWaitDeadlineAllowsLaterJoin(t *testing.T) {
 		t.Fatalf("later StopAndWait: %v", err)
 	}
 }
+
+func newHeartbeatWriter(store heartbeatStore, nodeID, nodeType, nodeURL string) *HeartbeatWriter {
+	hw := NewHeartbeatWriter(nil, nodeID, nodeType, nodeURL)
+	hw.pool = store
+	return hw
+}

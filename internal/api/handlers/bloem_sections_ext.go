@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"net/http"
 	"net/url"
 
 	"github.com/Silo-Server/silo-server/internal/access"
@@ -70,25 +69,6 @@ const SystemPromotedSectionID = "system-promoted"
 // upstream-compat clients decode section_type as a plain string with no
 // unknown-type drop, so the row is never delivered unless asked for.
 const promotedOptInParam = "promoted"
-
-// wantsPromoted reports whether the request opted in to the `promoted`
-// section (`promoted=1`). Absent or any other value keeps the response
-// identical to a build without S-2.
-func wantsPromoted(r *http.Request) bool {
-	return r.URL.Query().Get(promotedOptInParam) == "1"
-}
-
-// maybeInjectPromoted delivers the S-2 `promoted` home section to clients
-// that opted in with `promoted=1`. Without the opt-in every promoted row —
-// synthetic or admin-pinned — is dropped from the layout. With it, when the
-// profile has active home cards and the admin layout carries no promoted
-// section of its own, a synthetic row lands at the first card's
-// placement.home_position (default promotions.DefaultHomePosition), clamped
-// to the layout; the resolved cards ride on the row so the fetcher does not
-// query them again.
-func (h *SectionHandler) maybeInjectPromoted(r *http.Request, resolved []sections.ResolvedSection) []sections.ResolvedSection {
-	return h.transformHomeSections(r.Context(), resolved, r.URL.Query())
-}
 
 // WithHomePromotions retains the existing opt-in helper for native callers.
 func WithHomePromotions(ctx context.Context, enabled bool) context.Context {

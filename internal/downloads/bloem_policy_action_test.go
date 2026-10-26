@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -19,7 +21,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/playback"
 	policyengine "github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
 )
 
 func TestDownloadCapabilityResolvesBloemProfileGroup(t *testing.T) {
@@ -44,7 +45,7 @@ func TestDownloadCapabilityResolvesBloemProfileGroup(t *testing.T) {
 		},
 	})
 
-	capability, err := CapabilityForProfile(ctx, svc, user.ID, "profile-v2")
+	capability, err := svc.Capability(bloemWithDownloadProfile(ctx, user.ID, "profile-v2"), user.ID)
 	if err != nil {
 		t.Fatalf("Capability() error: %v", err)
 	}

@@ -1,13 +1,10 @@
 package artworkurl
 
 import (
-	"context"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/Silo-Server/silo-server/internal/catalog"
 )
 
 // SignWindow signs key with a URL that stays the same for a whole window and
@@ -20,26 +17,4 @@ func (s *Signer) SignWindow(key string, now time.Time, window time.Duration) (st
 	exp := expires.Unix()
 	route := &url.URL{Path: s.route + strings.TrimPrefix(key, "/") + s.suffix()}
 	return route.EscapedPath() + "?exp=" + strconv.FormatInt(exp, 10) + "&sig=" + s.signature(key, exp), expires
-}
-
-// WindowResolver signs every key with SignWindow.
-type WindowResolver struct {
-	signer *Signer
-	window time.Duration
-}
-
-func NewWindowResolver(signer *Signer, window time.Duration) Resolver {
-	return WindowResolver{signer: signer, window: window}
-}
-func (r WindowResolver) ResolveURLs(ctx context.Context, keys []string) map[string]catalog.ResolvedImageURL {
-	out := make(map[string]catalog.ResolvedImageURL, len(keys))
-	now := time.Now()
-	for _, key := range keys {
-		if ctx.Err() != nil {
-			break
-		}
-		url, exp := r.signer.SignWindow(key, now, r.window)
-		out[key] = catalog.ResolvedImageURL{URL: url, ExpiresAt: &exp}
-	}
-	return out
 }

@@ -198,3 +198,15 @@ func promoSectionHandler(source sections.PromoSource) *SectionHandler {
 	handler.ConfigurePromotions(source)
 	return handler
 }
+
+// maybeInjectPromoted is the request-level entry the tests drive: it delivers the S-2 `promoted` home section to clients
+// that opted in with `promoted=1`. Without the opt-in every promoted row —
+// synthetic or admin-pinned — is dropped from the layout. With it, when the
+// profile has active home cards and the admin layout carries no promoted
+// section of its own, a synthetic row lands at the first card's
+// placement.home_position (default promotions.DefaultHomePosition), clamped
+// to the layout; the resolved cards ride on the row so the fetcher does not
+// query them again.
+func (h *SectionHandler) maybeInjectPromoted(r *http.Request, resolved []sections.ResolvedSection) []sections.ResolvedSection {
+	return h.transformHomeSections(r.Context(), resolved, r.URL.Query())
+}

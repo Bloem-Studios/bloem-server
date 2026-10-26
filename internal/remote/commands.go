@@ -100,16 +100,6 @@ var householdSessionCommands = map[playback.CommandName]struct{}{
 	playback.CommandDisplayMessage:   {},
 }
 
-// SessionCommandNames lists the session-scoped names in a stable order.
-func SessionCommandNames() []playback.CommandName {
-	return []playback.CommandName{
-		playback.CommandPause, playback.CommandUnpause, playback.CommandPlayPause,
-		playback.CommandSeek, playback.CommandSetVolume, playback.CommandStop,
-		playback.CommandTerminate, playback.CommandSetAudioTrack,
-		playback.CommandSetSubtitleTrack, playback.CommandDisplayMessage, CommandReplan,
-	}
-}
-
 // IsSessionCommand reports whether name rides the session rail.
 func IsSessionCommand(name playback.CommandName) bool {
 	_, ok := sessionCommands[name]

@@ -35,13 +35,6 @@ func PublicHTTPPolicy() Policy {
 	}
 }
 
-// PublicHTTPSPolicy permits only public HTTPS destinations.
-func PublicHTTPSPolicy() Policy {
-	policy := PublicHTTPPolicy()
-	policy.AllowedSchemes = map[string]struct{}{"https": {}}
-	return policy
-}
-
 // WithPrivateAccess returns a policy whose private-destination exception is
 // decided at request time. This is reserved for explicit administrator-owned
 // development settings; profile input cannot provide the decision function.

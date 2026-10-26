@@ -15,6 +15,18 @@ request context would not return `repository.go` to Silo's bytes, and would let
 Silo's admin handlers, which also issue admin invitations, act on an
 organization. The seam ledger stays at 309.
 
+## October 26, 2026 — Unreachable code removed
+
+A `deadcode` pass over every command removed Bloem code no entry point reaches:
+the window URL resolver, `adminpeople.WithMutationRequestID`, the unused
+`promoted` opt-in reader, `downloads.CapabilityForProfile` (downloads read the
+profile from context since the downloads change), `ParseServiceBaseURL`,
+`outbound.PublicHTTPSPolicy`, the plugin pin check, `SessionCommandNames`,
+ambience's `wire` and the never-mounted native storage v2 problem mapper with
+its test. Test-only helpers moved into test files. Prairie Live TV files stay
+as imported, and helpers that tests in other packages use stay where they are.
+About 165 lines go; the seam ledger stays at 306.
+
 ## October 26, 2026 — One way to give an account its membership
 
 Account creation now gives an account its one membership in a single place:

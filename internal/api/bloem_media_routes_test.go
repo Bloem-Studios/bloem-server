@@ -32,3 +32,8 @@ func TestBloemAdditionalMediaRoutesRemainProvisional(t *testing.T) {
 		}
 	}
 }
+
+func declaredNativeMediaRoutes() []streamtelemetry.MediaRoute {
+	declareNativeMediaRoutes()
+	return streamtelemetry.DeclaredRoutes(streamtelemetry.FamilyNative)
+}

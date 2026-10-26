@@ -328,12 +328,6 @@ func ParseS3BrowseEndpoint(raw string, restrictPorts bool) (S3BrowseEndpoint, er
 	return parseGuardedURL(raw, restrictPorts, false)
 }
 
-// ParseServiceBaseURL applies the same rules to a service base URL (for
-// example Bookwarehouse base_url), which may carry a path.
-func ParseServiceBaseURL(raw string, restrictPorts bool) (S3BrowseEndpoint, error) {
-	return parseGuardedURL(raw, restrictPorts, true)
-}
-
 func parseGuardedURL(raw string, restrictPorts, allowPath bool) (S3BrowseEndpoint, error) {
 	reject := func(reason string) (S3BrowseEndpoint, error) {
 		return S3BrowseEndpoint{}, s3BrowseError(S3EndpointRejectedCode, reason)

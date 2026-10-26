@@ -16,14 +16,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/idgen"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -159,12 +160,6 @@ type MutationActor struct {
 	RequestID        string
 }
 type mutationMetadataKey struct{}
-
-func WithMutationRequestID(ctx context.Context, requestID string) context.Context {
-	actor, _ := MutationActorFromContext(ctx)
-	actor.RequestID = strings.TrimSpace(requestID)
-	return WithMutationActor(ctx, actor)
-}
 
 func WithMutationActor(ctx context.Context, actor MutationActor) context.Context {
 	return context.WithValue(ctx, mutationMetadataKey{}, actor)

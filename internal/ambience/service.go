@@ -208,11 +208,3 @@ func wrapWriteError(op string, err error) error {
 	}
 	return fmt.Errorf("ambience: %s: %w", op, err)
 }
-
-func wire(packs []Pack) []Wire {
-	out := make([]Wire, 0, len(packs))
-	for _, p := range packs {
-		out = append(out, p.Wire())
-	}
-	return out
-}

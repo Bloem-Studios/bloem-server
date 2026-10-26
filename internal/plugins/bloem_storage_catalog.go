@@ -58,11 +58,6 @@ func (r *NativeStorageRegistry) pinnedArtifact(pluginID, checksum string) (Nativ
 	return a, ok
 }
 
-func (r *NativeStorageRegistry) isPinned(pluginID, checksum string) bool {
-	_, ok := r.pinnedArtifact(pluginID, checksum)
-	return ok
-}
-
 func nativeCatalogSpecFor(pluginID string) (nativeCatalogSpec, bool) {
 	for _, s := range nativeCatalogSpecs {
 		if s.PluginID == pluginID {
