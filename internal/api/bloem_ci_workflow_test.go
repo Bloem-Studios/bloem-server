@@ -58,7 +58,7 @@ func TestCIPostgresServicesMatchTheDeploymentMajor(t *testing.T) {
 		t.Fatalf("docker-compose.yml postgres image = %q", deployed)
 	}
 	services := 0
-	for name, job := range readBloemWorkflow(t, "../../.github/workflows/ci.yml") {
+	for name, job := range readBloemWorkflow(t, "../../.github/workflows/bloem-ci.yml") {
 		postgres, ok := job.Services["postgres"]
 		if !ok {
 			continue

@@ -3,8 +3,8 @@ name: Upstream sync
 # Keeps this fork current with Silo-Server/silo-server without a human having to
 # notice that upstream moved.
 #
-# The gate is deliberately the existing CI workflow rather than a second copy of
-# it: this job opens a pull request, CI runs on that PR the same way it runs on
+# The gate is deliberately the existing Bloem CI workflow rather than a second
+# copy of it: this job opens a pull request, CI runs on that PR the same way it runs on
 # any other, and the merge only happens if CI goes green. A conflict or a red
 # build leaves the PR sitting there for a human instead of landing on main.
 #

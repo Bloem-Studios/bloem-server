@@ -233,7 +233,7 @@ func TestBloemFoundationCIRequiresDisposablePostgres(t *testing.T) {
 	var workflow struct {
 		Jobs map[string]workflowJob `yaml:"jobs"`
 	}
-	raw, err := os.ReadFile("../../.github/workflows/ci.yml")
+	raw, err := os.ReadFile("../../.github/workflows/bloem-ci.yml")
 	if err != nil {
 		t.Fatalf("read CI workflow: %v", err)
 	}
@@ -306,7 +306,7 @@ func TestCIChangedLineLintNeedsNoRepositoryCredential(t *testing.T) {
 			Steps []workflowStep `yaml:"steps"`
 		} `yaml:"jobs"`
 	}
-	raw, err := os.ReadFile("../../.github/workflows/ci.yml")
+	raw, err := os.ReadFile("../../.github/workflows/bloem-ci.yml")
 	if err != nil {
 		t.Fatalf("read CI workflow: %v", err)
 	}

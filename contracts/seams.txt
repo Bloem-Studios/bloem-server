@@ -9,7 +9,7 @@
 # matches none of them, so running it mid-merge or while behind is safe.
 #
 # Seeded 2026-09-13 from the pre-restructuring state.
-.github/workflows/ci.yml
+.github/workflows/ci.yml  # one line: Silo's reusable CI job runs only in Silo's repository; Bloem's CI is .github/workflows/bloem-ci.yml
 .gitignore
 .golangci.yml
 AGENTS.md

@@ -3,6 +3,17 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Bloem CI is its own workflow
+
+Bloem's CI jobs move unchanged from its copy of Silo's
+`.github/workflows/ci.yml` into the Bloem-owned
+`.github/workflows/bloem-ci.yml`, named "Bloem CI". `ci.yml` is Silo's file again
+apart from one line: its call to Silo's reusable `trusted-linux-ci.yml`, which
+takes its tools from Silo's main branch and knows none of Bloem's gates, runs
+only in Silo's repository. The seam shrinks from about 880 changed lines to one;
+the ledger stays at 325. Bloem Image and the upstream sync merge now wait on
+"Bloem CI". See [CI](ci.md).
+
 ## October 26, 2026 — Silo's public port; new organizations get the default catalog
 
 The public port runs Silo's own composition again: `newRootHandler` and the

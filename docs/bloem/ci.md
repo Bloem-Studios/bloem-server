@@ -1,7 +1,36 @@
-# Bloem CI additions
+# Bloem CI
 
-What Bloem adds to Silo's CI workflow (`.github/workflows/ci.yml`) and why.
+Bloem's CI is its own workflow, `.github/workflows/bloem-ci.yml` ("Bloem CI").
+Silo's `.github/workflows/ci.yml` is kept as Silo's file with one line added:
+its single job, a call to Silo's reusable `trusted-linux-ci.yml` from
+`Silo-Server/silo-server@main`, runs only in Silo's repository. That reusable
+workflow pulls its tools from Silo's main branch, not from the Silo revision
+Bloem has merged, and knows none of Bloem's gates, so on Bloem it would check
+the wrong thing. Skipping it costs a one-line seam; keeping Bloem's jobs in
+Silo's file cost an 880-line one that every upstream CI change conflicted with.
+Bloem Image and the upstream sync merge wait on "Bloem CI" by name.
 Commands assume the repository root is the cwd.
+
+## Jobs
+
+"Bloem CI" carries the jobs Bloem's copy of `ci.yml` ran, unchanged apart from
+the workflow name and concurrency group:
+
+| Job | What it gates |
+|---|---|
+| Prune old Go caches | Keeps the newest Go cache per job on the default branch. |
+| Tenant identity (disposable PostgreSQL) | Tenant, access-group and profile-tenancy migrations and stores, race-checked tenancy, resourcetenancy, access and policy, the v1 tenancy and OPA acceptance suites, and the multitenant administration release gate. |
+| Native authentication (disposable PostgreSQL) | `internal/auth` with and without the race detector, and its vet. |
+| Go lint | gofmt, `go vet ./...`, govulncheck, changed-line lint (`scripts/bloem-lint-changed-ci.sh`) and the full-tree router recovery lint. |
+| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, migration ledger, scenario catalogs, offline routes, the API v2 OpenAPI, contract diff and fixtures, and the seam ledger. |
+| Go test | Watch Party and history-import race tests, the database pins (`make test-db-pins`), the mixed library location pins, and `make test-go` on a database `cmd/bloem-testdb` prepared. |
+| Scenario executor | `make test-scenarios`. |
+| Web (build, checks) | ESLint and format, typecheck and build, the launch bundle budget, the web settings binding and v2 types, and `verify-local-paths`; uploads `frontend-dist-<sha>`, which Bloem Image publishes. |
+| Web test (1-4/4) | Vitest in four shards. |
+
+Silo's `TestLogPartitionsMatchPartmanOnNonUTCServer` checks an eight-day
+America/New_York window, which crosses the 2026-11-01 daylight-saving change, so
+"Go test" fails on every branch until about November 2, 2026.
 
 ## Tools on the Go runners
 
@@ -56,7 +85,7 @@ patch.
 an `upstream-sync/<date>-<sha>` branch, checks that it builds, pushes the branch
 and opens a pull request: a normal one for a clean merge, a draft carrying the
 conflict markers otherwise. `.github/workflows/upstream-sync-merge.yml` merges an
-upstream-sync pull request only after CI succeeded on its exact head.
+upstream-sync pull request only after Bloem CI succeeded on its exact head.
 
 Both workflows push and merge with the `UPSTREAM_SYNC_TOKEN` repository secret, a
 personal access token with contents, pull requests and workflows write on this
@@ -73,7 +102,7 @@ one command, so it is not on disk while the merged upstream tree builds.
 
 ## PostgreSQL version
 
-Every PostgreSQL service in `ci.yml` runs the image `docker-compose.yml`
+Every PostgreSQL service in `bloem-ci.yml` runs the image `docker-compose.yml`
 deploys (`pgvector/pgvector:pg18`), and `TestCIPostgresServicesMatchTheDeploymentMajor`
 in `internal/api` keeps them equal. PostgreSQL 18 reports an `ON DELETE RESTRICT`
 violation as SQLSTATE 23001, where 17 reports 23503, so a 17 service hides
