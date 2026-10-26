@@ -3,6 +3,18 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Bloem CI can run on self-hosted runners
+
+Bloem CI's jobs carry the same runner routing as Silo's `trusted-linux-ci.yml`.
+With the repository variable `BLOEM_SELF_HOSTED` set to `true`, pushes to
+`main`, and pull requests by the logins listed in `BLOEM_CI_MEMBERS`, run on
+Bloem's disposable self-hosted runners. Each job asks for its own run's
+`bloem-run-<id>-<attempt>` and `bloem-job-<job id>` labels. Every other run,
+including every fork pull request, and every job while the variable is unset,
+runs on GitHub's `ubuntu-24.04` runners, which replace `ubuntu-latest` (now
+Ubuntu 26.04) to match Silo. Workflow runs from all outside contributors now
+need approval.
+
 ## October 26, 2026 — Invitation acceptance has one path
 
 Accepting an invitation runs Silo's `Service.Accept` only. The transactional

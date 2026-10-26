@@ -40,11 +40,18 @@ env:
 permissions:
   contents: read
 
+# Bloem: runner routing, as in Silo's trusted-linux-ci.yml. With the repo
+# variable BLOEM_SELF_HOSTED set to true, pushes to main and pull requests by
+# logins in BLOEM_CI_MEMBERS run on Bloem's disposable self-hosted runners,
+# which accept only a job carrying its own run's bloem-run-<id>-<attempt> and
+# bloem-job-<job id> labels. The runner controller applies the same rule from
+# its own config and is the authority; keep the two in step. Everything else,
+# and every job while BLOEM_SELF_HOSTED is unset, runs on ubuntu-24.04.
 jobs:
   prune-go-caches:
     name: Prune old Go caches
     if: ${{ github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: write
       contents: read
@@ -75,7 +82,7 @@ jobs:
 
   tenant-identity:
     name: Tenant identity (disposable PostgreSQL)
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-tenant-identity"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
     services:
       postgres:
         image: pgvector/pgvector:pg18
@@ -153,7 +160,7 @@ jobs:
 
   native-auth:
     name: Native authentication (disposable PostgreSQL)
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-native-auth"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
     services:
       postgres:
         image: pgvector/pgvector:pg18
@@ -211,7 +218,7 @@ jobs:
   # replace. They share the composite setup action under .github/actions.
   go-lint:
     name: Go lint
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-go-lint"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
     steps:
       # github.com/h2non/bimg binds libvips through cgo and pkg-config, so
       # nothing under ./... compiles without the headers. The Dockerfile
@@ -424,7 +431,7 @@ jobs:
 
   go-verify:
     name: Go contract checks
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-go-verify"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
     steps:
       - *libvips-cache-key
       - *libvips-restore
@@ -545,7 +552,7 @@ jobs:
 
   go-test:
     name: Go test
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-go-test"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
     services:
       postgres:
         image: pgvector/pgvector:pg18
@@ -690,7 +697,7 @@ jobs:
 
   scenario-executor:
     name: Scenario executor
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-scenario-executor"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
     timeout-minutes: 45
     services:
       postgres:
@@ -744,7 +751,7 @@ jobs:
 
   web:
     name: Web (${{ matrix.part }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-web"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
@@ -890,7 +897,7 @@ jobs:
 
   web-test:
     name: Web test (${{ matrix.shard }}/4)
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-web-test"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
