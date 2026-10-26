@@ -88743,10 +88743,7 @@ export interface operations {
   setupServer: {
     parameters: {
       query?: never;
-      header?: {
-        /** @description Opaque lifecycle retry key */
-        "Idempotency-Key"?: string;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -88821,15 +88818,6 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["Problem"];
-        };
-      };
-      /** @description Precondition Required */
-      428: {
         headers: {
           [name: string]: unknown;
         };
@@ -88925,10 +88913,7 @@ export interface operations {
   signup: {
     parameters: {
       query?: never;
-      header?: {
-        /** @description Opaque lifecycle retry key */
-        "Idempotency-Key"?: string;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -89012,15 +88997,6 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["Problem"];
-        };
-      };
-      /** @description Precondition Required */
-      428: {
         headers: {
           [name: string]: unknown;
         };
@@ -122478,8 +122454,6 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
-        /** @description Opaque lifecycle retry key */
-        "Idempotency-Key"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
         /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
@@ -122594,15 +122568,6 @@ export interface operations {
           "application/problem+json": components["schemas"]["Problem"];
         };
       };
-      /** @description Precondition Required */
-      428: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["Problem"];
-        };
-      };
       /** @description Too Many Requests */
       429: {
         headers: {
@@ -122636,8 +122601,6 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
-        /** @description Opaque lifecycle retry key */
-        "Idempotency-Key"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
         /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
@@ -122721,15 +122684,6 @@ export interface operations {
           "application/problem+json": components["schemas"]["Problem"];
         };
       };
-      /** @description Precondition Required */
-      428: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["Problem"];
-        };
-      };
       /** @description Too Many Requests */
       429: {
         headers: {
@@ -122763,8 +122717,6 @@ export interface operations {
     parameters: {
       query?: never;
       header?: {
-        /** @description Opaque lifecycle retry key */
-        "Idempotency-Key"?: string;
         /** @description Optional. When present, it must name a profile of the authenticated account. */
         "X-Profile-Id"?: string;
         /** @description Verification proof for a PIN-locked profile, issued by POST /api/v2/profiles/{id}/verify-pin; required only when the declared profile is locked */
@@ -122874,15 +122826,6 @@ export interface operations {
       };
       /** @description Unprocessable Entity */
       422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["Problem"];
-        };
-      };
-      /** @description Precondition Required */
-      428: {
         headers: {
           [name: string]: unknown;
         };
