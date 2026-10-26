@@ -284,7 +284,6 @@ export default defineConfig(({ mode }) => {
       // command line's --exclude does not apply to projects.
       exclude: [
         ...configDefaults.exclude,
-        "e2e/**",
         ...(process.env.WEBTEST_EXCLUDE ?? "").split(",").filter(Boolean),
       ],
       projects: [

@@ -125,23 +125,6 @@ export interface PolicyDocument {
   updated_at: string;
 }
 
-export interface PolicyCreateVersionResult {
-  id: number;
-  version_number: number;
-  compiled_ok: boolean;
-}
-
-export interface PolicyActivateVersionResult {
-  active_version_id: number;
-  generation: number;
-}
-
-export interface PolicySetDocumentEnabledResult {
-  id: number;
-  enabled: boolean;
-  generation: number;
-}
-
 export interface PolicyValidateResult {
   compiled_ok: boolean;
   errors: PolicyCompileIssue[];
@@ -300,31 +283,3 @@ export interface PolicySimulateRequest {
   input: unknown;
 }
 
-export interface PolicySimulateResult {
-  decision: unknown;
-  eval_time_ns: number;
-  generation: number;
-}
-
-export interface PolicyDecisionEntry {
-  id: number;
-  timestamp: string;
-  decision_name: string;
-  policy_generation: number;
-  user_id?: number;
-  profile_id?: string;
-  session_id?: string;
-  request_id?: string;
-  node_id?: string;
-  allowed: boolean | null;
-  eval_time_ns: number;
-  input_digest: string;
-  input_sample?: unknown;
-  result_sample?: unknown;
-  error?: string;
-}
-
-export interface PolicyDecisionListResult {
-  entries: PolicyDecisionEntry[];
-  next_cursor?: string;
-}
