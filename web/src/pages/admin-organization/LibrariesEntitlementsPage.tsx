@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
-import { useOrganizationLibraries } from "@/hooks/queries/admin/libraries";
+import { useOrganizationLibraries } from "@/hooks/queries/admin/organizationLibraries";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 export default function LibrariesEntitlementsPage() {

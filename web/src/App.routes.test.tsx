@@ -60,10 +60,6 @@ vi.mock("@/bloem/BloemAdminShell", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   RequireAdmin: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
-vi.mock("@/contexts/AdminContextProvider", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  PlatformContextGuard: () => <Outlet />,
-}));
 vi.mock("@/pages/AdminHomeRows", () => ({ default: () => <div>Sections page</div> }));
 
 import App from "@/App";

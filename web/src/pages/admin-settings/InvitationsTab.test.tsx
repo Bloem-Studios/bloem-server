@@ -187,10 +187,6 @@ it("guides unsupported profile creation and preserves false booleans", async () 
   );
   expect(mocks.create.mock.calls[0]![0].body).not.toHaveProperty("library_ids", null);
 });
-
-vi.mock("@/contexts/AdminContextProvider", () => ({
-  useAdminContext: () => ({ active: { scope: "platform" } }),
-}));
 it("asks for the public URL before anyone fills in an invitation", () => {
   mocks.publicURL = "";
   render(<InvitationsTab />, { wrapper: MemoryRouter });

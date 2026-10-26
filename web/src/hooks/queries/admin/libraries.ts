@@ -40,8 +40,6 @@ import { adminKeys, libraryKeys } from "../keys";
 import { toast } from "sonner";
 import type { LibraryReorderEntry } from "@/pages/adminLibraryOrder";
 import { usePageActivity } from "@/hooks/usePageActivity";
-import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
-import type { AdminContextKey } from "@/api/bloemTypes";
 
 const ADMIN_STALE_TIME = 30_000;
 
@@ -98,30 +96,6 @@ export function useAdminLibraries({ enabled = true }: { enabled?: boolean } = {}
     queryKey: adminKeys.libraries(),
     queryFn: ({ signal }) => fetchAdminLibraries(signal),
     staleTime: ADMIN_STALE_TIME,
-    enabled,
-  });
-}
-
-export interface OrganizationLibraryProjection {
-  folder_id: number;
-  name: string;
-  type: string;
-  access_kind: "owned" | "entitled";
-  entitlement?: {
-    id: string;
-    organization_id?: string;
-    status: "active" | "suspended" | "revoked";
-    security_revision: number;
-  };
-}
-
-export function useOrganizationLibraries(contextKey: AdminContextKey, enabled = true) {
-  return useQuery({
-    queryKey: adminV2QueryKey(contextKey, "organization", "libraries"),
-    queryFn: () =>
-      adminV2Api<{ libraries: OrganizationLibraryProjection[] }>("/organization/libraries").then(
-        (data) => data.libraries ?? [],
-      ),
     enabled,
   });
 }

@@ -1,5 +1,3 @@
-import OrganizationInvitationsTab from "./OrganizationInvitationsTab";
-import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import type { FormEvent } from "react";
@@ -164,7 +162,7 @@ function useMounted() {
   }, []);
   return mounted;
 }
-function PlatformInvitationsTab() {
+export default function InvitationsTab() {
   useAuth();
   return <InvitationManager key={invitationScope()} />;
 }
@@ -918,14 +916,5 @@ function CreateInvitationForm({
         </div>
       </div>
     </form>
-  );
-}
-
-export default function InvitationsTab() {
-  const { active } = useAdminContext();
-  return active?.scope === "organization" ? (
-    <OrganizationInvitationsTab key={active.key} />
-  ) : (
-    <PlatformInvitationsTab />
   );
 }

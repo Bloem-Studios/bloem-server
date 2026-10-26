@@ -66,7 +66,6 @@ import { buildLegacyWebhookSyncRedirectTarget } from "@/lib/webhookSync";
 import { guardRedirectTarget } from "@/lib/authRedirect";
 import { toast } from "sonner";
 import { RequireAdmin } from "@/bloem/BloemAdminShell";
-import { PlatformContextGuard } from "@/contexts/AdminContextProvider";
 import {
   bloemAdminContextRoutes,
   bloemPlatformAdminRoutes,
@@ -513,47 +512,45 @@ function AppRoutes() {
                     </RequireAdmin>
                   }
                 >
-                  <Route element={<PlatformContextGuard />}>
-                    {bloemPlatformAdminRoutes}
-                    <Route index element={<AdminDashboard />} />
-                    <Route path="activity" element={<AdminActivity />} />
-                    <Route path="logs" element={<AdminLogs />} />
-                    <Route path="diagnostics" element={<AdminDiagnostics />} />
-                    <Route path="libraries" element={<AdminLibraries />} />
-                    <Route path="maintenance" element={<AdminMaintenance />} />
-                    <Route path="collections" element={<AdminCollections />} />
-                    {/* One page from /new to /:id/edit, so Create keeps the editor mounted. */}
-                    <Route element={<CollectionEditorPage scope="server" />}>
-                      <Route path="collections/new" />
-                      <Route path="collections/:id/edit" />
-                    </Route>
-                    <Route path="requests" element={<AdminRequests />} />
-                    <Route path="autoscan" element={<AdminAutoscan />} />
-                    <Route path="autoscan/activity" element={<AdminAutoscanActivity />} />
-                    <Route path="history" element={<AdminPlaybackHistory />} />
-                    <Route path="marker-history" element={<AdminMarkerHistory />} />
-                    <Route path="history-import" element={<AdminHistoryImport />} />
-                    <Route path="users" element={<AdminUsers />} />
-                    <Route path="users/:id" element={<AdminUserDetail />} />
-                    <Route path="access-groups" element={<AdminAccessGroups />} />
-                    <Route path="access-groups/:id" element={<AdminAccessGroups />} />
-                    <Route path="devices" element={<AdminDevices />} />
-                    <Route path="devices/:userId/:deviceId" element={<AdminDevices />} />
-                    <Route path="nodes" element={<AdminNodes />} />
-                    <Route path="downloads" element={<AdminDownloads />} />
-                    <Route path="sections" element={<AdminHomeRows />} />
-                    <Route path="home-rows" element={<LegacyAdminHomeRowsRedirect />} />
-                    <Route path="plugins" element={<AdminPlugins />} />
-                    <Route path="plugins/:pluginId" element={<AdminPluginDetail />} />
-                    <Route path="settings/*" element={<AdminSettingsLayout />} />
-                    <Route path="policy" element={<AdminPolicyLayout />} />
-                    <Route path="recommendations" element={<AdminRecommendations />} />
-                    <Route path="api-keys" element={<AdminApiKeys />} />
-                    <Route path="subtitles" element={<AdminSubtitles />} />
-                    <Route path="tasks" element={<AdminTasks />} />
-                    <Route path="tasks/:key" element={<AdminTaskDetail />} />
-                    <Route path="stats" element={<Navigate to="/admin" replace />} />
+                  {bloemPlatformAdminRoutes}
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="activity" element={<AdminActivity />} />
+                  <Route path="logs" element={<AdminLogs />} />
+                  <Route path="diagnostics" element={<AdminDiagnostics />} />
+                  <Route path="libraries" element={<AdminLibraries />} />
+                  <Route path="maintenance" element={<AdminMaintenance />} />
+                  <Route path="collections" element={<AdminCollections />} />
+                  {/* One page from /new to /:id/edit, so Create keeps the editor mounted. */}
+                  <Route element={<CollectionEditorPage scope="server" />}>
+                    <Route path="collections/new" />
+                    <Route path="collections/:id/edit" />
                   </Route>
+                  <Route path="requests" element={<AdminRequests />} />
+                  <Route path="autoscan" element={<AdminAutoscan />} />
+                  <Route path="autoscan/activity" element={<AdminAutoscanActivity />} />
+                  <Route path="history" element={<AdminPlaybackHistory />} />
+                  <Route path="marker-history" element={<AdminMarkerHistory />} />
+                  <Route path="history-import" element={<AdminHistoryImport />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="users/:id" element={<AdminUserDetail />} />
+                  <Route path="access-groups" element={<AdminAccessGroups />} />
+                  <Route path="access-groups/:id" element={<AdminAccessGroups />} />
+                  <Route path="devices" element={<AdminDevices />} />
+                  <Route path="devices/:userId/:deviceId" element={<AdminDevices />} />
+                  <Route path="nodes" element={<AdminNodes />} />
+                  <Route path="downloads" element={<AdminDownloads />} />
+                  <Route path="sections" element={<AdminHomeRows />} />
+                  <Route path="home-rows" element={<LegacyAdminHomeRowsRedirect />} />
+                  <Route path="plugins" element={<AdminPlugins />} />
+                  <Route path="plugins/:pluginId" element={<AdminPluginDetail />} />
+                  <Route path="settings/*" element={<AdminSettingsLayout />} />
+                  <Route path="policy" element={<AdminPolicyLayout />} />
+                  <Route path="recommendations" element={<AdminRecommendations />} />
+                  <Route path="api-keys" element={<AdminApiKeys />} />
+                  <Route path="subtitles" element={<AdminSubtitles />} />
+                  <Route path="tasks" element={<AdminTasks />} />
+                  <Route path="tasks/:key" element={<AdminTaskDetail />} />
+                  <Route path="stats" element={<Navigate to="/admin" replace />} />
                   {bloemAdminContextRoutes}
                   <Route path="*" element={<Navigate to="/admin" replace />} />
                 </Route>

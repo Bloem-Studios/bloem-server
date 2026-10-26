@@ -38,5 +38,7 @@ export const OrganizationDetailPage = lazy(
   () => import("@/pages/admin-platform/OrganizationDetailPage"),
 );
 export const OrganizationsPage = lazy(() => import("@/pages/admin-platform/OrganizationsPage"));
-export const InvitationsTab = lazy(() => import("@/pages/admin-settings/InvitationsTab"));
+export const OrganizationInvitationsTab = lazy(
+  () => import("@/pages/admin-settings/OrganizationInvitationsTab"),
+);
 export const LiveTV = lazy(() => import("@/pages/LiveTV"));

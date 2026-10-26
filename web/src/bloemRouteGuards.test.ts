@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import ts from "typescript";
 import source from "./App.tsx?raw";
 import bloemRoutesSource from "./bloem/routes.tsx?raw";
+import { adminPathRequiresPlatform } from "./bloem/adminScope";
 
 // Contract regression for the actual route tree, not a second test-only router.
 // Browser acceptance separately exercises the authenticated destinations.
 // Bloem route fragments spliced into App.tsx as `{bloemXRoutes}` are followed
 // into src/bloem/routes.tsx so their guards come from the real App tree.
+// Organization pages carry OrganizationContextGuard routes; every other admin
+// page gets the platform guard from AdminLayout's outlet (AdminScopedOutlet),
+// which adminPathRequiresPlatform decides.
 function routeGuards() {
   const parse = (name: string, text: string) =>
     ts.createSourceFile(name, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -61,17 +65,40 @@ function routeGuards() {
   return routes;
 }
 
+function expectPlatformOnly(path: string) {
+  expect(routeGuards().get(path)).toEqual([]);
+  expect(adminPathRequiresPlatform(`/admin/${path}`)).toBe(true);
+}
+
+function expectOrganizationOnly(path: string) {
+  expect(routeGuards().get(path)).toEqual(["OrganizationContextGuard"]);
+  expect(adminPathRequiresPlatform(`/admin/${path}`)).toBe(false);
+}
+
 describe("Bloem administrative route ownership", () => {
   it("places engagement authoring exclusively under platform authority", () => {
-    expect(routeGuards().get("platform/engagement")).toEqual(["PlatformContextGuard"]);
+    expectPlatformOnly("platform/engagement");
   });
   it("places organization storage sources exclusively under organization authority", () => {
-    expect(routeGuards().get("organization/storage")).toEqual(["OrganizationContextGuard"]);
+    expectOrganizationOnly("organization/storage");
   });
   it("keeps the platform Plugins page under platform authority only", () => {
-    expect(routeGuards().get("plugins")).toEqual(["PlatformContextGuard"]);
+    expectPlatformOnly("plugins");
+  });
+  it("keeps Rego policy management under platform authority only", () => {
+    expectPlatformOnly("policy");
   });
   it("places audit exclusively under organization authority", () => {
-    expect(routeGuards().get("organization/activity")).toEqual(["OrganizationContextGuard"]);
+    expectOrganizationOnly("organization/activity");
+  });
+  it("places organization invitations exclusively under organization authority", () => {
+    expectOrganizationOnly("organization/invitations");
+  });
+  it("needs the platform context for the dashboard and unknown pages", () => {
+    expect(adminPathRequiresPlatform("/admin")).toBe(true);
+    expect(adminPathRequiresPlatform("/admin/")).toBe(true);
+    expect(adminPathRequiresPlatform("/admin/organizations-report")).toBe(true);
+    expect(adminPathRequiresPlatform("/admin/ORGANIZATION/people")).toBe(false);
+    expect(adminPathRequiresPlatform("/admin/context")).toBe(false);
   });
 });

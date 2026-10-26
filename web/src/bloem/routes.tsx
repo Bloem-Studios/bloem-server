@@ -23,7 +23,7 @@ import {
   EntitlementTemplatesPage,
   OrganizationDetailPage,
   OrganizationsPage,
-  InvitationsTab,
+  OrganizationInvitationsTab,
   LiveTV,
 } from "./lazyPages";
 
@@ -70,7 +70,7 @@ export const bloemAdminContextRoutes = (
         path="organization/invitations"
         element={
           <div className="page-shell py-4 sm:py-6">
-            <InvitationsTab />
+            <OrganizationInvitationsTab />
           </div>
         }
       />

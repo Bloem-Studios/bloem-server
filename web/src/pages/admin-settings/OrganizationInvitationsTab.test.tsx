@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { activateAdminV2Context, clearAdminV2Context, adminV2Api } from "@/api/adminV2Client";
-import InvitationsTab from "./InvitationsTab";
+import OrganizationInvitationsTab from "./OrganizationInvitationsTab";
 
 const adminState = vi.hoisted(() => ({
   active: {
@@ -36,7 +36,7 @@ vi.mock("@/hooks/queries/useBloemCapabilities", () => ({
   }),
 }));
 
-describe("InvitationsTab organization context", () => {
+describe("OrganizationInvitationsTab", () => {
   beforeEach(() => {
     adminState.active = {
       key: "organization:org-1",
@@ -80,7 +80,7 @@ describe("InvitationsTab organization context", () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={client}>
-        <InvitationsTab />
+        <OrganizationInvitationsTab />
       </QueryClientProvider>,
     );
 
@@ -119,7 +119,7 @@ describe("InvitationsTab organization context", () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={client}>
-        <InvitationsTab />
+        <OrganizationInvitationsTab />
       </QueryClientProvider>,
     );
     await screen.findByText(/No invitations yet/);
@@ -170,7 +170,7 @@ describe("InvitationsTab organization context", () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const view = render(
       <QueryClientProvider client={client}>
-        <InvitationsTab />
+        <OrganizationInvitationsTab />
       </QueryClientProvider>,
     );
     await screen.findByText("local@example.test");
@@ -191,7 +191,7 @@ describe("InvitationsTab organization context", () => {
     activateAdminV2Context("replacement-authority", "organization:org-1");
     view.rerender(
       <QueryClientProvider client={client}>
-        <InvitationsTab />
+        <OrganizationInvitationsTab />
       </QueryClientProvider>,
     );
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
@@ -264,7 +264,7 @@ describe.each(["create", "resend"] as const)("%s invitation handoff cache lifeti
       const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
       const tree = () => (
         <QueryClientProvider client={client}>
-          <InvitationsTab />
+          <OrganizationInvitationsTab />
         </QueryClientProvider>
       );
       const view = render(tree());

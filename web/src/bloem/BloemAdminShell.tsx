@@ -1,11 +1,17 @@
 // Bloem administrative-context shell components mounted by the Silo-owned App.tsx.
 import type { ReactNode } from "react";
-import { Navigate, useLocation } from "react-router";
+import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsActingAdmin } from "@/hooks/useIsActingAdmin";
-import { AdminContextProvider, useAdminContext } from "@/contexts/AdminContextProvider";
+import {
+  AdminContextProvider,
+  PlatformContextGuard,
+  useAdminContext,
+  useOptionalAdminContext,
+} from "@/contexts/AdminContextProvider";
 import { canRenderAdminShell } from "@/contexts/adminContextAccess";
 import { guardRedirectTarget } from "@/lib/authRedirect";
+import { adminPathRequiresPlatform } from "./adminScope";
 
 function AdminContextRoot({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -73,4 +79,15 @@ export function AdminContextRedirect() {
   return (
     <Navigate to={active?.scope === "organization" ? "/admin/organization" : "/admin"} replace />
   );
+}
+
+/**
+ * AdminLayout's outlet: platform pages render only in the platform context,
+ * so Silo's admin route table needs no wrapping guard route of its own.
+ */
+export function AdminScopedOutlet() {
+  const { pathname } = useLocation();
+  const admin = useOptionalAdminContext();
+  if (!admin || !adminPathRequiresPlatform(pathname)) return <Outlet />;
+  return <PlatformContextGuard />;
 }

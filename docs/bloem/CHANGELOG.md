@@ -3,6 +3,23 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Web organization admin closer to Silo
+
+The admin route table in `App.tsx` is Silo's again apart from two insertion
+lines: platform pages no longer sit inside a wrapping `PlatformContextGuard`
+route. AdminLayout's outlet (`AdminScopedOutlet`) applies the same guard to
+every admin page except the organization pages, which keep their own
+organization guard, and the context chooser. The organization invitations route
+renders `OrganizationInvitationsTab` directly, so `InvitationsTab` and its test
+are Silo's bytes again. The Rego policy page drops its second, in-page platform
+check: the route guard already keeps organization admins out.
+`useOrganizationLibraries` moves to the Bloem-owned
+`hooks/queries/admin/organizationLibraries.ts`, so Silo's `libraries.ts` is
+Silo's again. Silo's `App.requireAdmin.test.tsx` stays deleted: Bloem's
+`RequireAdmin` admits organization admins through the administrative-context
+handshake, which Silo's test cannot exercise. The seam ledger drops from 313 to
+309.
+
 ## October 26, 2026 — Scenario rows and the bundle budget leave Silo's files
 
 Bloem's scenario rows (profile login, device remote control, profile reads and

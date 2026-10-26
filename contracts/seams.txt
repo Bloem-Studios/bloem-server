@@ -275,7 +275,6 @@ web/src/components/admin/libraries/LibraryFormSections.tsx  # location toggle an
 web/src/components/admin/libraries/RealtimeMonitoringFields.test.tsx  # mocks the storage sources query the library form now reads
 web/src/components/admin/libraries/useLibraryForm.save.test.tsx  # mocks the storage sources query the library form now reads
 web/src/components/admin/libraries/useLibraryForm.ts  # library form state for a storage source location
-web/src/hooks/queries/admin/libraries.ts
 web/src/hooks/queries/admin/plugins.ts
 web/src/hooks/queries/admin/policy.ts
 web/src/hooks/queries/admin/stats.ts
@@ -296,10 +295,7 @@ web/src/pages/Home.tsx
 web/src/pages/ItemDetail/SeasonContent.test.tsx
 web/src/pages/Notifications.test.tsx
 web/src/pages/Notifications.tsx
-web/src/pages/admin-policy/AdminPolicyLayout.tsx
 web/src/pages/admin-settings/AdminSettingsLayout.tsx
-web/src/pages/admin-settings/InvitationsTab.test.tsx
-web/src/pages/admin-settings/InvitationsTab.tsx
 web/src/pages/admin-users/detail/access/LibraryAccessCard.tsx  # relocated permission-list hook after upstream split the user detail page
 web/src/pages/watchtogether/StartPartySheet.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty
 web/src/pages/watchtogether/room/browse/CandidateStage.tsx  # episodes without files arrive as null from Bloem v2 adapters; treat as empty

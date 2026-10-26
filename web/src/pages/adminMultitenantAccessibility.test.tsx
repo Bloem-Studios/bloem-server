@@ -165,6 +165,8 @@ vi.mock("@/hooks/queries/admin/organizationAccessGroups", () => ({
 }));
 vi.mock("@/hooks/queries/admin/libraries", () => ({
   useAdminLibraries: () => ({ data: [] }),
+}));
+vi.mock("@/hooks/queries/admin/organizationLibraries", () => ({
   useOrganizationLibraries: () => ({ data: [] }),
 }));
 

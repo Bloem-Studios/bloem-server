@@ -1,4 +1,3 @@
-import { withBloemPlatformWorkspace } from "@/components/admin/BloemPlatformWorkspace";
 import { ArrowRight, PackageCheck, PenLine, ScrollText } from "lucide-react";
 import { useSearchParams } from "react-router";
 
@@ -60,7 +59,7 @@ function PolicyPipelineStrip() {
   );
 }
 
-function AdminPolicyLayout() {
+export default function AdminPolicyLayout() {
   useDocumentTitle("Policy");
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = resolveTab(searchParams.get("tab"));
@@ -128,5 +127,3 @@ function AdminPolicyLayout() {
     </div>
   );
 }
-
-export default withBloemPlatformWorkspace(AdminPolicyLayout);

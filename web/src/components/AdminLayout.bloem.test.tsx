@@ -25,6 +25,10 @@ vi.mock("@/components/AdminSidebar", () => ({
 vi.mock("@/contexts/AdminContextProvider", () => ({
   useOptionalAdminContext: () => ({ active: { scope: "organization" } }),
 }));
+vi.mock("@/bloem/BloemAdminShell", async () => {
+  const { Outlet } = await import("react-router");
+  return { AdminScopedOutlet: () => <Outlet /> };
+});
 vi.mock("@/hooks/useDocumentTitle", () => ({ useDocumentTitle: vi.fn() }));
 vi.mock("@/lib/documentTitle", () => ({ resolveAdminDocumentTitle: () => "Admin" }));
 vi.mock("@/hooks/queries/admin/settings", () => ({

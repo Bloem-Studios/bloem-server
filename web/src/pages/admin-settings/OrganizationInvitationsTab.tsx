@@ -49,7 +49,7 @@ import { Copy, MailPlus, RotateCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/datetime";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
-import { useOrganizationLibraries } from "@/hooks/queries/admin/libraries";
+import { useOrganizationLibraries } from "@/hooks/queries/admin/organizationLibraries";
 import type { AdminContextSummary } from "@/api/bloemTypes";
 import { useBloemCapabilities } from "@/hooks/queries/useBloemCapabilities";
 

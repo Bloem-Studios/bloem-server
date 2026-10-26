@@ -3,7 +3,7 @@ import { AdminV2ClientError } from "@/api/adminV2Client";
 import type { AdminContextKey } from "@/api/bloemTypes";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
-import type { OrganizationLibraryProjection } from "@/hooks/queries/admin/libraries";
+import type { OrganizationLibraryProjection } from "@/hooks/queries/admin/organizationLibraries";
 import {
   useChangeOrganizationEntitlement,
   type OrganizationEntitlementAction,

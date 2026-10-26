@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { Outlet, useLocation } from "react-router";
+import { useLocation } from "react-router";
 import AdminSidebar from "@/components/AdminSidebar";
 import { AdminSectionCommandDialog } from "@/components/AdminSectionCommandDialog";
 import ServerActivity from "@/components/ServerActivity";
@@ -24,6 +24,7 @@ import { Menu, Search, X } from "lucide-react";
 import { useWatchPlaybackController } from "@/playback/watchPlaybackContext";
 import { useAudiobookPlaybackController } from "@/pages/audiobooks/player/audiobookPlaybackContext";
 import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
+import { AdminScopedOutlet } from "@/bloem/BloemAdminShell";
 
 const ADMIN_DESKTOP_MEDIA_QUERY = "(min-width: 64rem)";
 
@@ -190,7 +191,7 @@ export default function AdminLayout() {
             restartRequired={serverStatus?.restart_required}
             restartSignal={serverStatus?.restart_mark_count}
           />
-          <Outlet />
+          <AdminScopedOutlet />
         </PageFrame>
       </main>
     </div>

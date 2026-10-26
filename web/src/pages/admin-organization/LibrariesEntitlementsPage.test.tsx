@@ -9,7 +9,7 @@ import {
   AdminV2ClientError,
   clearAdminV2Context,
 } from "@/api/adminV2Client";
-import type { OrganizationLibraryProjection } from "@/hooks/queries/admin/libraries";
+import type { OrganizationLibraryProjection } from "@/hooks/queries/admin/organizationLibraries";
 import LibrariesEntitlementsPage from "./LibrariesEntitlementsPage";
 
 const mockUseAdminContext = vi.hoisted(() => vi.fn());
