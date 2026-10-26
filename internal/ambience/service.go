@@ -34,8 +34,8 @@ func NewService(pool *pgxpool.Pool, clock recipes.Clock, store AssetStore) *Serv
 }
 
 // NewServiceWithEvaluator leaves persistence and authorization in the host while
-// delegating seasonal presentation to the supplied evaluator. Production injects
-// a plugin evaluator; nil disables optional ambience instead of running a fallback.
+// delegating seasonal presentation to the supplied evaluator. NewService uses
+// Engine; nil disables optional ambience instead of running a fallback.
 func NewServiceWithEvaluator(pool *pgxpool.Pool, clock recipes.Clock, store AssetStore, evaluator Evaluator) *Service {
 	if clock == nil {
 		clock = recipes.RealClock{}

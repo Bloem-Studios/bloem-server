@@ -88,7 +88,7 @@ func TestBloemHomeSectionsWithWithdrawnLibraryGrant(t *testing.T) {
 		t.Fatal(err)
 	}
 	clock := bloemtestclock.Fixed(time.Date(2026, 9, 18, 12, 0, 0, 0, time.UTC))
-	promos := promotions.NewServiceWithEvaluator(pool, clock, stores, promotionWorkerEvaluator(t))
+	promos := promotions.NewService(pool, clock, stores)
 	campaign, err := promos.Create(ctx, accountID, promotions.Input{
 		Surfaces: []string{"home"}, Headline: "Server message", ImageURL: "https://example.test/message.jpg",
 		Deeplink: "bloem://home", StartsAt: clock.Now().Add(-time.Hour), EndsAt: clock.Now().Add(time.Hour),

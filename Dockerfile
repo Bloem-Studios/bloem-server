@@ -54,13 +54,6 @@ RUN --network=none go build \
     -ldflags "-X github.com/Silo-Server/silo-server/internal/buildinfo.revisionOverride=${BUILD_REVISION} -X github.com/Silo-Server/silo-server/internal/buildinfo.dirtyOverride=${BUILD_DIRTY} -X github.com/Silo-Server/silo-server/internal/buildinfo.buildNumberOverride=${BUILD_NUMBER} -X github.com/Silo-Server/silo-server/internal/buildinfo.builtAtOverride=${BUILD_DATE}" \
     -o /silo ./cmd/silo/
 
-# Bloem's reviewed local presentation evaluators share the Go build inputs.
-# These workers use stdin/stdout JSON and receive no host service credentials.
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
-    go build -o /bloem-presentation-plugins/promotions ./cmd/bloem-presentation-promotions/ && \
-    go build -o /bloem-presentation-plugins/ambience ./cmd/bloem-presentation-ambience/
-
 # Stage 3: Runtime
 # CI rebuilds this stage without the layer cache (no-cache-filters: runtime in
 # trusted-linux-build.yml) so every image picks up Debian security updates; the
@@ -110,7 +103,6 @@ RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
 # that Debian removes stops being trusted by npm as well.
 ENV NODE_OPTIONS=--use-openssl-ca
 COPY --from=build /silo /usr/local/bin/silo
-COPY --from=build /bloem-presentation-plugins/ /usr/local/lib/bloem/plugins/
 EXPOSE 8080 8096 13378
 # Silo runs database migrations before its HTTP listener starts, and an
 # upgrade on a large library can migrate for many minutes. The start period

@@ -8,11 +8,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/notifications"
 )
 
-const (
-	OperationCandidates = "promotions.candidates"
-	OperationDeliver    = "promotions.deliver"
-)
-
 // CandidateInput contains organization-scoped rows and dismissal facts supplied
 // by the host. Repository order is priority DESC, starts_at, id.
 type CandidateInput struct {
@@ -46,8 +41,8 @@ type Evaluator interface {
 	Deliver(context.Context, DeliveryInput) (DeliveryResult, error)
 }
 
-// Engine is the deterministic presentation implementation used by the plugin.
-// It has no repository, user-store, environment, or network access.
+// Engine is the deterministic presentation implementation the server runs. It
+// has no repository, user-store, environment, or network access.
 type Engine struct{}
 
 func (Engine) Candidates(ctx context.Context, in CandidateInput) (CandidateResult, error) {

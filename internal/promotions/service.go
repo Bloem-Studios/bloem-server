@@ -53,7 +53,7 @@ func NewService(pool *pgxpool.Pool, clock recipes.Clock, stores userstore.UserSt
 	return NewServiceWithEvaluator(pool, clock, stores, Engine{})
 }
 
-// NewServiceWithEvaluator injects the presentation plugin. A nil evaluator
+// NewServiceWithEvaluator injects the presentation evaluator. A nil evaluator
 // fails closed for delivery; admin CRUD continues to use the host repository.
 func NewServiceWithEvaluator(pool *pgxpool.Pool, clock recipes.Clock, stores userstore.UserStoreProvider, evaluator Evaluator) *Service {
 	if clock == nil {
@@ -233,11 +233,11 @@ func (s *Service) ActiveHome(ctx context.Context, viewer Viewer) ([]Card, int, e
 func (s *Service) activeDelivery(ctx context.Context, q Query) (DeliveryResult, error) {
 	result, err := s.evaluateDelivery(ctx, q)
 	if err != nil {
-		// Presentation worker availability must not take down home/item/playback.
+		// A presentation evaluator failure must not take down home/item/playback.
 		// Host repository/authority errors retain their existing behavior.
-		var pluginErr *deliveryPluginError
-		if errors.As(err, &pluginErr) && ctx.Err() == nil {
-			slog.ErrorContext(ctx, "promotions: plugin evaluation", "component", "promotions", "error", err)
+		var evaluatorErr *deliveryEvaluatorError
+		if errors.As(err, &evaluatorErr) && ctx.Err() == nil {
+			slog.ErrorContext(ctx, "promotions: evaluation", "component", "promotions", "error", err)
 			return DeliveryResult{Cards: []Card{}, HomePosition: DefaultHomePosition}, nil
 		}
 	}
@@ -247,9 +247,28 @@ func (s *Service) activeDelivery(ctx context.Context, q Query) (DeliveryResult, 
 	return result, err
 }
 
-type deliveryPluginError struct{ error }
+type deliveryEvaluatorError struct{ error }
 
-func (e *deliveryPluginError) Unwrap() error { return e.error }
+func (e *deliveryEvaluatorError) Unwrap() error { return e.error }
+
+// ErrEvaluatorResponse reports an evaluator selection outside the candidates
+// the host supplied.
+var ErrEvaluatorResponse = errors.New("promotions: invalid evaluator response")
+
+// validateOrder accepts a subset of allowed in allowed's order.
+func validateOrder(selected, allowed []string) error {
+	next := 0
+	for _, id := range selected {
+		for next < len(allowed) && allowed[next] != id {
+			next++
+		}
+		if next == len(allowed) {
+			return fmt.Errorf("%w: unknown, duplicate, or out-of-order id %q", ErrEvaluatorResponse, id)
+		}
+		next++
+	}
+	return nil
+}
 
 func (s *Service) evaluateDelivery(ctx context.Context, q Query) (DeliveryResult, error) {
 	empty := DeliveryResult{HomePosition: DefaultHomePosition}
@@ -281,7 +300,7 @@ func (s *Service) evaluateDelivery(ctx context.Context, q Query) (DeliveryResult
 		}
 	}
 	// Conservative retrieval avoids decoding inactive history and bounds the
-	// facts sent to the worker. Final selection still requires plugin evaluation.
+	// facts given to the evaluator, which makes the final selection.
 	now := s.Now()
 	promos, err := s.queryPromotions(ctx, `
 		SELECT `+promoColumns+` FROM promotions
@@ -300,7 +319,7 @@ func (s *Service) evaluateDelivery(ctx context.Context, q Query) (DeliveryResult
 	}
 
 	if s.evaluator == nil {
-		return empty, &deliveryPluginError{errors.New("promotions: evaluator unavailable")}
+		return empty, &deliveryEvaluatorError{errors.New("promotions: evaluator unavailable")}
 	}
 	dismissed := s.dismissed(ctx, q.Viewer, q.Surface)
 	dismissedIDs := make([]string, 0, len(promos))
@@ -313,14 +332,14 @@ func (s *Service) evaluateDelivery(ctx context.Context, q Query) (DeliveryResult
 	}
 	candidates, err := s.evaluator.Candidates(ctx, CandidateInput{Promotions: promos, Query: q, Now: now, DismissedIDs: dismissedIDs})
 	if err != nil {
-		return empty, &deliveryPluginError{err}
+		return empty, &deliveryEvaluatorError{err}
 	}
 	allIDs := make([]string, len(promos))
 	for i, p := range promos {
 		allIDs[i] = p.ID
 	}
 	if err := validateOrder(candidates.IDs, allIDs); err != nil {
-		return empty, &deliveryPluginError{err}
+		return empty, &deliveryEvaluatorError{err}
 	}
 	selected := make(map[string]bool, len(candidates.IDs))
 	for _, id := range candidates.IDs {
@@ -355,7 +374,7 @@ func (s *Service) evaluateDelivery(ctx context.Context, q Query) (DeliveryResult
 	}
 	result, err := s.evaluator.Deliver(ctx, DeliveryInput{Promotions: kept, Viewer: q.Viewer, Role: role, Organizations: orgs})
 	if err != nil {
-		return empty, &deliveryPluginError{err}
+		return empty, &deliveryEvaluatorError{err}
 	}
 	return result, nil
 }

@@ -3,10 +3,10 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -14,7 +14,6 @@ import (
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/bloempresentation"
 	"github.com/Silo-Server/silo-server/internal/bloemtestclock"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/internal/promotions"
@@ -71,7 +70,7 @@ func TestHomeEndpointsDeliverPromotedOnlyWhenOptedIn(t *testing.T) {
 		t.Fatalf("seed account: %v", err)
 	}
 	clock := bloemtestclock.Fixed(promoStart.Add(time.Hour))
-	svc := promotions.NewServiceWithEvaluator(pool, clock, nil, promotionWorkerEvaluator(t))
+	svc := promotions.NewService(pool, clock, nil)
 	created, err := svc.Create(ctx, userID, promotions.Input{
 		Surfaces: []string{"home"},
 		Kicker:   "New this week",
@@ -173,22 +172,28 @@ func TestHomeEndpointsDeliverPromotedOnlyWhenOptedIn(t *testing.T) {
 		}
 		t.Logf("promoted items wire: %s", body)
 	})
-	t.Run("missing worker omits optional presentation", func(t *testing.T) {
-		missing, err := bloempresentation.New(filepath.Join(t.TempDir(), "missing-promotions"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = missing.Close() })
-		failedService := promotions.NewServiceWithEvaluator(pool, clock, nil, promotions.NewPluginEvaluator(missing))
+	t.Run("evaluator failure omits optional presentation", func(t *testing.T) {
+		failedService := promotions.NewServiceWithEvaluator(pool, clock, nil, failingPromotionEvaluator{})
 		failedHandler := NewSectionHandler(sections.NewRepository(pool), sections.NewFetcher(pool))
 		failedHandler.ConfigurePromotions(failedService)
 		code, wire, body := call(t, "/home/sections?promoted=1", "", failedHandler.HandleHomeSections)
 		if code != http.StatusOK || len(wire.rows()) == 0 {
-			t.Fatalf("worker failure broke browsing: status %d: %s", code, body)
+			t.Fatalf("evaluator failure broke browsing: status %d: %s", code, body)
 		}
 		if rows, items := promotedRows(wire); rows != 0 || items != 0 {
-			t.Fatalf("worker failure retained optional presentation: %s", body)
+			t.Fatalf("evaluator failure retained optional presentation: %s", body)
 		}
 	})
 
+}
+
+// failingPromotionEvaluator fails every evaluation.
+type failingPromotionEvaluator struct{}
+
+func (failingPromotionEvaluator) Candidates(context.Context, promotions.CandidateInput) (promotions.CandidateResult, error) {
+	return promotions.CandidateResult{}, errors.New("promotions evaluator failed")
+}
+
+func (failingPromotionEvaluator) Deliver(context.Context, promotions.DeliveryInput) (promotions.DeliveryResult, error) {
+	return promotions.DeliveryResult{}, errors.New("promotions evaluator failed")
 }

@@ -157,7 +157,7 @@ listener ownership, route registration and shutdown call order. Retired protocol
 gateway constructors are not part of the current composition. Worker fencing precedes joins, and
 cleanup follows only successful shutdown. Concrete nil pointers are normalized
 before interface conversion. Tenant, authentication and quota enforcement remain
-host authority, regardless of optional presentation workers.
+host authority, regardless of optional presentation evaluation.
 
 ## Owned build targets
 

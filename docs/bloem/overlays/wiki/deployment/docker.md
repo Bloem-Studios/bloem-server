@@ -527,13 +527,6 @@ and restarting an older binary is not an automatic recovery strategy. The
 records the executed checks and the rollout-specific decision to omit a database
 backup; that decision does not change the general backup guidance above.
 
-When assembling a custom image, package the server and both bundled presentation
-workers from the same source revision. Use the repository Dockerfile's worker
-build steps and verify each worker's version-one `bloem.presentation.ready`
-exchange under the sanitized worker environment. A successful closed-stdin exit
-does not check readiness compatibility. See the
-[October 15 packaging correction](../../../../operations/2026-10-15-preview-server-deployment.md#presentation-worker-correction).
-
 After completing the release-specific preparation, set the intended `SILO_IMAGE`
 and update only the application service:
 

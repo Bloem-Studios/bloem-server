@@ -3,6 +3,20 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Presentation evaluators run in-process
+
+Promotions and seasonal ambience evaluate inside the server again, with
+`promotions.Engine` and `ambience.Engine`. The two bundled worker binaries
+(`/usr/local/lib/bloem/plugins/promotions` and `.../ambience`), their
+JSON-over-stdio bridge `internal/bloempresentation`, the
+`BLOEM_PRESENTATION_PLUGIN_DIR` override and their build script are gone. The
+workers ran only Bloem's own reviewed code, without an operating-system sandbox
+or resource limits, so the process boundary isolated nothing. Host authority
+and validation, and the rule that an evaluation failure omits optional
+presentation, are unchanged. The Dockerfile returns to Silo's bytes, so the seam
+ledger drops from 330 to 329; see
+[presentation evaluators](../architecture/bloem-presentation-evaluators.md).
+
 ## October 26, 2026 — Music removed
 
 Bloem's music catalog is gone: the `music` and `songs` library types, the

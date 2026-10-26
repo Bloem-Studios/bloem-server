@@ -1,20 +1,11 @@
 package ambience
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
-	"reflect"
 	"testing"
 	"time"
 )
-
-type callerFunc func(context.Context, string, any, any) error
-
-func (f callerFunc) Call(ctx context.Context, op string, req, result any) error {
-	return f(ctx, op, req, result)
-}
 
 type evaluatorFunc func(context.Context, EvaluationRequest) (EvaluationResponse, error)
 
@@ -22,89 +13,7 @@ func (f evaluatorFunc) Evaluate(ctx context.Context, req EvaluationRequest) (Eva
 	return f(ctx, req)
 }
 
-func TestPluginEvaluatorCallsWorkerAndPropagatesErrors(t *testing.T) {
-	req := EvaluationRequest{Now: instant("2029-12-15T00:00:00Z"), Candidates: []Wire{seasonalCandidate()}}
-	calls := 0
-	transport := callerFunc(func(ctx context.Context, op string, request, result any) error {
-		calls++
-		if op != EvaluationOperation || !reflect.DeepEqual(request, req) {
-			t.Fatal("incorrect operation or payload")
-		}
-		got, err := (Engine{}).Evaluate(ctx, request.(EvaluationRequest))
-		if err != nil {
-			return err
-		}
-		*result.(*EvaluationResponse) = got
-		return nil
-	})
-	got, err := NewPluginEvaluator(transport).Evaluate(t.Context(), req)
-	if err != nil || calls != 1 || len(got.Packs) != 1 {
-		t.Fatal(got, err, calls)
-	}
-	failure := errors.New("worker exited")
-	got, err = NewPluginEvaluator(callerFunc(func(context.Context, string, any, any) error { return failure })).Evaluate(t.Context(), req)
-	if !errors.Is(err, failure) || got.Packs != nil {
-		t.Fatalf("worker error was hidden by fallback: %+v %v", got, err)
-	}
-	if _, err := NewPluginEvaluator(nil).Evaluate(t.Context(), req); err == nil {
-		t.Fatal("missing transport accepted")
-	}
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	if _, err := NewPluginEvaluator(transport).Evaluate(ctx, req); !errors.Is(err, context.Canceled) || calls != 1 {
-		t.Fatalf("canceled request called worker: %v calls=%d", err, calls)
-	}
-}
-
-func TestRunPluginServesSeasonalProtocolAndRecoversFromOperationErrors(t *testing.T) {
-	req := EvaluationRequest{Now: instant("2029-12-15T00:00:00Z"), Candidates: []Wire{seasonalCandidate()}}
-	var input, output bytes.Buffer
-	encoder := json.NewEncoder(&input)
-	for _, message := range []any{
-		map[string]any{"version": 1, "operation": "unknown", "payload": req},
-		map[string]any{"version": 1, "operation": EvaluationOperation, "payload": map[string]any{"now": "invalid-date"}},
-		map[string]any{"version": 1, "operation": EvaluationOperation, "payload": req},
-	} {
-		if err := encoder.Encode(message); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := RunPlugin(&input, &output); err != nil {
-		t.Fatal(err)
-	}
-	decoder := json.NewDecoder(&output)
-	for i := 0; i < 3; i++ {
-		var response struct {
-			Version int             `json:"version"`
-			Payload json.RawMessage `json:"payload"`
-			Error   string          `json:"error"`
-		}
-		if err := decoder.Decode(&response); err != nil {
-			t.Fatal(err)
-		}
-		if response.Version != 1 {
-			t.Fatal(response)
-		}
-		if i < 2 {
-			if response.Error == "" {
-				t.Fatal("invalid request was accepted")
-			}
-			continue
-		}
-		if response.Error != "" {
-			t.Fatal(response.Error)
-		}
-		var got EvaluationResponse
-		if err := json.Unmarshal(response.Payload, &got); err != nil {
-			t.Fatal(err)
-		}
-		if len(got.Packs) != 1 || got.Packs[0].Window.RepeatYearly || got.Packs[0].Window.StartsAt != instant("2029-11-30T23:00:00Z") {
-			t.Fatal(got)
-		}
-	}
-}
-
-func TestHostValidatesWorkerOutputAgainstAuthorizedSnapshot(t *testing.T) {
+func TestHostValidatesEvaluatorOutputAgainstAuthorizedSnapshot(t *testing.T) {
 	candidate := seasonalCandidate()
 	packs := []Pack{{ID: candidate.ID, EffectID: candidate.EffectID, Window: candidate.Window, Intensity: candidate.Intensity, Surfaces: candidate.Surfaces, Assets: candidate.Assets}}
 	now := instant("2029-12-15T00:00:00Z")
@@ -167,7 +76,7 @@ func TestHostValidatesOneOffWindowAndCancellation(t *testing.T) {
 	if _, err := svc.evaluateActive(ctx, nil, now); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation lost: %v", err)
 	}
-	failure := errors.New("plugin unavailable")
+	failure := errors.New("evaluator failed")
 	svc = NewServiceWithEvaluator(nil, nil, nil, evaluatorFunc(func(context.Context, EvaluationRequest) (EvaluationResponse, error) {
 		return EvaluationResponse{}, failure
 	}))
@@ -176,7 +85,7 @@ func TestHostValidatesOneOffWindowAndCancellation(t *testing.T) {
 	}
 }
 
-func TestOptionalPresentationOmitsWorkerFailuresWithoutFallback(t *testing.T) {
+func TestOptionalPresentationOmitsEvaluatorFailuresWithoutFallback(t *testing.T) {
 	candidate := seasonalCandidate()
 	packs := []Pack{{ID: candidate.ID, EffectID: candidate.EffectID, Window: candidate.Window, Intensity: candidate.Intensity, Surfaces: candidate.Surfaces, Assets: candidate.Assets}}
 	now := instant("2029-12-15T00:00:00Z")
@@ -185,8 +94,12 @@ func TestOptionalPresentationOmitsWorkerFailuresWithoutFallback(t *testing.T) {
 		evaluator Evaluator
 	}{
 		{"missing evaluator", nil},
-		{"worker unavailable", NewPluginEvaluator(callerFunc(func(context.Context, string, any, any) error { return errors.New("worker unavailable") }))},
-		{"worker deadline", NewPluginEvaluator(callerFunc(func(context.Context, string, any, any) error { return context.DeadlineExceeded }))},
+		{"evaluator failure", evaluatorFunc(func(context.Context, EvaluationRequest) (EvaluationResponse, error) {
+			return EvaluationResponse{}, errors.New("evaluator failed")
+		})},
+		{"evaluator deadline", evaluatorFunc(func(context.Context, EvaluationRequest) (EvaluationResponse, error) {
+			return EvaluationResponse{}, context.DeadlineExceeded
+		})},
 		{"unsafe output", evaluatorFunc(func(context.Context, EvaluationRequest) (EvaluationResponse, error) {
 			return EvaluationResponse{Packs: []Wire{{ID: "foreign"}}}, nil
 		})},
@@ -201,7 +114,7 @@ func TestOptionalPresentationOmitsWorkerFailuresWithoutFallback(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	svc := NewServiceWithEvaluator(nil, nil, nil, NewPluginEvaluator(nil))
+	svc := NewServiceWithEvaluator(nil, nil, nil, Engine{})
 	if _, err := svc.evaluatePresentation(ctx, packs, now); !errors.Is(err, context.Canceled) {
 		t.Fatalf("caller cancellation hidden: %v", err)
 	}
@@ -270,7 +183,7 @@ func TestHostPreservesAuthorizedCandidatePriority(t *testing.T) {
 	}
 }
 
-func TestHostCanonicalizesEquivalentWorkerOffsetsToUTC(t *testing.T) {
+func TestHostCanonicalizesEquivalentEvaluatorOffsetsToUTC(t *testing.T) {
 	candidate := seasonalCandidate()
 	yearly := Pack{ID: candidate.ID, EffectID: candidate.EffectID, Window: candidate.Window, Intensity: candidate.Intensity, Surfaces: candidate.Surfaces, Assets: candidate.Assets}
 	oneOff := yearly
@@ -286,7 +199,7 @@ func TestHostCanonicalizesEquivalentWorkerOffsetsToUTC(t *testing.T) {
 					return result, err
 				}
 				expected = result.Packs[0].Window
-				offset := time.FixedZone("worker-offset", 3600)
+				offset := time.FixedZone("evaluator-offset", 3600)
 				result.Packs[0].Window.StartsAt = result.Packs[0].Window.StartsAt.In(offset)
 				result.Packs[0].Window.EndsAt = result.Packs[0].Window.EndsAt.In(offset)
 				return result, nil
@@ -296,7 +209,7 @@ func TestHostCanonicalizesEquivalentWorkerOffsetsToUTC(t *testing.T) {
 				t.Fatal(got, err)
 			}
 			if got[0].Window != expected || got[0].Window.StartsAt.Location() != time.UTC || got[0].Window.EndsAt.Location() != time.UTC {
-				t.Fatalf("worker offsets leaked into canonical projection: %+v", got[0].Window)
+				t.Fatalf("evaluator offsets leaked into canonical projection: %+v", got[0].Window)
 			}
 		})
 	}

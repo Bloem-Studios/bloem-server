@@ -53,7 +53,7 @@ kept switching enabled through that migration.
 
 While Silo serves the database, Bloem-only features do nothing: organizations
 beyond the default one, entitlement templates, profile logins, Live TV and DVR,
-native storage and presentation plugins. Their rows stay in the database and
+native storage, promotions and ambience. Their rows stay in the database and
 work again when Bloem serves it.
 
 The reverse holds for Silo's Jellyfin and Audiobookshelf compatibility. Bloem

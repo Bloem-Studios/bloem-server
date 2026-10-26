@@ -79,61 +79,23 @@ func TestEngineCancellationAndInvalidSurface(t *testing.T) {
 	}
 }
 
-type promotionCaller func(context.Context, string, any, any) error
+// evaluatorFunc lets a test observe or replace evaluation; op names the
+// Evaluator method.
+type evaluatorFunc func(ctx context.Context, op string, in, out any) error
 
-func (f promotionCaller) Call(ctx context.Context, op string, in, out any) error {
-	return f(ctx, op, in, out)
+const (
+	opCandidates = "candidates"
+	opDeliver    = "deliver"
+)
+
+func (f evaluatorFunc) Candidates(ctx context.Context, in CandidateInput) (CandidateResult, error) {
+	var out CandidateResult
+	err := f(ctx, opCandidates, in, &out)
+	return out, err
 }
 
-func TestPluginEvaluatorRejectsInvalidSelections(t *testing.T) {
-	for _, selected := range [][]string{nil, {"foreign"}, {"allowed", "allowed"}} {
-		evaluator := NewPluginEvaluator(promotionCaller(func(_ context.Context, op string, _ any, out any) error {
-			out.(*CandidateResult).IDs = selected
-			return nil
-		}))
-		_, err := evaluator.Candidates(context.Background(), CandidateInput{Promotions: []Promotion{enginePromotion("allowed")}, Query: Query{Surface: SurfaceHome}, Now: promoStart})
-		// A nil IDs field is malformed; a genuine empty result is [].
-		if err == nil {
-			t.Fatalf("accepted malformed selection: %+v", selected)
-		}
-	}
-}
-
-func TestPluginEvaluatorRejectsForgedCardsAndPosition(t *testing.T) {
-	for _, mutate := range []func(*DeliveryResult){
-		func(r *DeliveryResult) { r.Cards[0].Headline = "forged" },
-		func(r *DeliveryResult) { r.HomePosition = -1 },
-		func(r *DeliveryResult) { r.Cards = append(r.Cards, r.Cards[0]) },
-		func(r *DeliveryResult) { r.Cards[0].ID = "foreign" },
-	} {
-		p := enginePromotion("allowed")
-		evaluator := NewPluginEvaluator(promotionCaller(func(_ context.Context, _ string, _ any, out any) error {
-			r := out.(*DeliveryResult)
-			r.Cards = []Card{p.Card()}
-			r.HomePosition = DefaultHomePosition
-			mutate(r)
-			return nil
-		}))
-		if _, err := evaluator.Deliver(context.Background(), DeliveryInput{Promotions: []Promotion{p}}); err == nil {
-			t.Fatal("accepted forged response")
-		}
-	}
-}
-
-func TestPluginEvaluatorPropagatesFailureAndCancellation(t *testing.T) {
-	failure := errors.New("worker unavailable")
-	evaluator := NewPluginEvaluator(promotionCaller(func(ctx context.Context, _ string, _ any, _ any) error {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		return failure
-	}))
-	if _, err := evaluator.Candidates(context.Background(), CandidateInput{}); !errors.Is(err, failure) {
-		t.Fatalf("lost error: %v", err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	if _, err := evaluator.Deliver(ctx, DeliveryInput{}); !errors.Is(err, context.Canceled) {
-		t.Fatalf("lost cancellation: %v", err)
-	}
+func (f evaluatorFunc) Deliver(ctx context.Context, in DeliveryInput) (DeliveryResult, error) {
+	var out DeliveryResult
+	err := f(ctx, opDeliver, in, &out)
+	return out, err
 }

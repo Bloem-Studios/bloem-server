@@ -13,7 +13,6 @@
 .gitignore
 .golangci.yml
 AGENTS.md
-Dockerfile  # builds and installs the Bloem presentation plugin workers
 Makefile  # Bloem gates and generation; bounded 20-minute Go package timeout covers the measured ~15-minute executor
 assets/icon.png
 cmd/playbackfixtures/main.go

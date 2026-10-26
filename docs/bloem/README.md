@@ -91,7 +91,7 @@ same path. Read the upstream document together with its overlay.
 - [Server admin announcements](../architecture/admin-announcements.md)
 - [Admin remote control of clients — invariants](../architecture/admin-remote-control.md)
 - [Campaign and seasonal asset storage](../architecture/bloem-campaign-asset-storage.md)
-- [Presentation plugins](../architecture/bloem-presentation-plugins.md) — local worker execution, host authority and section extension boundaries.
+- [Presentation evaluators](../architecture/bloem-presentation-evaluators.md) — in-process promotions and ambience evaluation, host authority and section extension boundaries.
 - [Upstream integration adapters](../architecture/bloem-upstream-adapters.md) — migration filesystem, profile-aware interfaces and embedded-web boundaries.
 - [Bloem native client surface](../architecture/bloem-client-surface.md)
 - [Bloem media ownership across API replicas](../architecture/bloem-cluster-media.md)

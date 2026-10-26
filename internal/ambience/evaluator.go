@@ -27,7 +27,7 @@ type Evaluator interface {
 	Evaluate(context.Context, EvaluationRequest) (EvaluationResponse, error)
 }
 
-// Engine is the pure evaluator used by the standalone ambience worker.
+// Engine is the pure seasonal evaluator the server runs.
 type Engine struct{}
 
 func (Engine) Evaluate(ctx context.Context, req EvaluationRequest) (EvaluationResponse, error) {
@@ -58,7 +58,7 @@ func (Engine) Evaluate(ctx context.Context, req EvaluationRequest) (EvaluationRe
 var ErrInvalidEvaluation = errors.New("ambience: invalid evaluator response")
 
 // evaluateActive is the host boundary: it sends only the already scoped snapshot
-// and checks that the worker cannot introduce content or alter asset references.
+// and checks that the evaluator cannot introduce content or alter asset references.
 func (s *Service) evaluateActive(ctx context.Context, packs []Pack, now time.Time) ([]Wire, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (s *Service) evaluateActive(ctx context.Context, packs []Pack, now time.Tim
 		return nil, err
 	}
 	out := make([]Wire, 0, len(result.Packs))
-	// A worker may select a subset, but cannot change registry priority or
+	// The evaluator may select a subset, but cannot change registry priority or
 	// duplicate an entry. Candidate positions must remain strictly increasing.
 	previousPosition := -1
 	for _, got := range result.Packs {
@@ -106,7 +106,7 @@ func (s *Service) evaluateActive(ctx context.Context, packs []Pack, now time.Tim
 }
 
 // validOccurrence checks a returned calendar occurrence without selecting the
-// active season again. The worker chooses occurrences; the host constrains them
+// active season again. The evaluator chooses occurrences; the host constrains them
 // to the stored schedule and inclusive-start/exclusive-end expiry contract.
 func validOccurrence(schedule, occurrence Window, now time.Time) bool {
 	if occurrence.RepeatYearly || occurrence.Timezone != "" || !occurrence.StartsAt.Before(occurrence.EndsAt) || !occurrence.Contains(now) || occurrence.StartsAt.Before(schedule.StartsAt) {
@@ -133,9 +133,10 @@ func sameWallDate(a, b time.Time) bool {
 	return a.Month() == b.Month() && a.Day() == b.Day() && a.Hour() == b.Hour() && a.Minute() == b.Minute() && a.Second() == b.Second() && a.Nanosecond() == b.Nanosecond()
 }
 
-// evaluatePresentation isolates optional ambience worker failures from login and
-// discovery. Repository errors have already been returned by the caller. Never
-// log worker payloads or error text, which could contain protected asset data.
+// evaluatePresentation isolates optional ambience evaluation failures from login
+// and discovery. Repository errors have already been returned by the caller.
+// Never log evaluator payloads or error text, which could contain protected
+// asset data.
 func (s *Service) evaluatePresentation(ctx context.Context, packs []Pack, now time.Time) ([]Wire, error) {
 	result, err := s.evaluateActive(ctx, packs, now)
 	if err == nil {
@@ -144,6 +145,6 @@ func (s *Service) evaluatePresentation(ctx context.Context, packs []Pack, now ti
 	if cancellation := ctx.Err(); cancellation != nil {
 		return nil, cancellation
 	}
-	slog.WarnContext(ctx, "optional presentation unavailable", "operation", EvaluationOperation)
+	slog.WarnContext(ctx, "optional presentation unavailable", "component", "ambience")
 	return []Wire{}, nil
 }
