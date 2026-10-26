@@ -67,7 +67,6 @@ internal/api/handlers/catalog_transfer_service.go
 internal/api/handlers/collection_artwork.go
 internal/api/handlers/collections_service.go
 internal/api/handlers/devices.go
-internal/api/handlers/downloads.go
 internal/api/handlers/downloads_test.go
 internal/api/handlers/home_dismissals.go
 internal/api/handlers/home_views_service.go
@@ -103,11 +102,8 @@ internal/api/testdata/media_routes.txt
 internal/apiv2/admin_subtitle_metadata_test.go  # reviewed test-only exception: canonical API language projection preserves raw legacy row
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
 internal/apiv2/device_login_test.go  # expected server_name follows branding.DefaultServerName, which Bloem sets to "Bloem"
-internal/apiv2/direct_download_link_test.go  # profile-aware download service fixture
-internal/apiv2/direct_download_test.go
 internal/apiv2/docsui/swagger-ui-bundle.js.LICENSE.txt
 internal/apiv2/document_test.go
-internal/apiv2/download_registry.go
 internal/apiv2/gates.go
 internal/apiv2/home.go
 internal/apiv2/libraries.go  # createLibrary takes a storage_source location as an alternative to paths

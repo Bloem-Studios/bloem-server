@@ -68,8 +68,6 @@ type fakeDownloadService struct {
 	gotSubtitleRef   string
 	gotDirectFormat  string
 	gotDirectFileID  int
-	gotDirectProfile string
-	gotCapProfile    string
 
 	// Season download + series-monitoring (subscription) fakes.
 	season       []*downloads.Download
@@ -104,8 +102,7 @@ type proxyDownloadService struct {
 	resolveErr    error
 }
 
-func (s *proxyDownloadService) ResolveDirectFileForProfile(_ context.Context, _ int, profileID string, _ int, _ string, _ catalog.AccessFilter) (*downloads.FileTarget, error) {
-	s.gotDirectProfile = profileID
+func (s *proxyDownloadService) ResolveDirectFile(context.Context, int, int, string, catalog.AccessFilter) (*downloads.FileTarget, error) {
 	return s.directTarget, s.resolveErr
 }
 
@@ -113,7 +110,7 @@ func (s *proxyDownloadService) ResolveManagedFile(context.Context, int, string, 
 	return s.managedTarget, s.resolveErr
 }
 
-func (f *fakeDownloadService) Capability(_ context.Context, _ int) (downloads.Capability, error) {
+func (f *fakeDownloadService) Capability(context.Context, int) (downloads.Capability, error) {
 	return f.capability, nil
 }
 
@@ -186,8 +183,7 @@ func (f *fakeDownloadService) SyncSubscriptions(_ context.Context, userID int, p
 	return f.syncRegistered, nil
 }
 
-func (f *fakeDownloadService) ServeDirectForProfile(_ context.Context, w http.ResponseWriter, _ *http.Request, _ int, profileID string, fileID int, format string, _ catalog.AccessFilter) error {
-	f.gotDirectProfile = profileID
+func (f *fakeDownloadService) ServeDirect(_ context.Context, w http.ResponseWriter, _ *http.Request, _, fileID int, format string, _ catalog.AccessFilter) error {
 	f.gotDirectFileID = fileID
 	f.gotDirectFormat = format
 	if f.directBody != "" {

@@ -273,11 +273,11 @@ func (reg *Registry) deleteDownload(ctx context.Context, in *DownloadDeleteInput
 func (reg *Registry) getDownloadCapability(ctx context.Context, _ *CapabilityInput) (*DownloadCapabilityOutput, error) {
 	out := DownloadCapability{Capability: Capability{State: StateNotConfigured}, QualityPresets: []string{}, QualityOptions: []DownloadQualityOption{}, MonitoringModes: []string{}}
 	if reg.deps.Downloads != nil {
-		user, profile, p := viewerIdentity(ctx)
+		user, _, p := viewerIdentity(ctx)
 		if p != nil {
 			return nil, p
 		}
-		view, err := downloads.CapabilityForProfile(ctx, reg.deps.Downloads, user, profile)
+		view, err := reg.deps.Downloads.Capability(ctx, user)
 		if err != nil {
 			return nil, downloadProblem(err)
 		}

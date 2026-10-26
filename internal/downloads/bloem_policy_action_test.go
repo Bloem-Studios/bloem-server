@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -118,6 +120,43 @@ func TestResolveDirectFileUsesProfileGroupDownloadDenial(t *testing.T) {
 	err = svc.ServeDirectForProfile(ctx, httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil), user.ID, "profile-strict", 3, FormatOriginal, catalog.AccessFilter{})
 	if !errors.Is(err, ErrDownloadNotAllowed) {
 		t.Fatalf("ServeDirectForProfile() error = %v, want ErrDownloadNotAllowed", err)
+	}
+}
+
+// Silo's handlers pass no profile; the request's verified profile, bound to the
+// same account, still selects the profile's group policy.
+func TestSiloDirectDownloadEntryPointsUseTheRequestProfile(t *testing.T) {
+	base := tenancy.WithContext(context.Background(), tenancy.Context{
+		OrganizationID: uuid.MustParse("10000000-0000-0000-0000-000000000001"),
+		AccountID:      9,
+		Legacy:         true,
+	})
+	user := &models.User{ID: 9}
+	cfg := config.DownloadConfig{Enabled: true}
+	svc := NewService(nil, nil, nil, nil, nil, nil, fakeUserRepo{user}, nil, nil, &cfg)
+	svc.SetGroupPolicyProvider(profileDownloadGroupProvider{
+		profileID:     "profile-strict",
+		profilePolicy: &access.GroupPolicy{DownloadAllowed: false, RequestsAllowed: true},
+		legacyPolicy:  &access.GroupPolicy{DownloadAllowed: true, RequestsAllowed: true},
+	})
+	withProfile := func(accountID int) context.Context {
+		return apimw.SetProfileID(apimw.SetClaims(base, &auth.Claims{UserID: accountID}), "profile-strict")
+	}
+
+	ctx := withProfile(user.ID)
+	if _, err := svc.ResolveDirectFile(ctx, user.ID, 3, FormatOriginal, catalog.AccessFilter{}); !errors.Is(err, ErrDownloadNotAllowed) {
+		t.Fatalf("ResolveDirectFile() error = %v, want ErrDownloadNotAllowed", err)
+	}
+	if err := svc.ServeDirect(ctx, httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil), user.ID, 3, FormatOriginal, catalog.AccessFilter{}); !errors.Is(err, ErrDownloadNotAllowed) {
+		t.Fatalf("ServeDirect() error = %v, want ErrDownloadNotAllowed", err)
+	}
+	capability, err := svc.Capability(ctx, user.ID)
+	if err != nil || capability.DownloadAllowed {
+		t.Fatalf("Capability() = %+v, %v; want the profile's denial", capability, err)
+	}
+	// A profile verified for another account is not this account's profile.
+	if capability, err := svc.Capability(withProfile(10), user.ID); err != nil || !capability.DownloadAllowed {
+		t.Fatalf("Capability(foreign profile) = %+v, %v; want the account policy", capability, err)
 	}
 }
 

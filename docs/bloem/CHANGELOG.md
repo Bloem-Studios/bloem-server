@@ -3,6 +3,17 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Downloads read the request's profile
+
+Silo's download handlers pass no profile. Bloem's download policy now takes the
+request's verified profile from the context, when it belongs to the account the
+download is for, so the v1 download handler and the v2 download capability call
+Silo's own `ServeDirect`, `ResolveDirectFile` and `Capability` again. An explicit
+download profile, such as a Jellyfin-compatible session's, still takes
+precedence. `internal/api/handlers/downloads.go`,
+`internal/apiv2/download_registry.go` and two v2 download tests return to Silo's
+bytes, so the seam ledger drops from 319 to 315.
+
 ## October 26, 2026 — Lifecycle receipts removed
 
 Bloem's Idempotency-Key replay system is gone: the receipt coordinator and its

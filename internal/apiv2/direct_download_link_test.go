@@ -42,7 +42,7 @@ func (f *linkFiles) authorize(file int, a catalogpkg.AccessFilter) error {
 	return nil
 }
 
-func (f *linkFiles) ServeDirectForProfile(_ context.Context, w http.ResponseWriter, r *http.Request, _ int, _ string, file int, _ string, a catalogpkg.AccessFilter) error {
+func (f *linkFiles) ServeDirect(_ context.Context, w http.ResponseWriter, r *http.Request, _ int, file int, _ string, a catalogpkg.AccessFilter) error {
 	if err := f.authorize(file, a); err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (f *linkFiles) ServeDirectForProfile(_ context.Context, w http.ResponseWrit
 	return nil
 }
 
-func (f *linkFiles) ResolveDirectFileForProfile(_ context.Context, _ int, _ string, file int, _ string, a catalogpkg.AccessFilter) (*downloads.FileTarget, error) {
+func (f *linkFiles) ResolveDirectFile(_ context.Context, _ int, file int, _ string, a catalogpkg.AccessFilter) (*downloads.FileTarget, error) {
 	f.resolved++
 	if err := f.authorize(file, a); err != nil {
 		return nil, err

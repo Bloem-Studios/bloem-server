@@ -23,7 +23,7 @@ type directDownloadFixture struct {
 	access    catalogpkg.AccessFilter
 }
 
-func (f *directDownloadFixture) ServeDirectForProfile(_ context.Context, w http.ResponseWriter, r *http.Request, user int, _ string, file int, format string, access catalogpkg.AccessFilter) error {
+func (f *directDownloadFixture) ServeDirect(_ context.Context, w http.ResponseWriter, r *http.Request, user, file int, format string, access catalogpkg.AccessFilter) error {
 	f.calls++
 	f.access = access
 	if user != 1 || file != 42 || format != "original" && format != "" {

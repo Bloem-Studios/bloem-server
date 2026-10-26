@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/models"
@@ -28,7 +29,7 @@ func bloemCheckDownloadAction(ctx context.Context, decider ActionDecider, input 
 // (account, profile) subject. Tenant-aware providers require the validated
 // request tenant; ordinary Silo providers retain account-only policy.
 func (s *Service) bloemEffectiveDownloadPolicy(ctx context.Context, user *models.User) (access.EffectiveUserPolicy, error) {
-	profileID := ""
+	profileID := requestProfile(ctx, user.ID)
 	if subject, ok := ctx.Value(bloemDownloadProfileKey{}).(bloemDownloadProfile); ok {
 		// The profile/account binding belongs to group policy. With no group
 		// provider, preserve Silo's user-row lookup semantics; an installed PDP
@@ -41,6 +42,16 @@ func (s *Service) bloemEffectiveDownloadPolicy(ctx context.Context, user *models
 	// Subject providers require the validated tenant even for an account-only
 	// request. Ordinary Silo providers retain their account/user-row semantics.
 	return access.EffectivePolicyForRequest(ctx, user, profileID, s.groupProvider)
+}
+
+// requestProfile is the request's verified profile when the request
+// authenticated as accountID, so Silo's handlers, which pass no profile, still
+// get the profile's policy. An explicit download profile takes precedence.
+func requestProfile(ctx context.Context, accountID int) string {
+	if claims := apimw.GetClaims(ctx); claims == nil || claims.UserID != accountID {
+		return ""
+	}
+	return apimw.GetProfileID(ctx)
 }
 
 type bloemDownloadProfileKey struct{}
