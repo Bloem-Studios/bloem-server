@@ -160,6 +160,9 @@ func TestNativeProbeRealFixturesMatchLocal(t *testing.T) {
 	}
 }
 
+// nativeProbeSeekGap is the free atom placed before the moov atom.
+const nativeProbeSeekGap = 32 << 20
+
 // Move only the moov atom behind a large free atom. Media offsets stay intact,
 // so this is the same real MP4 with a distant index, not an invented container.
 func nativeProbeSeekMP4(t *testing.T) []byte {
@@ -188,7 +191,7 @@ func nativeProbeSeekMP4(t *testing.T) []byte {
 	if len(index) == 0 {
 		t.Fatal("missing moov")
 	}
-	free := make([]byte, 16<<20)
+	free := make([]byte, nativeProbeSeekGap)
 	binary.BigEndian.PutUint32(free, uint32(len(free)))
 	copy(free[4:8], "free")
 	return append(append(before, free...), index...)
@@ -208,7 +211,10 @@ func TestNativeProbeRealSeekUsesBoundedRanges(t *testing.T) {
 	source, file, ctx, cfg := nativeProbeFixture(t, data)
 	// This fixture's distant index requires HTTP prefetch as well as the
 	// useful demuxer bytes. This is a test allowance, not a product default.
-	cfg.Input.MaxBytes = 8 << 20
+	// The prefetch served before ffprobe drops its open-ended range grows with
+	// machine load (over 8 MiB on a busy CI runner), so allow half the gap:
+	// reading through the gap still exceeds it.
+	cfg.Input.MaxBytes = nativeProbeSeekGap / 2
 	got, err := ProbeNative(ctx, binary, file, cfg)
 	if err != nil {
 		fetched, ranges := source.fetched()
@@ -229,7 +235,7 @@ func TestNativeProbeRealSeekUsesBoundedRanges(t *testing.T) {
 	}
 	var distant bool
 	for _, r := range ranges {
-		if r.offset >= 16<<20 {
+		if r.offset >= nativeProbeSeekGap {
 			distant = true
 		}
 	}
