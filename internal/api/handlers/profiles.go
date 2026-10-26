@@ -19,7 +19,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/artworkurl"
 	"github.com/Silo-Server/silo-server/internal/auth/passwordhash"
 	evt "github.com/Silo-Server/silo-server/internal/events"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/playback/connectionstore"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
@@ -81,7 +80,6 @@ type ProfileHandler struct {
 	// canonical setting row a profile mutation syncs (see
 	// profiles_settings_sync.go). Nil (as in tests) simply skips publishing.
 	EventsHub *evt.Hub
-	bloemProfileHandlerExt
 	// PINAttempts bounds wrong PIN guesses per profile (see
 	// ratelimit.ProfilePINPolicy). The router always sets it; nil, as in
 	// tests that do not exercise the limit, allows every attempt.
@@ -323,23 +321,12 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	body, ok := readBloemRequestBody(w, r)
-	if !ok {
-		return
-	}
 	var req ProfileCreateRequest
-	if err := json.Unmarshal(body, &req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	var lifecycleResult lifecycleidempotency.Result
-	lifecycleRequest, ok := h.bloemProfileLifecycleRequest(w, r, "profile.create", nil, body)
-	if !ok {
-		return
-	}
 	created, err := h.CreateProfile(r.Context(), ProfileCreateCommand{
-		Lifecycle:       lifecycleRequest,
-		lifecycleResult: &lifecycleResult,
 		UserID:          userID,
 		ActiveProfileID: activeProfileIDOf(r),
 		Request:         req,
@@ -356,9 +343,6 @@ func (h *ProfileHandler) HandleCreateProfile(w http.ResponseWriter, r *http.Requ
 		writeAPIError(w, err)
 		return
 	}
-	if bloemWriteProfileLifecycleResult(w, lifecycleRequest, lifecycleResult) {
-		return
-	}
 	writeJSON(w, http.StatusCreated, created)
 }
 
@@ -372,9 +356,6 @@ type ProfileCreateCommand struct {
 	// VerifyProfile confirms a PIN-locked primary profile is verified for
 	// this request; it returns access.ErrProfileUnverified when it is not.
 	VerifyProfile func(profileID string) error
-	// Lifecycle carries Bloem's lifecycle receipt request (nil without receipts).
-	Lifecycle       *lifecycleidempotency.Request
-	lifecycleResult *lifecycleidempotency.Result
 }
 
 // CreateProfile creates a household profile: validation, the bootstrap or
@@ -410,10 +391,6 @@ func (h *ProfileHandler) CreateProfile(ctx context.Context, cmd ProfileCreateCom
 	settingsSync, err := planCreateProfileSettingsSync(req)
 	if err != nil {
 		return none, apiError(http.StatusBadRequest, "bad_request", err.Error())
-	}
-
-	if h.lifecycle != nil {
-		return h.bloemCreateProfileLifecycle(ctx, cmd, avatarRef, maxPlaybackQuality, settingsSync)
 	}
 
 	store, err := h.storeProvider.ForUser(ctx, userID)
@@ -564,23 +541,12 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	body, ok := readBloemRequestBody(w, r)
-	if !ok {
-		return
-	}
 	var req ProfileUpdateRequest
-	if err := json.Unmarshal(body, &req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	var lifecycleResult lifecycleidempotency.Result
-	lifecycleRequest, ok := h.bloemProfileLifecycleRequest(w, r, "profile.update", map[string]string{"id": profileID}, body)
-	if !ok {
-		return
-	}
 	resp, err := h.UpdateProfile(r.Context(), ProfileUpdateCommand{
-		Lifecycle:       lifecycleRequest,
-		lifecycleResult: &lifecycleResult,
 		UserID:          userID,
 		ProfileID:       profileID,
 		ActiveProfileID: activeProfileIDOf(r),
@@ -599,9 +565,6 @@ func (h *ProfileHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if bloemWriteProfileLifecycleResult(w, lifecycleRequest, lifecycleResult) {
-		return
-	}
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -616,9 +579,6 @@ type ProfileUpdateCommand struct {
 	// VerifyProfile confirms a PIN-locked primary profile is verified for
 	// this request; it returns access.ErrProfileUnverified when it is not.
 	VerifyProfile func(profileID string) error
-	// Lifecycle carries Bloem's lifecycle receipt request (nil without receipts).
-	Lifecycle       *lifecycleidempotency.Request
-	lifecycleResult *lifecycleidempotency.Result
 }
 
 // UpdateProfile applies a profile update: authorization (household manager
@@ -650,7 +610,7 @@ func (h *ProfileHandler) UpdateProfile(ctx context.Context, cmd ProfileUpdateCom
 	if req.MaxAdvisoryAge != nil && *req.MaxAdvisoryAge != 0 && !access.ValidAdvisoryAgeLimit(*req.MaxAdvisoryAge) {
 		return none, invalidAdvisoryAgeLimit()
 	}
-	if view, done, err := h.bloemUpdateProfilePrelude(ctx, cmd, &req, avatarRef, maxPlaybackQuality); done {
+	if view, done, err := h.bloemUpdateProfilePrelude(ctx, &req); done {
 		return view, err
 	}
 
@@ -797,10 +757,6 @@ func (h *ProfileHandler) HandleDeleteProfile(w http.ResponseWriter, r *http.Requ
 		writeError(w, http.StatusBadRequest, "bad_request", "Profile ID is required")
 		return
 	}
-	if h.lifecycle != nil {
-		h.handleLifecycleProfileDelete(w, r, userID, profileID)
-		return
-	}
 
 	err := h.DeleteProfile(r.Context(), ProfileDeleteCommand{
 		UserID:          userID,
@@ -833,8 +789,6 @@ type ProfileDeleteCommand struct {
 	// VerifyProfile confirms a PIN-locked primary profile is verified for
 	// this request; it returns access.ErrProfileUnverified when it is not.
 	VerifyProfile func(profileID string) error
-	// Lifecycle carries Bloem's lifecycle receipt request (nil without receipts).
-	Lifecycle *lifecycleidempotency.Request
 }
 
 // DeleteProfile deletes a household profile: the household-manager
@@ -844,11 +798,6 @@ type ProfileDeleteCommand struct {
 // status, code and message.
 func (h *ProfileHandler) DeleteProfile(ctx context.Context, cmd ProfileDeleteCommand) error {
 	userID, profileID := cmd.UserID, cmd.ProfileID
-	if h.lifecycle != nil {
-		_, err := h.deleteProfileLifecycle(ctx, cmd)
-		return profileLifecycleError(err)
-	}
-
 	store, err := h.storeProvider.ForUser(ctx, userID)
 	if err != nil {
 		return apiError(http.StatusInternalServerError, "internal_error", "Failed to access user store")

@@ -3,6 +3,23 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Lifecycle receipts removed
+
+Bloem's Idempotency-Key replay system is gone: the receipt coordinator and its
+four tables (`20261026030000_bloem_remove_lifecycle_receipts` drops them), the
+rollout preflight, `cmd/lifecycleidempotencyctl` and its `make` targets, and the
+receipt branch of every admin, tenant, people, entitlement, profile, settings,
+registration and invitation handler. `lifecycle_idempotency_v1` and
+`lifecycle_idempotency_required_v1` are no longer advertised, so bloem-admin-apple
+and bloem-admin-android send their lifecycle mutations unkeyed, as they already
+did against servers without the tokens. Mutations with their own command keys
+keep replaying: tenant member creation, people and platform policy jobs,
+entitlement applies and book requests. Every other mutation follows Silo's
+retry-safety classes; see [retrying mutations](../bloem-api-reference.md#retrying-mutations).
+Silo's `auth_registration.go`, `invitations.go`, `settings_values.go`,
+`settings_values_admin.go` and the v2 `auth_sessions.go` and `profiles.go` return
+to Silo's bytes, so the seam ledger drops from 325 to 319.
+
 ## October 26, 2026 — Bloem CI is its own workflow
 
 Bloem's CI jobs move unchanged from its copy of Silo's

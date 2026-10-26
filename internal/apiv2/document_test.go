@@ -72,7 +72,7 @@ var generatedOpenAPI = sync.OnceValues(func() (string, error) {
 // itself (updateProfile's 409) survives the class table being merged in, and
 // the shared statuses join it.
 func TestDocumentDeclarationKeepsDeclaredErrors(t *testing.T) {
-	op := &Operation{Operation: huma.Operation{Method: http.MethodPatch, Path: Prefix + "/x/{id}", OperationID: "patchX", Errors: []int{http.StatusConflict}}, Class: ClassProfileScoped, RetrySafety: RetrySafetyIdempotencyKey, DurableReplay: true}
+	op := &Operation{Operation: huma.Operation{Method: http.MethodPatch, Path: Prefix + "/x/{id}", OperationID: "patchX", Errors: []int{http.StatusConflict}}, Class: ClassProfileScoped, RetrySafety: RetrySafetyNonRetryable}
 	documentDeclaration(op, reflect.TypeOf(ProfileUpdateInput{}))
 	want := map[int]bool{http.StatusConflict: true, http.StatusRequestTimeout: true, http.StatusNotFound: true, http.StatusUnsupportedMediaType: true}
 	for _, s := range op.Errors {
@@ -769,7 +769,7 @@ func TestIdempotencyKeyHeaderNeedsTheDeclaration(t *testing.T) {
 	t.Run("idempotency_key refused until a replay store exists", func(t *testing.T) {
 		defer func() {
 			r := recover()
-			if r == nil || !strings.Contains(r.(string), "durable replay coordinator") {
+			if r == nil || !strings.Contains(r.(string), "replay store") {
 				t.Fatalf("recover = %v", r)
 			}
 		}()

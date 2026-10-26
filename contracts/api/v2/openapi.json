@@ -133579,17 +133579,6 @@
     "/api/v2/auth/setup": {
       "post": {
         "operationId": "setupServer",
-        "parameters": [
-          {
-            "description": "Opaque lifecycle retry key",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
-              "description": "Opaque lifecycle retry key",
-              "type": "string"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -133681,16 +133670,6 @@
             },
             "description": "Unprocessable Entity"
           },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Precondition Required"
-          },
           "500": {
             "content": {
               "application/problem+json": {
@@ -133717,7 +133696,7 @@
           "system"
         ],
         "x-silo-class": "public",
-        "x-silo-retry-safety": "idempotency_key",
+        "x-silo-retry-safety": "non_retryable",
         "x-silo-service-backed": true
       }
     },
@@ -133795,17 +133774,6 @@
       },
       "post": {
         "operationId": "signup",
-        "parameters": [
-          {
-            "description": "Opaque lifecycle retry key",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
-              "description": "Opaque lifecycle retry key",
-              "type": "string"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -133907,16 +133875,6 @@
             },
             "description": "Unprocessable Entity"
           },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Precondition Required"
-          },
           "500": {
             "content": {
               "application/problem+json": {
@@ -133943,7 +133901,7 @@
           "auth"
         ],
         "x-silo-class": "public",
-        "x-silo-retry-safety": "idempotency_key",
+        "x-silo-retry-safety": "unique_constraint",
         "x-silo-service-backed": true
       }
     },
@@ -187751,15 +187709,6 @@
               ],
               "type": "string"
             }
-          },
-          {
-            "description": "Opaque lifecycle retry key",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
-              "description": "Opaque lifecycle retry key",
-              "type": "string"
-            }
           }
         ],
         "requestBody": {
@@ -187891,16 +187840,6 @@
             },
             "description": "Unprocessable Entity"
           },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Precondition Required"
-          },
           "429": {
             "content": {
               "application/problem+json": {
@@ -187943,7 +187882,7 @@
         ],
         "x-silo-class": "profile_scoped",
         "x-silo-demo-restricted": true,
-        "x-silo-retry-safety": "idempotency_key",
+        "x-silo-retry-safety": "non_retryable",
         "x-silo-service-backed": true
       }
     },
@@ -188128,15 +188067,6 @@
               "minLength": 1,
               "type": "string"
             }
-          },
-          {
-            "description": "Opaque lifecycle retry key",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
-              "description": "Opaque lifecycle retry key",
-              "type": "string"
-            }
           }
         ],
         "responses": {
@@ -188213,16 +188143,6 @@
             },
             "description": "Unprocessable Entity"
           },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Precondition Required"
-          },
           "429": {
             "content": {
               "application/problem+json": {
@@ -188265,7 +188185,7 @@
         ],
         "x-silo-class": "profile_scoped",
         "x-silo-demo-restricted": true,
-        "x-silo-retry-safety": "idempotency_key",
+        "x-silo-retry-safety": "non_retryable",
         "x-silo-service-backed": true
       },
       "patch": {
@@ -188290,15 +188210,6 @@
               "examples": [
                 "pvt_5f3a9c1e7b2d4e8fa0c6"
               ],
-              "type": "string"
-            }
-          },
-          {
-            "description": "Opaque lifecycle retry key",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
-              "description": "Opaque lifecycle retry key",
               "type": "string"
             }
           },
@@ -188438,16 +188349,6 @@
             },
             "description": "Unprocessable Entity"
           },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            },
-            "description": "Precondition Required"
-          },
           "429": {
             "content": {
               "application/problem+json": {
@@ -188490,7 +188391,7 @@
         ],
         "x-silo-class": "profile_scoped",
         "x-silo-demo-restricted": true,
-        "x-silo-retry-safety": "idempotency_key",
+        "x-silo-retry-safety": "non_retryable",
         "x-silo-service-backed": true
       }
     },

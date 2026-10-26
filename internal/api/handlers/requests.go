@@ -54,7 +54,6 @@ type RequestService interface {
 
 type RequestsHandler struct {
 	service RequestService
-	bloemRequestsHandlerExt
 }
 
 func NewRequestsHandler(service RequestService) *RequestsHandler {
@@ -528,9 +527,6 @@ func (h *RequestsHandler) HandleGetUserLimit(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *RequestsHandler) HandleUpdateUserLimit(w http.ResponseWriter, r *http.Request) {
-	if h.bloemLifecycleUpdateUserLimit(w, r) {
-		return
-	}
 	viewer, ok := requestViewer(w, r, false)
 	if !ok {
 		return

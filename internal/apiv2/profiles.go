@@ -71,9 +71,8 @@ type ProfileUpdate struct {
 
 // ProfileUpdateInput is the updateProfile request.
 type ProfileUpdateInput struct {
-	IdempotencyKey string `header:"Idempotency-Key" doc:"Opaque lifecycle retry key"`
-	ID             ID     `path:"id" doc:"The profile to update" example:"1"`
-	Body           ProfileUpdate
+	ID   ID `path:"id" doc:"The profile to update" example:"1"`
+	Body ProfileUpdate
 	// RawBody is the document as sent: the framework treats null on an
 	// optional member as absence, and the contract does not (null clears,
 	// and only a nullable member admits clearing), so the handler checks
@@ -165,8 +164,7 @@ type ProfileCreate struct {
 
 // ProfileCreateInput is the createProfile request.
 type ProfileCreateInput struct {
-	IdempotencyKey string `header:"Idempotency-Key" doc:"Opaque lifecycle retry key"`
-	Body           ProfileCreate
+	Body ProfileCreate
 	// RawBody is the document as sent; see ProfileUpdateInput.
 	RawBody []byte
 }
@@ -194,7 +192,7 @@ func registerProfiles(reg *Registry) {
 	create.DefaultStatus = http.StatusCreated
 	// v1 CreateProfile answers a taken name (name_conflict) and a full
 	// household (profile_limit_reached) with 409.
-	create.Errors = []int{http.StatusConflict, http.StatusPreconditionRequired, http.StatusServiceUnavailable}
+	create.Errors = []int{http.StatusConflict}
 	Register(reg, Operation{
 		Operation: create,
 		// As v1 POST /profiles: the first profile on an account is
@@ -205,8 +203,7 @@ func registerProfiles(reg *Registry) {
 		// Demo restriction is a v2 addition: v1's demo guard does not list
 		// profile mutations (recorded in the ledger row).
 		DemoRestricted: isMutatingMethod(create.Method),
-		RetrySafety:    RetrySafetyIdempotencyKey,
-		DurableReplay:  true,
+		RetrySafety:    RetrySafetyNonRetryable,
 		ServiceBacked:  true,
 	}, reg.createProfile)
 
@@ -215,7 +212,7 @@ func registerProfiles(reg *Registry) {
 	// v1 UpdateProfile answers a taken name with 409 name_conflict, which
 	// serviceProblem carries through as conflict; the status is this
 	// operation's own, not one the class implies.
-	update.Errors = []int{http.StatusConflict, http.StatusPreconditionRequired, http.StatusServiceUnavailable}
+	update.Errors = []int{http.StatusConflict}
 	Register(reg, Operation{
 		Operation: update,
 		// Profile scoped without a required header, as v1 PUT /profiles/{id}:
@@ -232,8 +229,7 @@ func registerProfiles(reg *Registry) {
 		// Demo restriction is a v2 addition: v1's demo guard does not list
 		// profile mutations (recorded in the ledger row).
 		DemoRestricted: isMutatingMethod(update.Method),
-		RetrySafety:    RetrySafetyIdempotencyKey,
-		DurableReplay:  true,
+		RetrySafety:    RetrySafetyNonRetryable,
 		ServiceBacked:  true,
 	}, reg.updateProfile)
 
@@ -242,7 +238,7 @@ func registerProfiles(reg *Registry) {
 	del.DefaultStatus = http.StatusNoContent
 	// v1 DeleteProfile answers the primary profile with 409
 	// primary_profile_protected.
-	del.Errors = []int{http.StatusConflict, http.StatusPreconditionRequired, http.StatusServiceUnavailable}
+	del.Errors = []int{http.StatusConflict}
 	Register(reg, Operation{
 		Operation: del,
 		// As v1 DELETE /profiles/{id}: the verified primary profile manages
@@ -253,8 +249,7 @@ func registerProfiles(reg *Registry) {
 		// Demo restriction is a v2 addition: v1's demo guard does not list
 		// profile mutations (recorded in the ledger row).
 		DemoRestricted: isMutatingMethod(del.Method),
-		RetrySafety:    RetrySafetyIdempotencyKey,
-		DurableReplay:  true,
+		RetrySafety:    RetrySafetyNonRetryable,
 		ServiceBacked:  true,
 	}, reg.deleteProfile)
 
@@ -338,7 +333,7 @@ type ProfileIDInput struct {
 
 // deleteProfile runs the same authorization and delete path as v1 DELETE
 // /profiles/{id}.
-func (reg *Registry) deleteProfile(ctx context.Context, in *ProfileDeleteInput) (*struct{}, error) {
+func (reg *Registry) deleteProfile(ctx context.Context, in *ProfileIDInput) (*struct{}, error) {
 	if reg.deps.Profiles == nil {
 		return nil, unavailable("profile")
 	}
@@ -346,12 +341,7 @@ func (reg *Registry) deleteProfile(ctx context.Context, in *ProfileDeleteInput) 
 	if claims == nil {
 		return nil, NewProblem(TypeAuthenticationRequired, "Authentication is required.")
 	}
-	lifecycleRequest, err := reg.deps.Profiles.ProfileLifecycleRequest(ctx, in.IdempotencyKey, "DELETE", "apiv2.profile.delete", string(in.ID), nil)
-	if err != nil {
-		return nil, profileProblem(err)
-	}
-	err = reg.deps.Profiles.DeleteProfile(ctx, handlers.ProfileDeleteCommand{
-		Lifecycle:       lifecycleRequest,
+	err := reg.deps.Profiles.DeleteProfile(ctx, handlers.ProfileDeleteCommand{
 		UserID:          claims.UserID,
 		ProfileID:       string(in.ID),
 		ActiveProfileID: profileFrom(ctx),
@@ -707,12 +697,7 @@ func (reg *Registry) createProfile(ctx context.Context, in *ProfileCreateInput) 
 			return nil, p
 		}
 	}
-	lifecycleRequest, err := reg.deps.Profiles.ProfileLifecycleRequest(ctx, in.IdempotencyKey, "POST", "apiv2.profile.create", "", in.RawBody)
-	if err != nil {
-		return nil, profileProblem(err)
-	}
 	view, err := reg.deps.Profiles.CreateProfile(ctx, handlers.ProfileCreateCommand{
-		Lifecycle:       lifecycleRequest,
 		UserID:          claims.UserID,
 		ActiveProfileID: profileFrom(ctx),
 		Request:         req,
@@ -800,12 +785,7 @@ func (reg *Registry) updateProfile(ctx context.Context, in *ProfileUpdateInput) 
 	if p := reg.rejectUnknownLibraries(ctx, req.AllowedLibraryIDs, locationAllowedLibraryIDs); p != nil {
 		return nil, p
 	}
-	lifecycleRequest, err := reg.deps.Profiles.ProfileLifecycleRequest(ctx, in.IdempotencyKey, "PATCH", "apiv2.profile.update", string(in.ID), in.RawBody)
-	if err != nil {
-		return nil, profileProblem(err)
-	}
 	view, err := reg.deps.Profiles.UpdateProfile(ctx, handlers.ProfileUpdateCommand{
-		Lifecycle:       lifecycleRequest,
 		UserID:          claims.UserID,
 		ProfileID:       string(in.ID),
 		ActiveProfileID: profileFrom(ctx),

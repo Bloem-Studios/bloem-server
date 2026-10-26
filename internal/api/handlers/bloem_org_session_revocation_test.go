@@ -20,7 +20,6 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/database"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
@@ -39,7 +38,7 @@ type orgRevocationFixture struct {
 	revisionA                int64
 }
 
-func newOrgRevocationFixture(t *testing.T, lifecycle bool) *orgRevocationFixture {
+func newOrgRevocationFixture(t *testing.T) *orgRevocationFixture {
 	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -101,10 +100,6 @@ SELECT $1,$2,'active',$3`, f.orgA, accountID, map[bool]string{true: "admin", fal
 	f.revisionA = f.revision(t, f.orgA)
 
 	f.handler = NewAdminHandler(users, pool, pgstore.NewPostgresProvider(pool))
-	if lifecycle {
-		secret := []byte("org-revocation-secret")
-		f.handler.SetLifecycleIdempotency(lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(pool), lifecycleidempotency.NewHMACKeyDigester(secret)), lifecycleidempotency.NewRequestDigester(secret))
-	}
 	f.handler.OnUserProfileSessionsRevoked = func(_ context.Context, _ int, profileIDs []string) error {
 		f.profileInvalidations = append(f.profileInvalidations, profileIDs...)
 		return nil
@@ -145,12 +140,9 @@ func (f *orgRevocationFixture) active(t *testing.T, sessionID string) bool {
 	return active
 }
 
-func (f *orgRevocationFixture) revokeAll(t *testing.T, lifecycle bool) {
+func (f *orgRevocationFixture) revokeAll(t *testing.T) {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodDelete, "/users/"+strconv.Itoa(f.target.ID)+"/auth-sessions", nil)
-	if lifecycle {
-		req.Header.Set("Idempotency-Key", "orgrev-"+uuid.NewString())
-	}
 	rec := httptest.NewRecorder()
 	f.router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNoContent {
@@ -159,26 +151,20 @@ func (f *orgRevocationFixture) revokeAll(t *testing.T, lifecycle bool) {
 }
 
 func TestBloemOrganizationRevokeAllInvalidatesMembership(t *testing.T) {
-	for _, lifecycle := range []bool{true, false} {
-		name := map[bool]string{true: "lifecycle", false: "direct"}[lifecycle]
-
-		// An account belongs to one organization: the account-login session
-		// can reach nothing but this organization, so it is revoked too.
-		t.Run(name, func(t *testing.T) {
-			f := newOrgRevocationFixture(t, lifecycle)
-			f.revokeAll(t, lifecycle)
-			if f.active(t, f.sessionA) {
-				t.Fatal("organization profile session survived")
-			}
-			if f.active(t, f.accountSession) {
-				t.Fatal("account-login session survived although this organization is the account's only membership")
-			}
-			if got := f.revision(t, f.orgA); got <= f.revisionA {
-				t.Fatalf("organization A security revision = %d, want > %d", got, f.revisionA)
-			}
-			if f.wholeUserCalls != 1 {
-				t.Fatalf("whole-account compat invalidations = %d, want 1", f.wholeUserCalls)
-			}
-		})
+	// An account belongs to one organization: the account-login session
+	// can reach nothing but this organization, so it is revoked too.
+	f := newOrgRevocationFixture(t)
+	f.revokeAll(t)
+	if f.active(t, f.sessionA) {
+		t.Fatal("organization profile session survived")
+	}
+	if f.active(t, f.accountSession) {
+		t.Fatal("account-login session survived although this organization is the account's only membership")
+	}
+	if got := f.revision(t, f.orgA); got <= f.revisionA {
+		t.Fatalf("organization A security revision = %d, want > %d", got, f.revisionA)
+	}
+	if f.wholeUserCalls != 1 {
+		t.Fatalf("whole-account compat invalidations = %d, want 1", f.wholeUserCalls)
 	}
 }

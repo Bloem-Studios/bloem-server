@@ -165,8 +165,9 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		}
 
 		replayed := performJSONRequest(t, router, http.MethodPost, memberPath, memberBody, adminLogin.AccessToken, memberHeaders)
-		if replayed.Code != http.StatusCreated || !strings.Contains(replayed.Body.String(), `"user_id":`+strconv.Itoa(member.UserID)) {
-			t.Fatalf("replay member = %d %s, want the original 201 response and user", replayed.Code, replayed.Body.String())
+		// The member command key replays the original member as 200.
+		if replayed.Code != http.StatusOK || !strings.Contains(replayed.Body.String(), `"user_id":`+strconv.Itoa(member.UserID)) {
+			t.Fatalf("replay member = %d %s, want 200 and the original user", replayed.Code, replayed.Body.String())
 		}
 
 		profilesPath := memberPath + "/" + strconv.Itoa(member.UserID) + "/profiles"
@@ -296,7 +297,10 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 		if err := pool.QueryRow(context.Background(), `SELECT revoked_at IS NOT NULL FROM auth_sessions WHERE id='tenant-account-session'`).Scan(&revokedAccount); err != nil {
 			t.Fatal(err)
 		}
-		if !revokedA || revokedB || revokedAccount {
+		// Tenant A is the member's only organization, so revoking all its
+		// sessions there includes the account login; tenant B's member keeps
+		// its session.
+		if !revokedA || revokedB || !revokedAccount {
 			t.Fatalf("tenant revoke-all scope: a=%v b=%v account=%v", revokedA, revokedB, revokedAccount)
 		}
 

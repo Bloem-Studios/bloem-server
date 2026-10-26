@@ -169,7 +169,6 @@ func (h *AuthHandler) RevokeSession(ctx context.Context, sessionID string, userI
 // RegistrationInput is a first-run setup or invited signup as the transport
 // received it. InviteCode is only read by Signup.
 type RegistrationInput struct {
-	Lifecycle            *RegistrationLifecycleInput
 	Username             string
 	Email                string
 	Password             string
@@ -190,9 +189,6 @@ func (h *AuthHandler) SetupInitialUser(ctx context.Context, in RegistrationInput
 	}
 	if err := validateRegistrationPassword(in.Password); err != nil {
 		return TokenPairView{}, err
-	}
-	if in.Lifecycle != nil {
-		return h.registrationLifecycleView(ctx, in, true)
 	}
 	pair, user, err := h.service.SetupInitialUser(ctx, in.Username, in.Email, in.Password, in.CreateDefaultProfile, in.DefaultProfileName, in.DeviceName, in.IP)
 	if err != nil {
@@ -228,9 +224,6 @@ func (h *AuthHandler) Signup(ctx context.Context, in RegistrationInput) (TokenPa
 	}
 	if err := validateRegistrationPassword(in.Password); err != nil {
 		return TokenPairView{}, err
-	}
-	if in.Lifecycle != nil {
-		return h.registrationLifecycleView(ctx, in, false)
 	}
 	pair, user, err := h.service.Signup(ctx, in.Username, in.Email, in.Password, in.InviteCode, in.CreateDefaultProfile, in.DefaultProfileName, in.DeviceName, in.IP)
 	if err != nil {

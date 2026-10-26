@@ -138,9 +138,8 @@ const setupDomain = "setup"
 
 // SetupServerInput creates the first administrator.
 type SetupServerInput struct {
-	IdempotencyKey string `header:"Idempotency-Key" doc:"Opaque lifecycle retry key"`
-	RawBody        []byte
-	Body           struct {
+	RawBody []byte
+	Body    struct {
 		Username             string `json:"username" minLength:"1" maxLength:"254" doc:"Login name of the administrator" example:"admin"`
 		Email                string `json:"email" minLength:"1" maxLength:"254" doc:"Contact email of the administrator" example:"admin@example.test"`
 		Password             string `json:"password" minLength:"8" maxLength:"72" doc:"Account password; at least 8 characters and at most 72 UTF-8 bytes" example:"correct horse battery staple"`
@@ -161,9 +160,8 @@ type SignupStatusOutput struct {
 
 // SignupInput creates an account from an invite code.
 type SignupInput struct {
-	IdempotencyKey string `header:"Idempotency-Key" doc:"Opaque lifecycle retry key"`
-	RawBody        []byte
-	Body           struct {
+	RawBody []byte
+	Body    struct {
 		Username             string `json:"username" minLength:"1" maxLength:"254" doc:"Login name" example:"alice"`
 		Email                string `json:"email" minLength:"1" maxLength:"254" doc:"Contact email" example:"alice@example.test"`
 		Password             string `json:"password" minLength:"8" maxLength:"72" doc:"Account password; at least 8 characters and at most 72 UTF-8 bytes" example:"correct horse battery staple"`
@@ -219,8 +217,8 @@ func registerAuthSessions(reg *Registry) {
 		"Create the first administrator account and open its session.")
 	setup.DefaultStatus = http.StatusCreated
 	// Setup already completed is 409 conflict (v1: 401 setup_complete).
-	setup.Errors = []int{http.StatusConflict, http.StatusPreconditionRequired}
-	Register(reg, Operation{Operation: setup, RetrySafety: RetrySafetyIdempotencyKey, DurableReplay: true, Class: ClassPublic, ServiceBacked: true, RateLimitBucket: setupDomain}, reg.setupServer)
+	setup.Errors = []int{http.StatusConflict}
+	Register(reg, Operation{Operation: setup, RetrySafety: RetrySafetyNonRetryable, Class: ClassPublic, ServiceBacked: true, RateLimitBucket: setupDomain}, reg.setupServer)
 	Register(reg, Operation{
 		Operation: humaOp(http.MethodGet, Prefix+"/auth/signup", "getSignupStatus", "auth",
 			"Report whether public invited signup is enabled."),
@@ -231,8 +229,8 @@ func registerAuthSessions(reg *Registry) {
 	signup.DefaultStatus = http.StatusCreated
 	// Signup disabled is 403; a rejected invite code is 422 at
 	// body.invite_code; a taken username or email is 409 conflict.
-	signup.Errors = []int{http.StatusForbidden, http.StatusConflict, http.StatusPreconditionRequired}
-	Register(reg, Operation{Operation: signup, RetrySafety: RetrySafetyIdempotencyKey, DurableReplay: true, Class: ClassPublic, ServiceBacked: true, RateLimitBucket: opSignup}, reg.signup)
+	signup.Errors = []int{http.StatusForbidden, http.StatusConflict}
+	Register(reg, Operation{Operation: signup, RetrySafety: RetrySafetyUniqueConstraint, Class: ClassPublic, ServiceBacked: true, RateLimitBucket: opSignup}, reg.signup)
 
 }
 
@@ -411,7 +409,7 @@ func (reg *Registry) setupServer(ctx context.Context, in *SetupServerInput) (*To
 	if p := invalidEmailProblem(in.Body.Email); p != nil {
 		return nil, p
 	}
-	view, err := reg.deps.Sessions.SetupInitialUser(withClientDevice(ctx), bloemRegistrationLifecycle(ctx, reg.registration(ctx, in.Body.Username, in.Body.Email, in.Body.Password, "", in.Body.CreateDefaultProfile, in.Body.DefaultProfileName), in.IdempotencyKey, "apiv2.auth.setup", in.RawBody))
+	view, err := reg.deps.Sessions.SetupInitialUser(withClientDevice(ctx), reg.registration(ctx, in.Body.Username, in.Body.Email, in.Body.Password, "", in.Body.CreateDefaultProfile, in.Body.DefaultProfileName))
 	if err != nil {
 		var apiErr *handlers.APIError
 		if errors.As(err, &apiErr) && apiErr.Code == "setup_complete" {
@@ -444,7 +442,7 @@ func (reg *Registry) signup(ctx context.Context, in *SignupInput) (*TokenPairOut
 	if p := invalidEmailProblem(in.Body.Email); p != nil {
 		return nil, p
 	}
-	view, err := reg.deps.Sessions.Signup(withClientDevice(ctx), bloemRegistrationLifecycle(ctx, reg.registration(ctx, in.Body.Username, in.Body.Email, in.Body.Password, in.Body.InviteCode, in.Body.CreateDefaultProfile, in.Body.DefaultProfileName), in.IdempotencyKey, "apiv2.auth.signup", in.RawBody))
+	view, err := reg.deps.Sessions.Signup(withClientDevice(ctx), reg.registration(ctx, in.Body.Username, in.Body.Email, in.Body.Password, in.Body.InviteCode, in.Body.CreateDefaultProfile, in.Body.DefaultProfileName))
 	if err != nil {
 		var apiErr *handlers.APIError
 		if errors.As(err, &apiErr) && apiErr.Code == "duplicate" {

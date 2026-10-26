@@ -134,7 +134,7 @@ func TestBloemAuthenticatedRouterRequiresRequestPolicyDependencies(t *testing.T)
 			}()
 			// No lifecycle config: authentication presence, rather than JWT or
 			// lifecycle configuration, controls whether policy is mandatory.
-			wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, nil, bloemLifecycleTargets{requests: handler}, authMW, nil, nil)
+			wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, nil, handler, nil, authMW, nil, nil)
 		})
 	}
 }

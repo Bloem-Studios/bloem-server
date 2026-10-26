@@ -2459,10 +2459,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 	// SPA fallback. Same pattern as the Jellyfin compat listener on 8096.
 	tenantMiddleware := newBloemTenantMiddleware(deps)
 	attachNativeLibraryLocations(deps, libraryHandler)
-	wireBloemRouter(r, deps, tenantMiddleware, bloemLifecycleTargets{
-		auth: authHandler, requests: requestHandler, profiles: profileHandler,
-		settingValues: settingValuesHandler, admin: adminHandler, tenants: adminTenantsHandler, members: adminTenantMembersHandler,
-	}, authMiddleware, catalog.BloemPreviewSearch(catalogSearchService.Provider(), itemRepo), requireActingAdmin)
+	wireBloemRouter(r, deps, tenantMiddleware, requestHandler, adminHandler, authMiddleware, catalog.BloemPreviewSearch(catalogSearchService.Provider(), itemRepo), requireActingAdmin)
 
 	// The native v2 API. The subtree is handed to the sealed apiv2 listener
 	// with a single wildcard registration the route inventory records as a
@@ -5016,7 +5013,6 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 	// logging and, critically, RequireAuth's device-binding guard all see one
 	// spelling. See NormalizeClientHeaders for why this must precede auth.
 	r.Use(apimw.NormalizeClientHeaders)
-	useBloemLifecyclePreflight(r, deps)
 
 	// Client IP resolution must run before request logging.
 	if deps.ClientIPResolver != nil {

@@ -129,7 +129,7 @@ func (*BloemPolicyCommand) TransformSchema(_ huma.Registry, schema *huma.Schema)
 type BloemPolicyBulkAction struct {
 	SelectionToken    string             `json:"selection_token"`
 	ConfirmationToken string             `json:"confirmation_token"`
-	IdempotencyKey    string             `json:"idempotency_key,omitempty" doc:"Required unless supplied by the lifecycle Idempotency-Key header; when both are present they must match."`
+	IdempotencyKey    string             `json:"idempotency_key,omitempty" doc:"Required unless supplied by the Idempotency-Key header; when both are present they must match."`
 	Command           BloemPolicyCommand `json:"command"`
 }
 

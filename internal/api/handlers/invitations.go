@@ -20,7 +20,6 @@ import (
 type InvitationHandler struct {
 	service      *invitations.Service
 	accessGroups access.GroupPolicyProvider
-	bloemInvitationHandlerExt
 }
 
 // NewInvitationHandler creates a new InvitationHandler.
@@ -68,19 +67,12 @@ func (h *InvitationHandler) HandleLookupInvitation(w http.ResponseWriter, r *htt
 // success it returns the same login response shape as signup, so clients
 // reuse their existing session plumbing.
 func (h *InvitationHandler) HandleAcceptInvitation(w http.ResponseWriter, r *http.Request) {
-	body, ok := bufferBloemAuthRequestBody(w, r)
-	if !ok {
-		return
-	}
 	var req acceptInvitationRequest
 	if !decodeAuthRequestBody(w, r, &req, false) {
 		return
 	}
 	if len(req.Password) < 8 {
 		writeError(w, http.StatusBadRequest, "weak_password", "Password must be at least 8 characters")
-		return
-	}
-	if h.bloemLifecycleAcceptInvitation(w, r, body, req.Password) {
 		return
 	}
 

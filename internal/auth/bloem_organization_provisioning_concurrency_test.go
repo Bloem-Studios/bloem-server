@@ -84,7 +84,6 @@ func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 		request := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/invitations/"+tokens[i]+"/accept",
 			bytes.NewBufferString(`{"password":"concurrent-invitation-password"}`))
 		request.Header.Set("Content-Type", "application/json")
-		request.Header.Set("Idempotency-Key", fmt.Sprintf("bloem-concurrent-invitation-%d", i))
 		request.Header.Set("User-Agent", "BloemProvisioningConcurrency/1")
 		recorder := httptest.NewRecorder()
 		router.ServeHTTP(recorder, request)
@@ -110,33 +109,20 @@ func TestBloemInvitationOrganizationProvisioningConcurrent(t *testing.T) {
 		}
 		seed := seeds[outcome.accountID]
 		bloemAssertProvisionedAccount(t, pool, emails[outcome.index], organizationID, seed)
-		var accepted, profile, session, receipt int
+		var accepted, profile, session int
 		if err := pool.QueryRow(ctx, `SELECT
 			(SELECT count(*) FROM invitations WHERE id=$1 AND organization_id=$2
 			 AND accepted_user_id=$3 AND accepted_at IS NOT NULL AND revoked_at IS NULL),
 			(SELECT count(*) FROM user_profiles WHERE user_id=$3 AND organization_id=$2),
-			(SELECT count(*) FROM auth_sessions WHERE user_id=$3 AND revoked_at IS NULL),
-			(SELECT count(*) FROM lifecycle_request_receipts r
-			 JOIN lifecycle_request_receipt_targets target USING (idempotency_key_digest)
-			 JOIN users u ON u.id=target.account_id AND u.account_incarnation_id=target.account_incarnation_id
-			 JOIN user_profiles p ON p.id=target.profile_id AND p.user_id=u.id AND p.organization_id=target.organization_id
-			 WHERE r.route_id='invitation.accept' AND r.state='completed' AND r.response_status=201
-			 AND target.account_id=$3 AND target.organization_id=$2 AND target.membership_id=$4)`,
-			invitationIDs[outcome.index], organizationID, outcome.accountID, seed.membershipID).
-			Scan(&accepted, &profile, &session, &receipt); err != nil {
+			(SELECT count(*) FROM auth_sessions WHERE user_id=$3 AND revoked_at IS NULL)`,
+			invitationIDs[outcome.index], organizationID, outcome.accountID).
+			Scan(&accepted, &profile, &session); err != nil {
 			t.Fatal(err)
 		}
-		if accepted != 1 || profile != 1 || session != 1 || receipt != 1 {
-			t.Fatalf("invitation %d committed accepted/profile/session/receipt counts=%d/%d/%d/%d, want 1/1/1/1",
-				outcome.index, accepted, profile, session, receipt)
+		if accepted != 1 || profile != 1 || session != 1 {
+			t.Fatalf("invitation %d committed accepted/profile/session counts=%d/%d/%d, want 1/1/1",
+				outcome.index, accepted, profile, session)
 		}
-	}
-	var receipts int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM lifecycle_request_receipts WHERE route_id='invitation.accept'`).Scan(&receipts); err != nil {
-		t.Fatal(err)
-	}
-	if receipts != 2 {
-		t.Fatalf("invitation receipt count=%d, want exactly 2", receipts)
 	}
 }
 
@@ -220,17 +206,16 @@ func (b *bloemSeededMembershipBarrier) waitForPeer(ctx context.Context, tx pgx.T
 	}
 	seed := bloemMembershipSeed{accountID: accountID}
 	var count int
-	var isolation string
-	if err := tx.QueryRow(ctx, `SELECT m.id, pg_backend_pid(), current_setting('transaction_isolation'),
+	if err := tx.QueryRow(ctx, `SELECT m.id, pg_backend_pid(),
 		(SELECT count(*) FROM organization_memberships WHERE account_id=$1)
 		FROM organization_memberships m JOIN users u ON u.id=m.account_id
 		WHERE m.account_id=$1 AND m.organization_id=$2 AND m.status='active' AND m.legacy_role=$3
 		AND u.account_incarnation_id IS NOT NULL`, accountID, organizationID, role).
-		Scan(&seed.membershipID, &seed.backendPID, &isolation, &count); err != nil {
+		Scan(&seed.membershipID, &seed.backendPID, &count); err != nil {
 		return fmt.Errorf("observe seeded account and membership: %w", err)
 	}
-	if count != 1 || isolation != "repeatable read" {
-		return errors.New("barrier requires exactly one seeded membership and repeatable read")
+	if count != 1 {
+		return errors.New("barrier requires exactly one seeded membership")
 	}
 	select {
 	case b.arrived <- seed:

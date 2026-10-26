@@ -1,15 +1,10 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,9 +14,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/cache"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -31,28 +24,12 @@ type DirectEntitlementProvisioner interface {
 	ApplyDefaultAccountTemplate(context.Context, int, int, string, int64, bool) (entitlements.ApplyResult, error)
 }
 
-type transactionalDirectEntitlementProvisioner interface {
-	ApplyDefaultAccountTemplateInTransaction(context.Context, pgx.Tx, int, int, string, int64, bool) (entitlements.ApplyResult, error)
-}
-
-type transactionalAdminUserRepository interface {
-	GetByIDInTransaction(context.Context, pgx.Tx, int) (*models.User, error)
-}
-
-type transactionalAccessGroupValidator interface {
-	GetInTransaction(context.Context, pgx.Tx, uuid.UUID, int64) (*access.TenantGroup, error)
-}
-
 // AccountPolicyReader exposes only authoritative Server-side policy state.
 // Callers cannot supply an expected template or cohort identity through this
 // boundary.
 type AccountPolicyReader interface {
 	GetAccountPolicy(context.Context, uuid.UUID, int) (entitlements.AccountPolicySnapshot, error)
 	GetAccountPolicies(context.Context, uuid.UUID, []int) ([]entitlements.AccountPolicySnapshotResult, time.Time, error)
-}
-
-type transactionalImpersonationService interface {
-	StartImpersonationInTransaction(context.Context, pgx.Tx, int, int, string, string) (*auth.TokenPair, *models.User, *models.User, error)
 }
 
 // SetProfileHandler wires the same fully configured profile handler used by
@@ -104,13 +81,6 @@ func (h *AdminHandler) SetPlatformEntitlementBulk(
 // accounts created by the admin API.
 func (h *AdminHandler) SetMembershipProvisioner(provisioner auth.MembershipProvisioner) {
 	h.accountProvisioner.SetMembershipProvisioner(provisioner)
-}
-
-// SetLifecycleIdempotency installs the durable receipt coordinator used by
-// lifecycle mutation handlers. Both dependencies are required together.
-func (h *AdminHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
-	h.lifecycle = coordinator
-	h.lifecycleDigest = digester
 }
 
 // createTenantUser creates an account inside a specific tenant organization
@@ -236,334 +206,11 @@ func releaseTenantAccountLink(ctx context.Context, tx pgx.Tx, organizationID uui
 	return nil
 }
 
-var errLifecycleUpdateInsufficientScope = errors.New("lifecycle account update insufficient scope")
-
-var errLifecycleUpdateGroupedAdmin = errors.New("lifecycle account update grouped admin")
-
-var errLifecycleUpdateTenantUnavailable = errors.New("lifecycle account update tenant unavailable")
-
-var errLifecycleUpdateAccessUnavailable = errors.New("lifecycle account update access groups unavailable")
-
-func (h *AdminHandler) handleLifecycleUpdateUser(
-	w http.ResponseWriter,
-	r *http.Request,
-	id int,
-	selector string,
-	body []byte,
-	req updateUserRequest,
-	updateInput models.UpdateUserInput,
-	directEntitlementRequested bool,
-) {
-	claims := apimw.GetClaims(r.Context())
-	if claims == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return
-	}
-	actorIncarnation, err := uuid.Parse(claims.AccountIncarnationID)
-	if err != nil || actorIncarnation == uuid.Nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
-		return
-	}
-	actorID := claims.UserID
-	request := lifecycleidempotency.Request{
-		IdempotencyKey: r.Header.Get("Idempotency-Key"),
-		Binding: lifecycleidempotency.Binding{
-			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
-			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: "account.update",
-			RequestHash:  h.lifecycleDigest(r.Method, "account.update", map[string]string{"id": selector}, r.URL.Query(), body),
-			TargetSource: lifecycleidempotency.TargetPathAccount,
-		},
-		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-			if directEntitlementRequested {
-				rows, err := tx.Query(ctx, `
-					SELECT organizations.id
-					FROM organizations
-					JOIN organization_memberships ON organization_memberships.organization_id=organizations.id
-					WHERE organization_memberships.account_id=$1
-					ORDER BY organizations.id
-					FOR UPDATE OF organizations`, id)
-				if err != nil {
-					return nil, fmt.Errorf("lock account organizations: %w", err)
-				}
-				for rows.Next() {
-					var organizationID uuid.UUID
-					if err := rows.Scan(&organizationID); err != nil {
-						rows.Close()
-						return nil, err
-					}
-				}
-				if err := rows.Err(); err != nil {
-					rows.Close()
-					return nil, err
-				}
-				rows.Close()
-			}
-			return lifecycleidempotency.ResolveAccountTargets(ctx, tx, id)
-		},
-	}
-	var revokeSessions bool
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		users, ok := h.userRepo.(transactionalAdminUserRepository)
-		if !ok {
-			return lifecycleidempotency.Result{}, errors.New("account repository does not support caller-owned transactions")
-		}
-		current, err := users.GetByIDInTransaction(ctx, tx, id)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		actor, err := requestOwnerActor(ctx, h.userRepo)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		if err := auth.CheckOwnerUpdate(actor, current, updateInput); err != nil {
-			return lifecycleidempotency.Result{}, ownerError(err)
-		}
-		if len(claims.APIKeyScopes) > 0 {
-			if req.Role != nil && *req.Role == roleAdmin {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateInsufficientScope
-			}
-			if (req.Password != nil || req.Role != nil) && current.Role == roleAdmin {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateInsufficientScope
-			}
-		}
-		if req.AccessGroupID.Set && req.AccessGroupID.Value != nil {
-			resultingRole := current.Role
-			if req.Role != nil {
-				resultingRole = *req.Role
-			}
-			if resultingRole == roleAdmin {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateGroupedAdmin
-			}
-			if h.AccessGroups == nil {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateAccessUnavailable
-			}
-			tenant, exists := tenancy.FromContext(ctx)
-			if !exists || tenant.OrganizationID == uuid.Nil {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateTenantUnavailable
-			}
-			groups, ok := h.AccessGroups.(transactionalAccessGroupValidator)
-			if !ok {
-				return lifecycleidempotency.Result{}, errLifecycleUpdateAccessUnavailable
-			}
-			if _, err := groups.GetInTransaction(ctx, tx, tenant.OrganizationID, *req.AccessGroupID.Value); err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
-		}
-		revokeSessions = updateRequiresSessionRevocation(current, updateInput)
-		if _, err := h.accountProvisioner.UpdateUserInTransaction(ctx, tx, id, updateInput); err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		var appliedEntitlementRevision int64
-		if directEntitlementRequested {
-			entitlementWriter, ok := h.directEntitlements.(transactionalDirectEntitlementProvisioner)
-			if !ok {
-				return lifecycleidempotency.Result{}, errors.New("entitlement store does not support caller-owned transactions")
-			}
-			applied, err := entitlementWriter.ApplyDefaultAccountTemplateInTransaction(ctx, tx, actorID, id, req.EntitlementTemplateKey, req.EntitlementTemplateRevision, false)
-			if err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
-			appliedEntitlementRevision = applied.TemplateRevision
-		}
-		if revokeSessions {
-			if h.pool == nil {
-				return lifecycleidempotency.Result{}, errors.New("session repository does not support caller-owned transactions")
-			}
-			sessions := auth.NewSessionRepository(h.pool)
-			if err := sessions.RevokeAllByUserInTransaction(ctx, tx, id); err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
-			if err := sessions.RevokeAllByImpersonatorInTransaction(ctx, tx, id); err != nil {
-				return lifecycleidempotency.Result{}, err
-			}
-		}
-		updated, err := users.GetByIDInTransaction(ctx, tx, id)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		var groupPolicy *access.GroupPolicy
-		if access.GroupApplies(updated) && h.AccessGroups != nil {
-			if tenant, exists := tenancy.FromContext(ctx); exists {
-				groups, ok := h.AccessGroups.(transactionalAccessGroupValidator)
-				if !ok {
-					return lifecycleidempotency.Result{}, errLifecycleUpdateAccessUnavailable
-				}
-				group, err := groups.GetInTransaction(ctx, tx, tenant.OrganizationID, *updated.AccessGroupID)
-				if err != nil && !errors.Is(err, access.ErrGroupNotFound) {
-					return lifecycleidempotency.Result{}, err
-				}
-				if group != nil {
-					policy := group.Policy()
-					groupPolicy = &policy
-				}
-			}
-		}
-		response := toAdminUserResponse(updated, groupPolicy)
-		response.AppliedEntitlementRevision = appliedEntitlementRevision
-		payload, err := json.Marshal(response)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		return lifecycleidempotency.Result{Status: http.StatusOK, Body: payload, Headers: map[string][]string{"Content-Type": {"application/json"}}}, nil
-	})
-	if err != nil {
-		slog.ErrorContext(r.Context(), "lifecycle account update failed", "component", "api", "user_id", id, "error", err)
-		var apiErr *APIError
-		switch {
-		case errors.As(err, &apiErr):
-			writeAPIError(w, apiErr)
-		case errors.Is(err, errLifecycleUpdateInsufficientScope):
-			writeError(w, http.StatusForbidden, "insufficient_scope", "A scoped API key may not perform this account update")
-		case errors.Is(err, errLifecycleUpdateGroupedAdmin):
-			writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Admin accounts cannot belong to an access group")
-		case errors.Is(err, errLifecycleUpdateTenantUnavailable):
-			writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
-		case errors.Is(err, errLifecycleUpdateAccessUnavailable):
-			writeError(w, http.StatusInternalServerError, "internal_error", "Access groups are not configured")
-		case errors.Is(err, access.ErrGroupNotFound):
-			writeError(w, http.StatusUnprocessableEntity, "unprocessable_entity", "Invalid access_group_id")
-		case errors.Is(err, entitlements.ErrTemplateNotFound), errors.Is(err, entitlements.ErrTemplateUnavailable):
-			writeError(w, http.StatusUnprocessableEntity, "entitlement_template_unavailable", "Entitlement template revision is unavailable")
-		case errors.Is(err, lifecycleidempotency.ErrKeyRequired):
-			writeError(w, http.StatusPreconditionRequired, "idempotency_key_required", "Idempotency-Key is required for this lifecycle mutation")
-		case errors.Is(err, lifecycleidempotency.ErrKeyMalformed):
-			writeError(w, http.StatusBadRequest, "idempotency_key_invalid", "Idempotency-Key must be a bounded opaque ASCII value")
-		case errors.Is(err, lifecycleidempotency.ErrConflict):
-			writeError(w, http.StatusConflict, "idempotency_key_conflict", "Idempotency-Key conflicts with its original lifecycle request")
-		case errors.Is(err, lifecycleidempotency.ErrTargetNotFound), auth.IsNotFound(err):
-			writeError(w, http.StatusNotFound, "not_found", "User not found")
-		case errors.Is(err, lifecycleidempotency.ErrPending):
-			w.Header().Set("Retry-After", "1")
-			writeError(w, http.StatusServiceUnavailable, "lifecycle_request_pending", "Lifecycle request completion is pending")
-		case errors.Is(err, lifecycleidempotency.ErrInvalidBinding):
-			writeError(w, http.StatusUnauthorized, "unauthorized", "Lifecycle request identity is no longer valid")
-		default:
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to update user")
-		}
-		return
-	}
-	if !result.Replayed && revokeSessions {
-		if h.OnUserSessionsRevoked != nil {
-			err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
-				return h.OnUserSessionsRevoked(callbackCtx, id)
-			})
-			if err != nil {
-				writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke updated user sessions")
-				return
-			}
-		}
-	}
-	for key, values := range result.Headers {
-		for _, value := range values {
-			w.Header().Add(key, value)
-		}
-	}
-	w.WriteHeader(result.Status)
-	_, _ = w.Write(result.Body)
-}
-
-func (h *AdminHandler) handleLifecycleDeleteUser(w http.ResponseWriter, r *http.Request, id int, selector string) {
-	claims := apimw.GetClaims(r.Context())
-	if claims == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return
-	}
-	actorIncarnation, err := uuid.Parse(claims.AccountIncarnationID)
-	if err != nil || actorIncarnation == uuid.Nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
-		return
-	}
-	actorID := claims.UserID
-	request := lifecycleidempotency.Request{
-		IdempotencyKey: r.Header.Get("Idempotency-Key"),
-		Binding: lifecycleidempotency.Binding{
-			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
-			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: "account.delete",
-			RequestHash:  h.lifecycleDigest(r.Method, "account.delete", map[string]string{"id": selector}, r.URL.Query(), nil),
-			TargetSource: lifecycleidempotency.TargetPathAccount,
-		},
-		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-			return lifecycleidempotency.ResolveAccountTargets(ctx, tx, id)
-		},
-	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		users, ok := h.userRepo.(transactionalAdminUserRepository)
-		if !ok {
-			return lifecycleidempotency.Result{}, errors.New("account repository does not support caller-owned transactions")
-		}
-		current, err := users.GetByIDInTransaction(ctx, tx, id)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		actor, err := requestOwnerActor(ctx, h.userRepo)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		if err := auth.CheckOwnerDelete(actor, current); err != nil {
-			return lifecycleidempotency.Result{}, ownerError(err)
-		}
-		if err := h.accountProvisioner.DeleteUserInTransaction(ctx, tx, id); err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
-	})
-	if err != nil {
-		h.writeLifecycleMutationError(w, err)
-		return
-	}
-	if !result.Replayed {
-		if err := h.revokeUserSessions(r.Context(), id); err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to revoke deleted user sessions")
-			return
-		}
-		h.sweepWatchlistTitles(r.Context(), id)
-		h.invalidateStats(r.Context(), cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(id))
-	}
-	for key, values := range result.Headers {
-		for _, value := range values {
-			w.Header().Add(key, value)
-		}
-	}
-	status := result.Status
-	if status == 0 {
-		status = http.StatusNoContent
-	}
-	w.WriteHeader(status)
-	if len(result.Body) > 0 {
-		_, _ = w.Write(result.Body)
-	}
-}
-
-func (h *AdminHandler) writeLifecycleMutationError(w http.ResponseWriter, err error) {
-	var apiErr *APIError
-	switch {
-	case errors.As(err, &apiErr):
-		writeAPIError(w, apiErr)
-	case errors.Is(err, lifecycleidempotency.ErrKeyRequired):
-		writeError(w, http.StatusPreconditionRequired, "idempotency_key_required", "Idempotency-Key is required for this lifecycle mutation")
-	case errors.Is(err, lifecycleidempotency.ErrKeyMalformed):
-		writeError(w, http.StatusBadRequest, "idempotency_key_invalid", "Idempotency-Key must be a bounded opaque ASCII value")
-	case errors.Is(err, lifecycleidempotency.ErrConflict):
-		writeError(w, http.StatusConflict, "idempotency_key_conflict", "Idempotency-Key conflicts with its original lifecycle request")
-	case errors.Is(err, lifecycleidempotency.ErrTargetNotFound), auth.IsNotFound(err):
-		writeError(w, http.StatusNotFound, "not_found", "User not found")
-	case errors.Is(err, lifecycleidempotency.ErrPending):
-		w.Header().Set("Retry-After", "1")
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_request_pending", "Lifecycle request completion is pending")
-	case errors.Is(err, lifecycleidempotency.ErrInvalidBinding):
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Lifecycle request identity is no longer valid")
-	default:
-		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to delete user")
-	}
-}
-
 // bloemAdminHandlerExt holds every Bloem-only AdminHandler dependency so the
 // Silo-owned struct carries a single embedded line.
 type bloemAdminHandlerExt struct {
-	sessionRepo     adminUserSessionRepository
-	profileHandler  *ProfileHandler
-	lifecycle       lifecycleidempotency.Coordinator
-	lifecycleDigest lifecycleidempotency.RequestDigester
+	sessionRepo    adminUserSessionRepository
+	profileHandler *ProfileHandler
 	// tenantStore gates tenant-scoped account creation (bloem-park growth
 	// G2); nil means tenants are not wired and an organization_id request
 	// is refused.
@@ -575,46 +222,6 @@ type bloemAdminHandlerExt struct {
 	platformEntitlementOrganizations PlatformEntitlementBulkOrganizationStore
 	platformEntitlementAuthorizer    auth.PlatformAdminAuthorizer
 	platformEntitlementWorker        AdminPeopleWorkerWake
-}
-
-// readBloemRequestBody reads the whole admin request body so lifecycle receipts
-// can digest it. A read failure answers the handler's usual 400.
-func readBloemRequestBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
-		return nil, false
-	}
-	return body, true
-}
-
-// bufferBloemRequestBody reads the whole body like readBloemRequestBody and puts
-// it back on the request, so the Silo decoder below it reads the same bytes.
-func bufferBloemRequestBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
-	body, ok := readBloemRequestBody(w, r)
-	if !ok {
-		return nil, false
-	}
-	r.Body = io.NopCloser(bytes.NewReader(body))
-	return body, true
-}
-
-// Public setup/signup receipts use the same bound as Silo's auth decoder before
-// buffering the bytes needed for their lifecycle digest.
-func bufferBloemAuthRequestBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxAuthRequestBodyBytes)
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		var tooLarge *http.MaxBytesError
-		if errors.As(err, &tooLarge) {
-			writeError(w, http.StatusRequestEntityTooLarge, "too_large", "Request body is too large")
-		} else {
-			writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
-		}
-		return nil, false
-	}
-	r.Body = io.NopCloser(bytes.NewReader(body))
-	return body, true
 }
 
 // withAppliedEntitlementRevision stamps the applied direct-entitlement
@@ -660,19 +267,11 @@ func bloemCreateUserGroupOrganization(w http.ResponseWriter, r *http.Request, re
 	return *groupOrgID, true
 }
 
-// bloemCreateUser performs the Bloem account creation paths (lifecycle
-// receipts, tenant organizations, direct entitlement templates). It returns
-// ok=false once it has written the response itself.
-func (h *AdminHandler) bloemCreateUser(w http.ResponseWriter, r *http.Request, body []byte, req createUserRequest, accountInput auth.CreateAccountInput, directEntitlementRequested bool) (*models.User, int64, bool) {
+// bloemCreateUser performs the Bloem account creation paths (tenant
+// organizations, direct entitlement templates). It returns ok=false once it
+// has written the response itself.
+func (h *AdminHandler) bloemCreateUser(w http.ResponseWriter, r *http.Request, req createUserRequest, accountInput auth.CreateAccountInput, directEntitlementRequested bool) (*models.User, int64, bool) {
 	var err error
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleCreateUser(w, r, body, req, accountInput, directEntitlementRequested)
-		return nil, 0, false
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return nil, 0, false
-	}
 
 	var user *models.User
 	var appliedEntitlementRevision int64
@@ -734,23 +333,8 @@ func (h *AdminHandler) bloemCreateUser(w http.ResponseWriter, r *http.Request, b
 	return user, appliedEntitlementRevision, true
 }
 
-// bloemLifecycleUpdateUser dispatches PUT /admin/users/{id} to the durable
-// lifecycle receipt path when it is wired, and refuses an Idempotency-Key the
-// server cannot honor. It reports whether it wrote the response.
-func (h *AdminHandler) bloemLifecycleUpdateUser(w http.ResponseWriter, r *http.Request, id int, selector string, body []byte, req updateUserRequest, updateInput models.UpdateUserInput, directEntitlementRequested bool) bool {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleUpdateUser(w, r, id, selector, body, req, updateInput, directEntitlementRequested)
-		return true
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return true
-	}
-	return false
-}
-
 // bloemPrepareUpdateUser runs the scoped-API-key, grouped-admin and
-// tenant-scoped access-group checks for the non-lifecycle update path.
+// tenant-scoped access-group checks for the update path.
 func (h *AdminHandler) bloemPrepareUpdateUser(w http.ResponseWriter, r *http.Request, id int, req *updateUserRequest) (*models.User, bool) {
 	currentUser, blocked := h.rejectScopedAPIKeyUpdate(w, r, id, req)
 	if blocked {
@@ -811,34 +395,6 @@ func (h *AdminHandler) bloemApplyUpdateUserEntitlement(w http.ResponseWriter, r 
 	return appliedEntitlementRevision, true
 }
 
-// bloemLifecycleDeleteUser dispatches DELETE /admin/users/{id} to the
-// lifecycle receipt path. It reports whether it wrote the response.
-func (h *AdminHandler) bloemLifecycleDeleteUser(w http.ResponseWriter, r *http.Request, id int, selector string) bool {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleDeleteUser(w, r, id, selector)
-		return true
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return true
-	}
-	return false
-}
-
-// bloemLifecycleImpersonateUser dispatches POST /admin/users/{id}/impersonate
-// to the lifecycle receipt path. It reports whether it wrote the response.
-func (h *AdminHandler) bloemLifecycleImpersonateUser(w http.ResponseWriter, r *http.Request, claims *auth.Claims, targetID int) bool {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleImpersonateUser(w, r, claims, targetID)
-		return true
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return true
-	}
-	return false
-}
-
 // bloemValidateUpdateUserEntitlement normalizes and validates the Bloem
 // direct-entitlement fields on PUT /admin/users/{id}.
 func (h *AdminHandler) bloemValidateUpdateUserEntitlement(w http.ResponseWriter, req *updateUserRequest) (bool, bool) {
@@ -848,7 +404,7 @@ func (h *AdminHandler) bloemValidateUpdateUserEntitlement(w http.ResponseWriter,
 		writeError(w, http.StatusBadRequest, "bad_request", "entitlement_template_key and a positive entitlement_template_revision are required together")
 		return false, false
 	}
-	if directEntitlementRequested && h.directEntitlements == nil && (h.lifecycle == nil || h.lifecycleDigest == nil) {
+	if directEntitlementRequested && h.directEntitlements == nil {
 		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Entitlement templates are not configured")
 		return false, false
 	}

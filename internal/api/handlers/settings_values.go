@@ -39,7 +39,6 @@ type SettingValuesHandler struct {
 	resolver       *settingsresolve.Resolver
 	libraryLookup  libraryLookup
 	languageSource languageSuggestionSource
-	bloemSettingValuesHandlerExt
 
 	// DeviceSightings registers the caller's own device on device-scope
 	// writes and effective reads; the router shares one instance with the

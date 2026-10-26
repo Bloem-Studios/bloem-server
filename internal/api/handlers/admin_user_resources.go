@@ -14,12 +14,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/Silo-Server/silo-server/internal/access"
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 	"github.com/Silo-Server/silo-server/internal/settingscontract"
@@ -167,14 +164,6 @@ func (h *AdminHandler) HandleListUserProfiles(w http.ResponseWriter, r *http.Req
 
 // HandleCreateUserProfile handles POST /admin/users/{user_id}/profiles.
 func (h *AdminHandler) HandleCreateUserProfile(w http.ResponseWriter, r *http.Request) {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleCreateUserProfile(w, r)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return
@@ -288,14 +277,6 @@ func (h *AdminHandler) HandleCreateUserProfile(w http.ResponseWriter, r *http.Re
 
 // HandleUpdateUserProfile handles PUT /admin/users/{user_id}/profiles/{profile_id}.
 func (h *AdminHandler) HandleUpdateUserProfile(w http.ResponseWriter, r *http.Request) {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleUpdateUserProfile(w, r)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return
@@ -398,14 +379,6 @@ func (h *AdminHandler) HandleUpdateUserProfile(w http.ResponseWriter, r *http.Re
 
 // HandleDeleteUserProfile handles DELETE /admin/users/{user_id}/profiles/{profile_id}.
 func (h *AdminHandler) HandleDeleteUserProfile(w http.ResponseWriter, r *http.Request) {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleDeleteUserProfile(w, r)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return
@@ -561,14 +534,6 @@ func (h *AdminHandler) deviceBelongsToAnotherUser(ctx context.Context, selectedU
 
 // HandleDeleteUserDevice handles DELETE /admin/users/{user_id}/devices/{device_id}.
 func (h *AdminHandler) HandleDeleteUserDevice(w http.ResponseWriter, r *http.Request) {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleDeleteUserDevice(w, r)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return
@@ -696,14 +661,6 @@ func (h *AdminHandler) HandleListUserAuthSessions(w http.ResponseWriter, r *http
 // HandleRevokeUserAuthSession handles DELETE
 // /admin/users/{user_id}/auth-sessions/{session_id}.
 func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *http.Request) {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleRevokeUserSessions(w, r, false)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return
@@ -783,14 +740,6 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 // HandleRevokeAllUserAuthSessions handles DELETE
 // /admin/users/{user_id}/auth-sessions.
 func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r *http.Request) {
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecycleRevokeUserSessions(w, r, true)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
 	resources, ok := h.loadAdminUserResources(w, r)
 	if !ok {
 		return
@@ -852,188 +801,6 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 	if h.OnUserSessionsRevoked != nil {
 		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
 			return h.OnUserSessionsRevoked(callbackCtx, resources.user.ID)
-		}); err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
-			return
-		}
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (h *AdminHandler) handleLifecycleRevokeUserSessions(w http.ResponseWriter, r *http.Request, all bool) {
-	userSelector := strings.TrimSpace(chi.URLParam(r, "user_id"))
-	userID, err := strconv.Atoi(userSelector)
-	if err != nil || userID <= 0 {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user id")
-		return
-	}
-	sessionID := strings.TrimSpace(chi.URLParam(r, "session_id"))
-	if !all && sessionID == "" {
-		writeError(w, http.StatusBadRequest, "bad_request", "Session ID is required")
-		return
-	}
-	claims := apimw.GetClaims(r.Context())
-	if claims == nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return
-	}
-	actorIncarnation, err := uuid.Parse(claims.AccountIncarnationID)
-	if err != nil || actorIncarnation == uuid.Nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Authenticated account identity is incomplete")
-		return
-	}
-	routeID := "account.session.delete"
-	selectors := map[string]string{"user_id": userSelector, "session_id": sessionID}
-	if all {
-		routeID = "account.sessions.delete"
-		delete(selectors, "session_id")
-	}
-	actorID := claims.UserID
-	organizationID := adminResourceOrganization(r.Context())
-	var (
-		sessionExists    bool
-		scopedProfileIDs []string
-	)
-	request := lifecycleidempotency.Request{
-		IdempotencyKey: r.Header.Get("Idempotency-Key"),
-		Binding: lifecycleidempotency.Binding{
-			ActorKind: lifecycleidempotency.ActorAuthenticatedAccount, ActorAccountID: &actorID,
-			ActorAccountIncarnationID: &actorIncarnation, Method: r.Method, RouteID: routeID,
-			RequestHash:  h.lifecycleDigest(r.Method, routeID, selectors, r.URL.Query(), nil),
-			TargetSource: lifecycleidempotency.TargetPathAccount,
-		},
-		ResolveTargets: func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-			targets, err := lifecycleidempotency.ResolveAccountTargets(ctx, tx, userID)
-			if err != nil {
-				return nil, err
-			}
-			if organizationID != uuid.Nil {
-				filtered := targets[:0]
-				for _, target := range targets {
-					if target.OrganizationID == organizationID {
-						filtered = append(filtered, target)
-					}
-				}
-				if len(filtered) == 0 {
-					return nil, lifecycleidempotency.ErrTargetNotFound
-				}
-				targets = filtered
-			}
-			if all {
-				if organizationID == uuid.Nil {
-					return targets, nil
-				}
-				if err := lockOrganizationMembership(ctx, tx, organizationID, userID); err != nil {
-					return nil, err
-				}
-				rows, err := tx.Query(ctx, `SELECT id FROM user_profiles WHERE user_id=$1 AND organization_id=$2 ORDER BY id FOR UPDATE`, userID, organizationID)
-				if err != nil {
-					return nil, fmt.Errorf("lock organization profiles: %w", err)
-				}
-				defer rows.Close()
-				for rows.Next() {
-					var profileID string
-					if err := rows.Scan(&profileID); err != nil {
-						return nil, err
-					}
-					scopedProfileIDs = append(scopedProfileIDs, profileID)
-				}
-				if err := rows.Err(); err != nil {
-					return nil, err
-				}
-				for _, profileID := range scopedProfileIDs {
-					target := targets[0]
-					target.ProfileID = profileID
-					targets = append(targets, target)
-				}
-				return targets, nil
-			}
-
-			var (
-				ownerID   int
-				profileID *string
-			)
-			err = tx.QueryRow(ctx, `SELECT user_id,profile_id FROM auth_sessions WHERE id=$1 FOR UPDATE`, sessionID).Scan(&ownerID, &profileID)
-			if errors.Is(err, pgx.ErrNoRows) {
-				return targets, nil
-			}
-			if err != nil {
-				return nil, fmt.Errorf("lock authentication session: %w", err)
-			}
-			if ownerID != userID {
-				return nil, auth.ErrSessionNotFound
-			}
-			if organizationID != uuid.Nil {
-				if profileID == nil {
-					return nil, auth.ErrSessionNotFound
-				}
-				var exists bool
-				if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM user_profiles WHERE user_id=$1 AND id=$2 AND organization_id=$3)`, userID, *profileID, organizationID).Scan(&exists); err != nil {
-					return nil, err
-				}
-				if !exists {
-					return nil, auth.ErrSessionNotFound
-				}
-				scopedProfileIDs = []string{*profileID}
-			}
-			sessionExists = true
-			targets[0].ResourceID = sessionID
-			if profileID != nil {
-				targets[0].ProfileID = *profileID
-			}
-			return targets, nil
-		},
-	}
-	mutated := all
-	accountWide := false
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		if all {
-			query := `UPDATE auth_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL`
-			args := []any{userID}
-			if organizationID != uuid.Nil {
-				query += ` AND profile_id=ANY($2::text[])`
-				args = append(args, scopedProfileIDs)
-			}
-			if _, err := tx.Exec(ctx, query, args...); err != nil {
-				return lifecycleidempotency.Result{}, fmt.Errorf("revoke account sessions: %w", err)
-			}
-			if organizationID != uuid.Nil {
-				// Bloem: see revokeOrganizationMemberAccess.
-				revokedAccountWide, err := revokeOrganizationMemberAccess(ctx, tx, organizationID, userID)
-				if err != nil {
-					return lifecycleidempotency.Result{}, err
-				}
-				accountWide = revokedAccountWide
-			}
-			return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
-		}
-		if !sessionExists {
-			return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
-		}
-		if _, err := tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at=NOW() WHERE id=$1`, sessionID); err != nil {
-			return lifecycleidempotency.Result{}, fmt.Errorf("revoke authentication session: %w", err)
-		}
-		mutated = true
-		return lifecycleidempotency.Result{Status: http.StatusNoContent}, nil
-	})
-	if err != nil {
-		if errors.Is(err, auth.ErrSessionNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "Authentication session not found")
-			return
-		}
-		h.writeLifecycleMutationError(w, err)
-		return
-	}
-	if !result.Replayed && mutated && organizationID != uuid.Nil && !accountWide && h.OnUserProfileSessionsRevoked != nil {
-		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
-			return h.OnUserProfileSessionsRevoked(callbackCtx, userID, scopedProfileIDs)
-		}); err != nil {
-			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
-			return
-		}
-	} else if !result.Replayed && mutated && h.OnUserSessionsRevoked != nil {
-		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
-			return h.OnUserSessionsRevoked(callbackCtx, userID)
 		}); err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
 			return

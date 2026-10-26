@@ -14,7 +14,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/invitations"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -71,13 +70,6 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	if tenants != nil {
 		verifier := auth.NewAccountCredentialVerifier(auth.NewUserRepository(deps.DB))
 		platformHandler = handlers.NewBloemAdminPlatformHandler(tenants, verifier)
-		if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
-			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-			platformHandler.SetLifecycleIdempotency(
-				lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
-				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-			)
-		}
 		organizationHandler = handlers.NewBloemAdminOrganizationHandler(
 			tenants,
 			access.NewTenantGroupStore(deps.DB),
@@ -95,13 +87,6 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			platformAdmins = auth.NewPlatformAdminAuthorizer(auth.NewUserRepository(deps.DB))
 		}
 		entitlementHandler.SetPlatformAdminAuthorizer(platformAdmins)
-		if deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
-			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-			entitlementHandler.SetLifecycleIdempotency(
-				lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
-				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-			)
-		}
 	}
 	peopleService := deps.AdminPeopleService
 	if peopleService == nil && deps.DB != nil && deps.Config != nil {
@@ -109,13 +94,6 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	}
 	if peopleService != nil {
 		peopleHandler = handlers.NewBloemAdminPeopleHandlerWithWake(peopleService, deps.AdminPeopleWorker)
-		if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" {
-			lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-			peopleHandler.SetLifecycleIdempotency(
-				lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
-				lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-			)
-		}
 		if deps.DB != nil {
 			peopleHandler.SetCohortStore(entitlements.NewTemplateStore(deps.DB))
 		}
@@ -130,9 +108,6 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 		if audio, ok := deps.NativeStorageManagement.Capabilities.(interface{ NativeAudioReady(context.Context) bool }); ok {
 			system.SetNativeAudioReadiness(audio.NativeAudioReady)
 		}
-	}
-	if deps.DB != nil {
-		system.SetLifecycleIdempotencyPhase(lifecycleidempotency.NewPostgresStore(deps.DB).CurrentPhase)
 	}
 	// Advertise from the condition that actually mounts /auth/profile-login:
 	// the auth stack builds only with both a database and a config, and a

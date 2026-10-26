@@ -31,7 +31,7 @@ func TestBloemLibraryPolicyWidth(t *testing.T) {
 			t.Run(tc.name+"/"+mode, func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 				defer cancel()
-				pool := newInvitationLifecycleDatabase(t, ctx)
+				pool := newInvitationTestDatabase(t, ctx)
 				if _, err := pool.Exec(ctx, `INSERT INTO media_folders(id,name,type,enabled) VALUES($1,'Width fixture','movies',true)`, tc.id); err != nil {
 					t.Fatal(err)
 				}

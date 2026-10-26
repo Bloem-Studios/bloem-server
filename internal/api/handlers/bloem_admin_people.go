@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -13,11 +12,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 type BloemAdminPeopleService interface {
@@ -43,30 +40,9 @@ type BloemAdminPeopleCohortStore interface {
 }
 
 type BloemAdminPeopleHandler struct {
-	service         BloemAdminPeopleService
-	worker          AdminPeopleWorkerWake
-	cohortStore     BloemAdminPeopleCohortStore
-	lifecycle       lifecycleidempotency.Coordinator
-	lifecycleDigest lifecycleidempotency.RequestDigester
-}
-
-func (h *BloemAdminPeopleHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
-	h.lifecycle = coordinator
-	h.lifecycleDigest = digester
-}
-
-type bloemAdminPeopleLifecycleService interface {
-	UpdateMembershipInTransaction(context.Context, pgx.Tx, uuid.UUID, int, int, int64, tenancy.MembershipStatus) (adminpeople.PersonSummary, error)
-	UpdateProfileGroupInTransaction(context.Context, pgx.Tx, uuid.UUID, int, int, string, int64, int) (adminpeople.PersonSummary, error)
-}
-
-type bloemAdminPeopleLifecycleJobService interface {
-	EnqueueBulkInTransaction(context.Context, pgx.Tx, uuid.UUID, int, adminpeople.BulkAction) (adminpeople.BulkResult, error)
-	EnqueuePolicyBulkForScopeInTransaction(context.Context, pgx.Tx, uuid.UUID, int, adminpeople.PolicyBulkAction, adminpeople.PolicyOperationScope) (adminpeople.BulkResult, error)
-}
-
-type bloemAdminPeopleLifecycleSelectionResolver interface {
-	ResolveLifecycleSelectionTargets(context.Context, pgx.Tx, uuid.UUID, string) ([]lifecycleidempotency.TargetBinding, error)
+	service     BloemAdminPeopleService
+	worker      AdminPeopleWorkerWake
+	cohortStore BloemAdminPeopleCohortStore
 }
 
 func NewBloemAdminPeopleHandler(service BloemAdminPeopleService) *BloemAdminPeopleHandler {
@@ -250,20 +226,8 @@ func (h *BloemAdminPeopleHandler) HandleCreateBulkJob(w http.ResponseWriter, r *
 	if !ok {
 		return
 	}
-	body, ok := captureBloemLifecycleBody(w, r)
-	if !ok {
-		return
-	}
 	var action adminpeople.BulkAction
 	if !decodeAdminPlatformJSON(w, r, &action) {
-		return
-	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecyclePeopleBulkJob(w, r, tenant, body, action)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
 	ctx := adminPeopleMutationContext(r)
@@ -285,29 +249,19 @@ func (h *BloemAdminPeopleHandler) HandleCreatePolicyJob(w http.ResponseWriter, r
 	if !ok {
 		return
 	}
-	body, ok := captureBloemLifecycleBody(w, r)
-	if !ok {
-		return
-	}
 	var action adminpeople.PolicyBulkAction
 	if !decodeAdminPlatformJSON(w, r, &action) {
 		return
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		handleKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
-		if action.IdempotencyKey != "" && handleKey != "" && action.IdempotencyKey != handleKey {
-			writeError(w, http.StatusConflict, "idempotency_key_conflict", "Header and command idempotency keys must match")
-			return
-		}
-		if handleKey != "" {
-			action.IdempotencyKey = handleKey
-		}
-		h.handleLifecyclePeoplePolicyJob(w, r, tenant, body, action)
+	// The job's own idempotency key makes a retry replay the original job; a
+	// header key is the same key.
+	handleKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	if action.IdempotencyKey != "" && handleKey != "" && action.IdempotencyKey != handleKey {
+		writeError(w, http.StatusConflict, "idempotency_key_conflict", "Header and command idempotency keys must match")
 		return
 	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
+	if handleKey != "" {
+		action.IdempotencyKey = handleKey
 	}
 	result, err := h.service.EnqueuePolicyBulk(adminPeopleMutationContext(r), tenant.OrganizationID, tenant.AccountID, action)
 	if err != nil {
@@ -391,10 +345,6 @@ func (h *BloemAdminPeopleHandler) HandleUpdateMembership(w http.ResponseWriter, 
 	if !ok {
 		return
 	}
-	body, ok := captureBloemLifecycleBody(w, r)
-	if !ok {
-		return
-	}
 	var request struct {
 		ExpectedRevision int64                    `json:"expected_revision"`
 		Status           tenancy.MembershipStatus `json:"status"`
@@ -404,14 +354,6 @@ func (h *BloemAdminPeopleHandler) HandleUpdateMembership(w http.ResponseWriter, 
 	}
 	if request.ExpectedRevision <= 0 || (request.Status != tenancy.MembershipActive && request.Status != tenancy.MembershipSuspended) {
 		writeAdminValidation(w, map[string]string{"request": "must include a current expected_revision and active or suspended status"})
-		return
-	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecyclePeopleMembership(w, r, tenant, body, accountID, request.ExpectedRevision, request.Status)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
 		return
 	}
 	ctx := adminPeopleMutationContext(r)
@@ -439,10 +381,6 @@ func (h *BloemAdminPeopleHandler) HandleUpdateProfile(w http.ResponseWriter, r *
 		writeError(w, http.StatusNotFound, "not_found", "Administrative resource not found")
 		return
 	}
-	body, ok := captureBloemLifecycleBody(w, r)
-	if !ok {
-		return
-	}
 	var request struct {
 		ExpectedRevision int64 `json:"expected_revision"`
 		GroupID          int   `json:"group_id"`
@@ -454,14 +392,6 @@ func (h *BloemAdminPeopleHandler) HandleUpdateProfile(w http.ResponseWriter, r *
 		writeAdminValidation(w, map[string]string{"request": "must include a current expected_revision and group_id"})
 		return
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil {
-		h.handleLifecyclePeopleProfile(w, r, tenant, body, accountID, profileID, request.ExpectedRevision, request.GroupID)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
-	}
 	ctx := adminPeopleMutationContext(r)
 	person, err := h.service.UpdateProfileGroup(ctx, tenant.OrganizationID, tenant.AccountID, accountID, profileID, request.ExpectedRevision, request.GroupID)
 	if err != nil {
@@ -471,162 +401,6 @@ func (h *BloemAdminPeopleHandler) HandleUpdateProfile(w http.ResponseWriter, r *
 	writeJSON(w, http.StatusOK, struct {
 		Person adminpeople.PersonSummary `json:"person"`
 	}{person})
-}
-
-func peopleLifecycleResult(person adminpeople.PersonSummary) (lifecycleidempotency.Result, error) {
-	body, err := json.Marshal(struct {
-		Person adminpeople.PersonSummary `json:"person"`
-	}{person})
-	return lifecycleidempotency.Result{Status: http.StatusOK, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}}, err
-}
-
-func (h *BloemAdminPeopleHandler) lifecycleService() (bloemAdminPeopleLifecycleService, error) {
-	service, ok := h.service.(bloemAdminPeopleLifecycleService)
-	if !ok {
-		return nil, errors.New("lifecycle-safe people service unavailable")
-	}
-	return service, nil
-}
-
-func (h *BloemAdminPeopleHandler) handleLifecyclePeopleMembership(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, accountID int, expectedRevision int64, status tenancy.MembershipStatus) {
-	claims, _ := middleware.GetAdminContextClaims(r.Context())
-	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, "people.membership.update", lifecycleidempotency.TargetExactMembership, map[string]string{"organization_id": tenant.OrganizationID.String(), "account_id": strconv.Itoa(accountID)}, body)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
-		return
-	}
-	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		return resolveBloemAccountMembershipTarget(ctx, tx, tenant.OrganizationID, accountID, "")
-	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		service, err := h.lifecycleService()
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		person, err := service.UpdateMembershipInTransaction(adminPeopleMutationContext(r.WithContext(ctx)), tx, tenant.OrganizationID, tenant.AccountID, accountID, expectedRevision, status)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		return peopleLifecycleResult(person)
-	})
-	if err != nil {
-		if !writeBloemLifecycleError(w, err) {
-			h.writeError(w, r, err, accountID)
-		}
-		return
-	}
-	writeBloemLifecycleResult(w, result)
-}
-
-func (h *BloemAdminPeopleHandler) handleLifecyclePeopleProfile(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, accountID int, profileID string, expectedRevision int64, groupID int) {
-	claims, _ := middleware.GetAdminContextClaims(r.Context())
-	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, "people.profile.update", lifecycleidempotency.TargetPathAccount, map[string]string{"organization_id": tenant.OrganizationID.String(), "account_id": strconv.Itoa(accountID), "profile_id": profileID}, body)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
-		return
-	}
-	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		return resolveBloemAccountMembershipTarget(ctx, tx, tenant.OrganizationID, accountID, profileID)
-	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		service, err := h.lifecycleService()
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		person, err := service.UpdateProfileGroupInTransaction(adminPeopleMutationContext(r.WithContext(ctx)), tx, tenant.OrganizationID, tenant.AccountID, accountID, profileID, expectedRevision, groupID)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		return peopleLifecycleResult(person)
-	})
-	if err != nil {
-		if !writeBloemLifecycleError(w, err) {
-			h.writeError(w, r, err, accountID)
-		}
-		return
-	}
-	writeBloemLifecycleResult(w, result)
-}
-
-func (h *BloemAdminPeopleHandler) lifecycleSelectionRequest(r *http.Request, tenant tenancy.Context, body []byte, routeID, selectionToken string) (lifecycleidempotency.Request, bool) {
-	claims, _ := middleware.GetAdminContextClaims(r.Context())
-	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetStoredSelection, map[string]string{"organization_id": tenant.OrganizationID.String()}, body)
-	if !ok {
-		return lifecycleidempotency.Request{}, false
-	}
-	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		resolver, ok := h.service.(bloemAdminPeopleLifecycleSelectionResolver)
-		if !ok {
-			return nil, errors.New("lifecycle selection resolver unavailable")
-		}
-		return resolver.ResolveLifecycleSelectionTargets(ctx, tx, tenant.OrganizationID, selectionToken)
-	}
-	return request, true
-}
-
-func bulkLifecycleResult(result adminpeople.BulkResult) (lifecycleidempotency.Result, error) {
-	body, err := json.Marshal(struct {
-		Job adminpeople.BulkResult `json:"job"`
-	}{result})
-	return lifecycleidempotency.Result{Status: http.StatusCreated, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}, OperationID: result.JobID}, err
-}
-
-func (h *BloemAdminPeopleHandler) handleLifecyclePeopleBulkJob(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, action adminpeople.BulkAction) {
-	request, ok := h.lifecycleSelectionRequest(r, tenant, body, "people.bulk_job.create", action.SelectionToken)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
-		return
-	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		service, ok := h.service.(bloemAdminPeopleLifecycleJobService)
-		if !ok {
-			return lifecycleidempotency.Result{}, errors.New("lifecycle people service unavailable")
-		}
-		queued, err := service.EnqueueBulkInTransaction(adminPeopleMutationContext(r.WithContext(ctx)), tx, tenant.OrganizationID, tenant.AccountID, action)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		return bulkLifecycleResult(queued)
-	})
-	if err != nil {
-		if !writeBloemLifecycleError(w, err) {
-			h.writeError(w, r, err, 0)
-		}
-		return
-	}
-	if !result.Replayed && h.worker != nil {
-		h.worker.Wake()
-	}
-	writeBloemLifecycleResult(w, result)
-}
-
-func (h *BloemAdminPeopleHandler) handleLifecyclePeoplePolicyJob(w http.ResponseWriter, r *http.Request, tenant tenancy.Context, body []byte, action adminpeople.PolicyBulkAction) {
-	request, ok := h.lifecycleSelectionRequest(r, tenant, body, "people.policy_job.create", action.SelectionToken)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
-		return
-	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		service, ok := h.service.(bloemAdminPeopleLifecycleJobService)
-		if !ok {
-			return lifecycleidempotency.Result{}, errors.New("lifecycle people service unavailable")
-		}
-		queued, err := service.EnqueuePolicyBulkForScopeInTransaction(adminPeopleMutationContext(r.WithContext(ctx)), tx, tenant.OrganizationID, tenant.AccountID, action, adminpeople.PolicyOperationScopeOrganization)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		return bulkLifecycleResult(queued)
-	})
-	if err != nil {
-		if !writeBloemLifecycleError(w, err) {
-			h.writeError(w, r, err, 0)
-		}
-		return
-	}
-	if !result.Replayed && h.worker != nil {
-		h.worker.Wake()
-	}
-	writeBloemLifecycleResult(w, result)
 }
 
 func (h *BloemAdminPeopleHandler) requireOrganization(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {

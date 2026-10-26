@@ -22,11 +22,6 @@ type userCreateQuerier interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }
 
-type userMutationQuerier interface {
-	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
-	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
-}
-
 // createAccount is Create in one transaction, so an account never commits
 // without its membership.
 func (r *UserRepository) createAccount(ctx context.Context, input models.CreateUserInput) (*models.User, error) {

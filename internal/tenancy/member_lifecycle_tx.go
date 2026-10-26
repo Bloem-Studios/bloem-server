@@ -93,12 +93,6 @@ func (s *MemberService) ResetPasswordInTransaction(ctx context.Context, tx pgx.T
 	return loadLifecycleMember(ctx, tx, tenantID, userID)
 }
 
-// InvalidateCompatSessionsAfterCommit runs the volatile compatibility
-// invalidation only after the durable transaction has committed.
-func (s *MemberService) InvalidateCompatSessionsAfterCommit(ctx context.Context, userID int, operation string) error {
-	return s.invalidateCompatSessionsAfterCommit(ctx, userID, operation)
-}
-
 func normalizeMemberUpdate(input UpdateMemberInput) (models.UpdateUserInput, error) {
 	update := models.UpdateUserInput{}
 	if input.Username != nil {

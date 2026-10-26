@@ -45,8 +45,7 @@ list; consult the runtime response and [API reference](../bloem-api-reference.md
     "declared_event_channels",
     "watch_document_v1",
     "device_pairing_v1",
-    "progress_sync_v1",
-    "lifecycle_idempotency_v1"
+    "progress_sync_v1"
   ]
 }
 ```
@@ -55,15 +54,6 @@ list; consult the runtime response and [API reference](../bloem-api-reference.md
 is the fixed object of identity-model booleans this document has always
 published; `feature_tokens` is the open, versioned allowlist a client matches
 against, and every later capability lands there. Both grow additively.
-
-`lifecycle_idempotency_v1` is present only when the shared lifecycle
-coordinator is wired. Once the rollout is finalized,
-`lifecycle_idempotency_required_v1` is also advertised and registered lifecycle
-mutations without `Idempotency-Key` fail with `428`. The public probe remains
-available if its rollout-phase read fails: it keeps the support token, omits the
-required token, and still answers `200`. Client key/retry behavior and the
-`409`/`503` contract are documented in the
-[native API reference](../bloem-api-reference.md#shared-lifecycle-mutation-idempotency-compatible-and-native-surfaces).
 
 Direct-profile login is implemented on `/api/v1/auth/profile-login` when its dependencies
 are wired; the capability boolean reflects that wiring. The default-deny direct-session
@@ -187,12 +177,9 @@ ownership/PIN viewer guard. Direct-profile sessions remain rejected before eithe
 
 Logout revokes a login session, not an API key. The shared handler refuses API-key or
 sessionless claims before invoking session revocation; valid account and admitted
-direct-profile sessions retain self-logout. Fresh v1 invitation acceptance requests hide
-unknown, expired, revoked and consumed invitations behind `404 not_found`. A completed
-lifecycle receipt is checked first and may replay the original success; a pending
-invitation's duplicate-account conflict remains `409 already_used`. Lifecycle signup also
-preserves the ordinary signup distinction between unknown, exhausted and disabled invite
-codes; transaction coordination does not replace established validation responses.
+direct-profile sessions retain self-logout. v1 invitation acceptance hides unknown,
+expired, revoked and consumed invitations behind `404 not_found`; a pending invitation's
+duplicate-account conflict remains `409 already_used`.
 
 ## Upgrade behavior
 

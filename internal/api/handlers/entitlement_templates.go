@@ -18,11 +18,9 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 const entitlementConfirmationTTL = 10 * time.Minute
@@ -76,9 +74,7 @@ type EntitlementTemplatesHandler struct {
 	// Applying a materialization is itself idempotent; this bounded process map
 	// also gives retries the identical first response. A restart may forget the
 	// response but cannot duplicate policy effects.
-	receipts        map[string]entitlementReceipt
-	lifecycle       lifecycleidempotency.Coordinator
-	lifecycleDigest lifecycleidempotency.RequestDigester
+	receipts map[string]entitlementReceipt
 	// platformAdmins confirms an API key's owning account is an enabled
 	// platform administrator. Nil keeps every template route session-only.
 	platformAdmins auth.PlatformAdminAuthorizer
@@ -89,16 +85,6 @@ type EntitlementTemplatesHandler struct {
 // when it provisions accounts. Template authoring stays session-only.
 func (h *EntitlementTemplatesHandler) SetPlatformAdminAuthorizer(authorizer auth.PlatformAdminAuthorizer) {
 	h.platformAdmins = authorizer
-}
-
-func (h *EntitlementTemplatesHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
-	h.lifecycle = coordinator
-	h.lifecycleDigest = digester
-}
-
-type entitlementLifecycleApplyStore interface {
-	ApplyTemplateConfirmedInTransaction(context.Context, pgx.Tx, int, uuid.UUID, string, int64, string) (entitlements.ApplyResult, error)
-	ApplyDefaultAccountTemplateConfirmedInTransaction(context.Context, pgx.Tx, int, int, string, int64, string) (entitlements.ApplyResult, error)
 }
 
 func NewEntitlementTemplatesHandler(store EntitlementTemplateHandlerStore, secret []byte) *EntitlementTemplatesHandler {
@@ -483,10 +469,6 @@ func (h *EntitlementTemplatesHandler) HandleOrganizationApply(w http.ResponseWri
 	if !ok {
 		return
 	}
-	body, ok := captureBloemLifecycleBody(w, r)
-	if !ok {
-		return
-	}
 	var request entitlementApplyRequest
 	if !decodeAdminPlatformJSON(w, r, &request) {
 		return
@@ -497,17 +479,8 @@ func (h *EntitlementTemplatesHandler) HandleOrganizationApply(w http.ResponseWri
 		writeAdminValidation(w, map[string]string{"request": "requires template key/revision, confirmation_token, and idempotency_key"})
 		return
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil && strings.TrimSpace(r.Header.Get("Idempotency-Key")) != "" {
-		headerKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
-		if headerKey != "" && request.IdempotencyKey != headerKey {
-			writeError(w, http.StatusConflict, "idempotency_key_conflict", "Header and command idempotency keys must match")
-			return
-		}
-		h.handleLifecycleOrganizationApply(w, r, claims, body, organizationID, request)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	if headerKey := strings.TrimSpace(r.Header.Get("Idempotency-Key")); headerKey != "" && request.IdempotencyKey != headerKey {
+		writeError(w, http.StatusConflict, "idempotency_key_conflict", "Header and command idempotency keys must match")
 		return
 	}
 	confirmation, err := h.parseConfirmation(request.ConfirmationToken)
@@ -623,10 +596,6 @@ func (h *EntitlementTemplatesHandler) HandleAccountApply(w http.ResponseWriter, 
 		return
 	}
 	accountID := int(accountID64)
-	body, ok := captureBloemLifecycleBody(w, r)
-	if !ok {
-		return
-	}
 	var request entitlementApplyRequest
 	if !decodeAdminPlatformJSON(w, r, &request) {
 		return
@@ -637,17 +606,8 @@ func (h *EntitlementTemplatesHandler) HandleAccountApply(w http.ResponseWriter, 
 		writeAdminValidation(w, map[string]string{"request": "requires template key/revision, confirmation_token, and idempotency_key"})
 		return
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil && strings.TrimSpace(r.Header.Get("Idempotency-Key")) != "" {
-		headerKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
-		if headerKey != "" && request.IdempotencyKey != headerKey {
-			writeError(w, http.StatusConflict, "idempotency_key_conflict", "Header and command idempotency keys must match")
-			return
-		}
-		h.handleLifecycleAccountApply(w, r, claims, body, accountID, request)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
+	if headerKey := strings.TrimSpace(r.Header.Get("Idempotency-Key")); headerKey != "" && request.IdempotencyKey != headerKey {
+		writeError(w, http.StatusConflict, "idempotency_key_conflict", "Header and command idempotency keys must match")
 		return
 	}
 	confirmation, err := h.parseConfirmation(request.ConfirmationToken)
@@ -684,85 +644,6 @@ func (h *EntitlementTemplatesHandler) HandleAccountApply(w http.ResponseWriter, 
 		h.audit(r, claims, "account.entitlement_applied", request.TemplateKey, request.TemplateRevision, result.TenantID)
 	}
 	writeJSON(w, http.StatusOK, applyToJSON(result))
-}
-
-func entitlementLifecycleResult(result entitlements.ApplyResult) (lifecycleidempotency.Result, error) {
-	body, err := json.Marshal(applyToJSON(result))
-	return lifecycleidempotency.Result{Status: http.StatusOK, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}}, err
-}
-
-func (h *EntitlementTemplatesHandler) handleLifecycleOrganizationApply(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, organizationID uuid.UUID, applyRequest entitlementApplyRequest) {
-	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, "entitlement.organization.apply", lifecycleidempotency.TargetExactMembership, map[string]string{"id": organizationID.String()}, body)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
-		return
-	}
-	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		return resolveBloemOrganizationOwnerTarget(ctx, tx, organizationID)
-	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		confirmation, err := h.parseConfirmation(applyRequest.ConfirmationToken)
-		if err != nil || confirmation.OrganizationID != organizationID || confirmation.TemplateKey != applyRequest.TemplateKey || confirmation.TemplateRevision != applyRequest.TemplateRevision || confirmation.AccountID != claims.AccountID {
-			return lifecycleidempotency.Result{}, errEntitlementConfirmationStale
-		}
-		store, ok := h.store.(entitlementLifecycleApplyStore)
-		if !ok {
-			return lifecycleidempotency.Result{}, errors.New("lifecycle-safe entitlement store unavailable")
-		}
-		applied, err := store.ApplyTemplateConfirmedInTransaction(ctx, tx, claims.AccountID, organizationID, applyRequest.TemplateKey, applyRequest.TemplateRevision, confirmation.PreviewHash)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		return entitlementLifecycleResult(applied)
-	})
-	if err != nil {
-		if !writeBloemLifecycleError(w, err) {
-			h.writeError(w, err)
-		}
-		return
-	}
-	writeBloemLifecycleResult(w, result)
-}
-
-func (h *EntitlementTemplatesHandler) handleLifecycleAccountApply(w http.ResponseWriter, r *http.Request, claims auth.AdminContextClaims, body []byte, accountID int, applyRequest entitlementApplyRequest) {
-	selectorName, routeID := "account_id", "entitlement.account.apply"
-	selector := chi.URLParam(r, selectorName)
-	if selector == "" {
-		selectorName, routeID, selector = "user_id", "entitlement.account.apply_legacy", chi.URLParam(r, "user_id")
-	}
-	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetPathAccount, map[string]string{selectorName: selector}, body)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
-		return
-	}
-	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		return lifecycleidempotency.ResolveAccountTargets(ctx, tx, accountID)
-	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, _ lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		confirmation, err := h.parseConfirmation(applyRequest.ConfirmationToken)
-		if err != nil || confirmation.TemplateKey != applyRequest.TemplateKey || confirmation.TemplateRevision != applyRequest.TemplateRevision || confirmation.AccountID != claims.AccountID || confirmation.TargetAccountID != accountID {
-			return lifecycleidempotency.Result{}, errEntitlementConfirmationStale
-		}
-		store, ok := h.store.(entitlementLifecycleApplyStore)
-		if !ok {
-			return lifecycleidempotency.Result{}, errors.New("lifecycle-safe entitlement store unavailable")
-		}
-		applied, err := store.ApplyDefaultAccountTemplateConfirmedInTransaction(ctx, tx, claims.AccountID, accountID, applyRequest.TemplateKey, applyRequest.TemplateRevision, confirmation.PreviewHash)
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		if applied.TenantID != confirmation.OrganizationID {
-			return lifecycleidempotency.Result{}, errEntitlementConfirmationStale
-		}
-		return entitlementLifecycleResult(applied)
-	})
-	if err != nil {
-		if !writeBloemLifecycleError(w, err) {
-			h.writeError(w, err)
-		}
-		return
-	}
-	writeBloemLifecycleResult(w, result)
 }
 
 func (h *EntitlementTemplatesHandler) applyOnce(ctx context.Context, actorAccountID int, targetType, targetID, idempotencyKey, receiptKey, templateKey string, templateRevision int64, apply func() (entitlements.ApplyResult, error)) (entitlements.ApplyResult, bool, error) {

@@ -14,12 +14,10 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 const (
@@ -45,10 +43,6 @@ type PlatformEntitlementBulkPeopleService interface {
 	EnqueuePolicyBulkForScope(context.Context, uuid.UUID, int, adminpeople.PolicyBulkAction, adminpeople.PolicyOperationScope) (adminpeople.BulkResult, error)
 	GetPolicyBulkJob(context.Context, uuid.UUID, string) (adminpeople.BulkResult, error)
 	CancelPolicyBulkJob(context.Context, uuid.UUID, int, string) (adminpeople.BulkResult, error)
-}
-
-type platformEntitlementBulkLifecyclePeopleService interface {
-	EnqueuePolicyBulkForScopeInTransaction(context.Context, pgx.Tx, uuid.UUID, int, adminpeople.PolicyBulkAction, adminpeople.PolicyOperationScope) (adminpeople.BulkResult, error)
 }
 
 type PlatformEntitlementBulkOrganizationStore interface {
@@ -208,27 +202,18 @@ func (h *AdminHandler) handleCreatePlatformPolicyJob(w http.ResponseWriter, r *h
 	if !ok {
 		return
 	}
-	body, ok := captureBloemLifecycleBodyLimit(w, r, platformEntitlementBulkBodyLimit)
-	if !ok {
-		return
-	}
 	var action adminpeople.PolicyBulkAction
 	if !decodePlatformEntitlementBulkJSON(w, r, &action) {
 		return
 	}
-	if h.lifecycle != nil && h.lifecycleDigest != nil && strings.TrimSpace(r.Header.Get("Idempotency-Key")) != "" {
-		headerKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	// The job's own idempotency key makes a retry replay the original job; a
+	// header key is the same key.
+	if headerKey := strings.TrimSpace(r.Header.Get("Idempotency-Key")); headerKey != "" {
 		if action.IdempotencyKey != "" && action.IdempotencyKey != headerKey {
 			writeError(w, http.StatusConflict, "idempotency_key_conflict", "Header and command idempotency keys must match")
 			return
 		}
 		action.IdempotencyKey = headerKey
-		h.handleLifecyclePlatformPolicyJob(w, r, actorID, body, action, direct)
-		return
-	}
-	if r.Header.Get("Idempotency-Key") != "" {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Lifecycle request safety is temporarily unavailable")
-		return
 	}
 	organizationID, ok := h.platformEntitlementOrganization(w, r, direct)
 	if !ok {
@@ -245,80 +230,6 @@ func (h *AdminHandler) handleCreatePlatformPolicyJob(w http.ResponseWriter, r *h
 	writeJSON(w, http.StatusCreated, struct {
 		Job adminpeople.BulkResult `json:"job"`
 	}{Job: result})
-}
-
-func (h *AdminHandler) handleLifecyclePlatformPolicyJob(w http.ResponseWriter, r *http.Request, actorID int, body []byte, action adminpeople.PolicyBulkAction, direct bool) {
-	claims, ok := lifecycleAdminClaims(r, actorID)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
-		return
-	}
-	routeID := "entitlement.organization.policy_job.create"
-	organizationID := uuid.Nil
-	selectors := map[string]string{}
-	if direct {
-		routeID = "entitlement.direct.policy_job.create"
-	} else {
-		var err error
-		organizationID, err = uuid.Parse(strings.TrimSpace(chi.URLParam(r, "organization_id")))
-		if err != nil || organizationID == uuid.Nil {
-			writeError(w, http.StatusNotFound, "not_found", "Entitlement resource not found")
-			return
-		}
-		selectors["organization_id"] = organizationID.String()
-	}
-	request, ok := bloemLifecycleRequest(r, claims, h.lifecycleDigest, routeID, lifecycleidempotency.TargetStoredSelection, selectors, body)
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Administrative account identity is incomplete")
-		return
-	}
-	request.ResolveTargets = func(ctx context.Context, tx pgx.Tx) ([]lifecycleidempotency.TargetBinding, error) {
-		resolver, ok := h.platformEntitlementPeople.(bloemAdminPeopleLifecycleSelectionResolver)
-		if !ok {
-			return nil, errors.New("lifecycle selection resolver unavailable")
-		}
-		return resolver.ResolveLifecycleSelectionTargets(ctx, tx, organizationID, action.SelectionToken)
-	}
-	result, err := h.lifecycle.Execute(r.Context(), request, func(ctx context.Context, tx pgx.Tx, binding lifecycleidempotency.Binding) (lifecycleidempotency.Result, error) {
-		resolvedOrganization := organizationID
-		if resolvedOrganization == uuid.Nil && len(binding.Targets) > 0 {
-			resolvedOrganization = binding.Targets[0].OrganizationID
-		}
-		service, ok := h.platformEntitlementPeople.(platformEntitlementBulkLifecyclePeopleService)
-		if !ok {
-			return lifecycleidempotency.Result{}, errors.New("lifecycle entitlement service unavailable")
-		}
-		queued, err := service.EnqueuePolicyBulkForScopeInTransaction(platformEntitlementBulkMutationContext(r.WithContext(ctx), actorID), tx, resolvedOrganization, actorID, action, platformEntitlementOperationScope(direct))
-		if err != nil {
-			return lifecycleidempotency.Result{}, err
-		}
-		return bulkLifecycleResult(queued)
-	})
-	if err != nil {
-		if !writeBloemLifecycleError(w, err) {
-			h.writePlatformEntitlementBulkError(w, err)
-		}
-		return
-	}
-	if !result.Replayed && h.platformEntitlementWorker != nil {
-		h.platformEntitlementWorker.Wake()
-	}
-	writeBloemLifecycleResult(w, result)
-}
-
-func lifecycleAdminClaims(r *http.Request, actorID int) (auth.AdminContextClaims, bool) {
-	if claims, ok := middleware.GetAdminContextClaims(r.Context()); ok && claims.AccountID == actorID {
-		return claims, claims.AccountIncarnationID != uuid.Nil
-	}
-	claims := middleware.GetClaims(r.Context())
-	if claims == nil || claims.UserID != actorID {
-		return auth.AdminContextClaims{}, false
-	}
-	incarnation, err := uuid.Parse(claims.AccountIncarnationID)
-	if err != nil || incarnation == uuid.Nil {
-		return auth.AdminContextClaims{}, false
-	}
-	return auth.AdminContextClaims{AccountID: actorID, AccountIncarnationID: incarnation, Scope: auth.AdminScopePlatform}, true
 }
 
 func platformEntitlementOperationScope(direct bool) adminpeople.PolicyOperationScope {

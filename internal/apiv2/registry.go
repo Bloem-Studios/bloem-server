@@ -100,7 +100,6 @@ const (
 	// replay store exists yet, so Register refuses the declaration outright:
 	// the store, the required header, and the replay contract land together
 	// with the first operation the inventory proves needs them.
-	// Bloem: allowed when DurableReplay is declared (see checkOperation).
 	RetrySafetyIdempotencyKey RetrySafety = "idempotency_key"
 	// RetrySafetyNonRetryable: an explicitly documented exception that clients
 	// never retry automatically after an uncertain response.
@@ -215,8 +214,6 @@ type Operation struct {
 	// submission or a retry after a lost response safe. Documented as
 	// x-silo-retry-safety.
 	RetrySafety RetrySafety
-	// DurableReplay requires a shared durable receipt coordinator for every execution.
-	DurableReplay bool
 	// Deprecation retires the operation through the RFC 9745 / RFC 8594
 	// header flow (see Deprecation). Nil means not deprecated.
 	Deprecation *Deprecation
@@ -421,8 +418,8 @@ func checkOperation(op Operation) error {
 		return fmt.Errorf("retry safety is required on %s: declare how a duplicate submission or a retry after a lost response stays safe", op.Method)
 	case isMutatingMethod(op.Method) && !knownRetrySafety[op.RetrySafety]:
 		return fmt.Errorf("unknown retry safety %q", op.RetrySafety)
-	case op.RetrySafety == RetrySafetyIdempotencyKey && !op.DurableReplay:
-		return fmt.Errorf("retry safety %s requires a durable replay coordinator; the declaration must not advertise an unsupported guarantee", RetrySafetyIdempotencyKey)
+	case op.RetrySafety == RetrySafetyIdempotencyKey:
+		return fmt.Errorf("retry safety %s is not implementable yet: no durable replay store exists, so the declaration would advertise a guarantee the server cannot keep", RetrySafetyIdempotencyKey)
 	case !isMutatingMethod(op.Method) && op.RetrySafety != "":
 		return fmt.Errorf("retry safety is for POST, PUT, PATCH and DELETE; %s has no durable effect to classify", op.Method)
 	}

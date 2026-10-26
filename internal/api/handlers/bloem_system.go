@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
@@ -31,7 +30,6 @@ type BloemSystemHandler struct {
 	ebookRequests               bool
 	bookRequestConnectionAdmin  bool
 	nativeAudioReadiness        func(context.Context) bool
-	lifecyclePhase              func(context.Context) (lifecycleidempotency.Phase, error)
 }
 
 func NewBloemSystemHandler(organizations BloemOrganizationStore) *BloemSystemHandler {
@@ -60,13 +58,6 @@ func (h *BloemSystemHandler) SetBookRequestConnectionAdminAvailable(available bo
 // SetSeasonalViewerAvailable tracks the authenticated native ambience route.
 func (h *BloemSystemHandler) SetSeasonalViewerAvailable(available bool) {
 	h.seasonalViewer = available
-}
-
-// SetLifecycleIdempotencyPhase records that the durable lifecycle coordinator
-// is wired and supplies its current enforcement phase. Support and enforcement
-// are separate tokens so clients can safely adopt keys during rollout.
-func (h *BloemSystemHandler) SetLifecycleIdempotencyPhase(reader func(context.Context) (lifecycleidempotency.Phase, error)) {
-	h.lifecyclePhase = reader
 }
 
 // Aggregate feature tokens. Each names a client-visible capability of this
@@ -190,12 +181,6 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	}
 	if h.seasonalViewer {
 		featureTokens = append(featureTokens, "seasonal_viewer_v1")
-	}
-	if h.lifecyclePhase != nil {
-		featureTokens = append(featureTokens, "lifecycle_idempotency_v1")
-		if phase, err := h.lifecyclePhase(request.Context()); err == nil && phase == lifecycleidempotency.PhaseRequired {
-			featureTokens = append(featureTokens, "lifecycle_idempotency_required_v1")
-		}
 	}
 	writeJSON(w, http.StatusOK, bloemCapabilitiesResponse{
 		API:            nativeAPIIdentifier,

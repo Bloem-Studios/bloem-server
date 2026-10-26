@@ -874,12 +874,8 @@ func (h *AdminHandler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreateUser handles POST /admin/users.
 func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
-	body, ok := readBloemRequestBody(w, r)
-	if !ok {
-		return
-	}
 	var req createUserRequest
-	if err := json.Unmarshal(body, &req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
@@ -985,7 +981,7 @@ func (h *AdminHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 			Name:    req.DefaultProfileName,
 		},
 	}
-	user, appliedEntitlementRevision, ok := h.bloemCreateUser(w, r, body, req, accountInput, directEntitlementRequested)
+	user, appliedEntitlementRevision, ok := h.bloemCreateUser(w, r, req, accountInput, directEntitlementRequested)
 	if !ok {
 		return
 	}
@@ -1008,10 +1004,6 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	body, ok := bufferBloemRequestBody(w, r)
-	if !ok {
-		return
-	}
 	var req updateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
@@ -1077,9 +1069,6 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 
 	enableLocalLoginWithPassword(&updateInput)
 
-	if h.bloemLifecycleUpdateUser(w, r, id, idStr, body, req, updateInput, directEntitlementRequested) {
-		return
-	}
 	if _, blocked := h.bloemPrepareUpdateUser(w, r, id, &req); blocked {
 		return
 	}
@@ -1211,10 +1200,6 @@ func (h *AdminHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user ID")
 		return
 	}
-	if h.bloemLifecycleDeleteUser(w, r, id, idStr) {
-		return
-	}
-
 	repo, ok := h.userRepo.(adminAccountRepository)
 	if !ok {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to delete user")
@@ -1291,9 +1276,6 @@ func (h *AdminHandler) HandleImpersonateUser(w http.ResponseWriter, r *http.Requ
 	targetID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid user ID")
-		return
-	}
-	if h.bloemLifecycleImpersonateUser(w, r, claims, targetID) {
 		return
 	}
 

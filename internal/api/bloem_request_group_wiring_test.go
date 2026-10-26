@@ -38,7 +38,7 @@ func TestBloemRouterScopesRequestGroupLimitsWithoutLifecycleConfig(t *testing.T)
 	jwt := auth.NewJWTService("wiring-test-secret", time.Hour, time.Hour)
 	sessions := auth.NewSessionRepository(pool)
 	authMW := apimw.NewAuthMiddleware(jwt, sessions, nil, nil)
-	wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, nil, bloemLifecycleTargets{requests: handler}, authMW, nil, nil)
+	wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, nil, handler, nil, authMW, nil, nil)
 	limits, ok := handler.Service().(interface {
 		GetGroupLimit(context.Context, mediarequests.Viewer, int64) (*mediarequests.GroupLimit, error)
 	})
@@ -261,7 +261,7 @@ func TestBloemRouterAdminRequestUsageAccountTarget(t *testing.T) {
 	jwt := auth.NewJWTService("usage-wiring-secret", time.Hour, time.Hour)
 	sessions := auth.NewSessionRepository(pool)
 	authMW := apimw.NewAuthMiddleware(jwt, sessions, nil, nil)
-	wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, nil, bloemLifecycleTargets{requests: requestHandler}, authMW, nil, nil)
+	wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, nil, requestHandler, nil, authMW, nil, nil)
 	usage := requestHandler.Service().(apiv2.AdminRequestUsageService)
 	v2deps := apiv2.Dependencies{Auth: authMW, AdminRequestUsage: usage, ActingAdmin: apimw.NewActingAdminDecider(nil, nil)}
 	v2deps.AdminAccounts = handlers.NewAdminHandler(auth.NewUserRepository(pool), pool, pgstore.NewPostgresProvider(pool))

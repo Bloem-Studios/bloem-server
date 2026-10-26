@@ -407,15 +407,8 @@ func (h *AuthHandler) HandleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, ok := bufferBloemAuthRequestBody(w, r)
-	if !ok {
-		return
-	}
 	var req setupRequest
 	if !decodeAuthRequestBody(w, r, &req, false) {
-		return
-	}
-	if h.bloemLifecycleSetup(w, r, body, &req) {
 		return
 	}
 
@@ -623,15 +616,8 @@ func (h *AuthHandler) HandleSignupStatus(w http.ResponseWriter, r *http.Request)
 
 // HandleSignup handles POST /auth/signup.
 func (h *AuthHandler) HandleSignup(w http.ResponseWriter, r *http.Request) {
-	body, ok := bufferBloemAuthRequestBody(w, r)
-	if !ok {
-		return
-	}
 	var req signupRequest
 	if !decodeAuthRequestBody(w, r, &req, false) {
-		return
-	}
-	if h.bloemLifecycleSignup(w, r, body, &req) {
 		return
 	}
 

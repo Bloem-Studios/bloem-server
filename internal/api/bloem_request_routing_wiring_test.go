@@ -100,7 +100,7 @@ func TestBloemPlatformRequestRoutingWiring(t *testing.T) {
 	authMW := apimw.NewAuthMiddleware(tokens, sessions, nil, nil)
 	tenantResolver := tenancy.NewResolver(tenancy.NewStore(pool))
 	tenantMW := apimw.NewTenantMiddleware(tenantResolver)
-	wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, tenantMW, bloemLifecycleTargets{requests: handler}, authMW, nil, nil)
+	wireBloemRouter(chi.NewRouter(), Dependencies{DB: pool}, tenantMW, handler, nil, authMW, nil, nil)
 	v2deps := apiv2.Dependencies{Auth: authMW, AdminRequests: handler.Service(), ActingAdmin: apimw.NewActingAdminDecider(nil, nil), ViewerAccess: apimw.NewViewerAccessMiddleware(access.NewResolver(auth.NewUserRepository(pool), pgstore.NewPostgresProvider(pool), nil, access.NewTenantGroupStore(pool)))}
 	wireBloemV2(&v2deps, Dependencies{DB: pool}, tenantMW, authMW)
 	v2 := apiv2.NewHandler(v2deps)

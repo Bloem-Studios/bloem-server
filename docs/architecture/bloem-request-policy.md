@@ -1,8 +1,7 @@
 # Bloem request policy
 
 The movie and series request service remains shared with Silo. Bloem installs
-owned tenant adapters before composing either native listener, independently
-of lifecycle-idempotency configuration. Unsupported production dependencies
+owned tenant adapters before composing either native listener. Unsupported production dependencies
 fail composition instead of silently retaining account-wide authorization.
 Database-free composition and ordinary Silo services retain their existing
 behavior. A DB-only discovery router has no authentication middleware or user

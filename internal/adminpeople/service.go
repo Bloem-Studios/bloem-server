@@ -19,7 +19,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/idgen"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
@@ -646,44 +645,6 @@ func (s *Service) CreateSelection(ctx context.Context, organizationID uuid.UUID,
 		return Selection{}, fmt.Errorf("commit people selection snapshot: %w", err)
 	}
 	return Selection{Token: token, Matched: int64(len(ids)), Excluded: excluded, ExpiresAt: expires}, nil
-}
-
-// ResolveLifecycleSelectionTargets returns the immutable account incarnations
-// and memberships captured by a signed selection. It performs no live account
-// lookup, preserving receipt-first replay and exact target-set binding.
-func (s *Service) ResolveLifecycleSelectionTargets(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, token string) ([]lifecycleidempotency.TargetBinding, error) {
-	reference, err := s.parseSelectionReference(token)
-	if err != nil {
-		return nil, err
-	}
-	var storedOrganization uuid.UUID
-	var payload []byte
-	query := `SELECT organization_id,targets FROM admin_people_selections WHERE id=$1`
-	args := []any{reference}
-	if organizationID != uuid.Nil {
-		query += ` AND organization_id=$2`
-		args = append(args, organizationID)
-	}
-	if err := tx.QueryRow(ctx, query, args...).Scan(&storedOrganization, &payload); errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrInvalidSelection
-	} else if err != nil {
-		return nil, err
-	}
-	var snapshots []targetSnapshot
-	if err := json.Unmarshal(payload, &snapshots); err != nil {
-		return nil, ErrInvalidSelection
-	}
-	targets := make([]lifecycleidempotency.TargetBinding, 0, len(snapshots))
-	for _, snapshot := range snapshots {
-		if snapshot.AccountID <= 0 || snapshot.AccountIncarnationID == uuid.Nil || snapshot.MembershipID == uuid.Nil {
-			return nil, lifecycleidempotency.ErrInvalidBinding
-		}
-		targets = append(targets, lifecycleidempotency.TargetBinding{OrganizationID: storedOrganization, MembershipID: snapshot.MembershipID, AccountID: snapshot.AccountID, AccountIncarnationID: snapshot.AccountIncarnationID, ResourceID: reference.String()})
-	}
-	if len(targets) == 0 {
-		return nil, lifecycleidempotency.ErrTargetNotFound
-	}
-	return targets, nil
 }
 
 func (s *Service) signSelectionReference(reference uuid.UUID) (string, error) {

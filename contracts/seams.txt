@@ -61,7 +61,6 @@ internal/api/handlers/admin_sections_service.go
 internal/api/handlers/admin_session_revocation_test.go  # exercise upstream session policy against organization-aware group fixture
 internal/api/handlers/admin_users_service.go
 internal/api/handlers/auth.go
-internal/api/handlers/auth_registration.go
 internal/api/handlers/branding.go
 internal/api/handlers/catalog_seed.go
 internal/api/handlers/catalog_transfer_service.go
@@ -73,7 +72,6 @@ internal/api/handlers/downloads_test.go
 internal/api/handlers/home_dismissals.go
 internal/api/handlers/home_views_service.go
 internal/api/handlers/household.go
-internal/api/handlers/invitations.go
 internal/api/handlers/libraries.go  # native selected-target authorization boundary
 internal/api/handlers/libraries_service.go  # native selected-target authorization boundary
 internal/api/handlers/library_views_service.go
@@ -90,8 +88,6 @@ internal/api/handlers/profiles.go
 internal/api/handlers/requests.go
 internal/api/handlers/sections.go
 internal/api/handlers/session_ws.go
-internal/api/handlers/settings_values.go
-internal/api/handlers/settings_values_admin.go
 internal/api/handlers/settings_values_seam.go
 internal/api/handlers/stream.go
 internal/api/handlers/watch_together.go
@@ -106,7 +102,6 @@ internal/api/router.go  # Bloem route/service integration; fallback Live TV serv
 internal/api/testdata/media_routes.txt
 internal/apiv2/admin_subtitle_metadata_test.go  # reviewed test-only exception: canonical API language projection preserves raw legacy row
 internal/apiv2/artwork.go  # three-line hook to serve storage covers (bloem_artwork_storage_cover.go) after signature verification
-internal/apiv2/auth_sessions.go
 internal/apiv2/device_login_test.go  # expected server_name follows branding.DefaultServerName, which Bloem sets to "Bloem"
 internal/apiv2/direct_download_link_test.go  # profile-aware download service fixture
 internal/apiv2/direct_download_test.go
@@ -119,7 +114,6 @@ internal/apiv2/libraries.go  # createLibrary takes a storage_source location as 
 internal/apiv2/notification_inbox.go
 internal/apiv2/notification_inbox_test.go
 internal/apiv2/parity_test.go
-internal/apiv2/profiles.go
 internal/apiv2/registry.go
 internal/apiv2/router.go
 internal/audiobooks/enrichment_state.go  # preserve unclaimed repair attempt history while resetting only a new no-match streak

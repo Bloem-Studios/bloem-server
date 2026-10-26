@@ -848,7 +848,6 @@ type ProgressService interface {
 // ProfileService is the slice of *handlers.ProfileHandler the profile
 // operations use.
 type ProfileService interface {
-	bloemProfileLifecycle
 	ListProfiles(ctx context.Context, userID int) (handlers.ProfileListView, error)
 	CreateProfile(ctx context.Context, cmd handlers.ProfileCreateCommand) (handlers.ProfileView, error)
 	UpdateProfile(ctx context.Context, cmd handlers.ProfileUpdateCommand) (handlers.ProfileView, error)

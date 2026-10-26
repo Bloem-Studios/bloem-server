@@ -51,29 +51,3 @@ func (e *Env) withBloemRowFixtures(row scenariocatalog.Row) func() {
 	installed = true
 	return func() { runFrom(len(teardowns) - 1) }
 }
-
-// bloemLifecycleStoreGate reports whether the transport needs the lifecycle
-// store. Missing lifecycle readiness is reported as a failure rather than a
-// skip: lifecycle requests must not test validation against a dead store.
-// The gate's offline_candidates count is only a static candidate set; router
-// registration and lifecycle readiness are execution prerequisites.
-func (e *Env) bloemLifecycleStoreGate(t *testing.T, res *Result, s scenariocatalog.Scenario, transport, method string) bool {
-	t.Helper()
-	if !lifecycleStoreRequired(s, transport, method) {
-		return false
-	}
-	if !e.HasDatabase() {
-		res.Failures = []string{"execution prerequisite: requires a reachable lifecycle store; set " + DatabaseEnv + " to an owned scratch database"}
-		t.Fatal(res.Failures[0])
-	}
-	return true
-}
-
-// bloemScenarioNeedsLifecycleStore reports whether either transport of s
-// needs the lifecycle store, which makes the row database-gated.
-func bloemScenarioNeedsLifecycleStore(row scenariocatalog.Row, s scenariocatalog.Scenario) bool {
-	if lifecycleStoreRequired(s, "v1", row.Method) {
-		return true
-	}
-	return s.V2Expectation != nil && lifecycleStoreRequired(v2Scenario(s), "v2", s.V2Expectation.Method)
-}

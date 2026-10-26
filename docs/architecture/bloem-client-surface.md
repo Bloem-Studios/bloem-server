@@ -58,12 +58,8 @@ outside that allowlist: credential management does not imply direct-profile brow
 
 `feature_tokens` describe additive capabilities — including
 `watch_document_v1`, `device_pairing_v1` and `progress_sync_v1` — and clients must not use a server version for feature
-detection. Most tokens are build-level. `lifecycle_idempotency_v1` is present
-when the lifecycle coordinator is wired, while
-`lifecycle_idempotency_required_v1` additionally reflects the current rollout
-phase. Clients use a stable `Idempotency-Key` only when support is advertised,
-and preserve the same key across bounded retries; the full status contract is
-in the [native API reference](../bloem-api-reference.md#shared-lifecycle-mutation-idempotency-compatible-and-native-surfaces).
+detection. Most tokens are build-level. Retry behavior for mutations is in the
+[native API reference](../bloem-api-reference.md#retrying-mutations).
 A token does not prove that an unrelated dependency-conditional route is
 mounted in a particular deployment; clients still handle the route's response.
 

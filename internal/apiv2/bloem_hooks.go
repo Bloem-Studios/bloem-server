@@ -1,12 +1,9 @@
 package apiv2
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
-
-	"github.com/Silo-Server/silo-server/internal/api/handlers"
 )
 
 // bloemDependencies holds the Bloem-only middleware slots embedded in
@@ -54,14 +51,4 @@ func bloemCheckOperationPath(path string) error {
 		return fmt.Errorf("path %q must start with %s/ or %s/", path, Prefix, BloemPrefix)
 	}
 	return nil
-}
-
-// bloemRegistrationLifecycle binds a setup/signup command to its
-// Idempotency-Key lifecycle receipt.
-func bloemRegistrationLifecycle(ctx context.Context, command handlers.RegistrationInput, key, routeID string, body []byte) handlers.RegistrationInput {
-	command.Lifecycle = &handlers.RegistrationLifecycleInput{Key: key, Method: http.MethodPost, RouteID: routeID, Body: body}
-	if r := requestFrom(ctx); r != nil {
-		command.Lifecycle.Query = r.URL.Query()
-	}
-	return command
 }

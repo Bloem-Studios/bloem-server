@@ -153,7 +153,6 @@ func (e *Env) runTransport(t *testing.T, c *scenariocatalog.Catalog, row scenari
 	// The gate's offline_candidates count applies this same predicate; the
 	// offline-router test below is the one thing the gate cannot see.
 	needsDB := !scenariocatalog.OfflineCandidate(s, e.ledger[row.Key()])
-	needsDB = e.bloemLifecycleStoreGate(t, &res, s, transport, method) || needsDB
 	if !dbUnavailable && !e.OfflineHas(row.Method, row.Path) {
 		// The row is registered only with a user store / auth middleware
 		// present, so even its public cases need the live router.
@@ -381,7 +380,7 @@ func (e *Env) rowNeedsDatabase(row scenariocatalog.Row) bool {
 		return true
 	}
 	for _, s := range row.Scenarios {
-		if s.NeedsDatabase() || s.HasRequirement("rate_limiter") || bloemScenarioNeedsLifecycleStore(row, s) {
+		if s.NeedsDatabase() || s.HasRequirement("rate_limiter") {
 			return true
 		}
 	}

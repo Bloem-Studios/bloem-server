@@ -65,10 +65,10 @@ func TestBloemLogoutAPIKeyUnauthorizedContract(t *testing.T) {
 func TestBloemLogoutRevokesOnlyCallerSession(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 	defer cancel()
-	pool := newInvitationLifecycleDatabase(t, ctx)
+	pool := newInvitationTestDatabase(t, ctx)
 	users := auth.NewUserRepository(pool)
 	accounts := auth.NewAccountProvisioner(users, pgstore.NewPostgresProvider(pool))
-	accounts.SetMembershipProvisioner(invitationLifecycleMemberships{store: tenancy.NewStore(pool)})
+	accounts.SetMembershipProvisioner(invitationTestMemberships{store: tenancy.NewStore(pool)})
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)

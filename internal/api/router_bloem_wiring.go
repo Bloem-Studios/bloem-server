@@ -22,7 +22,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/entitlements"
 	"github.com/Silo-Server/silo-server/internal/invitations"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/preview"
@@ -45,19 +44,6 @@ func bloemServerIdentity(deps Dependencies) *serverid.Resolver {
 		store = catalog.NewServerSettingsRepo(deps.DB)
 	}
 	return serverid.FromService(serveridentity.New(store))
-}
-
-// useBloemLifecyclePreflight installs the lifecycle-idempotency preflight in
-// the base chain (after header normalization, before client-IP resolution).
-func useBloemLifecyclePreflight(r chi.Router, deps Dependencies) {
-	if deps.DB != nil {
-		phase := lifecycleidempotency.NewPostgresStore(deps.DB).CurrentPhase
-		preflight := apimw.NewLifecycleIdempotencyPreflight(phase, func(method, path string) bool {
-			_, matched := MatchLifecycleRoute(method, path)
-			return matched
-		})
-		r.Use(preflight.Handler)
-	}
 }
 
 // wireBloemAuthService installs direct profile credentials and the tenancy
@@ -274,82 +260,10 @@ func wireBloemAdmin(
 	return adminTenantsHandler, adminTenantMembersHandler
 }
 
-// bloemLifecycleTargets names every handler that takes lifecycle
-// idempotency. Nil members are skipped.
-type bloemLifecycleTargets struct {
-	auth          *handlers.AuthHandler
-	requests      *handlers.RequestsHandler
-	profiles      *handlers.ProfileHandler
-	settingValues *handlers.SettingValuesHandler
-	admin         *handlers.AdminHandler
-	tenants       *handlers.AdminTenantsHandler
-	members       *handlers.AdminTenantMembersHandler
-}
-
-// wireBloemLifecycle installs lifecycle idempotency on every legacy handler
-// that supports it. It runs once, after every target is constructed and
-// before any request is served; the setters only store their arguments, so
-// installing them here is equivalent to installing them at construction.
-//
-// The auth handler is wired whenever the database and config exist (an empty
-// secret included); every other handler requires a non-empty JWT secret.
-// Profiles use the plaintext HMAC-keyed coordinator, the rest the encrypted one.
-func wireBloemLifecycle(deps Dependencies, t bloemLifecycleTargets) {
-	if deps.DB == nil || deps.Config == nil {
-		return
-	}
-	lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-	encrypted := func() lifecycleidempotency.Coordinator {
-		return lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret)
-	}
-	if t.auth != nil {
-		t.auth.SetLifecycleIdempotency(
-			encrypted(),
-			lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-			lifecycleidempotency.NewPreauthActorDigester(lifecycleSecret),
-			bloemServerIdentity(deps),
-		)
-	}
-	if deps.Config.Auth.JWTSecret == "" {
-		return
-	}
-	if t.requests != nil {
-		t.requests.SetLifecycleIdempotency(encrypted(), lifecycleidempotency.NewRequestDigester(lifecycleSecret))
-	}
-	if t.profiles != nil {
-		t.profiles.SetLifecycleIdempotency(
-			lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleidempotency.NewHMACKeyDigester(lifecycleSecret)),
-			lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-		)
-	}
-	if t.settingValues != nil {
-		t.settingValues.SetLifecycleIdempotency(encrypted(), lifecycleidempotency.NewRequestDigester(lifecycleSecret))
-	}
-	if t.admin != nil {
-		t.admin.SetLifecycleIdempotency(encrypted(), lifecycleidempotency.NewRequestDigester(lifecycleSecret))
-	}
-	if t.tenants != nil {
-		t.tenants.SetLifecycleIdempotency(encrypted(), lifecycleidempotency.NewRequestDigester(lifecycleSecret))
-	}
-	if t.members != nil {
-		t.members.SetLifecycleIdempotency(encrypted(), lifecycleidempotency.NewRequestDigester(lifecycleSecret))
-	}
-}
-
-// newBloemV1InvitationHandler builds the /api/v1 invitation handler. It is a
-// separate instance from the one v2 consumes: only the legacy surface carries
-// lifecycle idempotency.
+// newBloemV1InvitationHandler builds the /api/v1 invitation handler, scoped
+// to the tenant access groups.
 func newBloemV1InvitationHandler(deps Dependencies, invitationService *invitations.Service, accessGroupStore *access.TenantGroupStore) *handlers.InvitationHandler {
 	invitationHandler := handlers.NewInvitationHandler(invitationService)
-	if deps.Config.Auth.JWTSecret != "" {
-		lifecycleSecret := []byte(deps.Config.Auth.JWTSecret)
-		invitationHandler.SetLifecycleIdempotency(
-			lifecycleidempotency.NewEncryptedCoordinator(lifecycleidempotency.NewPostgresStore(deps.DB), lifecycleSecret),
-			lifecycleidempotency.NewRequestDigester(lifecycleSecret),
-			bloemServerIdentity(deps),
-			lifecycleSecret,
-		)
-	}
 	if accessGroupStore != nil {
 		invitationHandler.SetAccessGroupProvider(accessGroupStore)
 	}
@@ -366,32 +280,39 @@ func newBloemTenantMiddleware(deps Dependencies) *apimw.TenantMiddleware {
 }
 
 // wireBloemRouter runs Bloem's router-level wiring at the point Silo's router
-// has built every legacy handler: lifecycle idempotency, the Bloem-native
-// /api/bloem/v1 surface and the private compatibility API.
+// has built every legacy handler: request group limits and policy, the
+// Bloem-native /api/bloem/v1 surface and the private compatibility API.
 func wireBloemRouter(
 	r chi.Router,
 	deps Dependencies,
 	tenantMiddleware *apimw.TenantMiddleware,
-	lifecycle bloemLifecycleTargets,
+	requests *handlers.RequestsHandler,
+	admin *handlers.AdminHandler,
 	authMiddleware *apimw.AuthMiddleware,
 	searchProvider catalog.CatalogSearchProvider,
 	requireActingAdmin func(http.Handler) http.Handler,
 ) {
-	if deps.DB != nil && lifecycle.requests != nil {
-		if err := lifecycle.requests.EnableTenantGroupLimits(); err != nil {
-			panic(fmt.Errorf("compose Bloem request group limits: %w", err))
-		}
-		// Authentication and its user repository are absent from a DB-only
-		// discovery router. Request routes are unreachable in that composition;
-		// every authenticated composition still requires the profile policy.
-		if authMiddleware != nil {
-			if err := lifecycle.requests.EnableTenantRequestPolicy(); err != nil {
-				panic(fmt.Errorf("compose Bloem request policy: %w", err))
-			}
-		}
+	if deps.DB != nil && requests != nil {
+		enableBloemRequestPolicy(requests, authMiddleware != nil)
 	}
-	wireBloemLifecycle(deps, lifecycle)
-	mountBloem(r, deps, authMiddleware, tenantMiddleware, searchProvider, lifecycle.admin, requireActingAdmin)
+	mountBloem(r, deps, authMiddleware, tenantMiddleware, searchProvider, admin, requireActingAdmin)
+}
+
+// enableBloemRequestPolicy installs the tenant request group limits and, with
+// authentication present, the profile request policy. Authentication and its
+// user repository are absent from a DB-only discovery router, where request
+// routes are unreachable; every authenticated composition still requires the
+// profile policy.
+func enableBloemRequestPolicy(requests *handlers.RequestsHandler, authenticated bool) {
+	if err := requests.EnableTenantGroupLimits(); err != nil {
+		panic(fmt.Errorf("compose Bloem request group limits: %w", err))
+	}
+	if !authenticated {
+		return
+	}
+	if err := requests.EnableTenantRequestPolicy(); err != nil {
+		panic(fmt.Errorf("compose Bloem request policy: %w", err))
+	}
 }
 
 // wireBloemV2 hands the v2 listener Bloem's native tenant identity and the

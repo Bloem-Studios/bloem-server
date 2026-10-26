@@ -23,23 +23,13 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
 // AdminTenantsHandler serves /api/v1/admin/tenants.
 type AdminTenantsHandler struct {
-	store     *tenancy.Store
-	members   *tenancy.MemberService
-	lifecycle lifecycleidempotency.Coordinator
-	digest    lifecycleidempotency.RequestDigester
-}
-
-// SetLifecycleIdempotency installs receipt-first coordination for tenant
-// organization lifecycle mutations.
-func (h *AdminTenantsHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
-	h.lifecycle = coordinator
-	h.digest = digester
+	store   *tenancy.Store
+	members *tenancy.MemberService
 }
 
 // NewAdminTenantsHandler builds the handler.
@@ -131,10 +121,6 @@ func (h *AdminTenantsHandler) HandleCreate(w http.ResponseWriter, r *http.Reques
 		EntitlementTemplateKey:      req.EntitlementTemplateKey,
 		EntitlementTemplateRevision: req.EntitlementTemplateRevision,
 	}
-	if h.lifecycle != nil {
-		h.handleLifecycleCreate(w, r, input, body)
-		return
-	}
 	tenant, err := h.store.CreateTenantOrganization(r.Context(), input)
 	if err != nil {
 		if errors.Is(err, tenancy.ErrTenantOrganizationInvalid) {
@@ -203,10 +189,6 @@ func (h *AdminTenantsHandler) HandleUpdateLimits(w http.ResponseWriter, r *http.
 		writeError(w, http.StatusUnprocessableEntity, "validation", "A tenant needs at least one slot")
 		return
 	}
-	if h.lifecycle != nil {
-		h.handleLifecycleLimits(w, r, id, req.Slots, req.Transcodes, body)
-		return
-	}
 	tenant, err := h.store.UpdateTenantOrganizationLimits(r.Context(), id, req.Slots, req.Transcodes)
 	if err != nil {
 		if errors.Is(err, tenancy.ErrTenantOrganizationInvalid) {
@@ -236,10 +218,6 @@ func (h *AdminTenantsHandler) setFrozen(w http.ResponseWriter, r *http.Request, 
 	if !ok {
 		return
 	}
-	if h.lifecycle != nil {
-		h.handleLifecycleFrozen(w, r, id, frozen)
-		return
-	}
 	if _, err := h.store.SetTenantOrganizationFrozen(r.Context(), id, frozen); err != nil {
 		h.writeRepoError(w, err, "Failed to update tenant state")
 		return
@@ -252,10 +230,6 @@ func (h *AdminTenantsHandler) setFrozen(w http.ResponseWriter, r *http.Request, 
 func (h *AdminTenantsHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	id, ok := h.tenantID(w, r)
 	if !ok {
-		return
-	}
-	if h.lifecycle != nil {
-		h.handleLifecycleDelete(w, r, id)
 		return
 	}
 	if h.members == nil {

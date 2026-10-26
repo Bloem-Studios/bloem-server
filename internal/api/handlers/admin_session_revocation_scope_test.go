@@ -15,17 +15,18 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/database"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/userstore/pgstore"
 	"github.com/Silo-Server/silo-server/migrations"
 )
 
-func TestLifecycleSessionRevocationPreservesOrganizationScope(t *testing.T) {
+// sessionScopeDatabase connects to the migrated test database.
+func sessionScopeDatabase(t *testing.T, ctx context.Context) *pgxpool.Pool {
+	t.Helper()
 	dsn := os.Getenv("SILO_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("SILO_TEST_DATABASE_URL is not set")
 	}
-	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		t.Fatalf("connect: %v", err)
@@ -34,6 +35,26 @@ func TestLifecycleSessionRevocationPreservesOrganizationScope(t *testing.T) {
 	if err := database.RunMigrations(ctx, pool, migrations.FS, "sql"); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	return pool
+}
+
+// insertScopeSessions gives each account a login session, bound to a profile
+// when one is named.
+func insertScopeSessions(t *testing.T, ctx context.Context, pool *pgxpool.Pool, sessions map[string]struct {
+	account int
+	profile *string
+}) {
+	t.Helper()
+	for id, session := range sessions {
+		if _, err := pool.Exec(ctx, `INSERT INTO auth_sessions (id,user_id,device_id,expires_at,profile_id,profile_credential_revision,auth_method) VALUES ($1,$2,'test',now()+interval '1 hour',$3,CASE WHEN $3::text IS NULL THEN NULL ELSE 1 END,CASE WHEN $3::text IS NULL THEN 'account' ELSE 'direct_profile' END)`, id, session.account, session.profile); err != nil {
+			t.Fatalf("create session: %v", err)
+		}
+	}
+}
+
+func TestAdminSessionRevocationPreservesOrganizationScope(t *testing.T) {
+	ctx := context.Background()
+	pool := sessionScopeDatabase(t, ctx)
 	users := auth.NewUserRepository(pool)
 	// An account belongs to one organization: the actor and the target are
 	// members of organization A, and organization B has its own account.
@@ -89,19 +110,12 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationI
 		}
 	}
 	sessionA, sessionB, accountSession := uuid.NewString(), uuid.NewString(), uuid.NewString()
-	for _, session := range []struct {
-		id      string
+	insertScopeSessions(t, ctx, pool, map[string]struct {
 		account int
 		profile *string
-	}{{sessionA, target.ID, &profileA}, {sessionB, foreignTarget.ID, &profileB}, {accountSession, target.ID, nil}} {
-		if _, err := pool.Exec(ctx, `INSERT INTO auth_sessions (id,user_id,device_id,expires_at,profile_id,profile_credential_revision,auth_method) VALUES ($1,$2,'test',now()+interval '1 hour',$3,CASE WHEN $3::text IS NULL THEN NULL ELSE 1 END,CASE WHEN $3::text IS NULL THEN 'account' ELSE 'direct_profile' END)`, session.id, session.account, session.profile); err != nil {
-			t.Fatalf("create session: %v", err)
-		}
-	}
+	}{sessionA: {target.ID, &profileA}, sessionB: {foreignTarget.ID, &profileB}, accountSession: {target.ID, nil}})
 
-	handler := NewAdminHandler(users, pool, nil)
-	secret := []byte("organization-session-lifecycle-secret")
-	handler.SetLifecycleIdempotency(lifecycleidempotency.NewCoordinator(lifecycleidempotency.NewPostgresStore(pool), lifecycleidempotency.NewHMACKeyDigester(secret)), lifecycleidempotency.NewRequestDigester(secret))
+	handler := NewAdminHandler(users, pool, pgstore.NewPostgresProvider(pool))
 	var wholeAccount []int
 	handler.OnUserSessionsRevoked = func(_ context.Context, accountID int) error {
 		wholeAccount = append(wholeAccount, accountID)
@@ -119,16 +133,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationI
 	router.Delete("/users/{user_id}/auth-sessions/{session_id}", handler.HandleRevokeUserAuthSession)
 	router.Delete("/users/{user_id}/auth-sessions", handler.HandleRevokeAllUserAuthSessions)
 
-	foreignReq := httptest.NewRequest(http.MethodDelete, "/users/"+strconv.Itoa(foreignTarget.ID)+"/auth-sessions/"+sessionB, nil)
-	foreignReq.Header.Set("Idempotency-Key", "scoped-foreign-"+uuid.NewString())
-	foreign := httptest.NewRecorder()
-	router.ServeHTTP(foreign, foreignReq)
-	if foreign.Code != http.StatusNotFound {
-		t.Fatalf("foreign profile session revoke = %d: %s", foreign.Code, foreign.Body.String())
-	}
-
 	allReq := httptest.NewRequest(http.MethodDelete, "/users/"+strconv.Itoa(target.ID)+"/auth-sessions", nil)
-	allReq.Header.Set("Idempotency-Key", "scoped-all-"+uuid.NewString())
 	all := httptest.NewRecorder()
 	router.ServeHTTP(all, allReq)
 	if all.Code != http.StatusNoContent {

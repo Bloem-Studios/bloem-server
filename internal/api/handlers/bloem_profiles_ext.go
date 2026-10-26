@@ -12,18 +12,10 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
-	"github.com/Silo-Server/silo-server/internal/lifecycleidempotency"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 )
-
-// SetLifecycleIdempotency installs durable coordination for direct household
-// profile creates, updates, and deletes.
-func (h *ProfileHandler) SetLifecycleIdempotency(coordinator lifecycleidempotency.Coordinator, digester lifecycleidempotency.RequestDigester) {
-	h.lifecycle = coordinator
-	h.digest = digester
-}
 
 // HandleGetProfile handles GET /profiles/{id}.
 //
@@ -180,74 +172,6 @@ type updateProfileRequest = ProfileUpdateRequest
 
 type profileResponse = ProfileView
 
-// bloemProfileHandlerExt holds the Bloem-only ProfileHandler dependencies for
-// lifecycle receipts on profile mutations.
-type bloemProfileHandlerExt struct {
-	lifecycle lifecycleidempotency.Coordinator
-	digest    lifecycleidempotency.RequestDigester
-}
-
-// bloemProfileLifecycleRequest builds the lifecycle receipt request for a
-// profile mutation when receipts are wired (nil otherwise). ok=false means
-// it wrote the response.
-func (h *ProfileHandler) bloemProfileLifecycleRequest(w http.ResponseWriter, r *http.Request, routeID string, selectors map[string]string, body []byte) (*lifecycleidempotency.Request, bool) {
-	if h.lifecycle == nil {
-		return nil, true
-	}
-	request, ok := h.profileLifecycleRequest(w, r, routeID, selectors, body)
-	if !ok {
-		return nil, false
-	}
-	return &request, true
-}
-
-// bloemWriteProfileLifecycleResult replays the stored lifecycle receipt as
-// the response when the mutation ran under one. It reports whether it wrote.
-func bloemWriteProfileLifecycleResult(w http.ResponseWriter, request *lifecycleidempotency.Request, result lifecycleidempotency.Result) bool {
-	if request == nil {
-		return false
-	}
-	writeLifecycleResult(w, result)
-	return true
-}
-
-// bloemCreateProfileLifecycle creates a profile under a durable lifecycle
-// receipt, recording the receipt on the command for the HTTP handler.
-func (h *ProfileHandler) bloemCreateProfileLifecycle(ctx context.Context, cmd ProfileCreateCommand, avatarRef string, maxPlaybackQuality string, settingsSync []profileSettingSync) (ProfileView, error) {
-	req := cmd.Request
-	showForcedSubtitles := true
-	if req.ShowForcedSubtitles != nil {
-		showForcedSubtitles = *req.ShowForcedSubtitles
-	}
-	profile := userstore.Profile{
-		ID:                         uuid.New().String(),
-		Name:                       strings.TrimSpace(req.Name),
-		Avatar:                     avatarRef,
-		IsChild:                    req.IsChild,
-		MaxContentRating:           req.MaxContentRating,
-		MaxAdvisoryAge:             req.MaxAdvisoryAge,
-		RequireAdvisoryAge:         req.RequireAdvisoryAge,
-		QualityPreference:          req.QualityPreference,
-		Language:                   req.Language,
-		PreferredMetadataLanguage:  req.PreferredMetadataLanguage,
-		SubtitleLanguage:           req.SubtitleLanguage,
-		SubtitleMode:               req.SubtitleMode,
-		AutoSkipIntro:              req.AutoSkipIntro,
-		AutoSkipCredits:            req.AutoSkipCredits,
-		AutoSkipRecap:              req.AutoSkipRecap,
-		AutoPlayNextPreview:        req.AutoPlayNextPreview,
-		ShowForcedSubtitles:        showForcedSubtitles,
-		LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
-		AllowedLibraryIDs:          req.AllowedLibraryIDs,
-		MaxPlaybackQuality:         maxPlaybackQuality,
-	}
-	result, err := h.createProfileLifecycle(ctx, cmd, profile, settingsSync)
-	if cmd.lifecycleResult != nil {
-		*cmd.lifecycleResult = result
-	}
-	return profileLifecycleView(result, err)
-}
-
 // bloemProfileLimit enforces the effective (account and entitlement) profile
 // ceiling for a new profile and returns that limit (0 = unlimited) and the
 // access group the profile inherits.
@@ -263,12 +187,12 @@ func (h *ProfileHandler) bloemProfileLimit(ctx context.Context, user *models.Use
 }
 
 // bloemUpdateProfilePrelude runs Bloem's pre-store profile update steps: it
-// normalizes the name and plans the canonical settings sync before any store
-// access, dispatches to the lifecycle receipt path when wired, and refuses a
-// PIN change from a direct profile session. done=true means the caller
-// returns (view, err) as is; otherwise req carries the normalized name and the
-// Silo path below repeats the same (now idempotent) steps.
-func (h *ProfileHandler) bloemUpdateProfilePrelude(ctx context.Context, cmd ProfileUpdateCommand, req *ProfileUpdateRequest, avatarRef *string, maxPlaybackQuality *string) (ProfileView, bool, error) {
+// normalizes the name, validates the canonical settings sync, and refuses a
+// PIN change from a direct profile session, all before any store access.
+// done=true means the caller returns (view, err) as is; otherwise req carries
+// the normalized name and the Silo path below repeats the same (now
+// idempotent) steps.
+func (h *ProfileHandler) bloemUpdateProfilePrelude(ctx context.Context, req *ProfileUpdateRequest) (ProfileView, bool, error) {
 	var none ProfileView
 	if req.Name != nil {
 		trimmedName := strings.TrimSpace(*req.Name)
@@ -277,32 +201,8 @@ func (h *ProfileHandler) bloemUpdateProfilePrelude(ctx context.Context, cmd Prof
 		}
 		req.Name = &trimmedName
 	}
-	settingsSync, err := planUpdateProfileSettingsSync(*req)
-	if err != nil {
+	if _, err := planUpdateProfileSettingsSync(*req); err != nil {
 		return none, true, apiError(http.StatusBadRequest, "bad_request", err.Error())
-	}
-	input := userstore.UpdateProfileInput{
-		Name: req.Name, Avatar: avatarRef, IsChild: req.IsChild,
-		MaxContentRating: req.MaxContentRating, MaxAdvisoryAge: req.MaxAdvisoryAge, RequireAdvisoryAge: req.RequireAdvisoryAge, QualityPreference: req.QualityPreference,
-		Language: req.Language, PreferredMetadataLanguage: req.PreferredMetadataLanguage,
-		SubtitleLanguage: req.SubtitleLanguage, SubtitleMode: req.SubtitleMode,
-		AutoSkipIntro: req.AutoSkipIntro, AutoSkipCredits: req.AutoSkipCredits,
-		AutoSkipRecap: req.AutoSkipRecap, AutoPlayNextPreview: req.AutoPlayNextPreview,
-		ShowForcedSubtitles: req.ShowForcedSubtitles, LibraryRestrictionsEnabled: req.LibraryRestrictionsEnabled,
-		AllowedLibraryIDs: req.AllowedLibraryIDs, MaxPlaybackQuality: maxPlaybackQuality,
-	}
-	if h.lifecycle != nil {
-		pinHash, err := hashProfilePIN(ctx, req.PIN)
-		if err != nil {
-			return none, true, err
-		}
-		input.PINHash = pinHash
-		result, err := h.updateProfileLifecycle(ctx, cmd, input, settingsSync)
-		if cmd.lifecycleResult != nil {
-			*cmd.lifecycleResult = result
-		}
-		view, err := profileLifecycleView(result, err)
-		return view, true, err
 	}
 	if req.PIN != nil && apimw.IsDirectProfileSession((&http.Request{}).WithContext(ctx)) {
 		return none, true, apiError(http.StatusForbidden, "forbidden", "Direct profile sessions cannot change the profile PIN")
