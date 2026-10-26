@@ -639,6 +639,7 @@ func TestProvider_DirectoryListingFollowsChanges(t *testing.T) {
 	if err := os.Chtimes(dir, old, old); err != nil {
 		t.Fatalf("Chtimes() error = %v", err)
 	}
+	time.Sleep(2 * fineListingSettleTime) // Bloem: the change time settles too
 	p := NewProvider()
 	first, err := p.listDir(dir)
 	if err != nil {
@@ -681,6 +682,7 @@ func TestProvider_RecentListingIsNotCached(t *testing.T) {
 			if err := os.Chtimes(dir, tc.stamp, tc.stamp); err != nil {
 				t.Fatalf("Chtimes() error = %v", err)
 			}
+			time.Sleep(2 * fineListingSettleTime) // Bloem: the change time settles too
 			p := NewProvider()
 			first, err := p.listDir(dir)
 			if err != nil {

@@ -161,6 +161,8 @@ internal/libraryingest/executor_overlap_test.go  # upstream overlap fixture supp
 internal/mail/layout_test.go  # default alt text and logo size derive from branding.DefaultServerName and the embedded default wordmark; Bloem pins its own in bloem_brand_test.go
 internal/metadata/image_cache_job_repo.go
 internal/metadata/image_cache_processor.go
+internal/metadata/nfo/lookup.go  # listDir caches a listing only once the directory's change time has settled too (lastChange, bloem_listing_settle.go): settling on the modification time alone, which copy tools restore, cached listings that missed a same-tick change
+internal/metadata/nfo/lookup_test.go  # the two caching tests wait out the change-time settle window before listing
 internal/models/invitation.go
 internal/models/media.go
 internal/models/session.go
