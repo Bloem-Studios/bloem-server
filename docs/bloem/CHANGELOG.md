@@ -3,6 +3,24 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Dead code removed
+
+Code nothing called or ran is gone:
+- the `playback.strict_reconstruct_admission` setting and its reconstruct hook,
+  which was never set, so reconstruction always took Silo's fail-open path;
+- the media-auth Prometheus counters;
+- the `tenant_valid` rego rule, which only its own tests called;
+- the web Live TV session start, heartbeat and release hooks, the unmounted
+  "on now" home row, six unused `Policy*` types, and the Playwright specs no
+  script or workflow ran, with the `@playwright/test` dependency.
+
+With one membership per account, `AccountOrganization` reads that membership,
+the unused `PrimaryMembershipSQL` projection goes, member deletion no longer
+counts memberships, and an organization's revoke-all leaves an account that is
+not its member alone. `action.rego`, `action_test.rego`, `permission_test.rego`
+and `admin_user_policy_test.go` return to Silo's bytes; the seam ledger drops
+from 329 to 325.
+
 ## October 26, 2026 — Presentation evaluators run in-process
 
 Promotions and seasonal ambience evaluate inside the server again, with
