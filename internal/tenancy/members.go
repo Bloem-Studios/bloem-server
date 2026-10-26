@@ -568,7 +568,7 @@ func (s *MemberService) ResetPassword(ctx context.Context, tenantID uuid.UUID, u
 }
 
 // Delete removes the tenant membership and only removes the global account
-// when it has no other membership, ownership, or platform-admin obligation.
+// when it has no other ownership or platform-admin obligation.
 // Ownership, freeze recomputation, membership removal/account deletion, and
 // the durable tombstone share one tenant-row-locked transaction.
 func (s *MemberService) Delete(ctx context.Context, tenantID uuid.UUID, userID int) error {
@@ -624,15 +624,11 @@ func (s *MemberService) DeleteInTransaction(ctx context.Context, tx pgx.Tx, tena
 		role            string
 		username        string
 		email           string
-		membershipCount int
 		otherOwnerCount int
 		platformOwner   bool
 	)
 	if err := tx.QueryRow(ctx, `SELECT role,username,email FROM users WHERE id=$1 FOR UPDATE`, userID).Scan(&role, &username, &email); err != nil {
 		return fmt.Errorf("tenancy: lock member account: %w", err)
-	}
-	if err := tx.QueryRow(ctx, `SELECT count(*) FROM organization_memberships WHERE account_id=$1`, userID).Scan(&membershipCount); err != nil {
-		return fmt.Errorf("tenancy: count member obligations: %w", err)
 	}
 	if err := tx.QueryRow(ctx, `SELECT count(*) FROM organizations WHERE owner_account_id=$1 AND id<>$2`, userID, tenantID).Scan(&otherOwnerCount); err != nil {
 		return fmt.Errorf("tenancy: count member ownerships: %w", err)
@@ -680,7 +676,7 @@ func (s *MemberService) DeleteInTransaction(ctx context.Context, tx pgx.Tx, tena
 		return fmt.Errorf("tenancy: update tenant after member delete: %w", err)
 	}
 
-	deleteGlobal := membershipCount == 1 && otherOwnerCount == 0 && !platformOwner && role != legacyRoleAdmin
+	deleteGlobal := otherOwnerCount == 0 && !platformOwner && role != legacyRoleAdmin
 	if deleteGlobal {
 		if err := s.accounts.DeleteUserInTransaction(ctx, tx, userID); err != nil {
 			return fmt.Errorf("tenancy: delete unowned member account: %w", err)

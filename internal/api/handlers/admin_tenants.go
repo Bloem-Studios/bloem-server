@@ -248,7 +248,7 @@ func (h *AdminTenantsHandler) setFrozen(w http.ResponseWriter, r *http.Request, 
 }
 
 // HandleDelete retires a tenant and removes only its memberships. Accounts
-// with another membership, ownership or platform obligation are preserved.
+// that own another organization or hold a platform obligation are preserved.
 func (h *AdminTenantsHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	id, ok := h.tenantID(w, r)
 	if !ok {

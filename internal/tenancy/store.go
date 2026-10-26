@@ -420,27 +420,17 @@ func mapOwnershipWriteError(err error) error {
 // deployment default organization tells a tenant's own end user that its tenant
 // does not exist, because it holds no membership there.
 //
-// The account's own organization is the answer, chosen with the same precedence
-// the account policy projection uses (auth.userSource): the default
-// organization when the account belongs to it, otherwise its earliest
-// membership. Keeping the two in step means there is one notion of "the
-// account's organization" rather than two that can disagree.
-//
-// Only active memberships qualify; see PrimaryMembershipSQL. An account whose
-// memberships are all invited or suspended reports ErrMembershipNotFound.
+// The account's own organization is the answer: an account holds at most one
+// membership. A membership that is invited or suspended grants nothing, so
+// such an account reports ErrMembershipNotFound.
 func (s *Store) AccountOrganization(ctx context.Context, accountID int) (uuid.UUID, error) {
 	if s == nil || s.pool == nil || accountID <= 0 {
 		return uuid.Nil, ErrTenantUnavailable
 	}
 	var organizationID uuid.UUID
 	err := s.pool.QueryRow(ctx, `
-		SELECT memberships.organization_id
-		FROM organization_memberships AS memberships
-		JOIN organizations AS orgs ON orgs.id = memberships.organization_id
-		WHERE memberships.account_id = $1
-		  AND memberships.status = 'active'
-		ORDER BY orgs.is_default DESC, memberships.created_at ASC, memberships.id ASC
-		LIMIT 1`, accountID).Scan(&organizationID)
+		SELECT organization_id FROM organization_memberships
+		WHERE account_id = $1 AND status = 'active'`, accountID).Scan(&organizationID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return uuid.Nil, ErrMembershipNotFound
 	}

@@ -11,11 +11,11 @@ package handlers
 // all, so it survived and could still select the organization's profiles.
 //
 // Here the membership's security_revision moves, which makes every
-// membership-bound token stale at its next check, and when this organization
-// is the account's only active one the account-login sessions are revoked as
-// well: they can reach nothing else. An account that still belongs to another
-// organization keeps its account-login sessions, because one tenant's
-// administrator must not sign the member out of another tenant.
+// membership-bound token stale at its next check, and the account-login
+// sessions are revoked as well: an account belongs to one organization, so
+// they can reach nothing else. An account that is not a member of this
+// organization is left alone, because one tenant's administrator must not
+// sign another tenant's member out.
 
 import (
 	"context"
@@ -46,26 +46,14 @@ func lockOrganizationMembership(ctx context.Context, tx pgx.Tx, organizationID u
 // account's sessions were revoked account-wide, in which case the caller owes
 // an account-wide compatibility-session invalidation after commit.
 func revokeOrganizationMemberAccess(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, accountID int) (bool, error) {
-	if _, err := tx.Exec(ctx, `
+	tag, err := tx.Exec(ctx, `
 		UPDATE organization_memberships
 		SET security_revision = security_revision + 1, updated_at = now()
-		WHERE organization_id = $1 AND account_id = $2`, organizationID, accountID); err != nil {
+		WHERE organization_id = $1 AND account_id = $2`, organizationID, accountID)
+	if err != nil {
 		return false, fmt.Errorf("bump membership security revision: %w", err)
 	}
-	var otherMembership bool
-	if err := tx.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM organization_memberships AS memberships
-			JOIN organizations AS orgs ON orgs.id = memberships.organization_id
-			WHERE memberships.account_id = $1
-			  AND memberships.organization_id <> $2
-			  AND memberships.status = 'active'
-			  AND orgs.status <> 'suspended'
-		)`, accountID, organizationID).Scan(&otherMembership); err != nil {
-		return false, fmt.Errorf("check other memberships: %w", err)
-	}
-	if otherMembership {
+	if tag.RowsAffected() == 0 {
 		return false, nil
 	}
 	if _, err := tx.Exec(ctx, `
