@@ -3,6 +3,18 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Invitation acceptance has one path
+
+Accepting an invitation runs Silo's `Service.Accept` only. The transactional
+`AcceptInTransaction` path the lifecycle receipts drove, with its locked lookup
+and claim on the repository, has had no caller since the receipts went, and is
+gone. An invitation still creates its account in the organization that issued
+it. Organization invitations keep their own organization-scoped repository
+methods: Silo's invitations have no organization, so reading one from the
+request context would not return `repository.go` to Silo's bytes, and would let
+Silo's admin handlers, which also issue admin invitations, act on an
+organization. The seam ledger stays at 309.
+
 ## October 26, 2026 — Web organization admin closer to Silo
 
 The admin route table in `App.tsx` is Silo's again apart from two insertion

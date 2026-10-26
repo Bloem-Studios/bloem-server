@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -139,18 +138,6 @@ func TestBloemInvitationAcceptDuplicateAccountRemainsConflict(t *testing.T) {
 	users := auth.NewUserRepository(pool)
 	if _, err := users.Create(ctx, models.CreateUserInput{Username: "invitee@example.test", Email: "invitee@example.test", Password: "existing-account-password", Role: models.RoleUser}); err != nil {
 		t.Fatal(err)
-	}
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
-	pair, created, acceptErr := handler.service.AcceptInTransaction(ctx, tx, invitations.HashToken(token), "correct-horse-battery", "", "")
-	if err := tx.Rollback(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if !errors.Is(acceptErr, invitations.ErrNotClaimable) || pair != nil || created.User != nil {
-		t.Fatalf("duplicate account: error = %v, credentials present = %v, account present = %v", acceptErr, pair != nil, created.User != nil)
 	}
 	bloemAssertInvitationRefusal(t, bloemAcceptInvitation(ctx, handler, token, "bloem-duplicate-account"), http.StatusConflict, "already_used")
 	bloemAssertInvitationCounts(t, ctx, pool, 1, 1, 0, 0)

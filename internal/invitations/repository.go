@@ -214,7 +214,7 @@ func (r *Repository) GetByTokenHash(ctx context.Context, tokenHash string) (*mod
 
 // List returns all invitations, newest first.
 func (r *Repository) List(ctx context.Context) ([]*models.Invitation, error) {
-	rows, err := r.pool.Query(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.organization_id=COALESCE($1,public.bloem_default_organization_id()) ORDER BY i.created_at DESC`, nullableOrganizationID(uuid.Nil))
+	rows, err := r.pool.Query(ctx, `SELECT `+invitationColumns+invitationFrom+`WHERE i.organization_id=public.bloem_default_organization_id() ORDER BY i.created_at DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("listing invitations: %w", err)
 	}
