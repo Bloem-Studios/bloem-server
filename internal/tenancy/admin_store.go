@@ -257,6 +257,9 @@ func (s *Store) CreateOrganizationInTransaction(ctx context.Context, tx pgx.Tx, 
 	if err = ensureTenantDefaultAccessGroup(ctx, tx, organization.ID); err != nil {
 		return Organization{}, fmt.Errorf("create organization default access group: %w", err)
 	}
+	if err = grantCreationDefaultBundle(ctx, tx, organization.ID, actor.AccountID); err != nil {
+		return Organization{}, err
+	}
 	if _, err = tx.Exec(ctx, `
 		INSERT INTO organization_memberships (organization_id, account_id, status, legacy_role)
 		SELECT $1, $2, $3, $4`, organization.ID, input.OwnerAccountID, MembershipActive, legacyRoleAdmin); err != nil {

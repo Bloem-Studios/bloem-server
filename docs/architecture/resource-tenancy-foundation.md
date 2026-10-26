@@ -35,9 +35,16 @@ entitlement per member, with `granted_by_service` set to
 
 A bundle revision is immutable once applied. Changing `active_revision` does
 not rewrite entitlements previously materialized from an older revision.
-`Materializer.MaterializeDefaultBundle` locks the target organization and
-active bundle, applies one frozen revision transactionally, and leaves existing
-live entitlements unchanged.
+Creating an organization applies the active creation-default bundle in the
+creating transaction (`tenancy.GrantDefaultBundleInTransaction`, called by
+platform organization creation and by tenant provisioning), so a new
+organization starts with the bundle's platform libraries and plugins. A tenant
+that provisioning adopts again is left as it stands, and creation proceeds
+without a grant when no active creation-default bundle exists.
+`Materializer.MaterializeDefaultBundle` applies the same grant to an existing
+active organization: it locks the organization and the active bundle, applies
+one frozen revision transactionally, and leaves existing live entitlements
+unchanged.
 
 ## Compatibility-created roots
 

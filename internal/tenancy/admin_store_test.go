@@ -26,8 +26,9 @@ func TestAdminStoreCreateOrganizationCreatesOwnerMembership(t *testing.T) {
 	if err != nil || membership.LegacyRole != "admin" || membership.Status != MembershipActive {
 		t.Fatalf("membership = %+v, err = %v", membership, err)
 	}
+	bundleMembers := creationDefaultBundleMembers(t, fixture)
 	summary, err := store.GetOrganizationSummary(fixture.ctx, created.ID)
-	if err != nil || summary.MembershipCount != 1 || summary.ActiveMembershipCount != 1 || summary.ProfileCount != 0 || summary.LibraryCount != 0 || summary.EntitlementCount != 0 {
+	if err != nil || summary.MembershipCount != 1 || summary.ActiveMembershipCount != 1 || summary.ProfileCount != 0 || summary.LibraryCount != 0 || summary.EntitlementCount != bundleMembers {
 		t.Fatalf("organization summary = %+v, err = %v", summary, err)
 	}
 
@@ -65,8 +66,9 @@ func TestAdminStoreListOrganizationsUsesStableCursorAndExactCounts(t *testing.T)
 	if len(second.Items) != 1 || second.Items[0].ID == first.Items[0].ID || second.NextCursor != "" {
 		t.Fatalf("second page = %+v after %+v", second, first)
 	}
+	bundleMembers := creationDefaultBundleMembers(t, fixture)
 	for _, item := range append(first.Items, second.Items...) {
-		if item.MembershipCount != 1 || item.ActiveMembershipCount != 1 || item.ProfileCount != 0 || item.LibraryCount != 0 || item.EntitlementCount != 0 {
+		if item.MembershipCount != 1 || item.ActiveMembershipCount != 1 || item.ProfileCount != 0 || item.LibraryCount != 0 || item.EntitlementCount != bundleMembers {
 			t.Fatalf("counts for %s = memberships %d profiles %d libraries %d entitlements %d", item.ID, item.MembershipCount, item.ProfileCount, item.LibraryCount, item.EntitlementCount)
 		}
 	}
@@ -330,6 +332,21 @@ func TestAdminStoreCreateMembershipDistinguishesMissingAccount(t *testing.T) {
 	if _, _, err := store.CreateMembership(adminMutationContext(fixture), created.ID, created.PolicyRevision, CreateMembershipInput{AccountID: 2147483647, LegacyRole: "user"}); !errors.Is(err, ErrAccountNotFound) {
 		t.Fatalf("missing account error = %v, want ErrAccountNotFound", err)
 	}
+}
+
+// creationDefaultBundleMembers counts the entitlements a new organization
+// receives from the creation-default bundle.
+func creationDefaultBundleMembers(t *testing.T, fixture tenancyFixture) int64 {
+	t.Helper()
+	var members int64
+	if err := fixture.pool.QueryRow(fixture.ctx, `
+		SELECT count(*) FROM entitlement_bundle_members AS members
+		JOIN entitlement_bundles AS bundles
+		  ON bundles.id = members.bundle_id AND bundles.active_revision = members.bundle_revision
+		WHERE bundles.is_organization_creation_default AND bundles.status = 'active'`).Scan(&members); err != nil {
+		t.Fatalf("count creation-default bundle members: %v", err)
+	}
+	return members
 }
 
 func adminMutationContext(fixture tenancyFixture) context.Context {

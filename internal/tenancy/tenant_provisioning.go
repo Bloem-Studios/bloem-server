@@ -163,6 +163,13 @@ func (s *Store) CreateTenantOrganizationInTransaction(ctx context.Context, tx pg
 		return TenantOrganization{}, ErrTenantOrganizationInvalid
 	}
 	slug := tenantSlug(name, externalServiceID)
+	// An existing tenant is adopted as it stands: re-granting the default
+	// bundle would revive entitlements an administrator revoked since.
+	var adopted bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM organizations WHERE external_service_id = $1)`,
+		externalServiceID).Scan(&adopted); err != nil {
+		return TenantOrganization{}, fmt.Errorf("tenancy: look up tenant organization: %w", err)
+	}
 	organization, err := scanTenantOrganization(tx.QueryRow(ctx, `
 		INSERT INTO organizations (slug, name, status, external_operator_id, external_service_id, slots, transcodes)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -180,6 +187,11 @@ func (s *Store) CreateTenantOrganizationInTransaction(ctx context.Context, tx pg
 		organization.AppliedEntitlementRevision = input.EntitlementTemplateRevision
 	} else if err := ensureTenantDefaultAccessGroup(ctx, tx, organization.ID); err != nil {
 		return TenantOrganization{}, err
+	}
+	if !adopted {
+		if err := grantCreationDefaultBundle(ctx, tx, organization.ID, 0); err != nil {
+			return TenantOrganization{}, err
+		}
 	}
 	organization.SlotsUsed, err = tenantMembershipCount(ctx, tx, organization.ID)
 	if err != nil {
