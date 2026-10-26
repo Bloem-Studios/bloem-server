@@ -242,7 +242,7 @@ type BodyAssertion struct {
 
 // Load parses and schema-validates every embedded catalog.
 func Load() ([]*Catalog, error) {
-	return load(scenarios.FS)
+	return load(bloemScenarioFS())
 }
 
 func load(fsys fs.FS) ([]*Catalog, error) {

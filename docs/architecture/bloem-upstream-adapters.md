@@ -182,11 +182,8 @@ sidecars. Owned tests exercise actual development and build outputs. Upstream
 changes to these explicit literals or public paths require adapter review. Bloem administration and Live TV pages load through lazy routes so
 their code is not all part of the initial application load.
 
-The bundle-budget runner in
-[`web/scripts/bloem-bundle-budget.mjs`](../../web/scripts/bloem-bundle-budget.mjs)
-uses the upstream validation functions with Bloem's separate
-[`web/bloem-perf-budget.json`](../../web/bloem-perf-budget.json). Keep that
-allowance explicit; do not change upstream thresholds merely to hide fork costs.
+The launch bundle is checked by Silo's own `web/scripts/check-bundle-budget.mjs`,
+which reports its size without gating it; Bloem keeps no separate allowance.
 Seasonal branding reads are cached by server, while authenticated profile
 ambience retains its own authority and scheduling rules.
 

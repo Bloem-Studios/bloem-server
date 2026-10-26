@@ -121,8 +121,8 @@ make verify-local-paths
 ```
 
 `make build` installs the pinned frontend dependencies and builds the embedded
-web bundle, which `pnpm run budget:check` then measures against
-`web/bloem-perf-budget.json`. `make lint` runs the full local Go and frontend linters; CI scopes
+web bundle, which `pnpm run budget:check` then measures with Silo's report-only
+checker. `make lint` runs the full local Go and frontend linters; CI scopes
 its Go lint gate to changed lines because the repository has pre-existing
 findings. `go tool govulncheck ./...` is CI's reachable Go vulnerability scan;
 CI runs it on exactly the Go patch `go.mod` names, so run it on that patch too.

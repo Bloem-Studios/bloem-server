@@ -112,17 +112,16 @@ runs the upstream Silo image and a Bloem image in turn against one database
 (`KEEP_ON_FAILURE=1` leaves the stack up for inspection). Local test databases need `max_locks_per_transaction = 512`, as in CI,
 and `make lint-changed` needs a golangci-lint built with the toolchain `go.mod` names.
 
-Run `make verify-seams` after an upstream merge. Bloem currently declares 315
+Run `make verify-seams` after an upstream merge. Bloem currently declares 313
 seams (modified or deleted upstream files); additions belong in owned modules
 wherever possible. CI's changed-line lint gate, `scripts/bloem-lint-changed-ci.sh`,
 reports a finding only on a line that changed in the push and differs from Silo's
 copy of the file, so lines a Silo merge brings in, or a file restored to Silo's
 text, do not count against Bloem; Bloem's own changed lines, in any file, still do.
-The web budget keeps Bloem's measured allowance in `web/bloem-perf-budget.json`
-(326,067 B brotli for the eager launch bundle, within 1 KiB either way, and no
-cross-origin render-blocking resources), checked by `pnpm run budget:check`
-through the owned `web/scripts/bloem-bundle-budget.mjs` with Silo's manifest and
-resource checks unchanged; Silo's own script reports launch bytes without gating them.
+`pnpm run budget:check` runs Silo's `web/scripts/check-bundle-budget.mjs`: it
+reports the eager launch bundle's brotli size without gating it, and fails when
+the vendor chunk is missing or imports another chunk, or when `index.html` loads
+a cross-origin render-blocking resource.
 
 The [web coverage matrix](../../architecture/bloem-web-feature-coverage.md) and
 [completion handoff](../../architecture/bloem-web-completion-handoff.md) distinguish

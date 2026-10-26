@@ -22,6 +22,16 @@ Bloem answers `false` because that protocol is retired. Its baseline digest was
 refreshed after reviewing those three added field-presence assertions. The
 existing adjudicated scenarios and their transport decisions are unchanged.
 
+## Bloem's own scenario rows
+
+Rows for routes Bloem registers in a Silo route group (profile login, device
+remote control, profile reads and household commands) live in
+`internal/scenariocatalog/bloem_catalogs/<listener>/<group>.json`, each naming
+the Silo catalog it `extends`. `scenariocatalog.Load` splices them onto the end
+of that catalog's rows, so Silo's files under `contracts/api/v2/scenarios/` stay
+Silo's bytes while the gate, the executor and the adjudication digests see the
+same merged catalog as before.
+
 ## Decision and scope
 
 The 2026-09-19 CI follow-through reconciles historical Silo fixtures with behavior

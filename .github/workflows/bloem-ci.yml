@@ -844,7 +844,8 @@ jobs:
           wait "$node_pid" || { echo "::error::Node typecheck failed"; failed=1; }
           exit "$failed"
 
-      # Bloem uses its calibrated bundle budget through the package script.
+      # Silo's checker: reports the launch bytes and fails on a broken vendor
+      # chunk or a cross-origin render-blocking resource.
       - name: Check the launch bundle budget
         if: matrix.part == 'build'
         run: pnpm run budget:check

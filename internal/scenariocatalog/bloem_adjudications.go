@@ -6,10 +6,9 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"slices"
 	"strconv"
-
-	"github.com/Silo-Server/silo-server/contracts/api/v2/scenarios"
 )
 
 // These are explicit downstream decisions, not response-derived expectations.
@@ -54,7 +53,7 @@ func BloemCurrentCatalogs(catalogs []*Catalog) ([]*Catalog, error) {
 	}
 	baselines := make(map[string]*Catalog, len(review.CatalogSHA256))
 	for file, digest := range review.CatalogSHA256 {
-		raw, err := scenarios.FS.ReadFile(file)
+		raw, err := fs.ReadFile(bloemScenarioFS(), file)
 		if err != nil {
 			return nil, fmt.Errorf("read adjudicated baseline %s: %w", file, err)
 		}

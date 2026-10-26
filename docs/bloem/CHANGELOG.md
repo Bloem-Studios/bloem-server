@@ -3,6 +3,20 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 26, 2026 — Scenario rows and the bundle budget leave Silo's files
+
+Bloem's scenario rows (profile login, device remote control, profile reads and
+household commands) move out of Silo's `api-v1-auth`, `api-v1-devices` and
+`api-v1-profiles` catalogs into `internal/scenariocatalog/bloem_catalogs`, and
+`scenariocatalog.Load` splices them back onto the end of those catalogs, so the
+merged catalogs and the adjudication digests are byte-identical to before. The
+launch bundle check is Silo's report-only `check-bundle-budget.mjs` again; Bloem's
+measured allowance and its wrapper are gone, so Silo merges stop rewriting a
+budget file. The route inventory stays one generated file: Bloem's global
+middleware changes the chain of almost every Silo route, so a separate Bloem
+inventory would not return Silo's to its bytes. Three catalog seams go and
+`catalog.go` becomes a one-line seam, so the ledger drops from 315 to 313.
+
 ## October 26, 2026 — Downloads read the request's profile
 
 Silo's download handlers pass no profile. Bloem's download policy now takes the
