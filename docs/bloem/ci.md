@@ -13,20 +13,28 @@ Commands assume the repository root is the cwd.
 
 ## Jobs
 
-"Bloem CI" carries the jobs Bloem's copy of `ci.yml` ran, unchanged apart from
-the workflow name and concurrency group:
+"Bloem CI" carries the jobs Bloem's copy of `ci.yml` ran, apart from the
+workflow name and concurrency group, with the slowest split across runners:
 
 | Job | What it gates |
 |---|---|
 | Prune old Go caches | Keeps the newest Go cache per job on the default branch. |
-| Tenant identity (disposable PostgreSQL) | Tenant, access-group and profile-tenancy migrations and stores, race-checked tenancy, resourcetenancy, access and policy, the v1 tenancy and OPA acceptance suites, and the multitenant administration release gate. |
-| Native authentication (disposable PostgreSQL) | `internal/auth` with and without the race detector, and its vet. |
+| Tenant identity (disposable PostgreSQL) | Tenant, access-group and profile-tenancy migrations and stores, race-checked resourcetenancy, access and policy, the v1 tenancy and OPA acceptance suites, and the multitenant administration release gate. |
+| Tenant stores race (1-4/4, disposable PostgreSQL) | `internal/tenancy` under the race detector, its tests split four ways. |
+| Native authentication (1-3/3, disposable PostgreSQL) | `internal/auth` with and without the race detector, its tests split three ways, and its vet (shard 1). |
 | Go lint | gofmt, `go vet ./...`, govulncheck, changed-line lint (`scripts/bloem-lint-changed-ci.sh`) and the full-tree router recovery lint. |
 | Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, migration ledger, scenario catalogs, offline routes, the API v2 OpenAPI, contract diff and fixtures, and the seam ledger. |
-| Go test | Watch Party and history-import race tests, the database pins (`make test-db-pins`), the mixed library location pins, and `make test-go` on a database `cmd/bloem-testdb` prepared. |
+| Go test | `make test-go` on a database `cmd/bloem-testdb` prepared. |
+| Go database pins | The database pins (`make test-db-pins`) and the upstream database regression gates. |
+| Go database regressions | Watch Party and history-import race tests and the mixed library location pins. |
 | Scenario executor | `make test-scenarios`. |
 | Web (build, checks) | ESLint and format, typecheck and build, the launch bundle budget, the web settings binding and v2 types, and `verify-local-paths`; uploads `frontend-dist-<sha>`, which Bloem Image publishes. |
 | Web test (1-4/4) | Vitest in four shards. |
+
+The split jobs each run against their own PostgreSQL.
+`scripts/ci/go-test-shard.sh PKG N I` prints the `-run` pattern for shard I of
+N, dealing a package's tests round-robin so every test runs exactly once;
+`scripts/ci/go-test-shard_test.sh` checks that.
 
 Silo's `TestLogPartitionsMatchPartmanOnNonUTCServer` checks an eight-day
 America/New_York window, which crosses the 2026-11-01 daylight-saving change, so
@@ -37,9 +45,9 @@ America/New_York window, which crosses the 2026-11-01 daylight-saving change, so
 `scripts/ci/bloem-install-test-tools.sh` installs what the Go jobs need beyond
 libvips:
 
-- **Go test:** ripgrep, which `scripts/generate-bloem-storage-proto_test.sh`
+- **Go test, Go database pins, Go database regressions:** ripgrep, which `scripts/generate-bloem-storage-proto_test.sh`
   uses to match the generator's output.
-- **Go test:** FFmpeg and ripgrep. The native audio and video tests generate
+- **The same three jobs:** FFmpeg and ripgrep. The native audio and video tests generate
   fixtures with real FFmpeg; the two native audiobook tests fail without it, and
   about twenty other packages' FFmpeg tests skip.
 

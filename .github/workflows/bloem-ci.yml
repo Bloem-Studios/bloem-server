@@ -83,7 +83,7 @@ jobs:
   tenant-identity:
     name: Tenant identity (disposable PostgreSQL)
     runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-tenant-identity"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
-    services:
+    services: &tenant-postgres
       postgres:
         image: pgvector/pgvector:pg18
         env:
@@ -98,29 +98,37 @@ jobs:
           --health-timeout 5s
           --health-retries 20
           --shm-size=1g
-    env:
+    env: &tenant-env
       GOWORK: "off"
       SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_tenant_test?sslmode=disable
     steps:
-      - name: Checkout
+      - &plain-checkout
+        name: Checkout
         uses: actions/checkout@v5
         with:
           persist-credentials: false
 
-      - name: Install libvips
+      # The disposable self-hosted runners already have libvips.
+      - &apt-libvips
+        name: Install libvips
         run: |
+          pkg-config --exists vips && exit 0
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libvips-dev
 
-      - name: Set up Go
+      # The disposable self-hosted runners start with a warm Go cache, so
+      # only GitHub's runners fetch one from the Actions cache.
+      - &setup-go-go-mod
+        name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-          cache: true
+          cache: ${{ runner.environment == 'github-hosted' }}
 
       # Package TestMain hooks finalize membership policy against this URL.
       # The PostgreSQL service starts empty; migrate it before those hooks run.
-      - name: Prepare disposable application schema
+      - &tenant-schema
+        name: Prepare disposable application schema
         run: |
           make embed-stub
           DATABASE_URL="$SILO_TEST_DATABASE_URL" \
@@ -139,10 +147,11 @@ jobs:
           SILO_REQUIRE_TEST_DATABASE: "1"
         run: go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization' -count=1 -v -timeout=30m
 
-      - name: Tenant resource and policy stores
+      # The tenancy store's race tests run in the Tenant stores job.
+      - name: Resource tenancy, access and policy stores
         env:
           SILO_REQUIRE_TEST_DATABASE: "1"
-        run: go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m
+        run: go test -race ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m
 
       - name: OPA tenant compatibility acceptance
         env:
@@ -158,9 +167,41 @@ jobs:
             -run 'TestMultitenantAdmin|TestAdminStore|TestService|TestAdminPeopleMigrations|TestOrganizationAdminProjectionMigration' \
             -count=1 -v -timeout=30m
 
+  # The tenancy store's race tests are most of the tenant gate's time and run
+  # one after another, so four runners split them, each against its own
+  # disposable PostgreSQL. scripts/ci/go-test-shard.sh deals every test to
+  # exactly one shard.
+  tenant-stores:
+    name: Tenant stores race (${{ matrix.shard }}/4, disposable PostgreSQL)
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-tenant-stores"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    services: *tenant-postgres
+    env: *tenant-env
+    steps:
+      - *plain-checkout
+      - *apt-libvips
+      - *setup-go-go-mod
+      - *tenant-schema
+
+      - name: Tenancy store race tests
+        env:
+          SILO_REQUIRE_TEST_DATABASE: "1"
+          SHARD: ${{ matrix.shard }}
+        run: |
+          tests=$(scripts/ci/go-test-shard.sh ./internal/tenancy 4 "$SHARD" -race)
+          go test -race ./internal/tenancy -run "$tests" -count=1 -v -timeout=30m
+
   native-auth:
-    name: Native authentication (disposable PostgreSQL)
+    name: Native authentication (${{ matrix.shard }}/3, disposable PostgreSQL)
     runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-native-auth"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
+    # internal/auth's tests run one after another; three runners split them.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     services:
       postgres:
         image: pgvector/pgvector:pg18
@@ -180,21 +221,9 @@ jobs:
       GOWORK: "off"
       SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/postgres?sslmode=disable
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-
-      - name: Install libvips
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libvips-dev
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
+      - *plain-checkout
+      - *apt-libvips
+      - *setup-go-go-mod
 
       - name: Prepare disposable initial setup database
         env:
@@ -204,13 +233,17 @@ jobs:
       - name: Native authentication unit and race tests
         env:
           SILO_INITIAL_SETUP_ATOMIC_DSN: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/silo_identity_setup_ci?sslmode=disable
-        # The race run takes about ten minutes, Go's default test timeout; use
-        # the 20-minute package bound the Makefile applies.
+          SHARD: ${{ matrix.shard }}
+        # The whole race run took about ten minutes, Go's default test
+        # timeout; keep the 20-minute package bound the Makefile applies.
         run: |
-          go test -timeout=20m ./internal/auth -count=1
-          go test -race -timeout=20m ./internal/auth -count=1
+          tests=$(scripts/ci/go-test-shard.sh ./internal/auth 3 "$SHARD")
+          go test -timeout=20m ./internal/auth -count=1 -run "$tests"
+          tests=$(scripts/ci/go-test-shard.sh ./internal/auth 3 "$SHARD" -race)
+          go test -race -timeout=20m ./internal/auth -count=1 -run "$tests"
 
       - name: Native authentication vet
+        if: matrix.shard == 1
         run: go vet ./internal/auth
 
   # The Go gate is three jobs so that lint, the contract checks, and the test
@@ -550,11 +583,14 @@ jobs:
           job-status: ${{ job.status }}
           cache-key: ${{ steps.setup-go.outputs.cache-key }}
 
+  # Go test, Go database pins and Go database regressions were one job. Each
+  # now prepares its own PostgreSQL, so together they take about as long as
+  # the longest of them.
   go-test:
     name: Go test
     runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-go-test"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
     services:
-      postgres:
+      postgres: &go-test-postgres
         image: pgvector/pgvector:pg18
         env:
           POSTGRES_USER: bloem_tenant
@@ -568,31 +604,17 @@ jobs:
           --health-timeout 5s
           --health-retries 20
           --shm-size=1g
-      # Bloem: only the library-location pins use it, at the one address
-      # their Redis tests accept. make test-go never sees SILO_TEST_REDIS_URL.
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 65421:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-    env:
+    env: &go-test-env
       GOWORK: "off"
       SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_test?sslmode=disable
     steps:
       - *libvips-cache-key
       - *libvips-restore
       - *libvips-install
+      - *plain-checkout
 
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          persist-credentials: false
-
-      - name: Set up Go
+      - &setup-go-test
+        name: Set up Go
         uses: ./.github/actions/setup-go
         id: setup-go
         with:
@@ -605,7 +627,8 @@ jobs:
       # and storage builds, grows the cache past that and fails with "no space
       # left on device" while the disk is mostly empty. Move the restored cache
       # onto the disk at the same path, so saving it still works.
-      - name: Keep the Go build cache on disk
+      - &go-build-cache-on-disk
+        name: Keep the Go build cache on disk
         if: runner.environment == 'github-hosted'
         run: |
           staged="$RUNNER_TEMP/go-build"
@@ -620,7 +643,8 @@ jobs:
 
       # Bloem: the native audio and video tests generate fixtures with real
       # FFmpeg and fail without it. The script explains the pinned build.
-      - name: Install FFmpeg and ripgrep
+      - &test-tools
+        name: Install FFmpeg and ripgrep
         run: scripts/ci/bloem-install-test-tools.sh ffmpeg ripgrep
 
       # Runs the settings-contract gate among everything else: the embedded
@@ -636,7 +660,8 @@ jobs:
       # stock lock table (64 locks x 100 connections) runs out of shared
       # memory under that load. Services take no server flags, so set them
       # and restart.
-      - name: Size the test PostgreSQL for the parallel suite
+      - &size-test-postgres
+        name: Size the test PostgreSQL for the parallel suite
         env:
           POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
         run: |
@@ -647,37 +672,11 @@ jobs:
           until docker exec "$POSTGRES_CONTAINER_ID" pg_isready -U bloem_tenant -d bloem_test; do sleep 1; done
           docker exec "$POSTGRES_CONTAINER_ID" psql -U bloem_tenant -d bloem_test -Atc "SHOW max_locks_per_transaction"
 
-      - name: Prepare Go test databases
+      - &prepare-test-databases
+        name: Prepare Go test databases
         run: |
           make embed-stub
           go run ./cmd/bloem-testdb
-
-      - name: Test Watch Party coordination against Postgres
-        run: go test -race -count=1 ./internal/watchtogether/
-
-      - name: Test history import cancellation against Postgres
-        run: go test -race -count=1 -run '^(TestHistoryImportCancellation.*|TestQueue.*|TestHistoryImportV1ProfileAuthorization)$' ./migrations/ ./internal/historyimport/ ./internal/api/handlers/
-
-      - name: Upstream database regression gates
-        run: |
-          make test-db-pins
-          go test -race -count=1 -run '^TestMarkerContributionClaimsByTargetMigrationPostgres$' ./migrations/
-          go test -race -count=1 -run '^TestUpsertTasteClusters.*Postgres$' ./internal/recommendations/
-          go test -race -count=1 -run '^TestCompatDetailServiceResolvesViewerSubtitleDefaultsPostgres$' ./cmd/silo/
-          go test -race -count=1 -run '^(TestImageCacheCleanup|TestRequeuedImageCacheCleanup|TestJobOutcomeIsRecorded)' ./internal/adminjob/
-
-      # Bloem: mixed library location and native audiobook regressions. The
-      # tagged tests only accept a database named bloem_storage_test_*, which
-      # they clone as a template, so they get their own on the same server.
-      - name: Mixed library location regression pins
-        env:
-          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
-          SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_storage_test_ci?sslmode=disable
-          SILO_TEST_REDIS_URL: redis://127.0.0.1:65421/0
-        run: |
-          docker exec "$POSTGRES_CONTAINER_ID" psql -U bloem_tenant -d bloem_test -c "CREATE DATABASE bloem_storage_test_ci"
-          go run ./cmd/bloem-testdb
-          make test-bloem-library-locations
 
       # Compiles every package on the way, so there is no separate build step.
       # This job prepares a fresh database; cached results cannot prove its state.
@@ -694,6 +693,80 @@ jobs:
           cache-key: ${{ steps.setup-go.outputs.cache-key }}
           module-cache-key: ${{ steps.setup-go.outputs.module-cache-key }}
           module-cache-hit: ${{ steps.setup-go.outputs.module-cache-hit }}
+
+  go-db-pins:
+    name: Go database pins
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-go-db-pins"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
+    services:
+      postgres: *go-test-postgres
+    env: *go-test-env
+    steps:
+      - *libvips-cache-key
+      - *libvips-restore
+      - *libvips-install
+      - *plain-checkout
+      - *setup-go-test
+      - *go-patch
+      - *go-build-cache-on-disk
+      - *test-tools
+      - *size-test-postgres
+      - *prepare-test-databases
+
+      - name: Upstream database regression gates
+        run: |
+          make test-db-pins
+          go test -race -count=1 -run '^TestMarkerContributionClaimsByTargetMigrationPostgres$' ./migrations/
+          go test -race -count=1 -run '^TestUpsertTasteClusters.*Postgres$' ./internal/recommendations/
+          go test -race -count=1 -run '^TestCompatDetailServiceResolvesViewerSubtitleDefaultsPostgres$' ./cmd/silo/
+          go test -race -count=1 -run '^(TestImageCacheCleanup|TestRequeuedImageCacheCleanup|TestJobOutcomeIsRecorded)' ./internal/adminjob/
+
+  go-db-regress:
+    name: Go database regressions
+    runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-go-db-regress"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
+    services:
+      postgres: *go-test-postgres
+      # Bloem: only the library-location pins use it, at the one address
+      # their Redis tests accept.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 65421:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env: *go-test-env
+    steps:
+      - *libvips-cache-key
+      - *libvips-restore
+      - *libvips-install
+      - *plain-checkout
+      - *setup-go-test
+      - *go-patch
+      - *go-build-cache-on-disk
+      - *test-tools
+      - *size-test-postgres
+      - *prepare-test-databases
+
+      - name: Test Watch Party coordination against Postgres
+        run: go test -race -count=1 ./internal/watchtogether/
+
+      - name: Test history import cancellation against Postgres
+        run: go test -race -count=1 -run '^(TestHistoryImportCancellation.*|TestQueue.*|TestHistoryImportV1ProfileAuthorization)$' ./migrations/ ./internal/historyimport/ ./internal/api/handlers/
+
+      # Bloem: mixed library location and native audiobook regressions. The
+      # tagged tests only accept a database named bloem_storage_test_*, which
+      # they clone as a template, so they get their own on the same server.
+      - name: Mixed library location regression pins
+        env:
+          POSTGRES_CONTAINER_ID: ${{ job.services.postgres.id }}
+          SILO_TEST_DATABASE_URL: postgres://bloem_tenant:invented-ci-password@127.0.0.1:5432/bloem_storage_test_ci?sslmode=disable
+          SILO_TEST_REDIS_URL: redis://127.0.0.1:65421/0
+        run: |
+          docker exec "$POSTGRES_CONTAINER_ID" psql -U bloem_tenant -d bloem_test -c "CREATE DATABASE bloem_storage_test_ci"
+          go run ./cmd/bloem-testdb
+          make test-bloem-library-locations
 
   scenario-executor:
     name: Scenario executor
