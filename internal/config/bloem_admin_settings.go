@@ -4,32 +4,19 @@ const (
 	// EbookRequestsEnabledSettingKey controls internal ebook request admission.
 	// Public audiobook requests do not depend on this opt-in.
 	EbookRequestsEnabledSettingKey = "bloem.requests.ebooks_enabled"
-
-	// PlaybackStrictReconstructAdmissionSettingKey makes playback-session
-	// reconstruction fail CLOSED when the per-user limit provider cannot be
-	// evaluated at all (as opposed to returning a genuine over-cap denial).
-	//
-	// Default "false" matches upstream Silo: a transient provider error admits
-	// the session ungated rather than turning a recoverable dependency failure
-	// into a permanent 404 mid-playback. Set "true" for the stricter posture,
-	// where no session is ever admitted without its limits actually checked —
-	// at the cost of refusing playback to within-limit users during a database
-	// blip, which is exactly when a post-restart reconstruct wave happens.
-	PlaybackStrictReconstructAdmissionSettingKey = "playback.strict_reconstruct_admission"
 )
 
 // bloemAdminSettingDefaults extends Silo's adminSettingDefaults.
 var bloemAdminSettingDefaults = map[string]string{
-	EbookRequestsEnabledSettingKey:               "false",
-	PlaybackStrictReconstructAdmissionSettingKey: "false",
-	"livetv.dvr_path":                            DefaultLiveTVDVRPath,
-	"livetv.max_transcodes":                      "3",
-	"livetv.hw_accel":                            DefaultLiveTVHWAccel,
-	"livetv.hw_decode":                           DefaultLiveTVHWDecode,
-	"livetv.encoder_preset":                      DefaultLiveTVEncoderPreset,
-	"livetv.framerate_cap":                       DefaultLiveTVFrameRateCap,
-	"livetv.max_resolution":                      DefaultLiveTVMaxResolution,
-	"livetv.play_method":                         DefaultLiveTVPlayMethod,
+	EbookRequestsEnabledSettingKey: "false",
+	"livetv.dvr_path":              DefaultLiveTVDVRPath,
+	"livetv.max_transcodes":        "3",
+	"livetv.hw_accel":              DefaultLiveTVHWAccel,
+	"livetv.hw_decode":             DefaultLiveTVHWDecode,
+	"livetv.encoder_preset":        DefaultLiveTVEncoderPreset,
+	"livetv.framerate_cap":         DefaultLiveTVFrameRateCap,
+	"livetv.max_resolution":        DefaultLiveTVMaxResolution,
+	"livetv.play_method":           DefaultLiveTVPlayMethod,
 
 	// LAN service advertisement (_bloem._tcp mDNS). Off by default: it needs
 	// the host's L2 broadcast domain, and operators on shared networks may
@@ -55,7 +42,7 @@ func normalizeBloemAdminSetting(key, raw, value string) (string, bool, error) {
 	switch key {
 	case "s3.user_db_path_style", "s3.user_db_endpoint":
 		return raw, true, nil
-	case PlaybackStrictReconstructAdmissionSettingKey, EbookRequestsEnabledSettingKey, "lan.advertisement_enabled":
+	case EbookRequestsEnabledSettingKey, "lan.advertisement_enabled":
 		normalized, err = normalizeAdminBool(key, value)
 	case "livetv.max_transcodes":
 		normalized, err = normalizeAdminInt(key, value, -1, 1024)

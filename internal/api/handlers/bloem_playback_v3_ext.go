@@ -15,16 +15,6 @@ func decisionResponseForFeaturesV3(response playback.DecisionResponseV3, feature
 	return response
 }
 
-func mediaAuthMetricModeV3(mode mediaAuthModeV3) playback.MediaAuthModeV3 {
-	if !mode.headerAuth {
-		return playback.MediaAuthLegacy
-	}
-	if mode.proxyEgress {
-		return playback.MediaAuthHeaderProxy
-	}
-	return playback.MediaAuthHeaderAPI
-}
-
 // playbackRequestDeviceIDV3 is the registered device id the starting client
 // identified with: the device header first, then the session claims.
 func playbackRequestDeviceIDV3(r *http.Request) string {

@@ -6,33 +6,9 @@ import (
 	"log/slog"
 )
 
-// StrictAdmissionFn (TranscodeManager) reports whether reconstruct admission
-// fails CLOSED when the limit provider itself cannot be evaluated. Nil or
-// false is upstream Silo's behavior: admit the session ungated rather than
-// collapse a transient dependency error into a permanent 404. True is the
-// stricter Bloem posture — never admit a session whose limits were never
-// checked, accepting that a Postgres blip during a post-restart reconstruct
-// wave stops playback for users who are in fact within their limits.
-//
-// This is a deliberate, operator-visible divergence
-// (playback.strict_reconstruct_admission), not a silent fork of upstream's
-// admission code. Keeping it as a runtime branch rather than an edit to the
-// shared path is what stops it re-conflicting on every upstream merge.
-
-// strictAdmission reports whether reconstruct admission should fail closed on an
-// unevaluated limit provider. Defaults to false (upstream behavior) when the
-// hook is unwired, so a manager built without settings access is never
-// accidentally stricter than Silo.
-func (m *TranscodeManager) strictAdmission() bool {
-	if m.StrictAdmissionFn == nil {
-		return false
-	}
-	return m.StrictAdmissionFn()
-}
-
-// refuseUnevaluatedReconstruct always refuses Bloem authority denials, including
-// wrapped denials tagged as provider failures. Strict admission additionally
-// refuses genuine failures to evaluate limits, even for users within their caps.
+// refuseUnevaluatedReconstruct refuses Bloem authority denials, including
+// wrapped denials tagged as provider failures. A genuine failure to evaluate
+// limits is left to Silo's fail-open path.
 func (m *TranscodeManager) refuseUnevaluatedReconstruct(ctx context.Context, sessionID string, userID int, method PlayMethod, err error) bool {
 	if errors.Is(err, ErrPlaybackNotAllowed) || errors.Is(err, ErrTenantFrozen) || errors.Is(err, ErrTenantTranscodesExceeded) {
 		slog.WarnContext(ctx, "playback session reconstruct refused by admission policy", "component", "playback",
@@ -40,11 +16,5 @@ func (m *TranscodeManager) refuseUnevaluatedReconstruct(ctx context.Context, ses
 			"user", userID, "method", method, "error", err)
 		return true
 	}
-	if !m.strictAdmission() {
-		return false
-	}
-	slog.WarnContext(ctx, "playback session reconstruct refused: limits unevaluated and strict admission is enabled", "component", "playback",
-		"session", sessionID, "playback_session_id", sessionID,
-		"user", userID, "method", method, "error", err)
-	return true
+	return false
 }

@@ -356,7 +356,6 @@ func NewPlaybackHandler(sessionMgr SessionManagerInterface, opts ...FilePathReso
 	// field-ordering hazard during router setup.
 	h.tm.JWTSecretFn = func() string { return h.JWTSecret }
 	h.tm.LogSinkFn = func() playback.FFmpegLogSink { return h.FFmpegLogSink }
-	h.tm.StrictAdmissionFn = func() bool { return h.strictReconstructAdmission() }
 	h.tm.Config = func() playback.TranscodeRuntimeConfig {
 		c := h.playbackConfig()
 		return playback.TranscodeRuntimeConfig{

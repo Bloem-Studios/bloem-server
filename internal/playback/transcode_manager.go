@@ -81,9 +81,6 @@ type TranscodeManager struct {
 	// StartThrottler optionally starts the segment throttler for a (re)started
 	// transcode, reading the embedding handler's settings. No-op when nil.
 	StartThrottler func(ctx context.Context, ts *TranscodeSession)
-	// StrictAdmissionFn is Bloem's strict reconstruct admission hook; see
-	// bloem_transcode_manager.go. Nil keeps upstream behavior.
-	StrictAdmissionFn func() bool
 	// RestoreInputSource restores nonpersisted input authority/format from a
 	// host-owned immutable recipe companion. Nil preserves local-file execution.
 	RestoreInputSource func(context.Context, *RecipeCard, *TranscodeOpts) error

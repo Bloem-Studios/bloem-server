@@ -2,31 +2,13 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/playback"
 )
-
-// strictReconstructAdmission reports the operator's admission posture for a
-// reconstruct whose limit provider could not be evaluated. Defaults to upstream
-// Silo's fail-open behavior when the setting is unset or unreadable — a
-// settings-store outage must not itself become the reason playback is refused.
-func (h *PlaybackHandler) strictReconstructAdmission() bool {
-	if h.SettingsRepo == nil {
-		return false
-	}
-	v, err := h.SettingsRepo.Get(context.Background(), config.PlaybackStrictReconstructAdmissionSettingKey)
-	if err != nil {
-		return false
-	}
-	return strings.EqualFold(strings.TrimSpace(v), "true")
-}
 
 type bufferedPlaybackResponse struct {
 	header http.Header
