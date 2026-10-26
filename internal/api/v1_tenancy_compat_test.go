@@ -226,8 +226,13 @@ func TestBloemFoundationCIRequiresDisposablePostgres(t *testing.T) {
 		Services map[string]struct {
 			Image string `yaml:"image"`
 		} `yaml:"services"`
-		Env   map[string]string `yaml:"env"`
-		Steps []workflowStep    `yaml:"steps"`
+		Env      map[string]string `yaml:"env"`
+		Steps    []workflowStep    `yaml:"steps"`
+		Strategy struct {
+			Matrix struct {
+				Shard []int `yaml:"shard"`
+			} `yaml:"matrix"`
+		} `yaml:"strategy"`
 	}
 	var workflow struct {
 		Jobs map[string]workflowJob `yaml:"jobs"`
@@ -260,10 +265,10 @@ func TestBloemFoundationCIRequiresDisposablePostgres(t *testing.T) {
 	var commands string
 	checkoutLocked := false
 	postgresSteps := map[string]bool{
-		"Tenant and access-group migrations":  false,
-		"Profile tenant persistence":          false,
-		"Tenant resource and policy stores":   false,
-		"OPA tenant compatibility acceptance": false,
+		"Tenant and access-group migrations":         false,
+		"Profile tenant persistence":                 false,
+		"Resource tenancy, access and policy stores": false,
+		"OPA tenant compatibility acceptance":        false,
 	}
 	for _, step := range job.Steps {
 		commands += "\n" + step.Run
@@ -280,7 +285,7 @@ func TestBloemFoundationCIRequiresDisposablePostgres(t *testing.T) {
 	for _, required := range []string{
 		"go test ./internal/database -run 'TestTenantIdentityMigration|TestResourceTenancyMigration|TestOrganizationAccessGroupMigration|TestProfileAccessGroupRequired' -count=1 -v -timeout=30m",
 		"go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization' -count=1 -v -timeout=30m",
-		"go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m",
+		"go test -race ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m",
 		"go test ./internal/api -run 'TestV1TenancyCompatibility|TestOPATenantFoundationWithDisposablePostgres' -count=1 -v -timeout=30m",
 	} {
 		if !strings.Contains(commands, required) {
@@ -291,6 +296,47 @@ func TestBloemFoundationCIRequiresDisposablePostgres(t *testing.T) {
 		if !signaled {
 			t.Errorf("tenant-identity CI step %q does not set SILO_REQUIRE_TEST_DATABASE=1", step)
 		}
+	}
+
+	// internal/tenancy's race tests run split across the tenant-stores
+	// shards, each against its own disposable PostgreSQL, and together run
+	// every test once: one shard per matrix entry, 1 to N.
+	stores, ok := workflow.Jobs["tenant-stores"]
+	if !ok {
+		t.Fatal("CI has no tenant-stores race job")
+	}
+	if image := stores.Services["postgres"].Image; !strings.Contains(image, "pgvector") {
+		t.Fatalf("tenant-stores postgres image = %q, want a pgvector-capable image", image)
+	}
+	if stores.Env["SILO_TEST_DATABASE_URL"] == "" || stores.Env["SILO_REQUIRE_TEST_DATABASE"] != "" {
+		t.Fatalf("tenant-stores env = %v, want SILO_TEST_DATABASE_URL and no job-wide SILO_REQUIRE_TEST_DATABASE", stores.Env)
+	}
+	shards := stores.Strategy.Matrix.Shard
+	for i, shard := range shards {
+		if shard != i+1 {
+			t.Fatalf("tenant-stores shards = %v, want 1 to N", shards)
+		}
+	}
+	raced := false
+	for _, step := range stores.Steps {
+		if step.Name != "Tenancy store race tests" {
+			continue
+		}
+		raced = true
+		if step.Env["SILO_REQUIRE_TEST_DATABASE"] != "1" {
+			t.Error("tenant-stores race step does not set SILO_REQUIRE_TEST_DATABASE=1")
+		}
+		for _, required := range []string{
+			fmt.Sprintf(`scripts/ci/go-test-shard.sh ./internal/tenancy %d "$SHARD" -race`, len(shards)),
+			`go test -race ./internal/tenancy -run "$tests" -count=1 -v -timeout=30m`,
+		} {
+			if !strings.Contains(step.Run, required) {
+				t.Errorf("tenant-stores race step does not run %q", required)
+			}
+		}
+	}
+	if len(shards) == 0 || !raced {
+		t.Fatal("tenant-stores does not run the tenancy race tests in shards")
 	}
 }
 

@@ -587,8 +587,17 @@ jobs:
   # now prepares its own PostgreSQL, so together they take about as long as
   # the longest of them.
   go-test:
-    name: Go test
+    name: Go test (${{ matrix.shard }}/4)
     runs-on: ${{ vars.BLOEM_SELF_HOSTED == 'true' && ((github.event_name == 'pull_request' && contains(fromJSON(vars.BLOEM_CI_MEMBERS || '[]'), github.event.pull_request.user.login)) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')) && fromJSON(format('["self-hosted","linux","x64","bloem-linux","bloem-run-{0}-{1}","bloem-job-go-test"]', github.run_id, github.run_attempt)) || 'ubuntu-24.04' }}
+    # make test-go's packages are dealt to four shards, each with its own
+    # PostgreSQL and at most four packages on it at once, as on GitHub's
+    # 4-core runners. Sixteen at once on one database made packages collide
+    # on the shared membership policy (SQLSTATE 23514 in entitlements and
+    # catalog).
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     services:
       postgres: &go-test-postgres
         image: pgvector/pgvector:pg18
@@ -682,11 +691,14 @@ jobs:
       # This job prepares a fresh database; cached results cannot prove its state.
       - name: Test
         env:
-          GOFLAGS: -count=1
-        run: make test-go
+          GOFLAGS: -count=1 -p=4
+          SHARD: ${{ matrix.shard }}
+        run: |
+          packages=$(make -s --no-print-directory go-test-packages | scripts/ci/deal.sh 4 "$SHARD")
+          make test-go GO_TEST_PACKAGES="$(paste -sd ' ' <<< "$packages")"
 
       - name: Save the Go cache
-        if: ${{ !cancelled() && runner.environment == 'github-hosted' && github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request' }}
+        if: ${{ !cancelled() && matrix.shard == 1 && runner.environment == 'github-hosted' && github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request' }}
         uses: ./.github/actions/save-go-cache
         with:
           job-status: ${{ job.status }}

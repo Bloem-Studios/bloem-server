@@ -40,6 +40,17 @@ done
 "$shard" . 3 4 > /dev/null 2>&1 && fail "shard 4 of 3 is accepted"
 "$shard" . 3 0 > /dev/null 2>&1 && fail "shard 0 of 3 is accepted"
 
+# deal.sh, which also deals make test-go's packages to the Go test shards.
+deal=${shard%/*}/deal.sh
+lines=$(printf 'pkg/%s\n' c a e b d)
+for n in 1 2 5; do
+  got=$(for i in $(seq "$n"); do "$deal" "$n" "$i" <<< "$lines"; done | sort)
+  [[ $got == "$(sort <<< "$lines")" ]] || fail "deal.sh: $n shards print every line once"
+done
+[[ $("$deal" 2 1 <<< "$lines") == $'pkg/a\npkg/c\npkg/e' ]] || fail "deal.sh deals sorted lines round-robin"
+"$deal" 6 6 <<< "$lines" > /dev/null 2>&1 && fail "deal.sh: an empty shard succeeds"
+"$deal" 2 3 <<< "$lines" > /dev/null 2>&1 && fail "deal.sh: shard 3 of 2 is accepted"
+
 if [[ $failures -ne 0 ]]; then
   echo "$failures failed"
   exit 1

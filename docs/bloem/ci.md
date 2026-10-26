@@ -24,7 +24,7 @@ workflow name and concurrency group, with the slowest split across runners:
 | Native authentication (1-3/3, disposable PostgreSQL) | `internal/auth` with and without the race detector, its tests split three ways, and its vet (shard 1). |
 | Go lint | gofmt, `go vet ./...`, govulncheck, changed-line lint (`scripts/bloem-lint-changed-ci.sh`) and the full-tree router recovery lint. |
 | Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, migration ledger, scenario catalogs, offline routes, the API v2 OpenAPI, contract diff and fixtures, and the seam ledger. |
-| Go test | `make test-go` on a database `cmd/bloem-testdb` prepared. |
+| Go test (1-4/4) | `make test-go` on a database `cmd/bloem-testdb` prepared, its packages split four ways, four at a time per database. |
 | Go database pins | The database pins (`make test-db-pins`) and the upstream database regression gates. |
 | Go database regressions | Watch Party and history-import race tests and the mixed library location pins. |
 | Scenario executor | `make test-scenarios`. |
@@ -32,9 +32,10 @@ workflow name and concurrency group, with the slowest split across runners:
 | Web test (1-4/4) | Vitest in four shards. |
 
 The split jobs each run against their own PostgreSQL.
-`scripts/ci/go-test-shard.sh PKG N I` prints the `-run` pattern for shard I of
-N, dealing a package's tests round-robin so every test runs exactly once;
-`scripts/ci/go-test-shard_test.sh` checks that.
+`scripts/ci/deal.sh N I` deals lines round-robin to N shards so each lands in
+exactly one: Go test deals `make go-test-packages` with it, and
+`scripts/ci/go-test-shard.sh PKG N I` deals a package's tests to print a `-run`
+pattern. `scripts/ci/go-test-shard_test.sh` checks both.
 
 Silo's `TestLogPartitionsMatchPartmanOnNonUTCServer` checks an eight-day
 America/New_York window, which crosses the 2026-11-01 daylight-saving change, so

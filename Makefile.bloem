@@ -20,6 +20,12 @@ verify-bloem-api-catalogue:
 # the whole list silently expanding to nothing.
 GO_TEST_PACKAGES = $(shell go list -e ./... | grep -v '/internal/scenariocatalog/executor$$')
 
+# Print make test-go's packages, one per line. CI deals them to the Go test
+# shards with scripts/ci/deal.sh.
+.PHONY: go-test-packages
+go-test-packages:
+	@printf '%s\n' $(GO_TEST_PACKAGES)
+
 # Prepare the shared Go test database named by SILO_TEST_DATABASE_URL:
 # migrate, set the fixture session markers, and install the test-only Bloem
 # fixture triggers (internal/bloemtestdb/sql, not a migration). The tool refuses a
