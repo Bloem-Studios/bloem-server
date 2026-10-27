@@ -88,3 +88,46 @@ After start:
 All three migrations are forward-only. To go back, restore the database to the
 restore point above, with the container snapshot, rather than starting the old
 image on the new schema.
+
+## Follow-up: `276becf4a`
+
+At 07:55 UTC `main` moved to `276becf4a365203d754b3547130951fd79e9cd83`
+(system info `276becf4`). Since `422a51fed` it changes only the web admin
+console, where a context refused before its first render now recovers instead
+of keeping the refused context, plus a test-only database for the entitlements
+package and this receipt. It has no migrations and no server code changes.
+
+| Item | Verified value |
+| --- | --- |
+| Runtime image | `bloem-server:release-276becf4a`, loaded from `ghcr.io/bloem-studios/bloem-server:276becf4a365203d754b3547130951fd79e9cd83` (`sha256:75fd2e3e12e4a6bce4b57dd0f8e94d72633c5909a5cf6fda1212eaba52b80364`) |
+| Server binary SHA-256 | `115443118122a6972593a01c03f8f2e4d5ca634194c73fd6c064da4b03c73542`, the same in the published image and on the application host |
+| Migrations | none applied; 725 applied, maximum `20261026191107`, zero pending |
+
+Bloem CI on `main` passed on attempt 2. On attempt 1 the job VM for Go test
+shard 2 powered off mid-run: its runner service was stopped, and the unit's
+stop hook shuts the VM down. The VM used 16.8 GB of its 24 GB and the node had
+memory to spare. The VM was destroyed before it could be inspected, so what
+stopped the runner is not known. The image's runtime configuration is
+identical to `release-422a51fed`.
+
+Before the restart: container snapshot `pre-main-276becf4a`, and database
+restore point `pre-main-276becf4a` at LSN `3B8/F45BF910`, whose WAL segment
+was archived at 07:54:27 UTC with no archive failures.
+
+The restart script refused to run unless the live image was `422a51fed`. It
+stopped the server in 6 seconds, found no migrations to apply, and started
+the new image. Ready returned 200 12 seconds after the stop began, and the
+server was healthy with no restarts. The runtime fingerprint did not change.
+Ready and health returned 200 locally, and ready and the site returned 200
+publicly. Active streams continued (one FFmpeg process before, two after).
+There were no ERROR or panic lines.
+
+Three warnings in the first minute need no action for this deployment:
+
+- the ebook metadata sources rate-limited enrichment searches;
+- `PutBucketCors` on the private assets bucket returned 403 "not entitled";
+- the server reports that its auto-tuned Postgres settings need a Postgres
+  restart, but the database has no setting pending a restart.
+
+To roll back, start `bloem-server:release-422a51fed` again: the schema did
+not change.
