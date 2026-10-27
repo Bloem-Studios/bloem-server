@@ -190,16 +190,17 @@ func (h *BloemBookRequestsHandler) HandleEbookIntegrationLibrary(w http.Response
 		return
 	}
 	var in struct {
-		LibraryID int `json:"library_id"`
+		LibraryID *int `json:"library_id"`
 	}
 	if !readBookRequestBody(w, r, &in) {
 		return
 	}
-	if in.LibraryID < 0 {
+	// Clearing takes an explicit 0; a missing library_id is a mistake.
+	if in.LibraryID == nil || *in.LibraryID < 0 {
 		h.writeRequestError(w, bookrequests.ErrInvalid)
 		return
 	}
-	out, err := h.ebookSetup.SetLibrary(r.Context(), v, chi.URLParam(r, "id"), in.LibraryID)
+	out, err := h.ebookSetup.SetLibrary(r.Context(), v, chi.URLParam(r, "id"), *in.LibraryID)
 	if err != nil {
 		h.writeRequestError(w, err)
 		return

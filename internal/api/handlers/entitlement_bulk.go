@@ -30,8 +30,6 @@ const (
 	entitlementQueryValidationField  = "query"
 )
 
-var ErrPlatformEntitlementBulkRateLimited = errors.New("platform entitlement bulk request rate limited")
-
 type PlatformEntitlementBulkCohortStore interface {
 	ListCohorts(context.Context, uuid.UUID, bool) ([]entitlements.CohortRevision, error)
 	GetCohort(context.Context, uuid.UUID, uuid.UUID) (entitlements.CohortRevision, error)
@@ -428,9 +426,6 @@ func (h *AdminHandler) writePlatformEntitlementBulkError(w http.ResponseWriter, 
 		writeError(w, http.StatusConflict, "authorization_state_changed", "Authorization state changed; create a new preview")
 	case errors.Is(err, adminpeople.ErrInvalidFilter), errors.Is(err, adminpeople.ErrInvalidPolicyCommand):
 		writeAdminValidation(w, map[string]string{platformEntitlementBulkRequest: "contains an invalid entitlement policy operation"})
-	case errors.Is(err, ErrPlatformEntitlementBulkRateLimited):
-		w.Header().Set("Retry-After", "1")
-		writeError(w, http.StatusTooManyRequests, "rate_limited", "Too many bulk entitlement requests")
 	default:
 		writeError(w, http.StatusServiceUnavailable, "entitlements_unavailable", "Bulk entitlement policies are unavailable")
 	}

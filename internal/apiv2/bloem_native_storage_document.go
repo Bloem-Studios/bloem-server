@@ -243,10 +243,10 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 // bloemNativeStorageNotes adds operation-specific rules to the shared description.
 var bloemNativeStorageNotes = map[string]string{
 	"/installations/discover":                          "Only a host-approved bloem.storage.s3 artifact qualifies. The provider runs once in a temporary process to report the selected source's root; the caller never supplies a root, source key or state_path.",
-	"/catalog/installations":                           "S3 sources are added only through catalog discovery: an S3 catalog key is artifact_rejected for a platform administrator and not_found for an organization administrator. A key with no catalog release, or a failed download or checksum, is native_storage_unavailable.",
-	"/catalog/installations/{installation_id}/upgrade": "An organization administrator receives not_found for the S3 plugin, also for an S3 source the organization owns; a platform administrator, or a manual upload of an approved artifact, upgrades it. A key with no catalog release, or a failed download or checksum, is native_storage_unavailable.",
-	"/sources/{source_key}/configuration":              "The source and its installation must be enabled (otherwise not_found) and attached (otherwise native_storage_unavailable). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request).",
-	"/sources/{source_key}/credentials":                "Only an enabled S3 source qualifies: another plugin's source or a disabled one is not_found, and a detached one native_storage_unavailable.",
+	"/catalog/installations":                           "S3 sources are added only through catalog discovery: an S3 catalog key is artifact_rejected for a platform administrator and not_found for an organization administrator. A key with no catalog release is artifact_rejected; a failed download or checksum is native_storage_unavailable.",
+	"/catalog/installations/{installation_id}/upgrade": "An organization administrator receives not_found for the S3 plugin, also for an S3 source the organization owns; a platform administrator, or a manual upload of an approved artifact, upgrades it. A key with no catalog release is artifact_rejected; a failed download or checksum is native_storage_unavailable.",
+	"/sources/{source_key}/configuration":              "The source and its installation must be enabled and attached (otherwise not_found). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request).", //nolint:goconst // Route keys stay literal, as in the switch below.
+	"/sources/{source_key}/credentials":                "Only an enabled, attached S3 source qualifies: another plugin's source, or a disabled or detached one, is not_found.",
 }
 
 // bloemNativeStorageErrors lists what each native-storage handler, its domain
@@ -256,11 +256,14 @@ func bloemNativeStorageErrors(scope, path string) map[int]string {
 		authority      = "tenant_unavailable: administrative authority could not be checked."
 		unavailable    = "native_storage_unavailable: native storage, the source, its provider or the database is unavailable."
 		unknown        = " mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback."
-		catalog        = " native_storage_unavailable also covers an unavailable catalog, a key with no catalog release and a failed download or checksum."
+		catalog        = " native_storage_unavailable also covers an unavailable catalog and a failed download or checksum."
+		noRelease      = " artifact_rejected also covers a key with no catalog release."
 		read           = "invalid_request: query parameters or a request body were sent."
 		strictJSON     = "invalid_request: query parameters were sent, or the body is not a strict application/json object with exactly the documented fields and valid values."
 		strictForm     = "invalid_request: query parameters were sent, or the body is not exactly one request part and one nonempty binary part, or the request JSON has unknown, duplicate, missing or invalid fields."
 		hidden         = "not_found: invalid path identity, absent resource or hidden authority."
+		detached       = " A disabled or detached source is also not_found."
+		authChanged    = "authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry."
 		revision       = "revision_conflict returns current_revision, the source's current configuration revision."
 		jsonLarge      = "request_too_large: the JSON body exceeds 1 MiB."
 		configLarge    = "request_too_large: the JSON body or the serialized configuration exceeds 1 MiB."
@@ -306,7 +309,7 @@ func bloemNativeStorageErrors(scope, path string) map[int]string {
 		r[404] = retained + catalogS3Hidden
 		r[409] = revision + " source_attached: the source is already attached, enabled or present. retained_namespace_unverified: the retained source's identity differs from the request or its namespace is populated."
 		r[413] = configLarge
-		r[422] = "artifact_rejected: " + catalogS3 + "the release is not an approved artifact," + rejectedSchema
+		r[422] = "artifact_rejected: " + catalogS3 + "the release is not an approved artifact," + rejectedSchema + noRelease
 		r[503] = unavailable + catalog + unknown
 	case "/catalog/installations/discover":
 		r[400] = strictJSON + " Any field besides artifact_key, provider_source_id, enabled and config, including organization_id, is rejected, as is a config with state_path or with namespaces other than connection."
@@ -319,7 +322,7 @@ func bloemNativeStorageErrors(scope, path string) map[int]string {
 		r[400] = strictJSON
 		r[404] = hidden + " An organization administrator also receives it for the S3 plugin."
 		r[409], r[413] = revision, jsonLarge
-		r[422] = "artifact_rejected: the release is not an approved artifact or is for a different plugin."
+		r[422] = "artifact_rejected: the release is not an approved artifact or is for a different plugin." + noRelease
 		r[503] = unavailable + catalog + unknown
 	case "/installations/{installation_id}/upgrade":
 		r[400] = strictForm
@@ -329,12 +332,12 @@ func bloemNativeStorageErrors(scope, path string) map[int]string {
 		r[503] = unavailable + unknown
 	case "/sources/{source_key}/configuration":
 		r[400] = strictJSON + " The configuration must also satisfy the installed artifact's declared schema."
-		r[404] = hidden
+		r[404] = hidden + detached
 		r[409] = revision + " configuration_namespace_unverified: a source of this installation has a library location, entries or file references."
 		r[413], r[503] = configLarge, unavailable+unknown
 	case "/sources/{source_key}/credentials":
 		r[400] = strictJSON + " Credentials must be nonempty (session_token may be empty) and free of control characters."
-		r[404], r[409], r[413], r[503] = hidden, revision, jsonLarge, unavailable+unknown
+		r[404], r[409], r[413], r[503] = hidden+detached, revision, jsonLarge, unavailable+unknown
 	case "/installations/{installation_id}/disable", "/installations/{installation_id}":
 		r[400] = strictJSON
 		r[404], r[409], r[413], r[503] = hidden, revision, jsonLarge, unavailable+unknown
@@ -347,6 +350,13 @@ func bloemNativeStorageErrors(scope, path string) map[int]string {
 	}
 	// Every route also passes the administrative middleware first.
 	r[503] = strings.TrimSpace(r[503] + " " + authority)
+	// Routes that retain the storage owner or a source recheck them after
+	// their locks.
+	switch path {
+	case "/capabilities", "/artifacts", "/s3/buckets", "/s3/folders":
+	default:
+		r[409] = strings.TrimSpace(r[409] + " " + authChanged)
+	}
 	switch path {
 	case "/installations", "/installations/discover", "/catalog/installations", "/catalog/installations/discover", "/sources/{source_key}/configuration":
 		if scope == "organization" {

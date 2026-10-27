@@ -170,7 +170,8 @@ func TestBloemNativeStorageDocumentReachableStatuses(t *testing.T) {
 	}{
 		{"platform", "get", "/capabilities", []string{"200", "400", "401", "403", "503"}},
 		{"organization", "get", "/artifacts", []string{"200", "400", "401", "403", "503"}},
-		{"platform", "get", "/sources", []string{"200", "400", "401", "403", "404", "503"}},
+		{"platform", "get", "/sources", []string{"200", "400", "401", "403", "404", "409", "503"}},
+		{"organization", "get", "/sources/{source_key}", []string{"200", "400", "401", "403", "404", "409", "503"}},
 		{"organization", "post", "/s3/folders", []string{"200", "400", "401", "403", "413", "422", "502", "503"}},
 		{"platform", "put", "/sources/{source_key}/configuration", []string{"200", "400", "401", "403", "404", "409", "413", "503"}},
 		{"organization", "put", "/sources/{source_key}/configuration", []string{"200", "400", "401", "403", "404", "409", "413", "422", "503"}},
@@ -262,5 +263,36 @@ func TestBloemNativeStorageDiscoveryDocumentArtifactRejection(t *testing.T) {
 				t.Fatalf("artifact rejection envelope does not match the declared response: %v", err)
 			}
 		})
+	}
+}
+
+// The retained authority checks can answer authorization_state_changed; a
+// catalog key with no release is artifact_rejected, not an outage; and a
+// detached source's configuration is not_found.
+func TestBloemNativeStorageDocumentRefusals(t *testing.T) {
+	doc := bloemWebDocument(t)
+	operation := func(method, path string) map[string]any {
+		t.Helper()
+		return bloemDocObject(t, doc, "paths", BloemPrefix+"/admin/platform/native-storage"+path, method)
+	}
+	description := func(op map[string]any, status string) string {
+		t.Helper()
+		text, _ := bloemDocObject(t, op, "responses", status)["description"].(string)
+		return text
+	}
+	install, upgrade := operation("post", "/catalog/installations"), operation("post", "/catalog/installations/{installation_id}/upgrade")
+	configuration, credentials := operation("put", "/sources/{source_key}/configuration"), operation("post", "/sources/{source_key}/credentials")
+	for name, op := range map[string]map[string]any{"list sources": operation("get", "/sources"), "install": install, "configuration": configuration, "credentials": credentials} {
+		if !strings.Contains(description(op, "409"), "authorization_state_changed") {
+			t.Errorf("%s 409 must name authorization_state_changed", name)
+		}
+	}
+	for name, op := range map[string]map[string]any{"catalog install": install, "catalog upgrade": upgrade} {
+		if !strings.Contains(description(op, "422"), "no catalog release") || strings.Contains(description(op, "503"), "no catalog release") || strings.Contains(op["description"].(string), "release, or a failed download") {
+			t.Errorf("%s must document a key with no catalog release as 422", name)
+		}
+	}
+	if !strings.Contains(description(configuration, "404"), "detached") || !strings.Contains(description(credentials, "404"), "detached") {
+		t.Error("configuration and credentials 404 must cover a detached source")
 	}
 }

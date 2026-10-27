@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -15,6 +16,8 @@ import (
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/Silo-Server/silo-server/internal/catalog"
 )
 
 type storageCatalogTransport func(*http.Request) (*http.Response, error)
@@ -68,6 +71,18 @@ func TestNativeCatalogAdmitsWithoutManualApprovalAndPersists(t *testing.T) {
 	}
 	if len(reloaded.ApprovedArtifacts()) != 1 {
 		t.Fatal("installed catalog trust requires manual approval or refresh after restart")
+	}
+}
+
+// A key the catalog has no release for is refused like any other unapproved
+// artifact; it is not a catalog outage.
+func TestNativeCatalogBinaryRefusesAKeyWithNoRelease(t *testing.T) {
+	checksum := strings.Repeat("a", 64)
+	registry := &NativeStorageRegistry{baseDir: t.TempDir(), approved: make(map[string]NativeStorageArtifact)}
+	registry.catalogClient = catalogFixture(t, bookwarehouseSpec, "0.2.2", checksum)
+	_, err := registry.CatalogBinary(context.Background(), catalogArtifactKey(bookwarehouseSpec, "0.2.3", checksum))
+	if refused, ok := errors.AsType[*catalog.NativeOnboardingError](err); !ok || refused.Code != "artifact_rejected" {
+		t.Fatalf("CatalogBinary = %v, want artifact_rejected", err)
 	}
 }
 

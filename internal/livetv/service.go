@@ -27,8 +27,10 @@ var (
 	ErrLimitExceeded      = errors.New("livetv: limit exceeded")
 	ErrNoTuner            = errors.New("livetv: no tuner available")
 	ErrTunerIndexConflict = errors.New("livetv: tuner index conflict")
-	ErrNotImplemented     = errors.New("livetv: not implemented")
 	ErrNotConfigured      = errors.New("livetv service not configured")
+	// ErrConflict reports a request that conflicts with work already under
+	// way, such as a guide synchronization that is running.
+	ErrConflict = errors.New("livetv: conflict")
 )
 
 type HDHomeRunClient interface {
@@ -447,7 +449,14 @@ func (s *Service) AddTuner(ctx context.Context, in AddTunerInput) (*Tuner, error
 		return nil, err
 	}
 	if err := s.ScanTuner(ctx, tuner.ID); err != nil {
-		return tuner, err
+		// A lineup the device would not give is recorded on the tuner, as a
+		// rescan records it, so answer with the saved tuner. Adding the
+		// device again updates the same tuner.
+		saved, getErr := s.store.GetTuner(ctx, tuner.ID)
+		if getErr != nil || saved == nil || saved.Status != "error" {
+			return nil, err
+		}
+		return saved, nil
 	}
 	return s.store.GetTuner(ctx, tuner.ID)
 }

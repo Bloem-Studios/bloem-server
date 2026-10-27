@@ -50,7 +50,7 @@ func TestLiveTVErrorKeepsTypedMappings(t *testing.T) {
 		{livetv.ErrInvalidArgument, http.StatusBadRequest},
 		{livetv.ErrLimitExceeded, http.StatusConflict},
 		{livetv.ErrNoTuner, http.StatusConflict},
-		{livetv.ErrNotImplemented, http.StatusNotImplemented},
+		{fmt.Errorf("%w: a guide synchronization is already running", livetv.ErrConflict), http.StatusConflict},
 		{livetv.ErrPeerUnavailable, http.StatusServiceUnavailable},
 	}
 	for _, tc := range cases {
@@ -62,5 +62,27 @@ func TestLiveTVErrorKeepsTypedMappings(t *testing.T) {
 		if !errors.Is(tc.err, livetv.ErrPeerUnavailable) && !strings.Contains(rec.Body.String(), tc.err.Error()) {
 			t.Fatalf("%v: body %s lost the typed message", tc.err, rec.Body.String())
 		}
+	}
+}
+
+// Live TV storage that isn't configured answers every Live TV route the way
+// the Xtream provider endpoint answers it: 503 dependency_unavailable.
+func TestLiveTVUnconfiguredStorageAnswersLikeTheXtreamEndpoint(t *testing.T) {
+	h := NewLiveTVHandler(livetv.NewService(nil))
+	xtream := httptest.NewRecorder()
+	h.HandleAddXtreamTuner(xtream, httptest.NewRequest(http.MethodPost, "/livetv/tuners/xtream", strings.NewReader(`{"url":"https://provider.invalid","username":"u","password":"p"}`)))
+	for name, serve := range map[string]func(http.ResponseWriter, *http.Request){
+		"list tuners":        h.HandleListTuners,
+		"scan tuner":         h.HandleScanTuner,
+		"list guide sources": h.HandleListGuideSources,
+		"sync guide source":  h.HandleSyncGuideSource,
+	} {
+		t.Run(name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			serve(rec, httptest.NewRequest(http.MethodPost, "/livetv/x", nil))
+			if rec.Code != xtream.Code || rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), `"error":"dependency_unavailable"`) {
+				t.Fatalf("status = %d %s; the Xtream endpoint answered %d %s", rec.Code, rec.Body.String(), xtream.Code, xtream.Body.String())
+			}
+		})
 	}
 }

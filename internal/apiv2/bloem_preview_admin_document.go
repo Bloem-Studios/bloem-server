@@ -114,8 +114,8 @@ func registerBloemPreviewAdminDocument(reg *Registry) {
 	presentation.Description += " Only current personal preview accounts can be targeted. This metadata does not expire an account; the storefront owns expiration. A null ends_at clears the date."
 	registerBloemChiDocument[BloemPreviewPersonalPresentationInput, struct{}](reg, presentation)
 	account := previewAdminDocumentOp(reg, "POST", "account", "ensureBloemPreviewAccount", "Ensure the issuer's shared preview account and primary profile.", 201, map[int]string{
-		400: previewAdminBadBody,
-		409: "preview_setup_conflict: issuer is missing or differs from the configured issuer, the reserved preview username belongs to another account, or the existing shared account is no longer eligible.",
+		400: previewAdminBadBody + " invalid_preview_settings: issuer is missing.",
+		409: "preview_setup_conflict: issuer differs from the configured issuer, the reserved preview username belongs to another account, or the existing shared account is no longer eligible.",
 	})
 	account.Description += " Setup is atomic and idempotent. A reserved name collision or second issuer is refused. Password sign-in is disabled and the protected preview template is applied."
 	registerBloemChiDocument[BloemPreviewIssuerInput, BloemPreviewAccountOutput](reg, account)

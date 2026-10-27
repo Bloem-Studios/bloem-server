@@ -78,6 +78,12 @@ func (h *BloemPolicyExplainHandler) HandleListDecisions(w http.ResponseWriter, r
 		options.Limit = limit
 	}
 	result, err := h.decisions.ListForOrganization(r.Context(), tenant.OrganizationID, options)
+	if err != nil && options.Cursor != "" && strings.Contains(err.Error(), "cursor") {
+		// The repository's cursor errors are untyped; Silo's policy handler
+		// recognizes them the same way.
+		writeAdminValidation(w, map[string]string{"cursor": "is invalid"})
+		return
+	}
 	if err != nil {
 		writeBloemPolicyDecisionError(w, err)
 		return

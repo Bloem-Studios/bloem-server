@@ -464,6 +464,10 @@ func writeBloemOrganizationError(w http.ResponseWriter, r *http.Request, err err
 		}{"authorization_state_changed", "Authorization state changed; reload and retry", tenant.PolicyRevision})
 	case errors.Is(err, access.ErrGroupDuplicate), errors.Is(err, access.ErrDefaultGroupRequired):
 		writeError(w, http.StatusConflict, "conflict", "The requested organization security change conflicts with current state")
+	case errors.Is(err, access.ErrManagedGroup):
+		writeError(w, http.StatusConflict, "conflict", "This group is managed by entitlement policy and can only be changed there")
+	case errors.Is(err, invitations.ErrEmailTaken):
+		writeError(w, http.StatusConflict, "email_taken", "An account with this email already exists")
 	default:
 		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
 	}

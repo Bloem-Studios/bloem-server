@@ -329,6 +329,11 @@ func (s *Service) retryEbookTx(ctx context.Context, tx pgx.Tx, r Request) error 
 		return err
 	}
 	current, err := s.loadEbookIntegration(ctx, tx, r.OrganizationID, frozen.ID)
+	if errors.Is(err, ErrInvalid) {
+		// The linked library is no longer eligible: the request changed
+		// under the admin, which is a conflict, not a bad request.
+		return ErrConflict
+	}
 	if err != nil {
 		return errors.Join(ErrConflict, err)
 	}

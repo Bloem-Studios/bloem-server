@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -13,6 +14,10 @@ import (
 // removal and a later refresh invalidate both publication and status updates.
 // No database connection is held while downloading or parsing the guide.
 func (s *Service) runXtreamGuideSync(ctx context.Context, source *GuideSource) error {
+	// The claim skips a disabled source too, so refuse it first.
+	if !source.Enabled {
+		return fmt.Errorf("%w: guide source is disabled", ErrInvalidArgument)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	store, err := s.xtreamStore()
@@ -47,7 +52,7 @@ func (s *PgStore) claimXtreamGuideSync(ctx context.Context, source *GuideSource)
 		AND (status<>'syncing' OR updated_at < clock_timestamp()-interval '3 minutes')
 		RETURNING xmin::text`, source.ID, config).Scan(&version)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", errors.New("Xtream guide source changed or a synchronization is already running")
+		return "", fmt.Errorf("%w: the Xtream guide source changed or a synchronization is already running", ErrConflict)
 	}
 	return version, err
 }

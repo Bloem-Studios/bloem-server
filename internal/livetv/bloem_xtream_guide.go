@@ -319,9 +319,6 @@ func (s *Service) prepareXtreamGuideConfig(ctx context.Context, source *GuideSou
 }
 
 func (s *Service) syncXtreamGuide(ctx context.Context, source *GuideSource, version string) error {
-	if !source.Enabled {
-		return fmt.Errorf("%w: guide source is disabled", ErrInvalidArgument)
-	}
 	tunerID := source.Config["tuner_id"]
 	tuner, err := s.store.GetTuner(ctx, tunerID)
 	if err != nil {

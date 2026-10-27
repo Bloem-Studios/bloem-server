@@ -72,6 +72,18 @@ func TestBloemPolicyExplainForeignDecisionIsNonDisclosing404(t *testing.T) {
 	}
 }
 
+// The repository rejects a cursor before it queries, so a nil pool is enough.
+func TestBloemPolicyExplainMalformedCursorIsAValidationError(t *testing.T) {
+	h := NewBloemPolicyExplainHandler(policy.NewDecisionRepository(nil))
+	for _, cursor := range []string{"not*base64", "bm8tc2VwYXJhdG9y", "eHx5"} {
+		rec := httptest.NewRecorder()
+		h.HandleListDecisions(rec, organizationRequest(http.MethodGet, "/policy-decisions?cursor="+cursor, "", uuid.New(), 7, nil))
+		if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), `"cursor"`) {
+			t.Fatalf("cursor %q: response=%d %s", cursor, rec.Code, rec.Body.String())
+		}
+	}
+}
+
 func TestBloemPolicyExplainDoesNotExposePolicyDocumentMutations(t *testing.T) {
 	organizationID := uuid.New()
 	store := &organizationDecisionStub{result: policy.ListResult{Entries: []policy.Entry{}}}

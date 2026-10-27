@@ -251,9 +251,8 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemOrganizationGroupInvalid})
 		bloemDocumentDescribe(&op, map[int]string{
-			409: bloemOrganizationPolicyConflict + " conflict: the group name already exists.",
+			409: bloemOrganizationPolicyConflict + " conflict: the group name already exists, or is_default would replace a default group managed by entitlement policy.",
 			422: bloemOrganizationRevisionInvalid,
-			503: bloemOrganizationUnavailable + " Also returned when is_default would replace a default group managed by entitlement policy.",
 		})
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationGroupCreate], bloemJSONOutput[BloemOrganizationGroupMutationResponse]](reg, op)
 	}
@@ -265,9 +264,8 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemOrganizationGroupInvalid})
 		bloemDocumentDescribe(&op, map[int]string{
 			404: bloemOrganizationGroupNotFound,
-			409: bloemOrganizationPolicyConflict + " conflict: the group name already exists, or is_default=false was sent for the current default group.",
+			409: bloemOrganizationPolicyConflict + " conflict: the group name already exists, is_default=false was sent for the current default group, or the group, or a default group it would replace, is managed by entitlement policy.",
 			422: bloemOrganizationRevisionInvalid,
-			503: bloemOrganizationUnavailable + " Also returned when the group, or a default group it would replace, is managed by entitlement policy.",
 		})
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationGroupUpdate], bloemJSONOutput[BloemOrganizationGroupMutationResponse]](reg, op)
 	}
@@ -278,9 +276,8 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentDescribe(&op, map[int]string{
 			404: bloemOrganizationGroupNotFound,
-			409: bloemOrganizationPolicyConflict + " conflict: the group is the default group, or no replacement default group exists.",
+			409: bloemOrganizationPolicyConflict + " conflict: the group is the default group, no replacement default group exists, or the group is managed by entitlement policy.",
 			422: bloemOrganizationRevisionInvalid,
-			503: bloemOrganizationUnavailable + " Also returned when the group is managed by entitlement policy.",
 		})
 		registerBloemChiDocument[bloemJSONInput[BloemRevisionRequest], bloemJSONOutput[access.GroupDeletionImpact]](reg, op)
 	}
@@ -326,9 +323,8 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		bloemAdminDocumentMutation(reg, &op)
 		op.Description += " Creates role=user only; default expiry is seven days. A pending invitation for the same address in this organization is revoked. Returns claim_token once; this operation does not send email or return a claim URL. Do not automatically retry creation."
 		bloemDocumentDescribe(&op, map[int]string{
-			409: bloemOrganizationPolicyConflict,
+			409: bloemOrganizationPolicyConflict + " email_taken: the email already belongs to an account.",
 			422: "validation_failed: expected_revision is not positive, email is not a bare email address, access_group_id is not one of this organization's groups, or library_ids lists a library the organization neither owns nor is entitled to.",
-			503: bloemOrganizationUnavailable + " Also returned when the email already belongs to an account.",
 		})
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationInvitationCreate], bloemJSONOutput[BloemOrganizationInvitationResendResponse]](reg, op)
 	}
@@ -465,10 +461,9 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/policy-decisions", "listBloemOrganizationPolicyDecisions", "Page sanitized organization policy decision explanations.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription + " Decisions are ordered newest first; next_cursor is omitted on the last page."
 		bloemDocumentQuery(&op, "decision_name", "Exact decision name filter.", "string")
-		bloemDocumentQuery(&op, "cursor", "Opaque next_cursor from the previous page. A malformed cursor returns 503 tenant_unavailable, not 422.", "string")
+		bloemDocumentQuery(&op, "cursor", "Opaque next_cursor from the previous page.", "string")
 		bloemDocumentQuery(&op, "limit", "Page size from 1 to 200; defaults to 100.", "integer")
-		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "validation_failed: limit is outside 1 to 200."})
-		bloemDocumentDescribe(&op, map[int]string{503: bloemOrganizationUnavailable + " Also returned for a malformed cursor."})
+		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "validation_failed: limit is outside 1 to 200, or cursor is malformed."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPolicyDecisionsResponse]](reg, op)
 	}
 

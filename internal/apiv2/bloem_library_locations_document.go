@@ -57,6 +57,7 @@ func libraryLocationErrors(reg *Registry, op *huma.Operation, kind string) {
 		selections  = "invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path."
 		limits      = "selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing."
 		mutation    = " mutation_outcome_unknown returns operation_id, operation and library_id: reconcile using the library_id, never assume rollback or retry."
+		authChanged = " authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry."
 	)
 	bloemDocumentErrors[BloemNativeError](reg, op, map[int]string{403: bloemNativeStorageForbidden})
 	responses := map[int]string{404: "not_found: an absent or hidden library or source, or an invalid library_id; hidden resources retain not_found precedence."}
@@ -87,6 +88,8 @@ func libraryLocationErrors(reg *Registry, op *huma.Operation, kind string) {
 		responses[502] = "invalid_provider_page: the provider returned an invalid directory page."
 		responses[503] = "native_storage_unavailable: browsing is not composed, or the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked."
 	}
+	// Every kind retains its owner, sources or library under lock.
+	responses[409] += authChanged
 	bloemDocumentErrors[BloemNativeStorageError](reg, op, responses)
 	// The handlers write every response, success included, with no-store.
 	op.Responses[strconv.Itoa(op.DefaultStatus)] = &huma.Response{Description: http.StatusText(op.DefaultStatus)}

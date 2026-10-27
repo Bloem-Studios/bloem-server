@@ -3,6 +3,54 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 27, 2026 — The rest of the OpenAPI review's status fixes
+
+The review behind the OpenAPI entry below also found handlers that answered
+the wrong status, most often `503` for a request that was the client's to fix.
+All of them are fixed, and the OpenAPI lists the new answers:
+
+- **Organization administration.** Changing an access group that entitlement
+  policy manages answers `409 conflict`, and inviting an email address that
+  already has an account answers `409 email_taken`, as Silo's own invitation
+  route does. Both used to answer `503 tenant_unavailable`. A malformed
+  `cursor` on the policy-decisions list answers `422 validation_failed`
+  instead of `503`.
+- **Bulk entitlements.** An unused rate-limit error and its `429` branch are
+  gone. Nothing produced them, and the OpenAPI had already dropped the `429`.
+- **Administrative refusals aren't cached.** Every `401`, `403` and `503` from
+  the administrative context check now carries `Cache-Control: no-store`.
+- **Native storage.**
+  - Installing or upgrading from the catalog with a key that has no catalog
+    release answers `422 artifact_rejected`, as manual installs already did.
+    It used to report native storage as unavailable.
+  - Changing the configuration or credentials of a detached source answers
+    `404 not_found`, like a disabled one, instead of `503`.
+  - When the storage owner, source or library changes while a request waits
+    for its locks, native storage, library locations and the source browser
+    answer `409 authorization_state_changed` (reload and retry) instead of
+    `503`.
+- **Book requests and preview.**
+  - Retrying a failed ebook request after its library became ineligible
+    answers `409 request_state_changed`. It used to answer a `400` with a
+    garbled message.
+  - Ensuring the preview account without an issuer answers `400
+    invalid_preview_settings` instead of `409 preview_setup_conflict`.
+  - The ebook and audiobook library-binding `PUT` requires `library_id`.
+    Leaving it out used to clear the binding silently; now it answers `400`.
+    An explicit `0` still clears it.
+- **Live TV and Xtream.**
+  - Adding a tuner whose first channel scan fails answers `201` with the saved
+    tuner, `status` `error` and the failure in `last_error`. It used to answer
+    `500` for a tuner it had saved anyway. Adding the same device again
+    updates that tuner.
+  - Starting an Xtream guide sync while one is running answers `409 conflict`
+    instead of `500`. Syncing a disabled guide source answers the documented
+    `400`, which the sync's claim step used to turn into a `500`.
+  - When encrypted Xtream storage isn't available, every Live TV route answers
+    `503 dependency_unavailable`, as provider creation already did. Some of
+    them used to answer `500`.
+  - The unreachable `501 not_implemented` branch and its error are gone.
+
 ## October 27, 2026 — Three fixes from the OpenAPI review
 
 The review behind the OpenAPI entry below listed handler problems it left

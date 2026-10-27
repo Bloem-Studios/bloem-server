@@ -343,7 +343,6 @@ func TestPlatformEntitlementBulkMapsStablePolicyErrors(t *testing.T) {
 		{name: "expired token", err: adminpeople.ErrSelectionExpired, want: http.StatusConflict, code: "selection_expired"},
 		{name: "stale confirmation", err: adminpeople.ErrInvalidPolicyConfirmation, want: http.StatusConflict, code: "policy_confirmation_stale"},
 		{name: "idempotency conflict", err: adminpeople.ErrBulkIdempotencyConflict, want: http.StatusConflict, code: "idempotency_conflict"},
-		{name: "rate limited", err: ErrPlatformEntitlementBulkRateLimited, want: http.StatusTooManyRequests, code: "rate_limited"},
 		{name: "store failure", err: errors.New("database offline secret=do-not-leak"), want: http.StatusServiceUnavailable, code: "entitlements_unavailable"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

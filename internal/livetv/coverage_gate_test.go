@@ -231,11 +231,8 @@ func TestAddTunerValidationAndScanErrors(t *testing.T) {
 	})
 	svc.SetHDHomeRunClient(hdhomerun.NewClient(srv2.Client()))
 	tuner, err := svc.AddTuner(context.Background(), AddTunerInput{URL: strings.TrimPrefix(srv2.URL, "http://")})
-	if err == nil {
-		t.Fatal("expected lineup scan error")
-	}
-	if tuner == nil || tuner.DeviceID != "T1" {
-		t.Fatalf("tuner should still be returned on scan error: %+v", tuner)
+	if err != nil || tuner == nil || tuner.DeviceID != "T1" || tuner.Status != "error" || tuner.LastError == "" {
+		t.Fatalf("a failed lineup scan should answer with the tuner and its failure: %+v, %v", tuner, err)
 	}
 
 	if _, err := svc.GetChannel(context.Background(), "missing"); !errors.Is(err, ErrNotFound) {

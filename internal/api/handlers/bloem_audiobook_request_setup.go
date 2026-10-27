@@ -114,13 +114,18 @@ func (h *BloemBookRequestsHandler) HandleAudiobookIntegrationLibrary(w http.Resp
 		return
 	}
 	var in struct {
-		LibraryID     int      `json:"library_id"`
+		LibraryID     *int     `json:"library_id"`
 		DownloadRoots []string `json:"download_roots"`
 	}
 	if !readBookRequestBody(w, r, &in) {
 		return
 	}
-	out, err := h.audiobookSetup.SetLibrary(r.Context(), v, chi.URLParam(r, "id"), in.LibraryID, in.DownloadRoots)
+	// Clearing takes an explicit 0; a missing library_id is a mistake.
+	if in.LibraryID == nil {
+		h.writeRequestError(w, bookrequests.ErrInvalid)
+		return
+	}
+	out, err := h.audiobookSetup.SetLibrary(r.Context(), v, chi.URLParam(r, "id"), *in.LibraryID, in.DownloadRoots)
 	if err != nil {
 		h.writeRequestError(w, err)
 		return

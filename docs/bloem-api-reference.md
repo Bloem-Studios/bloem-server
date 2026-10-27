@@ -1078,7 +1078,7 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
 ```json
 { "group": { "...": "accessGroupResponse, see GET .../groups above" }, "policy_revision": 0 }
 ```
-- Errors: `400 bad_request` (bad name, quality, library IDs, permissions, or negative stream/transcode caps), `422 validation_failed` (missing/non-positive `expected_revision`), `409 authorization_state_changed` (`current_revision` = the org's current `policy_revision`), `409 conflict` (duplicate group name — `access.ErrGroupDuplicate`), `503 tenant_unavailable`.
+- Errors: `400 bad_request` (bad name, quality, library IDs, permissions, or negative stream/transcode caps), `422 validation_failed` (missing/non-positive `expected_revision`), `409 authorization_state_changed` (`current_revision` = the org's current `policy_revision`), `409 conflict` (duplicate group name — `access.ErrGroupDuplicate`; or a new default group would replace one that entitlement policy manages — `access.ErrManagedGroup`), `503 tenant_unavailable`.
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
@@ -1115,7 +1115,7 @@ Every endpoint below operates on `tenant.OrganizationID` — the organization is
 ```
 Same normalization/validation rules as create for any field that is present. `expected_revision` again checks the org's `policy_revision`, not a per-group revision — concurrent edits to *different* groups in the same org still race on this field.
 - Response body (200): `{ "group": { "...": "accessGroupResponse" }, "policy_revision": 0 }`.
-- Errors: `400 bad_request` (invalid group fields, as for create), `422 validation_failed` (missing/non-positive `expected_revision`), `409 authorization_state_changed`, `404 not_found` (`access.ErrGroupNotFound`), `409 conflict` (duplicate name, or attempting to un-default the sole default group — `access.ErrGroupDuplicate`/`access.ErrDefaultGroupRequired`), `503 tenant_unavailable`.
+- Errors: `400 bad_request` (invalid group fields, as for create), `422 validation_failed` (missing/non-positive `expected_revision`), `409 authorization_state_changed`, `404 not_found` (`access.ErrGroupNotFound`), `409 conflict` (duplicate name, attempting to un-default the sole default group, or a group that entitlement policy manages — `access.ErrGroupDuplicate`/`access.ErrDefaultGroupRequired`/`access.ErrManagedGroup`), `503 tenant_unavailable`.
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
@@ -1128,7 +1128,7 @@ Same normalization/validation rules as create for any field that is present. `ex
 { "profiles_reassigned": 0, "default_group_id": 0 }
 ```
 Type: `access.GroupDeletionImpact`. `default_group_id` is the group every reassigned profile now belongs to.
-- Errors: `422 validation_failed` (missing/non-positive `expected_revision`), `409 authorization_state_changed`, `404 not_found` (group doesn't exist), `409 conflict` (the target *is* the default group — `access.ErrDefaultGroupRequired`; promote another group first), `503 tenant_unavailable`.
+- Errors: `422 validation_failed` (missing/non-positive `expected_revision`), `409 authorization_state_changed`, `404 not_found` (group doesn't exist), `409 conflict` (the target *is* the default group — `access.ErrDefaultGroupRequired`; promote another group first — or entitlement policy manages it — `access.ErrManagedGroup`), `503 tenant_unavailable`.
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
@@ -1243,7 +1243,7 @@ Identical `invitationResponse` shape and `status` derivation (revoked > accepted
 }
 ```
 `claim_token` is the raw, single-use token (the server stores only its SHA-256 hex digest) — this response is the only place it is ever returned, and there is no `email_sent`/`claim_url` field at all: delivery is entirely the caller's responsibility.
-- Errors: `422 validation_failed` (`email` fails `net/mail.ParseAddress` or contains surrounding whitespace/comments the parser stripped), `409 authorization_state_changed`, `503 tenant_unavailable` (also covers token-generation failure, which is treated as a generic tenant-unavailable error rather than a distinct code).
+- Errors: `422 validation_failed` (`email` fails `net/mail.ParseAddress` or contains surrounding whitespace/comments the parser stripped; `access_group_id` is not one of this organization's groups; or `library_ids` names a library the organization neither owns nor is entitled to), `409 authorization_state_changed`, `409 email_taken` (an account with this email already exists), `503 tenant_unavailable` (also covers token-generation failure, which is treated as a generic tenant-unavailable error rather than a distinct code).
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
@@ -1451,7 +1451,7 @@ Note the sampling caveat: whether a given real request produced a row here at al
   - `resource` is the sampled `input.resource` object with every key matching `sensitiveDecisionKey` (case-insensitive substring match on `password`, `secret`, `token`, `credential`, `api_key`, `authorization`, `cookie`, `client_ip`, `device_id`, `session_id`, applied recursively into nested objects/arrays) replaced with the literal string `"[redacted]"` — this redaction happens server-side before the response is built, not just at display time. The same redaction is separately applied to any top-level `input` key by name, so a sensitive key can be redacted even if it never made it into `resource`.
   - `allowed`/`reason_code` prefer the sampled `result.allowed`/`result.reason_code`, falling back to the row's own `allowed` column (a `*bool`; `false`/zero-value if genuinely absent).
   - `policy_versions` always starts with one synthesized `{"kind":"vendor","version": <policy_generation>}` entry (the compiled vendor bundle's generation number), then appends any `kind:"custom"` entries found in the sampled `input.policy_versions` array (organization-authored policy overlays, if any were in effect for that decision).
-- Errors: `422 validation_failed` (`limit` out of `1..200` range), `503 tenant_unavailable` (also covers a malformed `cursor` — decoded via `ErrDecisionNotFound`/generic decode failure, both folded into the same fallback response by `writeBloemPolicyDecisionError`).
+- Errors: `422 validation_failed` (`limit` out of `1..200` range, or `{"cursor": "is invalid"}` for a malformed `cursor`), `503 tenant_unavailable` (store unavailable).
 - Embedded web: see the [coverage matrix](architecture/bloem-web-feature-coverage.md).
   Native-client adoption is outside this update.
 
@@ -2781,8 +2781,8 @@ enabled and `expected_revision` must be its current configuration revision
 configuration, so a source without one is refused with `400 invalid_request`. An empty or omitted
 `session_token` clears any stored session token rather than keeping it. A
 source that is not an S3 source (for example Bookwarehouse) and an unknown
-source return `404 not_found`. A disabled source has no attached installation
-and returns `503 native_storage_unavailable`; rotate its credentials only while it is attached and enabled.
+source return `404 not_found`. A disabled or detached source has no attached installation
+and also returns `404 not_found`; rotate its credentials only while it is attached and enabled.
 The response is
 `{source_key, configuration_revision}` with the new revision; credentials are
 encrypted at rest and never returned.
@@ -2851,6 +2851,7 @@ idempotency registry.
 | `404` | `not_found` | Invalid or hidden resource |
 | `405` | `method_not_allowed` | The route does not support the method |
 | `409` | `revision_conflict` | Reload `current_revision` before retrying |
+| `409` | `authorization_state_changed` | The storage owner, source or library changed while the request waited for its locks; reload and retry |
 | `409` | `source_attached` | The source is already attached |
 | `409` | `configuration_namespace_unverified`, `retained_namespace_unverified` | Populated or unverified namespace replacement/reattachment is unsupported |
 | `413` | `request_too_large` | A request size limit was exceeded |
@@ -2935,10 +2936,10 @@ All paths below have the `/api/bloem/v1` prefix.
 | `GET` | `/admin/organization/ebook-requests` | Default-organization ebook queue. |
 | `POST` | `/admin/organization/ebook-requests/{id}/approve` | Approve with `expected_revision`. |
 | `POST` | `/admin/organization/ebook-requests/{id}/decline` | Decline and refund quota with `expected_revision`. |
-| `POST` | `/admin/organization/ebook-requests/{id}/retry` | Resume safe recovery or retry with `expected_revision`. |
+| `POST` | `/admin/organization/ebook-requests/{id}/retry` | Resume safe recovery or retry with `expected_revision`. A bound library that is no longer eligible returns `409 request_state_changed`. |
 | `GET` | `/admin/organization/ebook-request-integrations` | Read `{available, enabled, integrations, libraries, installations}`. |
 | `POST` | `/admin/organization/ebook-request-integrations` | Add an explicit EPUB Bookwarehouse request connection. |
-| `PUT` | `/admin/organization/ebook-request-integrations/{id}/library` | Bind `{library_id}` to an eligible native ebook library; zero clears it. |
+| `PUT` | `/admin/organization/ebook-request-integrations/{id}/library` | Bind the required `{library_id}` to an eligible native ebook library; zero clears it, and a missing or null `library_id` returns `400 invalid_request`. |
 | `POST` | `/admin/organization/ebook-request-integrations/{id}/test` | Run the plugin's connection test on a saved connection; returns `{ok, message}`. |
 | `PUT` | `/admin/organization/ebook-request-policy` | Persist explicit `{enabled: boolean}`. |
 
@@ -3010,7 +3011,7 @@ carry `Cache-Control: private, no-store`.
 | `GET` | `/admin/organization/audiobook-request-integrations` | Read `{available, integrations, libraries, installations}` without credentials. |
 | `POST` | `/admin/organization/audiobook-request-integrations` | Platform-authorized connection creation with name, installation, capability, `plugin_config` and `credentials`. |
 | `PUT` | `/admin/organization/audiobook-request-integrations/{id}` | Platform-authorized edit with optional `name`, `plugin_config` and `credentials`; keeps the connection's ID, binding and in-flight work. |
-| `PUT` | `/admin/organization/audiobook-request-integrations/{id}/library` | Platform-authorized binding with `library_id` and one to four `download_roots`; zero unbinds. |
+| `PUT` | `/admin/organization/audiobook-request-integrations/{id}/library` | Platform-authorized binding with a required `library_id` and one to four `download_roots`; zero unbinds, and a missing or null `library_id` returns `400 invalid_request`. |
 | `POST` | `/admin/organization/audiobook-request-integrations/{id}/test` | Platform-authorized plugin connection checks on a saved connection; returns `{ok, message}`. |
 
 `book_request_connection_admin_v1` advertises the connection edit route above
@@ -3153,8 +3154,8 @@ are refused. Responses use `Cache-Control: no-store`.
 Configuration requires setup first. The settings write accepts only the listed
 fields; key and account changes use their dedicated operations. Payloads are
 limited to 16 KiB and unknown fields are refused. Another issuer or reserved
-name collision returns `409 preview_setup_conflict` at setup. Invalid settings
-return `400 invalid_preview_settings`; invalid library selections return
+name collision returns `409 preview_setup_conflict` at setup. A missing issuer and
+invalid settings return `400 invalid_preview_settings`; invalid library selections return
 `400 invalid_preview_libraries`. An unavailable account returns
 `409 preview_not_configured`, an invalid probe ticket returns
 `403 preview_ticket_invalid`, and a storage failure returns

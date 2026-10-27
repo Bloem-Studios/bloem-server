@@ -136,7 +136,7 @@ func registerBloemAudiobookAcquisitionDocument(reg *Registry) {
 	binding := bloemChiDocumentOp(reg, "PUT", "/admin/organization/audiobook-request-integrations/{id}/library", "setBloemAudiobookRequestIntegrationLibrary", "requests", "Bind an acquisition connection to a local audiobook library and download directories.", bloemOrganizationContextSecurity, 200)
 	binding.Description = setupAuthority + " library_id=0 clears the binding. Otherwise one to four download roots are required: clean absolute directories inside the selected library's filesystem paths, distinct, not nested, and each holding at most 10000 catalogued files. Existing dispatched work retains its original library, roots and configuration identity. Unknown JSON fields and extra bodies are rejected."
 	bloemRequestDocErrors(reg, &binding, setupErrors(map[int]string{
-		400: "invalid_request: " + bloemRequestBodyRule + "; a negative library_id, an ID that is not an eligible connection, a library that is not an eligible audiobook library of this organization, invalid download roots, or a connection bound by another organization.",
+		400: "invalid_request: " + bloemRequestBodyRule + "; a missing, null or negative library_id, an ID that is not an eligible connection, a library that is not an eligible audiobook library of this organization, invalid download roots, or a connection bound by another organization.",
 		403: platformForbidden,
 	}))
 	registerBloemChiDocument[BloemAudiobookRequestLibraryInput, BloemAudiobookRequestIntegrationOutput](reg, binding)

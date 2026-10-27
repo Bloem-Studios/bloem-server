@@ -64,25 +64,25 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, err := m.parse(r.Header.Get("Authorization"))
 		if err != nil {
-			writeTenantError(w, http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
+			writeAdminContextError(w, http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
 			return
 		}
 
 		// A context lives no longer than the login session it was exchanged
 		// from: logout or session revocation ends it on the next request.
 		if claims.SessionID == "" {
-			writeTenantError(w, http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
+			writeAdminContextError(w, http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
 			return
 		}
 		if m.sessions == nil {
-			writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+			writeAdminContextError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 			return
 		}
 		if authority, valid, err := m.sessions.ActiveSession(r.Context(), claims.SessionID, claims.AccountID); err != nil {
-			writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+			writeAdminContextError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 			return
 		} else if !valid || authority.IsRemotePlayback() {
-			writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+			writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 			return
 		}
 
@@ -98,20 +98,21 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 		switch claims.Scope {
 		case auth.AdminScopePlatform:
 			if !operator.PlatformAdmin {
-				writeTenantError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
+				writeAdminContextError(w, http.StatusForbidden, "insufficient_platform_authority", "Platform administrator authority required")
 				return
 			}
 			next.ServeHTTP(w, r.WithContext(SetAdminContextClaims(r.Context(), claims)))
 		case auth.AdminScopeOrganization:
 			resolved, err := m.resolve(r.Context(), claims.AccountID, &claims.OrganizationID, false)
 			if err != nil {
+				w.Header().Set("Cache-Control", "no-store")
 				writeTenantResolveError(w, err)
 				return
 			}
 			if resolved.AccountID != claims.AccountID || resolved.OrganizationID != claims.OrganizationID ||
 				resolved.MembershipID != claims.MembershipID || resolved.PolicyRevision != claims.PolicyRevision ||
 				resolved.SecurityRevision != claims.SecurityRevision {
-				writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+				writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 				return
 			}
 
@@ -121,22 +122,22 @@ func (m *AdminContextMiddleware) Require(next http.Handler) http.Handler {
 				return
 			}
 			if membership.ID != claims.MembershipID || membership.AccountID != claims.AccountID || membership.OrganizationID != claims.OrganizationID || membership.Status != tenancy.MembershipActive {
-				writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+				writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 				return
 			}
 			if claims.EffectiveAuthority == "platform_admin" {
 				if !operator.PlatformAdmin {
-					writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+					writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 					return
 				}
 			} else if claims.EffectiveAuthority != "organization_admin" || membership.LegacyRole != "admin" {
-				writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+				writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 				return
 			}
 			ctx := SetAdminContextClaims(r.Context(), claims)
 			next.ServeHTTP(w, r.WithContext(tenancy.WithContext(ctx, resolved)))
 		default:
-			writeTenantError(w, http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
+			writeAdminContextError(w, http.StatusUnauthorized, "tenant_session_required", "Valid administrative context required")
 		}
 	})
 }
@@ -178,17 +179,24 @@ func (m *AdminContextMiddleware) operator(ctx context.Context, claims auth.Admin
 func writeAdminOperatorError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, auth.ErrOperatorIneligible):
-		writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+		writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 	default:
-		writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+		writeAdminContextError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 	}
 }
 
 func writeAdminContextMembershipError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, tenancy.ErrMembershipNotFound):
-		writeTenantError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
+		writeAdminContextError(w, http.StatusUnauthorized, "authorization_state_stale", "Tenant authorization state is stale")
 	default:
-		writeTenantError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
+		writeAdminContextError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant authorization is unavailable")
 	}
+}
+
+// writeAdminContextError is writeTenantError for an administrative refusal,
+// which no cache may keep.
+func writeAdminContextError(w http.ResponseWriter, status int, code, message string) {
+	w.Header().Set("Cache-Control", "no-store")
+	writeTenantError(w, status, code, message)
 }

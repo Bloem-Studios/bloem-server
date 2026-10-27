@@ -30,6 +30,6 @@ func registerBloemXtreamDocument(reg *Registry) {
 		409: "limit_exceeded: 64 Xtream providers are already configured.",
 		500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, the provider's channel list could not be read, the provider did not answer in time, or persistence failed; no raw provider response is returned.",
 	})
-	bloemLiveTVUnavailable(&op, "dependency_unavailable: encrypted provider storage is unavailable.")
+	bloemLiveTVUnavailable(&op, bloemLiveTVStorageUnavailable)
 	registerBloemChiDocument[BloemXtreamProviderInput, BloemXtreamProviderOutput](reg, op)
 }

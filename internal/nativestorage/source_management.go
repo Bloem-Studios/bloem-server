@@ -201,7 +201,8 @@ func (s *SourceManagement) ReplaceConfiguration(ctx context.Context, actor auth.
 		return 0, err
 	}
 	if source.InstallationID == nil {
-		return 0, nativeDomainError("native_storage_unavailable")
+		// Detached: the registry answers not_found for it too.
+		return 0, nativeDomainError("not_found")
 	}
 	if s.coordinator == nil || s.coordinator.Runtime == nil {
 		return 0, nativeDomainError("native_storage_unavailable")
@@ -230,7 +231,7 @@ func (s *SourceManagement) RotateCredentials(ctx context.Context, actor auth.Adm
 		return 0, err
 	}
 	if source.InstallationID == nil {
-		return 0, nativeDomainError("native_storage_unavailable")
+		return 0, nativeDomainError("not_found")
 	}
 	if s.coordinator == nil || s.coordinator.Runtime == nil {
 		return 0, nativeDomainError("native_storage_unavailable")

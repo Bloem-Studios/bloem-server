@@ -19,6 +19,8 @@ import (
 	publicv1 "github.com/Silo-Server/silo-plugin-sdk/pkg/pluginproto/silo/plugin/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/Silo-Server/silo-server/internal/catalog"
 )
 
 const nativeCatalogURL = "https://raw.githubusercontent.com/Bloem-Studios/bloem-plugins/main/plugins.json"
@@ -363,7 +365,8 @@ func (r *NativeStorageRegistry) CatalogBinary(ctx context.Context, key string) (
 	record, ok := r.catalogRecords[key]
 	r.catalogMu.RUnlock()
 	if !ok {
-		return nil, errors.New("catalog release not found")
+		// A key with no catalog release is refused like any unapproved artifact.
+		return nil, &catalog.NativeOnboardingError{Code: "artifact_rejected"}
 	}
 	b, err := r.catalogRead(ctx, record.URL, 256<<20)
 	if err != nil {

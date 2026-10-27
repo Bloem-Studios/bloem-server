@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -15,7 +16,8 @@ func TestBloemLibraryLocationsDocumentOperations(t *testing.T) {
 	var doc struct {
 		Paths map[string]map[string]struct {
 			Responses map[string]struct {
-				Headers map[string]struct {
+				Description string `json:"description"`
+				Headers     map[string]struct {
 					Schema struct {
 						Enum []string `json:"enum"`
 					} `json:"schema"`
@@ -44,6 +46,10 @@ func TestBloemLibraryLocationsDocumentOperations(t *testing.T) {
 			if !ok {
 				t.Errorf("missing %s %s", op.method, base+op.path)
 				continue
+			}
+			// Each retains the owner or source under lock, which can find it changed.
+			if !strings.Contains(operation.Responses["409"].Description, "authorization_state_changed") {
+				t.Errorf("%s %s 409 must name authorization_state_changed", op.method, base+op.path)
 			}
 			// The handlers write every response, success included, with no-store.
 			for status, response := range operation.Responses {

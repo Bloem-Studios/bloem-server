@@ -9557,7 +9557,7 @@
                 }
               }
             },
-            "description": "invalid_request: invalid or oversized JSON (16 KiB), unknown fields or more than one JSON value; a negative library_id, an ID that is not an eligible connection, a library that is not an eligible audiobook library of this organization, invalid download roots, or a connection bound by another organization."
+            "description": "invalid_request: invalid or oversized JSON (16 KiB), unknown fields or more than one JSON value; a missing, null or negative library_id, an ID that is not an eligible connection, a library that is not an eligible audiobook library of this organization, invalid download roots, or a connection bound by another organization."
           },
           "401": {
             "content": {
@@ -11020,7 +11020,7 @@
                 }
               }
             },
-            "description": "invalid_request: invalid or oversized JSON (16 KiB), unknown fields or more than one JSON value; a negative library_id, or an ID that is not an enabled, eligible connection or a library_id that is not an eligible native Bookwarehouse ebook library for this organization."
+            "description": "invalid_request: invalid or oversized JSON (16 KiB), unknown fields or more than one JSON value; a missing, null or negative library_id, or an ID that is not an enabled, eligible connection or a library_id that is not an eligible native Bookwarehouse ebook library for this organization."
           },
           "401": {
             "content": {
@@ -11693,7 +11693,7 @@
                 }
               }
             },
-            "description": "invalid_request: invalid or oversized JSON (16 KiB), unknown fields or more than one JSON value, expected_revision missing or not positive, or reason over 2000 bytes. It is also returned when the retained library binding is no longer an eligible ebook library."
+            "description": "invalid_request: invalid or oversized JSON (16 KiB), unknown fields or more than one JSON value, expected_revision missing or not positive, or reason over 2000 bytes."
           },
           "401": {
             "content": {
@@ -11733,7 +11733,7 @@
                 }
               }
             },
-            "description": "request_state_changed: expected_revision is stale, the request is not active and approved, its fulfilment is not failed or retrying, it has no dispatch, or its connection or library binding changed."
+            "description": "request_state_changed: expected_revision is stale, the request is not active and approved, its fulfilment is not failed or retrying, it has no dispatch, its connection or library binding changed, or the bound library is no longer an eligible ebook library."
           },
           "500": {
             "content": {
@@ -12267,7 +12267,7 @@
                 }
               }
             },
-            "description": "authorization_state_changed: expected_revision is not the organization's policy_revision; current_revision carries the current value. conflict: the group name already exists."
+            "description": "authorization_state_changed: expected_revision is not the organization's policy_revision; current_revision carries the current value. conflict: the group name already exists, or is_default would replace a default group managed by entitlement policy."
           },
           "422": {
             "content": {
@@ -12287,7 +12287,7 @@
                 }
               }
             },
-            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable. Also returned when is_default would replace a default group managed by entitlement policy."
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
           }
         },
         "security": [
@@ -12385,7 +12385,7 @@
                 }
               }
             },
-            "description": "authorization_state_changed: expected_revision is not the organization's policy_revision; current_revision carries the current value. conflict: the group is the default group, or no replacement default group exists."
+            "description": "authorization_state_changed: expected_revision is not the organization's policy_revision; current_revision carries the current value. conflict: the group is the default group, no replacement default group exists, or the group is managed by entitlement policy."
           },
           "422": {
             "content": {
@@ -12405,7 +12405,7 @@
                 }
               }
             },
-            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable. Also returned when the group is managed by entitlement policy."
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
           }
         },
         "security": [
@@ -12577,7 +12577,7 @@
                 }
               }
             },
-            "description": "authorization_state_changed: expected_revision is not the organization's policy_revision; current_revision carries the current value. conflict: the group name already exists, or is_default=false was sent for the current default group."
+            "description": "authorization_state_changed: expected_revision is not the organization's policy_revision; current_revision carries the current value. conflict: the group name already exists, is_default=false was sent for the current default group, or the group, or a default group it would replace, is managed by entitlement policy."
           },
           "422": {
             "content": {
@@ -12597,7 +12597,7 @@
                 }
               }
             },
-            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable. Also returned when the group, or a default group it would replace, is managed by entitlement policy."
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
           }
         },
         "security": [
@@ -12729,7 +12729,7 @@
                 }
               }
             },
-            "description": "authorization_state_changed: expected_revision is not the organization's policy_revision; current_revision carries the current value."
+            "description": "authorization_state_changed: expected_revision is not the organization's policy_revision; current_revision carries the current value. email_taken: the email already belongs to an account."
           },
           "422": {
             "content": {
@@ -12749,7 +12749,7 @@
                 }
               }
             },
-            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable. Also returned when the email already belongs to an account."
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
           }
         },
         "security": [
@@ -13179,7 +13179,7 @@
                 }
               }
             },
-            "description": "invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path.",
+            "description": "invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -13407,7 +13407,7 @@
                 }
               }
             },
-            "description": "revision_conflict: a concurrent filesystem path write holds the library's paths; returns current_library_revision. Retry the read.",
+            "description": "revision_conflict: a concurrent filesystem path write holds the library's paths; returns current_library_revision. Retry the read. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -13584,7 +13584,7 @@
                 }
               }
             },
-            "description": "revision_conflict with current_library_revision: expected_revision or expected_edit_token is stale, or a concurrent path write holds the library's paths; reload. invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path.",
+            "description": "revision_conflict with current_library_revision: expected_revision or expected_edit_token is stale, or a concurrent path write holds the library's paths; reload. invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -13914,7 +13914,7 @@
     },
     "/api/bloem/v1/admin/organization/native-storage/catalog/installations": {
       "post": {
-        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. S3 sources are added only through catalog discovery: an S3 catalog key is artifact_rejected for a platform administrator and not_found for an organization administrator. A key with no catalog release, or a failed download or checksum, is native_storage_unavailable.",
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. S3 sources are added only through catalog discovery: an S3 catalog key is artifact_rejected for a platform administrator and not_found for an organization administrator. A key with no catalog release is artifact_rejected; a failed download or checksum is native_storage_unavailable.",
         "operationId": "catalogInstallBloemOrganizationNativeStorage",
         "requestBody": {
           "content": {
@@ -14041,7 +14041,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source is already attached, enabled or present. retained_namespace_unverified: the retained source's identity differs from the request or its namespace is populated.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source is already attached, enabled or present. retained_namespace_unverified: the retained source's identity differs from the request or its namespace is populated. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14083,7 +14083,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: the release is not an approved artifact, or the configuration does not satisfy its declared schema. s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
+            "description": "artifact_rejected: the release is not an approved artifact, or the configuration does not satisfy its declared schema. artifact_rejected also covers a key with no catalog release. s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14104,7 +14104,7 @@
                 }
               }
             },
-            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog, a key with no catalog release and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
+            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14258,7 +14258,7 @@
                 }
               }
             },
-            "description": "source_attached: the generated source identity already exists.",
+            "description": "source_attached: the generated source identity already exists. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14321,7 +14321,7 @@
                 }
               }
             },
-            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. This includes the per-administrator rate limit (10 per minute, burst 3; Retry-After is set), discovery not being composed, and the provider failing to start or describe the source within 30 seconds. native_storage_unavailable also covers an unavailable catalog, a key with no catalog release and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
+            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. This includes the per-administrator rate limit (10 per minute, burst 3; Retry-After is set), discovery not being composed, and the provider failing to start or describe the source within 30 seconds. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14354,7 +14354,7 @@
     },
     "/api/bloem/v1/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade": {
       "post": {
-        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. An organization administrator receives not_found for the S3 plugin, also for an S3 source the organization owns; a platform administrator, or a manual upload of an approved artifact, upgrades it. A key with no catalog release, or a failed download or checksum, is native_storage_unavailable.",
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. An organization administrator receives not_found for the S3 plugin, also for an S3 source the organization owns; a platform administrator, or a manual upload of an approved artifact, upgrades it. A key with no catalog release is artifact_rejected; a failed download or checksum is native_storage_unavailable.",
         "operationId": "catalogUpgradeBloemOrganizationNativeStorage",
         "parameters": [
           {
@@ -14492,7 +14492,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14534,7 +14534,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: the release is not an approved artifact or is for a different plugin.",
+            "description": "artifact_rejected: the release is not an approved artifact or is for a different plugin. artifact_rejected also covers a key with no catalog release.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14555,7 +14555,7 @@
                 }
               }
             },
-            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog, a key with no catalog release and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
+            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14733,7 +14733,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source is already attached, enabled or present. retained_namespace_unverified: the retained source's identity differs from the request or its namespace is populated.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source is already attached, enabled or present. retained_namespace_unverified: the retained source's identity differs from the request or its namespace is populated. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -14974,7 +14974,7 @@
                 }
               }
             },
-            "description": "source_attached: the generated source identity already exists.",
+            "description": "source_attached: the generated source identity already exists. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -15202,7 +15202,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -15409,7 +15409,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -15640,7 +15640,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -16263,6 +16263,27 @@
               }
             }
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
           "503": {
             "content": {
               "application/json": {
@@ -16405,6 +16426,27 @@
               }
             },
             "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -16609,7 +16651,7 @@
                 }
               }
             },
-            "description": "invalid_selection_reference: directory_ref is invalid, expired or no longer matches the source; browse_restart_required: the cursor's pagination changed or expired; restart browsing.",
+            "description": "invalid_selection_reference: directory_ref is invalid, expired or no longer matches the source; browse_restart_required: the cursor's pagination changed or expired; restart browsing. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -16695,7 +16737,7 @@
     },
     "/api/bloem/v1/admin/organization/native-storage/sources/{source_key}/configuration": {
       "put": {
-        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. The source and its installation must be enabled (otherwise not_found) and attached (otherwise native_storage_unavailable). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request).",
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. The source and its installation must be enabled and attached (otherwise not_found). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request).",
         "operationId": "replaceConfigurationBloemOrganizationNativeStorage",
         "parameters": [
           {
@@ -16812,7 +16854,7 @@
                 }
               }
             },
-            "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "description": "not_found: invalid path identity, absent resource or hidden authority. A disabled or detached source is also not_found.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -16833,7 +16875,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision. configuration_namespace_unverified: a source of this installation has a library location, entries or file references.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. configuration_namespace_unverified: a source of this installation has a library location, entries or file references. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -16923,7 +16965,7 @@
     },
     "/api/bloem/v1/admin/organization/native-storage/sources/{source_key}/credentials": {
       "post": {
-        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. Only an enabled S3 source qualifies: another plugin's source or a disabled one is not_found, and a detached one native_storage_unavailable.",
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. Only an enabled, attached S3 source qualifies: another plugin's source, or a disabled or detached one, is not_found.",
         "operationId": "rotateCredentialsBloemOrganizationNativeStorage",
         "parameters": [
           {
@@ -17040,7 +17082,7 @@
                 }
               }
             },
-            "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "description": "not_found: invalid path identity, absent resource or hidden authority. A disabled or detached source is also not_found.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -17061,7 +17103,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -18320,7 +18362,7 @@
             }
           },
           {
-            "description": "Opaque next_cursor from the previous page. A malformed cursor returns 503 tenant_unavailable, not 422.",
+            "description": "Opaque next_cursor from the previous page.",
             "in": "query",
             "name": "cursor",
             "schema": {
@@ -18375,7 +18417,7 @@
                 }
               }
             },
-            "description": "validation_failed: limit is outside 1 to 200."
+            "description": "validation_failed: limit is outside 1 to 200, or cursor is malformed."
           },
           "503": {
             "content": {
@@ -18385,7 +18427,7 @@
                 }
               }
             },
-            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable. Also returned for a malformed cursor."
+            "description": "tenant_unavailable: administrative authorization or the administration store is unavailable."
           }
         },
         "security": [
@@ -20816,7 +20858,7 @@
                 }
               }
             },
-            "description": "invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path.",
+            "description": "invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -21044,7 +21086,7 @@
                 }
               }
             },
-            "description": "revision_conflict: a concurrent filesystem path write holds the library's paths; returns current_library_revision. Retry the read.",
+            "description": "revision_conflict: a concurrent filesystem path write holds the library's paths; returns current_library_revision. Retry the read. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -21221,7 +21263,7 @@
                 }
               }
             },
-            "description": "revision_conflict with current_library_revision: expected_revision or expected_edit_token is stale, or a concurrent path write holds the library's paths; reload. invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path.",
+            "description": "revision_conflict with current_library_revision: expected_revision or expected_edit_token is stale, or a concurrent path write holds the library's paths; reload. invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -21551,7 +21593,7 @@
     },
     "/api/bloem/v1/admin/platform/native-storage/catalog/installations": {
       "post": {
-        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. S3 sources are added only through catalog discovery: an S3 catalog key is artifact_rejected for a platform administrator and not_found for an organization administrator. A key with no catalog release, or a failed download or checksum, is native_storage_unavailable.",
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. S3 sources are added only through catalog discovery: an S3 catalog key is artifact_rejected for a platform administrator and not_found for an organization administrator. A key with no catalog release is artifact_rejected; a failed download or checksum is native_storage_unavailable.",
         "operationId": "catalogInstallBloemPlatformNativeStorage",
         "requestBody": {
           "content": {
@@ -21678,7 +21720,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source is already attached, enabled or present. retained_namespace_unverified: the retained source's identity differs from the request or its namespace is populated.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source is already attached, enabled or present. retained_namespace_unverified: the retained source's identity differs from the request or its namespace is populated. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -21720,7 +21762,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: the key names the S3 plugin, the release is not an approved artifact, or the configuration does not satisfy its declared schema.",
+            "description": "artifact_rejected: the key names the S3 plugin, the release is not an approved artifact, or the configuration does not satisfy its declared schema. artifact_rejected also covers a key with no catalog release.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -21741,7 +21783,7 @@
                 }
               }
             },
-            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog, a key with no catalog release and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
+            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -21895,7 +21937,7 @@
                 }
               }
             },
-            "description": "source_attached: the generated source identity already exists.",
+            "description": "source_attached: the generated source identity already exists. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -21958,7 +22000,7 @@
                 }
               }
             },
-            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. This includes the per-administrator rate limit (10 per minute, burst 3; Retry-After is set), discovery not being composed, and the provider failing to start or describe the source within 30 seconds. native_storage_unavailable also covers an unavailable catalog, a key with no catalog release and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
+            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. This includes the per-administrator rate limit (10 per minute, burst 3; Retry-After is set), discovery not being composed, and the provider failing to start or describe the source within 30 seconds. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -21991,7 +22033,7 @@
     },
     "/api/bloem/v1/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade": {
       "post": {
-        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. An organization administrator receives not_found for the S3 plugin, also for an S3 source the organization owns; a platform administrator, or a manual upload of an approved artifact, upgrades it. A key with no catalog release, or a failed download or checksum, is native_storage_unavailable.",
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. An organization administrator receives not_found for the S3 plugin, also for an S3 source the organization owns; a platform administrator, or a manual upload of an approved artifact, upgrades it. A key with no catalog release is artifact_rejected; a failed download or checksum is native_storage_unavailable.",
         "operationId": "catalogUpgradeBloemPlatformNativeStorage",
         "parameters": [
           {
@@ -22129,7 +22171,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -22171,7 +22213,7 @@
                 }
               }
             },
-            "description": "artifact_rejected: the release is not an approved artifact or is for a different plugin.",
+            "description": "artifact_rejected: the release is not an approved artifact or is for a different plugin. artifact_rejected also covers a key with no catalog release.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -22192,7 +22234,7 @@
                 }
               }
             },
-            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog, a key with no catalog release and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
+            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. native_storage_unavailable also covers an unavailable catalog and a failed download or checksum. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -22370,7 +22412,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source is already attached, enabled or present. retained_namespace_unverified: the retained source's identity differs from the request or its namespace is populated.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source is already attached, enabled or present. retained_namespace_unverified: the retained source's identity differs from the request or its namespace is populated. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -22611,7 +22653,7 @@
                 }
               }
             },
-            "description": "source_attached: the generated source identity already exists.",
+            "description": "source_attached: the generated source identity already exists. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -22839,7 +22881,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -23046,7 +23088,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -23277,7 +23319,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -23900,6 +23942,27 @@
               }
             }
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
           "503": {
             "content": {
               "application/json": {
@@ -24042,6 +24105,27 @@
               }
             },
             "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -24246,7 +24330,7 @@
                 }
               }
             },
-            "description": "invalid_selection_reference: directory_ref is invalid, expired or no longer matches the source; browse_restart_required: the cursor's pagination changed or expired; restart browsing.",
+            "description": "invalid_selection_reference: directory_ref is invalid, expired or no longer matches the source; browse_restart_required: the cursor's pagination changed or expired; restart browsing. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -24332,7 +24416,7 @@
     },
     "/api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration": {
       "put": {
-        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. The source and its installation must be enabled (otherwise not_found) and attached (otherwise native_storage_unavailable). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request).",
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. The source and its installation must be enabled and attached (otherwise not_found). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request).",
         "operationId": "replaceConfigurationBloemPlatformNativeStorage",
         "parameters": [
           {
@@ -24449,7 +24533,7 @@
                 }
               }
             },
-            "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "description": "not_found: invalid path identity, absent resource or hidden authority. A disabled or detached source is also not_found.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -24470,7 +24554,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision. configuration_namespace_unverified: a source of this installation has a library location, entries or file references.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. configuration_namespace_unverified: a source of this installation has a library location, entries or file references. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -24539,7 +24623,7 @@
     },
     "/api/bloem/v1/admin/platform/native-storage/sources/{source_key}/credentials": {
       "post": {
-        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. Only an enabled S3 source qualifies: another plugin's source or a disabled one is not_found, and a detached one native_storage_unavailable.",
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them. Only an enabled, attached S3 source qualifies: another plugin's source, or a disabled or detached one, is not_found.",
         "operationId": "rotateCredentialsBloemPlatformNativeStorage",
         "parameters": [
           {
@@ -24656,7 +24740,7 @@
                 }
               }
             },
-            "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "description": "not_found: invalid path identity, absent resource or hidden authority. A disabled or detached source is also not_found.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -24677,7 +24761,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -27135,7 +27219,7 @@
                 }
               }
             },
-            "description": "invalid_request: invalid JSON, unknown fields, more than one JSON document or a body over 16 KiB."
+            "description": "invalid_request: invalid JSON, unknown fields, more than one JSON document or a body over 16 KiB. invalid_preview_settings: issuer is missing."
           },
           "401": {
             "content": {
@@ -27165,7 +27249,7 @@
                 }
               }
             },
-            "description": "preview_setup_conflict: issuer is missing or differs from the configured issuer, the reserved preview username belongs to another account, or the existing shared account is no longer eligible."
+            "description": "preview_setup_conflict: issuer differs from the configured issuer, the reserved preview username belongs to another account, or the existing shared account is no longer eligible."
           },
           "503": {
             "content": {
@@ -31837,7 +31921,7 @@
                 }
               }
             },
-            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, Schedules Direct could not be reached, saving failed, or encrypted Xtream provider storage is unavailable; internal details are withheld."
+            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, Schedules Direct could not be reached, or saving failed; internal details are withheld."
           },
           "503": {
             "content": {
@@ -31847,7 +31931,7 @@
                 }
               }
             },
-            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable.",
+            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds before retrying; sent with service_unavailable.",
@@ -32476,7 +32560,7 @@
                 }
               }
             },
-            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, Schedules Direct could not be reached, saving failed, or encrypted Xtream provider storage is unavailable; internal details are withheld."
+            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, Schedules Direct could not be reached, or saving failed; internal details are withheld."
           },
           "503": {
             "content": {
@@ -32486,7 +32570,7 @@
                 }
               }
             },
-            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable.",
+            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds before retrying; sent with service_unavailable.",
@@ -32510,7 +32594,7 @@
     },
     "/api/bloem/v1/livetv/guide-sources/{sourceId}/sync": {
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Runs the synchronization before answering. An Xtream guide synchronization already running for the source answers 500.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. Runs the synchronization before answering. An Xtream guide synchronization already running for the source answers 409.",
         "operationId": "syncBloemLiveTVGuideSource",
         "parameters": [
           {
@@ -32597,6 +32681,16 @@
             },
             "description": "not_found: the guide source or its Xtream provider does not exist, or X-Profile-Id names no profile of this account."
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "conflict: an Xtream synchronization of this source is already running, or the source changed as it started."
+          },
           "429": {
             "content": {
               "application/json": {
@@ -32639,7 +32733,7 @@
                 }
               }
             },
-            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, the guide provider could not be reached, an Xtream synchronization is already running, or saving failed; internal details are withheld."
+            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, the guide provider could not be reached, or saving failed; internal details are withheld."
           },
           "503": {
             "content": {
@@ -32649,7 +32743,7 @@
                 }
               }
             },
-            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable.",
+            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds before retrying; sent with service_unavailable.",
@@ -34402,7 +34496,7 @@
                 }
               }
             },
-            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable.",
+            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds before retrying; sent with service_unavailable.",
@@ -34559,7 +34653,7 @@
                 }
               }
             },
-            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable.",
+            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds before retrying; sent with service_unavailable.",
@@ -34729,7 +34823,7 @@
         ]
       },
       "post": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. JSON body limit 32 KiB. Xtream providers use /tuners/xtream. The device is discovered at the address and its lineup scanned before the response; if the scan fails the tuner stays saved and the request answers 500. Creation is not replay-safe.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Requires acting-administrator authority: the admin role, exercised through the account's primary profile. JSON body limit 32 KiB. Xtream providers use /tuners/xtream. The device is discovered at the address and its lineup scanned before the response; if the device answers discovery but its lineup can't be read, the tuner is saved with the failure in last_error and the request answers 201 with status error; scan it again later. Adding a device that is already saved updates that tuner.",
         "operationId": "addBloemLiveTVTuner",
         "parameters": [
           {
@@ -34853,7 +34947,7 @@
                 }
               }
             },
-            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, the device could not be reached, or saving or scanning the tuner failed; internal details are withheld."
+            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, the device could not be discovered, or saving the tuner or its channels failed; internal details are withheld."
           },
           "503": {
             "content": {
@@ -35188,7 +35282,7 @@
                 }
               }
             },
-            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted provider storage is unavailable.",
+            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds before retrying; sent with service_unavailable.",
@@ -35337,7 +35431,7 @@
                 }
               }
             },
-            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, the deletion failed, or encrypted Xtream provider storage is unavailable; internal details are withheld."
+            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, or the deletion failed; internal details are withheld."
           },
           "503": {
             "content": {
@@ -35347,7 +35441,7 @@
                 }
               }
             },
-            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable.",
+            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds before retrying; sent with service_unavailable.",
@@ -35500,7 +35594,7 @@
                 }
               }
             },
-            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, the device or provider could not be scanned, or encrypted Xtream provider storage is unavailable; internal details are withheld."
+            "description": "internal_error: the viewer's access or acting-administrator authority could not be resolved, or the device or provider could not be scanned; internal details are withheld."
           },
           "503": {
             "content": {
@@ -35510,7 +35604,7 @@
                 }
               }
             },
-            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable.",
+            "description": "service_unavailable: the credential or the viewer's access policy could not be checked right now; retry after Retry-After. tenant_unavailable: tenant authorization is unavailable. dependency_unavailable: encrypted Xtream provider storage is unavailable.",
             "headers": {
               "Retry-After": {
                 "description": "Seconds before retrying; sent with service_unavailable.",

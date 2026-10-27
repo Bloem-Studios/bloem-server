@@ -226,6 +226,40 @@ func TestBloemOrganizationInvitationGrantsOnlyThisOrganizationsGroupsAndLibrarie
 	}
 }
 
+func TestBloemOrganizationManagedGroupChangesAreConflicts(t *testing.T) {
+	organizationID := uuid.New()
+	store := &organizationGroupStub{err: access.ErrManagedGroup}
+	h := NewBloemAdminOrganizationHandler(nil, store, nil, nil)
+	for _, tc := range []struct {
+		name   string
+		handle http.HandlerFunc
+		req    *http.Request
+	}{
+		{"create", h.HandleCreateGroup, organizationRequest(http.MethodPost, "/groups", `{"expected_revision":7,"name":"Teens","is_default":true}`, organizationID, 7, nil)},
+		{"update", h.HandleUpdateGroup, organizationRequest(http.MethodPut, "/groups/21", `{"expected_revision":7,"name":"Teens"}`, organizationID, 7, map[string]string{"id": "21"})},
+		{"delete", h.HandleDeleteGroup, organizationRequest(http.MethodDelete, "/groups/21", `{"expected_revision":7}`, organizationID, 7, map[string]string{"id": "21"})},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			tc.handle(rec, tc.req)
+			if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), `"error":"conflict"`) {
+				t.Fatalf("response=%d %s", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestBloemOrganizationInvitationForAnExistingAccountIsAConflict(t *testing.T) {
+	organizationID := uuid.New()
+	store := &organizationInvitationStub{err: invitations.ErrEmailTaken}
+	h := NewBloemAdminOrganizationHandler(nil, nil, nil, store)
+	rec := httptest.NewRecorder()
+	h.HandleCreateInvitation(rec, organizationRequest(http.MethodPost, "/invitations", `{"email":"taken@example.test","expected_revision":7}`, organizationID, 7, nil))
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), `"error":"email_taken"`) {
+		t.Fatalf("response=%d %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestBloemOrganizationRoutesRejectPlatformContextBeforeStoreAccess(t *testing.T) {
 	store := &organizationOverviewStub{}
 	h := NewBloemAdminOrganizationHandler(store, nil, nil, nil)

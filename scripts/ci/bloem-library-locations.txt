@@ -96,3 +96,6 @@
 ./internal/scanner TestNativeAudioInitialMetadataPreservesEnrichmentDuringLockWaitDB
 ./internal/scanner TestNativeAudioStagingReplayAtTrackLimitDB
 ./internal/scanner TestNativeAudioStagingOverflowRemainsRejectedOnReplayDB
+
+# A detached source answers configuration and credential changes as not found.
+./internal/nativestorage TestDetachedSourceConfigurationIsNotFoundDB

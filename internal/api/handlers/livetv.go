@@ -840,8 +840,12 @@ func writeLiveTVRequestError(w http.ResponseWriter, r *http.Request, err error) 
 		writeError(w, http.StatusConflict, "limit_exceeded", err.Error())
 	case errors.Is(err, livetv.ErrNoTuner):
 		writeError(w, http.StatusConflict, "no_tuner", err.Error())
-	case errors.Is(err, livetv.ErrNotImplemented):
-		writeError(w, http.StatusNotImplemented, "not_implemented", err.Error())
+	case errors.Is(err, livetv.ErrConflict):
+		writeError(w, http.StatusConflict, "conflict", err.Error())
+	case errors.Is(err, livetv.ErrNotConfigured):
+		// As the Xtream provider endpoint answers it: encrypted provider
+		// storage, or the Live TV store, is not set up.
+		writeError(w, http.StatusServiceUnavailable, "dependency_unavailable", "Live TV storage is unavailable")
 	default:
 		ctx := context.Background()
 		attrs := []any{"component", "livetv", "error", err}

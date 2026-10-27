@@ -273,3 +273,49 @@ func TestAdminContextMiddlewareEnforcesLoginSession(t *testing.T) {
 		})
 	}
 }
+
+// A refusal is about this caller's authority at this moment, so no cache may
+// keep it. What a passing request serves is the handler's to mark.
+func TestAdminContextMiddlewareRefusalsAreNotStored(t *testing.T) {
+	platform := auth.AdminContextClaims{
+		AccountID: 41, AccountIncarnationID: uuid.MustParse("11111111-2222-4333-8444-555555555555"),
+		SessionID: "login-session", Scope: auth.AdminScopePlatform,
+	}
+	sessionless := platform
+	sessionless.SessionID = ""
+	organization := auth.AdminContextClaims{
+		AccountID: 41, AccountIncarnationID: platform.AccountIncarnationID, SessionID: "login-session",
+		Scope: auth.AdminScopeOrganization, OrganizationID: uuid.New(), MembershipID: uuid.New(),
+		PolicyRevision: 7, SecurityRevision: 11,
+	}
+	allowed := adminContextPlatformAuthorizerStub{allowed: true}
+
+	cases := map[string]struct {
+		claims   auth.AdminContextClaims
+		resolver *adminContextResolverStub
+		platform auth.PlatformAdminAuthorizer
+		sessions SessionValidator
+		status   int
+	}{
+		"no session bound":       {sessionless, &adminContextResolverStub{}, allowed, fixedSessionValidator{valid: true}, http.StatusUnauthorized},
+		"revoked session":        {platform, &adminContextResolverStub{}, allowed, fixedSessionValidator{valid: false}, http.StatusUnauthorized},
+		"session store down":     {platform, &adminContextResolverStub{}, allowed, failingSessionValidator{}, http.StatusServiceUnavailable},
+		"operator unavailable":   {platform, &adminContextResolverStub{}, adminContextPlatformAuthorizerStub{err: errors.New("down")}, fixedSessionValidator{valid: true}, http.StatusServiceUnavailable},
+		"lost platform rights":   {platform, &adminContextResolverStub{}, adminContextPlatformAuthorizerStub{}, fixedSessionValidator{valid: true}, http.StatusForbidden},
+		"suspended organization": {organization, &adminContextResolverStub{err: tenancy.ErrTenantSuspended}, allowed, fixedSessionValidator{valid: true}, http.StatusForbidden},
+		"stale organization":     {organization, &adminContextResolverStub{}, allowed, fixedSessionValidator{valid: true}, http.StatusUnauthorized},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			rec := performAdminContextRequestWithSessions(t, tc.claims, tc.resolver, tc.platform, tc.sessions)
+			if rec.Code != tc.status || rec.Header().Get("Cache-Control") != "no-store" {
+				t.Fatalf("response = %d Cache-Control %q %s", rec.Code, rec.Header().Get("Cache-Control"), rec.Body.String())
+			}
+		})
+	}
+
+	rec := performAdminContextRequestWithSessions(t, platform, &adminContextResolverStub{}, allowed, fixedSessionValidator{valid: true})
+	if rec.Code != http.StatusNoContent || rec.Header().Get("Cache-Control") != "" {
+		t.Fatalf("passing request = %d Cache-Control %q", rec.Code, rec.Header().Get("Cache-Control"))
+	}
+}

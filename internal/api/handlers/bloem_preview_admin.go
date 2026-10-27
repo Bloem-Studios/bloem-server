@@ -77,6 +77,12 @@ func (h *BloemPreviewAdminHandler) HandleEnsureAccount(w http.ResponseWriter, r 
 	if !previewAdminInput(w, r, &in) {
 		return
 	}
+	// A missing issuer is a bad request; the conflict below is for a setup
+	// that disagrees with the one already stored.
+	if in.Issuer == "" {
+		previewAdminError(w, preview.ErrInvalidSettings)
+		return
+	}
 	id, err := h.admin.EnsureAccount(r.Context(), actor, in.Issuer)
 	if errors.Is(err, preview.ErrInvalidSettings) {
 		writeError(w, http.StatusConflict, "preview_setup_conflict", "Preview setup conflicts with an existing account or issuer.")

@@ -25,6 +25,13 @@ import (
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/plugins"
+	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
+)
+
+// The organization handlers' answer when authority changed mid-request.
+const (
+	nativeStorageAuthorizationChangedCode    = "authorization_state_changed"
+	nativeStorageAuthorizationChangedMessage = "Authorization state changed; reload and retry"
 )
 
 const (
@@ -112,6 +119,11 @@ func NativeStorageAPIError(err error) *APIError {
 		result.Code = "mutation_outcome_unknown"
 		result.Message = "Mutation outcome requires reconciliation"
 		return result
+	}
+	// The owner or source changed while the request waited for its locks, as
+	// in the organization handlers: reload and retry.
+	if errors.Is(err, resourcetenancy.ErrAuthorizationStateChanged) {
+		return &APIError{Status: 409, Code: nativeStorageAuthorizationChangedCode, Message: nativeStorageAuthorizationChangedMessage}
 	}
 	var typed *catalog.NativeOnboardingError
 	if !errors.As(err, &typed) || typed == nil {

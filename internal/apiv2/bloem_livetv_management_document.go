@@ -172,6 +172,10 @@ func bloemLiveTVDocumentOp(reg *Registry, method, path, id, summary string, stat
 	return op
 }
 
+// bloemLiveTVStorageUnavailable is the 503 writeLiveTVRequestError gives
+// livetv.ErrNotConfigured, which in a deployment means no SECRET_KEY cipher.
+const bloemLiveTVStorageUnavailable = "dependency_unavailable: encrypted Xtream provider storage is unavailable."
+
 // bloemLiveTVUnavailable extends the client gates' 503 with a handler outcome,
 // keeping the Retry-After header the gates document.
 func bloemLiveTVUnavailable(op *huma.Operation, outcome string) {
@@ -278,6 +282,7 @@ func registerBloemLiveTVManagementDocument(reg *Registry) {
 		})
 		op.Responses["200"] = &huma.Response{Description: "MPEG-TS media stream.", Headers: map[string]*huma.Header{"Content-Type": {Schema: &huma.Schema{Type: "string", Enum: []any{"video/mp2t"}}}}}
 		op.Responses["200"].Content = map[string]*huma.MediaType{"video/mp2t": {Schema: &huma.Schema{Type: "string", Format: "binary"}}}
+		bloemLiveTVUnavailable(&op, bloemLiveTVStorageUnavailable)
 		registerBloemChiDocument[struct{}, struct{}](reg, op)
 	}
 
@@ -286,6 +291,7 @@ func registerBloemLiveTVManagementDocument(reg *Registry) {
 		op.Description += bloemLiveTVOwnership + " Requires an active session. Delivery tickets are not accepted on this route. HEAD checks the session and its source and returns media headers without fetching stream bytes or opening the upstream. GET proxies the MPEG-TS stream and renews the tuner lease until disconnect."
 		bloemDocumentErrors[BloemNativeError](reg, &op, streamErrors)
 		op.Responses["200"] = &huma.Response{Description: "MPEG-TS media headers; no body.", Headers: map[string]*huma.Header{"Content-Type": {Schema: &huma.Schema{Type: "string", Enum: []any{"video/mp2t"}}}}}
+		bloemLiveTVUnavailable(&op, bloemLiveTVStorageUnavailable)
 		registerBloemChiDocument[struct{}, struct{}](reg, op)
 	}
 
@@ -335,10 +341,10 @@ func registerBloemLiveTVManagementDocument(reg *Registry) {
 
 	{
 		op := bloemLiveTVDocumentOp(reg, "POST", "/livetv/tuners", "addBloemLiveTVTuner", "Add an HDHomeRun-compatible tuner.", 201, bloemLiveTVAdmin)
-		op.Description += " JSON body limit 32 KiB. Xtream providers use /tuners/xtream. The device is discovered at the address and its lineup scanned before the response; if the scan fails the tuner stays saved and the request answers 500. Creation is not replay-safe."
+		op.Description += " JSON body limit 32 KiB. Xtream providers use /tuners/xtream. The device is discovered at the address and its lineup scanned before the response; if the device answers discovery but its lineup can't be read, the tuner is saved with the failure in last_error and the request answers 201 with status error; scan it again later. Adding a device that is already saved updates that tuner."
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
 			400: "bad_request: X-Profile-Id is missing. invalid_body: the body is not valid JSON or exceeds 32 KiB. invalid_argument: type is xtream or another non-HDHomeRun type, provider credentials or max_connections were supplied, the address is missing, invalid or not an allowed media address, or the device reported no device ID.",
-			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, the device could not be reached, or saving or scanning the tuner failed; internal details are withheld.",
+			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, the device could not be discovered, or saving the tuner or its channels failed; internal details are withheld.",
 		})
 		registerBloemChiDocument[bloemJSONInput[BloemLiveTVAddTunerRequest], bloemJSONOutput[livetv.Tuner]](reg, op)
 	}
@@ -357,8 +363,9 @@ func registerBloemLiveTVManagementDocument(reg *Registry) {
 		op.Description += " Deleting an absent tuner also answers 204. Deleting an Xtream provider also deletes its guide source, and is refused while it has active streams or recordings."
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
 			409: "limit_exceeded: the Xtream provider still has active streams or recordings.",
-			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, the deletion failed, or encrypted Xtream provider storage is unavailable; internal details are withheld.",
+			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, or the deletion failed; internal details are withheld.",
 		})
+		bloemLiveTVUnavailable(&op, bloemLiveTVStorageUnavailable)
 		registerBloemChiDocument[struct{}, struct{}](reg, op)
 	}
 
@@ -368,8 +375,9 @@ func registerBloemLiveTVManagementDocument(reg *Registry) {
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
 			400: "bad_request: X-Profile-Id is missing. invalid_argument: the tuner's stored address or Xtream provider configuration is not allowed.",
 			404: "not_found: the tuner or its stored Xtream credentials do not exist, or X-Profile-Id names no profile of this account.",
-			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, the device or provider could not be scanned, or encrypted Xtream provider storage is unavailable; internal details are withheld.",
+			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, or the device or provider could not be scanned; internal details are withheld.",
 		})
+		bloemLiveTVUnavailable(&op, bloemLiveTVStorageUnavailable)
 		registerBloemChiDocument[struct{}, struct{}](reg, op)
 	}
 
@@ -394,8 +402,9 @@ func registerBloemLiveTVManagementDocument(reg *Registry) {
 			400: "bad_request: X-Profile-Id is missing. " + bloemLiveTVInvalidBody + " " + bloemLiveTVGuideSourceErrors,
 			404: "not_found: the Xtream provider was removed while the source was saved, or X-Profile-Id names no profile of this account.",
 			409: "limit_exceeded: three guide sources are already enabled.",
-			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, Schedules Direct could not be reached, saving failed, or encrypted Xtream provider storage is unavailable; internal details are withheld.",
+			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, Schedules Direct could not be reached, or saving failed; internal details are withheld.",
 		})
+		bloemLiveTVUnavailable(&op, bloemLiveTVStorageUnavailable)
 		registerBloemChiDocument[bloemJSONInput[BloemLiveTVGuideSourceCreate], bloemJSONOutput[livetv.GuideSource]](reg, op)
 	}
 
@@ -406,8 +415,9 @@ func registerBloemLiveTVManagementDocument(reg *Registry) {
 			400: "bad_request: X-Profile-Id is missing. " + bloemLiveTVInvalidBody + " " + bloemLiveTVGuideSourceErrors,
 			404: "not_found: the guide source does not exist, or its Xtream provider was removed while it was saved; or X-Profile-Id names no profile of this account.",
 			409: "limit_exceeded: three other guide sources are already enabled.",
-			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, Schedules Direct could not be reached, saving failed, or encrypted Xtream provider storage is unavailable; internal details are withheld.",
+			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, Schedules Direct could not be reached, or saving failed; internal details are withheld.",
 		})
+		bloemLiveTVUnavailable(&op, bloemLiveTVStorageUnavailable)
 		registerBloemChiDocument[bloemJSONInput[BloemLiveTVGuideSourcePatch], bloemJSONOutput[livetv.GuideSource]](reg, op)
 	}
 
@@ -419,13 +429,15 @@ func registerBloemLiveTVManagementDocument(reg *Registry) {
 
 	{
 		op := bloemLiveTVDocumentOp(reg, "POST", "/livetv/guide-sources/{sourceId}/sync", "syncBloemLiveTVGuideSource", "Synchronize a saved guide source.", 200, bloemLiveTVAdmin)
-		op.Description += " Runs the synchronization before answering. An Xtream guide synchronization already running for the source answers 500."
+		op.Description += " Runs the synchronization before answering. An Xtream guide synchronization already running for the source answers 409."
 		bloemLiveTVDocumentUnion[livetv.GuideSource, BloemLiveTVSyncFallback](reg, &op)
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
 			400: "bad_request: X-Profile-Id is missing. invalid_argument: the source type is unsupported, an Xtream guide source is disabled or its provider configuration is not allowed, required configuration is missing, no channel maps to a guide station, or the guide provider rejected the stored configuration.",
 			404: "not_found: the guide source or its Xtream provider does not exist, or X-Profile-Id names no profile of this account.",
-			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, the guide provider could not be reached, an Xtream synchronization is already running, or saving failed; internal details are withheld.",
+			409: "conflict: an Xtream synchronization of this source is already running, or the source changed as it started.",
+			500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, the guide provider could not be reached, or saving failed; internal details are withheld.",
 		})
+		bloemLiveTVUnavailable(&op, bloemLiveTVStorageUnavailable)
 		registerBloemChiDocument[struct{}, struct{}](reg, op)
 	}
 
