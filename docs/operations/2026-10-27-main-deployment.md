@@ -176,3 +176,15 @@ requires) resumed streaming at once. WAL archiving continued with no failures,
 and the monitor reconnected. The server came back healthy with no restarts on
 `276becf4`, ready and health returned 200 locally and publicly, both Redis
 instances answered, and there were no ERROR or panic lines.
+
+At 08:28 UTC auto-tuning was turned off (`POSTGRES_TUNE=off`), as the
+deployment guide advises for an external database. The tuned values stay in
+`postgresql.auto.conf` on the database container. The `POSTGRES_TUNE_CPUS`,
+`POSTGRES_TUNE_MEMORY` and `POSTGRES_TUNE_STORAGE` lines stay in the `.env` as
+a record of what the values were sized for, and are used again only if tuning
+is turned back on. If the database container's cores, memory or disk change,
+re-tune it by hand. The server was recreated on the same image: 10 seconds of
+downtime, healthy with no restarts, ready 200 locally and publicly. It logged
+no tuning lines. `postgresql.auto.conf` was not rewritten (same checksum and
+modification time), and all 20 tuned settings were unchanged. Backup:
+`.env.bak-tune-off-20261027T082745Z`.
