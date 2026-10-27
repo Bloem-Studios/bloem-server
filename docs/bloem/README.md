@@ -28,7 +28,7 @@ not to the current source. The current state is on the
 Dated records of what production ran, how it was deployed and what was checked.
 A receipt is not native-client or playback acceptance.
 
-- [October 27 main deployment](../operations/2026-10-27-main-deployment.md) — current: `422a51fed` (Silo through `3e2d306b2`, the first CI-built production image, three forward-only migrations), then `276becf4a` (the admin-context fix, no migrations), PostgreSQL tuning sized for the database container and then turned off, then `7a3b59027` (the proxy, OpenAPI and handler fixes, no migrations).
+- [October 27 main deployment](../operations/2026-10-27-main-deployment.md) — current: `422a51fed` (Silo through `3e2d306b2`, the first CI-built production image, three forward-only migrations), then `276becf4a` (the admin-context fix, no migrations), PostgreSQL tuning sized for the database container and then turned off, then `7a3b59027` (the proxy, OpenAPI and handler fixes, no migrations), then `bee8a7728` (the rest of the OpenAPI review's status fixes, no migrations).
 - [October 26 Stage A deployment](../operations/2026-10-26-stage-a-deployment.md) — historical: `7831034ea` (account policy on users, music and lifecycle receipts removed, three forward-only migrations), then `d064644a8`.
 - [October 26 main deployment](../operations/2026-10-26-main-deployment.md) — historical: `d183b286f`, Silo through `6de6d5e5e`, 21 Silo migrations, a locally built image.
 - [October 15 preview server deployment](../operations/2026-10-15-preview-server-deployment.md) — historical: published source, offline migrations, presentation workers since removed, public preview left disabled.

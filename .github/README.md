@@ -47,10 +47,10 @@ Checked on October 27, 2026, against `main` at `7d6174d00`.
 
 | | |
 | --- | --- |
-| Bloem `main` | `7a3b59027`. After `276becf4a` it adds the standalone proxy's organization fix (`a6d342390`), a `latest` tag that follows `main` (`6d0adcfe9`), a native OpenAPI checked against every handler (`67429b073`), three handler fixes from that review (`7a3b59027`) and documentation; see the [changelog](../docs/bloem/CHANGELOG.md) |
+| Bloem `main` | `bee8a7728`. After `276becf4a` it adds the standalone proxy's organization fix (`a6d342390`), a `latest` tag that follows `main` (`6d0adcfe9`), a native OpenAPI checked against every handler (`67429b073`), the handler and status fixes from that review (`7a3b59027`, `bee8a7728`) and documentation; see the [changelog](../docs/bloem/CHANGELOG.md) |
 | Silo integrated | all of Silo `main` through `3e2d306b2` (October 27, 2026, 03:06 UTC), merged in `68070f04b`; `main` is zero commits behind Silo |
 | Seam ledger | 306 Silo-owned files that Bloem differs in, declared in [`contracts/seams.txt`](../contracts/seams.txt) |
-| Production | `7a3b59027` since 13:06 UTC on October 27, from the image Bloem CI built and published. See the [October 27 receipt](../docs/operations/2026-10-27-main-deployment.md#follow-up-7a3b59027) |
+| Production | `bee8a7728` since 22:27 UTC on October 27, from the image Bloem CI built and published. See the [October 27 receipt](../docs/operations/2026-10-27-main-deployment.md#follow-up-bee8a7728) |
 
 The latest Silo merges brought mostly security hardening. Tokens are bound to
 their session's account, including on Bloem's preview, plugin, tenant-admin and

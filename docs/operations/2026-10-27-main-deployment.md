@@ -4,8 +4,9 @@ This receipt records the deployment of `main` with Silo through `3e2d306b2`.
 Production had run `d064644a8` since 06:41 UTC on October 26
 ([previous receipt](2026-10-26-stage-a-deployment.md#follow-up-deployment-account-provisioning-0641-utc)).
 It also records the follow-up deployment of `276becf4a`, two PostgreSQL
-configuration changes the same morning, and the afternoon deployment of
-`7a3b59027`. It is the newest deployment receipt.
+configuration changes the same morning, the afternoon deployment of
+`7a3b59027` and the evening deployment of `bee8a7728`. It is the newest
+deployment receipt.
 
 ## How these deployments are done
 
@@ -282,4 +283,50 @@ warnings were the known `PutBucketCors` 403 on the private assets bucket and
 an HDR10+ backfill that will read one file again on its next pass.
 
 To roll back, start `bloem-server:release-276becf4a` again: the schema did
+not change.
+
+## Follow-up: `bee8a7728`
+
+At 22:27 UTC production moved to `main` at
+`bee8a77280d1e44a764ef7de086216de6a3c22d5` (system info `bee8a772`). Since
+`7a3b59027` it brings the rest of the OpenAPI review's status fixes
+(`bee8a7728`, see the [changelog](../bloem/CHANGELOG.md)) and the receipt
+above. There are no migrations and no web changes.
+
+| Item | Verified value |
+| --- | --- |
+| Runtime image | `bloem-server:release-bee8a7728`, loaded from `ghcr.io/bloem-studios/bloem-server:bee8a77280d1e44a764ef7de086216de6a3c22d5` (`sha256:ff7501ae61560f25ac1230053400abae2155c043362f221ab0359d98c0e60981`) |
+| Server binary SHA-256 | `ce08b7c03346beca3d881f64da793d37b09cd60ecd92ae576d8f3475ba2ec021`, the same in the published image and on the application host |
+| Migrations | none applied; 725 applied, maximum `20261026191107`, zero pending |
+
+Bloem CI on `main` passed on attempt 2. On attempt 1 the database-contracts
+job lost two Silo recommendation tests that this commit does not touch and
+that pass locally; the rerun of that job passed. Bloem Image then published
+the image. Its runtime configuration is identical to `release-7a3b59027`.
+
+Earlier that evening the application and database containers moved to
+another Proxmox node, with a backup first. The container snapshots named in
+the sections above (`pre-main-422a51fed`, `pre-main-276becf4a`,
+`pre-main-7a3b59027`) were deleted for the move and no longer exist; the
+database restore points are unaffected. The streaming standby stayed on the
+old node.
+
+Before the restart: container snapshot `pre-main-bee8a7728`, and database
+restore point `pre-main-bee8a7728` at LSN `3BA/B66718A0`, whose WAL segment
+was archived at 22:27:02 UTC with no archive failures. The standby was
+streaming.
+
+The restart script refused to run unless the live image was `7a3b59027`. It
+stopped the server in 6 seconds, found no migrations to apply, and started
+the new image. Ready returned 200 12 seconds after the stop began, and the
+server was healthy with no restarts. The runtime fingerprint did not change.
+Ready and health returned 200 locally, and ready, health and the site returned
+200 publicly. Active streams continued (one FFmpeg process before, two after).
+An unauthenticated administrative request is now refused as `401` with
+`Cache-Control: no-store`. There were no ERROR or panic lines and no tuning
+lines. The warnings were the same three as at `7a3b59027`: the `PutBucketCors`
+403 on the private assets bucket, the HDR10+ backfill that will read one file
+again, and the same download artifact re-queued by the restart.
+
+To roll back, start `bloem-server:release-7a3b59027` again: the schema did
 not change.
