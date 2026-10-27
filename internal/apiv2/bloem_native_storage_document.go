@@ -29,7 +29,7 @@ type BloemNativeStorageCapabilities struct {
 	LibraryLocationMixing        bool                            `json:"library_location_mixing" doc:"One library may combine filesystem paths with plugin sources or use several plugin sources. While false, a library keeps filesystem paths or one plugin source over its lifetime, and other shapes return location_mixing_unavailable."`
 	SupportedSourceMedia         []BloemNativeStorageSourceMedia `json:"supported_source_media" nullable:"false" doc:"Host-supported source/media combinations; this does not prove that a provider instance supports or is available for a kind."`
 	NativeAudioLibraries         bool                            `json:"native_audio_libraries" doc:"Requires the complete native audio scanner, catalog and playback composition."`
-	NativeAudioPlayback          bool                            `json:"native_audio_playback" doc:"False until full native audio playback composition is verified."`
+	NativeAudioPlayback          bool                            `json:"native_audio_playback" doc:"Always equal to native_audio_libraries: true only when the native audio scanner, catalog and playback are all composed."`
 
 	Schema                      int  `json:"schema" enum:"2"`
 	SourceManagement            bool `json:"source_management"`
@@ -195,13 +195,21 @@ func bloemNativeStorageMultipart[T any](reg *Registry) *huma.RequestBody {
 	}
 }
 
+// bloemNativeStorageForbidden is the 403 of every scoped native-storage and
+// library-location operation: the administrative middleware and the
+// handler's own scope check.
+const bloemNativeStorageForbidden = "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended."
+
 func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, summary string, status int, body *huma.RequestBody, list bool) {
 	security, label := bloemPlatformContextSecurity, "Platform"
 	if scope == "organization" {
 		security, label = bloemOrganizationContextSecurity, "Organization"
 	}
 	op := bloemChiDocumentOp(reg, method, "/admin/"+scope+"/native-storage"+path, id+"Bloem"+label+"NativeStorage", "native-storage", summary, security, status)
-	op.Description = "Experimental native EPUB/PDF storage sources. A library uses a source as its storage location through the ordinary library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them."
+	op.Description = "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them."
+	if note := bloemNativeStorageNotes[path]; note != "" {
+		op.Description += " " + note
+	}
 	op.RequestBody = body
 	one, hundred := float64(1), float64(100)
 	for _, name := range []string{"source_key", "installation_id"} {
@@ -220,39 +228,136 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 			&huma.Param{Name: "after", In: "query", Schema: after, Description: "Exclusive keyset cursor returned as next_after; omit on the first page."},
 			&huma.Param{Name: "limit", In: "query", Schema: &huma.Schema{Type: "integer", Minimum: &one, Maximum: &hundred, Default: 50}})
 	}
-	bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{
-		400: "invalid_request: malformed or unsupported body/query/fields.",
-		404: "not_found: invalid path identity, absent resource or hidden authority.",
-		503: "native_storage_unavailable: dependencies or state cannot establish readiness. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback.",
-	})
-	browse := strings.HasPrefix(path, "/s3/")
-	if method != "GET" && !browse {
-		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{
-			409: "revision_conflict returns current_revision. Other fixed codes include source_attached, configuration_namespace_unverified and retained_namespace_unverified.",
-			413: "request_too_large: JSON, binary or total multipart limit exceeded.",
-		})
-	}
-	const endpointGuard = "In organization scope, s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request."
-	switch {
-	case browse:
-		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{
-			413: "request_too_large: the JSON body exceeds 1 MiB.",
-			422: "s3_endpoint_rejected: the endpoint is not an https origin, has userinfo, a path, query or fragment, an invalid or (organization scope) non-S3 port, a host resolving to any loopback, private, link-local, unique-local, CGNAT, multicast, unspecified or metadata address, or a host that does not resolve. s3_access_denied: the backend refused the credentials.",
-			502: "s3_backend_error: the backend failed, timed out, redirected or returned a malformed or oversized response. Messages are fixed and never quote the backend.",
-			503: "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute), the per-administrator cap of two concurrent requests or the server-wide cap of four (one reserved for platform administrators) refused the request; Retry-After is set for the latter.",
-		})
-	case path == "/installations" || path == "/installations/discover" || path == "/catalog/installations" || path == "/catalog/installations/discover":
-		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{422: "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact. " + endpointGuard})
-	case strings.HasSuffix(path, "/upgrade"):
-		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{422: "artifact_rejected: uploaded bytes do not match an accepted host-approved artifact."})
-	case path == "/sources/{source_key}/configuration":
-		bloemDocumentErrors[BloemNativeStorageError](reg, &op, map[int]string{422: endpointGuard})
-	}
+	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{403: bloemNativeStorageForbidden})
+	bloemDocumentErrors[BloemNativeStorageError](reg, &op, bloemNativeStorageErrors(scope, path))
 	op.Responses[strconv.Itoa(status)] = &huma.Response{Description: summary}
 	for _, response := range op.Responses {
 		response.Headers = map[string]*huma.Header{"Cache-Control": {Description: "Native management handler responses are not cacheable.", Schema: &huma.Schema{Type: "string", Enum: []any{"no-store"}}}}
 	}
+	if strings.HasPrefix(path, "/s3/") || path == "/catalog/installations/discover" {
+		op.Responses["503"].Headers["Retry-After"] = &huma.Header{Description: "Seconds to wait; sent when a rate limit or concurrency cap refused the request.", Schema: &huma.Schema{Type: "integer"}}
+	}
 	registerBloemChiDocument[struct{}, bloemNativeStorageOutput[T]](reg, op)
+}
+
+// bloemNativeStorageNotes adds operation-specific rules to the shared description.
+var bloemNativeStorageNotes = map[string]string{
+	"/installations/discover":                          "Only a host-approved bloem.storage.s3 artifact qualifies. The provider runs once in a temporary process to report the selected source's root; the caller never supplies a root, source key or state_path.",
+	"/catalog/installations":                           "S3 sources are added only through catalog discovery: an S3 catalog key is artifact_rejected for a platform administrator and not_found for an organization administrator. A key with no catalog release, or a failed download or checksum, is native_storage_unavailable.",
+	"/catalog/installations/{installation_id}/upgrade": "An organization administrator receives not_found for the S3 plugin, also for an S3 source the organization owns; a platform administrator, or a manual upload of an approved artifact, upgrades it. A key with no catalog release, or a failed download or checksum, is native_storage_unavailable.",
+	"/sources/{source_key}/configuration":              "The source and its installation must be enabled (otherwise not_found) and attached (otherwise native_storage_unavailable). The configuration must satisfy the installed artifact's declared schema (otherwise invalid_request).",
+	"/sources/{source_key}/credentials":                "Only an enabled S3 source qualifies: another plugin's source or a disabled one is not_found, and a detached one native_storage_unavailable.",
+}
+
+// bloemNativeStorageErrors lists what each native-storage handler, its domain
+// calls and the administrative middleware can write besides 401 and 403.
+func bloemNativeStorageErrors(scope, path string) map[int]string {
+	const (
+		authority      = "tenant_unavailable: administrative authority could not be checked."
+		unavailable    = "native_storage_unavailable: native storage, the source, its provider or the database is unavailable."
+		unknown        = " mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback."
+		catalog        = " native_storage_unavailable also covers an unavailable catalog, a key with no catalog release and a failed download or checksum."
+		read           = "invalid_request: query parameters or a request body were sent."
+		strictJSON     = "invalid_request: query parameters were sent, or the body is not a strict application/json object with exactly the documented fields and valid values."
+		strictForm     = "invalid_request: query parameters were sent, or the body is not exactly one request part and one nonempty binary part, or the request JSON has unknown, duplicate, missing or invalid fields."
+		hidden         = "not_found: invalid path identity, absent resource or hidden authority."
+		revision       = "revision_conflict returns current_revision, the source's current configuration revision."
+		jsonLarge      = "request_too_large: the JSON body exceeds 1 MiB."
+		configLarge    = "request_too_large: the JSON body or the serialized configuration exceeds 1 MiB."
+		formLarge      = "request_too_large: the request part exceeds 1 MiB, the binary 256 MiB, the whole body 258 MiB, or the serialized configuration 1 MiB."
+		rejectedUpload = "artifact_rejected: the artifact is not host-approved, the uploaded bytes do not match it, or the configuration does not satisfy its declared schema."
+		rejectedSchema = " or the configuration does not satisfy its declared schema."
+		endpointGuard  = "s3_endpoint_rejected: config connection.endpoint (S3) or connection.base_url (Bookwarehouse) is not an https URL on a well-known S3 port whose host resolves only to public addresses, or allow_loopback_http or allow_insecure_http is set; case variants of these keys are invalid_request."
+	)
+	// Platform administrators may name an owning organization; organization
+	// administrators always act for their own organization.
+	owner, retained := "not_found: the owner named by organization_id is absent or hidden.", "not_found: the retained source_key, or the owner named by organization_id, is absent or hidden."
+	catalogS3, catalogS3Hidden := "the key names the S3 plugin, ", ""
+	if scope == "organization" {
+		owner, retained = "not_found: the actor's storage owner is no longer visible.", "not_found: the retained source_key is absent or hidden, or the actor's storage owner is no longer visible."
+		catalogS3, catalogS3Hidden = "", " An S3 catalog key is also not_found."
+	}
+	r := map[int]string{}
+	switch path {
+	case "/capabilities":
+		r[400] = read
+	case "/artifacts":
+		r[400], r[503] = read, "native_storage_unavailable: the catalog could not be refreshed and no artifact is approved."
+	case "/sources":
+		r[400] = "invalid_request: unknown, repeated or empty query parameters, a limit outside 1-100, an invalid after, or a request body."
+		r[404] = "not_found: the actor's storage owner, or a source on the page, is no longer visible."
+		r[503] = unavailable
+	case "/sources/{source_key}":
+		r[400], r[404], r[503] = read, hidden, unavailable
+	case "/installations":
+		r[400] = strictForm + " organization_id is rejected in organization scope, and source_key and expected_revision go together."
+		r[404] = retained
+		r[409] = revision + " source_attached: the source is already attached, enabled or present. retained_namespace_unverified: the retained source's identity differs from the request or its namespace is populated."
+		r[413], r[422], r[503] = formLarge, rejectedUpload, unavailable+unknown
+	case "/installations/discover":
+		r[400] = strictForm + " organization_id is rejected in organization scope, and config must hold only the connection namespace, without state_path."
+		r[404] = owner
+		r[409] = "source_attached: the generated source identity already exists."
+		r[413] = formLarge
+		r[422] = "artifact_rejected: the artifact is not a host-approved bloem.storage.s3 artifact, the uploaded bytes do not match it," + rejectedSchema
+		r[503] = unavailable + " This includes discovery not being composed and the provider failing to start or describe the source within 30 seconds." + unknown
+	case "/catalog/installations":
+		r[400] = strictJSON + " organization_id is rejected in organization scope, and source_key and expected_revision go together."
+		r[404] = retained + catalogS3Hidden
+		r[409] = revision + " source_attached: the source is already attached, enabled or present. retained_namespace_unverified: the retained source's identity differs from the request or its namespace is populated."
+		r[413] = configLarge
+		r[422] = "artifact_rejected: " + catalogS3 + "the release is not an approved artifact," + rejectedSchema
+		r[503] = unavailable + catalog + unknown
+	case "/catalog/installations/discover":
+		r[400] = strictJSON + " Any field besides artifact_key, provider_source_id, enabled and config, including organization_id, is rejected, as is a config with state_path or with namespaces other than connection."
+		r[404] = "not_found: the actor's storage owner is no longer visible."
+		r[409] = "source_attached: the generated source identity already exists."
+		r[413] = configLarge
+		r[422] = "artifact_rejected: the key is not an admitted S3 catalog release," + rejectedSchema
+		r[503] = unavailable + " This includes the per-administrator rate limit (10 per minute, burst 3; Retry-After is set), discovery not being composed, and the provider failing to start or describe the source within 30 seconds." + catalog + unknown
+	case "/catalog/installations/{installation_id}/upgrade":
+		r[400] = strictJSON
+		r[404] = hidden + " An organization administrator also receives it for the S3 plugin."
+		r[409], r[413] = revision, jsonLarge
+		r[422] = "artifact_rejected: the release is not an approved artifact or is for a different plugin."
+		r[503] = unavailable + catalog + unknown
+	case "/installations/{installation_id}/upgrade":
+		r[400] = strictForm
+		r[404], r[409] = hidden, revision
+		r[413] = "request_too_large: the request part exceeds 1 MiB, the binary 256 MiB or the whole body 258 MiB."
+		r[422] = "artifact_rejected: the artifact is not host-approved, the uploaded bytes do not match it, or it is for a different plugin."
+		r[503] = unavailable + unknown
+	case "/sources/{source_key}/configuration":
+		r[400] = strictJSON + " The configuration must also satisfy the installed artifact's declared schema."
+		r[404] = hidden
+		r[409] = revision + " configuration_namespace_unverified: a source of this installation has a library location, entries or file references."
+		r[413], r[503] = configLarge, unavailable+unknown
+	case "/sources/{source_key}/credentials":
+		r[400] = strictJSON + " Credentials must be nonempty (session_token may be empty) and free of control characters."
+		r[404], r[409], r[413], r[503] = hidden, revision, jsonLarge, unavailable+unknown
+	case "/installations/{installation_id}/disable", "/installations/{installation_id}":
+		r[400] = strictJSON
+		r[404], r[409], r[413], r[503] = hidden, revision, jsonLarge, unavailable+unknown
+	case "/s3/buckets", "/s3/folders":
+		r[400] = strictJSON + " Region, credential, bucket, prefix and cursor bounds apply as documented on the fields."
+		r[413] = jsonLarge
+		r[422] = "s3_endpoint_rejected: the endpoint is not an https origin, has userinfo, a path, query or fragment, an invalid or (organization scope) non-S3 port, a host resolving to any loopback, private, link-local, unique-local, CGNAT, multicast, unspecified or metadata address, or a host that does not resolve. s3_access_denied: the backend refused the credentials."
+		r[502] = "s3_backend_error: the backend failed, timed out, redirected or returned a malformed or oversized response. Messages are fixed and never quote the backend."
+		r[503] = "native_storage_unavailable: browsing is not composed, or the per-administrator rate limit (30 per minute), the per-administrator cap of two concurrent requests or the server-wide cap of four (one reserved for platform administrators) refused the request; Retry-After is set for those refusals."
+	}
+	// Every route also passes the administrative middleware first.
+	r[503] = strings.TrimSpace(r[503] + " " + authority)
+	switch path {
+	case "/installations", "/installations/discover", "/catalog/installations", "/catalog/installations/discover", "/sources/{source_key}/configuration":
+		if scope == "organization" {
+			if r[422] == "" {
+				r[422] = endpointGuard
+			} else {
+				r[422] += " " + endpointGuard
+			}
+		}
+	}
+	return r
 }
 
 func registerBloemNativeStorageDocument(reg *Registry) {

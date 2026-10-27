@@ -318,7 +318,9 @@ Bloem keeps no replay receipts. A mutation that carries its own command key
 replays its original outcome on a retry with the same key: tenant member
 creation (`Idempotency-Key`), people and platform policy jobs (`idempotency_key`
 in the body, or the same value as `Idempotency-Key`; both must match when both
-are sent), entitlement applies (`idempotency_key`) and book requests. Every
+are sent), entitlement applies (`idempotency_key` in the body; an
+`Idempotency-Key` header, if sent, must match it or the request is
+`409 idempotency_key_conflict`) and book requests. Every
 other mutation follows Silo's retry-safety classes: a retry after an uncertain
 outcome must first read the current state, because a create can answer
 `409 duplicate` and a delete `404` for work that already happened.

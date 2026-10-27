@@ -19,9 +19,25 @@ func TestBloemXtreamDocumentKeepsCredentialsWriteOnly(t *testing.T) {
 			t.Fatalf("provider output contains %q", key)
 		}
 	}
-	for _, status := range []string{"400", "401", "403", "409", "500", "503"} {
+	for _, status := range []string{"400", "401", "403", "404", "409", "500", "503"} {
 		schema := bloemDocSchema(t, doc, bloemDocObject(t, op, "responses", status, "content", "application/json", "schema"))
-		bloemDocFields(t, schema, "error", "message")
+		bloemDocFields(t, schema, "error", "code", "message")
+	}
+	// No Live TV handler can return not_implemented, and the provider route
+	// has no upstream proxy to answer 502.
+	for _, status := range []string{"501", "502"} {
+		if _, ok := bloemDocObject(t, op, "responses")[status]; ok {
+			t.Errorf("provider creation advertises unreachable %s", status)
+		}
+	}
+	profileHeaders := 0
+	for _, parameter := range anySlice(op["parameters"]) {
+		if parameter.(map[string]any)["name"] == "X-Profile-Id" {
+			profileHeaders++
+		}
+	}
+	if profileHeaders != 1 {
+		t.Errorf("X-Profile-Id declared %d times", profileHeaders)
 	}
 	capability := bloemDocObject(t, doc, "paths", BloemPrefix+"/livetv/capability", "get")
 	shape := bloemDocSchema(t, doc, bloemDocObject(t, capability, "responses", "200", "content", "application/json", "schema"))

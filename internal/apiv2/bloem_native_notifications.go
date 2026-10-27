@@ -1,7 +1,7 @@
 package apiv2
 
 import (
-	"context"
+	"net/http"
 
 	"github.com/Silo-Server/silo-server/internal/notifications"
 )
@@ -21,6 +21,10 @@ import (
 // same rows through the same service methods, so they cannot drift into
 // serving different inboxes.
 //
+// The routes are served by chi in the native client group, mounted only when
+// the deployment has notifications; bloemClientDocumentOp declares that
+// group's gates.
+//
 // The bodies reuse notifications.DeliveryRowPayload, which is already exported
 // and already feeds the client DTO registry, so the row itself is not restated
 // and cannot drift. The page envelopes are restated, because the handler owns
@@ -29,26 +33,24 @@ import (
 
 // BloemNotificationPage is one page of the native inbox.
 type BloemNotificationPage struct {
-	Items []notifications.DeliveryRowPayload `json:"items" doc:"Inbox rows, newest first."`
+	Items []notifications.DeliveryRowPayload `json:"items" doc:"Inbox rows, newest first. Empty, never null."`
 	Page  BloemNotificationPageInfo          `json:"page"`
-	// ReadCutoff is the boundary the page was taken against. A client sends it
-	// back with the next request so paging stays stable while new rows arrive,
-	// and compares it against a row's created_at to decide whether the row
-	// renders as unread.
-	ReadCutoff string `json:"read_cutoff" doc:"Opaque boundary this traversal was taken against."`
+	// ReadCutoff is the boundary the page was taken against. The next-page
+	// cursor carries it, so paging stays stable while new rows arrive.
+	ReadCutoff string `json:"read_cutoff" doc:"Opaque boundary this traversal was taken against. page.next_cursor already carries it."`
 }
 
 // BloemNotificationPageInfo is the page block, spelled the way every other v2
 // collection spells it.
 type BloemNotificationPageInfo struct {
-	NextCursor string `json:"next_cursor,omitempty" doc:"Cursor for the next page; absent on the last one."`
-	HasMore    bool   `json:"has_more" doc:"Whether another page exists."`
+	NextCursor string `json:"next_cursor,omitempty" doc:"Inbox: cursor for the next page, absent on the last page. Sync: the position to resume from, present whenever the page has rows or a cursor was sent."`
+	HasMore    bool   `json:"has_more" doc:"Whether another page exists. Always false on an initial sync snapshot."`
 }
 
 // BloemNotificationSyncPage is one forward-sync page: the rows newer than the
 // client's cursor, plus the unread total it puts on a badge.
 type BloemNotificationSyncPage struct {
-	Items       []notifications.DeliveryRowPayload `json:"items" doc:"Rows newer than the cursor, oldest first."`
+	Items       []notifications.DeliveryRowPayload `json:"items" doc:"Rows newer than the cursor, oldest first. Empty, never null."`
 	Page        BloemNotificationPageInfo          `json:"page"`
 	UnreadCount int                                `json:"unread_count" doc:"Unread rows across the whole inbox, not just this page."`
 	// InitialSnapshot separates a first sync from a replayed gap: a client that
@@ -59,9 +61,9 @@ type BloemNotificationSyncPage struct {
 
 // BloemNotificationListInput pages the inbox.
 type BloemNotificationListInput struct {
-	Status string `query:"status" enum:"all,unread" doc:"Filter to unread rows." required:"false"`
-	Limit  int    `query:"limit" doc:"Maximum rows to return." required:"false"`
-	Cursor string `query:"cursor" doc:"Opaque cursor from page.next_cursor." required:"false"`
+	Status string `query:"status" enum:"all,unread" doc:"unread lists only unread rows; any other value lists all rows." required:"false"`
+	Limit  int    `query:"limit" default:"25" doc:"Maximum rows to return. Values above 100 are treated as 100; a missing, non-numeric or non-positive value uses the default." required:"false"`
+	Cursor string `query:"cursor" doc:"Opaque cursor from page.next_cursor of a previous inbox page; an invalid cursor answers 400." required:"false"`
 }
 
 // BloemNotificationListOutput is one inbox page.
@@ -71,8 +73,8 @@ type BloemNotificationListOutput struct {
 
 // BloemNotificationSyncInput resumes a forward sync.
 type BloemNotificationSyncInput struct {
-	Limit  int    `query:"limit" doc:"Maximum rows to return." required:"false"`
-	Cursor string `query:"cursor" doc:"Opaque cursor from a previous sync; omit for the newest snapshot." required:"false"`
+	Limit  int    `query:"limit" default:"50" doc:"Maximum rows to return. Values above 100 are treated as 100; a missing, non-numeric or non-positive value uses the default." required:"false"`
+	Cursor string `query:"cursor" doc:"Opaque cursor from page.next_cursor of a previous sync; omit for the newest snapshot. Inbox cursors are not accepted here. An invalid cursor answers 400." required:"false"`
 }
 
 // BloemNotificationSyncOutput is one forward-sync page.
@@ -92,27 +94,34 @@ type BloemNotificationItemOutput struct {
 }
 
 func registerBloemNotifications(reg *Registry) {
-	Register(reg, Operation{
-		Operation: bloemOp("GET", "/notifications", "listBloemNotifications", "notifications",
-			"The acting profile's inbox, newest first, with the alert fields a row needs to render."),
-		Class: ClassProfileScoped,
-	}, func(context.Context, *BloemNotificationListInput) (*BloemNotificationListOutput, error) {
-		return &BloemNotificationListOutput{}, nil
-	})
+	{
+		op := bloemClientDocumentOp(reg, "GET", "/notifications", "listBloemNotifications", "notifications",
+			"The acting profile's inbox, newest first, with the alert fields a row needs to render.", http.StatusOK)
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
+			400: "bad_request: X-Profile-Id is missing or cursor is invalid.",
+			500: "internal_error: the viewer's access could not be resolved, or the inbox could not be read.",
+		})
+		registerBloemChiDocument[BloemNotificationListInput, BloemNotificationListOutput](reg, op)
+	}
 
-	Register(reg, Operation{
-		Operation: bloemOp("GET", "/notifications/sync", "syncBloemNotifications", "notifications",
-			"Rows newer than a cursor, for a client waking from a push or reconnecting across a gap."),
-		Class: ClassProfileScoped,
-	}, func(context.Context, *BloemNotificationSyncInput) (*BloemNotificationSyncOutput, error) {
-		return &BloemNotificationSyncOutput{}, nil
-	})
+	{
+		op := bloemClientDocumentOp(reg, "GET", "/notifications/sync", "syncBloemNotifications", "notifications",
+			"Rows newer than a cursor, for a client waking from a push or reconnecting across a gap.", http.StatusOK)
+		op.Description = "Without a cursor, returns the newest rows up to limit, oldest first, with has_more false. With a cursor, returns the rows after it and has_more reports whether more remain; an empty page returns the sent cursor as next_cursor."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
+			400: "bad_request: X-Profile-Id is missing or cursor is invalid.",
+			500: "internal_error: the viewer's access could not be resolved, or the inbox could not be read.",
+		})
+		registerBloemChiDocument[BloemNotificationSyncInput, BloemNotificationSyncOutput](reg, op)
+	}
 
-	Register(reg, Operation{
-		Operation: bloemOp("GET", "/notifications/{id}", "getBloemNotification", "notifications",
-			"One inbox row. Another profile's row is absent, not forbidden."),
-		Class: ClassProfileScoped,
-	}, func(context.Context, *BloemNotificationItemInput) (*BloemNotificationItemOutput, error) {
-		return &BloemNotificationItemOutput{}, nil
-	})
+	{
+		op := bloemClientDocumentOp(reg, "GET", "/notifications/{id}", "getBloemNotification", "notifications",
+			"One inbox row. Another profile's row is absent, not forbidden.", http.StatusOK)
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
+			404: "not_found: no row with this ID belongs to the selected profile, or X-Profile-Id names no profile of this account.",
+			500: "internal_error: the viewer's access could not be resolved, or the row could not be read.",
+		})
+		registerBloemChiDocument[BloemNotificationItemInput, BloemNotificationItemOutput](reg, op)
+	}
 }

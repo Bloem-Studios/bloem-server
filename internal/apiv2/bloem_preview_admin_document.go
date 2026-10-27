@@ -81,39 +81,81 @@ type BloemPreviewCatalogOutput struct {
 	}
 }
 
-func previewAdminDocumentOp(reg *Registry, method, suffix, id, summary string, status int) huma.Operation {
+// previewAdminDocumentOp documents one Platform preview administration route.
+// Both credential formats reach the handler through their own validators
+// (bloemEitherPlatformCredential); errs adds the operation's own 400, 403 and
+// 409 text to the statuses every route shares.
+func previewAdminDocumentOp(reg *Registry, method, suffix, id, summary string, status int, errs map[int]string) huma.Operation {
 	op := bloemChiDocumentOp(reg, method, "/admin/platform/preview/"+suffix, id, "preview", summary, "bloemPlatformContext", status)
 	op.Security = append(op.Security, map[string][]string{"bearerAuth": {}})
-	op.Description = "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable. JSON bodies are capped at 16 KiB and unknown fields are refused."
-	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "Invalid preview configuration or payload.", 403: "insufficient_platform_authority or preview_ticket_invalid.", 409: "preview_setup_conflict or preview_not_configured.", 503: "preview_unavailable: storage or authority unavailable."})
+	op.Description = "Requires a Platform administrative context or an enabled administrator's API key with admin:preview. Unscoped admin keys retain access. Organization contexts and unrelated scopes are refused. Responses are not cacheable."
+	if method != "GET" {
+		op.Description += " The JSON body is capped at 16 KiB; unknown fields and more than one JSON document are refused."
+	}
+	op.Responses = map[string]*huma.Response{}
+	bloemDocumentErrors[BloemNativeError](reg, &op, bloemRequestDocMerge(map[int]string{
+		401: "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled.",
+		403: "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's API key with admin:preview or no scopes, or the account is no longer an enabled administrator; forbidden: the API key's scopes exclude this route.",
+		503: "preview_unavailable: preview storage or the server identity is unavailable; tenant_unavailable or service_unavailable: the credential could not be checked.",
+	}, errs))
 	return op
 }
 
+const (
+	previewAdminBadBody   = "invalid_request: invalid JSON, unknown fields, more than one JSON document or a body over 16 KiB."
+	previewAdminBadIssuer = "invalid_preview_settings: issuer is missing or is not the configured issuer."
+	previewAdminNoAccount = "preview_not_configured: ensure the shared preview account first."
+)
+
 func registerBloemPreviewAdminDocument(reg *Registry) {
-	presentation := previewAdminDocumentOp(reg, "PUT", "accounts/{account_id}/presentation", "setBloemPreviewPersonalPresentation", "Set the personal preview end date for display.", 204)
+	presentation := previewAdminDocumentOp(reg, "PUT", "accounts/{account_id}/presentation", "setBloemPreviewPersonalPresentation", "Set the personal preview end date for display.", 204, map[int]string{
+		400: previewAdminBadBody + " invalid_request is also returned for an account_id that is not a positive integer. invalid_preview_settings: issuer is missing or is not the configured issuer, no issuer is configured yet, the account is the shared preview account, absent or not a current personal preview, or ends_at is outside years 1970 to 9999.",
+	})
 	presentation.Description += " Only current personal preview accounts can be targeted. This metadata does not expire an account; the storefront owns expiration. A null ends_at clears the date."
 	registerBloemChiDocument[BloemPreviewPersonalPresentationInput, struct{}](reg, presentation)
-	account := previewAdminDocumentOp(reg, "POST", "account", "ensureBloemPreviewAccount", "Ensure the issuer's shared preview account and primary profile.", 201)
+	account := previewAdminDocumentOp(reg, "POST", "account", "ensureBloemPreviewAccount", "Ensure the issuer's shared preview account and primary profile.", 201, map[int]string{
+		400: previewAdminBadBody,
+		409: "preview_setup_conflict: issuer is missing or differs from the configured issuer, the reserved preview username belongs to another account, or the existing shared account is no longer eligible.",
+	})
 	account.Description += " Setup is atomic and idempotent. A reserved name collision or second issuer is refused. Password sign-in is disabled and the protected preview template is applied."
 	registerBloemChiDocument[BloemPreviewIssuerInput, BloemPreviewAccountOutput](reg, account)
-	get := previewAdminDocumentOp(reg, "GET", "settings", "getBloemPreviewSettings", "Read preview settings and public launch keys.", 200)
+	get := previewAdminDocumentOp(reg, "GET", "settings", "getBloemPreviewSettings", "Read preview settings and public launch keys.", 200, nil)
 	registerBloemChiDocument[struct{}, BloemPreviewSettingsOutput](reg, get)
-	put := previewAdminDocumentOp(reg, "PUT", "settings", "updateBloemPreviewSettings", "Merge explicitly supplied preview settings.", 204)
+	put := previewAdminDocumentOp(reg, "PUT", "settings", "updateBloemPreviewSettings", "Merge explicitly supplied preview settings.", 204, map[int]string{
+		400: previewAdminBadBody + " " + previewAdminBadIssuer + " It is also returned for an invalid host, a link that is not an absolute HTTPS URL without credentials, a session lifetime outside 300 to 86400 seconds, an idle lifetime outside 60 to 7200 seconds or longer than the session, max_concurrent outside 1 to 10000, an unknown maturity_ceiling, overlong text, a host that already serves the application, or enabling without a host and launch key.",
+		409: previewAdminNoAccount,
+	})
 	put.Description += " Account ID and signing keys are read-only here. The existing issuer cannot change. Canonical and served hosts are refused; links require HTTPS without credentials. Turning enabled off revokes guests."
 	registerBloemChiDocument[BloemPreviewSettingsInput, struct{}](reg, put)
-	libraries := previewAdminDocumentOp(reg, "PUT", "libraries", "setBloemPreviewLibraries", "Revise the preview library selection and reapply it atomically.", 200)
+	libraries := previewAdminDocumentOp(reg, "PUT", "libraries", "setBloemPreviewLibraries", "Revise the preview library selection and reapply it atomically.", 200, map[int]string{
+		400: previewAdminBadBody + " " + previewAdminBadIssuer + " It is also returned when library_ids is null. invalid_preview_libraries: more than 1000 IDs, or an ID that is not an existing enabled library.",
+		409: previewAdminNoAccount,
+	})
 	registerBloemChiDocument[BloemPreviewLibrariesInput, BloemPreviewLibrariesOutput](reg, libraries)
-	keys := previewAdminDocumentOp(reg, "PUT", "keys", "rotateBloemPreviewKeys", "Replace the Ed25519 launch-key allowlist.", 204)
+	keys := previewAdminDocumentOp(reg, "PUT", "keys", "rotateBloemPreviewKeys", "Replace the Ed25519 launch-key allowlist.", 204, map[int]string{
+		400: previewAdminBadBody + " " + previewAdminBadIssuer + " It is also returned unless public_keys holds one or two distinct base64-encoded 32-byte keys.",
+		409: previewAdminNoAccount,
+	})
 	registerBloemChiDocument[BloemPreviewKeysInput, struct{}](reg, keys)
-	revoke := previewAdminDocumentOp(reg, "DELETE", "sessions", "revokeBloemPreviewSessions", "Revoke all guest sessions without disabling the preview.", 204)
+	revoke := previewAdminDocumentOp(reg, "DELETE", "sessions", "revokeBloemPreviewSessions", "Revoke all guest sessions without disabling the preview.", 204, map[int]string{
+		400: previewAdminBadBody + " " + previewAdminBadIssuer,
+	})
 	revoke.Description += " The issuer JSON body is required even for DELETE."
 	registerBloemChiDocument[BloemPreviewIssuerInput, struct{}](reg, revoke)
-	verify := previewAdminDocumentOp(reg, "POST", "verify", "verifyBloemPreviewTicket", "Verify a freshly signed launch ticket without consuming it.", 200)
+	verify := previewAdminDocumentOp(reg, "POST", "verify", "verifyBloemPreviewTicket", "Verify a freshly signed launch ticket without consuming it.", 200, map[int]string{
+		400: previewAdminBadBody,
+		403: "preview_ticket_invalid: the ticket is malformed, unsigned by an allowlisted key, expired, or not for this issuer, server and preview host.",
+		409: "preview_not_configured: the shared preview account is missing or not ready (default-organization membership, preview template and library selection).",
+	})
+	verify.Description += " Success always reports valid=true and account_ready=true; refusals use the error statuses."
 	registerBloemChiDocument[BloemPreviewVerifyInput, BloemPreviewVerifyOutput](reg, verify)
-	capacity := previewAdminDocumentOp(reg, "GET", "capacity", "getBloemPreviewCapacity", "Read private guest capacity and account readiness.", 200)
+	capacity := previewAdminDocumentOp(reg, "GET", "capacity", "getBloemPreviewCapacity", "Read private guest capacity and account readiness.", 200, nil)
 	registerBloemChiDocument[struct{}, BloemPreviewCapacityOutput](reg, capacity)
-	search := previewAdminDocumentOp(reg, "GET", "catalog", "searchBloemPreviewCatalog", "Find metadata visible to the preview for a showcase picker.", 200)
-	search.Description += " Keyword and provider-ID lookup apply the selected enabled libraries and maturity ceiling. Provider and provider_id must appear together. No external calls, file preparation or grants are involved."
+	search := previewAdminDocumentOp(reg, "GET", "catalog", "searchBloemPreviewCatalog", "Find metadata visible to the preview for a showcase picker.", 200, map[int]string{
+		400: "invalid_preview_settings: query over 256 bytes, provider_id over 128 bytes, an unsupported provider, or only one of provider and provider_id.",
+		409: "preview_not_configured: the shared preview account is missing or not ready.",
+	})
+	search.Description += " Keyword and provider-ID lookup apply the selected enabled libraries and maturity ceiling. Provider and provider_id must appear together. Results are movies, series, audiobooks and ebooks, at most 50. No external calls, file preparation or grants are involved."
 	registerBloemChiDocument[BloemPreviewCatalogInput, BloemPreviewCatalogOutput](reg, search)
 }
 

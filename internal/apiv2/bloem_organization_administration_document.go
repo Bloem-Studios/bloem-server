@@ -17,6 +17,13 @@ import (
 
 const (
 	bloemOrganizationAuthorityDescription = "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope."
+	bloemOrganizationUnavailable          = bloemOrganizationContextUnavailable
+	bloemOrganizationRevisionInvalid      = "validation_failed: expected_revision is not positive."
+	bloemOrganizationGroupInvalid         = "invalid_request: invalid JSON, unknown fields, trailing JSON or a body exceeding 32 KiB. bad_request: an invalid name, quality, library ID, permission or stream/transcode cap."
+	bloemOrganizationGroupNotFound        = "not_found: the group ID is not a positive integer or the group is absent from the organization."
+	bloemOrganizationPersonNotFound       = "not_found: account_id is not a positive integer or the account is not a member of the organization."
+	bloemOrganizationSelectionNotFound    = "not_found: the selection token is invalid or belongs to another organization."
+	bloemPersonRevisionConflict           = "authorization_state_changed: expected_revision is not the person's security_revision; current_revision carries the current value."
 )
 
 // Private handler wire records are mirrored here; exported records are reused.
@@ -221,6 +228,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/overview", "getBloemOrganizationOverview", "Read the selected organization overview.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{404: "not_found: the selected organization no longer exists."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemOrganizationSummaryResponse]](reg, op)
 	}
 
@@ -233,6 +241,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/groups/{id}", "getBloemOrganizationGroup", "Read one organization access group.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
+		bloemDocumentDescribe(&op, map[int]string{404: bloemOrganizationGroupNotFound})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemOrganizationGroupResponse]](reg, op)
 	}
 
@@ -240,7 +249,12 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/groups/", "createBloemOrganizationGroup", "Create an organization access group.", "bloemOrganizationContext", 201)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request for invalid JSON, or bad_request for an invalid name, quality, library ID, permission or stream/transcode cap."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemOrganizationGroupInvalid})
+		bloemDocumentDescribe(&op, map[int]string{
+			409: bloemOrganizationPolicyConflict + " conflict: the group name already exists.",
+			422: bloemOrganizationRevisionInvalid,
+			503: bloemOrganizationUnavailable + " Also returned when is_default would replace a default group managed by entitlement policy.",
+		})
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationGroupCreate], bloemJSONOutput[BloemOrganizationGroupMutationResponse]](reg, op)
 	}
 
@@ -248,7 +262,13 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "PUT", "/admin/organization/groups/{id}", "updateBloemOrganizationGroup", "Update an organization access group.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: "invalid_request for invalid JSON, or bad_request for an invalid name, quality, library ID, permission or stream/transcode cap."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemOrganizationGroupInvalid})
+		bloemDocumentDescribe(&op, map[int]string{
+			404: bloemOrganizationGroupNotFound,
+			409: bloemOrganizationPolicyConflict + " conflict: the group name already exists, or is_default=false was sent for the current default group.",
+			422: bloemOrganizationRevisionInvalid,
+			503: bloemOrganizationUnavailable + " Also returned when the group, or a default group it would replace, is managed by entitlement policy.",
+		})
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationGroupUpdate], bloemJSONOutput[BloemOrganizationGroupMutationResponse]](reg, op)
 	}
 
@@ -256,6 +276,12 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "DELETE", "/admin/organization/groups/{id}", "deleteBloemOrganizationGroup", "Delete an organization access group and report its impact.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
+		bloemDocumentDescribe(&op, map[int]string{
+			404: bloemOrganizationGroupNotFound,
+			409: bloemOrganizationPolicyConflict + " conflict: the group is the default group, or no replacement default group exists.",
+			422: bloemOrganizationRevisionInvalid,
+			503: bloemOrganizationUnavailable + " Also returned when the group is managed by entitlement policy.",
+		})
 		registerBloemChiDocument[bloemJSONInput[BloemRevisionRequest], bloemJSONOutput[access.GroupDeletionImpact]](reg, op)
 	}
 
@@ -265,25 +291,32 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemOrganizationLibrariesResponse]](reg, op)
 	}
 
-	{
-		op := bloemAdminDocumentOp(reg, "PUT", "/admin/organization/entitlements/{folder_id}", "updateBloemOrganizationLibraryEntitlement", "Set an organization library entitlement status.", "bloemOrganizationContext", 200)
+	for _, entitlement := range []struct {
+		method, id, summary, invalid string
+		status                       int
+	}{
+		{"PUT", "updateBloemOrganizationLibraryEntitlement", "Set an organization library entitlement status.", "validation_failed (fields.request): expected_revision is not positive or status is not active or suspended.", 200},
+		{"DELETE", "deleteBloemOrganizationLibraryEntitlement", "Remove an organization library entitlement.", bloemOrganizationRevisionInvalid, 204},
+	} {
+		op := bloemAdminDocumentOp(reg, entitlement.method, "/admin/organization/entitlements/{folder_id}", entitlement.id, entitlement.summary, "bloemOrganizationContext", entitlement.status)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		op.Description += " expected_revision is the entitlement security_revision returned by the libraries projection. On conflict, current_revision contains the organization policy revision; reload the libraries projection for the entitlement revision."
-		registerBloemChiDocument[bloemJSONInput[BloemOrganizationEntitlementUpdate], bloemJSONOutput[BloemOrganizationEntitlementResponse]](reg, op)
-	}
-
-	{
-		op := bloemAdminDocumentOp(reg, "DELETE", "/admin/organization/entitlements/{folder_id}", "deleteBloemOrganizationLibraryEntitlement", "Remove an organization library entitlement.", "bloemOrganizationContext", 204)
-		op.Description = bloemOrganizationAuthorityDescription
-		bloemAdminDocumentMutation(reg, &op)
-		op.Description += " expected_revision is the entitlement security_revision returned by the libraries projection. On conflict, current_revision contains the organization policy revision; reload the libraries projection for the entitlement revision."
-		registerBloemChiDocument[bloemJSONInput[BloemRevisionRequest], struct{}](reg, op)
+		bloemDocumentDescribe(&op, map[int]string{
+			404: "not_found: folder_id is not a positive integer, or the library entitlement is absent or hidden from the organization.",
+			409: "authorization_state_changed: expected_revision is not the entitlement's security_revision; current_revision carries the organization policy revision.",
+			422: entitlement.invalid,
+		})
+		if entitlement.method == "PUT" {
+			registerBloemChiDocument[bloemJSONInput[BloemOrganizationEntitlementUpdate], bloemJSONOutput[BloemOrganizationEntitlementResponse]](reg, op)
+		} else {
+			registerBloemChiDocument[bloemJSONInput[BloemRevisionRequest], struct{}](reg, op)
+		}
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/invitations", "listBloemOrganizationInvitations", "List invitation metadata without claim tokens.", "bloemOrganizationContext", 200)
-		op.Description = bloemOrganizationAuthorityDescription
+		op.Description = bloemOrganizationAuthorityDescription + " Invitations are ordered newest first."
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemOrganizationInvitationsResponse]](reg, op)
 	}
 
@@ -291,7 +324,12 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/invitations", "createBloemOrganizationInvitation", "Create a user invitation and disclose its claim token once.", "bloemOrganizationContext", 201)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
-		op.Description += " Creates role=user only; default expiry is seven days. Returns claim_token once; this operation does not send email or return a claim URL. Do not automatically retry creation."
+		op.Description += " Creates role=user only; default expiry is seven days. A pending invitation for the same address in this organization is revoked. Returns claim_token once; this operation does not send email or return a claim URL. Do not automatically retry creation."
+		bloemDocumentDescribe(&op, map[int]string{
+			409: bloemOrganizationPolicyConflict,
+			422: "validation_failed: expected_revision is not positive, or email is not a bare email address.",
+			503: bloemOrganizationUnavailable + " Also returned when the email already belongs to an account.",
+		})
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationInvitationCreate], bloemJSONOutput[BloemOrganizationInvitationResendResponse]](reg, op)
 	}
 
@@ -299,33 +337,36 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/entitlement-cohorts", "listBloemOrganizationEntitlementCohorts", "List safe entitlement cohort projections.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemDocumentQuery(&op, "include_archived", "true or false; default false. Other query parameters return 422.", "boolean")
-		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "Invalid query parameter."})
+		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "validation_failed: include_archived is not true or false, or another query parameter is present."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemEntitlementCohortsResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/entitlement-cohorts/{cohort_id}", "getBloemOrganizationEntitlementCohort", "Read a safe organization cohort projection.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
+		bloemDocumentDescribe(&op, map[int]string{404: "not_found: the cohort ID is malformed or the cohort is absent from the organization."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemEntitlementCohortResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/people/", "listBloemOrganizationPeople", "Page organization people and their profiles.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
-		for _, query := range []string{"query", "sort", "cursor", "active_since"} {
-			bloemDocumentQuery(&op, query, "People filter; active_since uses RFC3339. sort accepts name, email or recent_activity.", "string")
-		}
-		for _, query := range []string{"status", "group_id"} {
-			bloemDocumentQuery(&op, query, "Repeated or comma-separated filter values.", "string")
-		}
-		bloemDocumentQuery(&op, "limit", "Page size from 1 to 200.", "integer")
-		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "Invalid cursor or filters."})
+		bloemDocumentQuery(&op, "query", "Case-insensitive substring of the account email, username or a profile name.", "string")
+		bloemDocumentQuery(&op, "status", "Membership status filter: invited, active or suspended. Repeat the parameter or separate values with commas.", "string")
+		bloemDocumentQuery(&op, "group_id", "Access group filter of positive IDs. Repeat the parameter or separate values with commas.", "string")
+		bloemDocumentQuery(&op, "active_since", "RFC3339 timestamp; matches people whose membership or a profile changed at or after it.", "string")
+		bloemDocumentQuery(&op, "sort", "name (default), email or recent_activity.", "string")
+		op.Parameters[len(op.Parameters)-1].Schema.Enum = []any{"name", "email", "recent_activity"}
+		bloemDocumentQuery(&op, "cursor", "Opaque next_cursor from the previous page.", "string")
+		bloemDocumentQuery(&op, "limit", "Page size from 1 to 200; defaults to 50.", "integer")
+		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "validation_failed: limit, group_id or active_since is malformed, a status or sort value is unknown, or cursor is invalid."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[adminpeople.Page]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/people/{account_id}/", "getBloemOrganizationPerson", "Read an organization person and profile summary.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
+		bloemDocumentDescribe(&op, map[int]string{404: bloemOrganizationPersonNotFound})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPersonResponse]](reg, op)
 	}
 
@@ -333,6 +374,9 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/selections", "createBloemOrganizationPeopleSelection", "Create an immutable expiring selection from people filters.", "bloemOrganizationContext", 201)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
+		op.Description += " Selections expire after 15 minutes."
+		bloemDocumentOmit(&op, 409)
+		bloemDocumentDescribe(&op, map[int]string{422: "validation_failed (fields.filters): a status or sort value is unknown, or a group ID is not positive."})
 		registerBloemChiDocument[bloemJSONInput[BloemPeopleSelectionRequest], bloemJSONOutput[BloemPeopleSelectionResponse]](reg, op)
 	}
 
@@ -340,6 +384,11 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/policy-previews", "previewBloemOrganizationPeoplePolicy", "Preview a policy command and obtain a bound confirmation token.", "bloemOrganizationContext", 201)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{404: bloemOrganizationSelectionNotFound + " The command's template or cohort may also not exist."})
+		bloemDocumentDescribe(&op, map[int]string{
+			409: "selection_expired: create a new selection; authorization_state_changed: the actor's authority changed since the selection.",
+			422: "validation_failed (fields.request): the policy command is invalid.",
+		})
 		registerBloemChiDocument[bloemJSONInput[BloemPeoplePreviewRequest], bloemJSONOutput[BloemPeoplePreviewResponse]](reg, op)
 	}
 
@@ -347,6 +396,12 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/bulk-jobs", "createBloemOrganizationPeopleBulkJob", "Enqueue a people bulk mutation.", "bloemOrganizationContext", 201)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
+		op.Description += " kind is assign_group (with a positive group_id), suspend_memberships or reactivate_memberships (without group_id). Repeating the same kind and group for a selection returns the existing job."
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{404: bloemOrganizationSelectionNotFound + " group_id may also not be a group in the organization."})
+		bloemDocumentDescribe(&op, map[int]string{
+			409: "selection_expired: create a new selection; authorization_state_changed: the actor's authority changed since the selection.",
+			422: "validation_failed (fields.request): kind or group_id is invalid for the action, or selection_token is missing.",
+		})
 		registerBloemChiDocument[bloemJSONInput[adminpeople.BulkAction], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
@@ -354,6 +409,8 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/policy-jobs", "createBloemOrganizationPeoplePolicyJob", "Enqueue a confirmed people policy command.", "bloemOrganizationContext", 201)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{404: bloemOrganizationSelectionNotFound + " The command's template or cohort may also not exist."})
+		bloemDocumentDescribe(&op, map[int]string{409: bloemPolicyJobConflict, 422: bloemPolicyJobValidation})
 		bloemDocumentCommandKey(&op, bloemPolicyJobKeyRule)
 		registerBloemChiDocument[bloemJSONInput[BloemPolicyBulkAction], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
@@ -361,19 +418,22 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/people/bulk-jobs/{job_id}", "getBloemOrganizationPeopleBulkJob", "Read progress and per-record results of a people job.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
+		bloemDocumentDescribe(&op, map[int]string{404: "not_found: the job is absent from the organization."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/people/policy-jobs/{job_id}", "getBloemOrganizationPeoplePolicyJob", "Read progress and per-record results of a people job.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
+		bloemDocumentDescribe(&op, map[int]string{404: "not_found: the job is absent from the organization or is not a policy job."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/policy-jobs/{job_id}/cancel", "cancelBloemOrganizationPeoplePolicyJob", "Cancel an eligible people policy job.", "bloemOrganizationContext", 200)
-		op.Description = bloemOrganizationAuthorityDescription
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{409: "job_not_cancellable: the job cannot be canceled through this endpoint."})
+		op.Description = bloemOrganizationAuthorityDescription + " No request body is read. A completed, failed or cancelled job is returned unchanged."
+		bloemDocumentDescribe(&op, map[int]string{404: "not_found: the job is absent from the organization."})
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{409: "job_not_cancellable: the job is not a policy job; authorization_state_changed: the actor's authority changed since the job was queued."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
@@ -381,6 +441,11 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "PATCH", "/admin/organization/people/{account_id}/memberships/current", "updateBloemOrganizationPersonMembership", "Change an organization person membership status.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
+		bloemDocumentDescribe(&op, map[int]string{
+			404: bloemOrganizationPersonNotFound,
+			409: bloemPersonRevisionConflict,
+			422: "validation_failed (fields.request): expected_revision is not positive, status is not active or suspended, or the organization owner would be suspended.",
+		})
 		registerBloemChiDocument[bloemJSONInput[BloemPeopleMembershipUpdate], bloemJSONOutput[BloemPersonResponse]](reg, op)
 	}
 
@@ -388,23 +453,29 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "PATCH", "/admin/organization/people/{account_id}/profiles/{profile_id}", "updateBloemOrganizationPersonProfile", "Assign an organization person profile to an access group.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
+		bloemDocumentDescribe(&op, map[int]string{
+			404: bloemOrganizationPersonNotFound + " The profile or group_id may also be absent from the organization.",
+			409: bloemPersonRevisionConflict,
+			422: "validation_failed (fields.request): expected_revision or group_id is not positive.",
+		})
 		registerBloemChiDocument[bloemJSONInput[BloemPeopleProfileUpdate], bloemJSONOutput[BloemPersonResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/policy-decisions", "listBloemOrganizationPolicyDecisions", "Page sanitized organization policy decision explanations.", "bloemOrganizationContext", 200)
-		op.Description = bloemOrganizationAuthorityDescription
-		for _, name := range []string{"cursor", "decision_name"} {
-			bloemDocumentQuery(&op, name, "Decision filter or opaque pagination cursor.", "string")
-		}
-		bloemDocumentQuery(&op, "limit", "Page size from 1 to 200.", "integer")
-		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "Invalid pagination or filters."})
+		op.Description = bloemOrganizationAuthorityDescription + " Decisions are ordered newest first; next_cursor is omitted on the last page."
+		bloemDocumentQuery(&op, "decision_name", "Exact decision name filter.", "string")
+		bloemDocumentQuery(&op, "cursor", "Opaque next_cursor from the previous page. A malformed cursor returns 503 tenant_unavailable, not 422.", "string")
+		bloemDocumentQuery(&op, "limit", "Page size from 1 to 200; defaults to 100.", "integer")
+		bloemDocumentErrors[BloemNativeValidationError](reg, &op, map[int]string{422: "validation_failed: limit is outside 1 to 200."})
+		bloemDocumentDescribe(&op, map[int]string{503: bloemOrganizationUnavailable + " Also returned for a malformed cursor."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPolicyDecisionsResponse]](reg, op)
 	}
 
 	{
 		op := bloemAdminDocumentOp(reg, "GET", "/admin/organization/policy-decisions/{id}", "getBloemOrganizationPolicyDecision", "Read a sanitized organization policy decision explanation.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
+		bloemDocumentDescribe(&op, map[int]string{404: "not_found: the decision ID is not a positive integer or the decision is absent from the organization."})
 		registerBloemChiDocument[struct{}, bloemJSONOutput[BloemPolicyDecisionResponse]](reg, op)
 	}
 }

@@ -1,6 +1,7 @@
 package apiv2
 
 import (
+	"strings"
 	"time"
 
 	"github.com/Silo-Server/silo-server/internal/ambience"
@@ -17,7 +18,7 @@ type BloemPromotionBody struct {
 	_              struct{}                `additionalProperties:"true"`
 	OrganizationID *uuid.UUID              `json:"organization_id,omitempty" nullable:"true" doc:"Null or omitted means deployment-wide; otherwise the campaign belongs to this organization."`
 	Surfaces       []string                `json:"surfaces" minItems:"1" nullable:"false" doc:"One or more of home, detail, pre_playback, in_playback; normalized to lowercase and deduplicated."`
-	Placement      promotions.Placement    `json:"placement,omitempty" doc:"in_playback requires playback_style card or pip and dismissible=true. Overlay duration defaults to 10 seconds and must be 5-60; video_url requires pip and HTTPS. Detail/pre-playback content_ids are limited to 64."`
+	Placement      promotions.Placement    `json:"placement,omitempty" doc:"in_playback requires playback_style card or pip and dismissible=true. duration_seconds is allowed only with a playback_style, defaults to 10 and must be 5-60; video_url requires pip and HTTPS. home_position must be zero or positive. Detail/pre-playback content_ids are limited to 64 nonblank entries."`
 	Kicker         string                  `json:"kicker,omitempty" doc:"Trimmed text, at most 40 bytes."`
 	Headline       string                  `json:"headline" minLength:"1" doc:"Required nonblank trimmed text, at most 120 bytes."`
 	Subtitle       string                  `json:"subtitle,omitempty" doc:"Trimmed text, at most 200 bytes."`
@@ -114,7 +115,15 @@ type BloemAmbienceAttachOutput struct{ Body BloemAmbienceAttachResponse }
 func bloemEngagementDocumentOp(reg *Registry, method, path, id, summary string, status int) huma.Operation {
 	op := bloemChiDocumentOp(reg, method, "/admin/platform"+path, id, "engagement", summary, "bloemPlatformContext", status)
 	op.Description = "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority."
-	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{500: "internal_error: the registry operation failed."})
+	registry := "promotion"
+	if strings.HasPrefix(path, "/ambience") {
+		registry = "ambience"
+	}
+	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
+		403: "insufficient_platform_authority: the token is not a platform-scoped administrative context, or its account is no longer a platform administrator. An organization context can instead receive organization_suspended.",
+		500: "internal_error: the registry operation failed.",
+		503: "unavailable: the " + registry + " registry is not configured. tenant_unavailable: administrative authority could not be checked.",
+	})
 	return op
 }
 
@@ -135,8 +144,8 @@ func registerBloemEngagementDocument(reg *Registry) {
 		pack := bloemEngagementDocumentOp(reg, method, "/ambience"+path, packID, summary, status)
 		for _, op := range []*huma.Operation{&promo, &pack} {
 			if method != "DELETE" {
-				op.Description += " JSON body limit: 64 KiB. PUT is a full replacement, applying defaults to omitted optional fields. These writes have no expected_revision, If-Match or replay receipt; reconcile the list after an uncertain result before submitting again."
-				bloemDocumentErrors[BloemNativeError](reg, op, map[int]string{400: "bad_request: invalid JSON or domain validation failure; the message identifies the invalid field."})
+				op.Description += " JSON body limit: 64 KiB. Unknown fields and anything after the first JSON value are ignored. PUT is a full replacement, applying defaults to omitted optional fields. These writes have no expected_revision, If-Match or replay receipt; reconcile the list after an uncertain result before submitting again."
+				bloemDocumentErrors[BloemNativeError](reg, op, map[int]string{400: "bad_request: the body is not valid JSON of this shape or exceeds 64 KiB, or a field fails validation. A validation message names the field, including an organization_id that does not exist."})
 			}
 			if method != "POST" {
 				bloemDocumentErrors[BloemNativeError](reg, op, map[int]string{404: "not_found: registry entry does not exist (including a repeated deletion)."})
@@ -157,15 +166,18 @@ func registerBloemEngagementDocument(reg *Registry) {
 	}
 	for _, attach := range []bool{false, true} {
 		path, id, summary := "/ambience/assets", "uploadBloemPlatformAmbienceAsset", "Upload a standalone authoring asset without attaching it to a pack."
+		invalid := "bad_request: invalid multipart form, missing file part, checksum mismatch, asset_id longer than 128 bytes or an unknown kind."
 		if attach {
 			path, id, summary = "/ambience/{id}/assets", "attachBloemPlatformAmbienceAsset", "Upload artwork and attach it to an ambience pack."
+			invalid = "bad_request: invalid multipart form, missing file part, a slot other than banner or sprite, or a sprite for a pack that already has 32."
 		}
 		op := bloemEngagementDocumentOp(reg, "POST", path, id, summary, 201)
-		op.Description += " Requires configured asset storage. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. The response includes the public asset URL."
+		op.Description += " Requires configured asset upload storage, reported as storage_available by the ambience list. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. Stored artwork is content-addressed; url is its public server path under /api/v1/ambience/assets/."
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
-			400: "bad_request: invalid multipart form, missing file, checksum mismatch or invalid asset metadata/slot.",
+			400: invalid,
 			413: "too_large: artwork or the multipart body exceeds its limit.",
 			415: "unsupported_image: bytes are not a supported raster image.",
+			503: "unavailable: the ambience registry or asset upload storage is not configured. tenant_unavailable: administrative authority could not be checked.",
 		})
 		if attach {
 			op.Description += " The default slot is banner; sprite appends to the pack. Do not automatically retry sprite attachment: it can append twice."

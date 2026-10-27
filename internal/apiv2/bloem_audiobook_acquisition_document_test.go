@@ -2,33 +2,47 @@ package apiv2
 
 import (
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 )
 
 func TestBloemAudiobookAcquisitionDocumentContract(t *testing.T) {
 	doc := bloemWebDocument(t)
-	for _, tc := range []struct{ path, method, status, response string }{
-		{"/admin/organization/book-requests/acquisitions", "get", "200", "AudiobookAcquisitionList"},
-		{"/admin/organization/book-requests/{id}/acquisition", "get", "200", "AudiobookAcquisition"},
-		{"/admin/organization/book-requests/{id}/approve-candidate", "post", "200", "Request"},
-		{"/admin/organization/book-requests/{id}/accept-download", "post", "200", "Request"},
-		{"/admin/organization/book-requests/{id}/retry", "post", "200", "Request"},
-		{"/admin/organization/audiobook-request-integrations", "get", "200", "AudiobookRequestSetup"},
-		{"/admin/organization/audiobook-request-integrations", "post", "201", "AudiobookIntegrationSummary"},
-		{"/admin/organization/audiobook-request-integrations/{id}/library", "put", "200", "AudiobookIntegrationSummary"},
-		{"/admin/organization/audiobook-request-integrations/{id}", "put", "200", "AudiobookIntegrationSummary"},
-		{"/admin/organization/audiobook-request-integrations/{id}/test", "post", "200", "RequestIntegrationTestResult"},
+	// Each operation documents exactly the statuses its handler chain writes.
+	for _, tc := range []struct{ path, method, status, response, errors string }{
+		{"/admin/organization/book-requests/acquisitions", "get", "200", "AudiobookAcquisitionList", "400 401 403 500 503"},
+		{"/admin/organization/book-requests/{id}/acquisition", "get", "200", "AudiobookAcquisition", "401 403 404 500 503"},
+		{"/admin/organization/book-requests/{id}/approve-candidate", "post", "200", "Request", "400 401 403 404 409 500 503"},
+		{"/admin/organization/book-requests/{id}/accept-download", "post", "200", "Request", "400 401 403 404 409 500 503"},
+		{"/admin/organization/book-requests/{id}/retry", "post", "200", "Request", "400 401 403 404 409 500 503"},
+		{"/admin/organization/audiobook-request-integrations", "get", "200", "AudiobookRequestSetup", "401 403 500 503"},
+		{"/admin/organization/audiobook-request-integrations", "post", "201", "AudiobookIntegrationSummary", "400 401 403 500 503"},
+		{"/admin/organization/audiobook-request-integrations/{id}/library", "put", "200", "AudiobookIntegrationSummary", "400 401 403 500 503"},
+		{"/admin/organization/audiobook-request-integrations/{id}", "put", "200", "AudiobookIntegrationSummary", "400 401 403 404 409 500 503"},
+		{"/admin/organization/audiobook-request-integrations/{id}/test", "post", "200", "RequestIntegrationTestResult", "401 403 404 409 500 503"},
 	} {
 		t.Run(tc.method+tc.path, func(t *testing.T) {
 			op := bloemDocObject(t, doc, "paths", BloemPrefix+tc.path, tc.method)
-			if !reflect.DeepEqual(op["security"], []any{map[string]any{"adminContextAuth": []any{}}}) {
+			if !reflect.DeepEqual(op["security"], []any{map[string]any{"bloemOrganizationContext": []any{}}}) {
 				t.Fatalf("security=%v", op["security"])
 			}
 			response := bloemDocObject(t, op, "responses", tc.status, "content", "application/json", "schema")
 			if response["$ref"] != "#/components/schemas/"+tc.response {
 				t.Fatalf("response schema=%v", response)
 			}
-			for _, status := range []string{"400", "401", "403", "404", "409", "500", "503"} {
+			want := strings.Fields(tc.errors)
+			got := []string{}
+			for status := range bloemDocObject(t, op, "responses") {
+				if status != tc.status {
+					got = append(got, status)
+				}
+			}
+			slices.Sort(got)
+			if !slices.Equal(got, want) {
+				t.Fatalf("error statuses=%v, want %v", got, want)
+			}
+			for _, status := range want {
 				err := bloemDocObject(t, op, "responses", status, "content", "application/json", "schema")
 				if err["$ref"] != "#/components/schemas/BloemNativeError" {
 					t.Fatalf("error schema=%v", err)

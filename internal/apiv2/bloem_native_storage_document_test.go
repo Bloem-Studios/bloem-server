@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -157,6 +158,44 @@ func TestBloemNativeStorageDiscoveryDocumentRequestBoundaries(t *testing.T) {
 }
 
 func anySlice(value any) []any { result, _ := value.([]any); return result }
+
+// Statuses the handlers can never write must not be advertised: reads without
+// a path identity have no 404, stateless S3 browsing has no resource to hide,
+// and only organization scope guards configured endpoints (422).
+func TestBloemNativeStorageDocumentReachableStatuses(t *testing.T) {
+	doc := bloemWebDocument(t)
+	for _, tc := range []struct {
+		scope, method, path string
+		statuses            []string
+	}{
+		{"platform", "get", "/capabilities", []string{"200", "400", "401", "403", "503"}},
+		{"organization", "get", "/artifacts", []string{"200", "400", "401", "403", "503"}},
+		{"platform", "get", "/sources", []string{"200", "400", "401", "403", "404", "503"}},
+		{"organization", "post", "/s3/folders", []string{"200", "400", "401", "403", "413", "422", "502", "503"}},
+		{"platform", "put", "/sources/{source_key}/configuration", []string{"200", "400", "401", "403", "404", "409", "413", "503"}},
+		{"organization", "put", "/sources/{source_key}/configuration", []string{"200", "400", "401", "403", "404", "409", "413", "422", "503"}},
+		{"platform", "post", "/sources/{source_key}/credentials", []string{"200", "400", "401", "403", "404", "409", "413", "503"}},
+		{"organization", "post", "/catalog/installations/discover", []string{"201", "400", "401", "403", "404", "409", "413", "422", "503"}},
+	} {
+		t.Run(tc.scope+tc.method+tc.path, func(t *testing.T) {
+			op := bloemDocObject(t, doc, "paths", BloemPrefix+"/admin/"+tc.scope+"/native-storage"+tc.path, tc.method)
+			statuses := []string{}
+			for status := range bloemDocObject(t, op, "responses") {
+				statuses = append(statuses, status)
+			}
+			slices.Sort(statuses)
+			if !reflect.DeepEqual(statuses, tc.statuses) {
+				t.Errorf("documents %v, want %v", statuses, tc.statuses)
+			}
+		})
+	}
+	for _, path := range []string{"/s3/buckets", "/catalog/installations/discover"} {
+		header := bloemDocObject(t, doc, "paths", BloemPrefix+"/admin/platform/native-storage"+path, "post", "responses", "503", "headers")
+		if _, ok := header["Retry-After"]; !ok {
+			t.Errorf("%s 503 must document Retry-After", path)
+		}
+	}
+}
 
 // Nil UUID/int fields are emitted as JSON null by the real domain types;
 // documenting them as strings or omitting them breaks strict generated clients.

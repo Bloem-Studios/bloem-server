@@ -31,6 +31,7 @@ func registerBloemChiDocument[I, O any](reg *Registry, op huma.Operation) {
 // their authority middleware. It is distinct from the v2 Problem document.
 type BloemNativeError struct {
 	Error   string `json:"error"`
+	Code    string `json:"code,omitempty" doc:"Refines error on browse-only preview refusals: preview_only, preview_host, preview_session_invalid or preview_busy. Absent otherwise."`
 	Message string `json:"message"`
 }
 

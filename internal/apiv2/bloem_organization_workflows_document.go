@@ -56,7 +56,8 @@ func registerBloemOrganizationWorkflowDocument(reg *Registry) {
 	const authority = "Requires an organization-scoped administrative-context token matching the resolved account, organization and membership. The originating session, current authority and policy/security revisions are revalidated on each request. No organization path or header can broaden this scope."
 	activity := bloemChiDocumentOp(reg, "GET", "/admin/organization/activity", "listBloemOrganizationActivity", "tenancy", "Page the selected organization's sanitized activity and entitlement audit.", "bloemOrganizationContext", 200)
 	activity.Description = authority + " Returns at most 50 events ordered newest first by created_at, source and id. next_cursor is omitted on the last page. Events exclude before/after documents and credential data."
-	bloemDocumentErrors[BloemNativeError](reg, &activity, map[int]string{400: "invalid_cursor: reload the audit list to reset pagination."})
+	bloemDocumentErrors[BloemNativeError](reg, &activity, map[int]string{400: "invalid_cursor: the cursor is malformed or longer than 1024 characters; reload the audit list to reset pagination."})
+	bloemDocumentDescribe(&activity, map[int]string{401: bloemAdminContextUnauthorized, 403: bloemOrganizationContextForbidden, 503: bloemOrganizationContextUnavailable})
 	registerBloemChiDocument[BloemOrganizationActivityInput, BloemOrganizationActivityOutput](reg, activity)
 	for _, method := range []string{"POST", "DELETE"} {
 		path, id, summary, status := "/admin/organization/invitations/{id}/resend", "resendBloemOrganizationInvitation", "Rotate an unaccepted, unrevoked user invitation and return its new claim token once.", 201
@@ -68,8 +69,20 @@ func registerBloemOrganizationWorkflowDocument(reg *Registry) {
 		op := bloemChiDocumentOp(reg, method, path, id, "tenancy", summary, "bloemOrganizationContext", status)
 		op.Description = authority + " A JSON body containing expected_revision is required, including on DELETE. It must match the resolved organization's policy revision." + detail
 		bloemDocumentValidation(reg, &op)
-		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{404: "not_found: invitation ID is invalid, absent, hidden by organization scope or ineligible for revocation."})
-		conflict := "authorization_state_changed: reload the current organization policy revision."
+		bloemDocumentDescribe(&op, map[int]string{
+			401: bloemAdminContextUnauthorized,
+			403: bloemOrganizationContextForbidden,
+			422: "validation_failed: expected_revision is not positive.",
+		})
+		notFound, unavailable := "not_found: the invitation ID is not a positive integer, or the invitation is absent or hidden by organization scope.", bloemOrganizationContextUnavailable
+		if method == "DELETE" {
+			notFound = "not_found: the invitation ID is not a positive integer, or the invitation is absent, hidden by organization scope, accepted, already revoked or not role=user."
+		} else {
+			unavailable += " Also returned when the invitation's email now belongs to an account."
+		}
+		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{404: notFound})
+		bloemDocumentDescribe(&op, map[int]string{503: unavailable})
+		conflict := "authorization_state_changed: expected_revision is not the organization's policy_revision; current_revision carries the current value."
 		if method == "POST" {
 			conflict += " invitation_not_claimable: only unaccepted, unrevoked user invitations can be renewed; reload before trying again."
 		}

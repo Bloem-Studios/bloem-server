@@ -1,7 +1,7 @@
 package apiv2
 
 import (
-	"context"
+	"github.com/danielgtaylor/huma/v2"
 )
 
 // BloemCapabilityFeatures is the fixed object of booleans the native capability
@@ -28,42 +28,30 @@ type BloemCapabilities struct {
 	// Features because Features is a fixed object of booleans on the wire, and
 	// versioned tokens (watch_document_v1) cannot be expressed as stable field
 	// names.
-	FeatureTokens []string `json:"feature_tokens" doc:"Versioned capability tokens a client matches against."`
+	FeatureTokens []string `json:"feature_tokens" doc:"Versioned capability tokens a client matches against. Some depend on what this deployment has configured; ignore tokens you do not recognize."`
 }
 
-// BloemCapabilitiesOutput is the huma envelope for the probe.
+// BloemCapabilitiesOutput is the envelope for the probe.
 type BloemCapabilitiesOutput struct {
 	Body BloemCapabilities
 }
 
-// BloemCapabilitiesInput carries no parameters: the probe is unauthenticated
-// and takes nothing, by design. A probe that can itself fail or be refused
-// leaves a client interpreting exactly the ambiguity the probe exists to
-// replace.
-type BloemCapabilitiesInput struct{}
-
 // registerBloemCapabilities documents the native capability probe.
 //
-// The route is still served by chi (handlers.BloemSystemHandler.HandleCapabilities).
-// Registering it here does not move it; it puts the operation in the committed
-// document so the surface has a machine-readable contract, and
-// bloem_native_document_test.go proves every documented path is one the router
-// actually mounts. Moving the serving to huma is a per-route step that follows.
+// The route is served by chi (handlers.BloemSystemHandler.HandleCapabilities)
+// and mounted unconditionally. The probe is unauthenticated and takes
+// nothing, by design: a probe that can itself fail or be refused leaves a
+// client interpreting exactly the ambiguity the probe exists to replace. So
+// the document declares the one response the handler writes, with no
+// authentication, rate limit or v2 gate statuses.
 func registerBloemCapabilities(reg *Registry) {
-	op := Operation{
-		Operation: bloemOp(
-			"GET",
-			"/capabilities",
-			"getBloemCapabilities",
-			"system",
-			"What this build supports, for a client deciding which surfaces to use.",
-		),
-		Class: ClassPublic,
-	}
-	Register(reg, op, func(context.Context, *BloemCapabilitiesInput) (*BloemCapabilitiesOutput, error) {
-		// Unreachable during document generation, which uses noopAdapter. It
-		// becomes the live handler when /capabilities moves off chi; until
-		// then the chi handler is the one that answers.
-		return &BloemCapabilitiesOutput{}, nil
-	})
+	op := bloemOp("GET", "/capabilities", "getBloemCapabilities", "system",
+		"What this build supports, for a client deciding which surfaces to use.")
+	op.Security = []map[string][]string{}
+	op.Description = "Public and always answers 200; no authentication, rate limit or tenant gate runs in front of it."
+	op.Responses = map[string]*huma.Response{}
+	registerBloemChiDocument[struct{}, BloemCapabilitiesOutput](reg, op)
+	// Huma adds a generic "default" error response to an operation that
+	// declares no error status. This probe has none to declare.
+	delete(reg.api.OpenAPI().Paths[op.Path].Get.Responses, "default")
 }

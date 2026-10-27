@@ -65,6 +65,48 @@ func TestBloemAdministrationAuthorityAndPreconditions(t *testing.T) {
 	}
 }
 
+// Statuses that the handlers or their middleware write, or can never write,
+// regardless of the shared helpers' defaults.
+func TestBloemAdministrationDocumentedStatusesMatchHandlers(t *testing.T) {
+	doc := bloemWebDocument(t)
+	for _, tc := range []struct {
+		method, path    string
+		present, absent []string
+	}{
+		{"get", "/admin/organization/overview", []string{"404"}, nil},
+		{"post", "/admin/organization/people/bulk-jobs", []string{"404", "409", "422"}, nil},
+		{"post", "/admin/organization/people/policy-previews", []string{"404", "409"}, nil},
+		{"post", "/admin/organization/people/policy-jobs", []string{"404", "409"}, nil},
+		{"post", "/admin/organization/people/selections", []string{"422"}, []string{"404", "409"}},
+		{"post", "/admin/platform/entitlement-templates/{key}/archive", []string{"404", "409"}, []string{"422"}},
+		{"post", "/admin/platform/accounts/{account_id}/entitlement/dry-run", []string{"404", "422"}, []string{"409"}},
+		{"post", "/admin/platform/users/{user_id}/entitlement/dry-run", []string{"404", "422"}, []string{"409"}},
+		{"post", "/admin/platform/organizations/{id}/entitlement/dry-run", []string{"409"}, nil},
+		{"post", "/admin/platform/accounts/entitlement-bulk/policy-previews", []string{"404", "409"}, []string{"429"}},
+		{"post", "/admin/platform/accounts/entitlement-bulk/policy-jobs", []string{"404", "409"}, []string{"429"}},
+		{"get", "/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}", []string{"404"}, []string{"409", "429"}},
+		{"post", "/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel", []string{"400", "409"}, []string{"422", "429"}},
+		{"post", "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-previews", []string{"404", "409"}, []string{"429"}},
+		{"post", "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs", []string{"404", "409"}, []string{"429"}},
+		{"get", "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}", []string{"404"}, []string{"409", "429"}},
+		{"post", "/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}/cancel", []string{"400", "409"}, []string{"422", "429"}},
+	} {
+		t.Run(tc.method+tc.path, func(t *testing.T) {
+			responses := bloemDocObject(t, doc, "paths", BloemPrefix+tc.path, tc.method, "responses")
+			for _, status := range tc.present {
+				if responses[status] == nil {
+					t.Errorf("missing %s", status)
+				}
+			}
+			for _, status := range tc.absent {
+				if responses[status] != nil {
+					t.Errorf("documents unreachable %s", status)
+				}
+			}
+		})
+	}
+}
+
 // Compare the mirrored public properties to the actual private handler types.
 // A new response field in a handler must invalidate the document immediately.
 func TestBloemAdministrationMirrorsPrivateWireRecords(t *testing.T) {

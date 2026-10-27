@@ -1,17 +1,18 @@
 package apiv2
 
-import "context"
+import "net/http"
 
 // Item collections: which server collections hold one title.
 //
 // Silo has no item-to-collections lookup; its clients find a title's
 // collections by listing every collection and its items. This is Bloem's own
 // answer for the detail page's "Part of a collection" row, so it lives on the
-// native surface rather than adding a Bloem-only operation to /api/v2.
+// native surface rather than adding a Bloem-only operation to /api/v2. It is
+// served by chi (handlers.ItemCollectionsHandler) in the native client group.
 
 // BloemItemCollectionsInput names the item whose collections to list.
 type BloemItemCollectionsInput struct {
-	ContentID string `path:"content_id" doc:"Content id of the item." example:"movie:heat-1995"`
+	ContentID string `path:"content_id" doc:"Content id of the item. A blank value answers 400." example:"movie:heat-1995"`
 }
 
 // BloemItemCollection is one visible server collection containing the item.
@@ -42,11 +43,12 @@ type BloemItemCollectionsOutput struct {
 }
 
 func registerBloemItemCollections(reg *Registry) {
-	Register(reg, Operation{
-		Operation: bloemOp("GET", "/catalog/items/{content_id}/collections", "listBloemItemCollections", "catalog",
-			"The visible server collections that contain one item. Visibility matches the server collection list; smart collections are evaluated lazily and are not included. An item the viewer may not see answers 404."),
-		Class: ClassProfileScoped,
-	}, func(context.Context, *BloemItemCollectionsInput) (*BloemItemCollectionsOutput, error) {
-		return &BloemItemCollectionsOutput{}, nil
+	op := bloemClientDocumentOp(reg, "GET", "/catalog/items/{content_id}/collections", "listBloemItemCollections", "catalog",
+		"The visible server collections that contain one item. Visibility matches the server collection list; smart collections are evaluated lazily and are not included. An item the viewer may not see answers 404.", http.StatusOK)
+	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
+		400: "bad_request: X-Profile-Id is missing or content_id is blank.",
+		404: "not_found: the item does not exist or the selected profile may not see it, or X-Profile-Id names no profile of this account.",
+		500: "internal_error: the viewer's access could not be resolved, or item access or the collections could not be read.",
 	})
+	registerBloemChiDocument[BloemItemCollectionsInput, BloemItemCollectionsOutput](reg, op)
 }

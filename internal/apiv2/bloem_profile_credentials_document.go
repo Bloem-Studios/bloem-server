@@ -36,14 +36,19 @@ type BloemProfileCredentialClearInput struct {
 	Body BloemProfileCredentialClearBody
 }
 
+const bloemProfileCredentialUnauthorized = "unauthorized: authentication is missing or invalid, or the login session is no longer valid."
+
 func registerBloemProfileCredentialDocument(reg *Registry) {
 	const path = "/profile-credentials/{id}"
 	const authority = "Requires a non-impersonated account login access token and household management authority: a server administrator, or the account's selected primary profile with PIN verification when locked. Ownership is always restricted to the caller's account. Direct-profile sessions, API keys and administrative contexts are refused."
 	get := bloemChiDocumentOp(reg, "GET", path, "getBloemProfileCredentials", "profiles", "Read direct-profile credential status without exposing a password or hash.", "bloemAccountSession", 200)
 	get.Description = authority
 	bloemDocumentErrors[BloemNativeError](reg, &get, map[int]string{
+		401: bloemProfileCredentialUnauthorized,
+		403: "account_session_required: use a non-impersonated account login session; forbidden: select and verify the household primary profile, or this session type cannot use the route.",
 		404: "not_found: profile does not belong to this account or does not exist.",
 		500: "internal_error: household management permissions could not be checked.",
+		503: "unavailable: profile credential management is unavailable; service_unavailable: the session could not be checked, retry after Retry-After.",
 	})
 	bloemDocumentRateLimit(reg, &get)
 	registerBloemChiDocument[BloemProfileCredentialInput, BloemProfileCredentialOutput](reg, get)
@@ -56,12 +61,19 @@ func registerBloemProfileCredentialDocument(reg *Registry) {
 		op.Description = authority + " The JSON body is required even on DELETE. The current account password is rechecked. expected_revision compares the target credential revision in the transaction; success increments it and revokes the target's direct-profile sessions. A stale revision is 409 credential_revision_conflict. Reload and review status after an uncertain result; do not automatically replay the mutation."
 		bloemDocumentValidation(reg, &op)
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
+			401: bloemProfileCredentialUnauthorized,
 			403: "account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password.",
 			404: "not_found: profile does not belong to this account or does not exist.",
 			409: "credential_revision_conflict: reload the reviewed status; credential_email_in_use: the login email is already registered (PUT only).",
 			500: "internal_error: household management permissions could not be checked.",
+			503: "unavailable: profile credential management, the change or the account password check is unavailable; service_unavailable: the session could not be checked or password hashing is busy (PUT), retry after Retry-After.",
 		})
 		bloemDocumentRateLimit(reg, &op)
+		invalid := "validation_failed: expected_revision is not positive."
+		if method == "PUT" {
+			invalid = "validation_failed: expected_revision is not positive, login_email is not a bare email address, or password is shorter than 8 characters or longer than 72 bytes."
+		}
+		bloemDocumentDescribe(&op, map[int]string{422: invalid})
 		if method == "PUT" {
 			registerBloemChiDocument[BloemProfileCredentialSetInput, struct{}](reg, op)
 		} else {

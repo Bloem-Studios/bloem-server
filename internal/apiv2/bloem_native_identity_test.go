@@ -1,12 +1,20 @@
 package apiv2
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"sort"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
+	"github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
 // The native document restates two shapes that live unexported in the handlers
@@ -164,4 +172,114 @@ func TestBloemNotificationDocumentMatchesTheServedShape(t *testing.T) {
 				c.name, documented, served)
 		}
 	}
+}
+
+// servedJSONFieldNames returns the top-level member names of a served JSON
+// object, sorted.
+func servedJSONFieldNames(t *testing.T, raw []byte) []string {
+	t.Helper()
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		t.Fatalf("served body is not a JSON object: %v: %s", err, raw)
+	}
+	names := make([]string, 0, len(fields))
+	for name := range fields {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+type bloemNoMemberships struct{}
+
+func (bloemNoMemberships) ListMemberships(context.Context, int) ([]tenancy.Membership, error) {
+	return nil, nil
+}
+
+func (bloemNoMemberships) GetOrganization(context.Context, uuid.UUID) (tenancy.Organization, error) {
+	return tenancy.Organization{}, tenancy.ErrOrganizationNotFound
+}
+
+// The organization listing is an object wrapping its entries. The document
+// described a bare array for as long as only the entries were compared.
+func TestBloemOrganizationListDocumentMatchesTheServedEnvelope(t *testing.T) {
+	t.Parallel()
+
+	request := httptest.NewRequest(http.MethodGet, BloemPrefix+"/organizations", nil)
+	request = request.WithContext(middleware.SetClaims(request.Context(), &auth.Claims{UserID: 1}))
+	response := httptest.NewRecorder()
+	handlers.NewBloemSystemHandler(bloemNoMemberships{}).HandleOrganizations(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", response.Code, response.Body.String())
+	}
+	served := servedJSONFieldNames(t, response.Body.Bytes())
+	documented := jsonFieldNames(t, BloemOrganizationsOutput{}.Body)
+	if !reflect.DeepEqual(documented, served) {
+		t.Errorf("organization list envelope disagrees.\ndocumented: %v\nserved:     %v", documented, served)
+	}
+	var body struct {
+		Organizations json.RawMessage `json:"organizations"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil || string(body.Organizations) != "[]" {
+		t.Errorf("an account without memberships must list [], got %s", body.Organizations)
+	}
+}
+
+// The capability probe is restated here because the handler owns its shape
+// unexported. Both levels are compared: the document and the features object.
+func TestBloemCapabilityDocumentMatchesTheServedShape(t *testing.T) {
+	t.Parallel()
+
+	response := httptest.NewRecorder()
+	handlers.NewBloemSystemHandler(nil).HandleCapabilities(response, httptest.NewRequest(http.MethodGet, BloemPrefix+"/capabilities", nil))
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d", response.Code)
+	}
+	if served, documented := servedJSONFieldNames(t, response.Body.Bytes()), jsonFieldNames(t, BloemCapabilities{}); !reflect.DeepEqual(documented, served) {
+		t.Errorf("capability document disagrees.\ndocumented: %v\nserved:     %v", documented, served)
+	}
+	var body struct {
+		Features json.RawMessage `json:"features"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if served, documented := servedJSONFieldNames(t, body.Features), jsonFieldNames(t, BloemCapabilityFeatures{}); !reflect.DeepEqual(documented, served) {
+		t.Errorf("capability features disagree.\ndocumented: %v\nserved:     %v", documented, served)
+	}
+}
+
+// The public probes run no gate, so the only statuses are the ones their chi
+// handlers write: identity answers 503 while it cannot resolve, and the
+// capability probe never fails. Neither may inherit the v2 gate class's
+// Problem set or an authentication requirement.
+func TestBloemPublicProbesDocumentOnlyTheirServedStatuses(t *testing.T) {
+	t.Parallel()
+
+	response := httptest.NewRecorder()
+	handlers.NewServerIdentityHandler(nil, nil, nil).HandleGetServerIdentity(response, httptest.NewRequest(http.MethodGet, BloemPrefix+"/server/identity", nil))
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("unresolvable identity status = %d, want 503", response.Code)
+	}
+
+	doc := bloemWebDocument(t)
+	for path, want := range map[string][]string{
+		"/server/identity": {"200", "503"},
+		"/capabilities":    {"200"},
+	} {
+		op := bloemDocObject(t, doc, "paths", BloemPrefix+path, "get")
+		var got []string
+		for status := range bloemDocObject(t, op, "responses") {
+			got = append(got, status)
+		}
+		sort.Strings(got)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("%s responses = %v, want %v", path, got, want)
+		}
+		if security, ok := op["security"].([]any); !ok || len(security) != 0 {
+			t.Errorf("%s must be declared public, security = %v", path, op["security"])
+		}
+	}
+	unavailable := bloemDocObject(t, doc, "paths", BloemPrefix+"/server/identity", "get", "responses", "503", "content", "application/json", "schema")
+	bloemDocFields(t, bloemDocSchema(t, doc, unavailable), "error", "code", "message")
 }

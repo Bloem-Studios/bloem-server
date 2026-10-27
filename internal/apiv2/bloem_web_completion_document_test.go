@@ -124,7 +124,7 @@ func TestBloemWebCompletionDocumentOperations(t *testing.T) {
 			for _, status := range []string{"401", "403", "503"} {
 				response := bloemDocObject(t, responses, status)
 				schema := bloemDocSchema(t, doc, bloemDocObject(t, response, "content", "application/json", "schema"))
-				bloemDocFields(t, schema, "error", "message")
+				bloemDocFields(t, schema, "error", "code", "message")
 				if _, ok := bloemDocObject(t, response, "content")["application/problem+json"]; ok {
 					t.Error("chi handlers do not emit v2 Problem responses")
 				}

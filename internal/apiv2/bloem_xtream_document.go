@@ -11,10 +11,11 @@ type BloemXtreamProviderBody struct {
 	MaxConnections int    `json:"max_connections,omitempty" minimum:"0" maximum:"64" doc:"Local shared physical-connection budget; omitted or zero means one. Clamped to a positive provider-reported maximum."`
 }
 
+// BloemXtreamProviderInput carries only the body: the selected-profile
+// headers are declared by bloemLiveTVDocumentOp with the other Live TV
+// routes.
 type BloemXtreamProviderInput struct {
-	ProfileID    string `header:"X-Profile-Id" required:"true" doc:"The administrator's selected primary profile."`
-	ProfileToken string `header:"X-Profile-Token" doc:"PIN verification proof when the selected profile is locked."`
-	Body         BloemXtreamProviderBody
+	Body BloemXtreamProviderBody
 }
 
 type BloemXtreamProviderOutput struct {
@@ -22,15 +23,13 @@ type BloemXtreamProviderOutput struct {
 }
 
 func registerBloemXtreamDocument(reg *Registry) {
-	op := bloemChiDocumentOp(reg, "POST", "/livetv/tuners/xtream", "createBloemXtreamProvider", "livetv", "Authenticate and import an encrypted Xtream live-TV provider.", "bearerAuth", 201)
-	op.Description = "Feature detection: GET /api/bloem/v1/livetv/capability advertises xtream_supported. Uses the same authenticated viewer, selected primary profile/PIN and acting-administrator gates as other Live TV administration. Administrative-context tokens do not replace those gates. Imports live channels only, not VOD or series; playback requires direct MPEG-TS. A configured SECRET_KEY cipher and PostgreSQL store are required. Credentials are write-only. Creation is not replay-safe: after an uncertain response, read /livetv/tuners and review the saved providers before trying again. An account at the same canonical base URL cannot be configured twice. Upgrade the full API/worker fleet before enabling providers."
+	op := bloemLiveTVDocumentOp(reg, "POST", "/livetv/tuners/xtream", "createBloemXtreamProvider", "Authenticate and import an encrypted Xtream live-TV provider.", 201, bloemLiveTVAdmin)
+	op.Description = "Feature detection: GET /api/bloem/v1/livetv/capability advertises xtream_supported. Uses the same authenticated viewer, selected primary profile/PIN and acting-administrator gates as other Live TV administration. Administrative-context tokens do not replace those gates, and direct-profile sessions are not admitted. JSON body limit 32 KiB. Imports live channels only, not VOD or series; playback requires direct MPEG-TS. A configured SECRET_KEY cipher and PostgreSQL store are required. Credentials are write-only. Creation is not replay-safe: after an uncertain response, read /livetv/tuners and review the saved providers before trying again. An account at the same canonical base URL cannot be configured twice, and at most 64 providers can be configured. Upgrade the full API/worker fleet before enabling providers."
 	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
-		400: "invalid_body or invalid_argument: invalid input, failed provider authentication or a duplicate configured provider account.",
-		401: "Authenticated authority and any required profile verification are missing or expired.",
-		403: "The caller lacks acting-administrator or primary-profile authority.",
-		409: "limit_exceeded: the configured provider limit was reached.",
-		500: "internal_error: the provider request or persistence failed; no raw provider response is returned.",
-		503: "dependency_unavailable: encrypted provider storage is unavailable, or an authority dependency is unavailable.",
+		400: "bad_request: X-Profile-Id is missing. invalid_body: the body is not valid JSON or exceeds 32 KiB. invalid_argument: type is not xtream; the URL, name, credentials or max_connections are invalid; the provider refused authentication or listed no live channels; or the same provider account is already configured.",
+		409: "limit_exceeded: 64 Xtream providers are already configured.",
+		500: "internal_error: the viewer's access or acting-administrator authority could not be resolved, the provider's channel list could not be read, the provider did not answer in time, or persistence failed; no raw provider response is returned.",
 	})
+	bloemLiveTVUnavailable(&op, "dependency_unavailable: encrypted provider storage is unavailable.")
 	registerBloemChiDocument[BloemXtreamProviderInput, BloemXtreamProviderOutput](reg, op)
 }

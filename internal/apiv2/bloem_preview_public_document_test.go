@@ -24,4 +24,15 @@ func TestBloemPreviewPublicDocument(t *testing.T) {
 	if required, ok := status["required"].([]any); !ok || len(required) != 1 || required[0] != "enabled" {
 		t.Fatalf("status requires host-specific presentation: %v", status["required"])
 	}
+	// The preview host guard spends the shared guest budget on every
+	// /preview/ request and adds a code to its credential refusals.
+	for _, tc := range []struct{ method, path string }{{"get", "/preview/status"}, {"post", "/preview/sessions"}, {"post", "/preview/events"}} {
+		op := bloemDocObject(t, doc, "paths", BloemPrefix+tc.path, tc.method)
+		bloemDocObject(t, op, "responses", "429", "headers", "Retry-After")
+		refusal := bloemDocObject(t, op, "responses", "401", "content", "application/json", "schema")
+		if refusal["$ref"] != "#/components/schemas/BloemNativeError" {
+			t.Fatalf("%s %s 401 schema=%v", tc.method, tc.path, refusal)
+		}
+	}
+	bloemDocFields(t, bloemDocObject(t, doc, "components", "schemas", "BloemNativeError"), "error", "code", "message")
 }
