@@ -86,6 +86,7 @@ func (s *organizationResourceStub) DeleteLibraryEntitlement(_ context.Context, i
 type organizationInvitationStub struct {
 	got        uuid.UUID
 	gotInviter int64
+	gotInput   models.CreateInvitationInput
 	items      []*models.Invitation
 	created    *models.Invitation
 	err        error
@@ -96,7 +97,7 @@ func (s *organizationInvitationStub) ListForOrganization(_ context.Context, id u
 	return s.items, s.err
 }
 func (s *organizationInvitationStub) CreateForOrganization(_ context.Context, id uuid.UUID, input models.CreateInvitationInput, tokenHash string) (*models.Invitation, error) {
-	s.got, s.gotInviter = id, input.InvitedBy
+	s.got, s.gotInviter, s.gotInput = id, input.InvitedBy, input
 	return s.created, s.err
 }
 
@@ -184,6 +185,44 @@ func TestBloemOrganizationInvitationsUseResolvedOrganizationAndNeverReturnTokenH
 	h.HandleCreateInvitation(created, organizationRequest(http.MethodPost, "/invitations", `{"email":"new@example.test","expected_revision":7}`, organizationID, 7, nil))
 	if created.Code != http.StatusCreated || store.got != organizationID || store.gotInviter != 7 || !strings.Contains(created.Body.String(), "new@example.test") {
 		t.Fatalf("created=%d %s authority=%s/%d", created.Code, created.Body.String(), store.got, store.gotInviter)
+	}
+}
+
+func TestBloemOrganizationInvitationGrantsOnlyThisOrganizationsGroupsAndLibraries(t *testing.T) {
+	organizationID := uuid.New()
+	libraries := &organizationResourceStub{libraries: []resourcetenancy.LibraryProjection{
+		{FolderID: 4, AccessKind: resourcetenancy.LibraryOwned},
+		{FolderID: 8, AccessKind: resourcetenancy.LibraryEntitled, Entitlement: &resourcetenancy.LibraryEntitlement{Status: resourcetenancy.EntitlementActive}},
+	}}
+	for _, tc := range []struct {
+		name, body, field string
+		groupErr          error
+	}{
+		{name: "group of another organization", body: `{"email":"new@example.test","expected_revision":7,"access_group_id":9}`, field: "access_group_id", groupErr: access.ErrGroupNotFound},
+		{name: "library this organization cannot use", body: `{"email":"new@example.test","expected_revision":7,"library_ids":[4,44]}`, field: "library_ids"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			groups := &organizationGroupStub{err: tc.groupErr}
+			store := &organizationInvitationStub{created: &models.Invitation{ID: 3, OrganizationID: organizationID, Email: "new@example.test", ExpiresAt: time.Now().Add(time.Hour)}}
+			h := NewBloemAdminOrganizationHandler(nil, groups, libraries, store)
+			rec := httptest.NewRecorder()
+			h.HandleCreateInvitation(rec, organizationRequest(http.MethodPost, "/invitations", tc.body, organizationID, 7, nil))
+			if rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), `"`+tc.field+`"`) || store.got != uuid.Nil {
+				t.Fatalf("response=%d %s created_for=%s", rec.Code, rec.Body.String(), store.got)
+			}
+			if tc.groupErr != nil && (groups.gotOrganization != organizationID || groups.gotID != 9) {
+				t.Fatalf("group lookup=%s/%d", groups.gotOrganization, groups.gotID)
+			}
+		})
+	}
+
+	groups := &organizationGroupStub{group: &access.TenantGroup{}}
+	store := &organizationInvitationStub{created: &models.Invitation{ID: 3, OrganizationID: organizationID, Email: "new@example.test", ExpiresAt: time.Now().Add(time.Hour)}}
+	h := NewBloemAdminOrganizationHandler(nil, groups, libraries, store)
+	rec := httptest.NewRecorder()
+	h.HandleCreateInvitation(rec, organizationRequest(http.MethodPost, "/invitations", `{"email":"new@example.test","expected_revision":7,"access_group_id":9,"library_ids":[8,4]}`, organizationID, 7, nil))
+	if rec.Code != http.StatusCreated || store.got != organizationID || store.gotInput.AccessGroupID == nil || *store.gotInput.AccessGroupID != 9 || len(store.gotInput.LibraryIDs) != 2 || libraries.got != organizationID {
+		t.Fatalf("response=%d %s input=%+v libraries_for=%s", rec.Code, rec.Body.String(), store.gotInput, libraries.got)
 	}
 }
 

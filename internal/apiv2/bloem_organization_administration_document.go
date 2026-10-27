@@ -327,7 +327,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op.Description += " Creates role=user only; default expiry is seven days. A pending invitation for the same address in this organization is revoked. Returns claim_token once; this operation does not send email or return a claim URL. Do not automatically retry creation."
 		bloemDocumentDescribe(&op, map[int]string{
 			409: bloemOrganizationPolicyConflict,
-			422: "validation_failed: expected_revision is not positive, or email is not a bare email address.",
+			422: "validation_failed: expected_revision is not positive, email is not a bare email address, access_group_id is not one of this organization's groups, or library_ids lists a library the organization neither owns nor is entitled to.",
 			503: bloemOrganizationUnavailable + " Also returned when the email already belongs to an account.",
 		})
 		registerBloemChiDocument[bloemJSONInput[BloemOrganizationInvitationCreate], bloemJSONOutput[BloemOrganizationInvitationResendResponse]](reg, op)

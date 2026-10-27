@@ -317,6 +317,9 @@ func (h *BloemAdminOrganizationHandler) HandleCreateInvitation(w http.ResponseWr
 		writeAdminValidation(w, map[string]string{"email": "must be a valid email address"})
 		return
 	}
+	if !h.invitationAccessIsTheOrganizations(w, r, tenant.OrganizationID, request.AccessGroupID, request.LibraryIDs) {
+		return
+	}
 	createProfile, showTour := true, true
 	if request.CreateProfile != nil {
 		createProfile = *request.CreateProfile
@@ -338,6 +341,45 @@ func (h *BloemAdminOrganizationHandler) HandleCreateInvitation(w http.ResponseWr
 		Invitation invitationResponse `json:"invitation"`
 		ClaimToken string             `json:"claim_token"`
 	}{toInvitationResponse(item, time.Now()), token})
+}
+
+// invitationAccessIsTheOrganizations refuses an access group or library the
+// organization can't grant. The database ties the group to the organization
+// but only by failing the insert, and it keeps any library that exists.
+func (h *BloemAdminOrganizationHandler) invitationAccessIsTheOrganizations(w http.ResponseWriter, r *http.Request, organizationID uuid.UUID, groupID *int64, libraryIDs []int) bool {
+	if (groupID != nil && h.groups == nil) || (len(libraryIDs) > 0 && h.resources == nil) {
+		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant administration is unavailable")
+		return false
+	}
+	if groupID != nil {
+		group, err := h.groups.Get(r.Context(), organizationID, *groupID)
+		if errors.Is(err, access.ErrGroupNotFound) || (err == nil && group == nil) {
+			writeAdminValidation(w, map[string]string{"access_group_id": "must be an access group in this organization"})
+			return false
+		} else if err != nil {
+			writeBloemOrganizationError(w, r, err)
+			return false
+		}
+	}
+	if len(libraryIDs) == 0 {
+		return true
+	}
+	libraries, err := h.resources.ListLibraries(r.Context(), organizationID)
+	if err != nil {
+		writeBloemOrganizationError(w, r, err)
+		return false
+	}
+	usable := make(map[int64]bool, len(libraries))
+	for _, library := range libraries {
+		usable[library.FolderID] = true
+	}
+	for _, id := range libraryIDs {
+		if !usable[int64(id)] {
+			writeAdminValidation(w, map[string]string{"library_ids": "must list only libraries this organization owns or is entitled to"})
+			return false
+		}
+	}
+	return true
 }
 
 func (h *BloemAdminOrganizationHandler) requireGroups(w http.ResponseWriter, r *http.Request) (tenancy.Context, bool) {

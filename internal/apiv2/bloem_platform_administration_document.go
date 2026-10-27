@@ -542,7 +542,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		bloemDocumentTemplateValidation(reg, &apply)
 		bloemDocumentDescribe(&apply, map[int]string{
 			404: notFound,
-			409: bloemEntitlementApplyConflict + " confirmation_target_changed: the account's organization changed after the preview.",
+			409: bloemEntitlementApplyConflict,
 			422: bloemEntitlementApplyValidation,
 		})
 		if account.apiKey {

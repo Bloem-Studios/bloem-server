@@ -42,6 +42,8 @@ type Store interface {
 	ActiveSessionTunerIndices(ctx context.Context, tunerID string) ([]int, error)
 	CreateSession(ctx context.Context, input SessionCreate) (*LiveSession, error)
 	GetSession(ctx context.Context, id string) (*LiveSession, error)
+	// ReleaseSession releases an active session. It returns nil when there is
+	// no such session or it is already released, leaving released_at alone.
 	ReleaseSession(ctx context.Context, id string) (*LiveSession, error)
 	// TouchSession marks an active session as still being watched. id matches
 	// either the live session id or its playback bridge session id, so both the
@@ -537,7 +539,7 @@ func (s *PgStore) GetSession(ctx context.Context, id string) (*LiveSession, erro
 func (s *PgStore) ReleaseSession(ctx context.Context, id string) (*LiveSession, error) {
 	session, err := scanSession(s.db.QueryRow(ctx, `
 		UPDATE livetv_sessions SET status = 'released', released_at = now()
-		WHERE id = $1
+		WHERE id = $1 AND status = 'active'
 		RETURNING `+sessionSelectCols, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

@@ -162,6 +162,54 @@ func TestReleaseSessionRecordsHistory(t *testing.T) {
 	}
 }
 
+// A repeated release, or a client's release after the stale sweep, used to
+// move the session's end later and rewrite its history row (upserted by session)
+// with the longer time.
+func TestReleasedSessionKeepsItsEndAndHistory(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		first func(*Service, *memoryStore, string) error
+	}{
+		{name: "released twice", first: func(svc *Service, _ *memoryStore, id string) error {
+			_, err := svc.ReleaseSession(context.Background(), id, 7, "profile-1", true)
+			return err
+		}},
+		{name: "released after the stale sweep", first: func(svc *Service, store *memoryStore, id string) error {
+			stale := store.sessions[id]
+			stale.LastSeenAt = time.Now().Add(-2 * StaleSessionTTL)
+			store.sessions[id] = stale
+			_, err := svc.ReclaimStaleSessions(context.Background())
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, store := singleTunerService(t)
+			history := &recordingHistory{}
+			svc.SetHistoryRecorder(history)
+			ctx := context.Background()
+			session, err := svc.StartChannelSession(ctx, "ch1", 7, "profile-1", ClientCapabilities{})
+			if err != nil {
+				t.Fatalf("StartChannelSession: %v", err)
+			}
+			if err := tc.first(svc, store, session.ID); err != nil {
+				t.Fatalf("first release: %v", err)
+			}
+			ended := *store.sessions[session.ID].ReleasedAt
+
+			again, err := svc.ReleaseSession(ctx, session.ID, 7, "profile-1", true)
+			if err != nil || again == nil || again.Status != "released" || again.ReleasedAt == nil || !again.ReleasedAt.Equal(ended) {
+				t.Fatalf("second release = %+v, %v; want the released session, ended at %s", again, err, ended)
+			}
+			if got := store.sessions[session.ID].ReleasedAt; !got.Equal(ended) {
+				t.Fatalf("released_at moved from %s to %s", ended, got)
+			}
+			if len(history.entries) != 1 {
+				t.Fatalf("history entries = %d, want 1", len(history.entries))
+			}
+		})
+	}
+}
+
 func TestHistoryMediaItemID(t *testing.T) {
 	if got := HistoryMediaItemID("ch1"); got != "livetv:ch1" {
 		t.Fatalf("HistoryMediaItemID = %q", got)

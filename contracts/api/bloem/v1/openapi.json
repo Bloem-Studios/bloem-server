@@ -12739,7 +12739,7 @@
                 }
               }
             },
-            "description": "validation_failed: expected_revision is not positive, or email is not a bare email address."
+            "description": "validation_failed: expected_revision is not positive, email is not a bare email address, access_group_id is not one of this organization's groups, or library_ids lists a library the organization neither owns nor is entitled to."
           },
           "503": {
             "content": {
@@ -19160,7 +19160,7 @@
                 }
               }
             },
-            "description": "confirmation_stale: the preview no longer matches current state, dry-run again; revision_conflict: this idempotency_key was already used for a different template selection. confirmation_target_changed: the account's organization changed after the preview. idempotency_key_conflict: the Idempotency-Key header differs from the body's idempotency_key."
+            "description": "confirmation_stale: the preview no longer matches current state, dry-run again; revision_conflict: this idempotency_key was already used for a different template selection. idempotency_key_conflict: the Idempotency-Key header differs from the body's idempotency_key."
           },
           "422": {
             "content": {
@@ -28438,7 +28438,7 @@
                 }
               }
             },
-            "description": "confirmation_stale: the preview no longer matches current state, dry-run again; revision_conflict: this idempotency_key was already used for a different template selection. confirmation_target_changed: the account's organization changed after the preview. idempotency_key_conflict: the Idempotency-Key header differs from the body's idempotency_key."
+            "description": "confirmation_stale: the preview no longer matches current state, dry-run again; revision_conflict: this idempotency_key was already used for a different template selection. idempotency_key_conflict: the Idempotency-Key header differs from the body's idempotency_key."
           },
           "422": {
             "content": {
@@ -33933,7 +33933,7 @@
     },
     "/api/bloem/v1/livetv/sessions/{sessionId}": {
       "delete": {
-        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Does not require Live TV permission. Owned cleanup therefore remains possible after revocation. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Returns the serialized session record rather than a bodyless response; releasing an already released session returns it again.",
+        "description": "Uses native account authentication and selected-profile authority, including PIN verification when required. Administrative-context tokens do not replace this authority, and direct-profile sessions are not admitted. Does not require Live TV permission. Owned cleanup therefore remains possible after revocation. Sessions, recordings and series rules belong to the account and profile that created them; another viewer's entry answers 404. An administrator whose selected profile is the account's primary, non-child profile may manage every viewer's entries. Returns the serialized session record rather than a bodyless response; releasing an already released session returns it again, unchanged.",
         "operationId": "releaseBloemLiveTVSession",
         "parameters": [
           {

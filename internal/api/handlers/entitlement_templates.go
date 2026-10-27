@@ -632,12 +632,11 @@ func (h *EntitlementTemplatesHandler) HandleAccountApply(w http.ResponseWriter, 
 			return h.store.ApplyDefaultAccountTemplate(r.Context(), claims.AccountID, accountID, request.TemplateKey, request.TemplateRevision, false)
 		})
 	}
+	// The confirmed preview hash covers the account's organization, so a move
+	// after the dry-run fails as confirmation_stale before anything is written.
+	// What comes back here was committed, or is the key's earlier receipt.
 	if err != nil {
 		h.writeError(w, err)
-		return
-	}
-	if result.TenantID != confirmation.OrganizationID {
-		writeError(w, http.StatusConflict, "confirmation_target_changed", "Direct account organization changed; dry-run again")
 		return
 	}
 	if !repeated {

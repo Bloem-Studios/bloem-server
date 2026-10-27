@@ -1413,7 +1413,7 @@ func (s *memoryStore) ReleaseSession(_ context.Context, id string) (*LiveSession
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	session, ok := s.sessions[id]
-	if !ok {
+	if !ok || session.Status != "active" {
 		return nil, nil
 	}
 	now := time.Now().UTC()

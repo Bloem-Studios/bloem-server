@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
@@ -150,5 +151,56 @@ func TestEntitlementTemplateAuthoringStaysSessionOnly(t *testing.T) {
 	entitlementAPIKeyRouter(handler, platformAdminAPIKey(7)).ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/entitlement-templates", strings.NewReader(`{"key":"new","name":"New"}`)))
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("create with API key = %d %s, want 403", recorder.Code, recorder.Body.String())
+	}
+}
+
+// accountMovingStore previews the account in one organization and writes it
+// in another, as an account moved between the preview and the write would.
+type accountMovingStore struct {
+	entitlementHandlerStoreStub
+	previewIn, appliedIn uuid.UUID
+	audits               []entitlements.AuditEvent
+}
+
+func (s *accountMovingStore) ApplyDefaultAccountTemplate(_ context.Context, _, accountID int, key string, revision int64, dryRun bool) (entitlements.ApplyResult, error) {
+	organizationID := s.appliedIn
+	if dryRun {
+		organizationID = s.previewIn
+	}
+	return entitlements.ApplyResult{TenantID: organizationID, AccountID: accountID, TemplateKey: key, TemplateRevision: revision, DryRun: dryRun, Changed: true}, nil
+}
+func (s *accountMovingStore) RecordAudit(_ context.Context, event entitlements.AuditEvent) error {
+	s.audits = append(s.audits, event)
+	return nil
+}
+func (s *accountMovingStore) ListOrganizationAudit(context.Context, uuid.UUID) ([]entitlements.AuditEvent, error) {
+	return s.audits, nil
+}
+
+// An apply that committed is answered and audited as committed, and a retry
+// with its key gets the same answer.
+func TestEntitlementAccountApplyAnswersAndAuditsWhatItCommitted(t *testing.T) {
+	store := &accountMovingStore{entitlementHandlerStoreStub: entitlementHandlerStoreStub{template: entitlements.Template{Key: "standard", Revision: 3, Enabled: true}}, previewIn: uuid.New(), appliedIn: uuid.New()}
+	handler := NewEntitlementTemplatesHandler(store, []byte("api-key-secret"))
+	handler.SetPlatformAdminAuthorizer(entitlementPlatformAdminStub{allowed: true})
+	router := entitlementAPIKeyRouter(handler, platformAdminAPIKey(7))
+
+	dryRun := httptest.NewRecorder()
+	router.ServeHTTP(dryRun, httptest.NewRequest(http.MethodPost, "/accounts/42/entitlement/dry-run", strings.NewReader(`{"template_key":"standard","template_revision":3}`)))
+	var preview struct {
+		ConfirmationToken string `json:"confirmation_token"`
+	}
+	requireJSONDecode(t, dryRun.Body, &preview)
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		apply := httptest.NewRecorder()
+		router.ServeHTTP(apply, httptest.NewRequest(http.MethodPost, "/accounts/42/entitlement/apply", strings.NewReader(
+			`{"template_key":"standard","template_revision":3,"confirmation_token":"`+preview.ConfirmationToken+`","idempotency_key":"garden-provision-42"}`)))
+		if apply.Code != http.StatusOK || !strings.Contains(apply.Body.String(), store.appliedIn.String()) {
+			t.Fatalf("apply attempt %d = %d %s, want 200 naming the organization it applied in", attempt, apply.Code, apply.Body.String())
+		}
+	}
+	if len(store.audits) != 1 || store.audits[0].Action != "account.entitlement_applied" || store.audits[0].OrganizationID != store.appliedIn {
+		t.Fatalf("audits = %+v, want one account.entitlement_applied in the organization applied", store.audits)
 	}
 }

@@ -3,6 +3,38 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 27, 2026 — Three fixes from the OpenAPI review
+
+The review behind the OpenAPI entry below listed handler problems it left
+open. These three are fixed:
+
+- **Organization invitations grant only the organization's own access.**
+  `POST /admin/organization/invitations` accepted any `access_group_id` and
+  `library_ids`. Nothing was exposed: the composite foreign key on
+  `invitations (organization_id, access_group_id)` refused another
+  organization's group, and a viewer's scope is always cut to the libraries its
+  organization owns or is entitled to. But a foreign group surfaced as
+  `503 tenant_unavailable`, and a library the organization can't use was stored
+  on the invitation and copied to the account it created. Both now fail as
+  `422 validation_failed`, on `access_group_id` or `library_ids`, before
+  anything is written.
+- **A direct-account entitlement apply is answered as it committed.** After
+  the apply, `POST /admin/platform/accounts/{account_id}/entitlement/apply`
+  compared the result's organization with the confirmation's and answered
+  `409 confirmation_target_changed`, without an audit record, for an apply that
+  had already been saved. The confirmed preview hash covers the organization,
+  so in production an account that moved after its dry-run fails as
+  `confirmation_stale` before anything is written. The late check could only
+  turn a committed apply, or a replay of its key, into a conflict. It is gone,
+  and `confirmation_target_changed` is no longer documented.
+- **Releasing a Live TV session twice changes nothing.** The store released a
+  session whatever its status. A second release, or a client's release after
+  the stale-session sweep, moved `released_at` later, stopped the stream again
+  and rewrote the session's playback history row (upserted by session) with
+  the longer watch time. Only an active session is released now. A repeat
+  release returns the session as it ended, which is what the OpenAPI already
+  promised.
+
 ## October 27, 2026 — The native OpenAPI describes what each operation returns
 
 `contracts/api/bloem/v1/openapi.json`, generated from the `internal/apiv2/bloem_*`

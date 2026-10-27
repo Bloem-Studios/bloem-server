@@ -1651,7 +1651,16 @@ func (s *Service) ReleaseSession(ctx context.Context, id string, userID int, pro
 		return nil, err
 	}
 	if session == nil {
-		return nil, ErrNotFound
+		// Released already, by the caller or the stale sweep: answer with the
+		// session as it ended, and stop and record nothing again.
+		existing, err := s.store.GetSession(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if existing == nil || existing.Status != "released" {
+			return nil, ErrNotFound
+		}
+		return existing, nil
 	}
 	if session.PlaybackSessionID != "" {
 		if stopper, ok := s.playbackBridge.(PlaybackBridgeStopper); ok {

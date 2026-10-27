@@ -39,7 +39,7 @@ func registerBloemLiveTV(reg *Registry) {
 	registerBloemChiDocument[bloemOptionalJSONInput[BloemLiveTVClientCapabilities], bloemJSONOutput[livetv.SessionStartResponse]](reg, session)
 
 	release := bloemLiveTVDocumentOp(reg, "DELETE", "/livetv/sessions/{sessionId}", "releaseBloemLiveTVSession", "Release an owned tuner lease and return the session record.", 200, bloemLiveTVUngated)
-	release.Description += " Owned cleanup therefore remains possible after revocation." + bloemLiveTVOwnership + " Returns the serialized session record rather than a bodyless response; releasing an already released session returns it again."
+	release.Description += " Owned cleanup therefore remains possible after revocation." + bloemLiveTVOwnership + " Returns the serialized session record rather than a bodyless response; releasing an already released session returns it again, unchanged."
 	bloemDocumentErrors[BloemNativeError](reg, &release, map[int]string{
 		404: "not_found: the session does not exist or belongs to another viewer, or X-Profile-Id names no profile of this account.",
 	})
