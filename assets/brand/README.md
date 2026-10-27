@@ -1,9 +1,18 @@
 # Bloem brand asset set
 
+This directory holds the vector sources of Bloem's own visual identity, added on
+August 25, 2026 (`4982bda25`, with the brighter "vivid" bloom in `bf016c37c` and
+the classic one kept alongside it in `48343fd17`). They are original Bloem work,
+not derived from Silo's reserved logo or wordmark; see [`NOTICE`](NOTICE) and
+[fork provenance](../../FORK.md#ongoing-merge-cost). Silo's own README and
+trademark rules require a fork to replace Silo's brand assets, which is why these
+exist.
+
 Everything here is generated from vector sources, so any size can be re-rendered
-cleanly. The tulip geometry is taken from `../bloem_animation.svg` (the approved
-storyboard artwork) with the animation removed; the wordmark was redrawn as
-vector from the raster lockup in `../Bloem Black.png`.
+cleanly. The tulip geometry was taken from a storyboard animation (`bloem_animation.svg`)
+with the animation removed, and the wordmark was redrawn as vector from a raster
+lockup (`Bloem Black.png`). Neither of those two source files is in this
+repository.
 
 ## Palette
 
@@ -51,7 +60,13 @@ Two bloom treatments are kept, and both are maintained:
 onto an icon plate, and the untrimmed originals where the artwork needs its own
 breathing room.
 
-## Rendered output (`png/`)
+## Rendered output
+
+There is no `png/` directory here. The rendered files are committed where they
+are used: the web app's icons in `web/public/`, and the repository artwork in
+`assets/`. Several `web/public/` files keep the file names of the Silo icons they
+replace, so they are declared seams in `contracts/seams.txt`; Silo's
+`silo-icon-1024.png` and `silo-wordmark-sidebar.png` are deleted.
 
 App icons sit on an opaque `#101827` rounded plate rather than shipping
 transparent: a transparent mark disappears against either a light tab strip or a
@@ -59,17 +74,17 @@ dark launcher, and the plate is what the existing Silo/Bloem icons used.
 
 | File | Size | Mark weight |
 |---|---|---|
-| `bloem-icon-1024.png` | 1024 | detail |
-| `web-app-icon-512.png` | 512 | detail |
-| `web-app-icon-192.png` | 192 | detail |
-| `apple-touch-icon.png` | 180 | detail |
-| `maskable-icon-512.png` | 512 | detail, glyph at 55% for the maskable safe zone |
-| `favicon.ico` | 64/48/32/16 | detail / simple / simple / micro |
-| `bloem-wordmark-sidebar.png` | 382×112 | simple (badge) + vector wordmark |
-| `repo-icon-256.png` | 256 | detail |
-| `bloem-banner-860x220.png` | 860×220 | lockup on an opaque panel for READMEs |
-| `bloem-social-1200x630.png` | 1200×630 | Open Graph / link previews |
-| `bloem-login-bg-1920x1080.png` | 1920×1080 | login background; motif is offset right, form area left is clear |
+| `web/public/bloem-icon-1024.png` | 1024 | detail |
+| `web/public/web-app-icon-512.png` | 512 | detail |
+| `web/public/web-app-icon-192.png` | 192 | detail |
+| `web/public/apple-touch-icon.png` | 180 | detail |
+| `web/public/maskable-icon-512.png` | 512 | detail, glyph at 55% for the maskable safe zone |
+| `web/public/favicon.ico` | 64/48/32/16 | detail / simple / simple / micro |
+| `web/public/bloem-wordmark-sidebar.png` | 382×112 | simple (badge) + vector wordmark |
+| `assets/icon.png` | 256 | detail |
+| `assets/bloem-banner.png` | 860×220 | lockup on an opaque panel for READMEs |
+| `assets/bloem-social.png` | 1200×630 | Open Graph / link previews |
+| `web/public/bloem-login-bg.png` | 1920×1080 | login background; motif is offset right, form area left is clear |
 
 The banner and social card are drawn on opaque panels deliberately — GitHub and
 most link-preview surfaces render on both light and dark backgrounds, and the

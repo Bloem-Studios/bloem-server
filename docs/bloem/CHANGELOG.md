@@ -3,6 +3,139 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 27, 2026 — Production on CI's image; PostgreSQL tuning off
+
+Production runs `276becf4a`. At about 06:58 UTC it moved from `d064644a8` to
+`422a51fed`, the first production image built by Bloem CI and published by the
+Bloem Image workflow (`ghcr.io/bloem-studios/bloem-server:<full sha>`), with
+three forward-only migrations applied offline: Silo's
+`20261026133552_markers_share_by_default_existing_installs` and
+`20261026191107_allow_full_range_pq_download_tone_map`, and Bloem's
+`20261026170000_bloem_cohort_coherence_ignores_deleted_libraries`. At 07:55 UTC
+it moved to `276becf4a`, which changes only the web admin console and tests, with
+no migrations. The PostgreSQL tuner had sized the database's CPU-based settings
+for the application container's 32 CPUs instead of the database container's 12;
+that was corrected first, and at 08:28 UTC auto-tuning was turned off
+(`POSTGRES_TUNE=off`), because Bloem's database runs separately from the server
+and the [Docker guide](overlays/wiki/deployment/docker.md#external-postgresql)
+advises tuning off for an external database. The tuned values stay in the
+database's `postgresql.auto.conf`. This is deployment evidence, not native-client
+or playback acceptance; see the
+[October 27 receipt](../operations/2026-10-27-main-deployment.md).
+
+## October 27, 2026 — An admin context refused before its first render recovers
+
+`276becf4a`: the web admin context provider registered its failure handler in
+an effect, closed over the contexts of the last render. The first load sets the
+contexts, mints the session and activates it in one continuation, so a request
+refused before React rendered that update reached a handler that saw no
+contexts, and a `tenant_session_required`, `insufficient_platform_authority` or
+`organization_suspended` refusal sent the administrator to context selection
+instead of re-minting or falling back. The contexts now live in a ref set
+together with the state, and the handler reads it
+(`web/src/contexts/AdminContextProvider.tsx`). A new test refuses a request in
+that window. `AdminContextProvider.tsx` is a Bloem file; no seam changes.
+
+## October 27, 2026 — Merge follow-ups: the client pin and a cohort test
+
+Bloem CI on the merged `main` caught two things. Silo's AI provider connections
+(#3106) add five administrative `/api/v2` wire types; `422a51fed` allowlists
+them in `contracts/client/v1/coverage.json` like the other admin types (only the
+bundled web admin reads them) and re-pins `contracts/client/v1/digest.txt` to
+the merged tree. And the cohort tests in `internal/entitlements` compared
+library sets while other packages in the same CI shard added and deleted
+libraries in the same database; `f1d33d33f` runs that package in
+`bloemtestdb.RunIsolatedSuite`, a database of its own, as `internal/preview`
+already did. Neither changes runtime behavior.
+
+## October 27, 2026 — Silo integration through 3e2d306b2
+
+`68070f04b` merges 24 more Silo commits after `8b84639ed`, through `3e2d306b2`
+(2026-10-27 03:06 UTC). Silo wins every conflict; the seam ledger stays at 306.
+Most of the batch is security hardening: tokens are bound to their session's
+account (#3140), v1 progress and stop refuse another profile's session (#3133),
+signed stream and download tokens stay out of logs (#3137), as does the account
+token in transcode relay logs (#3126), account-level
+downloads check profile access (#3123), the default plugin cache refuses a
+directory another local user controls (#3138), and image, settings, playlist,
+webhook and Watch Together inputs are bounded. Features: AI providers are
+connected once under AI Services and chosen per job (#3106), the embedding
+provider is chosen there too (#3107), playback starts on an audio track the
+client plays without conversion (#3115), and Meilisearch and the
+Audiobookshelf port can be set from the environment (#3117).
+
+Bloem adapts its own code to Silo's new behavior: Bloem's preview-aware session
+lookups and the tenant admin context pass the account the credential names, so
+the plugin router and auth middleware keep Silo's binding; Bloem's durable stop
+follows Silo's `ownsPlaybackSession` rule, so a sibling profile cannot stop
+another profile's playback; Silo's checked plugin cache directory feeds Bloem's
+native-storage roots on the API host, the proxy host and the native worker; and
+Silo splits manifest query validation out of `BuildPlaybackManifest` (#3129),
+which Bloem's playback input-failure check follows. The generated client DTOs
+gain `max_channels_by_codec`.
+
+## October 26, 2026 — Silo's font extractor; a daylight-saving-safe test window
+
+The merge through `8b84639ed` returned `subtitle_fonts.go` to Silo's bytes,
+ending Bloem's temporary backport of Silo #2262 (font attachment extraction).
+`d72d6d2d4` points Bloem's native-storage font extractor at Silo's command again
+and removes the two Bloem tests that pinned the backported behavior.
+
+Silo's `TestLogPartitionsMatchPartmanOnNonUTCServer` filled its window with
+`now() + interval '8 days'` in America/New_York. PostgreSQL adds days at
+wall-clock time, so across the US fall-back on November 1, 2026 that is eight
+days and an hour, and a run after 23:00 UTC put the last hourly row into the
+default partition: Bloem CI failed it while Silo's CI had passed the same commit
+earlier in the day. `48513c1bd` uses 192 and 1,344 hours, which PostgreSQL adds
+as absolute time. Partitioning itself is unchanged. This edits a Silo test file,
+a temporary seam until Silo fixes the same, so the ledger grows from 305 to 306.
+
+## October 26, 2026 — Silo integration through 8b84639ed
+
+`303511a25` merges 25 Silo commits after `6de6d5e5e`, through `8b84639ed`. Silo
+wins every conflict. Silo brings non-UTF-8 file names
+([non-UTF-8 paths](../architecture/non-utf8-paths.md), #2571), intro-marker,
+scanner and tone-mapping fixes, and web fixes. `subtitle_fonts.go` and
+`contracts/api/v2/breaking-approvals.json` return to Silo's bytes: Bloem's copy
+of the approvals carried 81 entries for changes `main` already included. Both
+transcode starts keep Bloem's native-storage input hook around Silo's new
+`fspath.CommandContext`. The seam ledger drops from 308 to 305.
+
+## October 26, 2026 — A library a cohort group lists can be deleted
+
+Deleting a library prunes it from every access group's `library_ids`, including
+a template-managed cohort group, while the cohort's immutable revision keeps
+listing it. The coherence checks compared the two lists exactly, so the delete
+failed with SQLSTATE 23514 and no library any cohort group listed could be
+deleted. `84624b9b3` adds
+`20261026170000_bloem_cohort_coherence_ignores_deleted_libraries`, which compares
+only libraries that still exist; dropping a library that still exists from a
+cohort group is still refused. The migration is Bloem's; no seam changes.
+
+## October 26, 2026 — The NFO listing cache waits for the change time
+
+Silo's NFO provider kept a directory listing once the directory's modification
+time was a tick old. A copy tool that restores the modification time leaves only
+the change time moving, so a second change in the same tick could stay hidden
+behind the cached listing; the self-hosted CI runners hit this on every run.
+`63097f224` makes the settle rule use the later of the two times
+(`internal/metadata/nfo/bloem_listing_settle.go`), and Silo's two caching tests
+wait out the settle window (`4242849b6` gives those waits their lint reason).
+`lookup.go` and `lookup_test.go` become seams, so the ledger grows from 306 to
+308.
+
+## October 26, 2026 — Go CI jobs split across runners
+
+The three longest Bloem CI jobs run in shards (`52369dbad`, `5e6f9e407`): the
+tenancy store's race tests in four "Tenant stores" jobs, `internal/auth` in three
+"Native authentication" jobs, and `make test-go` in four "Go test" jobs, with the
+database pins and regressions in jobs of their own. Each job has its own
+PostgreSQL. `scripts/ci/deal.sh` deals packages and `scripts/ci/go-test-shard.sh`
+deals a package's tests round-robin, so every test runs in exactly one shard.
+Go test runs four packages at a time per database: sixteen at once against one
+database collided on shared membership policy on the self-hosted runners. See
+[CI](ci.md#jobs).
+
 ## October 26, 2026 — Bloem CI can run on self-hosted runners
 
 Bloem CI's jobs carry the same runner routing as Silo's `trusted-linux-ci.yml`.
@@ -10,7 +143,8 @@ With the repository variable `BLOEM_SELF_HOSTED` set to `true`, pushes to
 `main`, and pull requests by the logins listed in `BLOEM_CI_MEMBERS`, run on
 Bloem's disposable self-hosted runners. Each job asks for its own run's
 `bloem-run-<id>-<attempt>` and `bloem-job-<job id>` labels. Every other run,
-including every fork pull request, and every job while the variable is unset,
+including pull requests by anyone not listed (routing checks only the author's
+login), and every job while the variable is unset,
 runs on GitHub's `ubuntu-24.04` runners, which replace `ubuntu-latest` (now
 Ubuntu 26.04) to match Silo. Workflow runs from all outside contributors now
 need approval.

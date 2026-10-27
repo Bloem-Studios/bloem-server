@@ -5,18 +5,30 @@ architecture and deployment evidence distinct, and link between them. A generate
 DTO is not proof that a native client supports a workflow; a passing health check
 is not proof of provider or playback acceptance.
 
+This page is for anyone changing Bloem's documentation. Bloem Server is a tracking
+fork of Silo Server: Silo's own Markdown files stay exactly as Silo wrote them, and
+Bloem's material lives in Bloem-owned files (see [fork provenance](../../FORK.md)
+and the [documentation index](README.md)).
+
 ## What Silo does
 
-The reviewed Silo server baseline is `6de6d5e5e`. Its
-[`docs/README.md`](../README.md), unchanged since `ea3c10a7f`, separates developer
-references from the public manual. Architecture and invariants live under
-`docs/architecture/`; API references live in `docs/*-api.md`. Go registrations
-generate OpenAPI and the server embeds Swagger UI at `/api/v2/docs`. New plans are
-temporary working files.
+The reviewed Silo server baseline is `3e2d306b2` (October 27, 2026), the Silo
+revision Bloem `main` integrates. Silo's [`docs/README.md`](../README.md) was last
+changed in `42b39765b` (Silo #1635, September 28, 2026), which moved the operator
+guides out of the server repository; it is unchanged at `3e2d306b2`. It sends
+people running a server to Silo's user manual and keeps this folder for people
+changing the server. Architecture and invariants live under `docs/architecture/`;
+API references live in `docs/*-api.md`. Go registrations generate OpenAPI and the
+server embeds Swagger UI at `/api/v2/docs` ([api-docs.md](../api-docs.md)). New
+plans are temporary working files. Between the previous baseline `6de6d5e5e` and
+`3e2d306b2`, Silo's only new document is
+[`docs/architecture/non-utf8-paths.md`](../architecture/non-utf8-paths.md), an
+architecture page within that model.
 
 Silo's public manual is a separate repository,
 [`Silo-Server/siloserver.org`](https://github.com/Silo-Server/siloserver.org),
-reviewed at `b2197cad7c7384512fa6f76f82934682fa54d6f5`. It uses Astro/Starlight,
+reviewed at `b2197cad7c7384512fa6f76f82934682fa54d6f5`; its layout below was
+re-checked at `35d859752` (October 24, 2026). It uses Astro/Starlight,
 plain Markdown in `src/content/docs/docs/`, a curated task-based sidebar in
 `src/data/sidebar.mjs`, redirects in `src/data/docs-redirects.mjs`, edit links,
 last-updated metadata and `starlight-links-validator` during the build.
@@ -36,7 +48,9 @@ instructions into a Bloem site. Keep license/provenance notices on reused source
 
 | Audience or change | Maintained source |
 | --- | --- |
-| Product overview and current source status | [Bloem front page](../../.github/README.md), [integration changelog](CHANGELOG.md) |
+| Product overview, provenance and current source status | [Bloem front page](../../.github/README.md), [integration changelog](CHANGELOG.md) |
+| Fork and merge policy | [FORK.md](../../FORK.md), [agent rules](../../BLOEM_AGENTS.md) |
+| CI, the daily upstream sync and the published image | [Bloem CI](ci.md) |
 | Viewer tasks | [User guide](../wiki/user-guide.md) |
 | Installation, accounts, libraries, maintenance | [Admin guide](../wiki/admin-guide.md), [Docker guide](overlays/wiki/deployment/docker.md) |
 | Upstream developer/API behavior | Existing Silo reference plus the relevant [Bloem overlay](README.md#overlays-on-upstream-documents) |
@@ -46,10 +60,15 @@ instructions into a Bloem site. Keep license/provenance notices on reused source
 | Exact deployment evidence | Dated `docs/operations/` records with revision, checks and limits |
 | Temporary implementation plan | Ignored `docs/superpowers/`; distill durable facts before committing |
 
-Keep Silo-owned Markdown unchanged. An overlay identifies the upstream section
-and the Bloem replacement or addition. The seam ledger must not grow for a
-documentation refresh. Historical deployment records retain their original
-facts; a current landing page must not present an old record as live health.
+Keep Silo-owned Markdown unchanged: a Markdown file that also exists in Silo's
+`main` is Silo's, and Bloem differences go in an **overlay**, a Bloem-owned file
+under `overlays/`, usually at the upstream document's path relative to `docs/` (or
+the repository root), that names the upstream section and the
+Bloem replacement or addition. Silo-owned files Bloem does edit are **seams**, each
+declared in `contracts/seams.txt` (306 entries at `e852f92bf`) and checked by
+`make verify-seams`; the ledger must not grow for a documentation refresh. Historical deployment records retain
+their original facts; a current landing page must not present an old record as
+live health.
 
 Operator/viewer pages use portable Markdown and frontmatter with `title`,
 `description`, `summary`, `tags`, `audience`, `last_reviewed` and `related`.
@@ -128,26 +147,60 @@ not a substitute for checking documentation accuracy.
 
 ## October integration checklist
 
+Facts a page about current behavior must not get wrong. Each was re-checked
+against the code at `e852f92bf` (Silo through `3e2d306b2`).
+
+- Account policy lives on `users`, as in Silo (`c60b7008e`, migration
+  `20261026003000_bloem_account_policy_on_users`). An organization membership
+  only links an account to its one organization (`UNIQUE (account_id)`); do not
+  describe memberships as the policy authority or describe mirrored or
+  finalized membership-policy phases as current.
 - Nullable account `max_profiles` inherits the group limit; it does not mean
-  unlimited profiles. Ordinary explicit overrides and managed entitlement ceilings
-  retain their separate rules. Both client releases need the
+  unlimited profiles (`internal/accesspolicy/policy.go`). Explicit account
+  overrides win, and a group with a managed profile limit applies its ceiling as
+  well. Both client releases need the
   [contract transition](../architecture/bloem-contract-adjudications.md).
-- Silo's administrator CSS/font/color controls were removed. Bloem organization,
-  campaign and seasonal branding remain separate features.
+- Silo removed its administrator color, font and custom-CSS controls (Silo
+  #2413) and kept one theme (Silo #1534). Bloem organization, campaign and
+  seasonal branding remain separate features.
 - Libraries can combine multiple local paths and selected roots from several
-  storage sources. Preserve folder navigation and existing selections; provider
-  and playback readiness remain separate from configuring a source.
-- Silo's Jellyfin and Audiobookshelf compatibility servers run on their own ports;
-  Bloem's companion applications and compatibility gateway are removed. See
+  storage sources ([native storage](../architecture/bloem-native-storage.md)).
+  Preserve folder navigation and existing selections; provider and playback
+  readiness remain separate from configuring a source.
+- Silo's Jellyfin and Audiobookshelf compatibility servers run on their own ports
+  (removed by Bloem on October 13, restored on October 18 in `2393c41ee`);
+  Bloem's companion applications and compatibility gateway stay removed. See
   [protocol compatibility](../architecture/bloem-compatibility-removal.md).
-- Pastime managed tracking is removed. Do not restore its API/setup guidance;
-  any future ordinary plugin integration has its own contract.
+- Pastime managed tracking is removed (merge `4835a698e`, migration
+  `20261013231500_remove_pastime_managed_tracking`). Do not restore its
+  API/setup guidance; any future ordinary plugin integration has its own
+  contract. See [Pastime removal](../architecture/bloem-pastime-removal.md).
+- Music is removed (`f9e1447f3`, migration `20261026020000_bloem_remove_music`).
+  Silo has no music library type either: library types are movie, series,
+  mixed, audiobook, ebook, podcast and manga (`internal/librarykind`).
+- Lifecycle idempotency receipts are removed (`b017bfe84`); the
+  `lifecycle_idempotency_v1` tokens are no longer advertised. Describe retries
+  with the [retrying mutations](../bloem-api-reference.md#retrying-mutations)
+  rules, not an `Idempotency-Key` replay for every lifecycle write.
+- Promotions and ambience evaluate in-process (`310c545f9`); there are no
+  bundled presentation worker binaries or `BLOEM_PRESENTATION_PLUGIN_DIR`.
+- The header-authenticated media deployment gate (`545ed3a33`, October 9) and the
+  `playback.strict_reconstruct_admission` setting (`e452f8fef`, October 26) are
+  gone. Do not document them as operator controls.
+- AI providers are connected once under AI Services and chosen per job (Silo
+  #3106, merged in `68070f04b`); the embedding provider is chosen there too
+  (Silo #3107). Pages that describe one key per AI feature are stale.
 - Authenticated browse-only content policy does not by itself establish a public
-  showcase. Preview principal, guest sessions, catalogue hygiene and Garden launch
-  integration are now implemented in their respective source repositories. Verify
-  both deployed revisions, preview-host configuration and the launch/exchange
-  journey before describing a live prospect flow as enabled. Native preview
-  controls and later showcase presentation remain separate follow-up work.
+  showcase. The server side of the preview principal, signed guest sessions and
+  catalogue hygiene is in this repository
+  ([browse-only policy](../architecture/bloem-browse-only-content-policy.md));
+  the Garden launch flow lives in Garden's own repository and is not checked
+  here. Verify both deployed revisions, preview-host configuration and the
+  launch/exchange journey before describing a live prospect flow as enabled. The
+  [October 15 receipt](../operations/2026-10-15-preview-server-deployment.md)
+  recorded public preview as disabled; no later receipt records enabling it.
+  Native preview controls and later showcase presentation remain separate
+  follow-up work.
 
 When finishing, state the source revision, changed docs/artifacts, verification
 scope and remaining gaps. A source refresh alone neither deploys a server nor

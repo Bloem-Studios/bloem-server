@@ -29,9 +29,13 @@ Bloem is in heavy active development. Features get rewritten, APIs shift, whole 
 Small stuff (typo fixes, minor bugs) — just open a merge request. No ceremony.
 
 Choose the repository that owns the behavior before implementation begins.
-This repository owns the backend, web app, native API, Jellyfin compatibility,
-and plugin host. Client-only work belongs in `bloem-apple` or `bloem-android`;
-plugin contracts belong in `silo-plugin-sdk`; provider behavior belongs in the
+This repository owns the backend, the embedded web app, the native APIs, the
+wiring of Silo's Jellyfin and Audiobookshelf compatibility servers, the plugin
+host and Bloem's storage-provider protocol (`proto/bloem/plugin/v1`). Client-only
+work belongs in `bloem-apple` or `bloem-android`. The host runs on Silo's public
+plugin SDK (`github.com/Silo-Server/silo-plugin-sdk`, pinned in `go.mod`), so a
+change to the public plugin contract belongs in Silo's SDK; Bloem's plugin-author
+SDK is `Bloem-Studios/bloem-plugin-sdk`, and provider behavior belongs in the
 individual plugin repository. Cross-repository changes should identify all
 affected repositories in the issue and pull request.
 
@@ -122,7 +126,11 @@ make verify-local-paths
 
 `make build` installs the pinned frontend dependencies and builds the embedded
 web bundle, which `pnpm run budget:check` then measures with Silo's report-only
-checker. `make lint` runs the full local Go and frontend linters; CI scopes
+checker (`web/scripts/check-bundle-budget.mjs`; Bloem has carried no allowance
+of its own since October 26, 2026). In CI, the client coverage, client digest and
+committed v2 artifact checks also run as Go tests inside `make test-go`, and
+`make verify-settings-bindings-all` is split between the contract-check and web
+jobs; see [Bloem CI](../docs/bloem/ci.md#jobs) for which job runs what. `make lint` runs the full local Go and frontend linters; CI scopes
 its Go lint gate to changed lines because the repository has pre-existing
 findings. `go tool govulncheck ./...` is CI's reachable Go vulnerability scan;
 CI runs it on exactly the Go patch `go.mod` names, so run it on that patch too.
@@ -163,9 +171,10 @@ application build is unnecessary unless runtime or generated contracts changed.
 If documentation participates in a contract digest, regenerate and review the
 affected artifact rather than bypassing its check.
 
-The [October 7 validation record](../docs/operations/2026-10-07-native-storage-deployment.md#outstanding-validation)
-lists current acceptance limits; a successful focused test or healthy deployment
-does not resolve historical failures or certify new providers and client workflows.
+Deployment evidence lives in dated receipts under `docs/operations/`; the newest
+is the [October 27 receipt](../docs/operations/2026-10-27-main-deployment.md).
+A successful focused test or healthy deployment does not resolve historical
+failures or certify new providers and client workflows.
 Use the [SDK guide](../docs/architecture/bloem-sdk-compatibility.md) when refreshing
 plugin protocols, generated contracts or sibling client copies.
 
@@ -177,7 +186,7 @@ plugin protocols, generated contracts or sibling client copies.
 
 ## For AI Agents
 
-If you're an LLM working on this codebase: read `CLAUDE.md` (or `AGENTS.md` when available) for project-specific instructions, architecture reference, and verification requirements. The rules in this file apply to you too — especially the parts about not submitting slop and running verification before declaring work complete.
+If you're an LLM working on this codebase: read `AGENTS.md` (`CLAUDE.md` is a symlink to it) for Silo's project instructions, architecture reference and verification requirements, and [BLOEM_AGENTS.md](../BLOEM_AGENTS.md) for Bloem's overrides, which win where the two differ. The rules in this file apply to you too — especially the parts about not submitting slop and running verification before declaring work complete.
 
 ## Be Realistic
 

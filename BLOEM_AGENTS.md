@@ -1,7 +1,8 @@
 # Bloem Server — agent instructions (fork overrides)
 
-`AGENTS.md` (and `CLAUDE.md`, which links to it) is Silo's upstream file, kept verbatim so
-upstream merges stay clean. This file carries Bloem's additions and overrides. **Where the
+`AGENTS.md` (and `CLAUDE.md`, a symlink to it) is Silo's upstream file, kept as Silo wrote it
+so upstream merges stay clean, apart from a one-line pointer to this file at its top (a declared
+seam in `contracts/seams.txt`). This file carries Bloem's additions and overrides. **Where the
 two disagree, this file wins.** Fork provenance and merge policy: [FORK.md](FORK.md). Bloem's
 documentation index: [docs/bloem/README.md](docs/bloem/README.md).
 
@@ -20,7 +21,8 @@ shape is not a reason to keep a Bloem difference.
 
 Bloem runs Silo's Jellyfin and Audiobookshelf compatibility servers as Silo ships them
 (restored 2026-10-18 after the 2026-10-13 removal). Take upstream's code in merges.
-Bloem's tenant wiring lives in `cmd/silo/main.go` and `cmd/silo/bloem_compat.go`.
+Bloem's tenant wiring lives in `cmd/silo/main.go`, `cmd/silo/bloem_compat.go` and the
+tenant-aware resolver in `cmd/silo/bloem_main.go`.
 Bloem's companion-application enrollment and compatibility gateway stay removed; do
 not restore them. See [protocol compatibility](docs/architecture/bloem-compatibility-removal.md).
 
@@ -59,8 +61,10 @@ to its one organization. Keep it working:
 - A new NOT NULL column, constraint or trigger on a table upstream Silo writes
   (`users`, `user_profiles`, `auth_sessions`, `access_groups`, ...) must accept Silo's
   writes while switchable, with a test beside the existing switching tests.
-- Run `make silo-switch-check` against the pinned Silo digest when a change touches
-  those tables or merges upstream writes to them.
+- Run `make silo-switch-check SILO_IMAGE=ghcr.io/silo-server/silo-server@sha256:<digest>
+  BLOEM_IMAGE=<image under test>` when a change touches those tables or merges upstream
+  writes to them. Pin Silo by digest to a revision Bloem has merged; the check switches
+  Silo → Bloem → Silo → Bloem on one database (`scripts/bloem/silo-switch-check.sh`).
 
 ## Docs hygiene (replaces the upstream paragraph)
 
@@ -77,7 +81,8 @@ the repository root is the cwd." `make verify-local-paths` enforces this.
 Keep Bloem-specific documentation out of Silo-owned files: add it to a Bloem-owned doc (for a
 change to an upstream doc, its overlay under `docs/bloem/overlays/`) and list it in
 [docs/bloem/README.md](docs/bloem/README.md). `contracts/seams.txt` lists the Silo-owned files
-Bloem may edit; the count may only go down.
+Bloem may edit (306 at `e852f92bf`), and `make verify-seams` fails on an undeclared one; the
+count may only go down.
 
 ## Upstream contribution direction
 

@@ -1,5 +1,18 @@
 # October 10 upstream integration
 
+> **Historical record (note added October 27, 2026).** The resolutions below are
+> true to the October 10 merges. Several no longer describe current code: Bloem
+> removed Jellyfin and Audiobookshelf compatibility on October 13 and then ran
+> Silo's servers again from October 18 (`2393c41ee`); the v1 and v2 download
+> handlers call Silo's own `ServeDirect`, `ResolveDirectFile` and `Capability`
+> again, with the profile read from the request context (`0deddcf59`, October 26),
+> and the `*ForProfile` wrappers remain only for an explicit profile such as a
+> Jellyfin session's; and
+> Bloem's bundle-budget checker and allowance were replaced by Silo's report-only
+> checker (October 26). The current state is Silo through `3e2d306b2`, recorded on
+> the [front page](../../.github/README.md#current-state) and in the
+> [integration changelog](CHANGELOG.md).
+
 This source integration preserves Silo ancestry through normal merges. The
 earlier merge imported `9d37930c6`; the next integration imported all twelve
 commits through `0c7e4190445baa56c2a780c218ef3056b347ae4e`. The follow-up imports
