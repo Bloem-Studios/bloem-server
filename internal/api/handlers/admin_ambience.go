@@ -56,7 +56,7 @@ func writeAmbienceError(w http.ResponseWriter, err error) {
 	case errors.Is(err, ambience.ErrUnsupportedImage):
 		writeError(w, http.StatusUnsupportedMediaType, "unsupported_image", "Artwork must be a PNG, WebP, JPEG, or GIF image")
 	case errors.Is(err, ambience.ErrStorageUnavailable):
-		writeError(w, http.StatusServiceUnavailable, "unavailable", "Asset upload storage (S3) is not configured")
+		writeError(w, http.StatusServiceUnavailable, "unavailable", "Asset upload storage is not configured")
 	default:
 		writeError(w, http.StatusInternalServerError, "internal_error", "Ambience operation failed")
 	}

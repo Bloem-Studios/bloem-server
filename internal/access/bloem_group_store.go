@@ -420,13 +420,14 @@ func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
 	}, nil
 }
 
-// ReadAccountGroupInTransaction reads only a group assigned to this account's membership.
+// ReadAccountGroupInTransaction reads only the group assigned to this account
+// (users.access_group_id) in an organization the account is a member of.
 func ReadAccountGroupInTransaction(ctx context.Context, tx pgx.Tx, accountID int, id int64) (*TenantGroup, error) {
 	return getTenantGroupForAccount(ctx, tx, accountID, id)
 }
 
 // DeleteMovingMembers keeps active sign-ins while
-// reassigning both profiles and memberships within the selected organization.
+// reassigning both profiles and member accounts within the selected organization.
 func (s *TenantGroupStore) DeleteMovingMembers(ctx context.Context, organizationID uuid.UUID, id int64, guard GroupPrecondition, onMoved func(context.Context, pgx.Tx, []int) error) ([]int, error) {
 	var moved []int
 	_, err := s.deleteConditionalWithImpact(ctx, organizationID, id, guard, func(ctx context.Context, tx pgx.Tx, ids []int) error {
@@ -602,12 +603,13 @@ func TenantGroupPolicyInTransaction(ctx context.Context, tx pgx.Tx, subject Grou
 }
 
 // bloemAccountGroupPolicy backs Silo's account-level GroupStore on Bloem's
-// schema, where users.access_group_id no longer exists and groups are
-// organization-owned. It reads the account's membership group in the request
-// tenant when ctx carries one for this account, otherwise in the default
-// organization (the legacy account-level compatibility path). An account with
-// no such membership or no assigned group has no group, matching Silo's
-// "nil when the user has no group". Server wiring uses TenantGroupStore,
+// schema, where groups are organization-owned. It reads the account's group
+// (users.access_group_id, where account policy lives again since c60b7008e)
+// only when that group belongs to the request tenant, when ctx carries one for
+// this account, or otherwise to the default organization (the legacy
+// account-level compatibility path), and the account is a member there. An
+// account with no such membership or no group in that organization has no
+// group, matching Silo's "nil when the user has no group". Server wiring uses TenantGroupStore,
 // whose profile-scoped, fail-closed resolution this does not change.
 func bloemAccountGroupPolicy(ctx context.Context, db groupQueryRower, accountID int) (*GroupPolicy, error) {
 	var organizationID *uuid.UUID

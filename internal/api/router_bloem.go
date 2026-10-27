@@ -33,8 +33,8 @@ import (
 // real *catalog.CatalogSearchService it comes from is itself built inside
 // NewRouter from Dependencies plus local state (the settings store, the search
 // index event repo), not received from the caller, so there is nothing for
-// Dependencies to carry. May be nil, in which case Watch search answers
-// unavailable rather than searching nothing.
+// Dependencies to carry. May be nil, in which case Watch search returns no
+// results (CatalogWatchReader.Search).
 func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, tenantMW *apimw.TenantMiddleware, searchProvider catalog.CatalogSearchProvider, accountPolicyHandler *handlers.AdminHandler, liveTVAdmin func(http.Handler) http.Handler) {
 	var store handlers.BloemOrganizationStore
 	var membershipStore handlers.AdminContextSessionStore

@@ -39,7 +39,7 @@ docs/design/schemas/playback-v3/v3/fixtures/valid/learned-limit-decision_respons
 docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
 go.mod
 go.sum
-internal/access/group_store.go  # GetPolicyForUser reads the account membership group; users.access_group_id no longer exists
+internal/access/group_store.go  # GetPolicyForUser reads the account's group only within its organization (groups are organization-owned)
 internal/access/groups.go
 internal/access/groups_test.go  # Bloem adds EffectiveUserPolicy.PlaybackAllowed; whole-struct expectations add PlaybackAllowed: true, nothing else changed
 internal/access/resolver.go

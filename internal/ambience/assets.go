@@ -15,8 +15,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// AssetStore is the subset of the S3 client used for pack artwork bytes; the
-// public assets bucket (the same one branding uses) is the production store.
+// AssetStore is the bucket API pack artwork bytes go through: the catalog
+// Assets blob store, or the public S3 client when no Assets store is
+// configured (see bloemWireServices in cmd/silo).
 type AssetStore interface {
 	PutObject(ctx context.Context, bucket, key string, data []byte) error
 	GetObject(ctx context.Context, bucket, key string) ([]byte, error)
@@ -35,7 +36,7 @@ const MaxAssetBytes int64 = 8 << 20
 const assetKeyPrefix = "ambience/"
 
 var (
-	// ErrStorageUnavailable means no S3 store is configured: packs can only
+	// ErrStorageUnavailable means no asset store is configured: packs can only
 	// reference external https URLs.
 	ErrStorageUnavailable = errors.New("ambience: asset storage is not configured")
 	// ErrUnsupportedImage means the upload is not a png/webp/jpeg/gif image.
