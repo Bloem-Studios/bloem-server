@@ -165,13 +165,12 @@ dead-code removals.
 
 ## Current integration boundary
 
-At `e852f92bf` (October 27, 2026), Bloem `main` contains all of Silo `main`
-through `3e2d306b2` (2026-10-27 03:06 UTC), merged in `68070f04b`, and the
-ledger declares **306 seams**. The last code change is `276becf4a`, and
-production runs it: the
+At `7c431d470` (October 27, 2026), Bloem `main` contains all of Silo `main`
+through `73a6ae6a3` (2026-10-27 19:39 UTC), and the ledger declares
+**305 seams**. Production runs `bee8a7728`, the commit before that merge: the
 [October 27 receipt](docs/operations/2026-10-27-main-deployment.md) records that
-deployment and the one before it, `422a51fed`, the first production image built
-and published by CI. A source
+deployment and the ones before it, starting with `422a51fed`, the first
+production image built and published by CI. A source
 integration is not a deployment, and a deployment is not native-client or
 playback acceptance. Profile-aware playback/download APIs, migration adaptation,
 web branding and bundle allowances stay in owned files. The

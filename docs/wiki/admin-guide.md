@@ -88,20 +88,19 @@ Cinema Dark the only theme (`39a554717`, #1534).
 
 ### What changed most recently
 
-Bloem merged Silo through `3e2d306b2` on 2026-10-27 (`68070f04b`). For operators and viewers:
+Bloem merged Silo through `73a6ae6a3` on 2026-10-27 (`7c431d470`). For operators and viewers:
 
-- **AI providers are connected once and chosen per job** (Silo `c27acf246`, #3106). See
-  [2.17](#217-ai-services-and-recommendation-embeddings).
-- **The recommendation embedding provider is picked from those providers** (Silo `39913c51d`,
-  #3107), on the Recommendations page.
-- **Playback can start on a different audio track** when the preferred one would need
-  converting for that device (Silo `e7605afe2`, #3115). See [2.13](#213-playback-history-logs-diagnostics-tasks-and-maintenance).
-- **Playback progress and stop are bound to the profile.** One profile on an account can no
-  longer report progress for, or stop, another profile's playback (Silo `e852571bb`, #3133;
-  Bloem's own durable stop follows the same rule).
-- Security hardening: sign-in tokens are bound to their session's account, signed stream and
-  download links are masked in logs, and account-wide downloads check the requesting
-  profile's access. Nothing needs configuring.
+- **Every media card shows its title and details.** The card caption choice ("Title only",
+  "Nothing") is retired, and poster size is the only card option left. The merge's migration
+  resets every saved caption (Silo `33cf0ed11`, #3142).
+- **Posters, backdrops and logos can be uploaded** as local artwork (Silo `e6df1d8ed`, #3088).
+- **Manual metadata edits survive a refresh** and show in home rails (Silo `cc1a496a3`, #2254),
+  and artwork an admin publishes is kept while a refresh is writing (Silo `a5a34a556`, #3153).
+- **Ogg and Opus audiobooks** have their tags read from the audio stream (Silo `25bf16e24`,
+  #3165).
+- **Titles in no library** stay out of the admin listings (Silo `73a6ae6a3`, #3114).
+- Jellyfin-compatible clients: Latest and list pages are faster (#3096, #3097), and sign-in
+  returns every field Jellyfin sends (#3144).
 
 ---
 

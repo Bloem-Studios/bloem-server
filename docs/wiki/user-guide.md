@@ -325,7 +325,7 @@ Phone push notifications are set up in the app.
 | Playback | **Playback** | Preferred quality, maximum bitrate, skipping intros, recaps and credits, auto-play next episode, seek intervals. |
 | Playback | **Language & Subtitles** | Spoken and metadata languages, subtitle language and behaviour, forced subtitles, and how subtitles look. |
 | Playback | **Your Devices** | Overrides for one device (quality, HDR, audio and subtitle preferences, sleep timer), and which profile this browser opens. |
-| Appearance | **Navigation & Cards** | Poster size and captions, badges on posters, shortcuts, and your menu. |
+| Appearance | **Navigation & Cards** | Poster size, badges on posters, shortcuts, and your menu. Every card shows its title and details. |
 | Appearance | **Title Pages** | Title art, theme music, spoiler blurring, advisory age. |
 | Appearance | **Accessibility** | Text size, text weight, contrast, date and time formats. |
 | Home & Discovery | **Home Screen** | Which rows appear and in what order. |

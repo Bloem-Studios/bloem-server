@@ -3,6 +3,31 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 27, 2026 — Silo integration through 73a6ae6a3
+
+`7c431d470` merges 10 more Silo commits after `3e2d306b2`, through `73a6ae6a3`
+(2026-10-27 19:39 UTC). Silo wins every conflict; the seam ledger goes from 306
+to 305. Silo retires the media card caption choice, so every card shows its
+title and details (#3142); settings revision 24 deprecates the field, and
+migration `20261027002724_retire_card_caption_choice` resets every stored
+`ui.card_presentation` caption to `title_metadata`. Admins can upload posters,
+backdrops and logos as local artwork (#3088). Manual metadata edits survive a
+refresh (#2254), and artwork an admin publishes is kept while a refresh writes
+(#3153). Ogg and Opus audiobook tags are read from the audio stream (#3165),
+titles in no library stay out of admin listings (#3114), and the
+Jellyfin-compatible Latest and list pages are faster (#3096, #3097), with a
+complete sign-in response (#3144).
+
+The one conflict was `internal/catalog/episode_repo.go`, which returns to
+Silo's version. Since `a333c9704` Bloem's episode upserts never replaced a
+cached still with a provider URL; that rule, its constants
+(`bloem_episode_repo.go`) and its test (`episode_still_guard_db_test.go`) are
+gone. Silo's upsert keeps an admin's locked still (#3153), and a still a refresh
+overwrites with a provider URL is found again by Silo's image cache discovery,
+which re-caches a row whose path is a URL. The native setting keys (revision 24)
+and the API catalogue are regenerated; the copies in the client repositories
+are not updated.
+
 ## October 27, 2026 — The rest of the OpenAPI review's status fixes
 
 The review behind the OpenAPI entry below also found handlers that answered
