@@ -347,7 +347,6 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/bulk-jobs", "createBloemOrganizationPeopleBulkJob", "Enqueue a people bulk mutation.", "bloemOrganizationContext", 201)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
-		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[adminpeople.BulkAction], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
@@ -355,7 +354,7 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "POST", "/admin/organization/people/policy-jobs", "createBloemOrganizationPeoplePolicyJob", "Enqueue a confirmed people policy command.", "bloemOrganizationContext", 201)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
-		bloemDocumentLifecycle(reg, &op)
+		bloemDocumentCommandKey(&op, bloemPolicyJobKeyRule)
 		registerBloemChiDocument[bloemJSONInput[BloemPolicyBulkAction], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
@@ -382,7 +381,6 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "PATCH", "/admin/organization/people/{account_id}/memberships/current", "updateBloemOrganizationPersonMembership", "Change an organization person membership status.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
-		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPeopleMembershipUpdate], bloemJSONOutput[BloemPersonResponse]](reg, op)
 	}
 
@@ -390,7 +388,6 @@ func registerBloemOrganizationAdministrationDocument(reg *Registry) {
 		op := bloemAdminDocumentOp(reg, "PATCH", "/admin/organization/people/{account_id}/profiles/{profile_id}", "updateBloemOrganizationPersonProfile", "Assign an organization person profile to an access group.", "bloemOrganizationContext", 200)
 		op.Description = bloemOrganizationAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
-		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPeopleProfileUpdate], bloemJSONOutput[BloemPersonResponse]](reg, op)
 	}
 

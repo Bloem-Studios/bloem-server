@@ -298,3 +298,24 @@ func TestAdminHandlerCreateUserEnforcesTenantSlotQuota(t *testing.T) {
 		t.Fatalf("create against unknown tenant = %d %s, want 422", status, body)
 	}
 }
+
+// A server built without the member service cannot retire a tenant. It says
+// the tenant authority is unavailable, not lifecycle idempotency, which
+// Bloem removed in b017bfe84.
+func TestTenantRetirementWithoutMemberServiceIsTenantUnavailable(t *testing.T) {
+	h := handlers.NewAdminTenantsHandler(nil, nil)
+	req := httptest.NewRequest(http.MethodDelete, "/admin/tenants/"+uuid.NewString(), nil)
+	req.SetPathValue("id", strings.TrimPrefix(req.URL.Path, "/admin/tenants/"))
+	rec := httptest.NewRecorder()
+	h.HandleDelete(rec, req)
+
+	var body struct {
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if rec.Code != http.StatusServiceUnavailable || body.Error != "tenant_unavailable" {
+		t.Fatalf("status %d error %q; want 503 tenant_unavailable", rec.Code, body.Error)
+	}
+}

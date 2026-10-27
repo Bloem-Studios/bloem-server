@@ -3,7 +3,6 @@ package apiv2
 import (
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -58,12 +57,22 @@ func bloemAdminDocumentMutation(reg *Registry, op *huma.Operation) {
 	op.Description += " JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match."
 }
 
-func bloemDocumentLifecycle(reg *Registry, op *huma.Operation) {
-	op.Parameters = append(op.Parameters, &huma.Param{Name: "Idempotency-Key", In: "header", Description: "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.", Schema: &huma.Schema{Type: "string"}})
-	bloemDocumentErrors[BloemNativeError](reg, op, map[int]string{428: "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."})
-	status := strconv.Itoa(op.DefaultStatus)
-	op.Responses[status] = &huma.Response{Description: "Success", Headers: map[string]*huma.Header{"Idempotency-Replayed": {Description: "true when a completed lifecycle receipt is replayed.", Schema: &huma.Schema{Type: "string", Enum: []any{"true"}}}}}
-	op.Description += " Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409."
+const (
+	bloemEntitlementApplyKeyRule = "Repeating an apply with the same idempotency_key returns the original result without applying again."
+	bloemPolicyJobKeyRule        = "An idempotency_key of 1 to 128 characters is required, in the body or the Idempotency-Key header. Repeating the command with the same key returns the original job; the same key with a different command returns 409 idempotency_conflict."
+)
+
+// bloemDocumentCommandKey documents a command whose own idempotency key makes
+// a retry return the original result. Idempotency-Key is that key sent as a
+// header. Bloem's general lifecycle receipts, which took the header on every
+// administrative mutation, were removed in b017bfe84; the other mutations
+// ignore it.
+func bloemDocumentCommandKey(op *huma.Operation, rule string) {
+	op.Parameters = append(op.Parameters, &huma.Param{Name: "Idempotency-Key", In: "header", Description: "The command's idempotency_key, sent as a header. When the body also carries idempotency_key, the two must match.", Schema: &huma.Schema{Type: "string"}})
+	op.Description += " " + rule + " A header key that differs from the body's returns 409 idempotency_key_conflict."
+	if conflict := op.Responses["409"]; conflict != nil {
+		conflict.Description += " idempotency_key_conflict: the Idempotency-Key header differs from the body's idempotency_key."
+	}
 }
 
 func bloemDocumentPlatformAPIKey(op *huma.Operation, scheme string) {

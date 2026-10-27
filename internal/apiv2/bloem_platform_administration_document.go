@@ -286,7 +286,6 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
-		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPlatformOrganizationCreate], bloemJSONOutput[BloemPlatformOrganizationResponse]](reg, op)
 	}
 
@@ -302,7 +301,6 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		op.Description += " At least one of name or slug is required."
-		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPlatformOrganizationUpdate], bloemJSONOutput[BloemPlatformOrganizationResponse]](reg, op)
 	}
 
@@ -311,7 +309,6 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
-		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemRevisionRequest], bloemJSONOutput[BloemPlatformOrganizationResponse]](reg, op)
 	}
 
@@ -320,7 +317,6 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
-		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemRevisionRequest], bloemJSONOutput[BloemPlatformOrganizationResponse]](reg, op)
 	}
 
@@ -329,7 +325,6 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
-		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPlatformOwnershipTransfer], bloemJSONOutput[BloemPlatformOrganizationResponse]](reg, op)
 	}
 
@@ -347,7 +342,6 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		op.Description = bloemPlatformAuthorityDescription
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
-		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPlatformMembershipCreate], bloemJSONOutput[BloemPlatformMembershipResponse]](reg, op)
 	}
 
@@ -357,7 +351,6 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		op.Description += " At least one of legacy_role or status is required."
-		bloemDocumentLifecycle(reg, &op)
 		registerBloemChiDocument[bloemJSONInput[BloemPlatformMembershipUpdate], bloemJSONOutput[BloemPlatformMembershipResponse]](reg, op)
 	}
 
@@ -457,7 +450,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		op.Description += bloemEntitlementApplyDescription
-		bloemDocumentLifecycle(reg, &op)
+		bloemDocumentCommandKey(&op, bloemEntitlementApplyKeyRule)
 		registerBloemChiDocument[bloemJSONInput[BloemEntitlementApplyRequest], bloemJSONOutput[BloemEntitlementApplyResponse]](reg, op)
 	}
 
@@ -478,7 +471,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		bloemDocumentTemplateValidation(reg, &op)
 		bloemDocumentPlatformAPIKey(&op, "bloemEntitlementAccountsKey")
 		op.Description += bloemEntitlementApplyDescription
-		bloemDocumentLifecycle(reg, &op)
+		bloemDocumentCommandKey(&op, bloemEntitlementApplyKeyRule)
 		registerBloemChiDocument[bloemJSONInput[BloemEntitlementApplyRequest], bloemJSONOutput[BloemEntitlementApplyResponse]](reg, op)
 	}
 
@@ -497,7 +490,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		bloemAdminDocumentMutation(reg, &op)
 		bloemDocumentTemplateValidation(reg, &op)
 		op.Description += bloemEntitlementApplyDescription
-		bloemDocumentLifecycle(reg, &op)
+		bloemDocumentCommandKey(&op, bloemEntitlementApplyKeyRule)
 		registerBloemChiDocument[bloemJSONInput[BloemEntitlementApplyRequest], bloemJSONOutput[BloemEntitlementApplyResponse]](reg, op)
 	}
 
@@ -537,7 +530,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		op.Description += bloemPlatformBulkDescription
 		bloemDocumentValidation(reg, &op)
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemPlatformStrictJSONError})
-		bloemDocumentLifecycle(reg, &op)
+		bloemDocumentCommandKey(&op, bloemPolicyJobKeyRule)
 		registerBloemChiDocument[bloemJSONInput[BloemPolicyBulkAction], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 
@@ -614,7 +607,7 @@ func registerBloemPlatformAdministrationDocument(reg *Registry) {
 		op.Description += bloemPlatformBulkDescription
 		bloemDocumentValidation(reg, &op)
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{400: bloemPlatformStrictJSONError})
-		bloemDocumentLifecycle(reg, &op)
+		bloemDocumentCommandKey(&op, bloemPolicyJobKeyRule)
 		registerBloemChiDocument[bloemJSONInput[BloemPolicyBulkAction], bloemJSONOutput[BloemPeopleJobResponse]](reg, op)
 	}
 

@@ -233,7 +233,7 @@ func (h *AdminTenantsHandler) HandleDelete(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if h.members == nil {
-		writeError(w, http.StatusServiceUnavailable, "lifecycle_idempotency_unavailable", "Tenant retirement is temporarily unavailable")
+		writeError(w, http.StatusServiceUnavailable, "tenant_unavailable", "Tenant retirement is temporarily unavailable")
 		return
 	}
 	if err := h.members.RetireOrganization(r.Context(), id); err != nil {

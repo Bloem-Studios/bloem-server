@@ -17686,18 +17686,8 @@
     },
     "/api/bloem/v1/admin/organization/people/bulk-jobs": {
       "post": {
-        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match.",
         "operationId": "createBloemOrganizationPeopleBulkJob",
-        "parameters": [
-          {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -17717,18 +17707,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "Created"
           },
           "400": {
             "content": {
@@ -17779,16 +17758,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -17891,11 +17860,11 @@
     },
     "/api/bloem/v1/admin/organization/people/policy-jobs": {
       "post": {
-        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. An idempotency_key of 1 to 128 characters is required, in the body or the Idempotency-Key header. Repeating the command with the same key returns the original job; the same key with a different command returns 409 idempotency_conflict. A header key that differs from the body's returns 409 idempotency_key_conflict.",
         "operationId": "createBloemOrganizationPeoplePolicyJob",
         "parameters": [
           {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
+            "description": "The command's idempotency_key, sent as a header. When the body also carries idempotency_key, the two must match.",
             "in": "header",
             "name": "Idempotency-Key",
             "schema": {
@@ -17922,18 +17891,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "Created"
           },
           "400": {
             "content": {
@@ -17973,7 +17931,7 @@
                 }
               }
             },
-            "description": "The reviewed authorization revision or confirmation is stale, or the mutation conflicts with current state. Reload before retrying. current_revision is present only for authorization_state_changed."
+            "description": "The reviewed authorization revision or confirmation is stale, or the mutation conflicts with current state. Reload before retrying. current_revision is present only for authorization_state_changed. idempotency_key_conflict: the Idempotency-Key header differs from the body's idempotency_key."
           },
           "422": {
             "content": {
@@ -17984,16 +17942,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -18455,7 +18403,7 @@
     },
     "/api/bloem/v1/admin/organization/people/{account_id}/memberships/current": {
       "patch": {
-        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match.",
         "operationId": "updateBloemOrganizationPersonMembership",
         "parameters": [
           {
@@ -18465,14 +18413,6 @@
             "schema": {
               "format": "int64",
               "type": "integer"
-            }
-          },
-          {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
-              "type": "string"
             }
           }
         ],
@@ -18495,18 +18435,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "OK"
           },
           "400": {
             "content": {
@@ -18567,16 +18496,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -18602,7 +18521,7 @@
     },
     "/api/bloem/v1/admin/organization/people/{account_id}/profiles/{profile_id}": {
       "patch": {
-        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires the selected organization administrative context. Current account, login session, membership and policy/security revisions are revalidated; resource IDs cannot expand organization scope. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match.",
         "operationId": "updateBloemOrganizationPersonProfile",
         "parameters": [
           {
@@ -18618,14 +18537,6 @@
             "in": "path",
             "name": "profile_id",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
-            "in": "header",
-            "name": "Idempotency-Key",
             "schema": {
               "type": "string"
             }
@@ -18650,18 +18561,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "OK"
           },
           "400": {
             "content": {
@@ -18722,16 +18622,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -18928,11 +18818,11 @@
     },
     "/api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs": {
       "post": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. Also accepts a bearer API key owned by a currently enabled platform administrator. Unscoped keys are supported; scoped keys need the permission named by this security scheme. An organization context cannot broaden its authority. Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. Also accepts a bearer API key owned by a currently enabled platform administrator. Unscoped keys are supported; scoped keys need the permission named by this security scheme. An organization context cannot broaden its authority. Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound. An idempotency_key of 1 to 128 characters is required, in the body or the Idempotency-Key header. Repeating the command with the same key returns the original job; the same key with a different command returns 409 idempotency_conflict. A header key that differs from the body's returns 409 idempotency_key_conflict.",
         "operationId": "createBloemPlatformDirectPolicyJob",
         "parameters": [
           {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
+            "description": "The command's idempotency_key, sent as a header. When the body also carries idempotency_key, the two must match.",
             "in": "header",
             "name": "Idempotency-Key",
             "schema": {
@@ -18959,18 +18849,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "Created"
           },
           "400": {
             "content": {
@@ -19010,7 +18889,7 @@
                 }
               }
             },
-            "description": "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled."
+            "description": "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled. idempotency_key_conflict: the Idempotency-Key header differs from the body's idempotency_key."
           },
           "422": {
             "content": {
@@ -19021,16 +18900,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "429": {
             "content": {
@@ -19580,7 +19449,7 @@
     },
     "/api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/apply": {
       "post": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Also accepts a bearer API key owned by a currently enabled platform administrator. Unscoped keys are supported; scoped keys need the permission named by this security scheme. An organization context cannot broaden its authority. Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Also accepts a bearer API key owned by a currently enabled platform administrator. Unscoped keys are supported; scoped keys need the permission named by this security scheme. An organization context cannot broaden its authority. Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper. Repeating an apply with the same idempotency_key returns the original result without applying again. A header key that differs from the body's returns 409 idempotency_key_conflict.",
         "operationId": "applyBloemAccountEntitlement",
         "parameters": [
           {
@@ -19593,7 +19462,7 @@
             }
           },
           {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
+            "description": "The command's idempotency_key, sent as a header. When the body also carries idempotency_key, the two must match.",
             "in": "header",
             "name": "Idempotency-Key",
             "schema": {
@@ -19620,18 +19489,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "OK"
           },
           "400": {
             "content": {
@@ -19681,7 +19539,7 @@
                 }
               }
             },
-            "description": "The reviewed authorization revision or confirmation is stale, or the mutation conflicts with current state. Reload before retrying. current_revision is present only for authorization_state_changed."
+            "description": "The reviewed authorization revision or confirmation is stale, or the mutation conflicts with current state. Reload before retrying. current_revision is present only for authorization_state_changed. idempotency_key_conflict: the Idempotency-Key header differs from the body's idempotency_key."
           },
           "422": {
             "content": {
@@ -19699,16 +19557,6 @@
               }
             },
             "description": "validation_failed with fields, or template_unavailable without fields."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -25604,18 +25452,8 @@
         ]
       },
       "post": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match.",
         "operationId": "createBloemPlatformOrganization",
-        "parameters": [
-          {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -25635,18 +25473,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "Created"
           },
           "400": {
             "content": {
@@ -25697,16 +25524,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -25808,7 +25625,7 @@
         ]
       },
       "patch": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. At least one of name or slug is required. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. At least one of name or slug is required.",
         "operationId": "updateBloemPlatformOrganization",
         "parameters": [
           {
@@ -25817,14 +25634,6 @@
             "required": true,
             "schema": {
               "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
               "type": "string"
             }
           }
@@ -25848,18 +25657,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "OK"
           },
           "400": {
             "content": {
@@ -25920,16 +25718,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -26033,7 +25821,7 @@
     },
     "/api/bloem/v1/admin/platform/organizations/{id}/entitlement/apply": {
       "post": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper. Repeating an apply with the same idempotency_key returns the original result without applying again. A header key that differs from the body's returns 409 idempotency_key_conflict.",
         "operationId": "applyBloemOrganizationEntitlement",
         "parameters": [
           {
@@ -26046,7 +25834,7 @@
             }
           },
           {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
+            "description": "The command's idempotency_key, sent as a header. When the body also carries idempotency_key, the two must match.",
             "in": "header",
             "name": "Idempotency-Key",
             "schema": {
@@ -26073,18 +25861,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "OK"
           },
           "400": {
             "content": {
@@ -26134,7 +25911,7 @@
                 }
               }
             },
-            "description": "The reviewed authorization revision or confirmation is stale, or the mutation conflicts with current state. Reload before retrying. current_revision is present only for authorization_state_changed."
+            "description": "The reviewed authorization revision or confirmation is stale, or the mutation conflicts with current state. Reload before retrying. current_revision is present only for authorization_state_changed. idempotency_key_conflict: the Idempotency-Key header differs from the body's idempotency_key."
           },
           "422": {
             "content": {
@@ -26152,16 +25929,6 @@
               }
             },
             "description": "validation_failed with fields, or template_unavailable without fields."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -26492,7 +26259,7 @@
         ]
       },
       "post": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match.",
         "operationId": "createBloemPlatformOrganizationMembership",
         "parameters": [
           {
@@ -26501,14 +26268,6 @@
             "required": true,
             "schema": {
               "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
               "type": "string"
             }
           }
@@ -26532,18 +26291,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "Created"
           },
           "400": {
             "content": {
@@ -26604,16 +26352,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -26639,7 +26377,7 @@
     },
     "/api/bloem/v1/admin/platform/organizations/{id}/memberships/{membership_id}": {
       "patch": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. At least one of legacy_role or status is required. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. At least one of legacy_role or status is required.",
         "operationId": "updateBloemPlatformOrganizationMembership",
         "parameters": [
           {
@@ -26657,14 +26395,6 @@
             "required": true,
             "schema": {
               "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
               "type": "string"
             }
           }
@@ -26688,18 +26418,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "OK"
           },
           "400": {
             "content": {
@@ -26760,16 +26479,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -26795,7 +26504,7 @@
     },
     "/api/bloem/v1/admin/platform/organizations/{id}/reactivate": {
       "post": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match.",
         "operationId": "reactivateBloemPlatformOrganization",
         "parameters": [
           {
@@ -26804,14 +26513,6 @@
             "required": true,
             "schema": {
               "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
               "type": "string"
             }
           }
@@ -26835,18 +26536,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "OK"
           },
           "400": {
             "content": {
@@ -26907,16 +26597,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -26942,7 +26622,7 @@
     },
     "/api/bloem/v1/admin/platform/organizations/{id}/suspend": {
       "post": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match.",
         "operationId": "suspendBloemPlatformOrganization",
         "parameters": [
           {
@@ -26951,14 +26631,6 @@
             "required": true,
             "schema": {
               "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
               "type": "string"
             }
           }
@@ -26982,18 +26654,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "OK"
           },
           "400": {
             "content": {
@@ -27054,16 +26715,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -27089,7 +26740,7 @@
     },
     "/api/bloem/v1/admin/platform/organizations/{id}/transfer-ownership": {
       "post": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match.",
         "operationId": "transferBloemPlatformOrganizationOwnership",
         "parameters": [
           {
@@ -27098,14 +26749,6 @@
             "required": true,
             "schema": {
               "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {
               "type": "string"
             }
           }
@@ -27129,18 +26772,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "OK"
           },
           "400": {
             "content": {
@@ -27201,16 +26833,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
@@ -27326,7 +26948,7 @@
     },
     "/api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs": {
       "post": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. Also accepts a bearer API key owned by a currently enabled platform administrator. Unscoped keys are supported; scoped keys need the permission named by this security scheme. An organization context cannot broaden its authority. Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. Also accepts a bearer API key owned by a currently enabled platform administrator. Unscoped keys are supported; scoped keys need the permission named by this security scheme. An organization context cannot broaden its authority. Direct paths resolve the active deployment default organization; organization paths require an active organization. Bulk request bodies have a 1 MiB limit. Selections and confirmations are immutable, expiring and actor-bound. An idempotency_key of 1 to 128 characters is required, in the body or the Idempotency-Key header. Repeating the command with the same key returns the original job; the same key with a different command returns 409 idempotency_conflict. A header key that differs from the body's returns 409 idempotency_key_conflict.",
         "operationId": "createBloemPlatformOrganizationPolicyJob",
         "parameters": [
           {
@@ -27339,7 +26961,7 @@
             }
           },
           {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
+            "description": "The command's idempotency_key, sent as a header. When the body also carries idempotency_key, the two must match.",
             "in": "header",
             "name": "Idempotency-Key",
             "schema": {
@@ -27366,18 +26988,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "Created"
           },
           "400": {
             "content": {
@@ -27427,7 +27038,7 @@
                 }
               }
             },
-            "description": "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled."
+            "description": "Selection or confirmation expired, authorization state changed, idempotency conflicted, or job cannot be canceled. idempotency_key_conflict: the Idempotency-Key header differs from the body's idempotency_key."
           },
           "422": {
             "content": {
@@ -27438,16 +27049,6 @@
               }
             },
             "description": "validation_failed: see fields for the invalid values."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "429": {
             "content": {
@@ -29469,7 +29070,7 @@
     },
     "/api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply": {
       "post": {
-        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper. Lifecycle enforcement is capability/phase dependent. A pending request returns 503 lifecycle_request_pending with Retry-After: 1; malformed keys return 400 and conflicting keys return 409.",
+        "description": "Requires a current platform administrative context, except where the security alternatives explicitly admit a scoped API key. Originating login session and live platform authority are revalidated. JSON decoding rejects unknown fields, trailing JSON and bodies exceeding 32 KiB. expected_revision fields are JSON preconditions; these handlers do not use If-Match. Select an explicit template key and positive revision. Dry-run returns both dry_run_token and confirmation_token (the same bound expiring token). Apply requires a confirmation token (dry_run_token is its alias) and a body idempotency_key of at most 200 characters; changes since preview return 409 confirmation_stale. Apply returns the result directly, without a result wrapper. Repeating an apply with the same idempotency_key returns the original result without applying again. A header key that differs from the body's returns 409 idempotency_key_conflict.",
         "operationId": "applyBloemLegacyAccountEntitlement",
         "parameters": [
           {
@@ -29482,7 +29083,7 @@
             }
           },
           {
-            "description": "Opaque ASCII lifecycle request key. Required when lifecycle idempotency enforcement is enabled; otherwise optional. Reuse only for the same request and target. A supplied key fails closed with 503 when lifecycle safety is unavailable. A body idempotency_key, where supported, must match the header.",
+            "description": "The command's idempotency_key, sent as a header. When the body also carries idempotency_key, the two must match.",
             "in": "header",
             "name": "Idempotency-Key",
             "schema": {
@@ -29509,18 +29110,7 @@
                 }
               }
             },
-            "description": "Success",
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "true when a completed lifecycle receipt is replayed.",
-                "schema": {
-                  "enum": [
-                    "true"
-                  ],
-                  "type": "string"
-                }
-              }
-            }
+            "description": "OK"
           },
           "400": {
             "content": {
@@ -29570,7 +29160,7 @@
                 }
               }
             },
-            "description": "The reviewed authorization revision or confirmation is stale, or the mutation conflicts with current state. Reload before retrying. current_revision is present only for authorization_state_changed."
+            "description": "The reviewed authorization revision or confirmation is stale, or the mutation conflicts with current state. Reload before retrying. current_revision is present only for authorization_state_changed. idempotency_key_conflict: the Idempotency-Key header differs from the body's idempotency_key."
           },
           "422": {
             "content": {
@@ -29588,16 +29178,6 @@
               }
             },
             "description": "validation_failed with fields, or template_unavailable without fields."
-          },
-          "428": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BloemNativeError"
-                }
-              }
-            },
-            "description": "idempotency_key_required: the current lifecycle phase requires Idempotency-Key."
           },
           "503": {
             "content": {
