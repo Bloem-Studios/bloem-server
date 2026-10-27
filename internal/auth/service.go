@@ -492,6 +492,10 @@ type IdentitySession struct {
 	// Network: the identity is a network provider's, refused while the
 	// account's primary provider refuses the account (primaryAuthority).
 	Network bool
+	// RefusePasswordChange: the sign-in surface cannot run the forced
+	// password change (CompatLogin), so an account holding a temporary
+	// password is refused.
+	RefusePasswordChange bool
 }
 
 // OpenIdentitySession opens the login session of an account that signed in
@@ -520,6 +524,9 @@ func (s *Service) OpenIdentitySession(ctx context.Context, db OAuthSessionDB, c 
 	}
 	if !user.Enabled {
 		return nil, ErrUserDisabled
+	}
+	if c.RefusePasswordChange && user.PasswordChangeRequired {
+		return nil, ErrPasswordChangeRequired
 	}
 	installationID, err := lockOAuthIdentity(ctx, db, user.ID, c.IdentityID)
 	if err != nil {
@@ -771,7 +778,6 @@ func (s *Service) loginWithProvider(
 		DeviceName: deviceName,
 		IPAddress:  ip,
 		ExpiresAt:  time.Now().Add(s.jwt.RefreshExpiry()),
-		IdentityID: identityRef(identityID),
 	}
 
 	if providerID == LocalProviderID {
@@ -823,7 +829,21 @@ func (s *Service) loginWithProvider(
 			return nil
 		})
 	} else {
-		err = s.sessions.Create(ctx, session)
+		// Account resolution committed in its own transaction. Open the
+		// session as an OAuth sign-in does, under the account lock, so a
+		// disable or unlink that committed meanwhile refuses the sign-in
+		// instead of missing its session.
+		pair, err := s.OpenIdentitySession(ctx, nil, IdentitySession{
+			UserID:               user.ID,
+			IdentityID:           identityID,
+			DeviceName:           deviceName,
+			IP:                   ip,
+			RefusePasswordChange: refusePasswordChange,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		return pair, pair.User, nil
 	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating session: %w", err)
@@ -1372,6 +1392,12 @@ func (s *Service) CurrentLoginSession(ctx context.Context, userID int, sessionID
 		return nil, ErrSessionNotFound
 	}
 	return session, nil
+}
+
+// LoginSessionActive reports whether a login session is live: not revoked
+// and not expired. An error means the store could not be read.
+func (s *Service) LoginSessionActive(ctx context.Context, sessionID string) (bool, error) {
+	return s.sessions.IsValid(ctx, sessionID)
 }
 
 // RevokeSession revokes a specific session. It verifies the session belongs

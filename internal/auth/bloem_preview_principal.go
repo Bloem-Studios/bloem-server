@@ -22,23 +22,25 @@ const previewAccountSQL = `(u.role <> 'admin' AND (
 
 // ActiveSessionAuthority is ActiveSessionRole that also reports whether the
 // session's account is a preview principal, from the same indexed lookup.
-func (r *SessionRepository) ActiveSessionAuthority(ctx context.Context, id string) (role string, previewOnly, active bool, err error) {
-	authority, previewOnly, active, err := r.ActivePreviewSession(ctx, id)
+func (r *SessionRepository) ActiveSessionAuthority(ctx context.Context, id string, userID int) (role string, previewOnly, active bool, err error) {
+	authority, previewOnly, active, err := r.ActivePreviewSession(ctx, id, userID)
 	return authority.Role, previewOnly, active, err
 }
 
 // ActivePreviewSession preserves the host's remote-playback authority while
 // checking preview membership and guest expiry in the same database snapshot.
-func (r *SessionRepository) ActivePreviewSession(ctx context.Context, id string) (authority SessionAuthority, previewOnly, active bool, err error) {
+// Like ActiveSession, the session must belong to userID, the account the
+// credential names.
+func (r *SessionRepository) ActivePreviewSession(ctx context.Context, id string, userID int) (authority SessionAuthority, previewOnly, active bool, err error) {
 	query := `SELECT CASE WHEN s.profile_id IS NOT NULL THEN 'user' ELSE u.role END,
 		s.purpose, COALESCE(s.bound_profile_id, ''), ` + previewAccountSQL + `
 		FROM auth_sessions s
 		JOIN users u ON u.id = s.user_id
-		WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > NOW()
+		WHERE s.id = $1 AND s.user_id = $2 AND s.revoked_at IS NULL AND s.expires_at > NOW()
 		  AND (s.auth_method <> 'preview_guest' OR EXISTS (
 			SELECT 1 FROM bloem_preview_guest_sessions g
 			WHERE g.session_id = s.id AND ` + liveGuestCondition + `))`
-	err = r.pool.QueryRow(ctx, query, id).Scan(&authority.Role, &authority.Purpose, &authority.BoundProfileID, &previewOnly)
+	err = r.pool.QueryRow(ctx, query, id, userID).Scan(&authority.Role, &authority.Purpose, &authority.BoundProfileID, &previewOnly)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return SessionAuthority{}, false, false, nil
 	}

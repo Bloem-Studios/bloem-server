@@ -52,7 +52,7 @@ func TestPreviewPrincipalRouterBoundary(t *testing.T) {
 	if err := sessions.Create(ctx, models.AuthSession{ID: "preview-session", UserID: user.ID, ExpiresAt: time.Now().Add(time.Hour)}); err != nil {
 		t.Fatal(err)
 	}
-	if role, preview, active, err := sessions.ActiveSessionAuthority(ctx, "preview-session"); err != nil || !preview || !active || role != "user" {
+	if role, preview, active, err := sessions.ActiveSessionAuthority(ctx, "preview-session", user.ID); err != nil || !preview || !active || role != "user" {
 		t.Fatalf("session authority: %s preview=%v active=%v err=%v", role, preview, active, err)
 	}
 	const secret = "preview-router-test-secret"

@@ -81,7 +81,7 @@ func (v *themePlaybackViewer) Resolve(_ context.Context, in access.ResolveInput)
 
 type themePlaybackSessions struct{}
 
-func (themePlaybackSessions) ActiveSession(context.Context, string) (auth.SessionAuthority, bool, error) {
+func (themePlaybackSessions) ActiveSession(context.Context, string, int) (auth.SessionAuthority, bool, error) {
 	return auth.SessionAuthority{Role: "user"}, true, nil
 }
 

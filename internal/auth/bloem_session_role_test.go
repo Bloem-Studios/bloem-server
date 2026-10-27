@@ -26,14 +26,14 @@ func TestBloemDirectProfileSessionRoleRemainsRestricted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	role, active, err := sessions.ActiveSessionRole(t.Context(), claims.SessionID)
+	role, active, err := sessions.ActiveSessionRole(t.Context(), claims.SessionID, claims.UserID)
 	if err != nil || !active || role != models.RoleUser || claims.Role != role {
 		t.Fatalf("role=%q active=%t claim=%q error=%v", role, active, claims.Role, err)
 	}
 	if err := sessions.Revoke(t.Context(), claims.SessionID); err != nil {
 		t.Fatal(err)
 	}
-	if _, active, err := sessions.ActiveSessionRole(t.Context(), claims.SessionID); err != nil || active {
+	if _, active, err := sessions.ActiveSessionRole(t.Context(), claims.SessionID, claims.UserID); err != nil || active {
 		t.Fatalf("revoked session active=%t error=%v", active, err)
 	}
 }

@@ -22,7 +22,7 @@ const (
 // PreviewPrincipals resolves whether a caller is a preview principal.
 // *auth.SessionRepository implements it.
 type PreviewPrincipals interface {
-	ActiveSessionAuthority(ctx context.Context, sessionID string) (role string, previewOnly, active bool, err error)
+	ActiveSessionAuthority(ctx context.Context, sessionID string, userID int) (role string, previewOnly, active bool, err error)
 	AccountPreviewOnly(ctx context.Context, accountID int) (bool, error)
 }
 
@@ -63,17 +63,17 @@ func WritePreviewOnly(w http.ResponseWriter) {
 
 // sessionAuthority is the per-request session check, with the preview flag
 // when a preview lookup is installed.
-func (am *AuthMiddleware) sessionAuthority(ctx context.Context, sessionID string) (authority auth.SessionAuthority, previewOnly, active bool, err error) {
+func (am *AuthMiddleware) sessionAuthority(ctx context.Context, sessionID string, userID int) (authority auth.SessionAuthority, previewOnly, active bool, err error) {
 	if source, ok := am.previewPrincipals.(interface {
-		ActivePreviewSession(context.Context, string) (auth.SessionAuthority, bool, bool, error)
+		ActivePreviewSession(context.Context, string, int) (auth.SessionAuthority, bool, bool, error)
 	}); ok {
-		return source.ActivePreviewSession(ctx, sessionID)
+		return source.ActivePreviewSession(ctx, sessionID, userID)
 	}
-	authority, active, err = am.sessionValidator.ActiveSession(ctx, sessionID)
+	authority, active, err = am.sessionValidator.ActiveSession(ctx, sessionID, userID)
 	if err != nil || !active || am.previewPrincipals == nil {
 		return authority, false, active, err
 	}
-	_, previewOnly, active, err = am.previewPrincipals.ActiveSessionAuthority(ctx, sessionID)
+	_, previewOnly, active, err = am.previewPrincipals.ActiveSessionAuthority(ctx, sessionID, userID)
 	return authority, previewOnly, active, err
 }
 

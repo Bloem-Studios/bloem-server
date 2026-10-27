@@ -78,10 +78,10 @@ func TestPreviewOperationsAreRealAndSafeOnesRead(t *testing.T) {
 
 type previewGateSessions struct{ preview bool }
 
-func (s previewGateSessions) ActiveSession(context.Context, string) (auth.SessionAuthority, bool, error) {
+func (s previewGateSessions) ActiveSession(context.Context, string, int) (auth.SessionAuthority, bool, error) {
 	return auth.SessionAuthority{Role: "user"}, true, nil
 }
-func (s previewGateSessions) ActiveSessionAuthority(context.Context, string) (string, bool, bool, error) {
+func (s previewGateSessions) ActiveSessionAuthority(context.Context, string, int) (string, bool, bool, error) {
 	return "user", s.preview, true, nil
 }
 func (s previewGateSessions) AccountPreviewOnly(context.Context, int) (bool, error) {

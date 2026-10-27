@@ -81,3 +81,24 @@ func TestBloemBridgeStopOnAnotherReplica(t *testing.T) {
 		t.Fatalf("late progress: %v", err)
 	}
 }
+
+// Silo's ownsPlaybackSession refuses a stop from a sibling profile on the same
+// account; the durable stop Bloem answers first follows the same rule.
+func TestBloemBridgeStopRefusesASiblingProfile(t *testing.T) {
+	f := newPlaybackServiceFixture(t)
+	remote := NewPlaybackHandler(playback.NewSessionManager(0, 0))
+	remote.PlanStoreV3 = f.handler.PlanStoreV3
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/playback/"+f.session.ID, nil)
+	ctx := apimw.SetProfileID(f.ctx, "profile-2")
+	rec := httptest.NewRecorder()
+	if !remote.stopDurablePlayback(rec, req.WithContext(ctx), f.session.ID) {
+		t.Fatal("shared attempt not handled")
+	}
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("sibling stop: %d %s", rec.Code, rec.Body.String())
+	}
+	record, err := remote.PlanStoreV3.GetAttempt(ctx, f.session.ID)
+	if err != nil || record.StoppedAt != nil {
+		t.Fatalf("a sibling profile stopped the attempt: %+v %v", record, err)
+	}
+}

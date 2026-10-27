@@ -74,7 +74,7 @@ type nativeVideoPolicy struct {
 	allowRecovery      bool
 	loadUser           func(context.Context, int) (*models.User, error)
 	loadLogin          func(context.Context, string) (*models.AuthSession, error)
-	loginActive        func(context.Context, string) (string, bool, error)
+	loginActive        func(context.Context, string, int) (string, bool, error)
 	loadProfile        func(context.Context, int, string) (*userstore.Profile, error)
 	loadAPIKeyMetadata func(context.Context, int64) (*models.APIKeyMetadata, error)
 	credentials        nativeVideoCredentials
@@ -648,7 +648,7 @@ func verifyNativeVideoActor(ctx context.Context, d handlers.NativeVideoAuthority
 				(!time.Now().Before(*login.AbsoluteExpiresAt) || d.ExpiresAt.After(*login.AbsoluteExpiresAt))) {
 			return middleware.ErrCurrentCredentialInvalid
 		}
-		_, active, err := p.loginActive(ctx, d.LoginSessionID)
+		_, active, err := p.loginActive(ctx, d.LoginSessionID, d.UserID)
 		if err != nil {
 			return err
 		}

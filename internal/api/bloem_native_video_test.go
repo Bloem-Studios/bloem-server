@@ -59,12 +59,12 @@ func (v *nativeVideoViewerFixture) Resolve(ctx context.Context, input access.Res
 
 type nativeVideoLoginFixture struct{ enabled, active bool }
 
-func (l *nativeVideoLoginFixture) ActiveSession(ctx context.Context, id string) (auth.SessionAuthority, bool, error) {
-	role, active, err := l.ActiveSessionRole(ctx, id)
+func (l *nativeVideoLoginFixture) ActiveSession(ctx context.Context, id string, userID int) (auth.SessionAuthority, bool, error) {
+	role, active, err := l.ActiveSessionRole(ctx, id, userID)
 	return auth.SessionAuthority{Role: role}, active, err
 }
 
-func (l *nativeVideoLoginFixture) ActiveSessionRole(context.Context, string) (string, bool, error) {
+func (l *nativeVideoLoginFixture) ActiveSessionRole(context.Context, string, int) (string, bool, error) {
 	return "user", l.active, nil
 }
 func (l *nativeVideoLoginFixture) GetByID(_ context.Context, id int) (*models.User, error) {

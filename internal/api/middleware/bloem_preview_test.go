@@ -25,11 +25,11 @@ type previewSessions struct {
 	accounts map[int]bool
 }
 
-func (p previewSessions) ActiveSession(_ context.Context, id string) (auth.SessionAuthority, bool, error) {
+func (p previewSessions) ActiveSession(_ context.Context, id string, _ int) (auth.SessionAuthority, bool, error) {
 	return auth.SessionAuthority{Role: "user"}, true, nil
 }
 
-func (p previewSessions) ActiveSessionAuthority(_ context.Context, id string) (string, bool, bool, error) {
+func (p previewSessions) ActiveSessionAuthority(_ context.Context, id string, _ int) (string, bool, bool, error) {
 	return "user", p.preview[id], true, nil
 }
 

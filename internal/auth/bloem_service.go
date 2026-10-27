@@ -56,7 +56,8 @@ type serviceUserRepository interface {
 }
 
 type serviceSessionRepository interface {
-	ActiveSession(context.Context, string) (SessionAuthority, bool, error)
+	ActiveSession(context.Context, string, int) (SessionAuthority, bool, error)
+	IsValid(context.Context, string) (bool, error)
 	Begin(context.Context) (pgx.Tx, error)
 	createWithQuerier(context.Context, sessionExecQuerier, models.AuthSession) error
 	Create(ctx context.Context, session models.AuthSession) error

@@ -57,19 +57,24 @@ func TestActiveSessionAuthorityReadsTheGroupLive(t *testing.T) {
 	repo := NewSessionRepository(pool)
 	accountID, sessionID, previewGroupID := previewFixture(t, ctx, pool, "user")
 
-	role, preview, active, err := repo.ActiveSessionAuthority(ctx, sessionID)
+	role, preview, active, err := repo.ActiveSessionAuthority(ctx, sessionID, accountID)
 	if err != nil || !active || role != "user" || preview {
 		t.Fatalf("before: role=%q preview=%v active=%v err=%v", role, preview, active, err)
 	}
 	assignAccountGroup(t, ctx, pool, accountID, previewGroupID)
-	if _, preview, _, _ = repo.ActiveSessionAuthority(ctx, sessionID); !preview {
+	if _, preview, _, _ = repo.ActiveSessionAuthority(ctx, sessionID, accountID); !preview {
 		t.Fatal("the same session did not become a preview principal after its group changed")
 	}
 	if accountPreview, err := repo.AccountPreviewOnly(ctx, accountID); err != nil || !accountPreview {
 		t.Fatalf("AccountPreviewOnly = %v, %v", accountPreview, err)
 	}
-	if _, _, active, err = repo.ActiveSessionAuthority(ctx, "missing-session"); active || err != nil {
+	if _, _, active, err = repo.ActiveSessionAuthority(ctx, "missing-session", accountID); active || err != nil {
 		t.Fatalf("missing session: active=%v err=%v", active, err)
+	}
+	// As with Silo's ActiveSession, a credential naming another account does
+	// not authenticate with this account's session.
+	if _, _, active, err := repo.ActiveSessionAuthority(ctx, sessionID, accountID+1); active || err != nil {
+		t.Fatalf("another account's session: active=%v err=%v", active, err)
 	}
 }
 
@@ -96,7 +101,7 @@ func TestActivePreviewSessionPreservesRemotePlaybackAuthority(t *testing.T) {
 		if preview {
 			assignAccountGroup(t, ctx, pool, accountID, groupID)
 		}
-		authority, restricted, active, err := repo.ActivePreviewSession(ctx, id)
+		authority, restricted, active, err := repo.ActivePreviewSession(ctx, id, accountID)
 		if err != nil || !active || restricted != preview || !authority.IsRemotePlayback() ||
 			authority.BoundProfileID != profileID || authority.Role != "user" {
 			t.Fatalf("preview=%v: authority=%+v restricted=%v active=%v err=%v", preview, authority, restricted, active, err)
@@ -116,7 +121,7 @@ func TestActiveSessionAuthorityCountsProfileGroups(t *testing.T) {
 		uuid.NewString(), accountID, previewGroupID); err != nil {
 		t.Fatal(err)
 	}
-	if _, preview, _, err := NewSessionRepository(pool).ActiveSessionAuthority(ctx, sessionID); err != nil || !preview {
+	if _, preview, _, err := NewSessionRepository(pool).ActiveSessionAuthority(ctx, sessionID, accountID); err != nil || !preview {
 		t.Fatalf("profile in a preview group: preview=%v err=%v", preview, err)
 	}
 }
@@ -126,7 +131,7 @@ func TestAdminIsNeverAPreviewPrincipal(t *testing.T) {
 	pool := NewBloemAuthTestDatabase(t)
 	accountID, sessionID, previewGroupID := previewFixture(t, ctx, pool, "admin")
 	assignAccountGroup(t, ctx, pool, accountID, previewGroupID)
-	if _, preview, _, err := NewSessionRepository(pool).ActiveSessionAuthority(ctx, sessionID); err != nil || preview {
+	if _, preview, _, err := NewSessionRepository(pool).ActiveSessionAuthority(ctx, sessionID, accountID); err != nil || preview {
 		t.Fatalf("admin: preview=%v err=%v", preview, err)
 	}
 }
@@ -160,13 +165,13 @@ func TestActiveSessionAuthorityEndsAnIdleGuest(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := NewSessionRepository(pool)
-	if _, _, active, err := repo.ActiveSessionAuthority(ctx, pair.SessionID); err != nil || !active {
+	if _, _, active, err := repo.ActiveSessionAuthority(ctx, pair.SessionID, user.ID); err != nil || !active {
 		t.Fatalf("fresh guest active=%v err=%v", active, err)
 	}
 	if _, err := pool.Exec(ctx, `UPDATE auth_sessions SET last_seen_at = now() - interval '21 minutes', created_at = now() - interval '40 minutes' WHERE id=$1`, pair.SessionID); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, active, err := repo.ActiveSessionAuthority(ctx, pair.SessionID); err != nil || active {
+	if _, _, active, err := repo.ActiveSessionAuthority(ctx, pair.SessionID, user.ID); err != nil || active {
 		t.Fatalf("idle guest active=%v err=%v", active, err)
 	}
 }

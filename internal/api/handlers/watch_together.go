@@ -570,8 +570,7 @@ func (h *WatchTogetherHandler) HandleCreateSuggestion(w http.ResponseWriter, r *
 	}
 
 	var req createWatchTogetherSuggestionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
+	if !decodeLimitedJSONBody(w, r, watchtogether.MaxSuggestionCreateBodyBytes, &req, false) {
 		return
 	}
 	if req.ContentID == "" || req.Title == "" {
@@ -595,6 +594,8 @@ func (h *WatchTogetherHandler) HandleCreateSuggestion(w http.ResponseWriter, r *
 			writeError(w, http.StatusGone, "gone", "Room is no longer active")
 		case errors.Is(err, watchtogether.ErrInvalidSelection):
 			writeError(w, http.StatusBadRequest, "bad_request", "Invalid content type")
+		case errors.Is(err, watchtogether.ErrSuggestionLimitReached):
+			writeError(w, http.StatusConflict, "conflict", "Room has reached its suggestion limit")
 		default:
 			writeError(w, http.StatusInternalServerError, "internal_error", "Failed to create suggestion")
 		}

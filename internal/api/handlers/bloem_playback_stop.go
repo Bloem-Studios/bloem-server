@@ -54,7 +54,9 @@ func (h *PlaybackHandler) stopDurablePlayback(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusServiceUnavailable, "dependency_unavailable", "Playback stop is temporarily unavailable")
 		return true
 	}
-	if !callerOwnsPlaybackSession(r, record.UserID, record.ProfileID, apimw.GetUserID(r.Context())) {
+	// Silo's ownsPlaybackSession rule: the account and the acting profile, so
+	// a sibling profile cannot stop another profile's playback.
+	if record.UserID != apimw.GetUserID(r.Context()) || record.ProfileID != apimw.GetProfileID(r.Context()) {
 		writeError(w, http.StatusForbidden, "forbidden", "Session belongs to another user")
 		return true
 	}

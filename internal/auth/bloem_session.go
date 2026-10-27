@@ -11,8 +11,8 @@ import (
 )
 
 // ActiveSessionRole keeps older Bloem adapters on the upstream authority lookup.
-func (r *SessionRepository) ActiveSessionRole(ctx context.Context, id string) (string, bool, error) {
-	authority, active, err := r.ActiveSession(ctx, id)
+func (r *SessionRepository) ActiveSessionRole(ctx context.Context, id string, userID int) (string, bool, error) {
+	authority, active, err := r.ActiveSession(ctx, id, userID)
 	return authority.Role, active, err
 }
 
@@ -267,9 +267,3 @@ func normalizeSessionAuthMethod(session *models.AuthSession) error {
 
 // Begin supplies the transaction boundary used by upstream OAuth completion.
 func (r *SessionRepository) Begin(ctx context.Context) (pgx.Tx, error) { return r.pool.Begin(ctx) }
-
-// LoginSessionActive follows Silo session validity and narrowed authority.
-func (s *Service) LoginSessionActive(ctx context.Context, sessionID string) (bool, error) {
-	_, active, err := s.sessions.ActiveSession(ctx, sessionID)
-	return active, err
-}
