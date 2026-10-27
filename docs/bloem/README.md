@@ -12,7 +12,7 @@ material lives in Bloem-owned files listed here. The code is the source of truth
 - [Protocol compatibility](../architecture/bloem-compatibility-removal.md) — Silo's Jellyfin and Audiobookshelf servers, their tenant wiring, and the removed companion gateway.
 - [Pastime managed-tracking removal](../architecture/bloem-pastime-removal.md) — forward-only cleanup migration and the rule that Pastime returns only as an ordinary plugin.
 
-- [October 27 main deployment](../operations/2026-10-27-main-deployment.md) — `main` at `422a51fed`: Silo through `3e2d306b2`, the first CI-built production image, three forward-only migrations, 16 s downtime; then `276becf4a`, the admin-context fix, with no migrations and 12 s downtime.
+- [October 27 main deployment](../operations/2026-10-27-main-deployment.md) — `main` at `422a51fed`: Silo through `3e2d306b2`, the first CI-built production image, three forward-only migrations, 16 s downtime; then `276becf4a`, the admin-context fix, with no migrations and 12 s downtime, and PostgreSQL tuning sized for the database container.
 - [October 26 Stage A deployment](../operations/2026-10-26-stage-a-deployment.md) — `main` at `7831034ea`: account policy on users, music and lifecycle receipts removed, three forward-only migrations, 49 s downtime.
 - [October 26 main deployment](../operations/2026-10-26-main-deployment.md) — `main` at `d183b286f`, 21 Silo migrations, local image build and verification.
 - [October 15 preview server deployment](../operations/2026-10-15-preview-server-deployment.md) — published source, offline migrations, matching presentation workers, live API/Swagger checks and pending preview activation.

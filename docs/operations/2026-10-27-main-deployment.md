@@ -131,3 +131,35 @@ Three warnings in the first minute need no action for this deployment:
 
 To roll back, start `bloem-server:release-422a51fed` again: the schema did
 not change.
+
+## Follow-up: PostgreSQL tuning sized for the database container
+
+Bloem tunes PostgreSQL with `ALTER SYSTEM` on every start (`POSTGRES_TUNE=on`,
+`POSTGRES_TUNE_MEMORY=64GB`). The database runs in its own container with 12
+cores and 64 GiB, but `POSTGRES_TUNE_CPUS` was never set, so the tuner counted
+the application container's 32 cores. At 08:13 UTC the application's `.env`
+gained `POSTGRES_TUNE_CPUS=12` and `POSTGRES_TUNE_STORAGE=nvme` (the database
+disk is NVMe), and the server was recreated on the same image: 11 seconds of
+downtime, healthy with no restarts, ready 200 locally and publicly, no ERROR
+or panic lines. The runtime fingerprint changed only because the environment
+did. Backups: `.env.bak-tune-cpus-20261027T081254Z` beside the `.env`, and
+`/var/backups/postgresql.auto.conf.before-tune-cpus-20261027T081254Z` on the
+database container.
+
+| Setting | Before | After |
+| --- | --- | --- |
+| `max_parallel_workers` | 32 | 12 |
+| `max_worker_processes` | 32 | 12 in the file; 32 until PostgreSQL restarts |
+| `work_mem` | `114390kB` | `134816kB` |
+| `effective_io_concurrency` | 200 | 1000 |
+| `autovacuum_max_workers` | 5 | 3 (default) |
+| `io_workers` | 8 | 3 (default) |
+
+The memory-based settings (`shared_buffers` 16 GB, `effective_cache_size`
+48 GB) did not change. Every setting except `max_worker_processes` is live.
+
+The start-up warning "postgres restart required to finish applying auto-tuned
+settings" appears on every start: the tuner lists every restart-only setting
+it writes, whether or not the running value already matches. Before this
+change PostgreSQL had no setting pending a restart. After it, only
+`max_worker_processes` is pending.
