@@ -85,8 +85,9 @@ Set the host path to your media:
 MEDIA_ROOT=/path/to/your/media
 ```
 
-Set `SILO_IMAGE` to a pinned image or a local build as well. The default
-`latest` tag is stale; see [Container image selection](#container-image-selection).
+Check `SILO_IMAGE` as well: the default `latest` follows `main`, and the
+package may need GitHub access to pull; see
+[Container image selection](#container-image-selection).
 
 Then start the stack:
 
@@ -110,25 +111,29 @@ Design notes: [Secret encryption at rest](../../../../architecture/secret-encryp
 `SILO_IMAGE` is the Compose variable that selects the application image; Bloem
 keeps Silo's name for it so upstream Compose files still work. Both
 `docker-compose.yml` and `.env.bloem.example` default it to
-`ghcr.io/bloem-studios/bloem-server:latest`. **Do not rely on that default:**
+`ghcr.io/bloem-studios/bloem-server:latest`.
 
 - Since `04a69c0fe` (2026-10-11) Bloem images are published only by the
   [Bloem Image workflow](../../../../../.github/workflows/bloem-image.yml). It runs
   after Bloem CI passes on a push to `main`, builds that exact commit and pushes
-  one tag, the full 40-character commit SHA:
-  `ghcr.io/bloem-studios/bloem-server:<full sha>`. It never moves `latest` and
-  never creates a `build-N` or short-SHA tag. See [CI additions](../../../ci.md).
+  it under the full 40-character commit SHA:
+  `ghcr.io/bloem-studios/bloem-server:<full sha>`. It never creates a `build-N`
+  or short-SHA tag. See [CI additions](../../../ci.md).
+- Since `6d0adcfe9` (2026-10-27) the workflow also points `latest` at that
+  image if the commit is still `main`'s head, so `latest` follows `main`.
+  Before that change nothing moved `latest`: it was `build-152`, a September 24,
+  2026 image left from the earlier publishing path.
 - Silo's `Docker Image` workflow, which produces the `build-N`, `latest` and
   short-SHA tags that Silo's [release versioning](../../../../release-versioning.md)
   describes, follows Silo's `CI` workflow, and that runs only in Silo's own
   repository. In Bloem both are skipped.
-- So `latest` and the `build-N` tags in Bloem's registry are left over from the
-  earlier publishing path. When this guide was reviewed on 2026-10-27, `latest`
-  was `build-152`, an image from September 24, 2026.
-- On that date the container package was also private, so pulling it needed a
-  GitHub account with access to it.
+- On 2026-10-27 the container package was private, so pulling it needed a
+  GitHub account with access to it. Without access, build the image from the
+  checkout (below).
 
-Pin the image by full commit SHA or digest:
+`latest` changes with every tested `main` commit, so an installation that must
+be rolled back or tied to a known revision pins the image by full commit SHA or
+digest:
 
 ```dotenv
 SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:<full commit sha>

@@ -475,8 +475,11 @@ stays in the database.
   builds that commit with the web bundle CI built and uploaded
   (`frontend-dist-<sha>`) and pushes one tag, the full 40-character commit SHA:
   `ghcr.io/bloem-studios/bloem-server:<sha>`, for `linux/amd64`, with the
-  revision in the image labels. It never moves `latest`. Silo's own image
-  workflow follows Silo's CI and does not run here.
+  revision in the image labels. Since `6d0adcfe9` (October 27, 2026) it then
+  points `latest` at the same image if that commit is still `main`'s head, so
+  `latest` follows `main` as Silo's does; before that, `latest` was a September
+  24 build nothing moved. Silo's own image workflow follows Silo's CI and does
+  not run here.
 
 See [Bloem CI](../docs/bloem/ci.md) for the job list and tool pins.
 
@@ -575,10 +578,11 @@ You need Docker with Compose 2.24+, Git and OpenSSL, and a folder of media.
 
 > [!WARNING]
 > **Choose the image first.** The Compose file defaults `SILO_IMAGE` to
-> `ghcr.io/bloem-studios/bloem-server:latest`, but the Bloem Image workflow never
-> moves `latest`. On October 27, 2026, `latest` was a September 24 build, and the
-> container package was not publicly pullable. Pin `SILO_IMAGE` to a full-SHA tag
-> you can pull, or build the image from this checkout. See
+> `ghcr.io/bloem-studios/bloem-server:latest`, which follows `main` since
+> October 27, 2026. On that date the container package was not publicly
+> pullable, so without access to it, build the image from this checkout. For a
+> server you need to roll back or attribute, pin a full-SHA tag rather than
+> `latest`. See
 > [container image selection](../docs/bloem/overlays/wiki/deployment/docker.md#container-image-selection).
 
 ```sh
@@ -619,8 +623,8 @@ reading or go straight to the [admin guide](../docs/wiki/admin-guide.md).
 The easiest way to run Bloem is with Docker Compose 2.24 or newer. The default stack assumes you do
 not already have PostgreSQL and Redis available, so it bundles PostgreSQL, Redis, FFmpeg, and the
 application for a one-command start. `SILO_IMAGE` selects the application image; it keeps Silo's
-name for upstream-configuration compatibility, and its default
-`ghcr.io/bloem-studios/bloem-server:latest` is stale (see the warning under Quick start).
+name for upstream-configuration compatibility, and its default is
+`ghcr.io/bloem-studios/bloem-server:latest` (see the warning under Quick start).
 
 1. **Create a `.env` file**
 

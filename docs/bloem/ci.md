@@ -252,10 +252,14 @@ day.
 
 **What it does not do.**
 
-- It publishes no `latest` or `build-<n>` tag and no arm64 image.
-  `docker-compose.yml` defaults `SILO_IMAGE` to
-  `ghcr.io/bloem-studios/bloem-server:latest`, which this workflow never
-  moves, so set `SILO_IMAGE` to a full-SHA tag
+- It publishes no `build-<n>` or short-SHA tag and no arm64 image. Its last
+  step, added in `6d0adcfe9` (2026-10-27), points `latest` at the image it
+  just pushed, but only if that commit is still `main`'s head; a late run for
+  an older commit leaves `latest` for the newer commit's own run, so `latest`
+  never moves backwards. If the newest commit's CI fails, `latest` stays on
+  the last image published while its commit was the head. `docker-compose.yml`
+  defaults `SILO_IMAGE` to `latest`; deployments that must be attributable pin
+  a full-SHA tag
   ([deployment guide](overlays/wiki/deployment/docker.md#container-image-selection)).
 - It does not deploy. Deployment is a separate, manual step, recorded in
   [`docs/operations/`](../operations/).

@@ -45,13 +45,16 @@ publishes a single linux/amd64 image with a single tag:
 | Tag | Meaning |
 | --- | --- |
 | `ghcr.io/bloem-studios/bloem-server:<full 40-character commit SHA>` | The exact `main` commit that passed Bloem CI. The image's `org.opencontainers.image.revision` label and the server's build revision carry the same SHA. |
+| `ghcr.io/bloem-studios/bloem-server:latest` | Since `6d0adcfe9` (2026-10-27), the newest of those images whose commit was still `main`'s head when it was pushed. |
 
-The workflow does not move `latest` and creates no `build-N` or short-SHA tags.
-The `latest` and `build-N` tags in Bloem's registry come from the publishing
-path Bloem used before October 11; on 2026-10-27, `latest` was `build-152`, an
-image from September 24, 2026. `docker-compose.yml` and `.env.bloem.example`
-still default `SILO_IMAGE` to `latest`, so pin a full-SHA tag or a digest
-instead. See the [Docker guide](wiki/deployment/docker.md#container-image-selection)
+The workflow creates no `build-N` or short-SHA tags. Before `6d0adcfe9` it did
+not move `latest` either: the `latest` and `build-N` tags came from the
+publishing path Bloem used before October 11, and on 2026-10-27 `latest` was
+still `build-152`, an image from September 24, 2026, until the first run after
+that change moved it. `docker-compose.yml` and `.env.bloem.example` default
+`SILO_IMAGE` to `latest`. As Silo's table says of its own `latest`, a
+deployment that must be rolled back or attributed pins a full-SHA tag or a
+digest instead. See the [Docker guide](wiki/deployment/docker.md#container-image-selection)
 and [CI additions](../ci.md).
 
 ## Bloem releases

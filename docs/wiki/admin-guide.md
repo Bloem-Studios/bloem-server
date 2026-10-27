@@ -189,9 +189,9 @@ Use an absolute path (one that starts with `/`). This folder is mounted read-onl
 container at `/mnt/media`, so Bloem sees your files without copying them.
 
 **Choose the image.** `.env.bloem.example` sets `SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:latest`.
-Do not rely on `latest`: Bloem's CI publishes each tested `main` commit under its full commit SHA
-and does not move `latest`, so `latest` is an old image. Set `SILO_IMAGE` to a full-SHA tag, or
-build the image yourself, as described in
+Bloem's CI publishes each tested `main` commit under its full commit SHA and, since October 27, 2026,
+moves `latest` to the newest one, so `latest` changes whenever `main` does. To know which revision you
+run and roll back to it, set `SILO_IMAGE` to a full-SHA tag instead, or build the image yourself, as described in
 [Container image selection](../bloem/overlays/wiki/deployment/docker.md#container-image-selection).
 That page also notes that the image package may need a GitHub account with access to pull it.
 
@@ -769,7 +769,7 @@ lists the release-specific preparation.
 | Nobody can log in | Check **Silo public URL** under **Server → General** matches what people are typing, including `http` vs `https`. |
 | The web app is slow to search | Enable Meilisearch under **Server → Search** — [Optional Meilisearch](../bloem/overlays/wiki/deployment/docker.md#optional-meilisearch). |
 | The log warns "postgres restart required" on every start | Expected while PostgreSQL auto-tuning is on; it is not proof a restart is needed. See [the restart warning](../bloem/overlays/wiki/deployment/docker.md#the-restart-required-warning). With a PostgreSQL you manage yourself, set `POSTGRES_TUNE=off`. |
-| The pulled image is old or missing features | `latest` is not updated by Bloem's CI. Pin `SILO_IMAGE` to a full-SHA tag ([image selection](../bloem/overlays/wiki/deployment/docker.md#container-image-selection)). |
+| The pulled image is old or missing features | Before October 27, 2026, `latest` was a September 24 build that Bloem's CI did not move. Pull again, or pin `SILO_IMAGE` to a full-SHA tag ([image selection](../bloem/overlays/wiki/deployment/docker.md#container-image-selection)). |
 
 When you ask for help, give the image tag you run, the steps that fail, and a filtered extract of
 **Monitor → Logs → Server Log** around the failure.

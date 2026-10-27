@@ -117,11 +117,25 @@ These are rules a future change must not break.
   the concrete, DB-backed implementation is `proxySourceAccess` in
   `cmd/silo/bloem_main.go` (built where the pool this process opened already
   exists, by `newProxySourceAccess`), composing
-  `tenancy.Resolver` and `resourcetenancy.Store` the way the API's tenant
-  middleware does. `internal/proxy` must not import `internal/tenancy` or
-  `internal/resourcetenancy` directly. The same check also hides files in
+  `tenancy.SubjectResolver` and `resourcetenancy.Store`. `internal/proxy` must
+  not import `internal/tenancy` or `internal/resourcetenancy` directly. The
+  same check also hides files in
   [native storage](bloem-native-storage.md) locations from the proxy
   (`storagesource.IsNativeLocation`), because the proxy reads only local paths.
+- **The proxy resolves the account's own organization.** Proxy artifacts
+  (signed recipes, grants, download URLs) name an account but carry no
+  organization claim, so `proxySourceAccess.AllowMediaSource` resolves the
+  account as a profile-less subject (`SubjectResolver.ResolveSubjectTenant`
+  with no profile): through the organization its active membership is in, or
+  the deployment's default organization for an account with no membership.
+  Until `a6d342390` (2026-10-27) it always resolved the default organization.
+  That was enough while an account could belong to several organizations, but
+  since `c60b7008e` (2026-10-26) each account has exactly one membership, so a
+  member of a hosted organization got `404` for every source in its own
+  libraries. `TestProxySourceAccessResolvesTheAccountsOwnOrganization`
+  (`cmd/silo/bloem_proxy_source_access_test.go`) covers both organizations,
+  cross-organization reads, a suspended member and an account without a
+  membership.
 - **Per-request rechecking is deliberate.** Checking only at manifest-fetch
   time would leave HLS segments unguarded until the next manifest reload;
   every account-scoped media route in the proxy — direct play, remux,
@@ -155,20 +169,10 @@ These are rules a future change must not break.
   `profile_series_interest` rows are excluded at read time by
   `deliveryAccessPredicate`, but they are never cleaned up — they persist
   indefinitely as dead rows.
-- **The standalone proxy always checks against the default organization.**
-  `proxySourceAccess.AllowMediaSource` in `cmd/silo/bloem_main.go` resolves
-  tenancy with `legacy=true` and no organization, because proxy artifacts
-  (signed recipes, grants, download URLs) carry no organization claim; the
-  resolver then uses the deployment's default organization. When this page was
-  written an account could belong to several organizations, so the recheck
-  could validate only the default one. Since `c60b7008e` (2026-10-26) each
-  account has exactly one membership. An account whose membership is in a
-  hosted (non-default) organization therefore has no default-organization
-  membership, and the proxy answers `404` for its sources (it fails closed).
-  The standalone proxy serves default-organization accounts only.
 - **The proxy guard costs multiple indexed Postgres round-trips per
-  request** — a file lookup, a tenant resolution, and a resource-access
-  check (`proxySourceAccess.AllowMediaSource`) — repeated per HLS segment, since
+  request** — a file lookup, the account's organization, a tenant
+  resolution, and a resource-access check
+  (`proxySourceAccess.AllowMediaSource`) — repeated per HLS segment, since
   per-request rechecking is deliberate (see Invariants). The correct
   mitigation is a cache keyed on the organization's access revision,
   invalidated when it advances, not a time-based TTL — a TTL would
