@@ -88,11 +88,11 @@ func TestBloemXtreamXMLTVSkipsInvalidProgrammes(t *testing.T) {
 	}
 	inWindow := []string{
 		entry, // valid
-		strings.ReplaceAll(entry, "News &amp; Weather", "Other programme"),                                          // conflicting identity
-		at("20260919110000", "private-marker"),                                                                      // invalid timestamp
-		at("20260919110500", "20260919110500"),                                                                      // zero length
-		at("20260919111000", "20260919103000"),                                                                      // stop before start
-		at("20260919112000", "20260922112000"),                                                                      // > 48h
+		strings.ReplaceAll(entry, "News &amp; Weather", "Other programme"), // conflicting identity
+		at("20260919110000", "private-marker"),                             // invalid timestamp
+		at("20260919110500", "20260919110500"),                             // zero length
+		at("20260919111000", "20260919103000"),                             // stop before start
+		at("20260919112000", "20260922112000"),                             // > 48h
 		strings.ReplaceAll(at("20260919113000", "20260919114000"), "News &amp; Weather", strings.Repeat("x", 1025)), // long title
 		strings.ReplaceAll(at("20260919114000", "20260919115000"), "<category>News", "<category>"+strings.Repeat("x", 257)),
 		strings.ReplaceAll(at("20260919115000", "20260919115500"), "<title lang=\"nl\">Nieuws</title><title lang=\"en\">News &amp; Weather</title>", ""), // no title
