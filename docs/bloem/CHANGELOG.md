@@ -3,6 +3,61 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 27, 2026 — The native OpenAPI describes what each operation returns
+
+`contracts/api/bloem/v1/openapi.json`, generated from the `internal/apiv2/bloem_*`
+documents, was current with its Go source but no longer described the handlers.
+`8fe96aadc` removed what was left of the lifecycle receipts that `b017bfe84`
+deleted: sixteen administrative mutations still advertised an
+`Idempotency-Key` header, `428 idempotency_key_required`, an
+`Idempotency-Replayed` header and `503 lifecycle_request_pending`. Only the six
+commands that carry their own key (the three entitlement applies and the three
+policy-job routes) keep the header, as an alias for that key. Tenant retirement
+on a server without the member service now answers `503 tenant_unavailable`
+instead of `lifecycle_idempotency_unavailable`.
+
+`67429b073` then checked all 213 operations against their mounts,
+middleware and handlers:
+
+- each operation lists the statuses and error codes its handler and middleware
+  actually write, instead of the default 401/403/503 set, and drops statuses
+  that cannot happen (for example 501 on Live TV, 429 on the bulk policy routes);
+- 23 book-request administration operations named an `adminContextAuth`
+  security scheme the document does not define; they now use
+  `bloemOrganizationContext`, and the ebook setup operations also accept
+  `bloemPlatformContext`, as the handler has since `c3523bb5f`;
+- the native client operations (server identity, capabilities, organizations,
+  Watch, progress sync, notifications, persons, item collections) were declared
+  as v2 operations with `application/problem+json` errors; they are served by
+  chi with the native `{error, message}` envelope and are now declared that
+  way. `GET /organizations` returns `{"organizations": [...]}`, not an array;
+- `BloemNativeError` gains the optional `code` that browse-only preview
+  refusals add (`preview_only`, `preview_host`, `preview_session_invalid`,
+  `preview_busy`).
+
+No operation, path or operation ID changed, and no handler behavior changed
+apart from that one error code. Since `3729418c9` Bloem CI runs
+`make verify-bloem-openapi` and `make verify-bloem-api-catalogue`; neither was a
+CI step before.
+
+## October 27, 2026 — The standalone proxy serves hosted organizations; `latest` follows `main`
+
+`a6d342390`: the standalone proxy's source check resolved every account through
+the deployment's default organization, because a stream token, media grant or
+download URL names an account but no organization. Since `c60b7008e` an account
+has exactly one membership, so a member of a hosted organization was refused
+(`404`) every source in its own libraries. The check now resolves the account
+through its own organization, as a profile-less subject does elsewhere
+(`tenancy.SubjectResolver`), and still fails closed for suspended members,
+hidden libraries and accounts without a membership. See
+[delivery boundary enforcement](../architecture/delivery-boundary-enforcement.md).
+
+`6d0adcfe9`: Bloem Image now points `latest` at each new `main` image whose
+commit is still `main`'s head, so `latest` follows `main` as Silo's does. Before
+this, nothing moved `latest`: it was a September 24 build from the earlier
+publishing path. Deployments that must be attributable still pin a full-SHA tag.
+See [container image selection](overlays/wiki/deployment/docker.md#container-image-selection).
+
 ## October 27, 2026 — Production on CI's image; PostgreSQL tuning off
 
 Production runs `276becf4a`. At about 06:58 UTC it moved from `d064644a8` to
