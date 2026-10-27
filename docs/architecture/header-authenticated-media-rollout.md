@@ -1,12 +1,24 @@
 # Header-Authenticated Media Client Rollout
 
-Status: superseded (2026-10-09). The deployment-readiness gate described here
-(`playback.header_authenticated_media_mode` and
-`header_authenticated_media_ready_v1`) was removed. Bloem negotiates
-`header_authenticated_media_v1` whenever a client requests it, as upstream Silo
-does: Silo Apple clients accept only credential-free media URLs, so a disabled
-gate left them with no playable route. The rest of this document is kept as
-history.
+> **Status: superseded design** (written 2026-08-24 in `d2589e56e`; checked against
+> `e852f92bf`). The three feature tokens it rolls out are Silo's:
+> `software_video_decode_v1` (`d76226449`), `header_authenticated_media_v1`
+> (`07383f7dc`) and `authorized_media_origins_v1` (`d6ba68b1e`), 2026-08-22/23. Bloem
+> added a deployment-readiness gate on top. **Implemented, then removed:** the gate
+> (`0a0d16094`, 2026-08-24) and its admin control and metrics (`eaeae9298`, the same
+> day) shipped; `545ed3a33` (2026-10-09) removed the setting
+> `playback.header_authenticated_media_mode`, the token
+> `header_authenticated_media_ready_v1`, the admin control and the downgrade metric.
+> Bloem now negotiates `header_authenticated_media_v1` whenever a client requests it, as
+> Silo does: Silo's Apple client accepts only credential-free media URLs, so a disabled
+> gate left it with no playable route. **Still present:** the
+> `negotiated_client_features` decision field, Bloem's addition to Silo's protocol from
+> `0a0d16094` (a ledgered seam in `internal/playback/protocol_v3.go`). **Not recorded
+> here:** whether the Android and Apple steps below shipped; those clients live in
+> separate repositories. **Current description:** Silo's
+> [playback protocol v3](playback-protocol-v3.md) with Bloem's
+> [overlay](../bloem/overlays/architecture/playback-protocol-v3.md). The rest of this
+> document is kept as history.
 
 This document defines the coordinated server, Android, and Apple rollout of
 the protocol-v3 feature tokens `software_video_decode_v1`,

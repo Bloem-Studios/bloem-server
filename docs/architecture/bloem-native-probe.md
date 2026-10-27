@@ -1,5 +1,21 @@
 # Probing pinned native media
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current. A Bloem addition for [native storage](bloem-native-storage.md), the
+> Bloem feature that reads media from provider-backed storage locations (for
+> example S3) rather than from local folders. It is built on Silo's
+> ffprobe-based scanner (`internal/scanner`, `internal/mediaprobe`): the
+> Bloem-owned file `internal/scanner/bloem_native_probe.go` returns Silo's
+> `ProbeData`. `ProbeNative` and this page were added in `d3d2c8f72`
+> (2026-10-10), and `4e73aa7aa` (2026-10-11) added the teardown rule. The
+> scanner consumers came later: native movies in
+> `internal/scanner/storage_movie.go` (`b781ac3ff`, 2026-10-11, see
+> [native video playback](bloem-native-video-playback.md)) and audiobooks in
+> `internal/scanner/storage_audiobook.go` through `ProbeNativeAudio`
+> (`17ca70d9b` and `d5d02a00e`, 2026-10-12). The input bridge is described in
+> [native tool input](bloem-native-tool-input.md), and the pinned reader in
+> [native scan reader](bloem-native-scan-reader.md).
+
 `scanner.ProbeNative` prepares metadata from one already authorized, pinned
 `mediasource.File`. A scan consumer supplies the `ScanEntryFile` context,
 cancellation and reauthorization methods, a trusted ffprobe binary, a fixed
@@ -38,9 +54,13 @@ of the private argument. Error messages exposed by this consumer omit raw tool
 output, provider details and command arguments; wrapped causes remain available
 for typed internal classification.
 
-This prerequisite supplies no scanner wiring, library-kind admission,
+`ProbeNative` itself supplies no scanner wiring, library-kind admission,
 ingestion-rejection classification, production budget defaults or playback
-change. Immutable versions or verified snapshots remain required for native
+change. When it was added in `d3d2c8f72` it had no consumer. Its callers now supply
+those: the movie and audiobook scanners named above admit container families
+and publish items, and `cmd/silo/bloem_native_movie_scanner.go` sets the movie
+budgets (128 MiB of input, 60 seconds, 4 MiB of JSON output).
+Immutable versions or verified snapshots remain required for native
 content reads. Synthetic pinned fixtures do not certify a live backend.
 
 ## Native audio

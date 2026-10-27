@@ -1,6 +1,26 @@
 # Storage source management UI (S3 and Bookwarehouse) — design
 
-Status: approved by Jim, 2026-10-15. Branch `feat/storage-source-ui-20261015` from `origin/main` 21346650b.
+> **Status: historical design, implemented** (approved by the project owner on 2026-10-15;
+> written in `9c4f1e185`; checked against `e852f92bf`). Bloem addition for Bloem's
+> [native storage](bloem-native-storage.md) sources; the plugin installation and
+> configuration machinery it reuses is Silo's (`internal/plugins`, the manifest
+> `admin_form`). **Implemented on `main` on 2026-10-15:** the catalog allowlist with
+> pinned S3 releases (`793002d01`, `79f50d8cd`, `57daedbda`), manifest forms in the
+> artifact list (`65e9c494a`), catalog discovery (`2b5541060`, then organization scope in
+> `ccce9b1ee`), in-use credential rotation (`664a4a789`), the Storage sources UI
+> (`768875519`, `bbc2d8ff2`; bucket and folder browsing `c1b8cd10b`, `19aebb789`), the
+> picker's empty-root text, and the security-review fixes (`e78f5cafa`).
+> **Deployed:** production has run revisions containing it since `2393c41ee` (in production
+> from 2026-10-18, per the [October 26 receipt](../operations/2026-10-26-main-deployment.md));
+> no production S3 source acceptance is recorded in the deployment receipts. **Not covered here:** the plugin and
+> catalog repositories named under Testing. **Current description:**
+> [native storage](bloem-native-storage.md) and the
+> [native API reference](../bloem-api-reference.md). The implementation plan is
+> [bloem-storage-source-management-ui-plan.md](bloem-storage-source-management-ui-plan.md).
+> The design below is kept as approved, with personal names and host identifiers
+> replaced by roles.
+
+Originally drafted on branch `feat/storage-source-ui-20261015` from `origin/main` `21346650b`.
 
 ## Problem
 
@@ -30,7 +50,7 @@ configured prefix could not be inspected from the product.
 - TV series support for S3 libraries; Bookwarehouse folder API publication.
 - Deploying anything. Rollout is a separate, explicitly approved step.
 
-## Decisions (from review with Jim)
+## Decisions (from the owner's review)
 
 - Add via catalog install plus discovery (approach A); no binary upload in the form.
 - First version covers full lifecycle (add, edit, test, disable, remove, upgrade).
@@ -134,8 +154,9 @@ configured prefix could not be inspected from the product.
 
 ## Rollout (not part of this change)
 
-Publishing the S3 catalog entry, building the host image and deploying to CT135 each need Jim's
-explicit approval. Live S3 credentials are entered by Jim through the new form, never by an agent.
+Publishing the S3 catalog entry, building the host image and deploying to production each need the
+owner's explicit approval. Live S3 credentials are entered by the operator through the new form, never
+by automation.
 
 ## Open items
 

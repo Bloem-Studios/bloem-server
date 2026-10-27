@@ -1,7 +1,18 @@
 # Silo playback merge impact on Bloem clients
 
-> Historical snapshot: preserve the dated revisions, results and proposals below.
-> For current status, see the [maintained reference](bloem-sdk-compatibility.md).
+> **Status: historical client-impact audit** (2026-08-24; written in `ce320df15`;
+> checked against `e852f92bf`). It assessed two Silo playback changes, PR #734
+> (`6f8db0239`, optimistic H.264 remux with `plan_invalidated_v1`) and PR #737
+> (`820eef779`, the `client_managed_dynamic_range_v1` and
+> `client_selected_audio_track_v1` original-delivery claims), for Bloem's Android and
+> Apple clients. **Server side:** both are Silo code and remain in Bloem's tree
+> (`internal/playback/protocol_v3.go`), as does Silo's `authorized_media_origins_v1`;
+> the `header_authenticated_media_ready_v1` deployment gate named below was removed on
+> 2026-10-09 (`545ed3a33`). **Client side:** the Android and Apple steps live in
+> separate repositories; this repository does not record whether they shipped.
+> **Current descriptions:** Silo's [playback protocol v3](playback-protocol-v3.md),
+> [header-authenticated media](header-authenticated-media-rollout.md) and
+> [SDK compatibility](bloem-sdk-compatibility.md). The text below is kept as written.
 
 Status: implementation handoff
 Audited: 2026-08-24

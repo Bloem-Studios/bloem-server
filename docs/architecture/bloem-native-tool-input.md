@@ -1,5 +1,15 @@
 # Native storage input for trusted tools
 
+> **Provenance.** Bloem addition, part of [native storage](bloem-native-storage.md).
+> `nativestorage.ToolInput` (`internal/nativestorage/tool_input.go`, `tool_bridge.go`)
+> and this page arrived in `8dd12345d` (2026-10-10). Later changes that matter:
+> `4e73aa7aa` (2026-10-11) stopped an abandoned range from failing a successful probe
+> (the cleanup exception below); `93d60257d` (2026-10-12) made a request beyond the
+> concurrent-read bound wait for a slot instead of failing; `8dbdb744f` (2026-10-12)
+> keeps the cancellation cause as the sticky failure. Its consumers are the native
+> probe (`internal/scanner/bloem_native_probe.go`, `d3d2c8f72`) and native video
+> (`internal/api/handlers/bloem_native_video.go`). **Status:** current at `e852f92bf`.
+
 `nativestorage.ToolInput` gives a trusted local tool seekable access to one
 already opened, host-authorized `mediasource.File`. It does not resolve catalog
 identity, grant source authority or admit an unversioned source. Native content
@@ -40,6 +50,7 @@ consumer. An opened adapter retains its own cancellation semantics: for
 example, `mediasource.OpenLocal` may close its raw descriptor when canceled
 before the bridge's explicit close.
 
-This adapter supplies no scanner integration, probe budget defaults, library
-kind admission or playback capability. Those consumers must establish their
-own authority, process limits and output validation before adopting it.
+The adapter itself supplies no scanner integration, probe budget defaults, library
+kind admission or playback capability. Each consumer establishes its own authority,
+process limits and output validation: see [native probe](bloem-native-probe.md) and
+[native video playback](bloem-native-video-playback.md).

@@ -1,5 +1,16 @@
 # Bloem ebook requests
 
+> **Provenance.** Bloem addition; Silo's request system covers movies and series
+> through TMDB, and Bloem's book lanes sit beside it. Ebook admission arrived in
+> `285e83c8b` (2026-10-10), fulfillment and the shared book queue in `fb87eb439`
+> (2026-10-11), and the direct-profile and connection-test changes on 2026-10-14
+> (`70401bd26`, `49834d9f3`, `2cc1fc6c0`, `690a939ff`, `86438443b`, `c3523bb5f`). Later:
+> `c60b7008e` (2026-10-26) moved account policy back onto Silo's `users` table and
+> replaced the membership-policy phases with a single Silo switching flag, which
+> changes the setup exception below. Acquisition uses Silo's plugin SDK
+> `request_router.v1` interface. **Status:** current at `e852f92bf`; no production
+> Bookwarehouse acquisition is recorded in the deployment receipts.
+
 Ebook requests use `internal/bookrequests` and the Bloem-owned
 `bloem_book_requests` table with media type `book`. The existing Requests page
 and organization admin queue select this lane with `kind=ebook`. Audiobooks
@@ -37,9 +48,10 @@ media-type list does not qualify. Integration IDs are opaque strings.
 Platform administrators configure the lane from an administrative context for
 the default organization or a verified platform context. Platform setup resolves
 only the default organization and checks its active account and membership; an
-initializing default is allowed only during the `mirrored` membership policy
-phase. This exception applies only to ebook setup, not organization session
-selection or request queues. Policy, connection creation and library binding are
+initializing default is allowed only while Silo switching is enabled (the
+`public.bloem_silo_switching` flag; see [Silo backend switching](silo-backend-switching.md)).
+This exception applies only to ebook setup, not organization session selection or
+request queues. Policy, connection creation and library binding are
 separate mutations. Connections default to EPUB and HTTPS; trusted local HTTP
 requires explicit opt-in. PDF requires an explicit connection configuration
 opt-in. Responses never contain connection credentials.

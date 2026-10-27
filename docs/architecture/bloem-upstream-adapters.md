@@ -1,5 +1,22 @@
 # Bloem adapters over Silo
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current reference, with sections corrected for the October 26 refactors. This
+> Bloem page (first written in `e2e55f15e`, 2026-09-30; adapter-centred since
+> `ae85b85b0`, 2026-10-05) explains how Bloem changes behavior without editing
+> Silo files. A *seam* is a Silo-owned file that Bloem edits; each one is listed
+> in `contracts/seams.txt`, which has 306 entries at this revision. An *adapter*
+> is a Bloem-owned wrapper that keeps Silo's call shape. Several October 26
+> changes retired adapters that earlier versions of this page described:
+> `c60b7008e` (account policy back on `users`, one membership per account),
+> `d064644a8` (membership created by the account repository), `b017bfe84`
+> (lifecycle receipts removed), `0deddcf59` and `99a62d19f` (download profile
+> from context, unreachable code removed). Silo's Jellyfin and Audiobookshelf
+> servers came back on 2026-10-18 (`2393c41ee`). The Silo merge `68070f04b`
+> (2026-10-27) changed the session lookups Bloem wraps; see
+> [Realtime socket tickets](#realtime-socket-tickets) and
+> [External sign-in and invitation transactions](#external-sign-in-and-invitation-transactions).
+
 Bloem retains Silo's module path, Git ancestry, environment names, and protocol
 identifiers. New fork behavior belongs in owned files, with small hooks in the
 upstream files listed by `contracts/seams.txt`. The ledger records each shared path; `make verify-seams` checks that it stays accurate. See
@@ -13,9 +30,16 @@ filesystem. The status, up, down, and normal startup paths in
 filesystems used for upgrade and rollback rehearsals. Historical SQL remains
 unchanged; owned adapters handle the explicitly reviewed schema differences.
 
-Bloem's finalized membership authority has moved live policy out of `users`.
-When upstream migration `20260926181741` converts legacy blocked request limits,
-the adapter updates `organization_memberships.requests_allowed` instead. The
+From 2026-08-29 to 2026-10-26 Bloem kept live account policy on
+`organization_memberships`, through a phased authority recorded in
+`membership_policy_authority` (`compatibility` and `finalized`, with `mirrored`
+added on 2026-10-09 for Silo switching). Migration
+`20261026003000_bloem_account_policy_on_users.sql` (`c60b7008e`) moved that
+policy back onto `users` and retired the phases. The adapters below still matter
+because they rewrite older Silo migrations, which an older database runs while
+it is still in one of those phases. When upstream migration `20260926181741`
+converts legacy blocked request limits on a finalized database, the adapter
+updates `organization_memberships.requests_allowed` instead. The
 legacy request limit applies to the account across its memberships; the migration
 preserves that scope, increments affected policy revisions, and uses the
 transaction-local policy-writer marker. Before finalization, the original account
@@ -27,11 +51,12 @@ An upstream edit therefore requires review. Do not renumber migrations, mutate
 the version ledger to skip a failure, or run the unadapted SQL on a finalized
 Bloem database.
 
-A database shared with Silo stays in the `mirrored` phase, where upstream Silo
-binaries keep writing the legacy `users` columns. An upstream merge that adds a
-Silo write to a table Bloem constrains needs a mirrored-phase test beside the
-existing ones and a passing `make silo-switch-check` against that upstream
-build. See [Silo backend switching](silo-backend-switching.md).
+A database shared with Silo keeps Silo switching enabled (the single flag
+`public.bloem_silo_switching` since `c60b7008e`; before it, the `mirrored`
+phase). An upstream merge that adds a Silo write to a table Bloem constrains
+needs a switching test beside the existing ones and a passing
+`make silo-switch-check` against that upstream build. See
+[Silo backend switching](silo-backend-switching.md).
 
 Fresh empty-database migrations do not exercise the finalized-schema upgrade.
 The regression builds that state, verifies both memberships of a blocked account,
@@ -75,20 +100,20 @@ versioned marker so filtered filesystems cannot apply an adapter twice.
 - [`SetProfileLimitProvider`](../../internal/playback/bloem_profile_limits.go)
   supplies profile-aware playback limits while the upstream `SetLimitProvider`
   signature stays available to ordinary Silo callers.
-- [`downloads.CapabilityForProfile`](../../internal/downloads/bloem_capability.go)
-  selects the profile-aware extension when a service implements it and falls
-  back to the upstream account-only capability interface otherwise.
-- Download policy keeps Silo's account-only helper signatures. Bloem's
-  [profile wrappers](../../internal/downloads/bloem_policy.go) bind the selected
-  account/profile in an owned context key; tenant-aware group providers still
-  require the validated request tenant. Ordinary Silo group providers retain
-  their account policy and explicit user overrides without tenant context.
-- Original-file downloads also preserve Silo's `ServeDirect` and
-  `ResolveDirectFile` signatures. Owned `ServeDirectForProfile` and
-  `ResolveDirectFileForProfile` methods bind the verified subject before
-  delegation. Current native HTTP composition resolves the account, profile
-  and tenant before applying the download service, quality ceiling and
-  bandwidth limiters. The former protocol listener adapters are retired.
+- Download policy keeps Silo's account-only helper signatures. Since
+  `0deddcf59` (2026-10-26) Bloem's
+  [download policy](../../internal/downloads/bloem_policy.go) takes the request's
+  verified profile from the context when it belongs to the account being served,
+  so Silo's v1 download handler and v2 download capability call Silo's
+  `ServeDirect`, `ResolveDirectFile` and `Capability` unchanged. The former
+  `downloads.CapabilityForProfile` extension was removed in `99a62d19f`.
+  Tenant-aware group providers still require the validated request tenant.
+  Ordinary Silo group providers retain their account policy and explicit user
+  overrides without tenant context.
+- The owned [`ServeDirectForProfile` and `ResolveDirectFileForProfile`](../../internal/downloads/bloem_direct.go)
+  methods remain for an explicit download profile. The Jellyfin-compatible
+  server uses them (`newBloemCompatDownloadServer` in `cmd/silo/bloem_compat.go`),
+  and that explicit profile wins over the context.
 - [`NewProfilePrepareAgainService`](../../internal/downloads/bloem_reprepare.go)
   is mandatory in Bloem HTTP retry composition. It checks the requesting
   profile's download and transcode authority before calling Silo's unchanged
@@ -97,8 +122,8 @@ versioned marker so filtered filesystems cannot apply an adapter twice.
   cannot turn an allowed original retry into a forbidden transcode. Original
   and remux retries remain available when only transcoding is denied; server
   settings and the service's cached configuration are not mutated.
-- Membership and profile policy continue to be evaluated in the acting
-  organization. Server ownership, organization ownership, and a household's
+- Account and profile policy continue to be evaluated in the acting
+  organization (an account has exactly one since `c60b7008e`). Server ownership, organization ownership, and a household's
   primary profile are different authority boundaries.
 
 These adapters preserve upstream call shapes; they do not grant access when a
@@ -121,11 +146,14 @@ plugins cannot disable those checks.
 
 ## Tenant group repository
 
-[`TenantGroupStore`](../../internal/access/bloem_group_store.go) owns finalized
-organization-qualified group storage. Production HTTP wiring, background policy
-readers and scenario execution must select `NewTenantGroupStore`. The unchanged
-upstream `GroupStore` uses historical account policy columns and is not a fallback
-for a finalized Bloem database. Tenant policy writes have one canonical owned
+[`TenantGroupStore`](../../internal/access/bloem_group_store.go) owns
+organization-qualified group storage and profile-scoped resolution. Production
+HTTP wiring, background policy readers and scenario execution must select
+`NewTenantGroupStore`. Silo's `GroupStore` stays for account-level reads. Its
+`GetPolicyForUser` and `GroupPolicyInTransaction` go through the seam in
+`internal/access/group_store.go` to `bloemAccountGroupPolicy`, which reads the
+account's `users.access_group_id` within the account's organization. It is not
+a substitute for the profile-scoped `TenantGroupStore`. Tenant policy writes have one canonical owned
 implementation; migrations and encrypted settings are unchanged.
 
 [`TenantGroup`](../../internal/access/bloem_group_model.go) retains the common
@@ -143,8 +171,9 @@ exact type-checked wrapper to its leaf handler while retaining full wrapper
 provenance. The availability guard does not replace authentication.
 
 Group updates preserve existing invalidation of accounts with assigned profiles;
-legacy membership-only accounts retain their authorization revision. Deletion
-moves and invalidates both memberships and profiles. Empty updates preserve the
+accounts assigned only at account level retain their authorization revision.
+Deletion moves and invalidates both the accounts and the profiles on the group.
+(Before `c60b7008e` the account-level assignment was a membership column.) Empty updates preserve the
 configuration revision; a nonempty same-value write advances it through the
 existing timestamp trigger while retaining unchanged authorization revisions.
 These are compatibility semantics, not new optional plugin behavior.
@@ -218,8 +247,9 @@ Silo version.
 ## Realtime socket tickets
 
 The v1 events, watch-together and playback-control sockets run Silo's
-handshake unchanged: the ordinary login credential authenticates the socket,
-and Silo's `POST /api/v1/events/ws-ticket` binds the profile and its PIN proof.
+handshake unchanged since `a7436b4e5` (2026-10-25): the ordinary login
+credential authenticates the socket, and Silo's `POST /api/v1/events/ws-ticket`
+binds the profile and its PIN proof.
 The v2 events and playback-control sockets keep Silo's ticket store and add
 Bloem's tenant authority through Silo's `Validate` hook
 ([`bloem_socket_authority.go`](../../internal/api/handlers/bloem_socket_authority.go)).
@@ -245,25 +275,29 @@ successful build, or deployment probe as evidence that a contract gate passed.
 
 ## External sign-in and invitation transactions
 
-The upstream account resolver and identity management service lock accounts through
-Bloem's shared `userSource` projection. Policy belongs to organization memberships,
-so selecting the shared columns directly from `users` is invalid. `FOR UPDATE OF u`
-locks the account without trying to lock the nullable side of the membership join.
-The resolver reads the joined projection in a separate statement after obtaining
-the account lock, so a waited-on policy update cannot leave an older membership
-snapshot in the returned account.
-The provider registry receives a membership-aware account provisioner before it is
-published; dynamic OIDC and directory providers use the same atomic account,
-membership, and default-profile creation path.
+Since `c60b7008e` (2026-10-26) Silo's account resolver and identity management
+service (`account_resolution.go`, `identity_service.go`) are Silo's bytes
+again: account policy is on `users`, so they read it as Silo does. The earlier
+`userSource` projection over the membership join is gone.
 
-`CreateAccountInTransaction` retains upstream's `*models.User` return type.
-Bloem lifecycle operations use `CreateAccountWithMembershipInTransaction` for the
-organization, membership, and profile identifiers needed by durable receipts.
-When an upstream caller supplies no organization, profile creation leaves that
-field empty for the existing tenant resolver; an all-zero UUID is not an omitted
-organization.
+Since `d064644a8` (2026-10-26) the account repository creates an account's one
+membership itself (`linkAccountMembership` in `internal/auth/bloem_repository.go`).
+It uses the organization the creating flow names, else the organization that
+owns the account's access group, else the default organization. Silo's account
+provisioner and its external sign-in providers (OIDC and directory) therefore
+need no Bloem hook. The earlier membership-aware provisioner and
+`CreateAccountWithMembershipInTransaction` (whose identifiers fed the lifecycle
+receipts removed in `b017bfe84`) are gone. Invitation acceptance keeps one
+hook, in the seam `internal/invitations/service.go`: it creates the account
+with `CreateAccountForOrganizationInTransaction` in the invitation's stored
+organization (`internal/invitations/bloem_service.go`).
 
-Upstream's current-role session check also applies to Bloem. A direct-profile
+Upstream's current-role session check also applies to Bloem. Since the Silo
+merge `68070f04b` (Silo #3140) it also binds a token to its session's account:
+`SessionRepository.ActiveSession` takes the account the credential names. Bloem's
+preview-aware lookups, the administrative-context middleware and the
+native-video recheck pass that account too, and Silo's own `IsValid` again
+backs `LoginSessionActive`. A direct-profile
 session retains the restricted `user` role even when its owning account is an
 administrator. Initial setup sets both the owner and break-glass flags inside
 the account-creation transaction, retaining an administrator recovery path when
@@ -273,18 +307,19 @@ device, profile, credential revision, and authentication-method bindings.
 Account invalidation retains the host's durable login-session revocation,
 cache eviction and cross-replica notification boundaries. Post-commit work uses
 the bounded detached context from `sessioninvalidation.Run`; profile-only
-deletion keeps its scoped boundary. The former compatibility session repository
-and its account-revocation adapter were removed with the protocol runtime.
+deletion keeps its scoped boundary. Jellyfin-compatible sessions follow Silo's
+account-wide revocation, and `bloemProfileSessionRevoker` in
+`cmd/silo/bloem_compat.go` ends those bound to profiles an organization removes
+(see [protocol compatibility](bloem-compatibility-removal.md)).
 
 Both invitation acceptance paths preserve the organization stored on the
 invitation. Link invitations can receive an email at acceptance; supersession of
-another invitation remains scoped to the inviting organization. The v1 lifecycle
-path rejects addressless invitations, which require the v2 email-taking flow,
-and checks the local-password policy inside the acceptance transaction. Signup
-performs the same check before redeeming an invite code. These lifecycle paths
-acquire the server-settings advisory lock before opening their repeatable-read
-transaction; otherwise a waiting request could retain a snapshot from before
-an administrator disabled local password sign-in.
+another invitation remains scoped to the inviting organization (the
+organization filter is in `internal/invitations/bloem_repository.go`). Since
+`b017bfe84` the v1 invitation and registration handlers are Silo's bytes again.
+Bloem's lifecycle path, which had its own server-settings advisory lock, is
+gone. The local-password check inside the acceptance transaction is Silo's
+`EnsureLocalPasswordLoginAllowedInTransaction`.
 
 The upstream user-detail page remains unchanged after its component split.
 Bloem's Live TV permission is supplied by an owned permission list to the library
@@ -329,9 +364,10 @@ generation alone does not establish that clients expose those controls.
 Bloem operators use `.env.bloem.example`, linked by the maintained Docker guide.
 The upstream `.env.example` remains unchanged and selects the upstream image.
 Moving the sample does not change a deployed environment or encrypted settings.
-Protocol route-prefix constants and listener controls from the retired runtime
-are not active configuration. Preserve compatibility environment names used by
-the native server, without restoring removed protocol settings.
+Since `2393c41ee` (2026-10-18) both samples document Silo's `JF_PORT` and
+`ABS_PORT` for the restored compatibility listeners. The route-prefix constants
+and same-origin gateway controls of Bloem's removal-era runtime are not active
+configuration and should not be restored.
 
 ## Preparing Silo contributions
 

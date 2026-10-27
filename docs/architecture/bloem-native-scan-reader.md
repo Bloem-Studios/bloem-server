@@ -1,9 +1,20 @@
 # Pinned entry reads during native scans
 
+> **Provenance.** Bloem addition, part of [native storage](bloem-native-storage.md)
+> (Bloem's storage-source libraries read through a storage plugin rather than a local
+> path). `nativestorage.ScanReader` and this page arrived together in `ded34edfa`
+> (2026-10-10) as a prerequisite with no consumer. Later: native storage movies
+> (`b781ac3ff`, 2026-10-11) and audiobooks (`8b8943320`, 2026-10-12) made it the reader
+> for the movie and audiobook scan paths in `internal/libraryingest`. **Status:**
+> current at `e852f92bf`; the last paragraph below records what the original
+> prerequisite left out, and what has since been added.
+
 `nativestorage.ScanReader` supplies a host scan with seekable reads from an
 entry in its current provider page. It grants no viewer access and accepts no
-filesystem path, URL or independently selected entry identity. Existing
-ebook-only library admission remains in force.
+filesystem path, URL or independently selected entry identity. Library admission
+is `librarykind.SupportsNativeStorageKinds`: ebook libraries always, movie libraries
+only when native movie playback is ready and audiobook libraries only when native
+audio is ready (`SetNativeMovieReady` and `SetNativeAudioReady`, set at start-up).
 
 `AdmitScanPage` clones and validates the page, then seals its source, location,
 runtime snapshot, lease and pending directory checkpoint. Only the originating
@@ -33,6 +44,11 @@ before file closure. The scan coordinator must retain the publication fence
 after preparation; an opened entry is neither a catalog file nor a durable
 authorization grant.
 
-This prerequisite does not wire a probe or scanner consumer, widen library
-kinds, certify a backend's immutability, or enable native video playback.
-Immutable versions or verified snapshots remain required for content reads.
+As first committed, this prerequisite wired no probe or scanner consumer, kept
+admission to ebooks and enabled no native video playback. Since then the movie scan
+(`internal/libraryingest/storage_movie.go`) and the audiobook scan
+(`storage_audiobook.go`) admit their pages here and probe the opened entries; see
+[native probe](bloem-native-probe.md), [native video playback](bloem-native-video-playback.md)
+and [native audiobook presentations](bloem-native-audio-playback.md). The reader still
+does not certify a backend's immutability: immutable versions or verified snapshots
+remain required for content reads.

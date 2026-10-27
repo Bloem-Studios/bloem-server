@@ -1,5 +1,16 @@
 # Multitenant administration
 
+> **Provenance.** Bloem addition: Silo is single-tenant, and organizations
+> (`internal/tenancy`), memberships and the administrative context are Bloem's.
+> The UI isolation tests and this page date from `0e6f7f03d` (2026-08-13); the Silo
+> client compatibility matrix and the access-group deletion ruling from 2026-08-30
+> (`e566633db`, `c3b815996`, `4f5a8af62`). Later changes that matter: the v1 sockets
+> moved onto Silo's tickets (`a7436b4e5`, 2026-10-25); account policy moved back onto
+> Silo's `users` table and each account got at most one membership (`c60b7008e`,
+> 2026-10-26); Silo's token binding (#3140, merged in `68070f04b`, 2026-10-27) now also
+> checks the administrative context's login session against its account.
+> **Status:** current at `e852f92bf`.
+
 Bloem has one administration shell with two explicit authority contexts. A
 Platform context manages organizations and platform-wide operations. An
 Organization context manages only the selected tenant's people, profiles,
@@ -16,7 +27,9 @@ policy and security revisions. Organization authority never comes from a path,
 query, request body, or caller-selected membership ID.
 
 The token is bound to the login session it was exchanged from, so a
-credential without a login session (an API key) cannot open a context.
+credential without a login session (an API key) cannot open a context. Since
+`68070f04b` the context middleware also requires that login session to belong to the
+account the token names (Silo's `ActiveSession` account binding).
 
 Every request revalidates durable authority. A revoked or expired login
 session, suspended organization or membership, disabled or replaced account
@@ -98,30 +111,25 @@ The resulting contract, pinned by
 
 | Account | Without a profile | With a profile |
 | --- | --- | --- |
-| Tenant member (one organization) | its own tenant | the same tenant |
-| Default-organization account | the default organization | the profile's organization |
-| Member of several organizations | the default organization, else its earliest membership | the profile's organization |
+| Member of an organization (a tenant or the default organization) | its organization | the same organization |
 | No membership at all | the pre-tenancy default-organization answer | n/a |
+
+Before `c60b7008e` (2026-10-26) an account could hold memberships in several
+organizations, and the matrix carried rows for that case. The constraint
+`organization_memberships_one_per_account` now allows one.
 
 Two invariants hold this together:
 
 - **Picking a profile must not move an account between organizations.** A client
   that browses before selection and then selects must see one tenant, not two.
-- **One notion of "the account's organization".** `Store.AccountOrganization` and
-  the account policy projection in `auth.userSource` use the same precedence --
-  the default organization when the account belongs to it, otherwise its earliest
-  membership. Two independent rules would eventually disagree, and the disagreement
-  would surface as a client seeing entitlements from one organization and content
-  from another.
+- **One notion of "the account's organization".** `Store.AccountOrganization`
+  answers with the account's one active membership, and the account's policy lives
+  on Silo's `users` row, so entitlements and content come from the same
+  organization. (Until `c60b7008e` a separate account-policy projection had to apply
+  the same precedence rule; two independent rules would eventually have disagreed.)
 
-The ambiguity that remains is confined to an account holding memberships in
-several organizations, which is an administrator. A Silo client cannot express
-which organization it means, so it gets the deterministic choice above;
-administrators who need a specific organization use the admin surfaces, which are
-organization-scoped throughout. This under-serves rather than over-serves --
-`catalog.AccessFilter` carries a resolved library list rather than an
-organization, so a client sees one organization's libraries and never a union
-across them.
+`catalog.AccessFilter` carries a resolved library list rather than an organization,
+so a client sees one organization's libraries and never a union across them.
 
 ### Keeping it that way
 
@@ -149,18 +157,23 @@ what `TestSiloClientSubjectResolutionMatrix` above exists to catch.
 
 ## Access group deletion
 
-Deleting an access group reassigns its members to the organization's default
-group and reports the count, rather than detaching them. The
-`(organization_id, access_group_id)` foreign key from
-`organization_memberships` to `access_groups` is `ON DELETE RESTRICT`, so a
-group that still holds members cannot be dropped: the restriction is the proof
-that the reassignment covered everything, not a workflow the operator is
-expected to hit.
+Deleting an access group reassigns its profiles (`user_profiles`) and its
+organization's accounts (`users.access_group_id`) to the organization's default group
+in one transaction, reports the number of profiles moved, and then deletes the group
+(`TenantGroupStore.DeleteWithImpact`, `internal/access/bloem_group_mutation.go`). The
+default group itself cannot be deleted. Profiles reference their group through
+`user_profiles_organization_access_group_fkey` on `(organization_id, access_group_id)`,
+which has no `ON DELETE` action, so a group that still holds a profile cannot be
+dropped: the constraint is the proof that the reassignment covered every profile, not
+a workflow the operator is expected to hit. Until `c60b7008e` (2026-10-26) a
+membership column, `organization_memberships.access_group_id`, had an
+`ON DELETE RESTRICT` key that played the same role for accounts; that column was
+dropped when account policy returned to `users`.
 
 This is a deliberate divergence from upstream Silo, which declares
-`users.access_group_id REFERENCES access_groups(id) ON DELETE SET NULL`.
-There, deleting a group succeeds and silently detaches its members to no group
-at all, which `GetPolicyForUser` reads as "no access-group restrictions" — so
+`users.access_group_id REFERENCES access_groups(id) ON DELETE SET NULL` (that key
+is still present in Bloem; the explicit reassignment runs first). In Silo, deleting
+a group succeeds and silently detaches its members to no group at all, which `GetPolicyForUser` reads as "no access-group restrictions" — so
 removing a group quietly widens what its former members can reach. An
 administrative delete must never be a privilege grant, which is why the
 reassign-to-default behaviour is kept even though it costs a divergence from
@@ -189,7 +202,8 @@ sensitive policy inputs are excluded or redacted.
 ## Release evidence
 
 `TestMultitenantAdminTwoOrganizationIsolation` creates a disposable PostgreSQL
-database, two organizations, a shared administrator, organization-only people,
+database, two organizations, each with its own administrator (an account belongs to
+one organization), organization-only people,
 profiles, groups, owned and entitled libraries, and decisions. It mints both
 contexts, proves every projection is tenant-bounded, suspends one membership,
 proves its existing context is revoked, and proves the other remains usable.

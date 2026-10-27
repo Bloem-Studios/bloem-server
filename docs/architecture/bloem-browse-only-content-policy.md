@@ -1,5 +1,23 @@
 # Browse-only content policy
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current. Browse-only access and the preview mode are Bloem additions. Silo's
+> group policy has the playback, download and permission switches that this page
+> builds on. Silo has no preview principals, guest sessions or delivery-time
+> playback checks. The transport checks arrived in `61fc3cfd5` (2026-10-13).
+> Preview principals, the route and operation allowlists, guest sessions and
+> preview administration arrived on 2026-10-14 (`994d44176`, `4c9840362`,
+> `343ad96b5`, `c443409a2`, `017538c98`, `d1ae0621f`, `f7a1b09db`), and the web
+> preview mode in `0d589164f`. `7452bd121` (2026-10-15) re-integrated it all with
+> the Silo main of that date, and `21fae6837` (2026-10-15) preserved template
+> history on migration reapply. Later changes that matter: `a7436b4e5`
+> (2026-10-25) moved the v1 sockets to Silo's tickets; `c60b7008e` (2026-10-26)
+> moved an account's group back onto `users`; and the Silo merge `68070f04b`
+> (2026-10-27) binds every preview-aware session lookup to the account the
+> credential names (see [Preview principals](#preview-principals)). "Garden"
+> means bloem-garden, the separate Bloem service that owns launch and account
+> expiry for the public showcase.
+
 Bloem's existing group policy can grant catalogue visibility while denying
 playback. Playback denial must prevent content delivery as well as video session
 creation. It does not remove descriptions, seasons, episodes, file descriptors
@@ -61,9 +79,15 @@ provenance marker when rolled back. Reapplying it preserves curated revisions
 and the current revision pointer. A preexisting operator template using the
 reserved key is still rejected; reapplication never adopts or overwrites it.
 
-A non-admin account with a membership or profile group from that template is a
-preview principal. Classification is read with current session authority on each
-request. Per-account and profile overrides cannot restore the denied permissions.
+A non-admin account is a preview principal when its own access group
+(`users.access_group_id`, read with its active membership's organization) or any
+of its profiles' groups is materialized from that template (`previewAccountSQL`
+in `internal/auth/bloem_preview_principal.go`). Classification is read with
+current session authority on each request. Since `68070f04b` (2026-10-27) that
+lookup (`ActivePreviewSession`, `ActiveSessionAuthority` and the auth
+middleware's `sessionAuthority`) also requires the session to belong to the
+account the credential names, which is Silo's token-to-session binding (Silo
+#3140). The plugin router and the auth middleware therefore keep that binding. Per-account and profile overrides cannot restore the denied permissions.
 The lookup retains remote-playback purpose and its approved profile, so preview
 restrictions and handoff restrictions both apply. Guest activity and expiry are
 checked in that same database snapshot.

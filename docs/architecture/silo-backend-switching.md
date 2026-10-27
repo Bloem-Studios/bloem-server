@@ -1,5 +1,20 @@
 # Silo backend switching
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current. Silo switching is a Bloem addition: Silo knows nothing about it, and
+> its job is to keep a database that Bloem serves readable and writable by an
+> unmodified Silo image. It was introduced on 2026-10-09 (`474782ef1` for this
+> page; migrations `20261009131027_bloem_membership_policy_mirrored.sql` and
+> `20261009131835_bloem_silo_switching_writes.sql`; `ac79641f0` for profiles,
+> roles and ungrouped admins). `fc688aca3` (2026-10-13) kept Silo's compatibility
+> data, and `c84b4f3f8` (2026-10-14) restored the v1 health identity. The
+> current single-flag design comes from `c60b7008e` (2026-10-26, migration
+> `20261026003000_bloem_account_policy_on_users.sql`), which moved account policy
+> back onto `users` and removed the earlier three-phase membership-policy
+> rollout. `2393c41ee` (2026-10-18) restored Silo's Jellyfin and Audiobookshelf
+> servers in Bloem; the section on what each backend sees was updated for that
+> on 2026-10-27.
+
 A database can be served by the upstream Silo server or by Bloem, one at a
 time, and the operator can switch between them in either direction without
 losing or corrupting data. This is what lets a Silo installation try Bloem and
@@ -56,15 +71,14 @@ beyond the default one, entitlement templates, profile logins, Live TV and DVR,
 native storage, promotions and ambience. Their rows stay in the database and
 work again when Bloem serves it.
 
-The reverse holds for Silo's Jellyfin and Audiobookshelf compatibility. Bloem
-removed both protocols, but their tables, the author-count view and their
-settings (including `jellyfin_compat.server_id`, the server identity Silo's
-clients recognise) stay in the database for Silo. Bloem writes none of them.
-It reads only `jellyfin_compat.server_id`, as the `server_id` on
-`GET /api/v1/health`, so both backends answer the same health identity. A
-database Bloem created has no such row until Silo first starts on it, so its
-health `server_id` changes from the deployment identity to Silo's value at that
-point. Drop them only when Silo switching ends for good.
+Silo's Jellyfin and Audiobookshelf compatibility servers are shared, not
+Bloem-only. Bloem removed both protocols on 2026-10-13 and kept their tables,
+the author-count view and their settings for Silo (`fc688aca3`). Since
+`2393c41ee` (2026-10-18) Bloem runs both servers again as Silo ships them, so
+whichever backend is serving reads and writes those tables. The Jellyfin
+setting `jellyfin_compat.server_id` (the server identity that Jellyfin clients
+recognise) also supplies `server_id` on `GET /api/v1/health` in both backends,
+as in Silo. See [protocol compatibility](bloem-compatibility-removal.md).
 
 ## Operating rules
 

@@ -1,5 +1,20 @@
 # Bloem audiobook requests
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current, with the account-policy corrections noted below. The audiobook
+> request lane is a Bloem addition. It runs beside Silo's movie and series
+> request service (`internal/requests`, Silo's [media requests](media-requests.md)),
+> which it does not change. It was introduced on 2026-10-10 (`904cd8b66`,
+> `23083cc81`). The ebook lane and shared book queues followed on 2026-10-11
+> (`fb87eb439`), acquisition dispatch on 2026-10-12 (`0e6cd9a27`), and
+> connection editing, testing and status handling on 2026-10-14 (`49834d9f3`,
+> `a9901dd3c`, `7ae86fbab`, `bd0162bcb`, `c5daf4119`). `c60b7008e`
+> (2026-10-26) moved the per-account request override from the membership back
+> onto `users`, and each account now has one organization. The "mirrored"
+> Silo-switching phase named below was replaced by a single flag in the same
+> change (see [Silo backend switching](silo-backend-switching.md)). The ebook
+> lane is described in [ebook request foundation](bloem-ebook-request-foundation.md).
+
 Bloem owns the audiobook request lane in `internal/bookrequests` and
 `bloem_book_requests`. Silo's TMDB request store, routes and pages retain their
 existing behavior. The web application wraps those pages at the existing
@@ -21,12 +36,14 @@ organization may remain `initializing`; that exception does not admit an
 initializing hosted organization.
 
 The filing policy reads the profile's actual organization group and membership.
-Membership `requests_allowed` overrides the group gate. Account request-limit
+The account's own `users.requests_allowed` overrides the group gate (it was a
+membership column before `c60b7008e`). Account request-limit
 and approval overrides take precedence over group settings, then global request
 settings. Organization administrators retain the existing exemption from group
-policy; an explicit membership/account restriction still applies. Counters are
+policy; an explicit account restriction still applies. Counters are
 independent of Silo's movie/series and ebook lanes, and shared by an
-account's audiobook requests across its profiles and organizations. Withdrawal consumes quota; decline
+account's audiobook requests across its profiles (an account has one
+organization since `c60b7008e`). Withdrawal consumes quota; decline
 refunds it.
 
 Ordinary reads and cancellation filter by organization, account and profile.
@@ -197,8 +214,9 @@ refusal is a form validation error naming Bloem's audiobook setup. Generic
 creation stays open because it carries the caller's own credentials. This guard
 does not depend on the plugin's own binding check.
 
-Upstream Silo's generic editor has no such guard, so in the mirrored switching
-phase it, or a direct SQL edit, can still move a URL under a saved composite.
+Upstream Silo's generic editor has no such guard, so while Silo serves a
+switchable database it, or a direct SQL edit, can still move a URL under a saved
+composite.
 Dispatch therefore checks every saved credential against its URL binding when it
 reads the connection, before it resolves the plugin. A mismatch or an unreadable
 composite is a conflict and the plugin is not contacted: a submission is treated

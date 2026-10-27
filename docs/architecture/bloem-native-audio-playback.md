@@ -1,5 +1,16 @@
 # Native audiobook presentations
 
+> **Provenance.** Bloem addition, part of [native storage](bloem-native-storage.md):
+> audiobooks kept in a storage source (for example S3) rather than on a local disk,
+> scanned through a storage plugin and played without a local path. Publication arrived
+> in `d5d02a00e` and ingest and direct playback in `8b8943320` (both 2026-10-12), with
+> migration `20261012022129_bloem_native_audio_staging.sql`. It builds on Silo's
+> catalog, multi-part audiobook presentations and playback-v3 sessions
+> ([playback protocol v3](playback-protocol-v3.md)). Later: Silo's Jellyfin and
+> Audiobookshelf servers were restored on 2026-10-18 (`2393c41ee`), which changes the
+> compatibility paragraph below. **Status:** current at `e852f92bf`. No production
+> storage-source audiobook acceptance is recorded.
+
 Native audiobook tracks use the existing catalog, playback-v3 sessions, stream
 tokens and revision-pinned storage reader. The host composes scanning and delivery
 before releasing the shared startup latch. A scanner flag alone cannot admit an
@@ -72,10 +83,14 @@ connection. Cover authority follows the same full-composition gate; cached bytes
 ## Compatibility and limits
 
 Native content remains behind current host publication and playback authority.
-Audiobookshelf/Jellyfin protocol delivery and their former native-file filtering
-adapters are removed. Persisted upstream tables retained for switching do not
-mount a content service. Download/conversion support requires its own admitted
-path and is not implied by direct audiobook playback.
+Silo's Jellyfin and Audiobookshelf servers run again since `2393c41ee`
+(2026-10-18; see [Protocol compatibility](bloem-compatibility-removal.md)). Bloem
+hides native-storage files (catalog paths starting `bloem-storage:`) from the Jellyfin
+handlers that need an operating-system file name (`bloemGuardNativeStorageFiles`).
+No native-file adapter is wired for the Audiobookshelf server, and native audiobook
+delivery through either protocol is neither implemented nor tested.
+Download/conversion support requires its own admitted path and is not implied by
+direct audiobook playback.
 
 Catalog aggregate durations can sum recordings, and duplicate-recording checks
 use truncated duration. S3 does not publish embedded covers. Disc directories

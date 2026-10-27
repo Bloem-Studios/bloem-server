@@ -1,5 +1,25 @@
 # OPA tenant authorization operations
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current, with corrections below. The embedded OPA engine, access groups and
+> the vendor Rego bundle (`internal/policy`, `internal/policy/vendor/*.rego`) are
+> Silo's (Silo #282, `42602b789`, 2026-07-05). OPA is the Open Policy Agent, an
+> embedded policy evaluator. Bloem adds the tenant layer: organizations,
+> memberships, organization-owned groups, resource ownership and entitlements,
+> loaded as facts into Silo's engine through Bloem-owned adapters
+> (`internal/policy/bloem_*.go`, `internal/access/bloem_group_store.go`,
+> `internal/tenancy`). This page dates from the tenant foundation of 2026-08-13
+> (`94f88cc9c`, `fed275c71`, `0e6f7f03d`). Later changes that matter:
+> `654301e56` (2026-09-09) made the transactional group read subject-bound, and
+> `b14f34552` (2026-10-05) moved that read into the Bloem-owned
+> `access.TenantGroupPolicyInTransaction`, which returned Silo's
+> `GroupPolicyInTransaction` to its account-level form. `c60b7008e` and `d064644a8`
+> (2026-10-26) gave each account exactly one membership and moved its account
+> policy back onto `users`, where Silo keeps it. The Silo merge `68070f04b`
+> (2026-10-27) binds the administrative context check to the token's account.
+> For the switch back to Silo's single-organization behavior, see
+> [Silo backend switching](silo-backend-switching.md).
+
 This is the operator boundary for Bloem's OPA-centered tenant authorization.
 PostgreSQL supplies authoritative organization, membership,
 profile-group, ownership, and entitlement facts. The application resolves a
@@ -17,7 +37,12 @@ Household credential management has its own capability and account/PIN/reauthent
 boundary; see [the security foundation](bloem-security-foundation.md).
 Native administration is additive under
 `/api/bloem/v1/admin`: an authenticated account exchanges its session for one
-short-lived Platform or Organization context token. Platform routes operate on
+short-lived Platform or Organization context token. Every request that carries
+the token re-checks the login session it was exchanged from
+(`internal/api/middleware/admin_context.go`). Since `68070f04b` that check passes
+the token's account to Silo's `SessionRepository.ActiveSession`, so a session that
+belongs to another account, or a revoked or remote-playback session, is refused
+with `authorization_state_stale`. Platform routes operate on
 the organization directory; Organization routes take their organization only
 from that token and expose people, profiles, groups, libraries, entitlements,
 invitations, redacted activity pages, and policy-decision explanations. Grant changes
@@ -42,20 +67,26 @@ Deleting a non-default group transactionally reassigns its profiles to that
 organization's default group; it never creates an ungrouped, account-only
 profile. Authorization-affecting group changes bump every assigned account's
 policy revision in the same transaction. Resolution qualifies the profile,
-account, and group by the server-resolved organization; the legacy
-`users.access_group_id` is only the temporary profile-less
-default-organization ceiling.
+account, and group by the server-resolved organization. The account's own
+`users.access_group_id` (Silo's column, which again holds the account's group
+since `c60b7008e`) is used only for profile-less legacy resolution in the
+default organization.
 
-Snapshot-based services use `access.GroupPolicyInTransaction` with the exact
-organization, account, and profile subject. The subject must match the validated
+Snapshot-based services use `access.TenantGroupPolicyInTransaction` with the
+exact organization, account, and profile subject (`access.GroupSubject`). Silo's
+`access.GroupPolicyInTransaction(ctx, tx, userID)` is the account-level read and
+does not take a subject. The subject must match the validated
 tenant context. The read uses the caller-owned transaction and the same
 organization-qualified query as normal policy resolution; it never substitutes
 an account group for a missing or foreign profile. Callers remain responsible
 for loading and validating the other authority facts in that snapshot.
 
-The account-shaped `auth.UserRepository.GetByID` projection selects a default
-or earliest membership. It is not a substitute for a specific tenant's account
-policy when assembling a transactional authorization snapshot.
+`auth.UserRepository.GetByID` returns the account's `users` row, Silo's
+account-shaped projection. Since `c60b7008e` and `d064644a8` (2026-10-26) an
+account has exactly one membership (`organization_memberships` is unique on
+`account_id`), so the earlier "default or earliest membership" selection no
+longer exists. The row is still not a substitute for the profile's group and
+the tenant's revisions when assembling a transactional authorization snapshot.
 
 An organization has media availability for:
 
@@ -112,12 +143,18 @@ git diff --check
 git status --short
 ```
 
-CI executes these PostgreSQL-specific gates with the job-level database URL:
+The tenant job in `.github/workflows/bloem-ci.yml` first migrates its empty
+disposable PostgreSQL service (`go run ./cmd/silo --migrate-only`), then runs
+these gates with the job-level database URL:
 
 ```sh
 SILO_REQUIRE_TEST_DATABASE=1 go test ./internal/database -run 'TestTenantIdentityMigration|TestResourceTenancyMigration|TestOrganizationAccessGroupMigration|TestProfileAccessGroupRequired' -count=1 -v -timeout=30m
 SILO_REQUIRE_TEST_DATABASE=1 go test ./internal/userstore/pgstore -run 'TestProfileOrganizationAndAccessGroupPersistence|TestProfileAccessGroupRejectsDifferentOrganization' -count=1 -v -timeout=30m
-SILO_REQUIRE_TEST_DATABASE=1 go test -race ./internal/tenancy ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m
+SILO_REQUIRE_TEST_DATABASE=1 go test -race ./internal/resourcetenancy ./internal/access ./internal/policy -count=1 -v -timeout=30m
 SILO_REQUIRE_TEST_DATABASE=1 go test ./internal/api -run 'TestV1TenancyCompatibility|TestOPATenantFoundationWithDisposablePostgres' -count=1 -v -timeout=30m
 SILO_REQUIRE_TEST_DATABASE=1 go test ./internal/api ./internal/tenancy ./internal/adminpeople ./internal/database -run 'TestMultitenantAdmin|TestAdminStore|TestService|TestAdminPeopleMigrations|TestOrganizationAdminProjectionMigration' -count=1 -v -timeout=30m
 ```
+
+The race tests for `./internal/tenancy` run in a separate job, "Tenant stores
+race", split across four shards (`scripts/ci/go-test-shard.sh`), each with its own
+disposable PostgreSQL.

@@ -1,5 +1,15 @@
 # Upstream reconciliation — 2026-09-08
 
+> **Status: historical integration record** (2026-09-08; written in `c53cdc4e7`;
+> checked against `e852f92bf`). It records how Bloem merged Silo `main` through
+> `aeb82e1c9` in merge `3cbc2abed`. Every later Silo merge supersedes its state: Bloem
+> `main` now contains all of Silo `main` through `3e2d306b2` (merge `68070f04b`,
+> 2026-10-27). The deferred native part of Silo `658be10eb` was completed the same day
+> in `549d88b6d` (see [native subtitle delivery](native-subtitle-delivery.md)). Fork
+> policy and current merge practice are in [FORK.md](../../FORK.md); later merges are
+> listed in the [integration changelog](../bloem/CHANGELOG.md). The record below is kept
+> as written, except that the final merge hash replaces a pointer to an external report.
+
 This reconciliation adopts applicable Silo main changes while preserving Bloem's
 native client contracts and fork behavior. It does not authorize deployment.
 
@@ -13,8 +23,8 @@ native client contracts and fork behavior. It does not authorize deployment.
 - Reconciled source candidate before generated artifacts and validation fixes:
   `e06e013046f7209b305367d484d4075e12b5dade`.
 - Final integration: the final reconciliation merge commit has the tested
-  Bloem candidate and the upstream target as parents. Its immutable full hash
-  is recorded in the task's completion report; use `git log --merges` to locate it.
+  Bloem candidate and the upstream target as parents:
+  `3cbc2abed36c47dd6a0e02a9766db96b79b5cb82`.
 
 Reviewed the September 1–8 lookback and all 38 commits outside Bloem ancestry,
 regardless of timestamp. `git cherry` found no patch-identical copies of those

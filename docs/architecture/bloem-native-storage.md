@@ -1,5 +1,21 @@
 # Bloem native storage
 
+> **Provenance.** Bloem addition. Silo libraries are filesystem paths; "native storage"
+> is Bloem's name for libraries whose files live in a storage source (an S3 bucket or a
+> Bookwarehouse book service) and are read through a host-approved storage plugin,
+> without a local path. It builds on Silo's plugin runtime (`internal/plugins`), scanner
+> and catalog. Bloem history: this page, persisted sources and bindings from 2026-10-06
+> (`324ed712d`, `dbf43c8a6`, `ccc18d1b1`), EPUB/PDF onboarding on 2026-10-07
+> (`b62833a14`), catalog Bookwarehouse installs (`5268a8ce5`, 2026-10-09), S3 discovery
+> and private S3 state (`730bbfe3d`, `204f820e1`, 2026-10-10), movies and checked-ETag
+> reads (`b781ac3ff`, 2026-10-11), audiobooks (`8b8943320`, 2026-10-12), the
+> source-management UI and organization S3 sources (2026-10-15; see the
+> [design](bloem-storage-source-management-ui-design.md)), and listing pages getting
+> their full 30-second deadline (`d183b286f`, 2026-10-25). Since the Silo merge
+> `68070f04b` (2026-10-27) Silo checks the plugin cache directory that holds the native
+> installation root (see [S3 process state](#s3-process-state)). **Status:** current at `e852f92bf`; experimental, and no
+> backend is certified (`backend_verified` stays false).
+
 Native storage lets ebook, movie and audiobook libraries read files from storage plugins,
 such as Bookwarehouse, alongside filesystem paths. A library can retain multiple
 plugin locations, each with independently selected directory roots. It remains
@@ -91,10 +107,19 @@ a committed higher generation runs.
 
 ## S3 process state
 
-The manually approved `bloem.storage.s3` provider needs a durable private
-identity and cursor database. The registry derives its `connection.state_path`
+The `bloem.storage.s3` provider, installed from the catalog when its digest is pinned
+in the host's static approvals or from a manually approved artifact, needs a durable
+private identity and cursor database. The registry derives its `connection.state_path`
 from the installation ID under `state/s3/installation-<id>/index.db` within the
-host installation root. Executable replacement, runtime generation changes,
+host's native installation root.
+
+The native installation root is `native-storage` inside Silo's plugin cache
+directory, on the API host, the proxy host and the native video worker alike. That
+directory is `SILO_PLUGIN_CACHE_DIR` when set (the operator secures it), otherwise
+`silo-plugins` under the operating system's temporary directory. Since the Silo merge
+`68070f04b` (Silo #3138) a Unix server refuses to start with that default when another
+local user controls it (`plugins.EnsurePrivateCacheRoot`); set `SILO_PLUGIN_CACHE_DIR`
+to a directory only the server's user can write. Executable replacement, runtime generation changes,
 credential rotation and host restart preserve this path. Separate installations
 have separate state; reinstalling a detached source creates a new installation
 and does not migrate the previous installation's identity database.
@@ -429,6 +454,9 @@ uses its own generated bindings in `internal/storageproto`.
 1.36.11 and protoc-gen-go-grpc 1.6.1; `--check` verifies the generated files.
 
 Hosts request at most 512 entries and 1 MiB per page with a 30-second deadline.
+The plugin session's 10-second default RPC bound used to cut that short; since
+`d183b286f` (2026-10-25) a listing call asks for its full 30 seconds
+(`storageplugin.RPCLimit`), and every other call keeps the 10-second bound.
 `Read` delivers exactly the requested range (at most 8 MiB) in ordered chunks
 of at most 128 KiB and must end with status OK; a partial read is discarded.
 Cursors must advance and a change token appears only on a final page.

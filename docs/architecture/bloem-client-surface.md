@@ -1,5 +1,14 @@
 # Bloem native client surface
 
+> **Provenance.** Bloem addition. The native client surface was first served on
+> `/api/v2` (`25024c844`, 2026-08-14) and moved to `/api/bloem/v1` (`811fb4d29`,
+> 2026-09-02) because upstream Silo was taking `/api/v2` for its own, unrelated API.
+> Later changes that matter: direct-profile sessions may file ebook requests
+> (`70401bd26`, 2026-10-14); Bloem's music routes (`f9e1447f3`) and lifecycle
+> receipts with their `lifecycle_idempotency_*` tokens (`b017bfe84`) were removed on
+> 2026-10-26. Silo's own v1 and v2 APIs are described in [API contract](api-contract.md)
+> and [v1 scope](v1-scope.md). **Status:** current at `e852f92bf`.
+
 `/api/v1` is the Silo-compatible projection. `/api/bloem/v1` is the native Bloem
 API, distinct from upstream Silo's `/api/v2`. New Bloem-only features belong under
 `/api/bloem/v1`, because
@@ -51,8 +60,9 @@ or sibling-client provider administration is supplied. See
 [deployed revision and acceptance limits](../operations/2026-10-07-native-storage-deployment.md).
 
 The viewer routes use ordinary account sessions and require `X-Profile-Id`.
-Direct-profile sessions are limited by the router's allowlist, which admits
-`/api/v1` routes plus only the audiobook and ebook request viewer routes under
+Direct-profile sessions are limited by the router's allowlist
+(`internal/api/direct_profile_routes.go`), which admits a reviewed set of `/api/v1`
+routes plus only the audiobook and ebook request viewer routes under
 `/api/bloem/v1`; everything else is rejected before native viewer middleware runs. The browser's Silo v2 calls are also
 outside that allowlist: credential management does not imply direct-profile browser login.
 
@@ -68,8 +78,9 @@ mounted in a particular deployment; clients still handle the route's response.
 Identity is a sibling of the capability document rather than a section inside
 it. The capability document must never fail: a probe that can itself be
 unavailable leaves a client interpreting exactly the ambiguous state the probe
-exists to replace. Its lifecycle-required token is a dynamic rollout fact whose
-read failure is handled by omitting that token, while the response stays `200`.
+exists to replace. Its one runtime-dependent token,
+`native_audiobook_presentations_v1`, is omitted while the native-audio readiness
+check is false; the response stays `200`.
 Identity resolves the
 `server.instance_id` setting through the database and legitimately answers
 `503`, and its `setup_complete` flips exactly once, so it is served `no-store`.

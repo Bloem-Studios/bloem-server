@@ -1,9 +1,20 @@
 # Admin remote control of clients — invariants
 
+> **Provenance.** Bloem addition ("S-5a" in Bloem's September 2026 plan series): first
+> commit `e1efec046` (2026-09-02), review round `9f299bf86` the same day, and this page
+> in `3136d0848` (2026-09-02). `internal/remote` and `remote_control.go` are Bloem's;
+> Silo's playback control socket (`session_ws.go`, a ledgered seam in
+> `contracts/seams.txt`) carries the commands. Later: `5ee7e9455` (2026-09-23) moved
+> Bloem's in-body edits of Silo handlers into hooks, including the hello filter in
+> `internal/api/handlers/bloem_session_ws_ext.go`. **Status:** current at `e852f92bf`.
+> The device rail ("S-5b": queued device commands such as `play_media` and `sign_out`)
+> is not implemented; a device may already advertise its command names.
+
 Server-issued commands to client apps: the sender side lives in `internal/remote`, delivery
 rides the per-session playback control socket (`internal/api/handlers/session_ws.go`), and the
-admin/household endpoints are in `internal/api/handlers/remote_control.go`. The working spec is
-`docs/specs/admin-remote-control.md`; this page records the rules that must survive it.
+admin/household endpoints are in `internal/api/handlers/remote_control.go`. The original spec,
+now a historical snapshot, is [`docs/specs/admin-remote-control.md`](../specs/admin-remote-control.md);
+this page records the rules that must survive it.
 
 ## Rules
 
@@ -16,7 +27,7 @@ admin/household endpoints are in `internal/api/handlers/remote_control.go`. The 
 - **v2 clients receive nothing.** A hello with an empty command list (every v2 client) leaves the
   device untouched, and the device registry itself is never consulted for capability. The
   upstream socket vocabulary and its validator are unchanged: the API layer strips the
-  remote-control-only names (`replan`, the device-rail names) before the upstream validator runs
+  remote-control-only names (`replan`, the device-rail names; `upstreamHelloCommands`) before the upstream validator runs
   and hands the full list to the remote store, which validates it against its own vocabulary.
 - **Household members control their own account only,** from the primary profile (or an admin
   account), with the reduced set `pause unpause play_pause seek stop set_volume set_audio_track

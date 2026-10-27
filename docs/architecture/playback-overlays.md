@@ -1,5 +1,16 @@
 # Playback overlays
 
+> **Provenance.** Bloem addition with no Silo counterpart. Promotion cards
+> (`internal/promotions`) arrived in `3ae12d9f2` (2026-09-01), specified in the
+> [client engagement spec](../specs/client-engagement.md) as "S-2"; timed playback
+> overlays and this page in `eaa0b3a6b` (2026-09-06); the embedded-web authoring and
+> home placements in `53534d9f0` (2026-09-18). Later: campaign evaluation ran in a
+> bundled worker from `85ba110f2` (2026-10-05) and returned in-process in `310c545f9`
+> (2026-10-26); see [presentation evaluators](bloem-presentation-evaluators.md).
+> **Status:** server and web behavior current at `e852f92bf`; the client rendering
+> and verification notes below date from September 2026. Garden is Bloem's companion
+> application, outside this repository; it authors campaigns through the same registry.
+
 Garden and the embedded web's platform **Campaigns & seasonal packs** page author
 campaigns through the existing promotions registry. The web uses the native platform
 adapter, without organization-admin publication authority or revision locking. Playback
@@ -12,7 +23,9 @@ Existing server admin announcements remain independent and require no Garden acc
 Home/detail/pre-playback placements reuse the registry but have separate presentation
 rules: Home is off by default, children are suppressed, and **Continue to content** is
 immediately available before playback. Once admitted, the player stays mounted across
-campaign updates. Campaign artwork uploads require configured public S3. See
+campaign updates. Campaign artwork uploads need an asset store: the catalog Assets
+store, local or S3, or public S3 as the fallback (see
+[asset storage](bloem-campaign-asset-storage.md)). See
 [web coverage](bloem-web-feature-coverage.md) for these workflows and their evidence;
 they do not change the chapter-triggered overlay lifecycle below.
 

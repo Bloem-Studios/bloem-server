@@ -1,8 +1,29 @@
 # Resource tenancy foundation
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> the invariants and queries are current, but the "not yet" statements below
+> are dated. Resource tenancy is a Bloem addition; Silo has no resource owners,
+> organizations or entitlements. The migration (`56e8cdf74`) and this page
+> (`3189d96ea`) date from 2026-08-13; the code is in `internal/resourcetenancy` and
+> `internal/tenancy`. Later changes that matter:
+>
+> - Organization-owned roots now exist. Native-storage library creation
+>   assigns the creating organization as owner
+>   (`internal/nativestorage/library_mutations.go`, `a62162cc5`, 2026-10-12).
+>   Organization administrators can add organization-owned S3 sources
+>   (`ccce9b1ee`, 2026-10-15); see [native storage](bloem-native-storage.md).
+>   The ["Rollback boundary"](#rollback-boundary) warning about
+>   organization-private resources therefore applies to any database that
+>   has used them.
+> - `b43fb65e0` (2026-10-26) grants each new organization the
+>   creation-default bundle (described below).
+>
+> The policy side is described in [OPA tenant authorization](opa-tenant-authorization.md).
+
 Migration `20260813090000_resource_tenancy_roots.sql` establishes Bloem's
-first resource-isolation boundary. It does not enable organization-private
-resource creation, add public API fields, or activate row-level security.
+first resource-isolation boundary. The migration itself does not enable
+organization-private resource creation, add public API fields, or activate
+row-level security.
 
 ## Invariants
 
@@ -62,8 +83,10 @@ future organizations requires an explicit new bundle version and audited
 activation.
 
 No caller can use these compatibility paths to select an organization owner.
-Organization-private library/plugin creation remains disabled until its later
-design and review boundary.
+When this page was written, organization-private library and plugin creation
+was disabled. It now exists only through the native-storage administration
+paths named in the status note above. Those paths remove the compatibility
+grant from the new row before they assign the organization owner.
 
 ## Verification queries
 
@@ -185,8 +208,12 @@ not a valid rollback. Roll back the application image and restore the named
 predeployment database snapshot; never discard ownership rows to force the old
 schema to accept private resources.
 
-## Next boundary
+## Next boundary (as planned on 2026-08-13)
 
 The next slice moves library/catalog repository reads and writes onto required
 typed tenant/service scopes and locks `/api/v1` parity. RLS remains disabled
 until executable repository/RLS decisions match exactly.
+
+Row-level security is still not enabled at `e852f92bf`; tenant scope is applied
+by the policy engine and SQL predicates (see
+[delivery boundary enforcement](delivery-boundary-enforcement.md)).

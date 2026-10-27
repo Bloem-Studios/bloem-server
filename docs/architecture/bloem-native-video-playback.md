@@ -1,6 +1,21 @@
 # Native video playback
 
-Native video uses the ordinary v2 playback plan and HTTP delivery contract.
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current for movies, with the corrections noted below. Native video plays
+> movies stored in [native storage](bloem-native-storage.md) locations (Bloem's
+> provider-backed storage, for example S3) through Silo's playback planner and
+> delivery handlers. It is a Bloem addition, introduced in `b781ac3ff`
+> (2026-10-11: playback, the movie scanner and checked-ETag reads; main code in
+> `internal/api/bloem_native_video.go` and
+> `internal/api/handlers/bloem_native_video.go`). Read-ahead followed in
+> `b0b819fc8` (2026-10-11). Native audiobooks followed on 2026-10-12 and are
+> described in [native audio playback](bloem-native-audio-playback.md). The Silo
+> merge `68070f04b` (2026-10-27) binds the login-session recheck to the
+> delegated account; see [Source admission](#source-admission). The plan
+> format is Silo's [playback protocol v3](playback-protocol-v3.md).
+
+Native video uses Silo's ordinary playback plan (protocol v3) and HTTP delivery
+contract, on `/api/v1` and `/api/v2` alike.
 Its catalog identity is an opaque `bloem-storage:` reference. Provider URLs,
 headers, credentials and private tool inputs never become client stream URLs,
 catalog paths, durable recipes or worker grants.
@@ -27,7 +42,11 @@ checked-mode descriptor advertises `revision_pinned_reads: false`.
 Each open rechecks the current account or API key, login/profile credentials,
 PIN authority, organization membership, library access, source ownership,
 installation generation, encrypted configuration revision and catalog file
-reference. The host retains a sealed source descriptor for the playback
+reference. Since `68070f04b` (2026-10-27), the login-session part of that
+recheck (`verifyNativeVideoActor`) passes the delegated account to Silo's
+`SessionRepository.ActiveSession`, which binds a token to its session's
+account (Silo #3140). A login session that belongs to another account no
+longer counts as active. The host retains a sealed source descriptor for the playback
 session. Replanning the same file reauthorizes it without replacing or extending
 that descriptor. Every execution, seek probe, subtitle extraction and restart
 opens fresh authority for the same byte revision.
@@ -126,9 +145,12 @@ in bounded local memory and cross-process recovery is unavailable.
 
 The supported contract is native API video playback for admitted catalog
 files. Initial movie scanning accepts MOV/MP4 and Matroska/WebM containers.
-Jellyfin native-file delivery, offline/download conversion, native series or
-audiobook ingestion, and arbitrary remote URL or `.strm` playback remain
-unsupported. Sidecars belonging to a different original file after an
+Jellyfin native-file delivery, offline/download conversion, native series
+ingestion, and arbitrary remote URL or `.strm` playback remain unsupported.
+(Native audiobook ingestion was unsupported when this page was written and was
+added on 2026-10-12; see [native audio playback](bloem-native-audio-playback.md).
+Since Silo's Jellyfin server was restored on 2026-10-18, `bloemGuardNativeStorageFiles`
+in `cmd/silo/bloem_compat.go` hides native-storage files from it.) Sidecars belonging to a different original file after an
 alternate-file start need their own host-owned binding; an effective-file
 binding grants no access to that other file. File-switch replans that need the
 new source during preparation remain denied until the host supplies pending

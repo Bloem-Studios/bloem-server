@@ -1,5 +1,34 @@
 # Server-First Client Remediation Roadmap
 
+> **Historical plan; status at 2026-10-27** (checked against `main` at
+> `e852f92bf`). This dated Bloem roadmap is kept as written. Its server
+> milestones were implemented on 2026-08-23. Several were later replaced by
+> Silo's own mechanisms:
+>
+> - **M0.** The shared outbound policy (`internal/outbound`, `58ca45da0`), the
+>   collection artwork SSRF block (`ca12dc7c3`) and immutable remote seed
+>   imports (`5ff82f3f4`) landed. Silo has since added its own outbound guard,
+>   `internal/netguard` (see Silo's [outbound address guard](outbound-address-guard.md)).
+>   At this revision Bloem's `internal/outbound` serves only the catalog-seed
+>   import. Scoped URL tickets (`3ba3e5518`) landed. `a7436b4e5` (2026-10-25)
+>   returned the v1 sockets to Silo's own ticket handshake and removed Bloem's
+>   audience tickets.
+> - **M1.** Fleet-wide playback reservations landed in `b68b0405a` (migration
+>   `20260823183000_playback_capacity_reservations.sql`) and remain Bloem's.
+>   Releasing capacity on a durable stop followed in `167e03f20`; see
+>   [cluster media](bloem-cluster-media.md).
+> - **M2.** Bloem's distributed Watch Together ownership (`625289a5c`,
+>   `49b9c29e6`) was retired in the Silo merge `64bbab66b` (2026-09-23) in favor
+>   of Silo's Postgres-owned room runtime (see Silo's
+>   [Watch Together rooms](watch-together-rooms.md)).
+> - **M2.5.** The single-node SQLite fence landed in `bc6bbc956`
+>   (`internal/userdb/cluster_guard.go`) and remains.
+> - **M3 to M5** are client milestones in the separate Android and Apple
+>   repositories. Their status cannot be verified from this repository.
+>
+> The [architecture evaluation](server-a-z-architecture-evaluation-2026-08-23.md)
+> that motivated this plan is likewise dated.
+
 **Status:** Approved for execution  
 **Date:** 2026-08-23  
 **Related audit:** [Server A–Z Architecture Evaluation](server-a-z-architecture-evaluation-2026-08-23.md)

@@ -1,5 +1,20 @@
 # Delivery boundary enforcement
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current, with corrected code references. This is a Bloem addition: Silo has
+> no organizations, no standalone-proxy source recheck and no notification
+> delivery predicate. Bloem added the delivery rechecks on 2026-09-12:
+> `017938946` (handlers), `b643a84e9` (standalone proxy), `3c0305b73` and
+> `b4ae360f4` (notifications), and this page (`e6eba2ac4`). The checks live in
+> Bloem-owned files. Their call sites in Silo's `playback.go`, `stream.go` and
+> `internal/downloads/offline.go` are recorded seams (Bloem edits to Silo files,
+> listed in `contracts/seams.txt`). The tenant ceiling they
+> rely on is described in [OPA tenant authorization](opa-tenant-authorization.md).
+> Earlier versions of this page cited exact line numbers, which later Silo merges
+> invalidated. The references below name files and symbols instead. Since
+> `c60b7008e` (2026-10-26) an account belongs to exactly one organization; see
+> the proxy note under [Explicitly not covered](#explicitly-not-covered).
+
 Native media delivery, the standalone proxy, and notification fanout now
 recheck library access at the point where bytes or rows actually leave the
 server, closing paths that previously trusted a session or a signed artifact
@@ -12,17 +27,20 @@ The organization ceiling already existed before this change. `ViewerResolver`
 loads the tenant's available media folders and the policy engine intersects
 them into every resolved scope:
 
-- `internal/policy/viewer_resolver.go:18` declares `TenantLibraryResolver`
-  (`AvailableMediaFolderIDs`); `internal/policy/viewer_resolver.go:122` calls
-  it inside `ResolveFacts` to get `tenantLibraryIDs` before the PDP runs.
-- `internal/policy/vendor/scope.rego:68-70` (`tenant_bounded_libraries`)
+- `internal/policy/bloem_viewer_resolver.go` declares `TenantLibraryResolver`
+  (`AvailableMediaFolderIDs`). `ResolveFacts` in Silo's
+  `internal/policy/viewer_resolver.go` calls it through
+  `resolveTenantLibraryIDs` to get `tenantLibraryIDs` before the PDP (the policy
+  decision point, which runs the OPA policy) runs.
+- `tenant_bounded_libraries` in `internal/policy/vendor/scope.rego`
   returns the tenant's own library set unmodified when the account is
   unrestricted, and `intersect(tenant_library_ids(i),
   effective.allowed_library_ids)` otherwise.
-- Background paths that have no HTTP request get the same ceiling through
-  `policy.TenantViewerResolver`, which resolves the subject's tenant itself
-  rather than reading one off a request. `internal/api/router.go:2401` wires
-  this resolver into progress-snapshot resolution.
+- Paths that cannot read a tenant off the request get the same ceiling through
+  `policy.TenantViewerResolver`, which resolves the subject's tenant itself.
+  `newTenantAwareViewerResolver` in `cmd/silo/bloem_main.go` builds it for
+  background callers, and `wireBloemViewerTokenResolver` in
+  `internal/api/router_bloem_wiring.go` installs it for stream-token requests.
 
 The consequence is what makes the rest of this document possible:
 `access.Scope.AllowedLibraryIDs` is already tenant-bounded everywhere it is
@@ -53,8 +71,8 @@ since it cannot attach an `Authorization` header). Before this change,
 `RequireViewerAccess` skipped on that path and `AccessFilterFromContext`
 fell back to a zero-value filter, which the guard read as "no library
 restriction" — revoking a library entitlement did not stop delivery.
-`internal/api/middleware/viewer_access.go:107-145`
-(`requireStreamTokenViewerAccess`) now resolves a real, organization-bounded
+`requireStreamTokenViewerAccess` in `internal/api/middleware/viewer_access.go`
+now resolves a real, organization-bounded
 scope from the token's own `uid`/`pid` (lookup keys only, re-verified
 against live policy) instead of skipping.
 
@@ -68,15 +86,15 @@ These are rules a future change must not break.
   resolution would keep serving a revoked entitlement until the token
   expired.
 - **The ceiling never widens a policy result; it only intersects.**
-  `internal/policy/vendor/scope.rego:68-70` intersects, never unions, the
-  tenant set with the effective policy result.
+  `tenant_bounded_libraries` in `internal/policy/vendor/scope.rego` intersects,
+  never unions, the tenant set with the effective policy result.
 - **A delivery guard rechecks library membership only.** Quality selection
   stays at admission — a lower-resolution transcode must never be rejected
   because its source is higher resolution.
-  `internal/catalog/access_filter.go:219` (`FileAllowedByLibraryScope`)
-  takes a file and two library-ID sets, no quality parameter, by design;
-  see the reasoning recorded at
-  `internal/api/handlers/playback_library_access.go:33-35`.
+  `FileAllowedByLibraryScope` (now in the Bloem-owned
+  `internal/catalog/bloem_access_filter.go`) takes a file and two library-ID
+  sets, no quality parameter, by design; see the reasoning recorded in
+  `fileAllowedByViewerScope` in `internal/api/handlers/playback_library_access.go`.
 - **Absence of a resolved scope means deny, not "unrestricted."** This is
   load-bearing: `RequireAuth`, `RequireViewerAccess`, and `TenantMiddleware`
   all return early for stream-token-authorized requests, so
@@ -87,20 +105,23 @@ These are rules a future change must not break.
   `AccessFilterFromContext`'s zero-value fallback alone.
 - **An inaccessible source answers 404 and never confirms existence; an
   authority that cannot be consulted answers 503.**
-  `internal/proxy/source_access.go:34-42` documents and
-  `checkSourceAccess` (`internal/proxy/source_access.go:57-72`) implements
+  `ErrSourceHidden` in `internal/proxy/source_access.go` documents and
+  `checkSourceAccess` in the same file implements
   this: `ErrSourceHidden` maps to 404, everything else — including a nil
   `SourceAccess` — maps to 503, matching the existing nil-grants/
   nil-loginSessions convention in `internal/proxy/server.go`.
 - **The proxy checks ownership through an injected interface because it has
   no database and no resolved viewer scope.**
-  `internal/proxy/source_access.go:31` defines `SourceAccess` as an
+  `internal/proxy/source_access.go` defines `SourceAccess` as an
   interface in the same shape as `proxyGrantLookup`/`loginSessionValidator`;
-  the concrete, DB-backed implementation lives in `cmd/silo/main.go` (where
-  the pool this process opened already exists), composing
+  the concrete, DB-backed implementation is `proxySourceAccess` in
+  `cmd/silo/bloem_main.go` (built where the pool this process opened already
+  exists, by `newProxySourceAccess`), composing
   `tenancy.Resolver` and `resourcetenancy.Store` the way the API's tenant
   middleware does. `internal/proxy` must not import `internal/tenancy` or
-  `internal/resourcetenancy` directly.
+  `internal/resourcetenancy` directly. The same check also hides files in
+  [native storage](bloem-native-storage.md) locations from the proxy
+  (`storagesource.IsNativeLocation`), because the proxy reads only local paths.
 - **Per-request rechecking is deliberate.** Checking only at manifest-fetch
   time would leave HLS segments unguarded until the next manifest reload;
   every account-scoped media route in the proxy — direct play, remux,
@@ -108,12 +129,14 @@ These are rules a future change must not break.
   `checkSourceAccess` independently.
 - **Delivery-type eligibility is an explicit allowlist, not a negated
   exception, so a new type must classify itself.**
-  `internal/notifications/delivery_access.go:18`
-  (`accountLevelDeliveryTypes`) replaced a fallback that excluded only
+  `accountLevelDeliveryTypes` in `internal/notifications/delivery_access.go`
+  replaced a fallback that excluded only
   `request.fulfilled` by name — a new delivery type with no library and no
   item identity used to inherit eligibility silently.
-  `TestEveryDeliveryTypeConstantIsClassified` parses every top-level
-  `DeliveryType*` constant across the package's four declaring files and
+  `TestEveryDeliveryTypeConstantIsClassified`
+  (`internal/notifications/delivery_type_classification_test.go`) parses every
+  top-level `DeliveryType*` constant in the package's non-test files (four
+  files declare them today) and
   fails by name if a constant is missing from either
   `accountLevelDeliveryTypes` or the test's own
   `notAccountLevelDeliveryTypes` set.
@@ -122,7 +145,8 @@ These are rules a future change must not break.
 
 - **Client-facing inbox reads are not bounded.** `GetByID`, `ListInbox`,
   `ListSync`, `RecentUnread`, `UnreadCount`, and `GetRowsByIDs` in
-  `internal/notifications` carry no ownership predicate. A revoked-access
+  `internal/notifications` (`delivery_repo.go`, `bloem_delivery_repo.go`)
+  carry no ownership predicate. A revoked-access
   row still appears in that viewer's own inbox and can expose the title and
   metadata of an item they can no longer reach.
 - **Interest rows are not invalidated when an entitlement is revoked.**
@@ -131,16 +155,20 @@ These are rules a future change must not break.
   `profile_series_interest` rows are excluded at read time by
   `deliveryAccessPredicate`, but they are never cleaned up — they persist
   indefinitely as dead rows.
-- **The standalone proxy always checks against the account's default
-  organization, not the organization the original request was scoped to.**
-  `cmd/silo/main.go:480` resolves tenancy with `legacy=true` because proxy
-  artifacts (signed recipes, grants, download URLs) carry no organization
-  claim. For a single-org account this is exactly right; for a multi-org
-  account, the proxy recheck can only ever validate against the default
-  organization, never the one the original API request was scoped to.
+- **The standalone proxy always checks against the default organization.**
+  `proxySourceAccess.AllowMediaSource` in `cmd/silo/bloem_main.go` resolves
+  tenancy with `legacy=true` and no organization, because proxy artifacts
+  (signed recipes, grants, download URLs) carry no organization claim; the
+  resolver then uses the deployment's default organization. When this page was
+  written an account could belong to several organizations, so the recheck
+  could validate only the default one. Since `c60b7008e` (2026-10-26) each
+  account has exactly one membership. An account whose membership is in a
+  hosted (non-default) organization therefore has no default-organization
+  membership, and the proxy answers `404` for its sources (it fails closed).
+  The standalone proxy serves default-organization accounts only.
 - **The proxy guard costs multiple indexed Postgres round-trips per
   request** — a file lookup, a tenant resolution, and a resource-access
-  check (`cmd/silo/main.go:469-494`) — repeated per HLS segment, since
+  check (`proxySourceAccess.AllowMediaSource`) — repeated per HLS segment, since
   per-request rechecking is deliberate (see Invariants). The correct
   mitigation is a cache keyed on the organization's access revision,
   invalidated when it advances, not a time-based TTL — a TTL would

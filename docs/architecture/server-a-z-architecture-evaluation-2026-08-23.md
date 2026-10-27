@@ -1,5 +1,28 @@
 # Server A–Z architecture evaluation
 
+> **Status: historical evaluation** (2026-08-23; written in `b20c4e32d`; this note
+> checked against `e852f92bf`). The findings below describe the tree at `e88a3588` and
+> are kept as recorded. Spot checks at `e852f92bf`, not a re-audit:
+>
+> - **S-01** fixed by Silo `1582ef15b` (2026-10-08): collection artwork downloads use
+>   Silo's `netguard` client ([outbound address guard](outbound-address-guard.md)).
+> - **S-02** superseded by Silo's database-coordinated Watch Together rooms
+>   (`internal/watchtogether/cluster.go`, Silo `f5d1e6251`, 2026-09-14), which Bloem
+>   adopted in place of its own relay (merge `64bbab66b`, 2026-09-23).
+> - **S-03** addressed by Bloem `b68b0405a` (2026-08-23): fleet-wide PostgreSQL capacity
+>   reservations (`internal/playback/reservation_postgres.go`); see
+>   [cluster media](bloem-cluster-media.md).
+> - **S-04** resolved by Bloem `bc6bbc956` (2026-08-23), as recorded in that section.
+> - **S-05** addressed by Bloem `5ff82f3f4` (2026-08-23): remote seeds are fetched once
+>   through `internal/outbound` into an immutable artifact (a ledgered edit of Silo's
+>   `catalog_seed.go`).
+> - **S-12** settled by policy: Live TV is Bloem's attributed adaptation of Prairie
+>   Server ([FORK.md](../../FORK.md)), not an excluded feature.
+> - **S-06 to S-11 and S-13** were not re-verified for this note.
+>
+> The companion plan is the
+> [server-first remediation roadmap](server-first-client-remediation-roadmap-2026-08-23.md).
+
 Status: architecture audit of `origin/main` at `e88a3588` on 2026-08-23.
 
 This review applies the same standard used for the Bloem native clients: find

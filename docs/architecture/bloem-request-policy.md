@@ -1,5 +1,21 @@
 # Bloem request policy
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current. The request service, its quotas and its request routing are Silo's
+> (`internal/requests`; routing rules came with Silo #1632, `9d63465bf`; see
+> Silo's [media requests](media-requests.md)). This page covers the Bloem
+> adapters that bind them to Bloem's organizations (tenants) and verified
+> profiles. Those adapters live in Bloem-owned files: `internal/requests/bloem_*.go`,
+> `internal/api/bloem_request_usage_wiring.go` and `enableBloemRequestPolicy` in
+> `internal/api/router_bloem_wiring.go`. The profile and quota binding was added in
+> `f167e85be` (2026-10-10) and the platform guard on server-global routing in
+> `1da67971e` (2026-10-10). Two later changes matter. `c60b7008e` (2026-10-26)
+> moved an account's policy (its request override and access group) back onto
+> `users`, where Silo keeps it, and limited an account to one organization.
+> `b017bfe84` (2026-10-26) removed the lifecycle-receipt dependency. "Native
+> listeners" below means the two routers that serve Silo's API: the `/api/v1`
+> router and the `/api/v2` listener.
+
 The movie and series request service remains shared with Silo. Bloem installs
 owned tenant adapters before composing either native listener. Unsupported production dependencies
 fail composition instead of silently retaining account-wide authorization.
@@ -32,8 +48,10 @@ account-group resolution.
 ## Administrative reads and group writes
 
 `GET /api/v2/admin/request-users/{user_id}/usage` explicitly addresses an
-account and supplies no target profile. Its separate adapter reports that
-account's current membership policy in the actor's organization. It does not
+account and supplies no target profile. Its separate adapter
+(`internal/requests/bloem_admin_request_usage.go`) reports that account's own
+policy, meaning the request override and access group on its `users` row, within
+the actor's organization. It does not
 infer a profile or relax the viewer-request resolver. One live snapshot checks
 the enabled actor's current administrator membership and tenant revisions,
 then the enabled target's active membership and organization-owned group.

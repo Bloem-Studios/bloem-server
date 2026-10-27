@@ -1,8 +1,18 @@
 # Bloem lifecycle safety
 
+> **Provenance.** Bloem page, written with two fixes of 2026-10-10: tenant retirement
+> that preserves shared accounts (`cadc2f312`) and library deletion that preserves
+> bundle-retained libraries (`5436ed812`, migration
+> `20261010210634_bloem_media_folder_bundle_deletion_fence.sql`). Tenants
+> (organizations) and their bundles are Bloem's; library deletion and its admin-job
+> runner are Silo's, and Bloem's guard wraps them (`internal/catalog/bloem_folder_repo.go`).
+> Later: `b017bfe84` (2026-10-26) removed Bloem's lifecycle receipts (an
+> `Idempotency-Key` replay layer), and with them this page's sections on keyed
+> retirement and encrypted invitation receipts. **Status:** current at `e852f92bf`.
+
 ## Tenant retirement
 
-The tenant-delete route uses
+The tenant-delete route (`DELETE /api/v1/admin/tenants/{id}`, Bloem's tenant admin API) uses
 `tenancy.MemberService.RetireOrganizationInTransaction`. The transaction locks
 the organization before enumerating members, then applies the same deletion
 rules as an individual tenant-member removal:

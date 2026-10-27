@@ -1,5 +1,37 @@
 # Storage Source Management UI Implementation Plan
 
+> **Historical plan; status at 2026-10-27** (checked against `main` at
+> `e852f92bf`). This is a dated Bloem implementation plan, written in `1f5acd9ba`
+> (2026-10-15) and kept as written apart from the identifier changes noted at
+> the end of this note. Its design, with the full list of implementing commits,
+> is [bloem-storage-source-management-ui-design.md](bloem-storage-source-management-ui-design.md).
+> The current behavior is described in [native storage](bloem-native-storage.md)
+> and the [native API reference](../bloem-api-reference.md).
+>
+> - **Implemented in this repository on 2026-10-15:**
+>   - Tasks 1 to 3: pinned S3 catalog releases (`793002d01`, `79f50d8cd`,
+>     `57daedbda`), manifest forms in the artifact list (`65e9c494a`) and the
+>     non-secret connection summary (`387ea8a8b`, `e9211e9b4`).
+>   - Task 4: catalog discovery (`2b5541060`, `e647965fc`).
+>   - Task 5: credential rotation (`664a4a789`, `9b2e1e4fd`, `4d1280d9a`).
+>   - Tasks 7 to 9: the web dialog and source rows (`b4fba3e26`, `768875519`,
+>     `6958029cb`, `db5cdf60f`).
+>   - Task 10: the picker's empty-root text (`a36b39c20`).
+> - **Changed after this plan:** the "platform scope only" constraint below no
+>   longer holds. `ccce9b1ee` (2026-10-15) lets organization administrators add
+>   organization-owned S3 sources, and `c1b8cd10b` and `19aebb789` added bucket
+>   and folder browsing to the form. A security review followed (`e78f5cafa`).
+> - **Task 14's database test** exists as `TestRotateCredentialsKeepsOtherFieldsDB`
+>   in `internal/plugins/bloem_storage_rotation_db_test.go`, not in the file the
+>   plan names.
+> - **Not found in this repository:** the Playwright journey of Task 12
+>   (`web/e2e/` does not exist). Tasks 11 and 13 belong to the separate
+>   `bloem-storage-s3` and `bloem-plugins` repositories and cannot be checked
+>   here.
+> - **Public-repository edits:** a personal name, an agent-memory tool and an
+>   internal host identifier in Tasks 13 and 14 were replaced by roles on
+>   2026-10-27.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let a platform admin add, inspect, test, edit, rotate keys for, disable and remove S3 and Bookwarehouse storage sources from the Bloem admin UI, with any number of S3 sources (one per bucket).
@@ -1334,7 +1366,7 @@ Ensure the `StorageSource` type used by this component (`./types`) exposes optio
 
 - [ ] **Step 1:** In a new worktree of `bloem-plugins`, add an object for `bloem.storage.s3` mirroring the Bookwarehouse entry's keys (`plugin_id`, `display_name`, `repository_url` = `https://github.com/Bloem-Studios/bloem-storage-s3`, `source_version`, `sdk_version`, `installation_mode: "native"`, `status: "requires_native_approval"`, `summary`, `requirements`, `license_spdx`, `source_visibility`, `release_url` and `checksums_url` ending `.../releases/tag/s3-v<ver>` and `.../releases/download/s3-v<ver>/checksums.txt`, and `binaries` keyed `linux/amd64` with `url = .../releases/download/s3-v<ver>/plugin-linux-amd64` and the SHA-256).
 - [ ] **Step 2:** Verify before committing: the SHA-256 must equal the digest in the host's static approval map for the S3 version being published (compare with the production approvals file's `bloem.storage.s3` entry and with `sha256sum` of the release binary); validate the JSON with `python3 -m json.tool plugins.json`.
-- [ ] **Step 3:** Do **not** push or tag a release. Hand the diff to Jim for approval (publishing makes the entry live for every Bloem host).
+- [ ] **Step 3:** Do **not** push or tag a release. Hand the diff to the project owner for approval (publishing makes the entry live for every Bloem host).
 
 ---
 
@@ -1343,4 +1375,4 @@ Ensure the `StorageSource` type used by this component (`./types`) exposes optio
 - [ ] **Step 1: Full checks.** `go build ./... && go vet ./internal/plugins ./internal/nativestorage ./internal/api/... && go test ./internal/plugins ./internal/nativestorage ./internal/api/... ./internal/apiv2/... -count=1` (DB-dependent tests that skip without a database are acceptable; record which skipped), `make verify-bloem-openapi`, `cd web && npx tsc --noEmit -p . && npx eslint src && npx vitest run && npx playwright test e2e/storage-sources.spec.ts e2e/storage-folders.spec.ts`. All must pass.
 - [ ] **Step 2: Integration with a database.** Run the registry/source-management integration tests that need PostgreSQL the way `DEVELOPMENT.md` describes (separate private test database), then add and run one test in `internal/plugins/bloem_storage_connection_test.go` named `TestRotateCredentialsKeepsOtherFieldsDB` guarded the same way as `bloem_storage_registry_db_test.go`: install a fake S3 source with entries, rotate, assert credentials changed, `configuration_revision` incremented, bucket/prefix unchanged, and rotating a Bookwarehouse source returns `source_unavailable`.
 - [ ] **Step 3: Seam ledger.** Read the seam section of `BLOEM_AGENTS.md`. List every shared Silo file this branch changed (`git diff --name-only origin/main | grep -v 'bloem'`), update the ledger as that document directs, and keep the count justified.
-- [ ] **Step 4: Handoff.** Do not push, tag or deploy. Write the OmniMem handoff (project `bloem-server`) listing branch, commits, what was verified, and the remaining approvals: push branch, publish S3 catalog entry (Task 13), build image, deploy to CT135, then Jim enters live S3 credentials through the new form.
+- [ ] **Step 4: Handoff.** Do not push, tag or deploy. Write a handoff note listing branch, commits, what was verified, and the remaining approvals: push branch, publish S3 catalog entry (Task 13), build image, deploy to the production host, then the operator enters live S3 credentials through the new form.

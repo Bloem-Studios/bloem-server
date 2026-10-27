@@ -1,7 +1,23 @@
 # Embedded-web completion handoff
 
-> Historical checkpoint: preserve the dated results below. For the newer deployed
-> revision and outstanding checks, read the [October 7 record](../operations/2026-10-07-native-storage-deployment.md).
+> **Status: historical handoff** (September 18–19, 2026; checked against `e852f92bf`).
+> Bloem page, first written with the web batch `53534d9f0` (2026-09-18); the Xtream
+> follow-through was published in `23ee4c1ac` and deployed as `418a18b7d` on
+> 2026-09-19. **Implemented:** the 28 areas of the
+> [coverage matrix](bloem-web-feature-coverage.md) and Xtream Live TV, as recorded below.
+> **Not implemented, and still absent at `e852f92bf`:** automatic DVR catalog import,
+> enforced `keep_last`, a series-rule update API, direct-profile browser login,
+> shared-device pairing, delegated admin roles, SSO-only reauthentication and
+> engagement revision locking. **Changed since:** Bloem CI became its own workflow
+> (`dcbd1c525`, 2026-10-26; see [CI additions](../bloem/ci.md)) and passed on `main` for the October 27 deployments; the
+> executor's lifecycle-store readiness gate that the lifecycle scenarios below relied
+> on was removed with Bloem's lifecycle receipts (`b017bfe84`, 2026-10-26). Two of the
+> absent features are advertised as absent: `shared_device_pairing` and
+> `delegated_admin_roles` are always `false` in `GET /api/bloem/v1/capabilities`.
+> **Current state:** the [coverage matrix](bloem-web-feature-coverage.md),
+> the [Bloem changelog](../bloem/CHANGELOG.md) and the
+> [October 27 deployment receipt](../operations/2026-10-27-main-deployment.md).
+> The dated results below are kept as recorded.
 
 **Deployment complete:** `418a18b7d4ae7060ebc574eb882bc525e7e1a4c2` was committed,
 pushed to `origin/main` and deployed on September 19, 2026, at 21:26 UTC. Both the
@@ -82,7 +98,7 @@ package timeout, based on the earlier completed 872.712-second executor run rath
 than the incomplete race attempt. This removed the known ten-minute budget mismatch,
 but the subsequent hosted run still exceeded 20 minutes; the performance issue
 remains unresolved. See
-[scenario runtime and lifetime](../bloem/overlays/architecture/scenario-acceptance.md#runtime-budget-and-fixture-lifetime).
+[scenario runtime history](../bloem/overlays/architecture/scenario-acceptance.md#history-september-2026).
 
 The final [contract adjudication](bloem-contract-adjudications.md) closes the
 inspected local contract failures: 30 recorded transport decisions passed **52

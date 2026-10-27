@@ -1,5 +1,18 @@
 # Bloem native API security foundation
 
+> **Provenance.** Bloem addition: the tenant foundation (organizations, memberships,
+> platform ownership, administrative contexts and the native namespace) that Bloem
+> layers over Silo's single-tenant account, profile and session model. Written with that
+> foundation in `c02d2445b` (2026-08-13). Later changes that matter: v2 socket tickets
+> bound to tenant authority (`9ab044057`, `6d52b1a0d`, 2026-10-09/11); account policy
+> back on Silo's `users` table with one membership per account (`c60b7008e`,
+> 2026-10-26); lifecycle receipts removed (`b017bfe84`, 2026-10-26); Silo's
+> session-to-account token binding and playback ownership rules applied to Bloem's paths
+> (Silo merge `68070f04b`, 2026-10-27). **Status:** current at `e852f92bf`, except the
+> [Rollback](#rollback) procedure, which applies only to the August 2026 foundation
+> release. Silo's own authentication model is described in [API contract](api-contract.md)
+> and [external sign-in](external-sign-in.md).
+
 Bloem retains the Silo-compatible `/api/v1` account login, profile picker,
 PIN unlock, token refresh, and administrative projection. The native
 `/api/bloem/v1` namespace is a separate additive boundary. Its discovery and
@@ -11,7 +24,7 @@ administration surface exposes:
 - administrative context exchange and management routes under
   `/api/bloem/v1/admin`; and
 - the native client surface documented in
-  [v2 client surface](bloem-client-surface.md).
+  [native client surface](bloem-client-surface.md).
 
 The capability response is the source of truth. It advertises legacy v1
 compatibility, organization membership discovery, and tenant-bounded media
@@ -57,8 +70,8 @@ against, and every later capability lands there. Both grow additively.
 
 Direct-profile login is implemented on `/api/v1/auth/profile-login` when its dependencies
 are wired; the capability boolean reflects that wiring. The default-deny direct-session
-route allowlist still rejects Silo v2 and the native Bloem namespace, so the embedded
-browser must use account login. Household credential status/set/clear is available through
+route allowlist still rejects Silo v2 and the native Bloem namespace (apart from the
+audiobook and ebook request viewer routes), so the embedded browser must use account login. Household credential status/set/clear is available through
 `/api/bloem/v1/profile-credentials/{id}` when `profile_credential_management_v1` is advertised.
 It requires a non-impersonated account login, existing household/PIN permission, and the
 current local account password for writes. Direct sessions and API keys cannot manage
@@ -78,12 +91,26 @@ strings. `/api/v10/*` is not an alias and returns 404.
 
 - Existing v1 JWTs remain valid and carry no organization authority.
 - Legacy account requests ignore organization-selection headers and project into the
-  default organization. Direct-profile sessions instead revalidate their explicit
+  account's own organization: its one active membership, which is the default
+  organization for upgraded accounts. Direct-profile sessions instead revalidate their explicit
   organization, membership and revisions; they cannot be projected into another tenant.
 - Administrative context JWTs live separately from account sessions, expire
   within 15 minutes, and bind exactly one Platform or Organization authority.
   Browsers retain the token in memory only; persistent storage contains at most
   the selected non-secret context key.
+- Session checks are bound to the account the credential names. Since the Silo
+  merge `68070f04b` (2026-10-27; Silo #3140), Silo's `ActiveSession` takes that
+  account, and so do Bloem's preview-aware lookups (`ActivePreviewSession`,
+  `ActiveSessionAuthority` in `internal/auth/bloem_preview_principal.go`), which the
+  auth middleware and the plugin router use, the administrative context middleware
+  (`internal/api/middleware/admin_context.go`) and native video's login-session check
+  (`internal/api/bloem_native_video.go`). A token whose login session belongs to another
+  account is refused.
+- Playback progress and stop belong to the acting profile, not just the account. Silo's
+  `ownsPlaybackSession` (#3133) guards v1 progress and stop, and Bloem's durable stop
+  (`internal/api/handlers/bloem_playback_stop.go`) applies the same rule, so a sibling
+  profile on the same account cannot stop another profile's playback
+  (`TestBloemBridgeStopRefusesASiblingProfile`).
 - Native organization-bound middleware takes selection only from validated
   session claims, then rechecks the current organization, membership, policy
   revision, and security revision before attaching tenant context.
@@ -119,13 +146,14 @@ protected sequence:
    organization; and
 5. create the session and tokens.
 
-Account/profile creation and ownership activation share a transaction; failure before
-commit rolls it back. Lifecycle-managed setup also creates its login-session row in that
-transaction and releases the response only after commit; the non-lifecycle service path
-starts login after provisioning commits. Setup admission takes the shared advisory lock
-before beginning a repeatable-read lifecycle transaction, so a waiting contender sees
-the winner's account rather than an earlier empty snapshot. Cancellation discards any
-connection whose session-lock ownership cannot be safely released. The Bloem ownership
+Setup runs inside Silo's `UserRepository.ClaimInitialSetup` transaction, which takes
+the deployment-wide `InitialSetupAdvisoryLock` and re-counts accounts after acquiring
+it, so a waiting contender finds the winner's account and gets
+`ErrSetupAlreadyComplete`. Bloem's `SetupInitialUserInTransaction`
+(`internal/auth/bloem_service.go`) creates the account, the optional profile, the
+ownership activation and the login session in that one transaction; failure before
+commit rolls all of it back. (Until `b017bfe84`, 2026-10-26, a separate lifecycle-receipt
+path wrapped setup in its own transaction.) The Bloem ownership
 adapter and notification-decorated user store must preserve the transactional extensions;
 unsupported backing stores fail closed, never emulate a separate commit. When a default
 profile is requested, both account transaction entrypoints check the provider's
@@ -155,11 +183,13 @@ or suspended accounts cannot win an ownership race.
 
 ## Account provisioning and login policy
 
-Organization-specific account creation seeds membership policy and the default access
-group only in the selected organization. It must not silently add a default-organization
-membership. The membership provisioner can adopt the exact active, same-role row seeded
-by identity creation in the same transaction; it cannot reactivate an invited or suspended
-row, change its role, reset its policy, or increment its revisions as a side effect.
+Organization-specific account creation creates the membership and assigns the account a
+default access group only in the selected organization. It must not silently add a
+default-organization membership; an account holds at most one membership
+(`organization_memberships_one_per_account`, since `c60b7008e`). The membership
+provisioner can adopt the exact active, same-role row seeded by identity creation in the
+same transaction; it cannot reactivate an invited or suspended row, change its role, or
+increment its revisions as a side effect.
 Organization provisioning uses `FOR NO KEY UPDATE`: concurrent seeded memberships already
 hold foreign-key `KEY SHARE` locks, so upgrading both to `FOR UPDATE` would deadlock.
 Provisioning does not change organization keys, and competing organization updates remain
@@ -196,7 +226,7 @@ entitlements so upgraded v1 users retain their prior library visibility.
 When multiple enabled legacy administrators exist, migrations deliberately set
 `ownership_resolution_required=true`, leave both owners null, and keep the
 default organization initializing. V1 login and profile switching remain
-available; native organization-bound v2 requests do not.
+available; native organization-bound requests do not.
 
 ### Resolve multiple-admin ambiguity
 
@@ -257,6 +287,13 @@ Abort rather than commit unless the chosen user is enabled, has legacy role
 update affects exactly one row. Re-run the verification queries afterward.
 
 ## Rollback
+
+> **Historical.** This procedure belongs to the August 2026 tenant-foundation release.
+> At `e852f92bf` several later Bloem migrations are forward-only and refuse `Down` (for
+> example `20261013161500_remove_bloem_compatibility.sql` and
+> `20261026003000_bloem_account_policy_on_users.sql`), so a current deployment rolls back
+> by restoring a backup taken before the migration, as the deployment receipts describe
+> (for example [October 27](../operations/2026-10-27-main-deployment.md#rollback)).
 
 Rollback is allowed only before operators or later phases start writing
 non-default organizations, organization-specific profile group assignments,

@@ -1,12 +1,23 @@
 # Bloem SDK compatibility and generated contracts
 
+> **Provenance.** Bloem page, first written in `9a427dc19` (2026-10-07) when native
+> storage introduced a Bloem storage-provider protocol beside Silo's public plugin
+> SDK, and kept current with each contract refresh. The public plugin runtime
+> (`github.com/Silo-Server/silo-plugin-sdk`) and the v2 API generators are Silo's; the
+> storage protocol (`proto/bloem/plugin/v1`), the plugin-author SDK
+> (`Bloem-Studios/bloem-plugin-sdk`) and the Kotlin/Swift client contracts under
+> `contracts/client/v1` are Bloem's. Later changes that matter: presentation evaluation
+> returned in-process (`310c545f9`, 2026-10-26); the client contract was regenerated in
+> the Silo merge `68070f04b` and its digest re-pinned in `422a51fed` (2026-10-27).
+> **Status:** current at `e852f92bf`; dated refresh paragraphs below are history.
+
 The server, plugin-author SDK and native-client bindings have different release
 identities. A healthy server or a freshly copied generated file does not establish
 that every client feature or storage provider has shipped.
 
 ## Server and public plugin runtime
 
-The current source includes Silo through `6de6d5e5e` and pins the public
+The current source includes Silo through `3e2d306b2` and pins the public
 `github.com/Silo-Server/silo-plugin-sdk` module at `v0.30.0` in `go.mod`.
 Host builds use `GOWORK=off`; no private SDK module replacement is required.
 The [October 7 deployment record](../operations/2026-10-07-native-storage-deployment.md)
@@ -20,10 +31,12 @@ from `proto/bloem/plugin/v1/storage_provider.proto`. This preserves the public
 field numbers, method paths, original `go_package` descriptor and host bindings
 with the provider SDK; changing a module import is not a protocol migration.
 
-The server's promotions and ambience workers use the owned local JSON process
-bridge. They are bundled binaries, not catalog-installable SDK capabilities.
-The SDK must not gain host database, tenant, profile or quota authority merely
-to package presentation code.
+Promotions and ambience evaluate inside the server process. From `85ba110f2`
+(2026-10-05) to `310c545f9` (2026-10-26) they ran as bundled worker binaries over a
+local JSON bridge; that bridge is gone (see
+[presentation evaluators](bloem-presentation-evaluators.md)). They were never
+catalog-installable SDK capabilities, and the SDK must not gain host database,
+tenant, profile or quota authority merely to package presentation code.
 
 ## Plugin-author SDK
 
@@ -128,10 +141,15 @@ connection tests. `AudiobookIntegrationSummary` gains the optional
 fills, and only for a platform administrator; credential values never appear on
 the wire.
 
-The October 14 integration artifacts carry source revision
+The October 14 integration artifacts carried source revision
 `294df15ea03dd58ee3adc509aecb23452e30f176` and normalized graph digest
 `sha256:9d096c83e1a0e9e38aca1eaa48696732191e05f1a8975932e60db513a2a421f4`.
-`contracts/client/v1/digest.txt` and the generated Kotlin/Swift headers are the
+At `e852f92bf` the generated Kotlin/Swift headers carry source revision
+`d72d6d2d4c1789a4d4e22a8bb830658bb761a790` (regenerated in the Silo merge
+`68070f04b` for Silo's `max_channels_by_codec`) and digest
+`sha256:374e6d4c402411d6d856e258cbe648e81855b212894452d88cc63832f467b548`, which
+`422a51fed` pinned in `contracts/client/v1/digest.txt` after adding Silo's five AdminAI*
+types to the coverage allowlist. `digest.txt` and the generated headers are the
 authority. A later documentation-only commit does not require a new graph digest
 or a new source stamp.
 
@@ -157,8 +175,8 @@ GOWORK=off make verify-client-digest verify-client-dtos verify-client-coverage
 GOWORK=off make verify-settings-bindings verify-bloem-openapi verify-apiv2-openapi
 ```
 
-The native-storage path/method check walks the production registrar and covers
-all 32 operations. Book-request and other conditional groups also have focused
+The native-storage path/method check (`TestNativeStorageDocumentMatchesMountedOperations`)
+walks the production registrar and requires all 40 mounted operations to be documented. Book-request and other conditional groups also have focused
 mount checks. Generate the route inventory after router changes, then consult
 [API coverage](../bloem/api-catalogue.md): the inventory includes dispatchers,
 and typed native coverage remains incomplete. No single route count certifies

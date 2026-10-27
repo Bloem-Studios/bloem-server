@@ -1,5 +1,17 @@
 # Bloem contract adjudications
 
+> **Provenance.** Bloem page about Bloem's test layer over Silo's frozen API scenario
+> catalogs (`contracts/api/v2/scenarios/`): where Bloem's shipped behavior deliberately
+> differs from a Silo expectation, a reviewed, pinned "adjudication" replaces that
+> expectation. First written with the September 19 CI follow-through (`23ee4c1ac`,
+> 2026-09-19). Later: Silo's newer v2 fields adjudicated (`e5fd82c87`, 2026-10-08);
+> October 14 transition below (merged in `4e7ff22d7`, 2026-10-15); Bloem's own scenario
+> rows moved out of Silo's files (`ae1117d8a`, 2026-10-26); four profile adjudications
+> removed with lifecycle receipts (`b017bfe84`, 2026-10-26). **Status:** current at
+> `e852f92bf`; the dated results under [Focused verification](#focused-verification)
+> are history. Silo's catalog and v1/v2 pairing model is described in
+> [Executable scenario pairing](scenario-acceptance.md).
+
 ## October 14 upstream contract transition
 
 The Silo sync through `ea3c10a7f` adopts two upstream pre-lock decisions:
@@ -7,9 +19,13 @@ The Silo sync through `ea3c10a7f` adopts two upstream pre-lock decisions:
 stored account profile limit nullable to express group inheritance, and
 [Silo #2413](https://github.com/Silo-Server/silo-server/pull/2413) removes
 administrator CSS, font and color overrides. The four exact breaking-change
-fingerprints against the prior Bloem baseline are recorded in
+fingerprints against the prior Bloem baseline were recorded in
 `contracts/api/v2/breaking-approvals.json`, with those upstream PR numbers as
-their approval provenance. No wildcard or post-lock exemption is introduced.
+their approval provenance. No wildcard or post-lock exemption was introduced.
+The four left that file in `7452bd121` (2026-10-15), once `main` contained the
+changes. Since the Silo merge `303511a25` (2026-10-26) the file is Silo's bytes again:
+Bloem's copy had accumulated 81 other approvals for changes `main` already included,
+and they were dropped.
 
 The web consumers and server-maintained Kotlin/Swift contracts follow the
 upstream shapes. Bloem's organization and seasonal branding remain separate.
@@ -17,8 +33,10 @@ Before rollout, both native client releases need their generated-contract
 adoption checked, especially nullable `max_profiles`. This local server merge
 does not update or certify sibling client releases.
 
-The auth scenario catalog adds Silo's `jellyfin_quick_connect` capability field;
-Bloem answers `false` because that protocol is retired. Its baseline digest was
+The auth scenario catalog adds Silo's `jellyfin_quick_connect` capability field.
+Bloem answered `false` while it had removed Jellyfin compatibility; since the restore
+(`2393c41ee`, 2026-10-18, see [Protocol compatibility](bloem-compatibility-removal.md))
+the device-login capability is Silo's code and answers `true`. The baseline digest was
 refreshed after reviewing those three added field-presence assertions. The
 existing adjudicated scenarios and their transport decisions are unchanged.
 
@@ -46,7 +64,7 @@ not a claim that the original Silo expectations passed unchanged.
 
 The implementation is
 [`bloem_adjudications.go`](../../internal/scenariocatalog/bloem_adjudications.go),
-with all 53 transport decisions and their reasons in
+with all 49 transport decisions and their reasons in
 [`bloem_adjudications.json`](../../internal/scenariocatalog/bloem_adjudications.json).
 The loader checks SHA-256 pins for all six affected baseline catalogs and compares
 each supplied scenario and row with its original. A changed request, principal,
@@ -66,17 +84,22 @@ copies; the frozen loader and its historical selectors are not rewritten.
 | `setup_status.db_down` / v1, `signup_status.db_down` and `capability.ok` / v1 and v2 | `503 unavailable`, "Preview host configuration is unavailable." | With the database unreachable the preview host guard cannot read its settings, so it refuses every auth route before routing; a GET there can start a sign-in. Anonymous routes elsewhere, including liveness and readiness, keep Silo's answers. |
 | Four `account_capability.*` cases / v2 | Revision is the opaque authority-bound digest, not constant `"1"` | Primary, secondary and profileless capability predicates stay unchanged. |
 | Three `state.*` and four `progress.*` cases / v2 | Exact `Cache-Control: no-store, no-transform`, including follow-up reads | Preserve both privacy directives rather than weakening the response. |
-| `profiles_create.limit`, `profiles_create.unknown_library_ids` / v1 | Existing status/error codes with safe domain-level error text | Transactional profile mutations do not expose storage implementation details. |
-| `profiles_delete.secondary_forbidden` / both | Hidden profile returns `404`, not an existence-revealing `403` | Concealment precedes management authority; deletion remains forbidden. |
 | `avatar_upload.typed_nil_panic`, `avatar_upload.meaning` / both | Missing object storage returns `503` with a safe envelope | An unavailable dependency is not a recovered handler panic. |
 | Four `sessions.*` cases / v2 | The listing also carries `current_session`; each session also carries `current` and `last_seen_at` | Silo's v2 session listing added them after the oracle was frozen. Silo wins. |
 | `profiles_list.ok` / v2 | The listing also carries `max_advisory_age_supported` and `require_advisory_age_supported` | Silo's v2 profile listing added them after the oracle was frozen. Silo wins. |
 | Ten `device_lookup.*` cases / v2 | `server_name` is `Bloem` | Bloem's default display name (`branding.DefaultServerName`); the oracle expects Silo's brand. |
 
+Until 2026-10-26 the table also adjudicated `profiles_create.limit`,
+`profiles_create.unknown_library_ids` (v1) and `profiles_delete.secondary_forbidden`
+(both transports). They described Bloem's lifecycle-receipt profile handlers; when
+`b017bfe84` removed lifecycle receipts, those handlers returned to Silo's bytes and the
+four decisions were dropped (53 to 49).
+
 Only expected responses and the reviewed onboarding follow-up headers change.
 Requests, identities, fixtures, mutation sequencing, transport pairing, and
-follow-up execution do not. A focused real-router packet executes all 82 transport
-leaves, including the unchanged partners. Negative tests reject disclosed keys
+follow-up execution do not. A focused real-router packet executes all 86 transport
+leaves, including the unchanged partners (`TestBloemAdjudicatedScenarios` pins the
+count). Negative tests reject disclosed keys
 and changes to the pinned originals.
 
 The older named Silo acceptance targets still certify their original upstream
@@ -122,7 +145,7 @@ go test -count=1 ./internal/api \
   -run '^(TestV1RouteSurface.*|TestV1SiloRouteContractIsNeverNarrowed|TestBloemV1AdjudicationClosedSet)$'
 ```
 
-The focused real-router packet passed **52 transport leaves / 99 hierarchical
+On 2026-09-19 the focused real-router packet passed **52 transport leaves / 99 hierarchical
 events** without skips, and the route packet passed **9 hierarchical events**.
 These are targeted results, not a full-suite or real-provider certification.
 Remote CI for `418a18b7d` subsequently passed the API route tests but timed out in

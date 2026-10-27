@@ -1,5 +1,16 @@
 # Bloem Server web feature coverage
 
+> **Provenance.** Bloem page, first written with the embedded-web completion batch
+> (`53534d9f0`, 2026-09-18) and extended for Xtream Live TV (`23ee4c1ac`, 2026-09-19).
+> The web application is Silo's (`web/`); the rows describe the Bloem features added to
+> it and the Silo screens Bloem keeps. Later changes that matter: protocol
+> compatibility removed (`b8ddec9bf`, 2026-10-13) and Silo's restored (`2393c41ee`,
+> 2026-10-18); Bloem's music catalog removed (`f9e1447f3`, 2026-10-26); lifecycle
+> receipts removed (`b017bfe84`, 2026-10-26); admin context recovery fixed
+> (`276becf4a`, 2026-10-27). **Status:** partly current. The feature matrix describes
+> the routes and components present at `e852f92bf`; the counts and acceptance runs are
+> dated evidence for the builds they name, not a recertification.
+
 ## Scope and interpretation
 
 This inventory covers the web application embedded in **Bloem Server** (`web/`).
@@ -10,10 +21,12 @@ justify replacing them.
 Baseline: Bloem `95403cedd`, incorporating Silo `0362b6dae`. The tables include the
 subsequent embedded-web completion and Xtream work. Deployment of `418a18b7d` completed
 on September 19, 2026; it is not exhaustive feature, browser or security certification.
-The October 25 source integration includes Silo through `6de6d5e5e`. The
-[October 7 deployment record](../operations/2026-10-07-native-storage-deployment.md)
-is historical evidence. Protocol compatibility and companion enrollment have since
-been removed; the remaining rows preserve their original acceptance limits.
+At `e852f92bf` the source includes Silo through `3e2d306b2` (merge `68070f04b`,
+2026-10-27). The [October 7 deployment record](../operations/2026-10-07-native-storage-deployment.md)
+is historical evidence. Bloem removed Jellyfin and Audiobookshelf compatibility on
+2026-10-13 and restored Silo's on 2026-10-18; Bloem's companion enrollment and
+compatibility gateway stay removed (see [Protocol compatibility](bloem-compatibility-removal.md)).
+The remaining rows preserve their original acceptance limits.
 This refresh does not recertify every feature row. The upstream profile theme
 editor has been retired; Bloem campaign/seasonal presentation remains separate.
 Mounted routes and observed behavior outrank older docs.
@@ -33,9 +46,15 @@ Administrative context, account login and viewing profile are separate authoriti
 A primary household profile is not platform administration. Paths below are relative
 to `web/src/` unless prefixed with `internal/`.
 
-## Current deployment and validation
+## Deployment and validation
 
-The October 7 application is deployed with 407 declared seams. Focused changed-web
+Production has run `276becf4a` since 07:55 UTC on 2026-10-27; see the
+[October 27 deployment receipt](../operations/2026-10-27-main-deployment.md). That
+deployment checked server health, readiness and the public site. It did not
+re-run the browser acceptance below. The seam ledger (`contracts/seams.txt`)
+has 306 entries at `e852f92bf`.
+
+Historical: the October 7 application was deployed with 407 declared seams. Focused changed-web
 checks passed 330 tests across 32 files, alongside Go/database checks and live
 health/readiness, revision, asset and unauthenticated-denial probes. Native storage
 onboarding is API-driven; no native administration UI or authenticated production
@@ -74,7 +93,7 @@ were not regenerated to obtain passing checks.
 
 | ID | Feature / role | Reachable surface and coverage | Boundaries / evidence | Ownership |
 | --- | --- | --- | --- | --- |
-| A01 | Administrative context / administrators | **Present.** `AdminContextProvider`, context switcher, guarded routes and `adminV2Client`. | Browser switched platform → organization; stale/recreated-context and pending-intent fencing have regression coverage. Full expiry/suspension journey matrix remains broader acceptance work. | Existing UI/SEAM. |
+| A01 | Administrative context / administrators | **Present.** `AdminContextProvider` (`contexts/AdminContextProvider.tsx`), context switcher, guarded routes and `adminV2Client`. | Browser switched platform → organization; stale/recreated-context and pending-intent fencing have regression coverage. Since `276becf4a` (2026-10-27) a context refused before its first render re-mints or falls back instead of returning to context selection; a component test covers that order. Server side, since the Silo merge `68070f04b` (2026-10-27) the admin context middleware accepts a token only for a session of the account it names (Silo #3140). Full expiry/suspension journey matrix remains broader acceptance work. | Existing UI/SEAM. |
 | A02 | Organization lifecycle / platform admin | **Present.** `/admin/platform/organizations` and `/:id`: create, lifecycle, ownership and memberships. | Retained existing screens. Numeric account selection remains a usability limitation, not a missing management API. | Existing UI. |
 | A03 | People and profile assignments / organization admin | **Present.** `/admin/organization/people`: filter, page, inspect, group assignment and durable bulk work. | Retained scoped directory; does not imply unrestricted account administration. | Existing UI. |
 | A04 | Access groups / organization admin | **Present.** `/admin/organization/access-groups`, shared-route dispatch and scoped hooks. | Default protection and reassignment remain server-owned. Not delegated-role management. | Existing UI/SEAM. |
@@ -108,10 +127,10 @@ were not regenerated to obtain passing checks.
 | E04 | Home/detail/pre-playback campaigns / viewer | **Present.** `BloemHome`, `CampaignPlacements`, item wrapper and pre-playback chrome integration. | Live publication → opted-in home delivery passed. Home defaults off; children suppressed; dismissals nonreplayed; immediate Continue remains available and admitted playback stays mounted. Failure/profile-switch behavior has component coverage. | UI + narrow home/detail/player SEAMs. |
 | E05 | Campaign authoring / platform admin | **Present.** `/admin/platform/engagement`: typed targets/placements, UTC dates, review, publish/edit/delete and artwork upload. | Rebuilt create/edit/delete and readback passed (201/200/204). Configured public S3 acceptance passed: PNG upload 201, exact bytes/MIME/dimensions, anonymous 200/ETag 304 and decoded Home artwork. Deployment and explicit-profile inclusion/exclusion passed. Native adapter reuses the registry; no revision-locking contract exists and the editor says so. | UI + native authority API + route/nav SEAM. |
 | E06 | Seasonal presentation / viewer | **Present.** `SeasonalLayer`: snow, banner/sprite artwork, timing, opt-out, reduced motion and playback suppression. | Rebuilt current-organization delivery returned 200 and public branding excluded the targeted pack; earlier opt-out passed. `seasonal_viewer_v1` identifies mounted authenticated native `/ambience`, which requires a verified current-tenant profile. Single-snapshot filtering excludes other memberships, including concurrent retargeting. Login/fallback stays public-only; requests and caches bind session/profile/PIN generation. | Bloem UI, existing shell SEAM. |
-| E07 | Seasonal authoring / platform admin | **Present.** Engagement page pack editor, schedules, annual repeat when supported and asset upload. | Rebuilt create/edit/delete and readback passed (201/200/204). Configured public S3 banner/sprite uploads, public delivery/cache validation, decoded Home images and organization/public filters passed. MIME, size and declared-dimension rejection passed. Public S3 remains required; registry concurrency remains last-write-wins. | UI + native authority API + route/nav SEAM. |
+| E07 | Seasonal authoring / platform admin | **Present.** Engagement page pack editor, schedules, annual repeat when supported and asset upload. | Rebuilt create/edit/delete and readback passed (201/200/204). Configured public S3 banner/sprite uploads, public delivery/cache validation, decoded Home images and organization/public filters passed. MIME, size and declared-dimension rejection passed. Public S3 was required then; since `f293cce0d` (2026-09-23) uploads use the catalog Assets store, local or S3 (see [asset storage](bloem-campaign-asset-storage.md)). Registry concurrency remains last-write-wins. | UI + native authority API + route/nav SEAM. |
 | E08 | Compatibility applications | **Removed (Bloem's).** Companion enrollment and the protocol gateway are absent; Silo's Jellyfin compatibility settings and status are present. | Native audiobook/ebook and device pairing remain separate. | [Protocol compatibility](bloem-compatibility-removal.md). |
 | E09 | Branding/LAN/playback deployment controls / platform admin | **Present.** Build-time identity, LAN toggle and existing Playback controls. | Header-authenticated media is not a general multi-replica switch. Deployment prerequisites remain explicit. | Existing settings/branding SEAMs. |
-| E10 | Fleet and shared media / viewers/admins | **Shared; acceptance incomplete.** Retain Silo catalog, player, requests, downloads, readers, music, nodes and plugins. | No replacement frontend. A real database/policy regression covers active/suspended/restored/withdrawn grants, campaign delivery and denied-library 404. Earlier simultaneous home 500s coincide with browser teardown; cancellation is a likely explanation, not proven from those logs. No production home fix was made. Fresh rebuilt reads completed all five v2 home sections with 200, including one promoted item; the real v1 promoted consumer payload and visible card also passed. No active home blocker was observed in that fixture. Actual media/encoder/fleet acceptance needs appropriate fixtures. | Existing Silo consumers; investigate concrete integration failures separately. |
+| E10 | Fleet and shared media / viewers/admins | **Shared; acceptance incomplete.** Retain Silo catalog, player, requests, downloads, readers, nodes and plugins. Bloem's music catalog was removed on 2026-10-26 (`f9e1447f3`). | No replacement frontend. A real database/policy regression covers active/suspended/restored/withdrawn grants, campaign delivery and denied-library 404. Earlier simultaneous home 500s coincide with browser teardown; cancellation is a likely explanation, not proven from those logs. No production home fix was made. Fresh rebuilt reads completed all five v2 home sections with 200, including one promoted item; the real v1 promoted consumer payload and visible card also passed. No active home blocker was observed in that fixture. Actual media/encoder/fleet acceptance needs appropriate fixtures. | Existing Silo consumers; investigate concrete integration failures separately. |
 
 ## Implementation and authority invariants
 
@@ -194,8 +213,12 @@ browser direct-profile sign-in, shared-device pairing or enforced DVR retention.
 ## Acceptance evidence and limits
 
 This section preserves the original September 18 web batch's evidence and counts.
-Use the current deployment section above for the later Xtream publication and CI
+Use the deployment section above for the later Xtream publication and CI
 result; do not treat these older browser runs as authenticated Xtream acceptance.
+The lifecycle store and the production lifecycle route registry that the
+lifecycle-validation cases below depended on belonged to Bloem's lifecycle receipts
+(an `Idempotency-Key` replay system), which `b017bfe84` removed on 2026-10-26; the
+frozen Silo scenarios themselves remain.
 
 Earlier acceptance used a disposable database and loopback server with synthetic
 library/channel/guide/audit fixtures. Those Chromium runs exercised:
@@ -327,7 +350,8 @@ The coordinator completed these checks against the rebuilt normal loopback serve
   Authenticated seasonal delivery included the current organization's pack and public
   branding excluded it. In that earlier unconfigured run, multipart upload returned
   `503`: public S3 was absent,
-  and local catalog/branding artwork storage is not connected to the ambience service.
+  and local catalog/branding artwork storage was not then connected to the ambience
+  service (it has been since `f293cce0d`).
   That historical result demonstrated the configuration requirement; the later
   configured-S3 run below supplies successful upload acceptance.
 

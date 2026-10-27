@@ -1,5 +1,21 @@
 # Seasonal scheduling
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current. Seasonal ambience is a Bloem addition (the S-3 "ambience" packs of the
+> [client engagement spec](../specs/client-engagement.md#c-ambience--seasonal-effects-s-3));
+> Silo has no equivalent. Annual schedules, migration
+> `20260905090908_ambience_annual_schedule.sql` and the web snow renderer arrived
+> in `f764adad8` (2026-09-05). `53534d9f0` (2026-09-18) added the embedded web
+> authoring page (`web/src/pages/admin-platform/EngagementPage.tsx`), the
+> platform-context routes `/api/bloem/v1/admin/platform/ambience`
+> (`internal/api/router_bloem_engagement.go`), the viewer route
+> `GET /api/bloem/v1/ambience` (`internal/api/bloem_seasonal_viewer.go`) and the
+> configured-S3 acceptance recorded below. Since `310c545f9` (2026-10-26) the
+> ambience evaluator runs inside the server rather than as a bundled worker
+> process; see [presentation evaluators](bloem-presentation-evaluators.md).
+> "Garden" means bloem-garden, a separate Bloem campaign-authoring service that
+> can manage the same registry over the admin API.
+
 Platform administrators can manage the ambience registry in the embedded web's
 **Campaigns & seasonal packs** page. Garden's Seasonal effects page can manage the
 selected linked server's same registry. Schedules live on the media server, so neither
@@ -12,14 +28,18 @@ The admin ambience list advertises `yearly_scheduling: true`. A schedule window 
 
 The server resolves recurring windows before projecting them to clients. Client-facing ambience windows remain concrete start/end UTC instants; recurrence fields are omitted. Existing clients, including Apple clients, do not need to implement a recurrence interpreter. Jellyfin compatibility endpoints are unchanged; this is a Bloem presentation feature.
 
-The embedded web client renders snow or validated banner/sprite artwork on Home and sign-in, and suppresses presentation while video playback is active. It polls every 30 seconds, re-evaluates expiry locally, honors reduced motion, and offers a device-local off toggle. Authenticated Home uses `GET /api/bloem/v1/ambience` when `seasonal_viewer_v1` is advertised. That route requires a verified profile in the active current organization and returns public packs plus that organization's packs. Pack content and target authorization share one database snapshot, including during retargeting. Sign-in and capability fallback use public-only branding. Requests and cached results are bound to session, profile and PIN authority. Android uses the same concrete windows, polls only while the surface is resumed, and offers its toggle under Profile; this web change does not implement new native-client delivery.
+The embedded web client renders snow or validated banner/sprite artwork on Home and sign-in, and suppresses presentation while video playback is active. It polls every 30 seconds, re-evaluates expiry locally, honors reduced motion, and offers a device-local off toggle. Authenticated Home uses `GET /api/bloem/v1/ambience` when `seasonal_viewer_v1` is advertised. That route requires a verified profile in the active current organization and returns public packs plus that organization's packs. Pack content and target authorization share one database snapshot, including during retargeting. Sign-in and capability fallback use public-only branding. Requests and cached results are bound to session, profile and PIN authority. The Android client (a separate repository; not verifiable here) uses the same concrete windows, polls only while the surface is resumed, and offers its toggle under Profile; this web change does not implement new native-client delivery.
 
 Publication or removal is visible on the next client refresh. Scheduled expiry does not require another network response. This distinction matters when Garden or the media server becomes unreachable.
 
-Seasonal asset upload currently requires public S3 storage. Local catalog/branding
-artwork storage does not supply the ambience service. Without public S3, authoring
+Seasonal asset upload uses Silo's catalog **Assets** blob store, the store branding
+uses, so it works on local artwork storage as well as S3. `bloemWireServices`
+(`cmd/silo/bloem_main.go`) falls back to the public S3 client only when no Assets
+store is configured; this has been so since `f293cce0d` (2026-09-23), and earlier
+versions of this page said public S3 was required. With no store at all, authoring
 still supports HTTPS artwork references, but the registry reports uploads unavailable
-and the upload endpoint returns `503`.
+and the upload endpoint returns `503`. See
+[campaign and seasonal asset storage](bloem-campaign-asset-storage.md).
 
 Configured-S3 acceptance passed for banner/sprite uploads and decoded Home images,
 exact image bytes/MIME/dimensions, ETag revalidation, input rejection and current-organization

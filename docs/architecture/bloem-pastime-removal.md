@@ -1,5 +1,21 @@
 # Pastime managed-tracking removal
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current record of a completed removal. Pastime is a separate watch-tracking
+> service. Bloem integrated it through a Bloem-only "managed tracking" broker
+> between 2026-10-11 (`272ff0e38`) and 2026-10-13 (list collections,
+> `c2bf1f7cd`). The code went in `e4bcbddc5` (2026-10-13) because it reached into
+> Silo's plugin host and wrote directly into Silo tables. The database objects
+> went in migration `20261013231500_remove_pastime_managed_tracking.sql`
+> (`1903f5eb8`, 2026-10-13), and `a17109cd7` (2026-10-14) changed it to keep the
+> watch-sync connections. The public route back is Silo's watch-sync plugin
+> capability; see Silo's [watch provider plugins](watch-provider-plugins.md). The
+> "mirrored" Silo-switching phase named below no longer exists: since
+> `c60b7008e` (2026-10-26) switching is a single flag (see
+> [Silo backend switching](silo-backend-switching.md)). The evidence test
+> still reaches that phase by migrating to a version before
+> `20261026003000_bloem_account_policy_on_users.sql`.
+
 Bloem no longer carries a Pastime integration. The managed-tracking bridge and
 its broker, the list collections, calendar, recommendation and library bridges,
 and the host hooks they needed are removed. Pastime may come back only as an

@@ -1,5 +1,21 @@
 # Live TV client access
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current. Silo has no Live TV. Bloem's Live TV, OTA tuner, guide and DVR
+> subsystem is adapted from Prairie Server (`ef2d38171`, 2026-08-13; see
+> [FORK.md](../../FORK.md#prairie-server-live-tv)). The access contract on this
+> page is Bloem's own: the `watch_live_tv` permission
+> (`internal/permissioncatalog`), `access.LiveTVAllowed`, the capability route
+> and the native `/api/bloem/v1/livetv` mount (`internal/api/router_livetv.go`,
+> mounted from `internal/api/router_bloem_client.go`). The contract was added
+> in `8c612bd96`, `31b857b2b` and `fdb002310` (all 2026-09-05). The web
+> workflows came in `53534d9f0` (2026-09-18) and the Xtream capability bit in
+> `23ee4c1ac` (2026-09-19). Since `61fc3cfd5` (2026-10-13), delivery requires the
+> playback grant as well, and a browse-only preview scope clears both grants (see
+> [browse-only content policy](bloem-browse-only-content-policy.md)). Bloem's
+> Live TV on the Jellyfin surface was removed on 2026-10-13
+> ([protocol compatibility](bloem-compatibility-removal.md)).
+
 The separate `watch_live_tv` permission controls the Bloem app-facing Live TV
 surface. It is not included in default user permissions and does not depend on
 movie, series or book library grants. Admin account creation/editing exposes the

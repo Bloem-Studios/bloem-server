@@ -1,5 +1,24 @@
 # Xtream live TV providers
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current, with the corrections noted below. Silo has no Live TV. Bloem's Live
+> TV subsystem (`internal/livetv`: HDHomeRun tuners, guides, streaming and DVR)
+> is an attributed AGPL adaptation of Prairie Server, integrated in `ef2d38171`
+> (2026-08-13); see [FORK.md](../../FORK.md#prairie-server-live-tv). Xtream
+> providers are a later Bloem addition to it. They were added in `23ee4c1ac`
+> (2026-09-19) with migration `20260919133349_bloem_xtream_sources.sql`, in
+> Bloem-owned files (`internal/livetv/bloem_xtream_*.go`) plus the route
+> `POST /tuners/xtream` in `internal/api/router_livetv.go`. This page followed
+> in `cc4b2ed98` the same day. `5a05c52aa` (2026-09-23) changed guide sync so
+> that one invalid programme no longer fails the whole sync (see
+> [Guide and rescan behavior](#guide-and-rescan-behavior)). On 2026-10-13 Bloem
+> removed its Live TV delivery through the Jellyfin compatibility surface, and it
+> did not come back when Silo's Jellyfin server was restored on 2026-10-18 (see
+> [protocol compatibility](bloem-compatibility-removal.md)). Cross-replica lease
+> behavior is summarized in [cluster media](bloem-cluster-media.md#xtream-physical-connections).
+> An "Xtream" provider is an IPTV service that speaks the Xtream Codes
+> `player_api.php` protocol.
+
 Bloem consumes authenticated Xtream **live channels** and the provider's XMLTV
 programme guide. It does not expose an Xtream server API, import VOD or series,
 or accept arbitrary remote media URLs. HDHomeRun-compatible tuners remain supported.
@@ -53,7 +72,7 @@ This is reconciliation, not exactly-once execution across tabs or page reloads.
   but not in public DTOs, stored channel URLs, application diagnostics or FFmpeg
   arguments. Prefer HTTPS: an HTTP provider receives credentials without TLS.
 - Channels retain opaque server-only source references. Raw native delivery,
-  Jellyfin delivery, HLS and DVR resolve credentials server-side under their
+  HLS and DVR resolve credentials server-side under their
   existing viewer, profile, session and ownership checks. A delivery ticket does
   not authorize provider administration.
 - Playback requires direct MPEG-TS. The server checks the initial TS packet framing;
@@ -95,7 +114,14 @@ seconds, with an optional numeric timezone (UTC when omitted). `xmltv_ns` episod
 numbers become one-based. Artwork URLs are ignored. Simple external DTD declarations
 are accepted without fetching them; internal entity declarations are refused.
 
-A complete, valid, nonempty matching feed is required before publication. Source
+Only structural problems fail a sync: a response that is not XMLTV, a malformed
+or oversized document, entity declarations or a hard limit. Since `5a05c52aa`
+(2026-09-23), an individual programme with an invalid timestamp or duration, a
+missing title, oversized metadata or a conflicting duplicate identity is skipped
+and counted, and each sync logs one summary warning that gives only the counts.
+A feed in which every programme is invalid still fails, with the skip counts in
+`last_error`. The XMLTV download has no whole-request timeout; the two-minute
+sync deadline and the 64 MiB limit bound it. Source
 MVCC ownership fences overlapping refreshes, configuration changes (including ABA)
 and late status updates without holding a database connection during downloads.
 Publication rechecks and locks the captured channel mappings. Guide rows and the

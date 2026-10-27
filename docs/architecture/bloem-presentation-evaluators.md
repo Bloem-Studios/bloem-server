@@ -1,5 +1,19 @@
 # Bloem presentation evaluators
 
+> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> current. Promotions and seasonal ambience are Bloem additions with no Silo
+> counterpart: promotion cards (`internal/promotions`, `3ae12d9f2`) and ambience
+> packs (`internal/ambience`, `54ace4675`) both arrived on 2026-09-01, specified
+> in the [client engagement spec](../specs/client-engagement.md). On 2026-10-05
+> (`85ba110f2`) Bloem moved their evaluation into two bundled worker processes;
+> the [cutover receipt](../operations/2026-10-05-presentation-plugin-cutover.md)
+> records that step. This page was created by `310c545f9` (2026-10-26), which
+> brought evaluation back in-process and replaced the earlier
+> `bloem-presentation-plugins.md`. The promoted Home row reaches Silo's sections
+> handler through `configureBloemSectionExtensions`
+> (`internal/api/router_bloem_engagement.go`). Schedules and delivery are
+> described in [seasonal scheduling](seasonal-scheduling.md).
+
 Promotions and seasonal ambience choose what to show with pure evaluators that
 run inside the server: `promotions.Engine` and `ambience.Engine`. The server
 keeps their database records, administrative CRUD, native API projections and
