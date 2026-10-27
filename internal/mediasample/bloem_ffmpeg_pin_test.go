@@ -49,8 +49,9 @@ func bloemFFmpegMajor(t *testing.T, path string, pattern *regexp.Regexp) string 
 // only FFmpeg 7's "displaymatrix: rotation of N degrees", so on the shipped
 // image rotated (phone) video gets landscape trickplay tiles. That is a
 // production bug in Silo-owned code, an upstream contribution candidate, and
-// the reason scripts/ci/bloem-install-test-tools.sh pins jellyfin-ffmpeg7:
-// with FFmpeg 8 TestGenerateRotatedManifestEndToEndDB fails.
+// the reason scripts/ci/bloem-install-test-tools.sh pins jellyfin-ffmpeg7.
+// When the pin was set, TestGenerateRotatedManifestEndToEndDB failed with
+// FFmpeg 8; Silo removed that test in 174fb9a44.
 //
 // While the parser misses FFmpeg 8's spelling and the pins differ, this test
 // skips and names the bug. Once the parser reads both spellings it fails until

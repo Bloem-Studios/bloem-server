@@ -157,9 +157,12 @@ exactly one: Go test deals `make go-test-packages` with it, and
 pattern. `scripts/ci/go-test-shard_test.sh` checks both. CI does not run that
 test; run it by hand with `bash scripts/ci/go-test-shard_test.sh`.
 
-Some Bloem checks are not Bloem CI steps. `make verify-bloem-api-catalogue`
-is one, so [the API catalogue](api-catalogue.md) can fall behind the OpenAPI
-artifacts until someone regenerates it.
+The Go contract checks job byte-compares the Bloem native OpenAPI artifact
+(`make verify-bloem-openapi`, `contracts/api/bloem/v1/openapi.json`) and
+[the API catalogue](api-catalogue.md) generated from it
+(`make verify-bloem-api-catalogue`) with a fresh generation. Both became CI
+steps on October 27, 2026; before that the catalogue could fall behind the
+OpenAPI artifacts without failing anything, and on that date it had.
 
 ## Failures and re-runs
 
@@ -270,16 +273,17 @@ day.
 
 `scripts/ci/bloem-install-test-tools.sh` installs what the Go jobs need
 beyond libvips. Go test, Go database pins and Go database regressions call it
-with `ffmpeg ripgrep`. It was added on October 14, 2026 (`568bcfc5d`).
+with `ffmpeg`. It was added on October 14, 2026 (`568bcfc5d`).
 
 - **FFmpeg:** the native audio and video tests generate fixtures with real
   FFmpeg. The native audiobook regressions fail without it, and FFmpeg tests
   elsewhere skip. The script adds FFmpeg to `PATH` for later steps.
-- **ripgrep:** the script installs it for
+- **ripgrep:** the script can still install it, for
   `scripts/generate-bloem-storage-proto_test.sh`, which matches the
-  generator's output with `rg`. No CI step or Go test runs that script at
-  `e852f92bf`. ripgrep was first installed for the compatibility-removal
-  gate, which `2393c41ee` retired on October 18, 2026.
+  generator's output with `rg`. No CI step or Go test runs that script, so
+  since October 27, 2026 CI no longer asks for ripgrep. It was first
+  installed for the compatibility-removal gate, which `2393c41ee` retired on
+  October 18, 2026.
 
 FFmpeg is Jellyfin's build, the family the runtime image ships. CI pins
 `jellyfin-ffmpeg7` 7.1.4-3, while the image ships `jellyfin-ffmpeg8` 8.1.3-1
@@ -305,9 +309,8 @@ FFmpeg is Jellyfin's build, the family the runtime image ships. CI pins
 When the pin was set, `TestGenerateRotatedManifestEndToEndDB` was the test
 that failed under FFmpeg 8. Silo removed that test on October 21, 2026, in
 "remove low-value and never-run tests" (#2817, `174fb9a44`), and Bloem has
-merged that change. The install script and the pin test's comments still name
-it. No current test is known to fail under FFmpeg 8; that has not been
-re-checked since the removal.
+merged that change. No current test is known to fail under FFmpeg 8; that has
+not been re-checked since the removal.
 
 When the pin was set, everything else that uses FFmpeg passed on 8.1.3 too,
 including the HDR software tone-map acceptance test. Its fixture tags frames

@@ -5,7 +5,8 @@
 #   scripts/ci/bloem-install-test-tools.sh [ripgrep] [ffmpeg]
 #
 #   ripgrep  scripts/generate-bloem-storage-proto_test.sh matches the
-#            generator's output with rg.
+#            generator's output with rg. No CI step runs that script, so CI
+#            does not ask for ripgrep.
 #   ffmpeg   The native audio and video tests generate fixtures with real
 #            FFmpeg and fail without it. This installs Jellyfin's FFmpeg build,
 #            the family the runtime image ships, and puts it on PATH for later
@@ -14,9 +15,10 @@
 # The runtime image runs jellyfin-ffmpeg8 (JELLYFIN_FFMPEG_VERSION in the
 # Dockerfile). CI pins the 7.1 build because FFmpeg 8 prints a stream's display
 # matrix as "Display Matrix: rotation of ...", which Silo's mediasample input
-# parser does not read yet, so TestGenerateRotatedManifestEndToEndDB fails on
-# FFmpeg 8. Move this pin to the Dockerfile's version once that parser accepts
-# both spellings (docs/bloem/ci.md).
+# parser does not read yet. When the pin was set, TestGenerateRotatedManifestEndToEndDB
+# failed on FFmpeg 8; Silo removed that test in 174fb9a44, and no current test
+# is known to fail on FFmpeg 8. Move this pin to the Dockerfile's version once
+# that parser accepts both spellings (docs/bloem/ci.md).
 set -euo pipefail
 
 ffmpeg_package=jellyfin-ffmpeg7

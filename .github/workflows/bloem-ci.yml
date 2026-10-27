@@ -544,6 +544,15 @@ jobs:
       - name: Verify the v2 OpenAPI artifact is current
         run: make verify-apiv2-openapi
 
+      # Bloem: the same byte comparison for the native /api/bloem/v1 document,
+      # and for the API catalogue generated from it, so a document change that
+      # does not regenerate both fails here.
+      - name: Verify the Bloem native OpenAPI artifact is current
+        run: make verify-bloem-openapi
+
+      - name: Verify the Bloem API catalogue is current
+        run: make verify-bloem-api-catalogue
+
       # Spec lint and the semantic diff against the PR's base. A breaking
       # change fails unless contracts/api/v2/breaking-approvals.json names
       # that exact operation, rule and fingerprint; after the LOCKED marker
@@ -653,8 +662,8 @@ jobs:
       # Bloem: the native audio and video tests generate fixtures with real
       # FFmpeg and fail without it. The script explains the pinned build.
       - &test-tools
-        name: Install FFmpeg and ripgrep
-        run: scripts/ci/bloem-install-test-tools.sh ffmpeg ripgrep
+        name: Install FFmpeg
+        run: scripts/ci/bloem-install-test-tools.sh ffmpeg
 
       # Runs the settings-contract gate among everything else: the embedded
       # manifest must parse, satisfy its own schema, hold every structural
