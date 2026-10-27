@@ -323,6 +323,47 @@ describe("AdminContextProvider", () => {
     expect(await screen.findByRole("heading", { name: "Org A" })).toBeInTheDocument();
   });
 
+  it("recovers from a refusal that arrives before the context's first render", async () => {
+    window.localStorage.setItem("silo-admin-context", "platform");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === "/api/bloem/v1/organizations") return Promise.resolve(organizationsResponse());
+        if (url === "/api/bloem/v1/admin/session") {
+          const body = JSON.parse(String(init?.body ?? "{}")) as { scope?: string };
+          return Promise.resolve(
+            sessionResponse(body.scope === "platform" ? "platform" : "organization:org-a"),
+          );
+        }
+        return Promise.resolve(
+          jsonResponse(
+            {
+              error: "insufficient_platform_authority",
+              message: "Platform administrator authority required",
+            },
+            403,
+          ),
+        );
+      }),
+    );
+    const { adminV2Api, captureAdminRequestContext } = await import("@/api/adminV2Client");
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderProvider(queryClient, "/admin");
+
+    // Microtasks only: the context is active, but React has not yet rendered
+    // the update that carries the available contexts, nor run its effects.
+    for (let spins = 0; !captureAdminRequestContext("platform"); spins += 1) {
+      if (spins > 100_000) throw new Error("the platform context never became active");
+      await Promise.resolve();
+    }
+    await expect(adminV2Api("/platform/organizations")).rejects.toMatchObject({
+      code: "insufficient_platform_authority",
+    });
+
+    expect(await screen.findByRole("heading", { name: "Org A" })).toBeInTheDocument();
+  });
+
   it("removes a suspended organization and falls back without retaining its label", async () => {
     window.localStorage.setItem("silo-admin-context", "organization:org-a");
     vi.stubGlobal(

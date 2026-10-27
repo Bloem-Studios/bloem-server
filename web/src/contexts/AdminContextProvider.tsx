@@ -89,6 +89,10 @@ export function AdminContextProvider({
   const [switching, setSwitching] = useState(true);
   const [failure, setFailure] = useState<AdminContextFailure | null>(null);
   const activeRef = useRef<AdminContextSummary | null>(null);
+  // The contexts as of the latest change, not of the latest render: an
+  // administrative request can be refused before React renders the update
+  // that set them, and its failure handler must still recover from them.
+  const availableRef = useRef<AdminContextSummary[]>([]);
   const transitionRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
 
@@ -118,7 +122,7 @@ export function AdminContextProvider({
 
   const switchContext = useCallback(
     async (key: AdminContextKey, beforeNavigate?: () => void) => {
-      const target = available.find((candidate) => candidate.key === key);
+      const target = availableRef.current.find((candidate) => candidate.key === key);
       if (!target) {
         const reason = { code: "context_unavailable", message: "That context is unavailable." };
         setFailure(reason);
@@ -161,7 +165,7 @@ export function AdminContextProvider({
         throw error;
       }
     },
-    [available, navigate, queryClient],
+    [navigate, queryClient],
   );
 
   const handleContextFailure = useCallback(
@@ -181,12 +185,13 @@ export function AdminContextProvider({
         queryClient.removeQueries({ queryKey: ["admin-v2", previous.key] });
       }
 
-      let nextAvailable = available;
+      let nextAvailable = availableRef.current;
       if (reason.code === "insufficient_platform_authority") {
-        nextAvailable = available.filter((context) => context.scope !== "platform");
+        nextAvailable = nextAvailable.filter((context) => context.scope !== "platform");
       } else if (reason.code === "organization_suspended" && previous) {
-        nextAvailable = available.filter((context) => context.key !== previous.key);
+        nextAvailable = nextAvailable.filter((context) => context.key !== previous.key);
       }
+      availableRef.current = nextAvailable;
       setAvailable(nextAvailable);
 
       const recovery =
@@ -223,7 +228,7 @@ export function AdminContextProvider({
           navigate("/admin/context", { replace: true });
         });
     },
-    [available, navigate, queryClient],
+    [navigate, queryClient],
   );
 
   useEffect(() => {
@@ -278,6 +283,7 @@ export function AdminContextProvider({
             securityRevision: organization.security_revision,
           });
         }
+        availableRef.current = contexts;
         setAvailable(contexts);
         const stored = storedContextKey();
         const initial = contexts.find((context) => context.key === stored) ?? contexts[0];
