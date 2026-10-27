@@ -165,9 +165,9 @@ dead-code removals.
 
 ## Current integration boundary
 
-At `7c431d470` (October 27, 2026), Bloem `main` contains all of Silo `main`
-through `73a6ae6a3` (2026-10-27 19:39 UTC), and the ledger declares
-**305 seams**. Production runs `bee8a7728`, the commit before that merge: the
+At `aeeea2357` (October 27, 2026), Bloem `main` contains all of Silo `main`
+through `73a6ae6a3` (2026-10-27 19:39 UTC), merged in `7c431d470`, and the
+ledger declares **305 seams**. Production runs `aeeea2357`: the
 [October 27 receipt](docs/operations/2026-10-27-main-deployment.md) records that
 deployment and the ones before it, starting with `422a51fed`, the first
 production image built and published by CI. A source

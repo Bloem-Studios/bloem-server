@@ -5,8 +5,8 @@ Production had run `d064644a8` since 06:41 UTC on October 26
 ([previous receipt](2026-10-26-stage-a-deployment.md#follow-up-deployment-account-provisioning-0641-utc)).
 It also records the follow-up deployment of `276becf4a`, two PostgreSQL
 configuration changes the same morning, the afternoon deployment of
-`7a3b59027` and the evening deployment of `bee8a7728`. It is the newest
-deployment receipt.
+`7a3b59027` and the evening deployments of `bee8a7728` and `aeeea2357`. It is
+the newest deployment receipt.
 
 ## How these deployments are done
 
@@ -330,3 +330,53 @@ again, and the same download artifact re-queued by the restart.
 
 To roll back, start `bloem-server:release-7a3b59027` again: the schema did
 not change.
+
+## Follow-up: `aeeea2357`
+
+At 23:52 UTC production moved to `main` at
+`aeeea23578d2ca1e822d99e20b0874b3818bf60e` (system info `aeeea235`). Since
+`bee8a7728` it brings Silo through `73a6ae6a3`, merged in `7c431d470`
+([changelog](../bloem/CHANGELOG.md)), and `golang.org/x/net` v0.62.0
+(`aeeea2357`), which fixes two advisories the vulnerability scan began
+reporting that evening (GO-2026-6866 and GO-2026-6860). It has one
+migration and web changes.
+
+| Item | Verified value |
+| --- | --- |
+| Runtime image | `bloem-server:release-aeeea2357`, loaded from `ghcr.io/bloem-studios/bloem-server:aeeea23578d2ca1e822d99e20b0874b3818bf60e` (`sha256:e390807c5c17f56ea2fb8652d825ad20a672647358c4b3916e4870d06eb163b5`) |
+| Server binary SHA-256 | `e88d5750a30f94bf5ee0a9c466979782f7d27e29e111880eecaf3bffd7863079`, the same in the published image and on the application host |
+| Migrations | 1 applied, forward-only; 726 applied, maximum `20261027002724`, zero pending |
+
+The migration, `20261027002724_retire_card_caption_choice` (Silo), resets
+every stored `ui.card_presentation` caption to `title_metadata`. Production had
+11 such settings, 4 with another caption; after the migration none do.
+
+Bloem CI on `main` passed on the first attempt, and Bloem Image published the
+image. Bloem CI on the merge commit before it had failed: the vulnerability
+scan found the two advisories, and the contract checks lost their runner's
+DNS. The image's runtime configuration is identical to `release-bee8a7728`.
+
+Before the restart:
+
+- container snapshot `pre-main-aeeea2357`;
+- database restore point `pre-main-aeeea2357` at LSN `3BA/E0F94410`; the WAL
+  segment holding it was archived at 23:52:04 UTC with no archive failures,
+  and the standby was streaming;
+- a dump of `user_setting_values`, the table the migration writes to, and
+  `goose_db_version`.
+
+The restart script refused to run unless the live image was `bee8a7728`. The
+server took 37 seconds to stop (6 seconds at the previous two restarts) and
+exited cleanly. The migration applied offline in 5 ms, and the new image
+started. Ready returned 200 43 seconds after the stop began, and the server
+was healthy with no restarts. The runtime fingerprint did not change. Ready
+and health returned 200 locally, and ready, health and the site returned 200
+publicly. Active streams continued (one FFmpeg process before, two after).
+There were no ERROR or panic lines and no tuning lines. The first home page
+after the start logged slow section fetches (7.7 seconds in all) while the
+caches were cold, with no further slow-section warnings in the minutes after.
+The HDR10+ backfill warning is the known one.
+
+The migration is forward-only. To roll back, restore the database to the
+restore point above together with the container snapshot. The dump restores
+the four rewritten captions on their own.
