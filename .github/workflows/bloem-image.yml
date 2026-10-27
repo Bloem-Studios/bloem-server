@@ -96,3 +96,22 @@ jobs:
             BUILD_REVISION=${{ steps.source.outputs.sha }}
             BUILD_DIRTY=false
             BUILD_DATE=${{ steps.source.outputs.built_at }}
+
+      # latest follows main, as Silo's latest does. A run whose commit is no
+      # longer main's head leaves it alone: the newer commit's own run moves
+      # it, so a late run for an older commit cannot move latest backwards.
+      - name: Move latest to this image if main has not moved on
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          head=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
+          if [[ "$head" != "$SHA" ]]; then
+            echo "main is at $head, not $SHA; leaving latest for that commit's image."
+            exit 0
+          fi
+          docker buildx imagetools create \
+            --tag ghcr.io/bloem-studios/bloem-server:latest \
+            "ghcr.io/bloem-studios/bloem-server:$SHA"
