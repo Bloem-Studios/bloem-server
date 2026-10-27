@@ -1,7 +1,34 @@
 # Admin Remote Control of Clients (S-5)
 
-> Historical snapshot: preserve the dated revisions, results and proposals below.
-> For current status, see the [maintained reference](../architecture/admin-remote-control.md).
+> **Status (checked 2026-10-27 against `main` at `e852f92bf`): partly implemented.**
+>
+> - **S-5a, the session rail: implemented** in `e1efec046` and its review round
+>   `9f299bf86` (both 2026-09-02). Evidence: migration
+>   `migrations/sql/20260901200034_remote_commands.sql`, the sender in `internal/remote`,
+>   handlers in `internal/api/handlers/remote_control.go`, and the routes
+>   `GET /api/v1/admin/remote/sessions`,
+>   `POST /api/v1/admin/remote/sessions/{session_id}/commands`,
+>   `GET /api/v1/admin/remote/commands/{command_id}`, `GET /api/v1/admin/remote/audit`
+>   (`mountBloemLegacyAdminV1`, `internal/api/router_bloem_wiring.go`),
+>   `POST /api/v1/profiles/household/sessions/{session_id}/commands` and
+>   `PUT /api/v1/devices/{device_id}/remote-control` (`internal/api/router.go`).
+> - **S-5b, the device rail: not started.** No `device_commands` queue,
+>   `GET /api/v1/admin/remote/devices`, device-scoped command route or
+>   `device.command` event exists in the source.
+> - **S-5c, the admin web page: not started.** Nothing under `web/src` calls
+>   `/admin/remote`.
+>
+> **Provenance.** Written on 2026-09-01 (`3968d5560`) as Bloem's plan item "S-5", a
+> draft for the owner's approval, to let a server administrator, and in a reduced form a
+> household member, send commands to client apps. The S-5a implementation notes and the
+> deferred-minors ledger below were added on 2026-09-02 (`9ff1d2b02`, `3136d0848`,
+> `7775d4bf0`). This is a Bloem feature: Silo has no remote-control sender. Commands
+> travel over Silo's per-session playback control socket
+> (`internal/api/handlers/session_ws.go`, a declared seam). Revisions such as
+> `ff9401fc` below are the `main` of that day.
+>
+> **Historical snapshot:** preserve the dated revisions, results and proposals below.
+> The durable rules are in the [maintained reference](../architecture/admin-remote-control.md).
 
 Server-side control of client apps by a server admin (and, in a reduced form, by household
 members): see every device and playback session, and act on them — pause, stop, seek, switch

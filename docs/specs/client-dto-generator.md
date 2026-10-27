@@ -1,7 +1,35 @@
 # Client DTO Generator (R-19)
 
-> Historical snapshot: preserve the dated revisions, results and proposals below.
-> For current status, see the [maintained reference](../architecture/bloem-sdk-compatibility.md).
+> **Status (checked 2026-10-27 against `main` at `e852f92bf`): implemented on the
+> server side; client adoption is outside this repository.** Evidence, by the work
+> breakdown in §10:
+>
+> - C1 to C3: `cmd/clientdtogen` (first commit `d82101ee0`, 2026-09-02), the registry
+>   `contracts/client/v1/registry.json` (17 packages at HEAD), committed Kotlin output
+>   under `contracts/client/v1/kotlin/` (`b9559b4b6`, 2026-09-02), and the `make` targets
+>   `client-dtos`, `verify-client-dtos`, `client-digest`, `verify-client-digest` and
+>   `verify-client-coverage` in `Makefile.bloem`. Bloem CI runs `make verify-client-dtos`
+>   (`.github/workflows/bloem-ci.yml`); the digest and coverage pins are also checked by
+>   Go tests under `cmd/clientdtogen` (`TestDigestPinMatchesTree`,
+>   `TestAllowlistMatchesTree`).
+> - C4: the coverage allowlist `contracts/client/v1/coverage.json` (`9e8f492f1`) and the
+>   digest pin `contracts/client/v1/digest.txt` (`b0d658aac`), both 2026-09-02. The
+>   allowlist last grew in `422a51fed` (2026-10-27).
+> - C7: the Swift emitter, `fac4c80db` (2026-09-04), output under
+>   `contracts/client/v1/swift/`.
+> - C5 and C6 (vendoring into the Android and Apple clients) are client-repository work
+>   and cannot be checked here.
+> - The `docs/architecture/client-dto-contract.md` page planned in C3 was never written;
+>   the maintained description is [SDK and client contracts](../architecture/bloem-sdk-compatibility.md).
+>
+> **Provenance.** Written on 2026-09-02 (`ab6d56ae9`; the owner's answers in
+> `f71d0e9c1` the same day) to make this server the single source of the native
+> clients' wire types (ruling R-19), with an output shape that shares no substantive
+> line with the earlier Android client (rulings R-31 and R-32). The generator is
+> Bloem's; Silo's equivalent is its settings bindings (`cmd/settingsgen`), which this
+> spec extends. Paths and line numbers below are those of `main` at `a339fc0f`.
+>
+> **Historical snapshot:** preserve the dated revisions, results and proposals below.
 
 Extend the settings-bindings pipeline so the server repo also emits the full client DTO set —
 the request/response/realtime wire shapes — as Kotlin `kotlinx.serialization` classes for the

@@ -1,5 +1,25 @@
 # LAN service advertisement (`_bloem._tcp`)
 
+> **Status (checked 2026-10-27 against `main` at `e852f92bf`): implemented on the
+> server, off by default, with no web control.** `8173499df` (2026-09-02) added
+> `internal/lanadvert`, which publishes `_bloem._tcp` through `github.com/brutella/dnssd`.
+> `bloemStartListeners` (`cmd/silo/bloem_main.go`) starts it only when the Bloem setting
+> `lan.advertisement_enabled` is true (default `false`, restart required;
+> `internal/config/bloem_admin_settings.go`). The TXT record takes `api` and `bloem`
+> from `handlers.ServerAPIMajorVersions()` and `handlers.NativeAPISurfaces()`, as step 4
+> below asks. Step 3 is only partly met: the setting has no control in the web admin.
+>
+> Do not confuse it with Silo's own advertisement. Silo added `_silo._tcp` in
+> `fdedf5a27` (#1846, 2026-10-03; `internal/landiscovery`,
+> [server discovery](../architecture/server-discovery.md)). That is the
+> **Configure → Server → General → Show on the local network** switch
+> (`server.lan_discovery`); it does not publish `_bloem._tcp`.
+>
+> **Provenance.** Written on 2026-09-02 (`8993d1b3b`) after the native API moved to
+> `/api/bloem/v1`, when aligning the clients showed that they browsed for a service no
+> server published; the implementation followed the same day. Statements below about the
+> client apps describe their repositories as reviewed then; they are not checked here.
+
 **Status: server side shipped** — `internal/lanadvert` publishes the service; it is opt-in
 via the `lan.advertisement_enabled` setting. Every client browses for this service. No
 upstream `silo-server`, `bloem-ops` or `bloem-edge` build publishes it.

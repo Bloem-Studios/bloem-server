@@ -1,5 +1,32 @@
 # Client Engagement Spec — alerts, promotions, ambience
 
+> **Status (checked 2026-10-27 against `main` at `e852f92bf`): implemented (S-1, S-2,
+> S-3), with later changes; S-4 not started.**
+>
+> - S-1 alert notifications: `06285608c` and review fixes `4ad8df55e` (2026-09-01):
+>   `system.alert` and `system.announcement` deliveries in `internal/notifications`, the
+>   administrator announcements routes under `/api/v1/admin/notifications/announcements`.
+>   Bloem's native inbox at `/api/bloem/v1/notifications` followed in `7ef228d3e`
+>   (2026-09-15).
+> - S-3 seasonal packs: `54ace4675` and `4803d4bff` (2026-09-01), `internal/ambience`.
+> - S-2 promotions: `3ae12d9f2` (2026-09-01), `3a97f563d` and `e3a87f4e0` (2026-09-02),
+>   `internal/promotions`; timed playback overlays in `eaa0b3a6b` (2026-09-06).
+> - Later changes the text below predates: web authoring and native platform adapters
+>   (`53534d9f0`, 2026-09-18); campaign and seasonal artwork moved from the public S3
+>   client to Silo's catalog Assets store (`f293cce0d`, 2026-09-23, see
+>   [campaign asset storage](../architecture/bloem-campaign-asset-storage.md));
+>   evaluation ran in bundled worker processes from `85ba110f2` (2026-10-05) and back
+>   in-process from `310c545f9` (2026-10-26, see
+>   [presentation evaluators](../architecture/bloem-presentation-evaluators.md)).
+> - S-4, the node-health bridge: not started. Nothing feeds `internal/nodepool` or
+>   `internal/nodemetrics` health into the alert dispatcher.
+>
+> **Provenance.** Written on 2026-09-01 (`c9d376fd3`, already amended from the owner's
+> design that day) as Bloem's plan for server-driven content in its client apps: alerts,
+> promotional cards and seasonal effects. None of it is Silo's: Silo has no
+> `internal/promotions` or `internal/ambience` and no announcement notifications. The
+> implementation notes were appended as each part shipped.
+
 > **Frozen design and implementation snapshot.** This September 2026 record retains
 > its original proposals, examples and observations. It is not current operational
 > guidance: native route names, web authoring, seasonal audience resolution and artwork

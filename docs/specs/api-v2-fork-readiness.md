@@ -1,5 +1,32 @@
 # api-v2 fork readiness
 
+> **Status (checked 2026-10-27 against `main` at `e852f92bf`): implemented, then
+> superseded by Silo's API v2 merge.** All three tasks were done before Silo's route
+> inventory arrived:
+>
+> - Task 1: `9082bd0b6` (2026-09-09) declared the private compatibility API's routes
+>   inline; `git grep '\.Mount(' -- internal/api` now finds no production `Mount`. That
+>   compatibility API itself went with Bloem's companion gateway on 2026-10-13
+>   (`b8ddec9bf`).
+> - Tasks 2 and 3: `c78c443fa` (2026-09-09). `mountBloemRoutes` takes a typed
+>   `bloemRouteSurfaces` struct, and `mountUnavailableAdminContextRoutes` has one call
+>   site (`internal/api/router_bloem.go`), which is option (b) below.
+> - Silo's API v2 migration (`a0ab8f0b7`, #1075, 2026-09-13) brought the route
+>   inventory and migration ledger into this repository. Bloem CI runs
+>   `make verify-route-inventory` and `make verify-migration-ledger`
+>   (`.github/workflows/bloem-ci.yml`).
+> - "Also known": the root-listener conflict was resolved on 2026-10-26 (`879da820c`,
+>   see the note in that item), and the Audiobookshelf listener is Silo's
+>   `cmd/silo/abs_listener.go` again since `2393c41ee` (2026-10-18).
+>
+> **Provenance.** Written on 2026-09-04 (`6b705a2ab`, with the rest of the review in
+> `a446a5906`) to prepare Bloem for Silo's API v2 phase 1 (#902), whose route-inventory
+> generator refuses three constructs Bloem's routing then used. Two days earlier Bloem
+> had moved its own native surface from `/api/v2` to `/api/bloem/v1` (`811fb4d29`,
+> 2026-09-02) so that Silo could take `/api/v2`. The page describes the repository as
+> private and "509 commits ahead"; both were true on 2026-09-04. The text below is
+> kept as written.
+
 **Status:** ready to execute. Tasks 1 and 2 are unblocked and independent.
 **Owner decision pending:** Task 3 only.
 
@@ -192,7 +219,7 @@ databases**.
 We run a production database carrying 509 commits of our own migrations, including ones upstream
 has never seen. A guard written to accept only two known shapes will not recognise ours. Establish
 before any 1.0 merge — not during it — whether that guard is something we adopt, adapt, or exclude,
-and what it would do to CT148 if it ran. This is a data question, not a merge-conflict question.
+and what it would do to the production database if it ran. This is a data question, not a merge-conflict question.
 
 ### Where we are already well placed
 

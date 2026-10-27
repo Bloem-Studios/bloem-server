@@ -1,12 +1,26 @@
 # Bloem Private Plugin Inventory
 
-> Historical snapshot: preserve the dated revisions, results and proposals below.
-> For current status, see the [maintained reference](architecture/bloem-sdk-compatibility.md).
+> **Historical snapshot, verified on 2026-08-12.** Preserve the dated revisions,
+> results and proposals below; they describe that day only. For the current server
+> and SDK position, see the [maintained reference](architecture/bloem-sdk-compatibility.md).
 >
-> 2026-10-26: the Ebook Metadata and Audiobook Metadata forks, and the
-> requests-arr and requests-seerr forks, are archived. Production installs
-> Silo's catalog builds of `silo.ebook-metadata`, `silo.audiobook-metadata` and
-> `silo.requests.arr`.
+> **Provenance.** This page was written when Bloem was re-established as a tracking
+> fork of Silo (`a51326741`, 2026-08-13, then named Vondel). The "forks" are Bloem's
+> private copies of six Silo plugin repositories (metadata providers and an autoscan
+> source), made so Bloem could publish its own private releases as input to a private
+> plugin catalog (see "Next phase" below). They are separate
+> repositories, not code in this server. The page was renamed to Bloem in
+> `b25394bc8` and `1a596b359` (2026-08-24 and 2026-08-26). The links below name the
+> repositories' original `Bloem-Media` owner; on 2026-10-27 the repositories are
+> found under `Bloem-Studios` instead, all private.
+>
+> **Later state.** On 2026-10-27 GitHub reports the Ebook Metadata and Audiobook
+> Metadata forks, and two request-plugin forks (`bloem-plugin-requests-arr`,
+> `bloem-plugin-requests-seerr`), as archived; TMDB, TVDB, Manga Metadata and
+> Autoscan ARR are not. A note added on 2026-10-26 (`d064644a8`) says production
+> installs Silo's catalog builds of `silo.ebook-metadata`,
+> `silo.audiobook-metadata` and `silo.requests.arr` instead; no deployment record in
+> `docs/operations/` confirms that installation.
 
 Verified on 2026-08-12. The active private plugin and future catalog scope contains exactly six retained plugins: TMDB, TVDB, Ebook Metadata, Audiobook Metadata, Manga Metadata, and Autoscan ARR.
 

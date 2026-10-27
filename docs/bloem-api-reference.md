@@ -11,9 +11,19 @@ and frozen alpha `/api/v1`; its extensions are not Silo-compatible or externally
 The native API evolves with Bloem; clients must use capability tokens for
 optional behavior and ignore additive response fields they do not understand.
 
-The October 25 source integration includes Silo through `6de6d5e5e` and
-preserves these namespace boundaries. It includes mixed filesystem/plugin library
-locations, native ebook/movie/audiobook delivery and inherited profile limits.
+> **Provenance and review.** This page began on 2026-08-20 (`fefa0bfb2`) as the reference for
+> Bloem's native API when it was mounted at `/api/v2`; Bloem moved that surface to
+> `/api/bloem/v1` on 2026-09-02 (`811fb4d29`) so that Silo could take `/api/v2` for its own API.
+> It was last checked on 2026-10-27 against Bloem `main` at `e852f92bf`, which contains Silo
+> through `3e2d306b2` (merge `68070f04b`): the route registrations in
+> `internal/api/router_bloem*.go` and `internal/api/router_livetv.go`, the handlers named in each
+> section, and the generated [`contracts/api/bloem/v1/openapi.json`](../contracts/api/bloem/v1/openapi.json).
+> Every documented method and path exists in that OpenAPI document. This is a source review, not
+> a record of calls against a running server. Silo's own APIs (`/api/v1`, `/api/v2`) are
+> documented in Silo's `docs/*-api.md` pages, not here.
+
+The current source preserves these namespace boundaries. It includes mixed filesystem/plugin
+library locations, native ebook/movie/audiobook delivery and inherited profile limits.
 The [API catalogue](bloem/api-catalogue.md) maps typed native operations and
 checks inventoried method/path entries against generated Swagger/OpenAPI. The native
 document includes organization/platform administration and Live TV management, DVR
@@ -67,6 +77,11 @@ clients depend on"), and splits into two genuinely different surfaces:
 3. [Platform Administration](#platform-administration-native-apibloemv1admin)
 4. [People Administration](#people-administration-native-apibloemv1adminorganizationpeople)
 5. [Native Storage Administration](#native-storage-administration) — experimental storage source routes, request fields and errors.
+6. [Ebook requests](#ebook-requests), [Audiobook requests](#audiobook-requests),
+   [Native audiobook presentations](#native-audiobook-presentations) and
+   [Preview guest sessions](#preview-guest-sessions).
+7. [Inbox, cohort reads, people policy jobs and Live TV routes](#inbox-cohort-reads-people-policy-jobs-and-live-tv-routes)
+   — operations added since the sections above were written, summarized from the OpenAPI document.
 
 ## Native client route summary
 
@@ -78,6 +93,10 @@ ordinary account bearer token and an `X-Profile-Id` header:
 - `POST /api/bloem/v1/sync/progress`
 - `GET /api/bloem/v1/persons/{person_id}`
 - `GET /api/bloem/v1/catalog/items/{content_id}/collections`
+- `GET /api/bloem/v1/notifications`, `GET /api/bloem/v1/notifications/sync` and
+  `GET /api/bloem/v1/notifications/{id}` ([inbox](#native-notification-inbox))
+- the Live TV routes under `/api/bloem/v1/livetv` ([Live TV routes](#live-tv-routes)), whose
+  signed HLS delivery paths also accept a headerless delivery ticket
 
 Direct-profile sessions are admitted to `/api/bloem/v1` only for
 the audiobook and ebook request viewer routes (capability, history, filing,
@@ -146,6 +165,29 @@ administration) is a separate reference.
 - **Public probes** include `/capabilities` and `/server/identity`. Organization discovery
   and the admin-session exchange require account authentication.
 
+#### Session binding and profile ownership (since `68070f04b`, 2026-10-27)
+
+Silo's `d8d053f75` (#3140) made every per-request session check confirm that the token's
+login session belongs to the account the token names, not only that the session is active.
+Bloem's merge `68070f04b` passes that account through Bloem's own lookups as well:
+
+- the account-session check in the auth middleware, including its preview-principal lookup
+  (`internal/api/middleware/bloem_preview.go`), which also guards the plugin router;
+- the administrative-context gate (`AdminContextMiddleware.Require`), which now asks for the
+  context token's session *and* account. A token whose session is not active for that account
+  is refused with `401 authorization_state_stale`;
+- native-video playback authority (`internal/api/bloem_native_video.go`), which re-checks the
+  originating login session for the stream's account.
+
+A credential whose session belongs to another account is therefore treated as having no live
+session. Separately, Silo's `e852571bb` (#3133) made `POST /api/v1/playback/{session_id}/progress`
+and `DELETE /api/v1/playback/{session_id}` refuse a session owned by another profile on the same
+account with `403`, and Bloem's durable stop, which answers that `DELETE` first
+(`internal/api/handlers/bloem_playback_stop.go`), applies the same account-and-profile rule.
+These are `/api/v1` routes, listed here because they change what a native client sharing an
+account across profiles can do. The same merge brought Silo's masking of signed stream and
+download tokens in logs (#3137) and the profile check on account-level downloads (#3123).
+
 The embedded browser retains Silo v2 consumers alongside these native adapters.
 Direct-profile credentials do not authorize that browser surface. A primary household
 profile is not a platform administrator, and organization authority never grants
@@ -172,10 +214,10 @@ default-deny `/api/v1` allowlist before this middleware runs.
 #### GET /api/bloem/v1/capabilities
 
 **Purpose.** The public, unauthenticated capability probe — "what does this server do", not
-"what may this caller do". It always returns `200`. Most fields are build constants; lifecycle
-idempotency also reflects whether the coordinator is wired and whether the server has finalized
-the header-required rollout phase. A failed rollout-phase read cannot make the probe fail: the
-support token remains present and the required token is conservatively omitted.
+"what may this caller do". It always returns `200`. Most fields are build constants; a few tokens
+are added only when the matching service is wired (below). The lifecycle-idempotency tokens
+(`lifecycle_idempotency_v1`, `lifecycle_idempotency_required_v1`) are no longer advertised: Bloem
+removed its receipt system on 2026-10-26 (`b017bfe84`); see [Retrying mutations](#retrying-mutations).
 
 **Auth.** None. Mounted directly on `/api/bloem/v1`, ahead of any auth middleware.
 
@@ -198,12 +240,16 @@ support token remains present and the required token is conservatively omitted.
   "media_types": ["movie", "series", "episode", "audiobook", "ebook", "manga"],
   "feature_tokens": [
     "playback_plan_v3",
+    "server_remote_stream_bitrate_policy_v1",
+    "server_local_stream_bitrate_policy_v1",
     "neutral_playback_v3_contract_v1",
+    "embedded_subtitles_v1",
     "layout_aware_passthrough",
     "playback_route_diagnostics",
     "device_quirks_v1",
     "seek_reanchor_v1",
     "output_change_v1",
+    "output_display_evidence_v1",
     "direct_stream_resume_v1",
     "header_authenticated_media_v1",
     "authorized_media_origins_v1",
@@ -211,6 +257,10 @@ support token remains present and the required token is conservatively omitted.
     "plan_invalidated_v1",
     "plan_source_duration_v1",
     "declared_event_channels",
+    "live_tv_access_v1",
+    "organization_activity_v1",
+    "organization_invitation_lifecycle_v1",
+    "platform_engagement_authoring_v1",
     "watch_document_v1",
     "device_pairing_v1",
     "progress_sync_v1"
@@ -219,11 +269,18 @@ support token remains present and the required token is conservatively omitted.
 ```
 
 Field notes:
-- The example is not an exhaustive token list. `organization_activity_v1`,
+- The example is the unconditional list at `e852f92bf` (`buildBloemCapabilityTokens` in
+  `internal/api/handlers/bloem_system.go`). The first seventeen are Silo's v3 playback tokens,
+  taken from `playback.ServerFeaturesV3()`, so a Silo merge can change them. `organization_activity_v1`,
   `organization_invitation_lifecycle_v1` and `platform_engagement_authoring_v1`
-  identify the embedded-web adapters below. `profile_credential_management_v1` is
-  conditional on credential-management wiring, separate from `direct_profile_login`.
-  `seasonal_viewer_v1` tracks the fully wired authenticated native `/ambience` route.
+  identify the embedded-web adapters below. Conditional tokens are appended only when the
+  matching service is wired: `native_audiobook_presentations_v1` (native audio ready),
+  `profile_credential_management_v1` (credential management, separate from
+  `direct_profile_login`), `audiobook_requests_v1`, `ebook_requests_v1` with
+  `ebook_requests_direct_profile_v1`, `book_request_connection_admin_v1`, and
+  `seasonal_viewer_v1` (the fully wired authenticated native `/ambience` route).
+- `features.direct_profile_login` follows the wiring of `POST /api/v1/auth/profile-login`;
+  `shared_device_pairing` and `delegated_admin_roles` are always `false`.
 - `media_types`: the fixed vocabulary of `mediaTypesServed` — the item types *this build* can
   serve at all (a property of the software, not of what an operator's libraries happen to
   contain). A type absent from the list means the build cannot serve it; a client should not infer
@@ -432,7 +489,8 @@ on an already-configured server):
   "status": "ok",
   "server_id": "<stable per-deployment identifier, from serverid.Resolver>",
   "server_name": "<branding.Service name, or branding.DefaultServerName if unbranded>",
-  "api_versions": [1, 2],           // serverAPIMajorVersions — fixed constant, both API majors are always mounted
+  "api_versions": [1],              // serverAPIMajorVersions: the Silo-compatible majors this build serves
+  "bloem_api": ["v1"],              // nativeAPISurfaces: native surfaces mounted under /api/bloem/
   "setup_complete": true            // !NeedsSetup(ctx) — false until the deployment's first account exists
 }
 ```
@@ -899,6 +957,10 @@ The administrative operations in this section require a second, short-lived **ad
 - **Lifetime**: `auth.AdminContextTokenLifetime` = 15 minutes, fixed at mint time. There is no refresh for an admin-context token — a client mints a new one via `/admin/session` when it expires.
 - **Scope** (`claims.Scope`): exactly one of two mutually exclusive kinds. `AdminScopePlatform` binds the token to an account only (no organization) and authorizes the `/admin/platform/...` routes. `AdminScopeOrganization` binds the token to one exact `(account, organization, membership)` triple and is required by the endpoints in this section and by `/admin/organization/people`.
 - **What "organization admin" means here**: an `AdminScopeOrganization` token is only honored when `claims.EffectiveAuthority` is `"organization_admin"` (an active membership whose `LegacyRole == "admin"`) or `"platform_admin"` (a platform operator who has "entered" an organization's admin context — re-verified live against `auth.PlatformAdminAuthorizer.IsPlatformAdmin` on every request, not trusted from the token alone). Anything else — a non-admin membership, a stale/former admin — is rejected with `401 authorization_state_stale`, not `403`, because the token parsed fine but the authority it claims no longer holds.
+- **Session binding**: the token's login session must be active **for the token's account**
+  (`ActiveSession(sessionID, accountID)`, since `68070f04b`). A revoked, expired or
+  other-account session gives `401 authorization_state_stale`; a token without a session ID gives
+  `401 tenant_session_required`.
 - **Live revalidation, not just signature checking**: on every request, `Require` re-resolves the membership (`tenancy.Resolver.Resolve` + `AdminContextMembershipStore.GetMembership`) and compares `AccountID`, `OrganizationID`, `MembershipID`, `PolicyRevision`, and `SecurityRevision` against what the token asserts. Any mismatch — the membership was suspended, the org's policy or security revision moved, the membership row disappeared — invalidates the token immediately (`401 authorization_state_stale`), even though the JWT signature and expiry are still fine. A previously-admin token cannot be replayed after a demotion.
 - **What lands in the request context**: `Require` puts two things on success — `middleware.SetAdminContextClaims` (the raw, server-validated `AdminContextClaims`) and `tenancy.WithContext` (the freshly re-resolved `tenancy.Context`, i.e. the current `OrganizationID`, `MembershipID`, `AccountID`, `PolicyRevision`, `SecurityRevision`). Every handler in this section additionally calls `requireBloemOrganizationContext`, which re-derives both from context and rejects (`403 insufficient_organization_authority`) unless `claims.Scope == AdminScopeOrganization` and the claims and the resolved tenant context agree on account/organization/membership. An `AdminScopePlatform` token, even from a real platform admin, is refused by every endpoint in this section — Organization and Policy Explain require organization context.
 - **Not built at all** ⇒ `503`: if the server has no database, or the admin-context token service/resolver/membership store/platform authorizer couldn't be constructed, `adminMW` is `nil` and the whole `/admin` subtree answers `503 tenant_unavailable` for every route (`mountUnavailableAdminContextRoutes`). If `organizationHandler`/`explainHandler` specifically failed to construct (no DB) but `adminMW` did build, unmatched sub-paths fall through to a generic `404 not_found` "Administrative resource not found" from the subtree's catch-all.
@@ -1330,11 +1392,14 @@ and invalid declared dimensions/aspect ratio `400`. Public asset delivery suppor
 ETag revalidation (`304`) on the existing content-addressed asset route. Storage availability
 and scheduling/repeat support come from registry capability responses.
 
-Campaign and seasonal asset uploads currently require configured public S3 storage.
-The local artwork backend used by catalog covers and branding is not wired into the
-ambience asset service. Without public S3, the registry reports
-`storage_available: false` and multipart uploads return `503`; an HTTPS artwork URL
-can still be authored. A successful registry write does not prove an asset was uploaded.
+Campaign and seasonal asset uploads are stored in Silo's catalog **Assets** blob store,
+the same store branding uses (local disk, or the public bucket on S3), under the prefix
+`ambience/`. `bloemWireServices` (`cmd/silo/bloem_main.go`) falls back to the public S3
+client only when no Assets store is configured; this has been the wiring since `f293cce0d`
+(2026-09-23), and earlier versions of this page said public S3 was required. With no store
+at all, the registry reports `storage_available: false` and multipart uploads return `503`;
+an HTTPS artwork URL can still be authored. A successful registry write does not prove an
+asset was uploaded. See [campaign asset storage](architecture/bloem-campaign-asset-storage.md).
 
 The registries have **no revision-locking contract**. Editors explain last-write-wins,
 require review before publication and confirmation before deletion, and never replay
@@ -3131,3 +3196,85 @@ The event body is capped at 1 KiB and extra fields or invalid event names return
 Per-session and aggregate rate limits return `429 rate_limited` with `Retry-After`.
 Counter failures return `503 preview_unavailable`. Only day, event name and count
 are persisted. Duplicate requests increment again.
+
+---
+
+## Inbox, cohort reads, people policy jobs and Live TV routes
+
+These operations are mounted and declared in
+[`contracts/api/bloem/v1/openapi.json`](../contracts/api/bloem/v1/openapi.json) but had no
+section here before the 2026-10-27 review. The summaries below come from the route
+registrations and that document; use the OpenAPI schemas for the full field lists.
+
+### Native notification inbox
+
+Added in `7ef228d3e` (2026-09-15). Mounted in the client surface
+(`internal/api/router_bloem_client.go`) and served by
+`internal/api/handlers/bloem_notifications.go`. Silo's `/api/v2` inbox projection drops the
+alert fields Bloem's `system.alert` and `system.announcement` rows need (title, body, severity,
+call to action, dismissibility, expiry), so this surface serves the same rows with those fields.
+Each route needs an ordinary account bearer token and `X-Profile-Id` (plus `X-Profile-Token` for a
+PIN-protected profile).
+
+| Method and path | Contract |
+| --- | --- |
+| `GET /api/bloem/v1/notifications` | The acting profile's inbox, newest first. Query `status` (`all` or `unread`), `limit`, `cursor`. Returns `{items: [DeliveryRowPayload], page: {has_more, next_cursor?}, read_cutoff}`. |
+| `GET /api/bloem/v1/notifications/sync` | Rows newer than `cursor`, for a client waking from a push or reconnecting; omit `cursor` for the newest snapshot. Returns `{items, page, unread_count, initial_snapshot}`. |
+| `GET /api/bloem/v1/notifications/{id}` | One inbox row (`DeliveryRowPayload`). Another profile's row answers `404`, not `403`. |
+
+Marking read and dismissing stay on the existing `/api/v1` and `/api/v2` notification routes.
+
+### Organization cohort reads and people policy jobs
+
+Mounted in `mountBloemRoutes` (`internal/api/router_bloem.go`) under the organization
+administrative context, beside the [People Administration](#people-administration-native-apibloemv1adminorganizationpeople)
+routes and with the same gate. They are the organization-scoped counterparts of the
+[platform cohort and bulk-policy routes](#platform-entitlement-cohorts-and-bulk-policy).
+
+| Method and path | Contract |
+| --- | --- |
+| `GET /api/bloem/v1/admin/organization/entitlement-cohorts` | `{cohorts: [...]}` for the selected organization; `?include_archived` includes archived cohorts. Each cohort carries `cohort_id`, `name`, `revision`, `access_group_id`, `derivation_kind`, `policy`, `policy_digest`, `archived`, `member_count`, `created_at` and its source template, when it has one. |
+| `GET /api/bloem/v1/admin/organization/entitlement-cohorts/{cohort_id}` | `{cohort: ...}`; a cohort of another organization is `404`. |
+| `POST /api/bloem/v1/admin/organization/people/policy-previews` | Body `{selection_token, command}` where `command.kind` is `assign_entitlement_cohort`, `apply_entitlement_template`, `derive_entitlement_cohort` or `restore_default_entitlement`. Returns `201 {preview}` with a confirmation token bound to the selection and the observed state. |
+| `POST /api/bloem/v1/admin/organization/people/policy-jobs` | Body `{selection_token, confirmation_token, command, idempotency_key?}`, or the key as `Idempotency-Key`. Returns `201 {job}`. A stale preview is `409 policy_confirmation_stale`; reusing a key for another command is `409 idempotency_conflict`. |
+| `GET /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}` | `{job}` with progress and per-record results. |
+| `POST /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}/cancel` | `{job}`; a job that can no longer be cancelled is `409 job_not_cancellable`. |
+
+Bodies are strict JSON (unknown fields and trailing JSON rejected, 32 KiB limit). The selection
+comes from `POST .../people/selections`, described under People Administration. The OpenAPI
+description of the job route still mentions `503 lifecycle_request_pending`; that response
+belonged to the lifecycle receipts removed on 2026-10-26 (`b017bfe84`) and no handler returns it.
+
+### Platform policy snapshot reads
+
+| Method and path | Contract |
+| --- | --- |
+| `POST /api/bloem/v1/admin/platform/accounts/entitlement-snapshots` | Direct accounts in the default organization. |
+| `POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots` | Accounts of one organization. |
+
+Both take `{account_ids: [...]}` (1 to 10,000 positive IDs, strict JSON, 1 MiB) and return
+`200 {observed_at, items: [{account_id, snapshot?, error?}]}`, read in one observation. A failure
+for one account is reported in its `error`, not as an HTTP error. Authentication is a platform
+administrative context or an API key owned by an enabled platform administrator, as for the
+bulk-policy routes.
+
+### Live TV routes
+
+Live TV is Bloem's (adapted from Prairie Server; see [FORK.md](../FORK.md#prairie-server-live-tv)).
+`mountLiveTVRoutes` (`internal/api/router_livetv.go`) mounts it under `/api/bloem/v1/livetv`
+inside the client surface's authenticated group, so every route below first passes account
+authentication, the legacy tenant projection, rate limiting, viewer access and the profile gate
+(`requireBloemLiveTVProfile`, which admits a headerless request only on the signed delivery
+paths). `GET /api/bloem/v1/livetv/capability` sits beside them.
+
+| Group | Routes | Additional gate |
+| --- | --- | --- |
+| Viewer reads | `GET /channels`, `GET /guide`, `GET /programs/{programId}`, `GET /recordings`, `GET /series-rules` | `RequireLiveTVAccess`: `403 live_tv_forbidden` without the Live TV permission |
+| Viewer writes and delivery | `POST /channels/{channelId}/session`, `POST /sessions/{sessionId}/heartbeat`, `POST /recordings`, `DELETE /recordings/{recordingId}`, `POST /series-rules`, `DELETE /series-rules/{ruleId}`; `GET`/`HEAD /sessions/{sessionId}/stream` and `GET /live-hls/{playbackId}/{name}`; `DELETE /sessions/{sessionId}` | `RequireLiveTVAccess`; the stream and HLS paths use `RequireLiveTVStreamAccess`, which also accepts a verified signed delivery ticket; releasing a session has no further gate |
+| Administration | `GET`/`POST /tuners`, `POST /tuners/discover`, `POST /tuners/xtream`, `DELETE /tuners/{tunerId}`, `POST /tuners/{tunerId}/scan`, `PATCH /channels/{channelId}`, `GET`/`POST /guide-sources`, `POST /guide-sources/schedules-direct/lineups`, `POST /guide-sources/xml-sync/lineups`, `PATCH`/`DELETE /guide-sources/{sourceId}`, `POST /guide-sources/{sourceId}/sync` | Acting administrator; answers `503 admin_unavailable` when no admin gate is wired |
+
+Paths in the table are relative to `/api/bloem/v1/livetv`. Request and response details:
+[Live TV client access](architecture/live-tv-client-access.md) for viewers, signed HLS and DVR
+ownership; [tuner discovery](livetv-tuner-discovery.md) for tuner add and discovery bodies; the
+[Xtream contract](architecture/xtream-live-tv.md) and
+[`POST /api/bloem/v1/livetv/tuners/xtream`](#post-apibloemv1livetvtunersxtream) above for providers.
