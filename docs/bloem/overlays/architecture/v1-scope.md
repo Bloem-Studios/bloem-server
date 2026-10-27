@@ -1,8 +1,38 @@
 # Bloem overlay: Silo v1 Scope
 
-Bloem additions and overrides for the upstream Silo document [`docs/architecture/v1-scope.md`](../../../architecture/v1-scope.md).
-The upstream file is kept verbatim so Silo merges stay clean; where the two
-disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../../README.md).
+**What this overlays.** Silo's
+[`docs/architecture/v1-scope.md`](../../../architecture/v1-scope.md). Bloem
+retitles it, adds two passages to the opening section “Silo v1 Scope”, and keeps
+its own retired items beside Silo's “Breaking removals taken before lock”
+table without editing that table. An *overlay* is a Bloem-owned page that
+records Bloem's additions to, or replacements of, sections of a Silo-owned
+document. The Silo file stays exactly as Silo wrote it. See the
+[documentation workflow](../../documentation-workflow.md).
+
+**Why Bloem differs.** Bloem's `/api/v1` is Silo's frozen v1 surface plus a few
+reviewed Bloem additions, and Bloem's own client features live under
+`/api/bloem/v1`. Bloem has also retired some of its own earlier v1 additions:
+the `playback.proxy_policy` setting, and two socket-ticket routes removed in
+`a7436b4e5` (2026-10-25). Silo's removals table stays exactly as Silo wrote
+it, and Bloem's client contract digest (`contracts/client/v1/digest.txt`, read by
+`cmd/clientdtogen`) covers that table, so Bloem's retired items are recorded
+here instead. Bloem first documented these differences in the Silo file in August 2026
+and moved them here in `47ea7c889` (2026-09-23).
+
+**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf` (`internal/api/v1_silo_contract_test.go`,
+`internal/api/testdata/v1_routes_with_database.txt`,
+`internal/livetv/capability.go`). Since the previous review (Silo `6de6d5e5e`),
+Silo changed the document three times. Two add rows to Silo's removals table,
+both applying to Bloem unchanged: v1 writes of the retired AI endpoint settings
+now return `400` (`c27acf246`, #3106, and `39913c51d`, #3107, 2026-10-26, when AI
+providers became one list each job selects from), and `383e52922` (#3135,
+2026-10-26) omits other accounts' history samples from a v1 split for a
+delegated curator.
+
+Index: [Bloem documentation](../../README.md).
+
+---
 
 **Location:** document title. Bloem titles this document “Bloem Silo-compatible v1 Scope”.
 
@@ -11,10 +41,14 @@ disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../.
 **Location:** section “Silo v1 Scope”, after the paragraph beginning “This file governs v1 **capability** scope: which user-facing capabilities Silo…”. **Bloem adds:**
 
 `/api/v1` is Bloem's Silo-compatible projection, not an unmodified upstream
-surface. The route contract is pinned against `origin/main`; the reviewed
-Bloem exceptions are direct profile login and lookup, account-administration
-profile/device/session methods, and tenant-member lifecycle/resource methods.
-Native Bloem client features belong under `/api/bloem/v1`.
+surface. Bloem adds a few reviewed v1 routes, among them direct-profile login
+(`POST /api/v1/auth/profile-login`) and tenant-member administration under
+`/api/v1/admin/tenants/{tenant_id}/members`. It must never drop a Silo one:
+`TestV1SiloRouteContractIsNeverNarrowed` (Bloem's, since `4f5a8af62`,
+2026-08-30) fails if any route in `internal/api/testdata/v1_routes_silo_contract.txt`
+disappears from the router. Additions need no change to that file, and a
+removal needs a deliberate deletion plus a removal entry. Native Bloem client
+features belong under `/api/bloem/v1`.
 
 ---
 

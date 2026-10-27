@@ -1,8 +1,28 @@
 # Bloem overlay: Non-goals
 
-This is Bloem's complete edition of the upstream Silo document [`docs/non-goals.md`](../../non-goals.md),
-which is kept verbatim so Silo merges stay clean. For Bloem Server, read this
-edition instead. Index: [Bloem documentation](../README.md).
+**What this is.** Bloem's complete edition of Silo's
+[`docs/non-goals.md`](../../non-goals.md). For Bloem Server, read this page
+*instead of* Silo's, not beside it. Silo's file stays exactly as Silo wrote it,
+so Silo merges stay clean; see the
+[documentation workflow](../documentation-workflow.md).
+
+**Why Bloem differs.** Silo declares Live TV, OTA tuners, IPTV, guide data and
+DVR permanently out of scope. Bloem ships them: HDHomeRun-compatible tuners,
+Xtream live providers, XMLTV guides and DVR rules and recordings. Live TV has
+been in Bloem since `ef2d38171` (2026-08-13); its routes later moved under
+`/api/bloem/v1/livetv`. Xtream providers followed on 2026-09-19.
+Silo's other non-goal, not deleting or managing media files, Bloem keeps
+unchanged. Bloem's edition moved out of the Silo file in `47ea7c889`
+(2026-09-23).
+
+**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf` (`internal/livetv`, `internal/api/router_livetv.go`). Silo has not
+changed `docs/non-goals.md` since the previous review (Silo `6de6d5e5e`), when
+this edition took Silo's media-file-management non-goal.
+
+Index: [Bloem documentation](../README.md).
+
+---
 
 Bloem ships Live TV: HDHomeRun-compatible tuner discovery, authenticated Xtream
 live-provider consumption, guide data, channel playback, DVR rules and recordings

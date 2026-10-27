@@ -1,8 +1,35 @@
 # Bloem overlay: Observability
 
-Bloem additions and overrides for the upstream Silo document [`docs/architecture/observability.md`](../../../architecture/observability.md).
-The upstream file is kept verbatim so Silo merges stay clean; where the two
-disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../../README.md).
+**What this overlays.** Silo's
+[`docs/architecture/observability.md`](../../../architecture/observability.md).
+Bloem adds a paragraph to “Metrics stay on Prometheus” and one to “Query
+attribution”. It replaces nothing. An *overlay* is a Bloem-owned page that
+records Bloem's additions to, or replacements of, sections of a Silo-owned
+document. The Silo file stays exactly as Silo wrote it. See the
+[documentation workflow](../../documentation-workflow.md).
+
+**Why Bloem differs.** Bloem adds two things this page must account for:
+
+- `GET /api/v1/admin/host-stats`, a JSON host-usage endpoint for its mobile admin
+  clients (`4c8e3524d`, 2026-08-26), which has read Silo's node sampler since
+  `4313e6cd2` (2026-09-13);
+- the `/api/bloem/v1` routes, including the read-only *preview*, whose guest
+  requests skip request logging (`0ebad1b49`, 2026-10-14). The preview is a
+  browse-only catalogue that guests reach on a configured preview host with
+  signed guest sessions; see the
+  [browse-only content policy](../../../architecture/bloem-browse-only-content-policy.md).
+
+Bloem first documented the host-stats endpoint in the Silo file in August 2026
+and moved the text here in `47ea7c889` (2026-09-23).
+
+**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf` (`internal/api/handlers/admin_host_stats.go`, `cmd/silo/bloem_main.go`,
+`internal/api/bloem_preview_activity.go`). Silo has not changed this document
+since the previous review (Silo `6de6d5e5e`).
+
+Index: [Bloem documentation](../../README.md).
+
+---
 
 **Location:** section “Metrics stay on Prometheus”, after the paragraph beginning “This is deliberate and guarded: the trace-instrumentation libraries (`otelhttp`, etc.,…”. **Bloem adds:**
 

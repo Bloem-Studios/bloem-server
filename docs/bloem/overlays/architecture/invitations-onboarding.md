@@ -1,89 +1,94 @@
 # Bloem overlay: Invitations and server-driven onboarding
 
-Bloem additions and overrides for the upstream Silo document [`docs/architecture/invitations-onboarding.md`](../../../architecture/invitations-onboarding.md).
-The upstream file is kept verbatim so Silo merges stay clean; where the two
-disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../../README.md).
+**What this overlays.** Silo's
+[`docs/architecture/invitations-onboarding.md`](../../../architecture/invitations-onboarding.md).
+It adds to the opening section and the sections “Token model” and “Lifecycle
+invariants”, and it replaces two bullets of “Lifecycle invariants” and one
+paragraph of “Accounts vs household profiles”. Everything else in the Silo
+document applies to Bloem as written. That includes link invitations without an
+address, Owner-only `admin` invitations, recorded delivery and the onboarding
+tour. An *overlay* is a Bloem-owned page that records Bloem's additions to, or
+replacements of, sections of a Silo-owned document. The Silo file stays exactly
+as Silo wrote it. See the [documentation workflow](../../documentation-workflow.md).
 
-**Location:** section “Invitations and server-driven onboarding”. **Bloem replaces** the corresponding upstream passage with:
+**Why Bloem differs.** Bloem is multi-tenant: every account belongs to an
+*organization* (a tenant), and each invitation carries an `organization_id`.
+Bloem added organization-scoped invitations and the organization console's
+invitation routes in August 2026 (for example `463afb680`, 2026-08-13, which made
+the one-pending-invitation index per organization). Bloem also has optional
+direct-profile credentials. Bloem's text moved out of the Silo file into this
+overlay in `47ea7c889` (2026-09-23).
 
-Two complementary entry paths coexist: shareable multi-use `invite_codes`
-("drop a code in Discord") and personal, emailed invitations — a single-use
-capability token bound to one email address, carrying the access decisions the
-admin made at send time. Invitations live in `internal/invitations`; the
-first-run tour lives in `internal/onboarding`. Bloem's organization console also
-creates email-bound invitations with manually delivered links; that native flow
-never sends mail. See [organization invitation links](../invitations-api.md#bloem-organization-invitation-links).
+**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf` (`internal/invitations`, `internal/auth/bloem_account_provisioner.go`,
+`internal/api/handlers/bloem_admin_organization.go`). Since this overlay was
+written (against Silo `8e5ae2f46`), Silo changed the document twice:
+`be15e8b0e` (#1523, 2026-09-26) lets only the server Owner create or resend an
+`admin` invitation, and `4a0cff41f` (#1788, 2026-10-02) adds link invitations,
+which have no address until accept, and records delivery. Both apply to Bloem.
+The earlier edition of this overlay replaced whole Silo sections with
+September text that predated those changes; it now records only Bloem's real
+differences.
 
----
-
-**Location:** section “Token model”. **Bloem replaces** the corresponding upstream passage with:
-
-Token handling mirrors the email-verification flow: 32 random bytes,
-`base64.RawURLEncoding` in the claim URL (`/invite/<token>`), SHA-256 hex
-stored at rest as `token_hash`. The raw token exists in the sent email (or in
-the create response when mail is unconfigured, or the native organization's one-time
-create/regenerate handoff) and nowhere else — a database
-dump yields no usable links.
-
----
-
-**Location:** section “Lifecycle invariants”. **Bloem replaces** the corresponding upstream passage with:
-
-- **One live invitation per address.** A partial unique index
-  (`invitations_one_pending_idx`, on `email` where neither accepted nor
-  revoked) enforces it; `Repository.Create` revokes any live invitation for
-  the address in the same transaction. Re-invite and resend therefore
-  *supersede*: a forwarded copy of the old link stops working.
-- **Accept commits account and claim together.** The invitation repository
-  locks the token row and provisions the account and requested PostgreSQL
-  profile through the same transaction. The final claim checks wall-clock
-  expiry; expiry or any provisioning/claim failure rolls all three back.
-  Revoke and replacement serialize on that row: if they win first, acceptance
-  creates nothing; if acceptance wins first, later revocation does not delete
-  the account. Resend accepts only the requested pending or expired source;
-  it cannot revive revoked or accepted history or supersede a newer link from
-  a stale request.
-- **Profile storage must support the transaction.** Required default profiles
-  use the PostgreSQL provider's transaction capability, preserved through the
-  notification wrapper. A SQLite profile store cannot join that transaction:
-  acceptance with `create_profile=true` fails before account/membership insertion or
-  user-store lookup, so it also creates no SQLite files. Provider preflight and the
-  returned store's transactional writer are both checked.
-  `create_profile=false` remains supported. This restriction applies to emailed
-  invitations; ordinary signup invite-code behavior is unchanged.
-- **Login follows acceptance.** A session-issuance failure leaves the committed
-  account and accepted invitation intact. The domain returns that account with
-  `ErrSessionStart`; the invitee can use ordinary sign-in with the chosen
-  password. A lost commit response is uncertain, not proof of rollback. Neither
-  failure authorizes automatic replay or compensating account deletion.
-- **Revoke is idempotent.** The administrator DELETE route revokes the link;
-  physical history deletion is a separate repository operation.
-- **Mail degrades loudly, not silently.** Claim links resolve their base from
-  the server public URL;
-  with neither set, creation fails. With no mail sender configured, the row is
-  still created and the claim URL returned with `EmailSent` false so the admin
-  copies the link instead of believing an email went out.
-  SMTP runs after storage commits. A delivery error retains the new invitation
-  and invalidates the old link; the domain returns the committed `SendResult`
-  alongside the error. `EmailSent=false` with an error means failed or uncertain
-  delivery, not proof that no message arrived. Repeating send/resend creates a
-  new token and may send another email; there is no durable replay receipt or
-  exactly-once delivery guarantee. The current legacy HTTP error response does
-  not expose this partial result; a later transport must represent it explicitly.
+Index: [Bloem documentation](../../README.md).
 
 ---
 
-**Location:** section “Accounts vs household profiles”. **Bloem replaces** the corresponding upstream passage with:
+**Location:** section “Invitations and server-driven onboarding”, after the
+paragraph beginning “Two complementary entry paths coexist…”. **Bloem adds:**
 
-Invitations create **login accounts** (`users` rows), not profiles. Several
-household profiles share one account's `user_id`; a profile's `is_primary`
-marks the household parent, which is distinct from the server-wide `admin`
-role on the account. The invitation's `create_profile` flag controls whether
-accept provisions a default profile (named from the email's local part) for
-clients that do not render a household-setup step; profiles added afterwards
-use the ordinary profiles API. Someone needing a separate login account receives a
-second invitation. Optional direct-profile credentials remain account-owned and only
-work on their supported routes; they do not create another account or enable browser
-direct-profile login. A profile's rating
-ceiling and library restrictions layer *under* the account's invitation-bound
-access; a profile can never see more than the account received.
+Every invitation belongs to one organization. Silo's administrator invitation
+routes, on `/api/v1` and `/api/v2`, list, create, resend, revoke and delete only
+the default organization's invitations. Bloem's organization console has its
+own routes under `/api/bloem/v1/admin/organization/invitations`. They create
+email-bound invitations with role `user` only, in the console's organization.
+That flow never sends mail: the create and resend responses return the claim
+token once and the administrator delivers the link. Those rows are stored with
+`delivery` NULL, the value Silo otherwise reserves for rows that predate the
+column. See [organization invitation links](../invitations-api.md#bloem-organization-invitation-links).
+
+---
+
+**Location:** section “Token model”, after the paragraph beginning “Token
+handling mirrors the email-verification flow…”. **Bloem adds:**
+
+The raw token also exists in the one-time `claim_token` that the organization
+console's create and resend routes return, and nowhere else.
+
+---
+
+**Location:** section “Lifecycle invariants”, the bullet “**One live invitation
+per address.**”. **Bloem replaces** it with:
+
+- **One live invitation per address in each organization.** Bloem's partial
+  unique index `invitations_one_pending_idx` is on `(organization_id, email)`
+  where neither accepted nor revoked (migration `20260813180000`).
+  `Repository.Create` revokes any live invitation for the address in the same
+  organization, in the same transaction, so re-invite and resend *supersede*: a
+  forwarded copy of the old link stops working. An address that already has an
+  account anywhere on the server is still refused at send.
+
+**Location:** section “Lifecycle invariants”, the bullet “**Profile storage must
+support the transaction.**”. **Bloem replaces** it with:
+
+- **Profile storage must support the transaction.** A required default profile
+  uses the PostgreSQL provider's transaction capability, preserved through the
+  notification wrapper. A SQLite profile store cannot join that transaction.
+  Acceptance with `create_profile=true` fails with
+  `ErrTransactionalProfileUnavailable` before the account and its organization
+  membership are inserted, so it also creates no SQLite files.
+  `create_profile=false` remains supported. An invitation that names an
+  organization also requires that organization to be active at accept. This
+  restriction applies to emailed and link invitations; ordinary signup
+  invite-code behavior is unchanged.
+
+---
+
+**Location:** section “Accounts vs household profiles”, the sentence beginning
+“A spouse who needs their own password…”. **Bloem replaces** it with:
+
+Someone needing a separate login account receives a second invitation, which
+creates a second account. Bloem's optional direct-profile credentials stay
+owned by the account and only work on their supported routes. They do not
+create another account or enable browser direct-profile login; see the
+[authentication overlay](../auth-api.md).

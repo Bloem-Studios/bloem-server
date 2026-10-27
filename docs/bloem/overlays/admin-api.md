@@ -1,8 +1,34 @@
 # Bloem overlay: Admin API
 
-Bloem additions and overrides for the upstream Silo document [`docs/admin-api.md`](../../admin-api.md).
-The upstream file is kept verbatim so Silo merges stay clean; where the two
-disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../README.md).
+**What this overlays.** Silo's [`docs/admin-api.md`](../../admin-api.md). Bloem
+adds three sections after the section “`GET /api/v2/admin/logs/app` — `level`”.
+It replaces nothing. An *overlay* is a Bloem-owned page that records Bloem's
+additions to, or replacements of, sections of a Silo-owned document. The Silo
+file itself stays exactly as Silo wrote it, so upstream merges stay clean. Read
+it first, then this page. See the
+[documentation workflow](../documentation-workflow.md).
+
+**Why Bloem differs.** These administrative surfaces are Bloem's, not Silo's:
+
+- admin remote control of playing clients, added in `e1efec046` (2026-09-02);
+- how Silo's September account-password changes sit beside Bloem's organization
+  membership, recorded with the September 30 integration;
+- the experimental *native storage* administration routes, added from
+  `ccc18d1b1` (2026-10-06). *Native storage* is Bloem's experimental way for
+  ebook, movie and audiobook libraries to read files from host-approved storage
+  plugins (such as S3 or Bookwarehouse sources) alongside filesystem paths; see
+  [native storage](../../architecture/bloem-native-storage.md).
+
+Bloem first documented these in the Silo file in August and September 2026 and
+moved them here in `47ea7c889` (2026-09-23).
+
+**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf`. Since the previous review (Silo `6de6d5e5e`), Silo changed this
+document once, in `8cbc82028` (#2781, 2026-10-26): plugin manifests whose ID or
+version maps to an empty, `.` or `..` directory are refused. That change applies
+to Bloem unchanged and does not touch the sections below.
+
+Index: [Bloem documentation](../README.md).
 
 **Location:** section “`GET /api/v2/admin/logs/app` — `level`”, after the paragraph beginning “`level` accepts a comma-separated list, so one request can ask…”. **Bloem adds:**
 
@@ -49,9 +75,10 @@ their own account, restricted to the playback commands (no `terminate`, no
 Upstream account password-reset links and temporary-password flows are described
 in [password resets](../../architecture/password-resets.md). The setup owner flag
 belongs to the account; it does not replace Bloem organization ownership or
-primary-profile authority. Bloem retains membership-scoped policy and session
-revocation while carrying those upstream account fields through its owned service
-integration. See [adapter boundaries](../../architecture/bloem-upstream-adapters.md)
+primary-profile authority. Account policy lives on `users`, as in Silo, since
+`c60b7008e` (2026-10-26); an organization membership only links the account to
+its one organization. Bloem keeps its organization-scoped session revocation and
+carries those Silo account fields through its own service integration. See [adapter boundaries](../../architecture/bloem-upstream-adapters.md)
 and the [deployment record](../../operations/2026-09-30-upstream-deployment.md).
 
 

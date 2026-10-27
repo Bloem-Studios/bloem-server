@@ -1,10 +1,41 @@
 # Bloem overlay: Authentication API
 
-Bloem additions and overrides for the upstream Silo document [`docs/auth-api.md`](../../auth-api.md).
-The upstream file is kept verbatim so Silo merges stay clean; where the two
-disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../README.md).
+**What this overlays.** Silo's [`docs/auth-api.md`](../../auth-api.md). Bloem
+replaces one paragraph each of “Account passwords” and “Ordinary v2
+authentication”, and adds to “When the server is too busy to check a
+password”, “Sign-in attempts per name” and “Ordinary v2 authentication”. An
+*overlay* is a Bloem-owned page that records Bloem's additions to, or
+replacements of, sections of a Silo-owned document. The Silo file stays
+exactly as Silo wrote it. See the
+[documentation workflow](../documentation-workflow.md).
 
-**Location:** section “Account passwords”. **Bloem replaces** the corresponding upstream passage with:
+**Why Bloem differs.** Bloem adds two things:
+
+- *direct-profile credentials*: an optional login email and password for one
+  household profile, which signs in straight to that profile
+  (`POST /api/v1/auth/profile-login`; default-deny route allowlist since
+  `16baf5558`, 2026-08-14);
+- *organizations*: every account is a member of one organization, so account
+  creation also provisions an organization membership.
+
+Bloem first documented these in the Silo file in September 2026 and moved the
+text here in `47ea7c889` (2026-09-23).
+
+**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf` (`internal/api/handlers/bloem_auth_ext.go`,
+`bloem_profile_credentials.go`, `admin_tenant_members.go`,
+`bloem_admin_platform.go`, `internal/auth/account_provisioner.go`). Silo has not
+changed this document since the previous review (Silo `6de6d5e5e`). This review
+rewrote the busy-refusal note. It had described Bloem's lifecycle-receipt
+handlers, removed in `b017bfe84` (2026-10-26), and the period before
+`bb92c4cfd` (2026-10-25), which put Bloem's own password hashing under Silo's
+admission limit.
+
+Index: [Bloem documentation](../README.md).
+
+---
+
+**Location:** section “Account passwords”, the first paragraph. **Bloem replaces** it with:
 
 The password managed by this API belongs to the login account. Household profiles use
 that account login; Bloem's optional direct-profile credentials are a separate contract
@@ -17,15 +48,23 @@ never change an account password.
 
 **Location:** section “When the server is too busy to check a password”, after the paragraph beginning “The refusal is `503` with `Retry-After: 1`: v2 `dependency_unavailable`, v1 error code…”. **Bloem adds:**
 
-Bloem's lifecycle-receipt handlers do not map that refusal. They serve v1 setup,
-signup, invitation acceptance and `POST /api/v1/admin/users` whenever the server
-has a database and a JWT secret, and there a busy refusal answers
-`500 internal_error`. `POST /api/v1/admin/tenants/{tenant_id}/members` does the
-same and also hashes its receipt outside the limit. The account-password check
-before a profile-credential write or an organization ownership transfer runs under
-the limit, but answers `503` without `Retry-After` (`unavailable` or
-`tenant_unavailable`). Direct-profile login and the new credential's hash on
-set/rotate run outside the limit; direct-profile login never answers busy.
+Since `bb92c4cfd` (2026-10-25), Bloem's own password hashing and checks run under
+Silo's admission limit (`internal/auth/passwordhash`). The following answer a
+busy refusal with Silo's `503 service_unavailable` and `Retry-After`:
+
+- direct-profile login (`POST /api/v1/auth/profile-login`);
+- setting or rotating a profile credential (hashing the new credential);
+- tenant-member commands under `/api/v1/admin/tenants/{tenant_id}/members`,
+  which also hash their command receipt.
+
+Two account-password re-checks also run under the limit, but any failure there,
+busy included, answers `503` without `Retry-After`: the check before a
+profile-credential write (`unavailable`) and the check before an organization
+ownership transfer (`tenant_unavailable`). v1 setup, signup and invitation
+acceptance run Silo's handlers again since `b017bfe84` (2026-10-26).
+`POST /api/v1/admin/users` creates the account through Bloem's
+`bloemCreateUser`, which maps a busy refusal the same way. All of them answer
+as described above.
 
 ---
 
@@ -39,15 +78,15 @@ clients described under [sign-in rate limits](../../auth-api.md#sign-in-rate-lim
 
 ---
 
-**Location:** section “Ordinary v2 authentication”. **Bloem replaces** the corresponding upstream passage with:
+**Location:** section “Ordinary v2 authentication”, the paragraph beginning “Invited signup commits invite consumption…”. **Bloem replaces** it with:
 
 Invited signup commits invite consumption and account creation together. With the
 PostgreSQL profile provider, the optional default profile joins that transaction.
 Both transactional account entrypoints check provider support before inserting an
 account, provisioning membership or opening a profile store. Nil, unsupported and
-SQLite providers cannot create a default profile through those transactions; rejection
-does not create SQLite files. The returned store is checked independently. PostgreSQL
-and the notification decorator preserve transactional support. Profileless requests
+SQLite providers cannot create a default profile through those transactions
+(`ErrTransactionalProfileUnavailable`); rejection does not create SQLite files.
+PostgreSQL and the notification decorator preserve transactional support. Profileless requests
 keep their existing behavior; no cross-store transaction or backend conversion is implied.
 
 ---
@@ -76,11 +115,24 @@ and errors. Account-device activation remains a separate sign-in protocol.
 Upstream account password-reset links and temporary-password flows are described
 in [password resets](../../architecture/password-resets.md). The setup owner flag
 belongs to the account; it does not replace Bloem organization ownership or
-primary-profile authority. Bloem retains membership-scoped policy and session
-revocation while carrying those upstream account fields through its owned service
-integration. See [adapter boundaries](../../architecture/bloem-upstream-adapters.md)
+primary-profile authority. Account policy lives on `users`, as in Silo, since
+`c60b7008e` (2026-10-26); an organization membership only links the account to
+its one organization. Bloem keeps its organization-scoped session revocation and
+carries those Silo account fields through its own service integration. See [adapter boundaries](../../architecture/bloem-upstream-adapters.md)
 and the [deployment record](../../operations/2026-09-30-upstream-deployment.md).
 
+
+## October 27 integration: tokens bound to their session's account
+
+Silo `d8d053f75` (#3140), merged into Bloem in `68070f04b` (2026-10-27), binds a
+token to its session's account: `ActiveSession` takes the account the
+credential names. Bloem's own session lookups pass that account too:
+the preview-aware `ActivePreviewSession` and `ActiveSessionAuthority`, the
+middleware's `sessionAuthority`, the native-video session check
+(`ActiveSessionRole`) and the tenant administrative context. So the
+plugin router, preview, tenant-admin and native-video paths keep Silo's
+binding. A direct-profile session still answers with the user role inside
+Silo's query.
 
 ## October 7 integration: credential checks and network identity
 

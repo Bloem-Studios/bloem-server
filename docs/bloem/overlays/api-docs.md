@@ -1,8 +1,27 @@
 # Bloem overlay: Interactive API documentation
 
-Bloem additions and overrides for the upstream Silo document [`docs/api-docs.md`](../../api-docs.md).
-The upstream file is kept verbatim so Silo merges stay clean; where the two
-disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../README.md).
+**What this overlays.** Silo's [`docs/api-docs.md`](../../api-docs.md), a
+single-section page about the bundled Swagger viewer. Bloem adds to that
+section and replaces nothing. An *overlay* is a Bloem-owned page that records
+Bloem's additions to, or replacements of, sections of a Silo-owned document.
+The Silo file stays exactly as Silo wrote it. See the
+[documentation workflow](../documentation-workflow.md).
+
+**Why Bloem differs.** Bloem serves a second, Bloem-only API under
+`/api/bloem/v1`, with its own committed OpenAPI artifact
+(`contracts/api/bloem/v1/openapi.json`, since `7d9cafbca`, 2026-09-14). Silo's
+viewer does not show it. Bloem wrote a first version of this page with its own
+viewer work (`93af17b6e`, 2026-09-09); Silo's page arrived with Silo's API v2
+migration (`a0ab8f0b7`, #1075, 2026-09-13). Bloem's remaining notes moved here in
+`47ea7c889` (2026-09-23).
+
+**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf`. Silo has not changed `docs/api-docs.md` since the previous review
+(Silo `ea3c10a7f`).
+
+Index: [Bloem documentation](../README.md).
+
+---
 
 **Location:** section “Interactive API documentation”. **Bloem adds:**
 
@@ -34,9 +53,8 @@ server can support authorized EPUB/PDF onboarding while keeping
 `backend_verified: false`; generated DTO presence and artifact approval do not
 certify a provider or establish native-client adoption.
 
-The October 14 source integration includes Silo through `ea3c10a7f`.
-Use the generated artifacts from the source being built and keep
-[source milestones](../CHANGELOG.md) separate from
-[historical deployment records](../README.md#operations-and-deployment-records).
-Documentation does not establish a server's running revision, provider readiness
-or native-client adoption.
+Bloem `main` at `e852f92bf` includes Silo through `3e2d306b2`. Use the
+generated artifacts from the source being built, and keep
+[source milestones](../CHANGELOG.md) separate from the dated
+[deployment records](../../operations/). Documentation does not establish a
+server's running revision, provider readiness or native-client adoption.

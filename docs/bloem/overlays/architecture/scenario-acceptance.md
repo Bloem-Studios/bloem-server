@@ -1,156 +1,171 @@
 # Bloem overlay: Executable scenario pairing
 
-Bloem additions and overrides for the upstream Silo document [`docs/architecture/scenario-acceptance.md`](../../../architecture/scenario-acceptance.md).
-The upstream file is kept verbatim so Silo merges stay clean; where the two
-disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../../README.md).
+**What this overlays.** Silo's
+[`docs/architecture/scenario-acceptance.md`](../../../architecture/scenario-acceptance.md).
+Bloem adds to its opening section “Executable scenario pairing” and replaces
+two packet descriptions: “Frozen API-key scope discovery pairs” and “Avatar
+uploads and deletion”. Every other packet description applies to Bloem as Silo
+wrote it. An *overlay* is a Bloem-owned page that records Bloem's additions to,
+or replacements of, sections of a Silo-owned document. The Silo file stays
+exactly as Silo wrote it. See the
+[documentation workflow](../../documentation-workflow.md).
 
-**Location:** section “Executable scenario pairing”, after the paragraph beginning “# Executable scenario pairing…”. **Bloem adds:**
+**Why Bloem differs.** Bloem runs Silo's frozen scenario catalogs against
+Bloem's router, which serves more than Silo's:
 
-Bloem's ordinary scenario gate applies the explicit
-[downstream contract adjudications](../../../architecture/bloem-contract-adjudications.md) to 30 transport
-expectations. Frozen source catalogs and the historical Silo selectors described
-below remain unchanged; they are not silently relabeled as current Bloem oracles.
+- a multi-tenant organization model, so fixtures must recreate the default
+  organization;
+- extra API-key scopes;
+- an explicit 503 when avatar storage is absent, instead of a recovered panic.
+
+Three Bloem mechanisms reconcile the frozen catalogs with that router, without
+editing Silo's catalogs:
+
+- **Explicit adjudications.** Each adjudication is a pinned replacement
+  expectation for one scenario transport, with a written reason. Bloem added
+  them in `23ee4c1ac` (2026-09-19); the design is in
+  [contract adjudications](../../../architecture/bloem-contract-adjudications.md).
+- **Bloem catalog rows**, kept in Bloem-owned files since `ae1117d8a`
+  (2026-10-26).
+- **Bloem fixture prerequisites.**
+
+Bloem's text moved out of the Silo file into this overlay in `47ea7c889`
+(2026-09-23).
+
+**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf` (`internal/scenariocatalog`, `internal/scenariocatalog/executor`,
+`Makefile.bloem`, `.github/workflows/bloem-ci.yml`). Since this overlay was
+written (against Silo `8e5ae2f46`), Silo changed the document five times. The
+changes cover API-key creation as the admin's primary profile (`00380a108`,
+`fca27206c`), OIDC, LDAP and TV device sign-in (`13601f068`), PIN proofs
+(`485f545ad`), and explicit nulls in metadata edits (`2365c5c18`). None of them
+changes the sections below. This review also removed two replacements of the
+opening section. They described lifecycle-request gating of offline runs, which
+went with Bloem's lifecycle receipts in `b017bfe84` (2026-10-26). Silo's
+offline text now applies unchanged.
+
+Index: [Bloem documentation](../../README.md).
 
 ---
 
-**Location:** section “Executable scenario pairing”. **Bloem replaces** the corresponding upstream passage with:
+**Location:** section “Executable scenario pairing”, after the opening paragraph
+beginning “Scenario catalogs retain the observed v1 exchange…”. **Bloem adds:**
 
-Non-lifecycle offline unit cases retain optional database execution. Their skipped
-cases are not acceptance evidence. Lifecycle readiness failures are explicit, as described below. The catalog coverage gate still checks all
-existing scenarios, but the other unpaired rows remain outside this bounded
-acceptance pilot.
+### How Bloem runs the catalogs
 
----
+The executor loads Silo's embedded catalogs and splices Bloem's own rows onto
+the end of the catalog each extends. Those are rows for routes Bloem registers
+in a Silo route group (`internal/scenariocatalog/bloem_catalogs/api/` extends
+the v1 auth, devices and profiles catalogs), so Silo's catalog files stay
+byte-identical. Before running, it applies the 49 transport decisions in
+`internal/scenariocatalog/bloem_adjudications.json`. Each replaces one
+scenario transport's expectation with a pinned Bloem expectation and a reason.
+The file pins the SHA-256 of every catalog it adjudicates, so a changed
+catalog fails the gate (“adjudicated baseline changed”) instead of silently
+keeping a stale decision. Frozen source catalogs
+and Silo's selectors remain unchanged; they are not relabeled as current Bloem
+oracles.
 
-**Location:** section “Executable scenario pairing”. **Bloem replaces** the corresponding upstream passage with:
+The fixture differs from Silo's in a few places:
 
-Offline execution is not a complete acceptance gate. Lifecycle requests require a
-reachable phase store before input validation, even when a frozen row's static
-requirements originally allowed offline execution. The executor derives this from
-production's `api.MatchLifecycleRoute` registry, including each transport's own
-follow-up requests. Without a database it reports an explicit missing-prerequisite
-failure before HTTP, naming `SILO_SCENARIO_DATABASE_URL`; it does not skip the request
-or rewrite its oracle. Explicit `database_unavailable` scenarios retain the dead pool.
-Ready-store validation (`400` for the affected v1 cases) and dead-store refusal (`503`)
-remain separate checked behavior.
+- reseeding recreates the default organization and platform-security rows that
+  the users cascade clears;
+- the fixture admin becomes the organization and server Owner, as first-run
+  setup does;
+- access groups belong to the default organization;
+- after the first seed, each reseed restores a snapshot of the seeded household
+  instead of re-running bcrypt seeding;
+- the offline router gets an already-cancelled application context, so its
+  background workers stop at once against the dead pool;
+- for a paired `FreshState` scenario the pairing wrapper does not reseed again,
+  because the transport already resets before and after its exchange.
 
-The offline router is built without a user store, policy system,
-viewer-access or acting-admin gate, so v2 operations whose declared class
-(`x-silo-class`) is anything other than `public` or `authenticated` fail closed
-with 503 `dependency_unavailable` before authentication. The executor therefore
-treats those v2 exchanges, and any v2 follow-up step on such an operation, as
-database-gated and skips them offline, exactly as it already skips v1 rows the
-offline wiring does not register. Their 401 oracles are proven only on the live
-router by the required targeted packets.
+### Where Bloem runs it
 
----
-
-**Location:** section “Executable scenario pairing”, after the paragraph beginning “The offline router is built without a user store, policy…”. **Bloem adds:**
-
-### Runtime budget and fixture lifetime
-
-`make test-go` uses an explicit **20-minute per-package timeout**. A completed
-configured executor run took 872.712 seconds, beyond Go's implicit ten-minute
-limit. This remains a bounded gate, not a timeout exemption or a claim that all
-scenario assertions pass. Race-instrumented runs have a different cost and must
-not be presented as equivalent CI timing evidence.
-
-Router maintenance uses the owning test's application context, canceled before
-server and pool teardown. Fixture SQL retains a separate context for cleanup hooks
-that restore owned rows. `FreshState` transports reset once before and once after
-the exchange; their pairing wrapper no longer repeats the pre-reset. Paired reads
-still reset before each transport. No password cost, database guard, frozen
-assertion, pairing or exclusion changed.
-
-`TestBloemScenarioEnvironmentLifetime` checks application cancellation during
-cleanup without canceling fixture SQL. `TestBloemScenarioReseedBoundaries` runs
-the unchanged paired invite-code top-up and list cases: top-up observes
-`5 → 7`, resets to `5`, and repeats independently for the other transport. The
-focused regression passed ten hierarchical events with no skips; no further full
-local executor run followed those changes. The later
-[contract adjudication](../../../architecture/bloem-contract-adjudications.md) resolves the 30 inspected
-transport mismatches without editing frozen catalogs or weakening production.
-Its focused packet passed all 52 transport leaves, including unchanged partners.
-For example, invalid v2 invitation email still requires `422 validation_failed`
-and now explicitly asserts the safe `body.email` diagnostic required by
-[Problem Details](../../../architecture/api-contract.md#problem-details); v1 remains `400 invalid_email`.
-
-Remote [CI run 35467142414](https://github.com/Bloem-Studios/bloem-server/actions/runs/35467142414)
-subsequently ran the ordinary gate for `418a18b7d` and **timed out after 20 minutes**
-in this package (1200.171 seconds). `TestScenarioCatalogs` had run for 17m22s and
-was progressing through profile-section fixtures; the stack included bcrypt
-seeding, not a proven deadlock. No assertion-failure markers were reported, but
-unfinished cases are not passes. The other 189 Go packages passed. The runtime
-budget remains unresolved: neither the historical 872.712-second completion nor
-the focused packets certify this hosted run.
-
-The maintainer approved a deployment exception for that exact revision and timeout;
-[deployment completed](../../../operations/2026-09-19-xtream-deployment.md), but CI remains
-failed. This is not permission to skip scenarios, reduce authentication cost,
-weaken assertions or treat future timeouts as successful runs.
+Bloem CI runs the executor in its own `scenario-executor` job (split out in
+`d3da00815`, 2026-09-23; `.github/workflows/bloem-ci.yml` since `dcbd1c525`,
+2026-10-26). The job uses `make test-scenarios`, which is
+`go test -timeout=45m ./internal/scenariocatalog/executor` from
+`Makefile.bloem`, under a 45-minute job limit, against an empty PostgreSQL
+database named by `SILO_SCENARIO_DATABASE_URL`. `make test-go` keeps a
+20-minute per-package timeout, which Bloem added to the Makefile in
+`23ee4c1ac`. A passing job is the scenario gate for one commit; it is not
+client or device acceptance.
 
 ### Current Bloem prerequisite coverage
 
-The profile-list row supplies the supported temporary filesystem avatar store plus
-the real signer and resolver. This makes `avatar_upload_enabled` describe usable
-storage. The fixture is scoped to that row and its paired v2 execution; teardown
-restores the prior router and closes its server/background context. Avatar validation
-and ownership scenarios also receive this real store so they reach their intended
-checks. The explicit `avatar_upload.typed_nil_panic` and `avatar_upload.meaning`
-cases remain unconfigured. Their historical 500 oracles remain frozen, while the
-explicit Bloem adjudication requires the corrected 503 refusal and safe envelope
-on both transports. Neither case is skipped by the current Bloem gate.
+Row-scoped Bloem fixtures (`withBloemRowFixtures`) install prerequisites that
+the frozen rows assume but Silo's bare fixture lacks. Teardown restores the
+prior router.
 
-Generic device-removal packets seed the same canonical overrides as their dedicated
-effect tests without altering device identities or last-seen ordering. Section packets
-receive their prior overrides and an organization-owned fixture library. Its exact
-identity is checked and removed before the ordinary scratch guard runs; cleanup refuses
-foreign libraries or any media rows rather than weakening the guard. Reseeding also
-restores the invitation public URL and binds account tokens to actual incarnations.
-These are prerequisites, not substitutes for the original transport assertions.
+- **Avatars.** The profile-list row, and the avatar validation and ownership
+  scenarios, get a real temporary filesystem avatar store, signer and
+  resolver. `avatar_upload_enabled` then describes usable storage and those
+  cases reach their intended checks. The explicit absent-store cases stay
+  unconfigured (see “Avatar uploads and deletion” below).
+- **Devices and sections.** Device-removal packets seed the same canonical
+  overrides as their dedicated effect tests, without altering device
+  identities or last-seen ordering. Section packets receive their prior
+  overrides and an organization-owned fixture library. Its exact identity is
+  checked and removed before the ordinary scratch guard runs; cleanup refuses
+  foreign libraries or any media rows rather than weakening the guard.
+- **Reseeding** also restores the invitation public URL and binds account
+  tokens to their actual incarnations.
 
-Focused real-router checks upload through v1/v2, verify persisted ownership and
-decoded 256px WebP bytes, private cache headers, unsigned/wrong-key refusal,
-unauthenticated/cross-account rejection, deletion and absent-storage teardown.
-This is separate from the historical [avatar packet](../../../architecture/scenario-acceptance.md#avatar-uploads-and-deletion).
+These are prerequisites, not substitutes for the original transport
+assertions. `TestBloemScenarioEnvironmentLifetime` checks that application
+cancellation during cleanup does not cancel fixture SQL.
+`TestBloemScenarioReseedBoundaries` checks that paired invite-code top-up and
+list cases reseed independently for each transport.
 
-The embedded-web checkpoint passed 98 scenario/transport results with zero skips:
-46 additions covering five catalog gaps, 20 profile-list, 26 device-list and six
-lifecycle-validation results. All 337 older scenarios and row metadata in the three
-edited catalogs remained unchanged. Tenant/bootstrap ownership is restored on reseed;
-policy projections use membership authority. Household command fixtures assert
-`rejected_unsupported`, not socket delivery. Ten focused prerequisite tests and a later
-17-event focused race selection passed. A larger combined race run timed out during
-device execution and remains inconclusive. These bounded results do not certify every
-executor packet; see [coverage evidence](../../../architecture/bloem-web-feature-coverage.md#acceptance-evidence-and-limits).
+### History (September 2026)
 
----
+These results are kept as dated evidence. They describe earlier revisions and
+do not certify the current gate.
 
-**Location:** section “Frozen API-key scope discovery pairs”. **Bloem replaces** the corresponding upstream passage with:
-
-`make test-scenario-api-key-scopes` requires six original cases:
-`scopes.ok`, `scopes.meaning`, `scopes.shape`, `scopes.sorted`,
-`scopes.no_token` and `scopes.error_shape`. The original oracle remains unchanged.
-The historical v2 oracle adds the availability flag and Problem Details while
-requiring two scope names, descriptions and fixed order. Current v1 discovery keeps
-the two legacy scopes, but v2 advertises five supported scopes; those exact-count/order
-assertions remain unresolved. Do not truncate supported native discovery to make this
-historical packet pass. The real router/provider runs
-twelve transport requests with reseeding before and after each transport; all
-24 full API-key-table snapshots must prove unchanged rows without exemptions.
-Required DSN, the pre-setup occupancy guard and the fixed selector fail closed.
-API-key-auth usage metadata remains outside this cohort. These six frozen pairs
-are separate from NEW scenarios; no provisioning or scope-enforcement mutation
-is exercised.
+- A completed configured executor run took 872.712 seconds, beyond Go's implicit
+  ten-minute limit, which is why `make test-go` gained its 20-minute budget.
+- [CI run 35467142414](https://github.com/Bloem-Studios/bloem-server/actions/runs/35467142414)
+  for `418a18b7d` then timed out after 20 minutes (1200.171 seconds) in this
+  package. `TestScenarioCatalogs` had run for 17m22s and was still seeding
+  profile-section fixtures; no assertion failure was reported, but unfinished
+  cases are not passes. A deployment exception was approved for that exact
+  revision and timeout; the
+  [September 19 deployment record](../../../operations/2026-09-19-xtream-deployment.md)
+  keeps it. It is not permission to skip scenarios, reduce authentication cost,
+  weaken assertions or treat a timeout as a pass. The executor moved to its own
+  CI job four days later.
+- The focused adjudication packet passed all 52 transport leaves of the 30
+  decisions that existed then. The embedded-web checkpoint passed 98 scenario
+  and transport results with zero skips; a larger combined race run timed out
+  during device execution and remained inconclusive. See
+  [coverage evidence](../../../architecture/bloem-web-feature-coverage.md#acceptance-evidence-and-limits).
 
 ---
 
-**Location:** section “Avatar uploads and deletion”. **Bloem replaces** the corresponding upstream passage with:
+**Location:** section “Frozen API-key scope discovery pairs”. **Bloem replaces**
+the sentence beginning “V2 explicitly adds the availability flag…” with:
 
-`make test-scenario-avatar` pairs eleven original avatar-upload scenarios and
-eight avatar-delete scenarios. Original requests and oracles remain unchanged,
-including `avatar_upload.typed_nil_panic` and `avatar_upload.meaning`. Their historical
-oracles require an empty v1 500 and a v2 internal-error Problem. The corrected
-missing-store configuration now returns 503 on both transports, so these assertions
-remain visible failures pending contract-owner resolution. Do not reconstruct the
-panic or configure storage for these explicit absent-store cases.
+V2 adds the availability flag and Problem Details. Bloem's native discovery
+(`getPersonalAPIKeyScopes`) lists seven scopes: Silo's four, then Bloem's
+`admin:entitlements:bulk`, `admin:entitlements:accounts` and `admin:preview`.
+Five Bloem adjudications (`scopes.ok`, `scopes.meaning`,
+`scopes.api_key_allowed`, `scopes.shape` and `scopes.sorted`, v2 transport)
+pin all seven names and their order. v1 discovery keeps its original
+two-scope projection and its frozen oracle. Do not truncate native discovery
+to match the historical two-scope v2 oracle.
+
+---
+
+**Location:** section “Avatar uploads and deletion”, the first paragraph.
+**Bloem replaces** the sentences after “Original requests and oracles remain
+unchanged, including `avatar_upload.typed_nil_panic` and
+`avatar_upload.meaning`” with:
+
+Their frozen oracles expect an empty v1 500 and a v2 internal-error Problem
+from a recovered typed-nil panic. Bloem refuses a missing avatar store
+explicitly instead, so four Bloem adjudications (both cases, both transports)
+require `503`: on v1 the envelope `{error: "unavailable", message: "Avatar
+upload storage is not configured"}`, on v2 a `dependency_unavailable`
+Problem. Neither case is skipped. Do not reconstruct the panic or configure
+storage for these explicit absent-store cases.

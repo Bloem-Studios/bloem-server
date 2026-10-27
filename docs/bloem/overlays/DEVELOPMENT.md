@@ -1,8 +1,36 @@
 # Bloem overlay: Developing Silo
 
-Bloem additions and overrides for the upstream Silo document [`DEVELOPMENT.md`](../../../DEVELOPMENT.md).
-The upstream file is kept verbatim so Silo merges stay clean; where the two
-disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../README.md).
+**What this overlays.** Silo's root [`DEVELOPMENT.md`](../../../DEVELOPMENT.md):
+its title and the sections “Developing Silo”, “Prerequisites”, “Working on the
+plugin SDK at the same time”, “Make targets” and “Tests and lint”. An *overlay*
+is a Bloem-owned page that records Bloem's additions to, or replacements of,
+sections of a Silo-owned document. The Silo file stays exactly as Silo wrote
+it, so Silo merges stay clean. Read it first, then this page. See the
+[documentation workflow](../documentation-workflow.md).
+
+**Why Bloem differs.** Bloem builds the same tree with a newer Go patch, runs
+Silo's migrations together with its own through `migrations.BloemFS`, and has
+extra test prerequisites:
+
+- disposable PostgreSQL databases sized for its parallel suite;
+- a pinned storage-plugin SDK;
+- a scenario database;
+- Silo-switching checks;
+- the seam ledger.
+
+Bloem's guidance moved out of `DEVELOPMENT.md` into this overlay in `ba218eb97`
+(2026-09-23), when the Silo file was restored to Silo's text.
+
+**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf` (`go.mod`, `Makefile`, `Makefile.bloem`, `.github/workflows/bloem-ci.yml`,
+`internal/bloemtestsdk`). Silo has not changed `DEVELOPMENT.md` since the
+previous review (Silo `6de6d5e5e`). This review removed a stale statement that
+lifecycle routes need a phase store in scenario runs; that mechanism went with
+Bloem's lifecycle receipts in `b017bfe84` (2026-10-26).
+
+Index: [Bloem documentation](../README.md).
+
+---
 
 **Location:** document title. Bloem titles this document “Developing Bloem Server”.
 
@@ -18,12 +46,13 @@ pre-submission gate are in [CONTRIBUTING.md](../../../.github/CONTRIBUTING.md).
 
 **Location:** section “Prerequisites”. **Bloem adds:**
 
-Bloem's `go.mod` declares `go 1.26.10`, above Silo's 1.26.4 minimum, so build
-with Go 1.26.10 or later. Bloem CI installs exactly the patch `go.mod` names.
+Bloem's `go.mod` declares `go 1.26.10` (since `64d474149`, 2026-10-25), above
+Silo's 1.26.4 minimum, so build with Go 1.26.10 or later. Bloem CI installs
+exactly the patch `go.mod` names.
 
 ---
 
-**Location:** section “Working on the plugin SDK at the same time”. **Bloem replaces** the corresponding upstream passage with:
+**Location:** section “Working on the plugin SDK at the same time”, the first paragraph. **Bloem replaces** it with:
 
 If a change spans Bloem Server and `silo-plugin-sdk`, use an untracked local `go.work`
 workspace. `go.work` and `go.work.sum` are gitignored developer conveniences: CI
@@ -33,7 +62,10 @@ tagged in `silo-plugin-sdk` before the change here can merge.
 
 ---
 
-**Location:** section “Make targets”. **Bloem replaces** the corresponding upstream passage with:
+**Location:** section “Make targets”, the table. **Bloem replaces** it with the
+same table, except that `migrate-status` and `migrate-up` run Bloem's
+`cmd/silo`, which applies Silo's and Bloem's migrations together through
+`migrations.BloemFS`:
 
 | Target | Description |
 |---|---|
@@ -51,7 +83,7 @@ tagged in `silo-plugin-sdk` before the change here can merge.
 
 ---
 
-**Location:** section “Tests and lint”. **Bloem replaces** the corresponding upstream passage with:
+**Location:** section “Tests and lint”, the code block under “While iterating”. **Bloem replaces** it with:
 
 ```sh
 GOMAXPROCS=2 GOFLAGS=-p=2 GOWORK=off go test ./internal/<package>/...
@@ -60,7 +92,7 @@ cd web && pnpm exec vitest run path/to/test.tsx
 
 ---
 
-**Location:** section “Tests and lint”, after the paragraph beginning “```sh…”. **Bloem adds:**
+**Location:** section “Tests and lint”, after that code block. **Bloem adds:**
 
 Run focused checks serially on constrained development hosts. Database-backed
 tests need disposable PostgreSQL: set `SILO_TEST_DATABASE_URL` and
@@ -83,10 +115,11 @@ need no extra setup. Set `BLOEM_STORAGE_SDK_WORKTREE` to an SDK checkout only to
 test unreleased SDK changes; the host and SDK storage protos must match.
 
 Scenario execution uses a separate `SILO_SCENARIO_DATABASE_URL` pointing to an owned
-scratch database and `SILO_SCENARIO_REQUIRED=1` for required runs. Lifecycle routes
-require a reachable phase store even for malformed-input cases; a missing prerequisite
-is an explicit failure. See [scenario execution](../../architecture/scenario-acceptance.md)
-for reset guards, scoped avatar storage and per-transport reporting. The ordinary
+scratch database and `SILO_SCENARIO_REQUIRED=1` for required runs; `make test-scenarios`
+runs the whole executor with a 45-minute timeout, as Bloem CI's scenario job does.
+See [scenario execution](../../architecture/scenario-acceptance.md) and its
+[Bloem overlay](architecture/scenario-acceptance.md) for reset guards, Bloem fixture
+prerequisites and per-transport reporting. The ordinary
 Bloem gate applies [explicit downstream adjudications](../../architecture/bloem-contract-adjudications.md);
 historical Silo selectors keep their original expectations.
 

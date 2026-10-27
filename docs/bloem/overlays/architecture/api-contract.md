@@ -1,37 +1,46 @@
 # Bloem overlay: Native API contract: Huma and `/api/v2`
 
-Bloem additions and overrides for the upstream Silo document [`docs/architecture/api-contract.md`](../../../architecture/api-contract.md).
-The upstream file is kept verbatim so Silo merges stay clean; where the two
-disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../../README.md).
+**What this overlays.** Silo's
+[`docs/architecture/api-contract.md`](../../../architecture/api-contract.md). Bloem
+replaces one sentence of the section “Migration ledger”, adds a paragraph after
+it, and adds a closing section on Bloem's separate native contract. An
+*overlay* is a Bloem-owned page that records Bloem's additions to, or
+replacements of, sections of a Silo-owned document. The Silo file stays
+exactly as Silo wrote it. See the
+[documentation workflow](../../documentation-workflow.md).
 
-**Location:** section “Migration ledger”. **Bloem replaces** the corresponding upstream passage with:
+**Why Bloem differs.** Bloem adds routes to Silo's route groups, and its own
+middleware changes the chain of almost every route, so its route inventory
+moves on most merges. To keep the hand-curated migration ledger
+(`contracts/api/v2/migration.json`) in step without hand edits, Bloem added
+`make migration-ledger` (`scripts/apiv2-ledger/refresh_ledger.py`, in
+`23b23f531`, 2026-09-16). Bloem also publishes a second contract,
+`/api/bloem/v1`, which Silo's document does not cover. Bloem first documented
+these in the Silo file in September 2026 (`0f00b3eae`, 2026-09-01) and moved
+the text here in `47ea7c889` (2026-09-23).
 
-The second kind is curated by hand and is what the ledger exists to hold: `consumers` and
-`consumer_call_sites` (including `match: manual` and `match: follower` sites), `section`, `release_flow`, `tier`, `disposition`,
-`disposition_rule`, `disposition_rationale`, `owner`, `review_state`, `v2`, and `notes`. The
-schema ties them together: each `disposition_rule` names the document or decision that justifies
-it and is therefore allowed only with the disposition it justifies (`maintainer_decision` is the
-escape hatch for any); `removed` and `documented_exclusion` rows carry an all-null `v2`; a
-`ported`, `redesigned`, or `replaced` row can be `ratified` only with a complete `v2` target,
-except the four `contract_root_probes` rows, which are ratified as retained unversioned probes
-with `v2` unset and `notes` opening `Retained as unversioned probe on <listener> listener`; and
-every `removed`, `redesigned`, or `replaced` row names an `owner`, which the gate refuses to
-ratify while it is a placeholder (anything starting with `pending`, or `tbd`, `todo`, `unknown`,
-`none`, compared case-insensitively). Tier is a rule, stated in the file's `description` and
-enforced by the gate: tier 1 is the plan's release-critical flows unless the row is `removed`,
-since a removed route has no v2 behavior to baseline, so a removed row in tier 1 fails.
-`release_flow` is derived from route intent, not path prefix: the acting-admin library
-management routes under `/api/v1/libraries/`, the admin scan triggers, and the theme catalog
-refresh are `core_admin`, while the viewer-facing `/api/v1/library/{id}/*` reads are
-`browse_search`. Proxy and transcode-node rows that are `ported` keep `v2` null by design: those
-listeners have no `/api/v2` namespace, so the route is retained at its version-neutral path and
-described through the raw-operation registry, never aliased into v2. Ratifying such a row therefore
-means ratifying its retention, not a mapping: the schema's node-listener rule requires a ratified
-`proxy` or `transcode_node` port to keep `v2` unset, carry `disposition_rule` `listener_delegation`,
-and open its `notes` with `Retained on <listener> listener with <auth class>`, citing the
-`x-silo-worker-protocols` entry that describes it; on the `api` listener a ratified port still
-names its v2 operation completely. Because these fields are decisions rather than derivations,
-no generator ever writes them: CI checks the committed file and nothing invents a disposition.
+**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf` (`Makefile`, `Makefile.bloem`, `scripts/apiv2-ledger/`,
+`contracts/api/bloem/v1/openapi.json`). Silo has not changed this document since
+the previous review (Silo `6de6d5e5e`). The earlier edition of this overlay
+replaced Silo's whole description of the ledger tooling. Silo's section
+assignment and consumer-evidence scripts still run in Bloem, so the
+replacement is now narrowed to the one sentence that differs.
+
+Index: [Bloem documentation](../../README.md).
+
+---
+
+**Location:** section “Migration ledger”, the paragraph beginning “The second
+kind is curated by hand…”, its closing sentence “Because these fields are
+decisions rather than derivations, the ledger is gated, not regenerated: CI
+checks the committed file, and nothing rewrites it.” **Bloem replaces** that
+sentence with:
+
+Because these fields are decisions rather than derivations, no generator ever
+writes them: CI checks the committed file and nothing invents a disposition.
+
+**Location:** section “Migration ledger”, after that paragraph. **Bloem adds:**
 
 The copied fields are the opposite case. Adding one route shifts every later inventory row,
 renumbers the inventory's middleware-chain table, and leaves the new row with no entry at all,
@@ -46,6 +55,9 @@ decision, and the section PR still has to make it. Refreshing consumer evidence 
 operation and is not part of this target -- it needs the sibling client trees at a named commit
 (see `scripts/apiv2-ledger/README.md`).
 
+---
+
+**Location:** end of the document. **Bloem adds:**
 
 ## Bloem native storage and generated contracts
 

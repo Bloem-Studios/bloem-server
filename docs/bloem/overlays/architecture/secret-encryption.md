@@ -1,32 +1,41 @@
 # Bloem overlay: At-rest credential encryption
 
-Bloem additions and overrides for the upstream Silo document [`docs/architecture/secret-encryption.md`](../../../architecture/secret-encryption.md).
-The upstream file is kept verbatim so Silo merges stay clean; where the two
-disagree, this overlay describes Bloem Server. Index: [Bloem documentation](../../README.md).
+**What this overlays.** Silo's
+[`docs/architecture/secret-encryption.md`](../../../architecture/secret-encryption.md).
+Bloem renames one bullet of “How it works” and adds Bloem's Xtream credentials
+there, in “Rollback / downgrade hazard” and in “Scope and known gaps”. Silo's
+cipher, `SECRET_KEY` handling, backfill, key-loss and API-key-verifier text
+applies as written. An *overlay* is a Bloem-owned page that records Bloem's
+additions to, or replacements of, sections of a Silo-owned document. The Silo
+file stays exactly as Silo wrote it. See the
+[documentation workflow](../../documentation-workflow.md).
 
-**Location:** section “How it works”. **Bloem replaces** the corresponding upstream passage with:
+**Why Bloem differs.** Bloem's Live TV can consume Xtream live providers. Their
+usernames and passwords are encrypted with Silo's cipher but, unlike Silo's
+older integration credentials, never accept a plaintext fallback (migration
+`20260919133349_bloem_xtream_sources`, 2026-09-19). Bloem first documented this
+in the Silo file in September 2026 and moved it here in `47ea7c889`
+(2026-09-23).
 
-- **Cipher:** AES-256-GCM with a random 12-byte nonce per value. Implemented in
-  `internal/secret`.
-- **Key derivation:** the data key is HKDF-SHA256–derived from the `SECRET_KEY`
-  environment variable with a versioned domain label. `SECRET_KEY` is the
-  encryption root; it is never stored in the database.
-- **Envelope:** every ciphertext is stored as `enc:v1:<base64url(nonce‖sealed)>`.
-  The `enc:v1:` prefix is the version marker (see *Key rotation* below).
-- **Row binding (AAD):** each ciphertext is GCM-bound to its logical row via
-  additional-authenticated data — `table:column:<pk>` for per-row columns,
-  `server_settings:<key>` for settings. A DB-write attacker therefore cannot move
-  a credential blob from one row/column to another: decrypting under a different
-  binding fails authentication.
-- **Legacy integration read path:** an empty value stays empty; a non-`enc:v1:`
-  value is treated as legacy plaintext and passed through unchanged (so a not-yet-migrated row keeps
-  working); an `enc:v1:` value is decrypted and **any** failure (wrong key,
-  tampering, truncation) is surfaced as an error — it is never silently used as a
-  credential.
+**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf`. Silo has not changed this document since the previous review
+(Silo `6de6d5e5e`). This review dropped a replacement of Silo's first “Rollback /
+downgrade hazard” paragraph that only reworded “predates this change”; Silo's
+text applies.
+
+Index: [Bloem documentation](../../README.md).
 
 ---
 
-**Location:** section “How it works”, after the paragraph beginning “- **Cipher:** AES-256-GCM with a random 12-byte nonce per value.…”. **Bloem adds:**
+**Location:** section “How it works”, the bullet “**Read path:**”. **Bloem
+replaces** its label with “**Legacy integration read path:**”. The behavior
+it describes (empty stays empty, non-`enc:v1:` values pass through as legacy
+plaintext, any `enc:v1:` failure is an error) applies to Silo's integration
+credentials only. Bloem's Xtream credentials below have no plaintext path.
+
+---
+
+**Location:** section “How it works”, after its bullet list. **Bloem adds:**
 
 ## Bloem Xtream credentials
 
@@ -48,18 +57,6 @@ publication during service wiring is not a runtime key-rotation mechanism. Prese
 `SECRET_KEY` across upgrades and restores. There is no credential-editing UI;
 provider removal/re-creation deletes linked channel/guide/DVR database entries,
 though recorded files remain. Do not present re-creation as lossless key recovery.
-
----
-
-**Location:** section “Rollback / downgrade hazard”. **Bloem replaces** the corresponding upstream passage with:
-
-Downgrading to a binary that predates the original at-rest encryption support is
-**not** safe while secrets are encrypted, because the old binary has no read path:
-it would read
-`enc:v1:auth.jwt_secret` as a literal JWT secret (invalidating all sessions) and
-read `enc:v1:`-prefixed integration keys as garbage credentials. It would also
-pass the reserved plugin-config envelope object to plugins instead of their
-configuration.
 
 ---
 

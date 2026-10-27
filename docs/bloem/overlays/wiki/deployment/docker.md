@@ -1,9 +1,20 @@
 # Deploy Bloem with Docker
 
-This is Bloem's maintained Docker guide. The former upstream page at
-`docs/wiki/deployment/docker.md` was removed during Silo's documentation move;
-this owned guide remains the Bloem installation and operations reference.
-Index: [Bloem documentation](../../../README.md).
+This is Bloem's maintained Docker guide, a complete Bloem edition rather than a
+section-by-section overlay. It began as Silo's own operator guide,
+`docs/wiki/deployment/docker.md`. Bloem edited that guide in place from August
+2026 (SQLite single-node fencing, Bloem image names, Bloem deployment records)
+and moved its edition here in `47ea7c889` (2026-09-23), so the Silo file could
+return to upstream verbatim. Silo then deleted its guide in `42b39765b` (#1635,
+2026-09-28) when it moved operator guides out of the server repository, so there
+is no current Silo page to read alongside this one. The Silo-owned sources it
+describes are [`docker-compose.yml`](../../../../../docker-compose.yml) (a Bloem
+seam only for the default image name), Silo's
+[`.env.example`](../../../../../.env.example), and Silo's code; Bloem's own
+template is [`.env.bloem.example`](../../../../../.env.bloem.example).
+
+Reviewed on 2026-10-27 against Bloem `main` at `e852f92bf`, which contains Silo
+through `3e2d306b2`. Index: [Bloem documentation](../../../README.md).
 
 ---
 title: Deploy Bloem with Docker
@@ -16,7 +27,7 @@ tags:
   - operations
 audience:
   - operator
-last_reviewed: 2026-10-15
+last_reviewed: 2026-10-27
 related:
   - ../../../../architecture/sqlite-bridge-preflight.md
   - ../../release-versioning.md
@@ -74,6 +85,9 @@ Set the host path to your media:
 MEDIA_ROOT=/path/to/your/media
 ```
 
+Set `SILO_IMAGE` to a pinned image or a local build as well. The default
+`latest` tag is stale; see [Container image selection](#container-image-selection).
+
 Then start the stack:
 
 ```sh
@@ -93,18 +107,37 @@ Design notes: [Secret encryption at rest](../../../../architecture/secret-encryp
 
 ## Container image selection
 
-The default `.env.bloem.example` follows `ghcr.io/bloem-studios/bloem-server:latest`.
-Before the first release, successful default-branch publications also receive
-an ordered `build-N` tag and a short commit-SHA tag.
+`SILO_IMAGE` is the Compose variable that selects the application image; Bloem
+keeps Silo's name for it so upstream Compose files still work. Both
+`docker-compose.yml` and `.env.bloem.example` default it to
+`ghcr.io/bloem-studios/bloem-server:latest`. **Do not rely on that default:**
 
-`SILO_IMAGE` is retained as a Compose compatibility identifier. Use it to select a Bloem image:
+- Since `04a69c0fe` (2026-10-11) Bloem images are published only by the
+  [Bloem Image workflow](../../../../../.github/workflows/bloem-image.yml). It runs
+  after Bloem CI passes on a push to `main`, builds that exact commit and pushes
+  one tag, the full 40-character commit SHA:
+  `ghcr.io/bloem-studios/bloem-server:<full sha>`. It never moves `latest` and
+  never creates a `build-N` or short-SHA tag. See [CI additions](../../../ci.md).
+- Silo's `Docker Image` workflow, which produces the `build-N`, `latest` and
+  short-SHA tags that Silo's [release versioning](../../../../release-versioning.md)
+  describes, follows Silo's `CI` workflow, and that runs only in Silo's own
+  repository. In Bloem both are skipped.
+- So `latest` and the `build-N` tags in Bloem's registry are left over from the
+  earlier publishing path. When this guide was reviewed on 2026-10-27, `latest`
+  was `build-152`, an image from September 24, 2026.
+- On that date the container package was also private, so pulling it needed a
+  GitHub account with access to it.
+
+Pin the image by full commit SHA or digest:
 
 ```dotenv
-SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:build-N
+SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:<full commit sha>
 ```
 
-Use a commit-SHA tag or digest when a deployment or rollback target must not
-move. [Release versioning](../../../../release-versioning.md) defines each tag.
+To build the image from a checkout instead, run `docker build -t bloem-server:local .`
+(the Dockerfile builds the web frontend itself) and set
+`SILO_IMAGE=bloem-server:local`. Bloem's tags and its one prerelease are described
+in the [release-versioning overlay](../../release-versioning.md).
 
 ## Storage and state
 
@@ -119,6 +152,7 @@ volumes. `SILO_DATA_ROOT` defaults to `/opt/silo` and contains:
 | `/opt/silo/artwork` | Local artwork cache and uploaded artwork |
 | `/opt/silo/compat` | Compatibility assets |
 | `/opt/silo/transcode` | Transient transcode output mounted at `/tmp/silo-transcode` |
+| `/opt/silo/download-artifacts` | Prepared downloads, mounted at `/tmp/silo-download-artifacts` so they survive image updates |
 | `/opt/silo/catalog-seeds` | Read-only catalog seed data |
 | `/opt/silo/meilisearch` | Optional Meilisearch index |
 
@@ -179,17 +213,21 @@ another service. The container listeners are fixed.
 | Variable | Default | Purpose |
 | --- | ---: | --- |
 | `PORT` | `8090` | Main web application and API |
+| `JF_PORT` | `8096` | Silo's Jellyfin-compatible server |
+| `ABS_PORT` | `13378` | Silo's Audiobookshelf-compatible server |
 | `PROXY_PORT` | `8083` | Commented standalone proxy example |
 | `TRANSCODE_PORT` | `8082` | Commented standalone transcode example |
 
-The main listener serves the web app and supported native APIs. Silo's
-Jellyfin-compatible server listens on `JF_PORT` (default `8096`) and the
-Audiobookshelf-compatible server on `ABS_PORT` (default `13378`) when Audiobookshelf
-compatibility is enabled. Bloem's companion enrollment is removed; see
+The main listener serves the web app and supported native APIs. The bundled
+Compose file publishes `JF_PORT` and `ABS_PORT` as well, but each server listens
+only when its compatibility setting is enabled. Bloem's companion enrollment is
+removed; see
 [protocol compatibility](../../../../architecture/bloem-compatibility-removal.md).
+The bundled PostgreSQL and Redis ports (`POSTGRES_PORT`, `REDIS_PORT`) are
+published on `127.0.0.1` only.
 
 > [!WARNING]
-> The application port mapping listen on all host interfaces
+> The application port mappings listen on all host interfaces
 > by default and do not provide TLS themselves. Before allowing access beyond a
 > trusted local network, use a correctly configured HTTPS reverse proxy and
 > firewall, then configure the operator public URL and trusted proxies in the admin
@@ -239,6 +277,10 @@ NVIDIA_GPU_COUNT=1
 Windows uses `;` instead of `:` between entries in `COMPOSE_FILE`.
 
 ## Node metrics
+
+This section describes Silo's node sampler (`internal/nodemetrics`), which Bloem
+runs unchanged. Silo's current reference for it is
+[node resource sampling](../../../../architecture/observability.md#node-resource-sampling).
 
 Every Silo process — the API host and each proxy or transcode node — samples its
 own CPU, memory, disk, network and GPU usage every five seconds. The numbers
@@ -380,6 +422,9 @@ does all of the following:
 - omits the bundled PostgreSQL and Redis services from the deployed project
 - preserves the media, plugin, compatibility, transcode, and catalog mounts
 - preserves the same `SECRET_KEY` across every Bloem role
+- sets `POSTGRES_TUNE=off`, unless you deliberately size the tuner for the
+  database host; the bundled file defaults it to `auto`
+  (see [PostgreSQL auto-tuning](#external-postgresql))
 
 Validate the merged configuration before starting it:
 
@@ -425,64 +470,169 @@ client-facing contract is in the [Downloads API](../../../../downloads-api.md#41
 
 ## PostgreSQL auto-tuning
 
-The bundled deployment enables Bloem's
-[pgtune](https://github.com/le0pard/pgtune)-style OLTP tuning by default:
+The tuner is Silo's and Bloem runs it unchanged: the recommendations and
+`ALTER SYSTEM` calls are in Silo's
+[`internal/database/postgres_tune.go`](../../../../../internal/database/postgres_tune.go)
+(added upstream in `dc0392dee`, 2026-06-03), and the start-up call is Silo's
+`maybeApplyPostgresTuning` in [`cmd/silo/main.go`](../../../../../cmd/silo/main.go).
+This section began as the tuning section of Silo's former Docker guide. On
+2026-10-27 it was corrected against that code: the restart warning, start-up
+order and external-database sizing below are what the code does, not what the
+old text said.
 
-```yaml
-POSTGRES_TUNE: auto
-```
+The bundled [`docker-compose.yml`](../../../../../docker-compose.yml) turns the
+tuner on. Its `silo` service sets `POSTGRES_TUNE: ${POSTGRES_TUNE:-auto}`, so it
+runs unless `.env` says `POSTGRES_TUNE=off`. A process started without the
+variable, for example from a Compose file of your own, does not tune.
 
 > [!CAUTION]
-> With auto-tuning enabled, Bloem uses `ALTER SYSTEM` and writes recommendations
-> to PostgreSQL's `postgresql.auto.conf`. Set `POSTGRES_TUNE=off` before startup
-> if PostgreSQL settings are managed elsewhere.
+> While tuning is on, the server reconfigures the database it connects to
+> with `ALTER SYSTEM` **on every start**. Set `POSTGRES_TUNE=off` in `.env` before
+> starting it against a PostgreSQL whose settings are managed some other way.
 
-Reloadable settings are applied with `pg_reload_conf()`. Restart-only settings
-are written to `postgresql.auto.conf` and logged by name on every Bloem start
-until PostgreSQL has been restarted. Bloem is already serving when that warning
-appears, and restarting only PostgreSQL drops every open Bloem connection, so
-restart both during a quiet window (or once, right after first boot, before
-adding libraries):
+### What happens on each start
+
+Every `integrated` or `api` process runs the tuner on every start. `proxy` and
+`transcode` nodes never do. It runs after migrations and before the server opens
+its HTTP listener, under a 30-second limit, and:
+
+1. reads the database's major version and size
+   (`pg_database_size(current_database())`) and computes
+   [pgtune](https://github.com/le0pard/pgtune)-style OLTP values from them and
+   from the inputs in the table below;
+2. runs `ALTER SYSTEM RESET` for each setting on its managed list that it does
+   not recommend this time. With the default inputs on PostgreSQL 18, `io_method`
+   is always reset, and below 16 CPUs so are `autovacuum_max_workers` and
+   `io_workers`. A reset also removes a value an operator set for that setting
+   with `ALTER SYSTEM`;
+3. runs `ALTER SYSTEM SET` for each recommended setting. `ALTER SYSTEM` writes
+   `postgresql.auto.conf` in the database's data directory, whose values override
+   `postgresql.conf`;
+4. calls `pg_reload_conf()`, which applies the reloadable settings immediately.
+
+It does not compare its values with those already in place. It writes the full
+set every time, so a managed setting changed by hand with `ALTER SYSTEM` is
+overwritten or reset on the next start. The 23 managed settings are
+`max_connections`, `shared_buffers`, `effective_cache_size`,
+`maintenance_work_mem`, `checkpoint_completion_target`, `wal_buffers`,
+`default_statistics_target`, `random_page_cost`, `effective_io_concurrency`,
+`work_mem`, `huge_pages`, `jit`, `wal_compression`, `autovacuum_max_workers`,
+`autovacuum_work_mem`, `min_wal_size`, `max_wal_size`, `max_worker_processes`,
+`max_parallel_workers_per_gather`, `max_parallel_workers`,
+`max_parallel_maintenance_workers`, `io_method` and `io_workers`.
+
+The `DATABASE_URL` role must be allowed to run `ALTER SYSTEM`. The bundled
+`postgres` service's `POSTGRES_USER` is a superuser, so it can. When a statement
+is refused, the server logs `postgres auto-tuning setting failed` for that
+setting and carries on. Tuning never stops the server from starting, and an
+invalid `POSTGRES_TUNE` value only logs `postgres auto-tuning disabled`.
+
+### The "restart required" warning
+
+After each run the server logs, at WARN:
+
+```text
+postgres restart required to finish applying auto-tuned settings settings=<names>
+```
+
+`<names>` lists **every** restart-only setting the run wrote or reset, that is,
+every one whose `pg_settings.context` is `postmaster`. **The list includes a
+setting even when its running value already matches.** The tuner does not
+compare running values, so it cannot tell whether a restart is pending. On
+PostgreSQL 18, the version in the bundled `pgvector/pgvector:pg18` image, the
+list is the same six names on every start: `io_method`, `max_connections`,
+`shared_buffers`, `wal_buffers`, `huge_pages` and `max_worker_processes` (each
+is either written or reset on every run). On PostgreSQL 17 and earlier,
+`autovacuum_max_workers` takes the place of `io_method`. So the warning appears
+on every start, including the first start after PostgreSQL has been restarted.
+It is not evidence that a restart is still needed.
+
+To see whether one is, ask PostgreSQL:
+
+```sql
+SELECT name, setting, pending_restart FROM pg_settings WHERE pending_restart;
+```
+
+No rows means nothing is waiting. When rows are returned (typically after the
+first boot, or after you change the memory, CPU or connection inputs), restart
+during a quiet window. The warning is logged before the server starts serving,
+but startup does not wait: PostgreSQL keeps the old values of those settings
+until it restarts. Restarting only PostgreSQL drops every open Bloem connection,
+so restart both:
 
 ```sh
 docker compose restart postgres silo
 ```
 
-The bundled database user has the required permissions. For an external
-database, keep `POSTGRES_TUNE=off` for the application credential and manage
-tuning out of band with a separate administrative credential. Bloem uses the
-`DATABASE_URL` identity for both normal operation and tuning; it does not have
-a separate tuning credential. Granting that identity `ALTER SYSTEM` permits
-server-wide configuration changes if the application credential is
-compromised.
+### External PostgreSQL
 
-Enable external tuning only in a trusted deployment that accepts this risk. Set
-explicit `POSTGRES_TUNE_MEMORY` and `POSTGRES_TUNE_CPUS` values for the database
-host and grant the `DATABASE_URL` user permission to run `ALTER SYSTEM`;
-automatic host detection describes the Bloem container, not a remote database
-machine.
+The tuner always sizes the database from the **server's** environment, not the
+database's:
 
-When `POSTGRES_TUNE_MEMORY=auto`, Bloem uses the first trustworthy source from a
-finite Docker cgroup limit, the bundled read-only `/host/proc/meminfo` mount,
-or guarded `/proc/meminfo` detection. It reserves 25% of detected memory for
-Bloem, Redis, plugins, transcodes, the operating system, and other work by
-default. Database-size classification uses
-`pg_database_size(current_database())`.
+- `POSTGRES_TUNE_CPUS=auto` uses Go's `runtime.NumCPU()` in the server process:
+  the CPUs that process may run on. A Compose CPU quota such as `cpus: 2` does
+  not lower it; a cpuset does.
+- `POSTGRES_TUNE_MEMORY=auto` uses the server container's cgroup memory limit
+  if it has a finite one. Otherwise it reads `/host/proc/meminfo`, which the
+  bundled Compose file mounts from the server's host, and then `/proc/meminfo`.
+  Inside a container with neither a limit nor that mount, it refuses a
+  `/proc/meminfo` total above 128 GiB. Tuning is then skipped with a warning.
+- `POSTGRES_TUNE_STORAGE` defaults to `ssd`, whatever disk the database uses.
+
+Only the major version and the database size come from PostgreSQL itself. So
+with a database on another machine or container, auto-tuning sizes PostgreSQL
+for the server container unless `POSTGRES_TUNE_CPUS` and `POSTGRES_TUNE_MEMORY`
+(and, where it matters, `POSTGRES_TUNE_STORAGE`) are set to the database's own
+values. For example, a 32-CPU application container tuning a 12-CPU database
+writes `max_worker_processes = 32`, `max_parallel_workers = 32`,
+`autovacuum_max_workers = 5` and `io_workers = 8` instead of 12, 12 and the
+defaults of 3 and 3.
+
+For an external database, keep `POSTGRES_TUNE=off` and tune the database
+directly, out of band, with a separate administrative credential. Silo's former
+guide gave the same advice. The server uses its one `DATABASE_URL` identity for
+normal operation and for tuning, so turning tuning on means granting the
+application credential `ALTER SYSTEM`. If that credential is compromised, it
+can then change server-wide configuration. Enable tuning against an external
+database only in a trusted deployment that accepts that risk, with
+`POSTGRES_TUNE_CPUS` and `POSTGRES_TUNE_MEMORY` set as above.
+
+**Bloem's production** runs its database in a separate container from the
+application server. Since 2026-10-27 it runs with `POSTGRES_TUNE=off` and tunes
+that database container directly. Until a correction earlier that morning, the
+tuner had sized the database's CPU-based settings for the application
+container. The values it last wrote, sized for the database container, remain
+in that container's `postgresql.auto.conf`.
+See the [October 27 deployment record](../../../../operations/2026-10-27-main-deployment.md#follow-up-postgresql-tuning-sized-for-the-database-container).
+
+### Inputs
+
+Each variable except `POSTGRES_SHM_SIZE` also accepts a `SILO_`-prefixed name
+(for example `SILO_POSTGRES_TUNE_CPUS`); the unprefixed name wins when both are
+set. The bundled Compose file passes `.env` to the server through `env_file`.
 
 | Variable | Default | Description |
-| --- | ---: | --- |
-| `POSTGRES_TUNE_PROFILE` | `oltp` | Tuning profile; only `oltp` is currently supported. |
-| `POSTGRES_TUNE_MEMORY` | `auto` | Server or container RAM, such as `8GB` or `32GB`; explicit values are used as-is. |
-| `POSTGRES_TUNE_MEMORY_BUDGET_PERCENT` | `75` | Percentage of auto-detected RAM used for PostgreSQL recommendations. |
-| `POSTGRES_TUNE_CPUS` | `auto` | CPU count used for worker recommendations. |
-| `POSTGRES_TUNE_STORAGE` | `ssd` | One of `hdd`, `ssd`, `san`, or `nvme`. |
-| `POSTGRES_TUNE_DB_SIZE` | `auto` | Automatic classification, or `less_ram`, `mid_ram`, or `greater_ram`. |
-| `POSTGRES_TUNE_CONNECTIONS` | `100` | PostgreSQL `max_connections`; raised when the Bloem application pool is larger. |
-| `POSTGRES_SHM_SIZE` | `8gb` | Docker `/dev/shm` size for bundled PostgreSQL. |
+| --- | --- | --- |
+| `POSTGRES_TUNE` | `auto` in the bundled Compose file; off when unset | `auto`, `on`, `true`, `yes`, `1` or `oltp` turn tuning on; `off`, `false`, `no`, `0`, `none` or `disabled` turn it off. |
+| `POSTGRES_TUNE_PROFILE` | `oltp` | Tuning profile; only `oltp` is supported. |
+| `POSTGRES_TUNE_MEMORY` | `auto` | RAM to size for, such as `8GB` or `32GB`. An explicit value is used in full. |
+| `POSTGRES_TUNE_MEMORY_BUDGET_PERCENT` | `75` | With `auto` memory only: the share of detected RAM (1–100) PostgreSQL is sized for, leaving the rest for the server, Redis, plugins, transcodes and the operating system. |
+| `POSTGRES_TUNE_CPUS` | `auto` | CPU count for the worker and `work_mem` settings; `auto` is the server process's CPU count. |
+| `POSTGRES_TUNE_STORAGE` | `ssd` | `hdd`, `ssd`, `san` or `nvme` (`optane` means `nvme`). Sets `effective_io_concurrency` (2, 200, 300, 1000) and `random_page_cost`. |
+| `POSTGRES_TUNE_DB_SIZE` | `auto` | `less_ram`, `mid_ram` or `greater_ram`. `auto` compares `pg_database_size` with the memory budget. |
+| `POSTGRES_TUNE_CONNECTIONS` | `100` | PostgreSQL `max_connections`, raised to at least the server's own pool (`database.max_connections`, 20 by default) plus 20. With several processes (API, proxy and transcode nodes), cover every pool plus admin sessions. |
+| `POSTGRES_TUNE_OS` | `linux` | Any other value omits `effective_io_concurrency`; `mac` or `darwin` also turns `huge_pages` off. |
+| `POSTGRES_TUNE_IO_METHOD` | unset | PostgreSQL 18 and later: sets `io_method` when given and not `auto`; otherwise `io_method` is reset to PostgreSQL's default. |
+| `POSTGRES_SHM_SIZE` | `8gb` | Docker `/dev/shm` size for the bundled PostgreSQL. |
 
-Turning auto-tuning off does not remove settings already written to
-`postgresql.auto.conf`. Reset them yourself if you later move to a fully custom
-configuration.
+### Turning it off
+
+Set `POSTGRES_TUNE=off` and recreate the server container. A server with tuning
+off logs no tuning lines and leaves `postgresql.auto.conf` as it is. Turning
+tuning off does not remove values it already wrote: they stay in
+`postgresql.auto.conf` until you `ALTER SYSTEM RESET` them (then reload or
+restart PostgreSQL). Re-tune the database by hand when its CPUs, memory or disk
+change.
 
 ## Backups and updates
 
@@ -543,12 +693,14 @@ See [the integration record](../../../../operations/2026-09-30-upstream-deployme
 and [migration adapter](../../../../architecture/bloem-upstream-adapters.md#migration-filesystem).
 
 Bloem applies pending migrations during startup, under a database lock, before
-it opens its HTTP listener. The current image gives startup a ten-minute
-healthcheck grace period, with
-five-second startup probes; normal probes run every 15 seconds with three
-retries. A sufficiently long migration can still show `unhealthy` while it is
-working. Compose overrides can change that timing. Follow the logs until startup
-completes and do not
+it opens its HTTP listener. The image's health check (Silo's `Dockerfile`, since
+Silo's `8d212bb79`, 2026-10-08) gives startup a 20-minute start period, matching
+the default migration timeout; checks run every 15 seconds with a 5-second
+timeout and three retries. Failed checks inside the start period do not count,
+and the first passing check marks the container healthy. A migration that runs
+past the start period can still show `unhealthy` while it is working; if you
+raise `SILO_MIGRATE_TIMEOUT`, raise the health check's `start_period` to match
+in a Compose override. Follow the logs until startup completes and do not
 restart the container during a migration: that abandons the run and can leave
 a lock-holding backend behind. Migrations time out after 20 minutes by default;
 raise `SILO_MIGRATE_TIMEOUT` (a Go duration such as `60m`, or `0` for no limit)
@@ -617,7 +769,10 @@ working on the same data; only one runs at a time.
    during startup; on the first takeover this is one-off schema work.
 2. Run `silo silo-switching enable` in the Bloem container. It needs exactly
    one organization and no profile logins, creates missing memberships,
-   reconciles roles from Silo's accounts, and prints `silo switching: enabled`.
+   reconciles roles from Silo's accounts, and prints a report line
+   (`silo switching enabled: memberships_created=… roles_reconciled=… already=…`)
+   followed by `silo switching: true`. `silo silo-switching status` prints the
+   current state alone.
 3. Restart Bloem and point your reverse proxy at it.
 
 **Switching either way afterwards**
