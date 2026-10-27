@@ -75,7 +75,7 @@ commit, the Silo revision it includes, the image and its digest, the server
 binary checksum, migrations and the checks run, and it stays true to its date:
 
 - From [October 27, 2026](../../operations/2026-10-27-main-deployment.md)
-  (`422a51fed`, then `276becf4a`), production runs images that Bloem Image
+  (`422a51fed`, then `276becf4a` and `7a3b59027`), production runs images that Bloem Image
   published, loaded on the application host and retagged
   `bloem-server:release-<short sha>`.
 - The [October 26](../../operations/2026-10-26-main-deployment.md) and

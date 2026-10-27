@@ -48,7 +48,8 @@ to `web/src/` unless prefixed with `internal/`.
 
 ## Deployment and validation
 
-Production has run `276becf4a` since 07:55 UTC on 2026-10-27; see the
+Production ran `276becf4a` from 07:55 UTC on 2026-10-27, and `7a3b59027`, with
+the same web bundle code, from 13:06 UTC; see the
 [October 27 deployment receipt](../operations/2026-10-27-main-deployment.md). That
 deployment checked server health, readiness and the public site. It did not
 re-run the browser acceptance below. The seam ledger (`contracts/seams.txt`)

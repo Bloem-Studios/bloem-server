@@ -3,8 +3,9 @@
 This receipt records the deployment of `main` with Silo through `3e2d306b2`.
 Production had run `d064644a8` since 06:41 UTC on October 26
 ([previous receipt](2026-10-26-stage-a-deployment.md#follow-up-deployment-account-provisioning-0641-utc)).
-It also records the follow-up deployment of `276becf4a` and two PostgreSQL
-configuration changes the same morning. It is the newest deployment receipt.
+It also records the follow-up deployment of `276becf4a`, two PostgreSQL
+configuration changes the same morning, and the afternoon deployment of
+`7a3b59027`. It is the newest deployment receipt.
 
 ## How these deployments are done
 
@@ -233,3 +234,52 @@ downtime, healthy with no restarts, ready 200 locally and publicly. It logged
 no tuning lines. `postgresql.auto.conf` was not rewritten (same checksum and
 modification time), and all 20 tuned settings were unchanged. Backup:
 `.env.bak-tune-off-20261027T082745Z`.
+
+## Follow-up: `7a3b59027`
+
+At 13:06 UTC production moved to `main` at
+`7a3b5902756ebfb8eb4abc341cdbbd810d368a65` (system info `7a3b5902`). Since
+`276becf4a` it brings:
+
+- the standalone proxy's source check, which now resolves an account through
+  its own organization (`a6d342390`; it matters only on servers running
+  `SILO_MODE=proxy`);
+- the native OpenAPI checked against every handler (`8fe96aadc`, `67429b073`),
+  and tenant retirement without the member service answering
+  `503 tenant_unavailable`;
+- three handler fixes (`7a3b59027`): organization invitations accept only the
+  organization's own access groups and libraries, a committed direct-account
+  entitlement apply is no longer answered as `409 confirmation_target_changed`,
+  and a repeated Live TV release no longer moves the session's end or rewrites
+  its history;
+- CI, image-workflow and documentation changes. There are no migrations.
+
+| Item | Verified value |
+| --- | --- |
+| Runtime image | `bloem-server:release-7a3b59027`, loaded from `ghcr.io/bloem-studios/bloem-server:7a3b5902756ebfb8eb4abc341cdbbd810d368a65` (`sha256:075949f9ca8480fb95ba2f5d3a04ba842654cfc9ca516ae3b75f4020b1a394e8`) |
+| Server binary SHA-256 | `56af0ee4692298f8eac15d314bebce54ad3fb073d3dd4540b7f208c648ed959a`, the same in the published image and on the application host |
+| Migrations | none applied; 725 applied, maximum `20261026191107`, zero pending |
+
+Bloem CI on `main` passed on the first attempt, and Bloem Image published the
+image and moved `latest` to it. The image's runtime configuration is identical
+to `release-276becf4a`.
+
+Before the restart: container snapshot `pre-main-7a3b59027`, and database
+restore point `pre-main-7a3b59027` at LSN `3B9/BC3F0BF8`, whose WAL segment
+was archived at 13:06:06 UTC with no archive failures. The standby was
+streaming.
+
+The restart script refused to run unless the live image was `276becf4a`. It
+stopped the server in 6 seconds, found no migrations to apply, and started
+the new image. Ready returned 200 12 seconds after the stop began, and the
+server was healthy with no restarts. The runtime fingerprint did not change.
+Ready and health returned 200 locally, and ready, health and the site returned
+200 publicly. Active streams continued (one FFmpeg process before, two after).
+One download being prepared when the server stopped was re-queued, as the
+download worker does for an artifact whose output is missing. There were no
+ERROR or panic lines, and no tuning lines (tuning stays off). The only other
+warnings were the known `PutBucketCors` 403 on the private assets bucket and
+an HDR10+ backfill that will read one file again on its next pass.
+
+To roll back, start `bloem-server:release-276becf4a` again: the schema did
+not change.
