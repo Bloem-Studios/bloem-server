@@ -125,7 +125,6 @@ internal/branding/render.go
 internal/branding/render_test.go
 internal/catalog/access_filter.go
 internal/catalog/collection_sync_scheduler.go
-internal/catalog/episode_repo.go
 internal/catalog/filesplit/filesplit.go  # native selected-target authorization boundary
 internal/catalog/folder_repo.go
 internal/catalog/library_repo.go

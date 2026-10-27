@@ -1109,8 +1109,11 @@ func main() {
 	// each event reaches plugins once however many nodes receive it.
 	eventBus := cache.NewObservedEventBus(cache.NewEventBus(cfg.Redis))
 	if err := eventBus.Subscribe(appCtx, cache.ChannelCatalog, func(event cache.Event) {
-		if event.Type == cache.EventScanComplete {
+		switch event.Type {
+		case cache.EventScanComplete:
 			sections.InvalidateResolvedListCache()
+		case cache.EventCatalogItemChanged:
+			sections.EvictResolvedListItems(event.Payload)
 		}
 	}); err != nil {
 		slog.Warn("subscribe section cache invalidation failed", "error", err)
@@ -2329,11 +2332,9 @@ func main() {
 				},
 			)
 			// Local file:// artwork (NFO sidecars): confine reads to the owning
-			// library's roots and sweep stale hashed local/ prefixes on re-cache.
-			// The process whose refresh discovers a sidecar copies it, so a
-			// server without the library mount never has to.
+			// library's roots. The process whose refresh discovers a sidecar
+			// copies it, so a server without the library mount never has to.
 			metadataImageCacheProcessor.SetLibraryRootResolver(deps.FolderRepo)
-			metadataImageCacheProcessor.SetImagePrefixDeleter(deps.Blobs.Assets)
 			metadataService.SetLocalArtworkCopier(metadataImageCacheProcessor)
 			// The admin image picker previews and applies the same local files,
 			// under the same confinement.

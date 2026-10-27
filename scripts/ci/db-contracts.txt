@@ -15,6 +15,9 @@
 ./internal/recommendations TestRecentCompletedItemIDsGroupsSeriesBeforeLimit
 ./internal/sections TestCompatibilityRecentlyAddedReturnsFlatDistinctSeries
 ./internal/sections TestSectionsSkipItemsInNoLibraryPostgres
+./internal/catalog TestCatalogQueryWithoutLibraryLeavesOutItemsInNoLibraryDB
+./internal/catalog TestSearchLeavesOutItemsInNoLibraryPostgres
+./internal/api/handlers TestUnmatchedItemsLeaveOutItemsInNoLibraryDB
 ./internal/scanner TestFileRepositoryPreservesFirstSeenScanProvenance
 ./internal/scanner TestMatroskaTrackBackfillRecordsTrackNumbers
 ./internal/scanner TestMatroskaTrackBackfillStopsOnStalledStorage
@@ -177,9 +180,17 @@
 ./internal/metadata TestLocalArtworkCopiedOnDiscoveryDB
 ./internal/metadata TestLocalArtworkRetriesWithoutLibraryRootDB
 
+# A re-cached sidecar leaves its old copy to the reference-checked revision
+# GC, which keeps a copy published again since the re-cache.
+./internal/metadata TestRecachedSidecarRetiresTheOldCopyThroughRevisionGCDB
+
 # With metadata.cache_images off, stored artwork goes back to its provider
 # source, and items whose stored art has none are queued for a refresh.
 ./internal/metadata TestStoredArtworkReleaseDB
+
+# A storage reconcile's bulk reset keeps an uploaded image whose object
+# survived; nothing could fetch it again.
+./internal/metadata TestArtworkReconcileBulkResetVerifiesUploadsDB
 
 # The artwork ladder backfill finds cached artwork that predates the current
 # ladder, on every surface its image type is cached for.
@@ -189,6 +200,13 @@
 ./internal/metadata TestImageLadderBackfillLateOldArtworkReopensCompletedVersion
 ./internal/metadata TestImageLadderBackfillCurrentArtworkKeepsCompletedVersion
 ./internal/metadata TestImageLadderBackfillLateOldBackdropReopensCompletedVersion
+
+# A refresh write keeps artwork an admin published after the refresh read the
+# item, season or episode, including a publication still committing and a row
+# another writer created and published in the meantime.
+./internal/catalog TestRefreshKeepsArtworkPublishedAfterItsReadDB
+./internal/catalog TestRefreshWaitingOnAPublicationKeepsItDB
+./internal/catalog TestRefreshKeepsArtworkOnARowCreatedAndPublishedMeanwhileDB
 
 # Artwork publication, deletion locks and corrected metadata identity.
 ./internal/metadata TestArtworkDeliveryPublicationAndReconciliation
