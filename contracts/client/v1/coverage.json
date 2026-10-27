@@ -602,6 +602,26 @@
       "reason": "Row of the per-provider watch_providers array on the admin stats response; its predecessor watch_provider_activity object was removed before lock (see the removals table), and the array remains an admin-only shape."
     },
     {
+      "type": "internal/apiv2.AdminAIModel",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminAIProvider",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminAIProviderCheck",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminAIProviderList",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AdminAIProviderType",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
       "type": "internal/apiv2.AdminAPIKeyCapabilitiesOutputBody",
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     },
