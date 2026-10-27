@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -25,6 +26,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/lanadvert"
 	"github.com/Silo-Server/silo-server/internal/livetv"
 	"github.com/Silo-Server/silo-server/internal/metadata"
+	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/nativestorage"
 	"github.com/Silo-Server/silo-server/internal/nodeidentity"
 	"github.com/Silo-Server/silo-server/internal/nodemetrics"
@@ -139,9 +141,26 @@ func (b tenancyOwnershipBootstrapper) ActivateInitialOwnership(ctx context.Conte
 // current library is resolved before the organization entitlement check
 // runs.
 type proxySourceAccess struct {
-	files     *scanner.FileRepository
-	tenants   *tenancy.Resolver
-	resources *resourcetenancy.Store
+	files     proxySourceFiles
+	tenants   *tenancy.SubjectResolver
+	resources proxySourceResources
+}
+
+// The narrow views of scanner.FileRepository, tenancy.Store and
+// resourcetenancy.Store that proxySourceAccess reads through.
+type proxySourceFiles interface {
+	GetByID(ctx context.Context, id int) (*models.MediaFile, error)
+}
+
+type proxySourceTenantStore interface {
+	DefaultOrganization(context.Context) (tenancy.Organization, error)
+	GetOrganization(context.Context, uuid.UUID) (tenancy.Organization, error)
+	GetMembership(context.Context, int, uuid.UUID) (tenancy.Membership, error)
+	tenancy.ProfileOrganizationResolver
+}
+
+type proxySourceResources interface {
+	RequireAccess(ctx context.Context, tenant tenancy.Context, root resourcetenancy.RootRef) (resourcetenancy.Grant, error)
 }
 
 func (a proxySourceAccess) AllowMediaSource(ctx context.Context, accountID int, mediaFileID int) error {
@@ -155,10 +174,11 @@ func (a proxySourceAccess) AllowMediaSource(ctx context.Context, accountID int, 
 	if file == nil {
 		return proxy.ErrSourceHidden
 	}
-	// Legacy accounts (and every account a stateless proxy token can name —
-	// tokens carry no organization claim) project into the deployment's
-	// default organization, mirroring TenantMiddleware.ResolveLegacy.
-	tenant, err := a.tenants.Resolve(ctx, accountID, nil, true)
+	// A proxy token carries no organization claim, so the account resolves
+	// through the organization its membership is in, as a profile-less
+	// subject does elsewhere; an account with no membership anywhere falls
+	// back to the deployment's default organization.
+	tenant, err := a.tenants.ResolveSubjectTenant(ctx, accountID, "")
 	if err != nil {
 		if errors.Is(err, tenancy.ErrTenantNotFoundOrHidden) || errors.Is(err, tenancy.ErrTenantSuspended) {
 			return proxy.ErrSourceHidden
@@ -238,10 +258,14 @@ func runBloemCommand(args []string) bool {
 // preserve a library entitlement. The proxy rechecks it against current
 // organization ownership before it serves (or relays) any media byte.
 func newProxySourceAccess(pool *pgxpool.Pool) proxySourceAccess {
+	return buildProxySourceAccess(scanner.NewFileRepository(pool), tenancy.NewStore(pool), resourcetenancy.NewStore(pool))
+}
+
+func buildProxySourceAccess(files proxySourceFiles, tenants proxySourceTenantStore, resources proxySourceResources) proxySourceAccess {
 	return proxySourceAccess{
-		files:     scanner.NewFileRepository(pool),
-		tenants:   tenancy.NewResolver(tenancy.NewStore(pool)),
-		resources: resourcetenancy.NewStore(pool),
+		files:     files,
+		tenants:   tenancy.NewSubjectResolver(tenancy.NewResolver(tenants), tenants),
+		resources: resources,
 	}
 }
 
