@@ -1,7 +1,52 @@
 # Bloem Server deployment — October 27, 2026
 
 This receipt records the deployment of `main` with Silo through `3e2d306b2`.
-Production had run `d064644a8` since 06:41 UTC on October 26.
+Production had run `d064644a8` since 06:41 UTC on October 26
+([previous receipt](2026-10-26-stage-a-deployment.md#follow-up-deployment-account-provisioning-0641-utc)).
+It also records the follow-up deployment of `276becf4a` and two PostgreSQL
+configuration changes the same morning. It is the newest deployment receipt.
+
+## How these deployments are done
+
+This section explains the procedure the receipt refers to. The facts are in
+the sections below.
+
+- **Where the image comes from.** After Bloem CI passes on a push to `main`,
+  the [Bloem Image workflow](../bloem/ci.md#bloem-image) builds that exact
+  commit and publishes `ghcr.io/bloem-studios/bloem-server:<full sha>`. The
+  image is copied to the application host with `docker save | docker load`
+  and tagged `bloem-server:release-<short sha>`, the tag production runs. Both
+  deployments here used images CI published. Earlier deployments used images
+  built by hand ([October 26](2026-10-26-main-deployment.md#build)).
+- **What is backed up first.** Each backup is named after the release
+  (`pre-main-<short sha>`):
+  - a snapshot of the container the application runs in;
+  - a named PostgreSQL restore point, a marker in the write-ahead log (WAL)
+    that point-in-time recovery can stop at. It is usable only once the WAL
+    segment that holds it has been archived, so the receipt records when that
+    happened;
+  - when migrations run, a dump of the tables they write to.
+- **What the restart script guards.** The restart is done by an operator
+  script that is not part of this repository. It refuses to run unless the
+  live image is the expected previous release, so it cannot replace some
+  other deployment by mistake. It stops the server, applies any pending
+  migrations while the server is stopped ("offline"), and starts the new
+  image. The receipt then compares the container's runtime fingerprint (its
+  configuration and mounts) with the one before the restart, and checks
+  readiness, health, migrations and the logs.
+- **How to roll back.** Whether a rollback needs the database restored depends
+  on whether the schema changed:
+  - migrations ran (`422a51fed`): they are forward-only, so restore the
+    database to the restore point together with the container snapshot.
+    Starting the old image on the new schema is not a rollback.
+  - no migrations ran (`276becf4a`): start the previous release image again.
+  - the PostgreSQL configuration changes name their own backup files.
+- **What the checks show.** The server started on the new revision, healthy,
+  with the expected migrations and no error lines, and active streams
+  continued. "Silo switching is enabled" means the database can still be
+  handed back to Silo's server
+  ([deployment guide](../bloem/overlays/wiki/deployment/docker.md#switching-between-silo-and-bloem)).
+  None of this is client or playback acceptance.
 
 ## Deployed source and artifacts
 
@@ -143,7 +188,7 @@ disk is NVMe), and the server was recreated on the same image: 11 seconds of
 downtime, healthy with no restarts, ready 200 locally and publicly, no ERROR
 or panic lines. The runtime fingerprint changed only because the environment
 did. Backups: `.env.bak-tune-cpus-20261027T081254Z` beside the `.env`, and
-`/var/backups/postgresql.auto.conf.before-tune-cpus-20261027T081254Z` on the
+a copy of `postgresql.auto.conf` taken at `20261027T081254Z` on the
 database container.
 
 | Setting | Before | After |
@@ -170,7 +215,7 @@ ran without its database: the application container was shut down (11
 seconds), the database container rebooted (PostgreSQL accepting connections
 23 seconds later), then the application container started. The site was down
 for 51 seconds in total. PostgreSQL now runs `max_worker_processes = 12` with
-no setting pending a restart. The standby (`bloem-db-replica`, which keeps
+no setting pending a restart. The streaming standby (which keeps
 `max_worker_processes = 32`, at least the primary's value as a hot standby
 requires) resumed streaming at once. WAL archiving continued with no failures,
 and the monitor reconnected. The server came back healthy with no restarts on

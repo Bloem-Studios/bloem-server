@@ -3,7 +3,8 @@
 > **Frozen snapshot.** This receipt records the October 7 deployment of the
 > native onboarding implementation, which was later replaced by storage-source
 > library locations. Its facts are historical; for the current design see the
-> [storage architecture](../architecture/bloem-native-storage.md).
+> [storage architecture](../architecture/bloem-native-storage.md). The newest
+> deployment receipt is the [October 27, 2026 receipt](2026-10-27-main-deployment.md).
 
 This is the deployment receipt for the native EPUB/PDF onboarding implementation
 and the next 27 Silo commits. It records observed checks, not a claim that every

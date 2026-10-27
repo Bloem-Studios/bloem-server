@@ -1,5 +1,24 @@
 # Header-Authenticated Media Rollout Handoff
 
+> **Historical handoff, superseded.** It was written on 2026-08-24
+> (`781c65136`) for Bloem's deployment-readiness gate on top of Silo's
+> header-authenticated media. The feature tokens are Silo's:
+> `software_video_decode_v1` (`d76226449`), `header_authenticated_media_v1`
+> (`07383f7dc`) and `authorized_media_origins_v1` (`d6ba68b1e`). On 2026-10-09,
+> `545ed3a33` removed the gate: the setting, its `single_or_affine` mode, the
+> `header_authenticated_media_ready_v1` token, the admin control and the
+> downgrade metric. The setting was named
+> `playback.header_authenticated_media_mode`; this page calls it
+> `playback.authenticated_media_mode`. Silo's Apple client accepts only
+> credential-free media URLs, so with the gate at its default it had no
+> playable route. Bloem now negotiates `header_authenticated_media_v1`
+> whenever a client asks, as Silo does. The deployment, rollback and
+> remaining-work steps below no longer apply. For the current behavior, see
+> [playback protocol v3](../architecture/playback-protocol-v3.md) and the
+> superseded [rollout design](../architecture/header-authenticated-media-rollout.md).
+> The client-repository commits listed below are in other repositories and
+> were not checked here.
+
 Date: 2026-08-24
 
 ## Outcome

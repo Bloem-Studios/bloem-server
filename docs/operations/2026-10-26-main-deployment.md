@@ -1,5 +1,7 @@
 # Bloem Server deployment — October 26, 2026
 
+> Historical record, true to October 26, 2026; later deployments superseded it. The newest deployment receipt is the [October 27, 2026 receipt](2026-10-27-main-deployment.md). The CI failure of Silo's partition timezone test described under Build was diagnosed later: the test failed only on runs that started after 23:00 UTC, and `48513c1bd` fixed it at 23:31 UTC on October 26 ([CI](../bloem/ci.md#failures-and-re-runs)).
+
 This receipt records the deployment of `main` after the Silo merges through
 `6de6d5e5e`. Production had run `2393c41ee` since October 18; nothing had been
 deployed since, so the 21 Silo migrations those merges brought were pending.

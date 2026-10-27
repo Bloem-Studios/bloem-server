@@ -9,6 +9,25 @@ Production push, deployment, migration, and canary mutations require an
 authorized operator. Completing the source review does not authorize those
 actions.
 
+## Origin and current state
+
+The feature and this runbook are Bloem's; see
+[Bulk policy cohorts](bulk-policy-cohorts.md#origin-and-current-state) for the
+feature's history. The runbook was written on August 22, 2026, for the
+feature's first release (`cf14f1635`, tightened in `dd29ed42e` and
+`5b7673be1`). The "Task" numbers below refer to the implementation plan of
+that release. The two corrections it requires are `c0cadc675` (the
+assignment audit hashes the complete effective policy) and `1b74d98b9`
+(scoped API keys may use the authoritative reads). Both have been on `main`
+since August 22, so every current build includes them.
+
+At `e852f92bf`, the routes, `make` target, response fields and error codes it
+names were checked against the source and are current. The one exception is the
+Playwright canary journey in step 1, which no longer exists. This repository has no
+record of the canary being run in production. Since October 2026, production
+deployments have been recorded as dated receipts in this directory; the newest
+is the [October 27, 2026 receipt](2026-10-27-main-deployment.md).
+
 The compile, handler, access, and web-harness failures found during the Task 8
 source review were corrected before release preparation. That historical fix is
 not a standing waiver: every release artifact must still pass the complete
@@ -25,10 +44,16 @@ required repository suite and the focused gates below before deployment.
   git merge-base --is-ancestor origin/main HEAD
   ```
 
-- Run the complete repository release gates from `CONTRIBUTING.md`, then the
+- Run the complete repository release gates from
+  [`CONTRIBUTING.md`](../../.github/CONTRIBUTING.md#validate-your-change), then the
   focused bulk policy suites, migration refusal tests, and Playwright canary
   journey. Focused feature passes do not substitute for the complete suite.
-- Confirm the reviewed artifact includes the post-Task 4 corrections that hash
+  The Playwright journey (`web/e2e/bulk-policy-cohorts.spec.ts`, added in
+  `4834e27a2`) was removed on October 26, 2026 (`dcb93649d`), with the
+  Playwright configuration, because no script, workflow or Makefile ran it.
+  Until a replacement exists, the browser checks in steps 3 and 5 are manual.
+- Confirm the reviewed artifact includes the post-Task 4 corrections
+  (`c0cadc675`, `1b74d98b9`) that hash
   the complete authoritative effective policy in assignment audits (including
   the audio-transcode gate) and permit `admin:entitlements:bulk` API keys to use
   the authoritative single-account and snapshot read routes only while their

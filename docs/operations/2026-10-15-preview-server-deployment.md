@@ -1,5 +1,7 @@
 # Bloem Server deployment — October 15, 2026
 
+> Historical record, true to October 15, 2026; later deployments superseded it. The newest deployment receipt is the [October 27, 2026 receipt](2026-10-27-main-deployment.md).
+
 This receipt records deployment of the published browse-only preview server
 candidate. The software is installed; public preview remains disabled and has
 no assigned preview account. Site publishing, preview routing, library selection

@@ -11,10 +11,38 @@ durable bulk job. See [Bulk policy cohorts](bulk-policy-cohorts.md). For release
 migration, and bounded-canary procedures, see the
 [bulk policy release runbook](bulk-policy-cohorts-runbook.md).
 
-Open **Admin → Platform → Entitlement templates** at
+Open **Admin → Platform → Entitlement Templates** at
 `/admin/platform/entitlement-templates`. Direct-account assignment is at
 `/admin/platform/direct-accounts`; organization assignment is on the Platform
 organization detail page under **Tenant entitlement**.
+
+## Origin and current state
+
+Entitlement templates are Bloem's. Silo has access groups (`internal/access`)
+but no templates: the `internal/entitlements` package, the
+`/api/bloem/v1/admin/platform/entitlement-templates` routes and these admin
+pages exist only in Bloem.
+
+- **Added August 21, 2026.** The commits are `3ec1650d7` (templates, under
+  Bloem's earlier working name Vondel, renamed in `b25394bc8`), `917696305`
+  and `3d4339757` (server-wide enforcement). The migrations are
+  `20260821170000_entitlement_templates` and
+  `20260821210000_enable_builtin_entitlement_templates`. This page was added
+  in `dbe8323d7`.
+- **Changed since then:**
+  - `811fb4d29` (September 2) moved the routes to `/api/bloem/v1`.
+  - `f4abe0645` (October 13) lets a storefront API key list templates and
+    preview and apply one to a single account ([API clients](#api-clients)).
+  - `25062b4df` and `21fae6837` (October 14–15) seeded the protected
+    `bloem-preview` template, and `22e4a4b05` refuses loosening it.
+  - `c60b7008e` (October 26) moved account policy back onto `users`, where
+    Silo keeps it.
+  - `b017bfe84` (October 26) removed Bloem's general Idempotency-Key replay.
+    Entitlement applies keep their own idempotency key.
+- **Current at `e852f92bf`.** The routes, built-in templates, key format,
+  confirmation lifetime, clone and archive rules and page labels on this page
+  were checked against the source. That is a source check, not a record of a
+  production apply.
 
 ## Do not confuse the two entitlement systems
 
@@ -36,7 +64,9 @@ an additional ceiling over libraries already available to the organization.
 
 Fresh and upgraded installations provide these enabled revision-1 templates.
 All use `library_ids: null`, so they follow all currently available and future
-libraries unless revised.
+libraries unless revised. The first five come from the August 21, 2026
+migrations; `bloem-preview` comes from
+`20261014120000_bloem_preview_template` (October 14, 2026).
 
 | Key               | Playback | Streams | Profiles | Transcodes | Downloads | Transcoded downloads | Quality | Requests |
 | ----------------- | -------- | ------: | -------: | ---------: | --------- | -------------------- | ------- | -------- |
@@ -45,10 +75,18 @@ libraries unless revised.
 | `standard`        | Yes      |       3 |        5 |          1 | Yes       | Yes                  | 1080p   | Yes      |
 | `premium`         | Yes      |       4 |        5 |          2 | Yes       | Yes                  | 2160p   | Yes      |
 | `reseller-member` | Yes      |       3 |        5 |          1 | Yes       | Yes                  | 1080p   | Yes      |
+| `bloem-preview`   | No       |       0 |        0 |          0 | No        | No                   | —       | No       |
 
 The built-ins are starting points, not hard-coded commercial plans. Revise
 them or clone them under a new stable key to match the service being offered.
-`browse-only` is protected: a revision under that key cannot enable playback.
+`browse-only` is protected: a revision under that key cannot enable playback,
+and it cannot be archived. `bloem-preview` is the policy of browse-only preview
+accounts ([browse-only policy](../architecture/bloem-browse-only-content-policy.md)).
+It also has an explicit empty permission set, where the others permit every
+permission. It is protected more strictly: it cannot be archived or disabled,
+a revision may change only its libraries, and no derived cohort can be made
+from it. Its key is reserved: creating a template with it is refused, and the
+migration refuses to run if an existing template already uses it.
 
 ## Policy fields
 
@@ -73,8 +111,9 @@ invalidate the affected authorization state.
 ## Create, revise, clone, and archive
 
 1. Open **Entitlement templates** and select **Create template**.
-2. Choose a stable lowercase key (`a-z`, digits, and hyphens), display name,
-   enabled state, and policy.
+2. Choose a stable lowercase key (`a-z`, digits, and hyphens, starting with a
+   letter or digit, at most 128 characters), display name, enabled state, and
+   policy.
 3. Save. Creation produces revision 1.
 4. To change a template, create a **new revision**. Existing revisions remain
    immutable and visible in History.
@@ -161,6 +200,11 @@ operations record; confirmation and selection tokens are not.
 
 API automation must use a platform-scoped admin-context token, perform a
 dry-run, and submit the returned `confirmation_token` plus a stable
-`idempotency_key` to apply. See the
+`idempotency_key` to apply. Since `f4abe0645` (October 13, 2026), an API key
+owned by an enabled platform administrator, unscoped or carrying
+`admin:entitlements:accounts`, may also list the template catalog and dry-run
+and apply a template to one account, as a storefront does. Creating,
+revising, cloning and archiving templates, and organization applies, still
+need an admin session. See the
 [native `/api/bloem/v1` reference](../bloem-api-reference.md#entitlement-template-administration)
 for exact routes and wire shapes.

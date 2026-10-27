@@ -1,7 +1,6 @@
 # October 5 upstream integration verification
 
-> Historical snapshot: preserve the dated revisions, results and proposals below.
-> For current status, see the [maintained reference](2026-10-07-native-storage-deployment.md).
+> Historical record, true to October 5, 2026; later integrations and deployments superseded it. The newest deployment receipt is the [October 27, 2026 receipt](2026-10-27-main-deployment.md).
 
 ## Imported source
 

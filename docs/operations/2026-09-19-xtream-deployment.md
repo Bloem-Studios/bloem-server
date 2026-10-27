@@ -1,7 +1,6 @@
 # Bloem Xtream deployment — 2026-09-19
 
-> Historical checkpoint: preserve the dated results below. For the newer deployed
-> revision and outstanding checks, read the [October 7 record](2026-10-07-native-storage-deployment.md).
+> Historical record, true to September 19, 2026; later integrations and deployments superseded it. The newest deployment receipt is the [October 27, 2026 receipt](2026-10-27-main-deployment.md).
 
 ## Outcome
 
@@ -96,7 +95,7 @@ rerun to support the deployment.
 The [contract adjudications](../architecture/bloem-contract-adjudications.md) retain
 frozen source catalogs and route snapshots. Their focused passing packets are
 separate evidence, not a substitute for the timed-out ordinary gate. See
-[scenario runtime](../bloem/overlays/architecture/scenario-acceptance.md#runtime-budget-and-fixture-lifetime)
+[scenario runtime](../bloem/overlays/architecture/scenario-acceptance.md#history-september-2026)
 for the remaining execution-budget issue.
 
 ## Upgrade and rollback boundaries

@@ -8,6 +8,41 @@ entitlement templates.
 Use this workflow for retroactive assignments and cohort moves. It is not a
 dynamic rule: accounts that match the same filter later are not changed.
 
+## Origin and current state
+
+Bulk policy cohorts are Bloem's. Silo has access groups (`internal/access`)
+but no entitlement templates, cohorts or bulk policy jobs: the
+`internal/entitlements` and `internal/adminpeople` packages, the
+`/api/bloem/v1` routes and the admin pages below exist only in Bloem.
+
+- **Added August 21–22, 2026.** The commits are `af226de60` (immutable cohorts),
+  `da4d974b2` (authoritative account policy reads), `2b3641937` (previews),
+  `fec535d55` (durable jobs), `37fbcef7d` (platform APIs) and `c49d44e97`
+  (organization UI). The migrations are
+  `20260822090000_entitlement_policy_cohorts` and
+  `20260822100000_admin_people_policy_jobs`. This page and the
+  [runbook](bulk-policy-cohorts-runbook.md) were added in `cf14f1635`.
+- **Changed since then:**
+  - `811fb4d29` (September 2) moved Bloem's native API to `/api/bloem/v1`.
+  - `f1e6f1ab5` (October 13) records the acting administrator as the cohort
+    creator.
+  - `22e4a4b05` (October 14) refuses a derived cohort of the preview
+    template.
+  - `c60b7008e` (October 26) moved account policy back onto `users`, where
+    Silo keeps it. Since then a membership only links an account to its one
+    organization.
+  - `b017bfe84` (October 26) removed Bloem's general Idempotency-Key replay.
+    Policy jobs keep their own idempotency key.
+  - `84624b9b3` (October 26, migration
+    `20261026170000_bloem_cohort_coherence_ignores_deleted_libraries`) lets an
+    administrator delete a library that a cohort group lists. Production
+    applied that migration on October 27
+    ([receipt](2026-10-27-main-deployment.md)).
+- **Current at `e852f92bf`.** The routes, operation names, the 10,000-account
+  limit, the API key scope and the admin page labels on this page were checked
+  against the source. That is a source check, not a record of a production
+  bulk job.
+
 ## Concepts and invariants
 
 - A **template revision** is a reusable global policy definition. A bulk
@@ -80,12 +115,12 @@ reported as `managed`, `custom`, or `legacy_unmanaged` without invention.
 
 Available operations are:
 
-| Operation | Effect |
-| --- | --- |
-| Assign cohort | Moves selected accounts to an existing active cohort revision. |
-| Apply template | Reuses or creates the exact cohort for one enabled template revision. |
-| Derive cohort | Applies an explicit deterministic patch and creates/reuses a separate immutable derived cohort. |
-| Restore default | Moves selected accounts to the protected managed default; never to no policy. |
+| Operation | Action on the wire | Effect |
+| --- | --- | --- |
+| Assign cohort | `assign_entitlement_cohort` | Moves selected accounts to an existing active cohort revision. |
+| Apply template | `apply_entitlement_template` | Reuses or creates the exact cohort for one enabled template revision. |
+| Derive cohort | `derive_entitlement_cohort` | Applies an explicit deterministic patch and creates/reuses a separate immutable derived cohort. |
+| Restore default | `restore_default_entitlement` | Moves selected accounts to the protected managed default; never to no policy. |
 
 Patches use explicit `add`, `remove`, `replace`, `all`, `none`, or
 `unrestricted` modes where applicable. They never toggle. Omitted fields stay
@@ -96,7 +131,8 @@ unchanged, and invalid policy dependencies or no-op derivations are rejected.
 A profile is inherited when its access group equals the account's current
 access group at preview and execution time. Inherited profiles move with the
 account. A profile on another group is custom and remains unchanged unless the
-operator explicitly confirms **Include custom profiles**.
+operator explicitly turns on **Move custom profiles too**
+(`include_custom_profiles`).
 
 Execution rechecks every account, membership, access group, policy revision,
 and profile classification. A stale target is skipped with a stable reason

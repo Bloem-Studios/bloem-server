@@ -1,7 +1,6 @@
 # Bloem upstream deployment — September 30, 2026
 
-> Historical snapshot: preserve the dated revisions, results and proposals below.
-> For current status, see the [maintained reference](2026-10-07-native-storage-deployment.md).
+> Historical record, true to September 30, 2026; later integrations and deployments superseded it. The newest deployment receipt is the [October 27, 2026 receipt](2026-10-27-main-deployment.md).
 
 This is a dated deployment record, not a live status page or a guarantee that a
 registry tag still names the same image. Later documentation commits do not
