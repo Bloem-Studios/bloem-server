@@ -149,17 +149,30 @@ database container.
 | Setting | Before | After |
 | --- | --- | --- |
 | `max_parallel_workers` | 32 | 12 |
-| `max_worker_processes` | 32 | 12 in the file; 32 until PostgreSQL restarts |
+| `max_worker_processes` | 32 | 12 (after the 08:18 restart below) |
 | `work_mem` | `114390kB` | `134816kB` |
 | `effective_io_concurrency` | 200 | 1000 |
 | `autovacuum_max_workers` | 5 | 3 (default) |
 | `io_workers` | 8 | 3 (default) |
 
 The memory-based settings (`shared_buffers` 16 GB, `effective_cache_size`
-48 GB) did not change. Every setting except `max_worker_processes` is live.
+48 GB) did not change. Every setting except `max_worker_processes` took effect
+on reload.
 
 The start-up warning "postgres restart required to finish applying auto-tuned
 settings" appears on every start: the tuner lists every restart-only setting
 it writes, whether or not the running value already matches. Before this
 change PostgreSQL had no setting pending a restart. After it, only
-`max_worker_processes` is pending.
+`max_worker_processes` was pending.
+
+At 08:18 UTC both containers were restarted in order so the application never
+ran without its database: the application container was shut down (11
+seconds), the database container rebooted (PostgreSQL accepting connections
+23 seconds later), then the application container started. The site was down
+for 51 seconds in total. PostgreSQL now runs `max_worker_processes = 12` with
+no setting pending a restart. The standby (`bloem-db-replica`, which keeps
+`max_worker_processes = 32`, at least the primary's value as a hot standby
+requires) resumed streaming at once. WAL archiving continued with no failures,
+and the monitor reconnected. The server came back healthy with no restarts on
+`276becf4`, ready and health returned 200 locally and publicly, both Redis
+instances answered, and there were no ERROR or panic lines.
