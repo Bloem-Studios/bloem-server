@@ -1,7 +1,9 @@
 # Bloem Server deployment — October 28, 2026: native scan throughput
 
 Production moved three times after the
-[native audiobook scans receipt](2026-10-28-native-audio-deployment.md):
+[native audiobook scans receipt](2026-10-28-native-audio-deployment.md). The
+[native scan redesign receipt](2026-10-28-native-scan-redesign-deployment.md)
+follows this one.
 
 | Live from (UTC) | `main` at | Migrations | Downtime |
 | --- | --- | --- | --- |
