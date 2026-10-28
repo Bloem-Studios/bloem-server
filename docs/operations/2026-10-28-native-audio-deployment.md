@@ -5,6 +5,8 @@ At 14:56 UTC on October 28 production moved to `main` at
 replaced `e8fd38b55`, which another session had deployed at 14:24 UTC (container
 snapshot `pre-main-e8fd38b55`); that deployment's receipt is not part of this
 one. The previous receipt is [October 27](2026-10-27-main-deployment.md).
+The [native scan throughput receipt](2026-10-28-native-scan-throughput-deployment.md)
+follows it.
 
 ## What changed
 
