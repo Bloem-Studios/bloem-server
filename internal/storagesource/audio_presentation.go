@@ -71,8 +71,9 @@ func StageAudioTracksTx(ctx context.Context, tx pgx.Tx, lease Lease, directoryID
 			return err
 		}
 		// Keep the probe for later scans of the same revision; staging's own
-		// overflow marker is applied afterwards and never reaches it.
-		if row.Status == "ok" || row.Status == "invalid" {
+		// overflow marker is applied afterwards and never reaches it. An
+		// unavailable track is kept only to have its book listed again.
+		if row.Status == "ok" || row.Status == "invalid" || row.Status == "unavailable" {
 			if _, err := tx.Exec(ctx, `INSERT INTO bloem_storage_audio_probes(location_id,entry_id,revision,status,probe) VALUES($1,$2,$3,$4,$5::jsonb)
  ON CONFLICT(location_id,entry_id) DO UPDATE SET revision=EXCLUDED.revision,status=EXCLUDED.status,probe=EXCLUDED.probe,probed_at=clock_timestamp()`, lease.LocationID, row.EntryID, row.Revision, row.Status, row.Probe); err != nil {
 				return err

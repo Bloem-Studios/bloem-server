@@ -24,6 +24,10 @@ const (
 	StorageAudioTrackOK          StorageAudioTrackStatus = "ok"
 	StorageAudioTrackInvalid     StorageAudioTrackStatus = "invalid"
 	StorageAudioTrackUnsupported StorageAudioTrackStatus = "unsupported"
+	// StorageAudioTrackUnavailable is a track whose bytes could not be read
+	// this scan; see StorageAudioProbeFailure. It rejects its book for the run
+	// only, and the next scan reads the track again.
+	StorageAudioTrackUnavailable StorageAudioTrackStatus = "unavailable"
 )
 
 type StorageAudioTrack struct {

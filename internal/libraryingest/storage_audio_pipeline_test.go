@@ -135,3 +135,24 @@ func TestAudioPipelineStopsAtTheFirstFailure(t *testing.T) {
 		p.release(item.checkpoint.DirectoryID)
 	}
 }
+
+func TestAudioOutageStopsAfterManyUnreadableBooksInARow(t *testing.T) {
+	var o audioOutage
+	for range audioOutageLimit - 2 {
+		if err := o.observe(false, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A cached book proves nothing; a book read since resets the run.
+	if err := errors.Join(o.observe(false, false), o.observe(true, false)); err != nil {
+		t.Fatal(err)
+	}
+	for range audioOutageLimit - 1 {
+		if err := o.observe(true, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := o.observe(false, true); !errors.Is(err, errAudioOutage) {
+		t.Fatalf("outage not reported: %v", err)
+	}
+}

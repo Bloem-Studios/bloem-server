@@ -240,8 +240,9 @@ func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1
 }
 
 // audioCatalogTracks are audio-catalog's books, one track each. A test steers them
-// through files beside notify: <book>.rev holds a track's revision and
-// <book>.removed removes the book.
+// through files beside notify: <book>.rev holds a track's revision,
+// <book>.removed removes the book and <book>.missing keeps it listed while
+// reads of its track find no bytes.
 func (s *server) audioCatalogTracks() []object {
 	var out []object
 	for _, book := range []string{"book-1", "book-2"} {
@@ -369,6 +370,11 @@ func (s *server) Read(r *storagev1.ReadRequest, out grpc.ServerStreamingServer[s
 	}
 	if s.mode == "denied" {
 		return status.Error(codes.PermissionDenied, "synthetic denied")
+	}
+	if s.mode == "audio-catalog" {
+		if _, err := os.Stat(s.notify + "." + strings.TrimSuffix(r.EntryId, "/track") + ".missing"); err == nil {
+			return status.Error(codes.NotFound, "track bytes absent")
+		}
 	}
 	if r.Offset < 0 || r.Length <= 0 || r.Offset+r.Length > int64(len(o.data)) {
 		return status.Error(codes.OutOfRange, "range")

@@ -354,12 +354,13 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	// page is still applied here, one at a time.
 	var pipeline *audioPipeline
 	if librarykind.IsAudiobook(folder.Type) {
+		outage := new(audioOutage)
 		pipeline = startAudioPipeline(job, nativeAudioScanWorkers, c.sources, lease,
 			func(ctx context.Context, checkpoint storagesource.Checkpoint) (*storagev1.ListResponse, error) {
 				return c.sources.FetchPage(ctx, lease, checkpoint, provider)
 			},
 			func(ctx context.Context, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse) ([]scanner.StorageAudioTrack, int, error) {
-				tracks, skipped, err := c.prepareAudio(ctx, location, source, lease, checkpoint, page)
+				tracks, skipped, err := c.prepareAudio(ctx, outage, location, source, lease, checkpoint, page)
 				// A book is assembled from all of its tracks, so a directory with
 				// tracks is always listed in full; a directory of books may change
 				// incrementally.

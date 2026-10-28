@@ -221,9 +221,13 @@ func carryUnchangedTx(ctx context.Context, tx pgx.Tx, lease Lease, page pageReac
 	if !page.opened {
 		return nil
 	}
-	_, err := tx.Exec(ctx, `INSERT INTO bloem_storage_scan_directories(run_id,directory_id,listing_mode,complete)
- SELECT DISTINCT $1::uuid,e.entry_id,'carried',true FROM bloem_storage_location_edges e
+	// A book whose track an earlier scan could not read is listed again.
+	_, err := tx.Exec(ctx, `WITH retry AS (SELECT DISTINCT t.parent_directory_id FROM bloem_storage_audio_probes p
+ JOIN bloem_storage_location_edges t ON t.location_id=p.location_id AND t.entry_id=p.entry_id WHERE p.location_id=$2 AND p.status='unavailable')
+ INSERT INTO bloem_storage_scan_directories(run_id,directory_id,listing_mode,complete)
+ SELECT DISTINCT $1::uuid,e.entry_id,CASE WHEN r.parent_directory_id IS NULL THEN 'carried' ELSE 'pending' END,r.parent_directory_id IS NULL FROM bloem_storage_location_edges e
  JOIN bloem_storage_location_entries x ON x.location_id=e.location_id AND x.entry_id=e.entry_id AND x.kind=2 AND x.configuration_revision=$3
+ LEFT JOIN retry r ON r.parent_directory_id=e.entry_id
  WHERE e.location_id=$2 AND e.parent_directory_id=$4 AND e.absence_suspected_run IS NULL AND NOT e.entry_id=ANY($5::text[])
  ON CONFLICT DO NOTHING`, lease.RunID, lease.LocationID, lease.ConfigurationRevision, page.directoryID, page.entries)
 	return err

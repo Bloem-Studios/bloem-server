@@ -59,8 +59,9 @@ func TestNativeAudioScanProbesThroughPinnedReaderDB(t *testing.T) {
 			f := nativeAudioLaneFixture(t, mode)
 			result, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location})
 			if mode == "audio-stat-conflict" || mode == "audio-read-revision-change" {
-				if err == nil {
-					t.Fatal("revision conflict published")
+				// A revision that changes during the read only rejects the book.
+				if (err == nil) != (mode == "audio-read-revision-change") {
+					t.Fatalf("revision conflict: %v", err)
 				}
 				var count int
 				if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM media_files WHERE media_folder_id=$1`, f.folder.ID).Scan(&count); err != nil || count != 0 {
@@ -162,43 +163,55 @@ func TestNativeAudioScanReusesProbesOfUnchangedTracksDB(t *testing.T) {
 	}
 }
 
+// audioCatalog drives the audio-catalog fixture through repeated scans.
+type audioCatalog struct {
+	t *testing.T
+	f nativeMovieScanFixture
+}
+
+func (c audioCatalog) write(name, value string) {
+	c.t.Helper()
+	if err := os.WriteFile(c.f.notify+"."+name, []byte(value), 0o600); err != nil {
+		c.t.Fatal(err)
+	}
+}
+
+// scan runs one scan and returns the provider's audit of its I/O.
+func (c audioCatalog) scan() string {
+	c.t.Helper()
+	c.write("io", "")
+	if _, err := c.f.scan.ScanStorageFolder(c.t.Context(), c.f.folder, storagesource.LocationSelection{Location: c.f.location}); err != nil {
+		c.t.Fatal(err)
+	}
+	audit, err := os.ReadFile(c.f.notify + ".io")
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	return string(audit)
+}
+
+// present maps each published track to its revision.
+func (c audioCatalog) present() map[string]string {
+	c.t.Helper()
+	rows, err := c.f.pool.Query(c.t.Context(), `SELECT r.entry_id,r.revision FROM bloem_storage_file_refs r JOIN media_files m ON m.id=r.media_file_id WHERE m.media_folder_id=$1 AND m.missing_since IS NULL`, c.f.folder.ID)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, revision string
+		if err := rows.Scan(&id, &revision); err != nil {
+			c.t.Fatal(err)
+		}
+		out[id] = revision
+	}
+	return out
+}
+
 func TestNativeAudioCatalogScansCarryUnchangedBooksDB(t *testing.T) {
-	f := nativeAudioLaneFixture(t, "audio-catalog")
-	write := func(name, value string) {
-		t.Helper()
-		if err := os.WriteFile(f.notify+"."+name, []byte(value), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	scan := func() string {
-		t.Helper()
-		write("io", "")
-		if _, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location}); err != nil {
-			t.Fatal(err)
-		}
-		audit, err := os.ReadFile(f.notify + ".io")
-		if err != nil {
-			t.Fatal(err)
-		}
-		return string(audit)
-	}
-	present := func() map[string]string {
-		t.Helper()
-		rows, err := f.pool.Query(t.Context(), `SELECT r.entry_id,r.revision FROM bloem_storage_file_refs r JOIN media_files m ON m.id=r.media_file_id WHERE m.media_folder_id=$1 AND m.missing_since IS NULL`, f.folder.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer rows.Close()
-		out := map[string]string{}
-		for rows.Next() {
-			var id, revision string
-			if err := rows.Scan(&id, &revision); err != nil {
-				t.Fatal(err)
-			}
-			out[id] = revision
-		}
-		return out
-	}
+	c := audioCatalog{t, nativeAudioLaneFixture(t, "audio-catalog")}
+	write, scan, present := c.write, c.scan, c.present
 	both := map[string]string{"book-1/track": "v1", "book-2/track": "v1"}
 	if audit := scan(); !strings.Contains(audit, "list root since=\n") || !strings.Contains(audit, "list book-1 since=") || !strings.Contains(audit, "list book-2 since=") {
 		t.Fatalf("first scan: %s", audit)
@@ -231,5 +244,36 @@ func TestNativeAudioCatalogScansCarryUnchangedBooksDB(t *testing.T) {
 	}
 	if got := present(); !maps.Equal(got, map[string]string{"book-2/track": "v2"}) {
 		t.Fatalf("removal publication: %v", got)
+	}
+}
+
+func TestNativeAudioCatalogScanRejectsOnlyTheUnreadableBookDB(t *testing.T) {
+	c := audioCatalog{t, nativeAudioLaneFixture(t, "audio-catalog")}
+	// The provider lists book-1 but no longer has its track's bytes.
+	c.write("book-1.missing", "")
+	if audit := c.scan(); !strings.Contains(audit, "read book-1/track") {
+		t.Fatalf("first scan: %s", audit)
+	}
+	if got := c.present(); !maps.Equal(got, map[string]string{"book-2/track": "v1"}) {
+		t.Fatalf("first publication: %v", got)
+	}
+	var status string
+	if err := c.f.pool.QueryRow(t.Context(), `SELECT status FROM bloem_storage_audio_probes WHERE location_id=$1 AND entry_id='book-1/track'`, c.f.location.ID).Scan(&status); err != nil || status != "unavailable" {
+		t.Fatalf("kept status=%q err=%v", status, err)
+	}
+	// Nothing changed in the catalog, but the unreadable book is listed again;
+	// the other is carried. Its bytes are back, so it is published.
+	if err := os.Remove(c.f.notify + ".book-1.missing"); err != nil {
+		t.Fatal(err)
+	}
+	if audit := c.scan(); !strings.Contains(audit, "list book-1 since=\n") || strings.Contains(audit, "list book-2") {
+		t.Fatalf("retry scan: %s", audit)
+	}
+	if got := c.present(); !maps.Equal(got, map[string]string{"book-1/track": "v1", "book-2/track": "v1"}) {
+		t.Fatalf("retried publication: %v", got)
+	}
+	// Once read, the book is carried like any other.
+	if audit := c.scan(); strings.Contains(audit, "list book-") {
+		t.Fatalf("unchanged scan: %s", audit)
 	}
 }

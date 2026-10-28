@@ -38,7 +38,20 @@ kept in `bloem_storage_audio_probes` per location and entry with that revision,
 and a later scan reuses it instead of opening a track whose revision is
 unchanged. Completion drops kept probes for entries the location no longer lists
 at that revision. Unsupported audio extensions stage a rejection without a read.
-Authority, revision and I/O failures abort the page.
+
+A failed open or probe that is the track's own (`StorageAudioProbeFailure`)
+rejects only its book, and the scan goes on. Two kinds count as the track's own:
+- The provider no longer has the pinned bytes (`NotFound`, or a revision that
+  changed), or the probe ran out of time. The track is `unavailable`, and its
+  kept probe makes the next incremental listing list the book again instead of
+  carrying it.
+- The tool rejected the bytes or exceeded its input or output budget. The track
+  is `invalid` for that revision.
+
+Every other failure stops the scan: authority, the plugin or a provider outage,
+the host, or anything unrecognised. So does `audioOutageLimit`, when that many
+books in a row have an unavailable track. A provider whose storage is gone then
+leaves the rest of the catalog pending, instead of rejecting every book.
 
 `bloem_storage_audio_staged_tracks` retains bounded candidates across pages and
 lease takeover. Nothing publishes before directory completion, including when
