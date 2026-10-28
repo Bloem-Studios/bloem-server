@@ -486,9 +486,10 @@ export function useTestStorageSource() {
 }
 
 export function storageSourceLabel(source: StorageSource): string {
-  return source.plugin_id === "bloem.storage.bookwarehouse"
-    ? "Bookwarehouse"
-    : `${source.provider_source_id} (${source.plugin_id})`;
+  if (source.plugin_id === "bloem.storage.bookwarehouse") {
+    return source.root_entry_id === "audio-root" ? "Bookwarehouse audiobooks" : "Bookwarehouse";
+  }
+  return `${source.provider_source_id} (${source.plugin_id})`;
 }
 
 export function useConfigureStorageSource() {

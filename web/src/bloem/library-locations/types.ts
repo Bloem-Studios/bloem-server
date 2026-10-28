@@ -62,6 +62,13 @@ export function supportsSource(
           : type;
   if (kind === "audiobooks" && !(caps.native_audio_libraries && caps.native_audio_playback))
     return false;
+  // A Bookwarehouse source serves one feed, chosen at installation: its
+  // audiobook feed is rooted at audio-root, its ebook feed at root.
+  if (
+    sourceKind(source) === "bookwarehouse" &&
+    (source.root_entry_id === "audio-root") !== (kind === "audiobooks")
+  )
+    return false;
   return (
     source.enabled &&
     source.configured &&

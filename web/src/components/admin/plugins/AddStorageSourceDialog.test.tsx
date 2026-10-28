@@ -201,6 +201,45 @@ describe("AddStorageSourceDialog", () => {
     });
   });
 
+  describe("Bookwarehouse audiobooks", () => {
+    it("installs a configured audiobook source rooted at its audiobook feed", () => {
+      open();
+      fireEvent.click(screen.getByRole("button", { name: "Audiobooks" }));
+      const submit = screen.getByRole("button", { name: "Install audiobooks" });
+      expect(submit).toBeDisabled();
+      fireEvent.change(screen.getByLabelText("Bookwarehouse server URL"), {
+        target: { value: " https://books.example " },
+      });
+      expect(submit).toBeDisabled();
+      fireEvent.change(screen.getByLabelText("API key"), { target: { value: "key-1" } });
+      fireEvent.click(submit);
+      expect(install).toHaveBeenCalledTimes(1);
+      const input = install.mock.calls[0]![0];
+      expect(input.providerSourceId).toMatch(/^bookwarehouse_audio_[0-9a-f]{32}$/);
+      expect(input).toEqual({
+        artifactKey: expect.any(String),
+        providerSourceId: input.providerSourceId,
+        rootEntryId: "audio-root",
+        config: {
+          connection: {
+            base_url: "https://books.example",
+            api_key: "key-1",
+            content: "audiobooks",
+            source_id: input.providerSourceId,
+            source_name: "Bookwarehouse audiobooks",
+          },
+        },
+      });
+    });
+
+    it("goes back to the plugin list", () => {
+      open();
+      fireEvent.click(screen.getByRole("button", { name: "Audiobooks" }));
+      fireEvent.click(screen.getByRole("button", { name: "Back" }));
+      expect(screen.getByRole("button", { name: "Install Bookwarehouse" })).toBeInTheDocument();
+    });
+  });
+
   describe("the form", () => {
     it("shows only the endpoint and the two keys until Advanced is opened", () => {
       openS3();

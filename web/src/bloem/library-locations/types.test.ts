@@ -28,3 +28,18 @@ it("does not assume an unknown plugin kind or offer disabled sources", () => {
   expect(supportsSource(caps, { ...source, plugin_id: "other" }, "movies")).toBe(false);
   expect(supportsSource(caps, { ...source, enabled: false }, "movies")).toBe(false);
 });
+it("offers a Bookwarehouse source only to libraries of its own feed", () => {
+  const ready = {
+    supported_source_media: [
+      { source_kind: "bookwarehouse", media_kinds: ["ebooks", "audiobooks"] },
+    ],
+    native_audio_libraries: true,
+    native_audio_playback: true,
+  } as LocationCapabilities;
+  const ebooks = { ...source, plugin_id: "bloem.storage.bookwarehouse", root_entry_id: "root" };
+  const audio = { ...ebooks, root_entry_id: "audio-root" };
+  expect(supportsSource(ready, ebooks, "ebooks")).toBe(true);
+  expect(supportsSource(ready, ebooks, "audiobooks")).toBe(false);
+  expect(supportsSource(ready, audio, "audiobooks")).toBe(true);
+  expect(supportsSource(ready, audio, "ebooks")).toBe(false);
+});

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   type StorageArtifact,
   type StorageSource,
@@ -79,6 +80,81 @@ function BookwarehouseRow({ artifact, onDone }: { artifact: StorageArtifact; onD
   );
 }
 
+/**
+ * A Bookwarehouse audiobook source reads its feed from the moment it is
+ * installed: the plugin only reports the audiobook root once configured, so
+ * the connection goes with the installation rather than after it.
+ */
+function BookwarehouseAudioForm({
+  artifact,
+  onBack,
+  onDone,
+}: {
+  artifact: StorageArtifact;
+  onBack: () => void;
+  onDone: () => void;
+}) {
+  const install = useInstallStorageSource();
+  const [url, setURL] = useState("");
+  const [apiKey, setAPIKey] = useState("");
+  const ready = url.trim() !== "" && apiKey !== "" && !install.isPending;
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!ready) return;
+    const sourceID = `bookwarehouse_audio_${randomUUID().replaceAll("-", "")}`;
+    install.mutate(
+      {
+        artifactKey: artifact.artifact_key,
+        providerSourceId: sourceID,
+        rootEntryId: "audio-root",
+        config: {
+          connection: {
+            base_url: url.trim(),
+            api_key: apiKey,
+            content: "audiobooks",
+            source_id: sourceID,
+            source_name: "Bookwarehouse audiobooks",
+          },
+        },
+      },
+      { onSuccess: onDone },
+    );
+  }
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <label className="block text-sm">
+        Bookwarehouse server URL
+        <Input
+          type="url"
+          required
+          placeholder="https://books.example"
+          value={url}
+          onChange={(e) => setURL(e.target.value)}
+          autoComplete="off"
+        />
+      </label>
+      <label className="block text-sm">
+        API key
+        <Input
+          type="password"
+          required
+          value={apiKey}
+          onChange={(e) => setAPIKey(e.target.value)}
+          autoComplete="new-password"
+        />
+      </label>
+      <div className="flex justify-between gap-2">
+        <Button type="button" variant="ghost" onClick={onBack} disabled={install.isPending}>
+          Back
+        </Button>
+        <Button type="submit" disabled={!ready}>
+          {install.isPending ? "Installing..." : "Install audiobooks"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function DialogBody({
   artifacts,
   sources,
@@ -96,7 +172,7 @@ function DialogBody({
   onClose: () => void;
   onBusyChange: (busy: boolean) => void;
 }) {
-  const [choice, setChoice] = useState<"s3" | null>(null);
+  const [choice, setChoice] = useState<"s3" | "bookwarehouse-audio" | null>(null);
 
   if (!artifacts) {
     if (error) {
@@ -139,6 +215,16 @@ function DialogBody({
     );
   }
 
+  if (choice === "bookwarehouse-audio" && bookwarehouse) {
+    return (
+      <BookwarehouseAudioForm
+        artifact={bookwarehouse}
+        onBack={() => setChoice(null)}
+        onDone={onClose}
+      />
+    );
+  }
+
   if (!s3 && !bookwarehouse) {
     return <p className="text-muted-foreground text-sm">No storage plugins are available.</p>;
   }
@@ -155,6 +241,16 @@ function DialogBody({
         </PluginRow>
       ) : null}
       {bookwarehouse ? <BookwarehouseRow artifact={bookwarehouse} onDone={onClose} /> : null}
+      {bookwarehouse ? (
+        <PluginRow
+          title="Bookwarehouse audiobooks"
+          description={`Audiobook tracks · ${bookwarehouse.version}`}
+        >
+          <Button variant="outline" onClick={() => setChoice("bookwarehouse-audio")}>
+            Audiobooks
+          </Button>
+        </PluginRow>
+      ) : null}
     </div>
   );
 }
@@ -190,7 +286,7 @@ export function AddStorageSourceDialog({
         <DialogHeader>
           <DialogTitle>Add storage source</DialogTitle>
           <DialogDescription>
-            Choose where an ebook library can read its books from.
+            Choose where a library can read its books, movies or audiobooks from.
           </DialogDescription>
         </DialogHeader>
         <DialogBody

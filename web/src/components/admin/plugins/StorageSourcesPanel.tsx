@@ -30,8 +30,8 @@ function releaseFor(
 }
 
 /**
- * Storage plugins: sources an ebook library can read its books from instead
- * of folders. A source is used by choosing it when creating a library.
+ * Storage plugins: sources a library can read its media from instead of
+ * folders. A source is used by choosing it when creating a library.
  */
 export function StorageSourcesPanel() {
   const sources = useStorageSources(true);
@@ -47,8 +47,8 @@ export function StorageSourcesPanel() {
             Storage sources
           </h2>
           <p className="text-muted-foreground text-[13px]">
-            Where an ebook library can read its books from instead of folders. Choose a source when
-            you create the library.
+            Where a library can read its books, movies or audiobooks from instead of folders. Choose
+            a source when you create the library.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setAdding(true)}>

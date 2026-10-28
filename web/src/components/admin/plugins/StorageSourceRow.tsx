@@ -380,7 +380,9 @@ function DisableConfirmation({ source, onDone }: { source: StorageSource; onDone
 }
 
 function displayName(source: StorageSource): string {
-  if (source.plugin_id === BOOKWAREHOUSE_PLUGIN) return "Bookwarehouse";
+  if (source.plugin_id === BOOKWAREHOUSE_PLUGIN) {
+    return source.root_entry_id === "audio-root" ? "Bookwarehouse audiobooks" : "Bookwarehouse";
+  }
   return source.connection_summary?.source_name || source.provider_source_id;
 }
 
