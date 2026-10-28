@@ -146,6 +146,11 @@ type pageReach struct {
 // published before completion; reconcileLocationTx rebuilds every membership
 // from the completed graph.
 func propagatePageRootsTx(ctx context.Context, tx pgx.Tx, lease Lease, page pageReach) error {
+	if lease.CarryUnchanged {
+		if err := carryUnchangedTx(ctx, tx, lease, page); err != nil {
+			return err
+		}
+	}
 	if page.shrunk {
 		if err := rebuildLocationReachTx(ctx, tx, lease); err != nil {
 			return err
@@ -194,6 +199,34 @@ func propagatePageRootsTx(ctx context.Context, tx pgx.Tx, lease Lease, page page
 		}
 	}
 	return nil
+}
+
+// carryUnchangedTx applies an incremental listing's evidence about its child
+// directories in a source whose change feed covers their contents. A child it
+// lists is listed in full; on its first page every other retained child
+// directory is carried: complete for this run, its retained entries kept and
+// counted like an incremental directory's, without a listing. A full listing
+// carries nothing, so an expired change token reconciles every child.
+func carryUnchangedTx(ctx context.Context, tx pgx.Tx, lease Lease, page pageReach) error {
+	var mode string
+	if err := tx.QueryRow(ctx, `SELECT listing_mode FROM bloem_storage_scan_directories WHERE run_id=$1 AND directory_id=$2`, lease.RunID, page.directoryID).Scan(&mode); err != nil {
+		return err
+	}
+	if mode != "incremental" {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `UPDATE bloem_storage_scan_directories SET listing_mode='pending',complete=false WHERE run_id=$1 AND directory_id=ANY($2::text[]) AND listing_mode='carried'`, lease.RunID, page.entries); err != nil {
+		return err
+	}
+	if !page.opened {
+		return nil
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO bloem_storage_scan_directories(run_id,directory_id,listing_mode,complete)
+ SELECT DISTINCT $1::uuid,e.entry_id,'carried',true FROM bloem_storage_location_edges e
+ JOIN bloem_storage_location_entries x ON x.location_id=e.location_id AND x.entry_id=e.entry_id AND x.kind=2 AND x.configuration_revision=$3
+ WHERE e.location_id=$2 AND e.parent_directory_id=$4 AND e.absence_suspected_run IS NULL AND NOT e.entry_id=ANY($5::text[])
+ ON CONFLICT DO NOTHING`, lease.RunID, lease.LocationID, lease.ConfigurationRevision, page.directoryID, page.entries)
+	return err
 }
 
 type reachedPair struct {

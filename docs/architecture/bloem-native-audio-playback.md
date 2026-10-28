@@ -18,11 +18,22 @@ audiobook scan or advertise `native_audiobook_presentations_v1`.
 
 ## Publication and retained authority
 
-Providers must declare `audiobooks` and directory-only listings. Audio scans
-ignore change tokens and list each directory in full. Every admitted track is
-probed through `ScanReader`; provider paths and URLs never become tool inputs.
-Unsupported audio extensions stage a rejection without a read. Authority,
-revision and I/O failures abort the page.
+Providers must declare `audiobooks` and directory-only listings. A directory
+with tracks is always listed in full, since a book is assembled from all of its
+tracks; its change token is dropped. A directory of directories keeps its token,
+and an audiobook scan treats the source's change feed as covering its books: when
+such a directory is listed from a token, the child directories it does not report
+are carried (`carried` listing mode, `carryUnchangedTx`), kept with their retained
+entries and memberships without a listing, and only the reported ones are listed.
+A full listing, including the one an expired token forces, carries nothing.
+
+Every admitted track is probed through `ScanReader` the first time its revision
+is seen; provider paths and URLs never become tool inputs. The staged probe is
+kept in `bloem_storage_audio_probes` per location and entry with that revision,
+and a later scan reuses it instead of opening a track whose revision is
+unchanged. Completion drops kept probes for entries the location no longer lists
+at that revision. Unsupported audio extensions stage a rejection without a read.
+Authority, revision and I/O failures abort the page.
 
 `bloem_storage_audio_staged_tracks` retains bounded candidates across pages and
 lease takeover. Nothing publishes before directory completion, including when

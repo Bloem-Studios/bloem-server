@@ -325,6 +325,9 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	if err != nil {
 		return result, err
 	}
+	// A native audiobook source's change feed reports a book whose tracks
+	// changed, so an incremental listing need not list the unchanged books.
+	lease.CarryUnchanged = librarykind.IsAudiobook(folder.Type)
 	stopRenew := func() {}
 	defer func() {
 		// A scan that stops without completing releases its claim, so a retry
@@ -407,7 +410,12 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			movies, skipped, excluded, err = c.prepareMovies(job, location, source, lease, checkpoint, page)
 		} else if librarykind.IsAudiobook(folder.Type) {
 			audio, skipped, err = c.prepareAudio(job, location, source, lease, checkpoint, page)
-			page.ChangeToken = ""
+			// A book is assembled from all of its tracks, so a directory with
+			// tracks is always listed in full; a directory of books may change
+			// incrementally.
+			if slices.ContainsFunc(page.GetEntries(), func(e *storagev1.Entry) bool { return e.GetKind() == storagev1.EntryKind_ENTRY_KIND_FILE }) {
+				page.ChangeToken = ""
+			}
 		} else {
 			books, skipped, err = c.prepare(job, media, source, page.GetEntries())
 		}

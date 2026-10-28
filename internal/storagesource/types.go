@@ -54,6 +54,10 @@ type Lease struct {
 	// TTL is the claim's duration. Each committed page renews the claim by
 	// it; zero leaves renewal to Renew alone.
 	TTL time.Duration
+	// CarryUnchanged marks a source whose change feed covers its directories'
+	// contents, so an incremental listing's unreported child directories are
+	// kept without being listed (see carryUnchangedTx). It is not persisted.
+	CarryUnchanged bool
 }
 type Checkpoint struct {
 	DirectoryID, Cursor string

@@ -181,6 +181,9 @@ func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1
 	if s.mode == "describe-gate" {
 		return nil, status.Error(codes.Unavailable, "unexpected listing after Describe gate")
 	}
+	if s.mode == "audio-catalog" && r.SourceId == "books" && r.MaxEntries > 0 {
+		return s.listAudioCatalog(r)
+	}
 	if r.SourceId != "books" || r.DirectoryId != "root" || r.MaxEntries <= 0 {
 		return nil, status.Error(codes.InvalidArgument, "wrong list scope")
 	}
@@ -235,6 +238,64 @@ func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1
 	}
 	return page, nil
 }
+
+// audioCatalogTracks are audio-catalog's books, one track each. A test steers them
+// through files beside notify: <book>.rev holds a track's revision and
+// <book>.removed removes the book.
+func (s *server) audioCatalogTracks() []object {
+	var out []object
+	for _, book := range []string{"book-1", "book-2"} {
+		if _, err := os.Stat(s.notify + "." + book + ".removed"); err == nil {
+			continue
+		}
+		revision := "v1"
+		if b, err := os.ReadFile(s.notify + "." + book + ".rev"); err == nil {
+			revision = string(b)
+		}
+		data := s.objects[0].data
+		out = append(out, object{entry: &storagev1.Entry{Id: book + "/track", Name: "1.mp3", LogicalPath: book + "/1.mp3", Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Size: int64(len(data)), Revision: revision, AudioFile: &storagev1.AudioFileMetadata{DiscNumber: 1, TrackNumber: 1}}, data: data})
+	}
+	return out
+}
+
+// listAudioCatalog lists audio-catalog: root holds one directory per book and
+// issues change tokens; a listing from a token returns only the books named
+// in notify.changed and removes those named in notify.gone. Books are listed
+// in full.
+func (s *server) listAudioCatalog(r *storagev1.ListRequest) (*storagev1.ListResponse, error) {
+	s.audit("list " + r.DirectoryId + " since=" + r.ChangesSince)
+	tracks := s.audioCatalogTracks()
+	if r.DirectoryId == "root" {
+		page := &storagev1.ListResponse{Complete: true, ChangeToken: "catalog"}
+		changed := map[string]bool{}
+		if r.ChangesSince != "" {
+			if b, err := os.ReadFile(s.notify + ".changed"); err == nil {
+				for _, id := range strings.Fields(string(b)) {
+					changed[id] = true
+				}
+			}
+			if b, err := os.ReadFile(s.notify + ".gone"); err == nil {
+				page.RemovedEntryIds = strings.Fields(string(b))
+			}
+		}
+		for _, t := range tracks {
+			book := strings.TrimSuffix(t.entry.Id, "/track")
+			if r.ChangesSince == "" || changed[book] {
+				page.Entries = append(page.Entries, &storagev1.Entry{Id: book, Name: book, LogicalPath: book, Kind: storagev1.EntryKind_ENTRY_KIND_DIRECTORY, Revision: "dir"})
+			}
+		}
+		return page, nil
+	}
+	if r.ChangesSince != "" {
+		return nil, status.Error(codes.FailedPrecondition, "books are listed in full")
+	}
+	for _, t := range tracks {
+		if t.entry.Id == r.DirectoryId+"/track" {
+			return &storagev1.ListResponse{Complete: true, Entries: []*storagev1.Entry{t.entry}}, nil
+		}
+	}
+	return nil, status.Error(codes.NotFound, "unknown directory")
+}
 func (s *server) find(source, id, rev string) (object, error) {
 	if s.mode == "audio-read-revision-change" && s.audioRevisionChanged.Load() {
 		return object{}, status.Error(codes.FailedPrecondition, "revision changed")
@@ -242,7 +303,11 @@ func (s *server) find(source, id, rev string) (object, error) {
 	if source != "books" {
 		return object{}, status.Error(codes.PermissionDenied, "wrong source")
 	}
-	for _, o := range s.objects {
+	objects := s.objects
+	if s.mode == "audio-catalog" {
+		objects = s.audioCatalogTracks()
+	}
+	for _, o := range objects {
 		if o.entry.Id == id {
 			if o.entry.Revision != rev {
 				return object{}, status.Error(codes.FailedPrecondition, "revision changed")

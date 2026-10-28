@@ -3,6 +3,7 @@
 package libraryingest
 
 import (
+	"maps"
 	"os"
 	"os/exec"
 	"strings"
@@ -158,5 +159,77 @@ func TestNativeAudioScanReusesProbesOfUnchangedTracksDB(t *testing.T) {
 	}
 	if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM bloem_storage_audio_probes WHERE location_id=$1 AND revision='version:two'`, f.location.ID).Scan(&kept); err != nil || kept != 1 {
 		t.Fatalf("replaced probes=%d err=%v", kept, err)
+	}
+}
+
+func TestNativeAudioCatalogScansCarryUnchangedBooksDB(t *testing.T) {
+	f := nativeAudioLaneFixture(t, "audio-catalog")
+	write := func(name, value string) {
+		t.Helper()
+		if err := os.WriteFile(f.notify+"."+name, []byte(value), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	scan := func() string {
+		t.Helper()
+		write("io", "")
+		if _, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location}); err != nil {
+			t.Fatal(err)
+		}
+		audit, err := os.ReadFile(f.notify + ".io")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(audit)
+	}
+	present := func() map[string]string {
+		t.Helper()
+		rows, err := f.pool.Query(t.Context(), `SELECT r.entry_id,r.revision FROM bloem_storage_file_refs r JOIN media_files m ON m.id=r.media_file_id WHERE m.media_folder_id=$1 AND m.missing_since IS NULL`, f.folder.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		out := map[string]string{}
+		for rows.Next() {
+			var id, revision string
+			if err := rows.Scan(&id, &revision); err != nil {
+				t.Fatal(err)
+			}
+			out[id] = revision
+		}
+		return out
+	}
+	both := map[string]string{"book-1/track": "v1", "book-2/track": "v1"}
+	if audit := scan(); !strings.Contains(audit, "list root since=\n") || !strings.Contains(audit, "list book-1 since=") || !strings.Contains(audit, "list book-2 since=") {
+		t.Fatalf("first scan: %s", audit)
+	}
+	if got := present(); !maps.Equal(got, both) {
+		t.Fatalf("first publication: %v", got)
+	}
+	// Nothing changed: the catalog is listed from its token and no book is listed.
+	if audit := scan(); !strings.Contains(audit, "list root since=catalog") || strings.Contains(audit, "list book-") || strings.Contains(audit, "read ") {
+		t.Fatalf("unchanged scan: %s", audit)
+	}
+	if got := present(); !maps.Equal(got, both) {
+		t.Fatalf("carried books: %v", got)
+	}
+	// One book changed: only that book is listed, and its new track is probed.
+	write("book-2.rev", "v2")
+	write("changed", "book-2")
+	if audit := scan(); !strings.Contains(audit, "list book-2 since=") || strings.Contains(audit, "list book-1") || !strings.Contains(audit, "read book-2/track") {
+		t.Fatalf("changed scan: %s", audit)
+	}
+	if got := present(); !maps.Equal(got, map[string]string{"book-1/track": "v1", "book-2/track": "v2"}) {
+		t.Fatalf("changed publication: %v", got)
+	}
+	// One book removed: it goes missing, the other stays without a listing.
+	write("changed", "")
+	write("gone", "book-1")
+	write("book-1.removed", "")
+	if audit := scan(); strings.Contains(audit, "list book-") {
+		t.Fatalf("removal scan: %s", audit)
+	}
+	if got := present(); !maps.Equal(got, map[string]string{"book-2/track": "v2"}) {
+		t.Fatalf("removal publication: %v", got)
 	}
 }
