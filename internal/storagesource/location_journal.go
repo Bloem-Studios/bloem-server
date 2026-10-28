@@ -267,23 +267,47 @@ const countedEdgeSQL = `d.listing_mode<>'pending' AND e.absence_suspected_run IS
 // through the seeded edges and, transitively, through every directory they
 // newly reach. A pair already in the run's reach was expanded when it was
 // reached, so the walk stops there.
+//
+// The walk takes one statement per level, each started from the previous
+// level's pairs, so every plan stays bounded by what the page reached. As
+// one recursive statement, the planner could not see how little a page
+// reaches and hashed every edge of the location for each page, even for a
+// page of files that reaches nothing.
 func extendLocationReachTx(ctx context.Context, tx pgx.Tx, lease Lease, seed edgeSource, arg any) ([]reachedPair, error) {
-	rows, err := tx.Query(ctx, `WITH RECURSIVE grow(directory_id,root_id) AS (
- SELECT e.entry_id,r.root_id FROM `+seed.from+`
+	frontier, err := reachedPairsTx(ctx, tx, `SELECT DISTINCT e.entry_id,r.root_id FROM `+seed.from+`
  JOIN bloem_storage_scan_directory_roots r ON r.run_id=$1 AND r.directory_id=e.parent_directory_id
  JOIN bloem_storage_scan_directories d ON d.run_id=$1 AND d.directory_id=e.parent_directory_id
  JOIN bloem_storage_location_entries x ON x.location_id=e.location_id AND x.entry_id=e.entry_id
  WHERE e.location_id=$2 AND `+seed.where+` AND `+countedEdgeSQL+`
- UNION
- SELECT e.entry_id,g.root_id FROM grow g
- JOIN bloem_storage_scan_directories d ON d.run_id=$1 AND d.directory_id=g.directory_id
- JOIN bloem_storage_location_edges e ON e.location_id=$2 AND e.parent_directory_id=g.directory_id
+ AND NOT EXISTS(SELECT 1 FROM bloem_storage_scan_directory_roots k WHERE k.run_id=$1 AND k.directory_id=e.entry_id AND k.root_id=r.root_id)`,
+		lease.RunID, lease.LocationID, lease.ConfigurationRevision, arg)
+	var reached []reachedPair
+	seen := map[reachedPair]bool{}
+	for err == nil && len(frontier) > 0 {
+		dirs, roots := make([]string, 0, len(frontier)), make([]uuid.UUID, 0, len(frontier))
+		for _, pair := range frontier {
+			if !seen[pair] {
+				seen[pair] = true
+				reached = append(reached, pair)
+				dirs, roots = append(dirs, pair.directoryID), append(roots, pair.rootID)
+			}
+		}
+		if len(dirs) == 0 {
+			break
+		}
+		frontier, err = reachedPairsTx(ctx, tx, `SELECT DISTINCT e.entry_id,n.root_id FROM unnest($4::text[],$5::uuid[]) n(directory_id,root_id)
+ JOIN bloem_storage_scan_directories d ON d.run_id=$1 AND d.directory_id=n.directory_id
+ JOIN bloem_storage_location_edges e ON e.location_id=$2 AND e.parent_directory_id=n.directory_id
  JOIN bloem_storage_location_entries x ON x.location_id=e.location_id AND x.entry_id=e.entry_id
  WHERE `+countedEdgeSQL+`
- AND NOT EXISTS(SELECT 1 FROM bloem_storage_scan_directory_roots k WHERE k.run_id=$1 AND k.directory_id=g.directory_id AND k.root_id=g.root_id)
-) SELECT DISTINCT directory_id,root_id FROM grow g
- WHERE NOT EXISTS(SELECT 1 FROM bloem_storage_scan_directory_roots k WHERE k.run_id=$1 AND k.directory_id=g.directory_id AND k.root_id=g.root_id)`,
-		lease.RunID, lease.LocationID, lease.ConfigurationRevision, arg)
+ AND NOT EXISTS(SELECT 1 FROM bloem_storage_scan_directory_roots k WHERE k.run_id=$1 AND k.directory_id=e.entry_id AND k.root_id=n.root_id)`,
+			lease.RunID, lease.LocationID, lease.ConfigurationRevision, dirs, roots)
+	}
+	return reached, err
+}
+
+func reachedPairsTx(ctx context.Context, tx pgx.Tx, sql string, args ...any) ([]reachedPair, error) {
+	rows, err := tx.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
