@@ -479,5 +479,8 @@ func (s *Scanner) FinalizeStorageAudioLocationTx(ctx context.Context, tx pgx.Tx,
 	if _, err := tx.Exec(ctx, `DELETE FROM bloem_storage_audio_staged_tracks WHERE location_id=$1`, location.ID); err != nil {
 		return result, 0, err
 	}
+	if err := storagesource.PruneAudioProbesTx(ctx, tx, location.ID); err != nil {
+		return result, 0, err
+	}
 	return result, int(tag.RowsAffected()), nil
 }

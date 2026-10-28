@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
@@ -70,6 +71,24 @@ func (s *Scanner) ProbeStorageAudio(ctx context.Context, entry *storagev1.Entry,
 	}
 	track.Probe = probe
 	track.Status = StorageAudioTrackOK
+	return track, nil
+}
+
+// CachedStorageAudioTrack rebuilds a track from the probe an earlier scan
+// kept for this entry's exact revision, without opening it.
+func CachedStorageAudioTrack(entry *storagev1.Entry, status string, probe []byte) (StorageAudioTrack, error) {
+	track := StorageAudioTrack{Entry: proto.CloneOf(entry), Status: StorageAudioTrackStatus(status)}
+	switch track.Status {
+	case StorageAudioTrackOK:
+		var p nativeAudioStagedProbe
+		if err := json.Unmarshal(probe, &p); err != nil {
+			return StorageAudioTrack{}, err
+		}
+		track.Probe = &NativeAudioProbe{Probe: p.Probe, DurationSeconds: p.DurationSeconds, Chapters: p.Chapters, Tags: p.Tags}
+	case StorageAudioTrackInvalid:
+	default:
+		return StorageAudioTrack{}, ErrNativeProbeInvalid
+	}
 	return track, nil
 }
 

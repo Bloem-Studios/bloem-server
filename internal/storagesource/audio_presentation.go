@@ -70,8 +70,58 @@ func StageAudioTracksTx(ctx context.Context, tx pgx.Tx, lease Lease, directoryID
  entry=EXCLUDED.entry,probe=CASE WHEN bloem_storage_audio_staged_tracks.status='ok' THEN EXCLUDED.probe ELSE NULL END`, lease.RunID, directoryID, row.EntryID, lease.LocationID, row.Revision, row.Status, row.Entry, row.Probe); err != nil {
 			return err
 		}
+		// Keep the probe for later scans of the same revision; staging's own
+		// overflow marker is applied afterwards and never reaches it.
+		if row.Status == "ok" || row.Status == "invalid" {
+			if _, err := tx.Exec(ctx, `INSERT INTO bloem_storage_audio_probes(location_id,entry_id,revision,status,probe) VALUES($1,$2,$3,$4,$5::jsonb)
+ ON CONFLICT(location_id,entry_id) DO UPDATE SET revision=EXCLUDED.revision,status=EXCLUDED.status,probe=EXCLUDED.probe,probed_at=clock_timestamp()`, lease.LocationID, row.EntryID, row.Revision, row.Status, row.Probe); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
+}
+
+// CachedAudioProbe is a track's status and staged probe from an earlier scan.
+type CachedAudioProbe struct {
+	Status string
+	Probe  []byte
+}
+
+// CachedAudioProbes returns the probes kept for the given entries whose
+// revision is still exactly the one given.
+func (r *Repository) CachedAudioProbes(ctx context.Context, locationID uuid.UUID, revisions map[string]string) (map[string]CachedAudioProbe, error) {
+	ids := make([]string, 0, len(revisions))
+	for id := range revisions {
+		ids = append(ids, id)
+	}
+	out := make(map[string]CachedAudioProbe, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := r.pool.Query(ctx, `SELECT entry_id,revision,status,probe FROM bloem_storage_audio_probes WHERE location_id=$1 AND entry_id=ANY($2::text[])`, locationID, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, revision string
+		var cached CachedAudioProbe
+		if err := rows.Scan(&id, &revision, &cached.Status, &cached.Probe); err != nil {
+			return nil, err
+		}
+		if revisions[id] == revision {
+			out[id] = cached
+		}
+	}
+	return out, rows.Err()
+}
+
+// PruneAudioProbesTx drops kept probes for entries the location no longer
+// lists at the same revision.
+func PruneAudioProbesTx(ctx context.Context, tx pgx.Tx, locationID uuid.UUID) error {
+	_, err := tx.Exec(ctx, `DELETE FROM bloem_storage_audio_probes p WHERE p.location_id=$1 AND NOT EXISTS(SELECT 1 FROM bloem_storage_location_entries x WHERE x.location_id=p.location_id AND x.entry_id=p.entry_id AND x.revision=p.revision)`, locationID)
+	return err
 }
 
 func StagedAudioTracksTx(ctx context.Context, tx pgx.Tx, lease Lease, directoryID string) ([]StagedAudioTrack, error) {

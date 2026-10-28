@@ -58,6 +58,17 @@ func (c *StorageScanner) prepareAudio(ctx context.Context, location storagesourc
 	if err != nil {
 		return nil, 0, err
 	}
+	// A track whose revision an earlier scan already probed is not opened again.
+	revisions := map[string]string{}
+	for _, entry := range page.GetEntries() {
+		if entry.GetKind() == storagev1.EntryKind_ENTRY_KIND_FILE {
+			revisions[entry.GetId()] = entry.GetRevision()
+		}
+	}
+	cached, err := c.sources.CachedAudioProbes(ctx, location.ID, revisions)
+	if err != nil {
+		return nil, 0, err
+	}
 	var tracks []scanner.StorageAudioTrack
 	skipped := 0
 	for i, entry := range page.GetEntries() {
@@ -71,6 +82,12 @@ func (c *StorageScanner) prepareAudio(ctx context.Context, location storagesourc
 				skipped++
 			}
 			continue
+		}
+		if hit, ok := cached[entry.GetId()]; ok {
+			if track, err := scanner.CachedStorageAudioTrack(entry, hit.Status, hit.Probe); err == nil {
+				tracks = append(tracks, track)
+				continue
+			}
 		}
 		file, err := c.audioReader.OpenScanEntry(ctx, sealed, i)
 		if err != nil {

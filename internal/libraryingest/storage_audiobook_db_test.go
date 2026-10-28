@@ -118,3 +118,45 @@ func TestNativeAudioScanListsAudioDirectoriesInFullDB(t *testing.T) {
 		}
 	}
 }
+
+func TestNativeAudioScanReusesProbesOfUnchangedTracksDB(t *testing.T) {
+	f := nativeAudioLaneFixture(t, "audio")
+	scan := func() string {
+		t.Helper()
+		if err := os.WriteFile(f.notify+".io", nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location}); err != nil {
+			t.Fatal(err)
+		}
+		audit, err := os.ReadFile(f.notify + ".io")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var count int
+		if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM media_files WHERE media_folder_id=$1 AND duration>=2 AND missing_since IS NULL`, f.folder.ID).Scan(&count); err != nil || count != 1 {
+			t.Fatalf("publication=%d err=%v", count, err)
+		}
+		return string(audit)
+	}
+	if audit := scan(); !strings.Contains(audit, "read track") {
+		t.Fatalf("first scan did not probe: %s", audit)
+	}
+	if audit := scan(); strings.Contains(audit, "read track") || strings.Contains(audit, "stat track") {
+		t.Fatalf("unchanged track opened again: %s", audit)
+	}
+	var kept int
+	if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM bloem_storage_audio_probes WHERE location_id=$1 AND revision='version:one' AND status='ok'`, f.location.ID).Scan(&kept); err != nil || kept != 1 {
+		t.Fatalf("kept probes=%d err=%v", kept, err)
+	}
+	// A new revision is probed again and replaces the kept probe.
+	if _, err := f.registry.ReplaceConfiguration(t.Context(), f.installed.Source.Key, f.installed.Source.OwnerID, map[string]map[string]any{"source": {"mode": "audio", "notify": f.notify, "revision": "version:two"}}); err != nil {
+		t.Fatal(err)
+	}
+	if audit := scan(); !strings.Contains(audit, "read track") {
+		t.Fatalf("changed revision not probed: %s", audit)
+	}
+	if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM bloem_storage_audio_probes WHERE location_id=$1 AND revision='version:two'`, f.location.ID).Scan(&kept); err != nil || kept != 1 {
+		t.Fatalf("replaced probes=%d err=%v", kept, err)
+	}
+}
