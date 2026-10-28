@@ -14,13 +14,21 @@ import (
 )
 
 func (r *Repository) NextDirectory(ctx context.Context, lease Lease) (Checkpoint, bool, error) {
+	return r.NextDirectoryExcluding(ctx, lease, nil)
+}
+
+// NextDirectoryExcluding is NextDirectory without the directories a caller
+// already has in flight, so several workers can list one run's directories.
+// A false result only means no other directory is pending now: pages still
+// in flight may queue more.
+func (r *Repository) NextDirectoryExcluding(ctx context.Context, lease Lease, inFlight []string) (Checkpoint, bool, error) {
 	var checkpoint Checkpoint
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return checkpoint, false, err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	checkpoint, pending, err := pendingDirectoryTx(ctx, tx, lease)
+	checkpoint, pending, err := pendingDirectoryTx(ctx, tx, lease, inFlight...)
 	if err != nil {
 		return checkpoint, false, err
 	}

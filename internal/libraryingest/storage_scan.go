@@ -350,11 +350,39 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	media := mediasource.NewPluginSource(provider)
 	skipDirectory := func(entry *storagev1.Entry) bool { return scanner.StorageDirectorySkipped(folder.Type, entry) }
 	listed := 0
+	// Audiobook directories are listed and probed by several workers; every
+	// page is still applied here, one at a time.
+	var pipeline *audioPipeline
+	if librarykind.IsAudiobook(folder.Type) {
+		pipeline = startAudioPipeline(job, nativeAudioScanWorkers, c.sources, lease,
+			func(ctx context.Context, checkpoint storagesource.Checkpoint) (*storagev1.ListResponse, error) {
+				return c.sources.FetchPage(ctx, lease, checkpoint, provider)
+			},
+			func(ctx context.Context, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse) ([]scanner.StorageAudioTrack, int, error) {
+				tracks, skipped, err := c.prepareAudio(ctx, location, source, lease, checkpoint, page)
+				// A book is assembled from all of its tracks, so a directory with
+				// tracks is always listed in full; a directory of books may change
+				// incrementally.
+				if slices.ContainsFunc(page.GetEntries(), func(e *storagev1.Entry) bool { return e.GetKind() == storagev1.EntryKind_ENTRY_KIND_FILE }) {
+					page.ChangeToken = ""
+				}
+				return tracks, skipped, err
+			})
+		defer pipeline.stop()
+	}
 	for {
 		if err = nativeScanCause(ctx, job); err != nil {
 			return result, err
 		}
-		checkpoint, more, err := c.sources.NextDirectory(job, lease)
+		var checkpoint storagesource.Checkpoint
+		var more bool
+		var prepared preparedAudioPage
+		if pipeline != nil {
+			prepared, more, err = pipeline.next()
+			checkpoint = prepared.checkpoint
+		} else {
+			checkpoint, more, err = c.sources.NextDirectory(job, lease)
+		}
 		if err != nil {
 			return result, err
 		}
@@ -394,30 +422,20 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			matchStats.log(job, folder.ID)
 			return result, nil
 		}
-		page, err := c.sources.FetchPage(job, lease, checkpoint, provider)
-		if errors.Is(err, storagesource.ErrCheckpointRestart) {
-			continue
-		}
-		if err != nil {
-			return result, err
-		}
+		var page *storagev1.ListResponse
 		var books []scanner.StorageEbook
 		var movies []scanner.StorageMovie
 		var audio []scanner.StorageAudioTrack
 		var skipped int
 		var excluded []string
-		if librarykind.IsMovie(folder.Type) {
-			movies, skipped, excluded, err = c.prepareMovies(job, location, source, lease, checkpoint, page)
-		} else if librarykind.IsAudiobook(folder.Type) {
-			audio, skipped, err = c.prepareAudio(job, location, source, lease, checkpoint, page)
-			// A book is assembled from all of its tracks, so a directory with
-			// tracks is always listed in full; a directory of books may change
-			// incrementally.
-			if slices.ContainsFunc(page.GetEntries(), func(e *storagev1.Entry) bool { return e.GetKind() == storagev1.EntryKind_ENTRY_KIND_FILE }) {
-				page.ChangeToken = ""
-			}
+		if pipeline != nil {
+			page, audio, skipped = prepared.page, prepared.tracks, prepared.skipped
 		} else {
-			books, skipped, err = c.prepare(job, media, source, page.GetEntries())
+			var restart bool
+			page, books, movies, skipped, excluded, restart, err = c.fetchAndPrepare(job, folder, location, source, lease, checkpoint, provider, media)
+			if restart {
+				continue
+			}
 		}
 		if err != nil {
 			return result, err
@@ -484,6 +502,9 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		if err = c.sources.ApplyPageAuthorizedSkipping(job, lease, checkpoint, page, skipDirectory, authorize, publish); err != nil {
 			return result, err
 		}
+		if pipeline != nil {
+			pipeline.release(checkpoint.DirectoryID)
+		}
 		// The committed page renewed the lease.
 		confirmLease()
 		matches = slices.DeleteFunc(matches, func(m scanner.StorageMovieMatch) bool {
@@ -506,6 +527,24 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		reportProgress(job, ProgressUpdate{Phase: "processing", Message: "Listing storage source",
 			FilesDiscovered: listed, FilesProcessed: listed, New: result.ScanResult.New, Updated: result.ScanResult.Updated})
 	}
+}
+
+// fetchAndPrepare lists a directory's next page and prepares its ebooks or
+// movies. restart reports a checkpoint the journal reset; list it again.
+func (c *StorageScanner) fetchAndPrepare(ctx context.Context, folder *models.MediaFolder, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, provider storagev1.StorageProviderClient, media mediasource.Source) (page *storagev1.ListResponse, books []scanner.StorageEbook, movies []scanner.StorageMovie, skipped int, excluded []string, restart bool, err error) {
+	page, err = c.sources.FetchPage(ctx, lease, checkpoint, provider)
+	if errors.Is(err, storagesource.ErrCheckpointRestart) {
+		return nil, nil, nil, 0, nil, true, nil
+	}
+	if err != nil {
+		return nil, nil, nil, 0, nil, false, err
+	}
+	if librarykind.IsMovie(folder.Type) {
+		movies, skipped, excluded, err = c.prepareMovies(ctx, location, source, lease, checkpoint, page)
+	} else {
+		books, skipped, err = c.prepare(ctx, media, source, page.GetEntries())
+	}
+	return page, books, movies, skipped, excluded, false, err
 }
 
 // releaseLease runs after the scan has stopped, possibly because ctx was

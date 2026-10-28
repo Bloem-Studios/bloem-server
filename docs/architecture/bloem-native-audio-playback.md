@@ -27,6 +27,11 @@ are carried (`carried` listing mode, `carryUnchangedTx`), kept with their retain
 entries and memberships without a listing, and only the reported ones are listed.
 A full listing, including the one an expired token forces, carries nothing.
 
+An audiobook scan lists and probes up to `nativeAudioScanWorkers` directories
+at once (`audioPipeline`): each directory is claimed until its page is applied,
+and pages are still applied one at a time. Audio probes read 1 MiB chunks, each
+behind the scan reader's per-read authority check.
+
 Every admitted track is probed through `ScanReader` the first time its revision
 is seen; provider paths and URLs never become tool inputs. The staged probe is
 kept in `bloem_storage_audio_probes` per location and entry with that revision,

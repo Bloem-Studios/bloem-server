@@ -26,8 +26,10 @@ display field before accepting bytes.
 Authorization compares the approved runtime generation, artifact, manifest and
 configuration. A short transaction retains installation, source and scan-run
 authority in that order, checks organization and entitlement policy, compares
-resource-owner revisions, and verifies the current lease and next pending
-checkpoint. No transaction or database connection remains open across provider
+resource-owner revisions, and verifies the current lease and that the page's
+directory is still pending and reachable at its sealed cursor. A scan may work
+on several pending directories at once (audiobook scans use
+`nativeAudioScanWorkers`), so the directory need not be the first pending one. No transaction or database connection remains open across provider
 I/O. `storagesource.ValidatePendingPageTx` and the journal's `NextDirectory`
 share the same lease/checkpoint verifier.
 
