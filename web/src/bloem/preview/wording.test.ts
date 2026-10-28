@@ -8,6 +8,8 @@ const presentation = {
   cta_label: "Subscribe",
   item_cta_label: "",
   cta_message: "",
+  subscribe_label: "",
+  subscribe_url: "",
   storefront_url: "",
   launch_url: "",
 };
@@ -27,6 +29,8 @@ describe("preview wording", () => {
       ...presentation,
       item_cta_label: " Start your €1 trial ",
       cta_message: "Seven days, one euro.",
+      subscribe_label: "",
+      subscribe_url: "",
     };
     expect(itemCtaLabel(set, "watch")).toBe("Start your €1 trial");
     expect(itemCtaLabel(set, "listen")).toBe("Start your €1 trial");

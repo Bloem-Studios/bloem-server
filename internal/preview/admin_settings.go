@@ -16,6 +16,8 @@ type SettingsPatch struct {
 	CTALabel          *string `json:"cta_label,omitempty"`
 	ItemCTALabel      *string `json:"item_cta_label,omitempty" doc:"Replaces Subscribe to watch, read or listen on title pages; empty keeps that wording."`
 	CTAMessage        *string `json:"cta_message,omitempty" doc:"The subscribe dialog's sentence; empty keeps the default."`
+	SubscribeLabel    *string `json:"subscribe_label,omitempty" doc:"The banner's subscription button beside the trial; empty keeps the client's wording."`
+	SubscribeURL      *string `json:"subscribe_url,omitempty" doc:"Where the banner's subscription button goes; empty keeps the plain exit to the storefront."`
 	StorefrontURL     *string `json:"storefront_url,omitempty"`
 	LaunchURL         *string `json:"launch_url,omitempty"`
 	MaturityCeiling   *string `json:"maturity_ceiling,omitempty"`
@@ -42,7 +44,7 @@ func (a *Admin) UpdateSettings(ctx context.Context, actor int, p SettingsPatch, 
 	for _, field := range []struct {
 		value  *string
 		target *string
-	}{{p.Host, &s.Host}, {p.Brand, &s.Brand}, {p.CTAURL, &s.CTAURL}, {p.CTALabel, &s.CTALabel}, {p.ItemCTALabel, &s.ItemCTALabel}, {p.CTAMessage, &s.CTAMessage}, {p.StorefrontURL, &s.StorefrontURL}, {p.LaunchURL, &s.LaunchURL}, {p.MaturityCeiling, &s.MaturityCeiling}} {
+	}{{p.Host, &s.Host}, {p.Brand, &s.Brand}, {p.CTAURL, &s.CTAURL}, {p.CTALabel, &s.CTALabel}, {p.ItemCTALabel, &s.ItemCTALabel}, {p.CTAMessage, &s.CTAMessage}, {p.SubscribeLabel, &s.SubscribeLabel}, {p.SubscribeURL, &s.SubscribeURL}, {p.StorefrontURL, &s.StorefrontURL}, {p.LaunchURL, &s.LaunchURL}, {p.MaturityCeiling, &s.MaturityCeiling}} {
 		if field.value != nil {
 			*field.target = *field.value
 		}

@@ -46,7 +46,12 @@ type Settings struct {
 	// and in the player; empty keeps the client's wording for each type.
 	ItemCTALabel string
 	// CTAMessage is the subscribe dialog's sentence; empty keeps the client's.
-	CTAMessage      string
+	CTAMessage string
+	// SubscribeLabel and SubscribeURL are the banner's second button, the
+	// operator's subscription beside the trial; an empty URL keeps the plain
+	// exit.
+	SubscribeLabel  string
+	SubscribeURL    string
 	StorefrontURL   string
 	LaunchURL       string
 	MaturityCeiling string
@@ -63,7 +68,8 @@ type queryRower interface {
 
 const settingsColumns = `enabled, host, issuer, COALESCE(account_id, 0), ticket_public_keys,
 	session_ttl_seconds, idle_ttl_seconds, max_concurrent, brand, cta_url, cta_label,
-	storefront_url, launch_url, maturity_ceiling, item_cta_label, cta_message`
+	storefront_url, launch_url, maturity_ceiling, item_cta_label, cta_message,
+	subscribe_label, subscribe_url`
 
 func (s *Store) Get(ctx context.Context) (Settings, error) { return getSettings(ctx, s.pool) }
 
@@ -74,7 +80,8 @@ func getSettings(ctx context.Context, db queryRower) (Settings, error) {
 	err := db.QueryRow(ctx, `SELECT `+settingsColumns+` FROM bloem_preview_settings`).Scan(
 		&out.Enabled, &out.Host, &out.Issuer, &out.AccountID, &keys, &sessionTTL, &idleTTL,
 		&out.MaxConcurrent, &out.Brand, &out.CTAURL, &out.CTALabel, &out.StorefrontURL,
-		&out.LaunchURL, &out.MaturityCeiling, &out.ItemCTALabel, &out.CTAMessage)
+		&out.LaunchURL, &out.MaturityCeiling, &out.ItemCTALabel, &out.CTAMessage,
+		&out.SubscribeLabel, &out.SubscribeURL)
 	if err != nil {
 		return Settings{}, fmt.Errorf("reading preview settings: %w", err)
 	}
@@ -130,7 +137,7 @@ func validate(s Settings) error {
 	if s.MaxConcurrent < 1 || s.MaxConcurrent > 10000 {
 		return fail("capacity must be between 1 and 10000")
 	}
-	for name, value := range map[string]string{"brand": s.Brand, "cta_label": s.CTALabel, "item_cta_label": s.ItemCTALabel, "maturity_ceiling": s.MaturityCeiling} {
+	for name, value := range map[string]string{"brand": s.Brand, "cta_label": s.CTALabel, "item_cta_label": s.ItemCTALabel, "subscribe_label": s.SubscribeLabel, "maturity_ceiling": s.MaturityCeiling} {
 		if len(value) > 120 {
 			return fail("%s is too long", name)
 		}
@@ -138,7 +145,7 @@ func validate(s Settings) error {
 	if len(s.CTAMessage) > 300 {
 		return fail("cta_message is too long")
 	}
-	for name, value := range map[string]string{"cta_url": s.CTAURL, "storefront_url": s.StorefrontURL, "launch_url": s.LaunchURL} {
+	for name, value := range map[string]string{"cta_url": s.CTAURL, "storefront_url": s.StorefrontURL, "launch_url": s.LaunchURL, "subscribe_url": s.SubscribeURL} {
 		if len(value) > 2048 {
 			return fail("%s is too long", name)
 		}
@@ -222,10 +229,11 @@ func (s *Store) putInTransaction(ctx context.Context, tx pgx.Tx, next Settings) 
 	if _, err := tx.Exec(ctx, `UPDATE bloem_preview_settings SET enabled=$1, host=$2, issuer=$3, account_id=$4,
 		ticket_public_keys=$5, session_ttl_seconds=$6, idle_ttl_seconds=$7, max_concurrent=$8, brand=$9,
 		cta_url=$10, cta_label=$11, storefront_url=$12, launch_url=$13, maturity_ceiling=$14,
-		item_cta_label=$15, cta_message=$16, updated_at=now()`,
+		item_cta_label=$15, cta_message=$16, subscribe_label=$17, subscribe_url=$18, updated_at=now()`,
 		next.Enabled, next.Host, next.Issuer, account, keys, int(next.SessionTTL/time.Second),
 		int(next.IdleTTL/time.Second), next.MaxConcurrent, next.Brand, next.CTAURL, next.CTALabel,
-		next.StorefrontURL, next.LaunchURL, next.MaturityCeiling, next.ItemCTALabel, next.CTAMessage); err != nil {
+		next.StorefrontURL, next.LaunchURL, next.MaturityCeiling, next.ItemCTALabel, next.CTAMessage,
+		next.SubscribeLabel, next.SubscribeURL); err != nil {
 		return fmt.Errorf("writing preview settings: %w", err)
 	}
 	return nil

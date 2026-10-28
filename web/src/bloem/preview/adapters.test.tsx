@@ -38,6 +38,8 @@ function Harness({
             cta_label: "Subscribe",
             item_cta_label: itemCtaLabel,
             cta_message: "",
+            subscribe_label: "",
+            subscribe_url: "",
             storefront_url: "",
             launch_url: "",
           }}

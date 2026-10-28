@@ -43,6 +43,8 @@ it.each(["guest", "personal"] as const)(
             cta_label: "Subscribe",
             item_cta_label: "",
             cta_message: "",
+            subscribe_label: "",
+            subscribe_url: "",
             launch_url: "",
             storefront_url: "",
           }}

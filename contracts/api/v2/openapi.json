@@ -22677,6 +22677,15 @@
           "storefront_url": {
             "format": "uri-reference",
             "type": "string"
+          },
+          "subscribe_label": {
+            "description": "Operator wording for the banner's subscription button; empty means the client's own.",
+            "type": "string"
+          },
+          "subscribe_url": {
+            "description": "Where the banner's subscription button goes; empty means no such button, only the exit.",
+            "format": "uri-reference",
+            "type": "string"
           }
         },
         "required": [
@@ -22686,6 +22695,8 @@
           "cta_label",
           "item_cta_label",
           "cta_message",
+          "subscribe_label",
+          "subscribe_url",
           "storefront_url",
           "launch_url"
         ],

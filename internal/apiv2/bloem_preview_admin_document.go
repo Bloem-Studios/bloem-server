@@ -34,6 +34,8 @@ type BloemPreviewSettingsOutput struct {
 		CTALabel          string   `json:"cta_label"`
 		ItemCTALabel      string   `json:"item_cta_label"`
 		CTAMessage        string   `json:"cta_message"`
+		SubscribeLabel    string   `json:"subscribe_label"`
+		SubscribeURL      string   `json:"subscribe_url"`
 		StorefrontURL     string   `json:"storefront_url"`
 		LaunchURL         string   `json:"launch_url"`
 		MaturityCeiling   string   `json:"maturity_ceiling"`

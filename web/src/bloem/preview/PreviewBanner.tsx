@@ -55,8 +55,10 @@ export default function PreviewBanner() {
     : end === null
       ? "Your library preview"
       : `Your preview ends on ${new Date(end).toLocaleDateString()}`;
-  async function exit() {
-    const href = safePreviewHref(presentation?.storefront_url);
+  // Ending a guest visit frees its place; the guest then lands on the store,
+  // or on the operator's subscription when they chose to subscribe.
+  async function exit(destination: string | undefined) {
+    const href = safePreviewHref(destination);
     const token = getAccessToken();
     setExiting(true);
     const deadline = startRequestDeadline(
@@ -78,6 +80,9 @@ export default function PreviewBanner() {
     endGuestSession();
     if (href) window.location.assign(href);
   }
+  // With a subscription link the banner offers it beside the trial, in place
+  // of the plain exit.
+  const subscribe = guest ? safePreviewHref(presentation?.subscribe_url) : null;
   return (
     <div
       ref={banner}
@@ -88,14 +93,20 @@ export default function PreviewBanner() {
       <Button size="sm" className="ml-auto" onClick={() => requestSubscription()}>
         {presentation?.cta_label || `Subscribe to ${serverName}`}
       </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled={exiting}
-        onClick={guest ? () => void exit() : logout}
-      >
-        {guest ? "Exit preview" : "Sign out"}
-      </Button>
+      {subscribe ? (
+        <Button size="sm" variant="outline" disabled={exiting} onClick={() => void exit(subscribe)}>
+          {presentation?.subscribe_label || "Subscribe"}
+        </Button>
+      ) : (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={exiting}
+          onClick={guest ? () => void exit(presentation?.storefront_url) : logout}
+        >
+          {guest ? "Exit preview" : "Sign out"}
+        </Button>
+      )}
     </div>
   );
 }

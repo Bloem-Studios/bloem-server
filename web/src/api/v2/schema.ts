@@ -21211,6 +21211,13 @@ export interface components {
       launch_url: string;
       /** Format: uri-reference */
       storefront_url: string;
+      /** @description Operator wording for the banner's subscription button; empty means the client's own. */
+      subscribe_label: string;
+      /**
+       * Format: uri-reference
+       * @description Where the banner's subscription button goes; empty means no such button, only the exit.
+       */
+      subscribe_url: string;
     };
     BrandingCapabilitiesOutputBody: {
       /** @description Whether the current principal may use the capability */

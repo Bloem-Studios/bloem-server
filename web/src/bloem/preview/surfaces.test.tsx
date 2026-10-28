@@ -24,6 +24,8 @@ it("replaces hero playback while keeping its detail destination", async () => {
             cta_label: "Subscribe",
             item_cta_label: "",
             cta_message: "",
+            subscribe_label: "",
+            subscribe_url: "",
             storefront_url: "",
             launch_url: "",
           }}
@@ -60,6 +62,8 @@ it("removes library shuffle", () => {
           cta_label: "",
           item_cta_label: "",
           cta_message: "",
+          subscribe_label: "",
+          subscribe_url: "",
           storefront_url: "",
           launch_url: "",
         }}
@@ -94,6 +98,8 @@ it.each([
                   cta_label: "",
                   item_cta_label: "",
                   cta_message: "",
+                  subscribe_label: "",
+                  subscribe_url: "",
                   storefront_url: "",
                   launch_url: "",
                 }

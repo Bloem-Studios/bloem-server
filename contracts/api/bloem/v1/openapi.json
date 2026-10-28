@@ -5030,6 +5030,12 @@
           "storefront_url": {
             "type": "string"
           },
+          "subscribe_label": {
+            "type": "string"
+          },
+          "subscribe_url": {
+            "type": "string"
+          },
           "ticket_public_keys": {
             "items": {
               "type": "string"
@@ -5052,6 +5058,8 @@
           "cta_label",
           "item_cta_label",
           "cta_message",
+          "subscribe_label",
+          "subscribe_url",
           "storefront_url",
           "launch_url",
           "maturity_ceiling"
@@ -8815,6 +8823,14 @@
             "type": "integer"
           },
           "storefront_url": {
+            "type": "string"
+          },
+          "subscribe_label": {
+            "description": "The banner's subscription button beside the trial; empty keeps the client's wording.",
+            "type": "string"
+          },
+          "subscribe_url": {
+            "description": "Where the banner's subscription button goes; empty keeps the plain exit to the storefront.",
             "type": "string"
           }
         },

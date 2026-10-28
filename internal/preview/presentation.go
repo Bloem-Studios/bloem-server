@@ -9,14 +9,16 @@ import (
 
 // Presentation gives clients browse-only display facts; it grants no authority.
 type Presentation struct {
-	Kind          string     `json:"kind" enum:"guest,personal"`
-	EndsAt        *time.Time `json:"ends_at" nullable:"true" doc:"Absolute guest session expiry, or the personal end date supplied by the storefront; null until supplied."`
-	CTAURL        string     `json:"cta_url" format:"uri-reference"`
-	CTALabel      string     `json:"cta_label"`
-	ItemCTALabel  string     `json:"item_cta_label" doc:"Operator wording for the title-page button; empty means the client's own (Subscribe to watch, read or listen)."`
-	CTAMessage    string     `json:"cta_message" doc:"Operator sentence for the subscribe dialog; empty means the client's own."`
-	StorefrontURL string     `json:"storefront_url" format:"uri-reference"`
-	LaunchURL     string     `json:"launch_url" format:"uri-reference"`
+	Kind           string     `json:"kind" enum:"guest,personal"`
+	EndsAt         *time.Time `json:"ends_at" nullable:"true" doc:"Absolute guest session expiry, or the personal end date supplied by the storefront; null until supplied."`
+	CTAURL         string     `json:"cta_url" format:"uri-reference"`
+	CTALabel       string     `json:"cta_label"`
+	ItemCTALabel   string     `json:"item_cta_label" doc:"Operator wording for the title-page button; empty means the client's own (Subscribe to watch, read or listen)."`
+	CTAMessage     string     `json:"cta_message" doc:"Operator sentence for the subscribe dialog; empty means the client's own."`
+	SubscribeLabel string     `json:"subscribe_label" doc:"Operator wording for the banner's subscription button; empty means the client's own."`
+	SubscribeURL   string     `json:"subscribe_url" format:"uri-reference" doc:"Where the banner's subscription button goes; empty means no such button, only the exit."`
+	StorefrontURL  string     `json:"storefront_url" format:"uri-reference"`
+	LaunchURL      string     `json:"launch_url" format:"uri-reference"`
 }
 
 func (s *Store) Presentation(ctx context.Context, account int, session string, guest bool) (*Presentation, error) {
@@ -24,7 +26,7 @@ func (s *Store) Presentation(ctx context.Context, account int, session string, g
 	if err != nil {
 		return nil, err
 	}
-	out := &Presentation{Kind: "personal", CTAURL: settings.CTAURL, CTALabel: settings.CTALabel, ItemCTALabel: settings.ItemCTALabel, CTAMessage: settings.CTAMessage, StorefrontURL: settings.StorefrontURL, LaunchURL: settings.LaunchURL}
+	out := &Presentation{Kind: "personal", CTAURL: settings.CTAURL, CTALabel: settings.CTALabel, ItemCTALabel: settings.ItemCTALabel, CTAMessage: settings.CTAMessage, SubscribeLabel: settings.SubscribeLabel, SubscribeURL: settings.SubscribeURL, StorefrontURL: settings.StorefrontURL, LaunchURL: settings.LaunchURL}
 	if out.CTAURL == "" {
 		out.CTAURL = settings.StorefrontURL
 	}
