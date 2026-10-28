@@ -6,8 +6,8 @@ Production had run `d064644a8` since 06:41 UTC on October 26
 It also records the follow-up deployment of `276becf4a`, two PostgreSQL
 configuration changes the same morning, the afternoon deployment of
 `7a3b59027`, the evening deployments of `bee8a7728` and `aeeea2357`, and the
-deployment of `9cc80cd33` on the morning of October 28. It is the newest
-deployment receipt.
+deployment of `9cc80cd33` on the morning of October 28. The
+[native audiobook scans receipt](2026-10-28-native-audio-deployment.md) follows it.
 
 ## How these deployments are done
 
