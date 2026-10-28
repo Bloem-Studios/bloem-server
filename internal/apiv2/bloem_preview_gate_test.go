@@ -54,6 +54,39 @@ func TestPreviewGateServesTheLibraryJumpBar(t *testing.T) {
 	}
 }
 
+// Cast links open a person page, so a preview visitor may read people; their
+// read never queues the provider refresh a subscriber's view would.
+func TestPreviewGateServesPeopleWithoutQueueingRefreshes(t *testing.T) {
+	serve := func(operationID, target string, preview bool) (int, string) {
+		r := httptest.NewRequest(http.MethodGet, target, nil)
+		r.Header.Set("Authorization", "Bearer preview-token")
+		sessions := previewGateSessions{preview: preview}
+		am := apimw.NewAuthMiddleware(fakeTokens{map[string]*auth.Claims{"preview-token": {UserID: 1, Role: "user", SessionID: "s1", TokenType: auth.TokenTypeAccess}}}, sessions, nil, nil)
+		am.SetPreviewPrincipals(sessions)
+		am.SetPreviewRouteGuard(func(*http.Request) bool { return true })
+		w := httptest.NewRecorder()
+		var prefetch string
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			prefetch = r.URL.Query().Get("prefetch")
+			w.WriteHeader(http.StatusNoContent)
+		})
+		am.RequireAuth(previewGate(operationID)(next)).ServeHTTP(w, r)
+		return w.Code, prefetch
+	}
+	if code, _ := serve("listPeople", "/x?q=ann", true); code != http.StatusNoContent {
+		t.Fatalf("listPeople for preview: %d", code)
+	}
+	if code, prefetch := serve("getPerson", "/x", true); code != http.StatusNoContent || prefetch != "true" {
+		t.Fatalf("getPerson for preview: %d prefetch=%q, want 204 as a prefetch", code, prefetch)
+	}
+	if code, prefetch := serve("getPerson", "/x", false); code != http.StatusNoContent || prefetch != "" {
+		t.Fatalf("getPerson for a subscriber: %d prefetch=%q, want it untouched", code, prefetch)
+	}
+	if code, _ := serve("refreshPerson", "/x", true); code != http.StatusForbidden {
+		t.Fatalf("refreshPerson for preview: %d, want 403", code)
+	}
+}
+
 func TestPreviewDenialIsPermissionDeniedWithTheHeader(t *testing.T) {
 	d := &denialWriter{header: http.Header{}}
 	apimw.WritePreviewOnly(d)
