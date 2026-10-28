@@ -99,7 +99,10 @@ Covers and the journal:
 - 23:31: the storage cover Redis cache was turned off now that covers are
   kept in artwork storage: `BLOEM_STORAGE_COVER_CACHE_URL` was commented out of
   its env file (a dated backup sits beside it), the server restarted on
-  `ae7c01c3d` in 42 seconds, and the cache's Redis container was stopped. A kept
+  `ae7c01c3d` in 42 seconds, and the cache's Redis was then removed from the
+  compose project (service, the server's dependency on it and its env file),
+  with its container, configuration and env file archived beside the compose
+  file. The main Redis is unchanged. A kept
   audiobook cover and a new ebook cover were served afterwards; the ebook cover
   took 2.9 seconds from Bookwarehouse and 0.2 seconds once kept.
 
