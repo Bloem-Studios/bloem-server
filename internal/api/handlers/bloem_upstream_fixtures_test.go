@@ -74,6 +74,14 @@ func (f *fakeRequestService) DiscoverAll(context.Context, mediarequests.Viewer) 
 	return nil, nil
 }
 
+func (f *fakeRequestService) DiscoverRows(context.Context, mediarequests.Viewer) (*mediarequests.DiscoverLayoutPage, error) {
+	return nil, nil
+}
+
+func (f *fakeRequestService) DiscoverRow(context.Context, mediarequests.Viewer, string, int) (*mediarequests.DiscoverySection, error) {
+	return nil, nil
+}
+
 func (f *fakeRequestService) GetDetail(context.Context, mediarequests.Viewer, mediarequests.MediaType, int) (*mediarequests.MediaDetail, error) {
 	return nil, nil
 }

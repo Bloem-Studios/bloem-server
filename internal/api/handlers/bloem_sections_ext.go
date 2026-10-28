@@ -203,6 +203,14 @@ type sectionItemResponse struct {
 	// Promo is the S-2 card variant carried by `promoted` sections; such
 	// items have type "promo" and content_id = the promotion id.
 	Promo *promotions.Card `json:"promo,omitempty"`
+
+	// ParentArtwork, ReleaseDate, LastAirDate and EpisodeRatingTMDB reach
+	// the v2 card only; v1 is frozen. EpisodeRatingTMDB is an episode's TMDB
+	// rating, kept apart from RatingTMDB so v1's rating_tmdb stays as it was.
+	ParentArtwork     EpisodeParentArtworkView `json:"-"`
+	ReleaseDate       *string                  `json:"-"`
+	LastAirDate       *string                  `json:"-"`
+	EpisodeRatingTMDB *float64                 `json:"-"`
 }
 
 // ConfigurePromotions installs owned promotion adapters on the reusable hooks.
