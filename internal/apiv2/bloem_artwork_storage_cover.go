@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 
@@ -23,8 +22,9 @@ import (
 )
 
 // StorageCoverService reads a book cover its storage source serves on demand
-// (artworkkey.StorageCoverKey). The first read keeps the cover in artwork
-// storage under its revisioned key, and later requests are served from there.
+// (artworkkey.StorageCoverKey). The first authorized read keeps the cover in
+// artwork storage under its revisioned key, and later authorized requests are
+// served from there instead of the source.
 type StorageCoverService interface {
 	ReadCover(ctx context.Context, contentID, revision string) ([]byte, error)
 }
@@ -56,51 +56,33 @@ func (reg *Registry) serveBloemStorageCover(w http.ResponseWriter, r *http.Reque
 		}
 		return false
 	}
-	if !reg.serveStoredStorageCover(w, r, key, revision, exp) {
-		reg.serveStorageCover(w, r, key, contentID, revision)
-	}
+	reg.serveStorageCover(w, r, key, contentID, revision)
 	return true
 }
 
-// serveStoredStorageCover serves a storage cover kept in artwork storage, as
-// other revisioned artwork is: its signed URL is the authority, and neither
-// the source nor the viewer's policy is consulted again. It reports whether
-// it answered; a cover not yet kept, or a store that cannot read it, is read
-// through its source instead.
-func (reg *Registry) serveStoredStorageCover(w http.ResponseWriter, r *http.Request, key, revision string, exp int64) bool {
+// keptStorageCover returns a storage cover kept in artwork storage, or false
+// when it is not kept yet or the store cannot read it.
+func (reg *Registry) keptStorageCover(ctx context.Context, key string) ([]byte, bool) {
 	if reg.deps.ArtworkStore == nil {
-		return false
+		return nil, false
 	}
-	reader, _, err := reg.deps.ArtworkStore.Get(r.Context(), key)
+	reader, _, err := reg.deps.ArtworkStore.Get(ctx, key)
 	if err != nil {
-		return false
+		return nil, false
 	}
 	defer func() { _ = reader.Close() }()
 	data, err := io.ReadAll(io.LimitReader(reader, nativestorage.MaxCoverBytes+1))
-	if err != nil || len(data) > nativestorage.MaxCoverBytes {
-		return false
+	if err != nil || len(data) > nativestorage.MaxCoverBytes || !strings.HasPrefix(http.DetectContentType(data), "image/") {
+		return nil, false
 	}
-	contentType := http.DetectContentType(data)
-	if !strings.HasPrefix(contentType, "image/") {
-		return false
-	}
-	etag := `"` + revision + `"`
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("ETag", etag)
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
-	w.Header().Set("Cache-Control", "private, max-age="+strconv.FormatInt(max(exp-time.Now().Unix(), 0), 10)+", immutable")
-	if r.Header.Get(ifNoneMatchField) == etag {
-		w.WriteHeader(http.StatusNotModified)
-		return true
-	}
-	http.ServeContent(w, r, path.Base(r.URL.Path), time.Time{}, bytes.NewReader(data))
-	return true
+	return data, true
 }
 
-// serveStorageCover reads a cover not yet kept in artwork storage through its
-// source. It checks access before conditional responses and the read, then
-// again after the read, and keeps the cover once both allow it.
+// serveStorageCover checks access before conditional responses and any read,
+// so a revoked or hidden book's cover stops at once. A cover kept in artwork
+// storage is then served from there. Otherwise it is read through its source,
+// access is checked again after that read, and the cover is kept once both
+// checks allow it.
 func (reg *Registry) serveStorageCover(w http.ResponseWriter, r *http.Request, key, contentID, revision string) {
 	notFound := func() {
 		w.Header().Del("ETag")
@@ -119,6 +101,11 @@ func (reg *Registry) serveStorageCover(w http.ResponseWriter, r *http.Request, k
 	w.Header().Set("Cache-Control", "private, no-cache")
 	if r.Header.Get(ifNoneMatchField) == etag {
 		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	if data, kept := reg.keptStorageCover(r.Context(), key); kept {
+		w.Header().Set("Content-Type", http.DetectContentType(data))
+		http.ServeContent(w, r, path.Base(r.URL.Path), time.Time{}, bytes.NewReader(data))
 		return
 	}
 	data, err := covers.ReadCover(r.Context(), contentID, revision)

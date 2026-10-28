@@ -102,8 +102,8 @@ func TestArtworkStorageCoverFailures(t *testing.T) {
 	}
 }
 
-// A cover read once is kept in artwork storage and served from there: its
-// signed URL is the authority, and the source is not read or asked again.
+// A cover read once is kept in artwork storage, and later requests are
+// served from there after their own authorization, without the source.
 func TestArtworkKeepsAStorageCoverAfterItsFirstRead(t *testing.T) {
 	covers := &authorizedCoverStub{storageCoverStub: storageCoverStub{data: jpegCover}}
 	h, signer := storageCoverHandler(t, covers)
@@ -115,18 +115,16 @@ func TestArtworkKeepsAStorageCoverAfterItsFirstRead(t *testing.T) {
 	}
 	second := do(t, h, http.MethodGet, u, "", nil)
 	if second.Code != 200 || !bytes.Equal(second.Body.Bytes(), jpegCover) || second.Header().Get("Content-Type") != "image/jpeg" ||
-		!strings.Contains(second.Header().Get("Cache-Control"), "immutable") || second.Header().Get("ETag") != first.Header().Get("ETag") {
+		!strings.Contains(second.Header().Get("Cache-Control"), "no-cache") || second.Header().Get("ETag") != first.Header().Get("ETag") {
 		t.Fatalf("kept: %d %q %q", second.Code, second.Header().Get("Content-Type"), second.Header().Get("Cache-Control"))
 	}
-	if len(covers.reads) != 1 || covers.checks != 2 {
-		t.Fatalf("kept cover read the source again: reads=%d checks=%d", len(covers.reads), covers.checks)
+	if len(covers.reads) != 1 || covers.checks != 3 {
+		t.Fatalf("kept cover: reads=%d checks=%d, want 1 read and its own check", len(covers.reads), covers.checks)
 	}
-	if got := do(t, h, http.MethodGet, u, "", map[string]string{"If-None-Match": first.Header().Get("ETag")}); got.Code != 304 {
-		t.Fatalf("conditional: %d", got.Code)
-	}
-	// A tampered URL is refused before artwork storage is read.
-	if got := do(t, h, http.MethodGet, u+"x", "", nil); got.Code != 404 {
-		t.Fatalf("tampered: %d", got.Code)
+	// A revoked viewer is refused before the kept cover is read.
+	covers.denyAt = covers.checks + 1
+	if got := do(t, h, http.MethodGet, u, "", nil); got.Code != 404 || bytes.Contains(got.Body.Bytes(), jpegCover[4:20]) {
+		t.Fatalf("revoked kept cover: %d", got.Code)
 	}
 }
 

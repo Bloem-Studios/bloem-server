@@ -407,11 +407,11 @@ downloading it again under a new URL. Responses carry the revision as their
 ETag and are cached as immutable for the URL's lifetime, so a revalidation
 never reaches the source.
 
-The route, on every listener, first serves a cover kept in artwork storage, as
-other revisioned artwork is: the signed URL is the authority, and neither the
-source nor the viewer's policy is consulted. A cover not yet kept is
-authorized for the viewer before and after the read and read through
-`nativestorage.Host`:
+The route, on every listener, authorizes the viewer for the cover's book
+before any conditional response or read, so a hidden or removed book, or a
+viewer whose access was revoked, stops getting the cover at once. A cover kept
+in artwork storage is then served from there. A cover not yet kept is read
+through `nativestorage.Host` and authorized again after the read:
 
 1. The optional cover cache, a dedicated Redis named by
    `BLOEM_STORAGE_COVER_CACHE_URL`, is checked first. Keys hold the content ID
@@ -427,7 +427,8 @@ authorized for the viewer before and after the read and read through
    storage. A failed write only costs the next request another read.
 
 Artwork storage then holds each cover anyone has viewed, about 90 KB for a
-Bookwarehouse cover, and later views never reach the source. The daily
+Bookwarehouse cover, and later views never reach the source, while each view
+is still authorized. The daily
 `bloem_sweep_storage_covers` task (`metadata.StorageCoverSweeper`) walks
 `storage-covers/`, which the artwork storage sweep does not, and deletes kept
 covers no book names any more: a removed book's, or a revision its source
