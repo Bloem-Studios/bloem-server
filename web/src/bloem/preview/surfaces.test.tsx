@@ -77,3 +77,40 @@ it("removes library shuffle", () => {
   );
   expect(screen.queryByRole("button", { name: "Shuffle" })).not.toBeInTheDocument();
 });
+it.each([
+  ["movies", "Recommended"],
+  ["audiobooks", "Home"],
+] as const)("leaves the personal %s tab out of a preview library", (libraryType, label) => {
+  const renderHeader = (preview: boolean) =>
+    render(
+      <MemoryRouter>
+        <PreviewModeContext.Provider
+          value={
+            preview
+              ? {
+                  kind: "guest",
+                  ends_at: null,
+                  cta_url: "",
+                  cta_label: "",
+                  item_cta_label: "",
+                  cta_message: "",
+                  storefront_url: "",
+                  launch_url: "",
+                }
+              : null
+          }
+        >
+          <Tabs value="library">
+            <LibraryHeader libraryName="Library" libraryType={libraryType} />
+          </Tabs>
+        </PreviewModeContext.Provider>
+      </MemoryRouter>,
+    );
+  const subscriber = renderHeader(false);
+  expect(screen.getByRole("tab", { name: label })).toBeInTheDocument();
+  subscriber.unmount();
+  renderHeader(true);
+  expect(screen.queryByRole("tab", { name: label })).not.toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Library" })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Collections" })).toBeInTheDocument();
+});

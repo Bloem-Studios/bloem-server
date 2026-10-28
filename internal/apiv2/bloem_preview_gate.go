@@ -35,7 +35,8 @@ var previewOperations = map[string]previewAccess{
 	"getRatingsCapability": previewSafe, "getThemeSongsCapability": previewSafe,
 	"getImageCapabilities": previewSafe, "getOnboardingCapabilities": previewSafe,
 	// Catalog.
-	"queryCatalogItems": previewSafe, "getCatalogFilters": previewSafe, "searchCatalogFacet": previewSafe,
+	"queryCatalogItems": previewSafe, "queryCatalogLetters": previewSafe,
+	"getCatalogFilters": previewSafe, "searchCatalogFacet": previewSafe,
 	"getHomeLayout": previewSafe, "listHomeSections": previewSafe, "getHomeSectionItems": previewSafe,
 	"listLibrarySections": previewSafe, "getLibrarySectionItems": previewSafe,
 	"getLibraryCollections": previewSafe, "getLibraryCollectionItems": previewSafe,

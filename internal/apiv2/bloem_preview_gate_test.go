@@ -37,6 +37,23 @@ func TestPreviewGateAllowsListedOperationsOnly(t *testing.T) {
 	}
 }
 
+// The library tab's A-Z jump bar counts the same title-ordered query the tab
+// lists, so a preview visitor gets it with the list.
+func TestPreviewGateServesTheLibraryJumpBar(t *testing.T) {
+	r := httptest.NewRequest(http.MethodPost, "/x", nil)
+	r.Header.Set("Authorization", "Bearer preview-token")
+	sessions := previewGateSessions{preview: true}
+	am := apimw.NewAuthMiddleware(fakeTokens{map[string]*auth.Claims{"preview-token": {UserID: 1, Role: "user", SessionID: "s1", TokenType: auth.TokenTypeAccess}}}, sessions, nil, nil)
+	am.SetPreviewPrincipals(sessions)
+	am.SetPreviewRouteGuard(func(*http.Request) bool { return true })
+	w := httptest.NewRecorder()
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	am.RequireAuth(previewGate("queryCatalogLetters")(next)).ServeHTTP(w, r)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("queryCatalogLetters for preview: %d", w.Code)
+	}
+}
+
 func TestPreviewDenialIsPermissionDeniedWithTheHeader(t *testing.T) {
 	d := &denialWriter{header: http.Header{}}
 	apimw.WritePreviewOnly(d)
@@ -63,7 +80,7 @@ func TestPreviewOperationsAreRealAndSafeOnesRead(t *testing.T) {
 			methods[op.OperationID] = strings.ToUpper(method)
 		}
 	}
-	plumbingWrites := map[string]bool{"queryCatalogItems": true, "createEventsSocketTicket": true, "logout": true}
+	plumbingWrites := map[string]bool{"queryCatalogItems": true, "queryCatalogLetters": true, "createEventsSocketTicket": true, "logout": true}
 	for id, access := range previewOperations {
 		method, ok := methods[id]
 		if !ok {

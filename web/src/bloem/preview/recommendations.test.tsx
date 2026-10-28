@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { expect, it } from "vitest";
 import { PreviewModeContext } from "./usePreviewMode";
 import LibraryRecommended from "./adapters/LibraryRecommended";
@@ -16,21 +16,37 @@ const presentation = {
   storefront_url: "",
   launch_url: "",
 };
+function Location() {
+  const location = useLocation();
+  return <output aria-label="location">{location.pathname + location.search}</output>;
+}
 it.each([
   ["library", LibraryRecommended],
   ["audiobook", BloemLibraryRecommended],
-] as const)("tells a preview visitor the %s recommendations are not offered", (_, Tab) => {
+] as const)("opens the %s library tab instead of the recommendations", (_, Tab) => {
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={["/library/1?type=series"]}>
       <PreviewModeContext.Provider value={presentation}>
-        <Tab libraryId={1} />
+        <Routes>
+          <Route
+            path="/library/:id"
+            element={
+              <>
+                <Tab libraryId={1} />
+                <Location />
+              </>
+            }
+          />
+        </Routes>
       </PreviewModeContext.Provider>
     </MemoryRouter>,
   );
+  expect(screen.getByRole("status", { name: "location" })).toHaveTextContent(
+    "/library/1?type=series&tab=library",
+  );
   expect(
-    screen.getByRole("heading", {
+    screen.queryByRole("heading", {
       name: "Recommendations aren't available to preview members",
     }),
-  ).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+  ).not.toBeInTheDocument();
 });

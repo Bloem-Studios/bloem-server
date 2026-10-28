@@ -1,18 +1,17 @@
 import type { ComponentProps } from "react";
+import { Navigate, useSearchParams } from "react-router";
 import Original from "../../../pages/LibraryRecommended";
-import PageUnavailable from "../../../components/PageUnavailable";
 import { usePreviewMode } from "../usePreviewMode";
 // A library's recommendations are personal, so the server refuses them to a
-// preview visitor. The tab says so plainly rather than reporting the refusal as
-// a failure with a Try again that can never succeed.
-export function RecommendationsUnavailable() {
-  return (
-    <PageUnavailable
-      title="Recommendations aren't available to preview members"
-      description="You can still browse everything in this library."
-    />
-  );
+// preview visitor, and the header leaves the tab out. A visit that still lands
+// on it (the library's default tab, an old link) goes to the browsable library
+// tab, keeping the rest of the address.
+export function OpenLibraryTab() {
+  const [searchParams] = useSearchParams();
+  const next = new URLSearchParams(searchParams);
+  next.set("tab", "library");
+  return <Navigate to={{ search: `?${next}` }} replace />;
 }
 export default function LibraryRecommended(props: ComponentProps<typeof Original>) {
-  return usePreviewMode().active ? <RecommendationsUnavailable /> : <Original {...props} />;
+  return usePreviewMode().active ? <OpenLibraryTab /> : <Original {...props} />;
 }
