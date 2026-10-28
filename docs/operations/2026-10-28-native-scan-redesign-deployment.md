@@ -96,6 +96,13 @@ Covers and the journal:
   built then was replaced by the partial one at 22:20, after it drew a
   book-request path match off its file path prefix index.
 
+- 23:31: the storage cover Redis cache was turned off now that covers are
+  kept in artwork storage: `BLOEM_STORAGE_COVER_CACHE_URL` was commented out of
+  its env file (a dated backup sits beside it), the server restarted on
+  `ae7c01c3d` in 42 seconds, and the cache's Redis container was stopped. A kept
+  audiobook cover and a new ebook cover were served afterwards; the ebook cover
+  took 2.9 seconds from Bookwarehouse and 0.2 seconds once kept.
+
 ## Result
 
 The Bookwarehouse ebook library's full scan completed at 20:40. The audiobook
