@@ -43,7 +43,7 @@ func TestValidatePageRejectsMalformedAudioMetadata(t *testing.T) {
 		{"duplicate chapters", func(e *storagev1.Entry) { e.AudioFile.Chapters = append(e.AudioFile.Chapters, e.AudioFile.Chapters[0]) }},
 		{"empty chapter id", func(e *storagev1.Entry) { e.AudioFile.Chapters[0].Id = "" }},
 		{"nil chapter", func(e *storagev1.Entry) { e.AudioFile.Chapters[0] = nil }},
-		{"too many chapters", func(e *storagev1.Entry) { e.AudioFile.Chapters = audioChapters(1025) }},
+		{"too many chapters", func(e *storagev1.Entry) { e.AudioFile.Chapters = audioChapters(MaxAudioChapters + 1) }},
 		{"book title too long", func(e *storagev1.Entry) { e.Audiobook.Title = strings.Repeat("x", 4097) }},
 		{"description too long", func(e *storagev1.Entry) { e.Audiobook.Description = strings.Repeat("x", (64<<10)+1) }},
 		{"too many authors", func(e *storagev1.Entry) { e.Audiobook.Authors = make([]string, 65) }},

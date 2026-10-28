@@ -9,6 +9,12 @@ import (
 
 // Audio metadata describes a book and track; file identity and revision remain
 // independently required by the existing storage entry/ref validators.
+// MaxAudioChapters is the most chapters one audio track may list. A whole
+// Bible read as one file has about 1,200; the listing page and staged probe
+// size bounds still apply. The protocol still promises plugins 1,024, so a
+// plugin within that bound stays within this one.
+const MaxAudioChapters = 10000
+
 func validateAudioMetadata(entry *storagev1.Entry) error {
 	if book := entry.GetAudiobook(); book != nil {
 		for _, value := range []string{book.GetBookId(), book.GetTitle(), book.GetPublisher(), book.GetPublishedDate(), book.GetLanguage(), book.GetIsbn(), book.GetSeries(), book.GetSeriesIndex(), book.GetCoverEntryId(), book.GetCoverRevision(), book.GetCoverThumbhash()} {
@@ -42,7 +48,7 @@ func validateAudioMetadata(entry *storagev1.Entry) error {
 	if !validAudioTime(audio.GetDurationSeconds()) {
 		return fmt.Errorf("invalid audio duration")
 	}
-	if len(audio.GetChapters()) > 1024 {
+	if len(audio.GetChapters()) > MaxAudioChapters {
 		return fmt.Errorf("invalid audio chapter count")
 	}
 	seen := make(map[string]struct{}, len(audio.GetChapters()))

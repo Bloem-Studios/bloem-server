@@ -1,6 +1,9 @@
 package scanner
 
 import (
+	"encoding/json"
+	"strconv"
+	"strings"
 	"testing"
 
 	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
@@ -110,5 +113,27 @@ func TestStorageAudioTrackFromEntryUsesListedMetadata(t *testing.T) {
 		if _, ok := StorageAudioTrackFromEntry(e); ok {
 			t.Errorf("%s: built a track", name)
 		}
+	}
+}
+
+func TestStagedAudioProbeKeepsATrackWhoseChaptersOutgrowIt(t *testing.T) {
+	probe := &NativeAudioProbe{Probe: &ProbeData{Container: "mp3", CodecAudio: "mp3"}, DurationSeconds: 270000}
+	for i := range 1194 {
+		probe.Chapters = append(probe.Chapters, ChapterInfo{Index: i, Title: "Chapter " + strconv.Itoa(i), StartSeconds: float64(i), EndSeconds: float64(i + 1)})
+	}
+	var staged nativeAudioStagedProbe
+	if err := json.Unmarshal(stagedAudioProbe(probe), &staged); err != nil || len(staged.Chapters) != 1194 {
+		t.Fatalf("a Bible's chapters were not staged: %d %v", len(staged.Chapters), err)
+	}
+	for i := range probe.Chapters {
+		probe.Chapters[i].Title = strings.Repeat("t", 1024)
+	}
+	encoded := stagedAudioProbe(probe)
+	if encoded == nil {
+		t.Fatal("track rejected for its chapters")
+	}
+	staged = nativeAudioStagedProbe{}
+	if err := json.Unmarshal(encoded, &staged); err != nil || len(staged.Chapters) != 0 || staged.DurationSeconds != 270000 {
+		t.Fatalf("oversized chapters kept or timeline lost: %d %v", len(staged.Chapters), err)
 	}
 }

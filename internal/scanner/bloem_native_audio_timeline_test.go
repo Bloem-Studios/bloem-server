@@ -5,6 +5,8 @@ import (
 	"math"
 	"reflect"
 	"testing"
+
+	"github.com/Silo-Server/silo-server/internal/mediasource"
 )
 
 func TestNormalizeNativeAudioTracksOrdersDiscsAndGlobalChapters(t *testing.T) {
@@ -138,7 +140,7 @@ func TestNormalizeNativeAudioTracksRejectsIncompleteOrAmbiguousTimeline(t *testi
 		}},
 		{"chapter beyond track", func(v []NativeAudioTrack) []NativeAudioTrack { v[0].Chapters[0].End = 61; return v }},
 		{"chapter count unbounded", func(v []NativeAudioTrack) []NativeAudioTrack {
-			v[0].Chapters = make([]NativeAudioChapter, 1025)
+			v[0].Chapters = make([]NativeAudioChapter, mediasource.MaxAudioChapters+1)
 			return v
 		}},
 	}

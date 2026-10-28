@@ -32,6 +32,25 @@ type nativeAudioStagedProbe struct {
 	Tags            map[string]string `json:"tags"`
 }
 
+// maxStagedAudioProbe bounds a staged probe below its column's 1 MiB check.
+const maxStagedAudioProbe = (1 << 20) - 4096
+
+// stagedAudioProbe encodes a track's probe for staging, or nil when it cannot
+// be staged. A track whose chapters outgrow the bound keeps its timeline
+// without them, rather than being rejected.
+func stagedAudioProbe(probe *NativeAudioProbe) []byte {
+	p := nativeAudioStagedProbe{Probe: probe.Probe, DurationSeconds: probe.DurationSeconds, Chapters: probe.Chapters, Tags: nativeAudioRetainedTags(probe.Tags)}
+	encoded, err := json.Marshal(p)
+	if err == nil && len(encoded) > maxStagedAudioProbe {
+		p.Chapters = nil
+		encoded, err = json.Marshal(p)
+	}
+	if err != nil || len(encoded) > maxStagedAudioProbe {
+		return nil
+	}
+	return encoded
+}
+
 func (s *Scanner) PublishStorageAudioPageTx(ctx context.Context, tx pgx.Tx, page StorageAudioPage) (StorageAudioResult, error) {
 	var result StorageAudioResult
 	if !s.NativeAudioScanConfigured() || tx == nil || page.Folder == nil || !page.Folder.Enabled || !librarykind.IsAudiobook(page.Folder.Type) || page.Folder.ID != page.Location.FolderID || page.Lease.LocationID != page.Location.ID || page.ConfigurationRevision <= 0 || page.ConfigurationRevision != page.Lease.ConfigurationRevision {
@@ -55,13 +74,8 @@ func (s *Scanner) PublishStorageAudioPageTx(ctx context.Context, tx pgx.Tx, page
 		if track.Status == StorageAudioTrackOK {
 			if track.Probe == nil {
 				row.Status = string(StorageAudioTrackInvalid)
-			} else {
-				p := nativeAudioStagedProbe{Probe: track.Probe.Probe, DurationSeconds: track.Probe.DurationSeconds, Chapters: track.Probe.Chapters, Tags: nativeAudioRetainedTags(track.Probe.Tags)}
-				row.Probe, err = json.Marshal(p)
-				if err != nil || len(row.Probe) > (1<<20)-4096 {
-					row.Status = string(StorageAudioTrackInvalid)
-					row.Probe = nil
-				}
+			} else if row.Probe = stagedAudioProbe(track.Probe); row.Probe == nil {
+				row.Status = string(StorageAudioTrackInvalid)
 			}
 		}
 		var count, size int

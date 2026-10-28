@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"slices"
+
+	"github.com/Silo-Server/silo-server/internal/mediasource"
 )
 
 // ErrNativeAudioTimeline prevents an incomplete or ambiguous native recording
@@ -57,7 +59,7 @@ func NormalizeNativeAudioTracks(tracks []NativeAudioTrack) ([]NativeAudioSpan, e
 			return nil, fmt.Errorf("%w: repeated disc/track position", ErrNativeAudioTimeline)
 		}
 		positions[position] = struct{}{}
-		if len(track.Chapters) > 1024 {
+		if len(track.Chapters) > mediasource.MaxAudioChapters {
 			return nil, fmt.Errorf("%w: too many track chapters", ErrNativeAudioTimeline)
 		}
 		chapters := make(map[string]struct{}, len(track.Chapters))
