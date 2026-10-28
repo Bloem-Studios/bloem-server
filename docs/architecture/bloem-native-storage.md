@@ -427,9 +427,13 @@ authorized for the viewer before and after the read and read through
    storage. A failed write only costs the next request another read.
 
 Artwork storage then holds each cover anyone has viewed, about 90 KB for a
-Bookwarehouse cover, and later views never reach the source. The artwork
-storage sweep does not walk `storage-covers/`, so a removed book's kept cover
-stays until it is deleted by hand.
+Bookwarehouse cover, and later views never reach the source. The daily
+`bloem_sweep_storage_covers` task (`metadata.StorageCoverSweeper`) walks
+`storage-covers/`, which the artwork storage sweep does not, and deletes kept
+covers no book names any more: a removed book's, or a revision its source
+replaced. A cover kept in the last day is left alone, and since a kept cover
+is only a copy of its source's, a page of mostly unnamed covers is deleted
+rather than held back.
 
 The cover cache must be its own Redis with a memory limit and an LRU policy
 (`maxmemory`, `maxmemory-policy allkeys-lru`). The server's main Redis runs

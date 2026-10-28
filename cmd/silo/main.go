@@ -3524,6 +3524,11 @@ func main() {
 			if sweeper := metadata.NewArtworkStorageSweeper(deps.DB, deps.Blobs.Assets); sweeper != nil {
 				taskMgr.Register(tasks.NewSweepArtworkStorageTask(sweeper, settingsRepo, identity))
 			}
+			// Bloem: storage covers kept in artwork storage, which the sweep
+			// above does not walk.
+			if sweeper := metadata.NewStorageCoverSweeper(deps.DB, deps.Blobs.Assets); sweeper != nil {
+				taskMgr.Register(tasks.NewSweepStorageCoversTask(sweeper))
+			}
 			if cleaner := chapterthumbs.NewOriginalsCleaner(deps.DB, deps.Blobs.Assets); cleaner != nil {
 				taskMgr.Register(tasks.NewCleanupChapterThumbnailOriginalsTask(cleaner, settingsRepo, identity))
 			}
