@@ -190,7 +190,7 @@ func (r *Repository) PresentationReferences(ctx context.Context, folderID int, c
  FROM media_files f LEFT JOIN bloem_storage_file_refs x ON x.media_file_id=f.id
  LEFT JOIN library_storage_locations l ON l.id=x.location_id LEFT JOIN bloem_storage_sources s ON s.key=l.source_key
  LEFT JOIN media_folders folder ON folder.id=f.media_folder_id LEFT JOIN plugin_installations i ON i.id=s.installation_id
- WHERE f.media_folder_id=$1 AND f.content_id=$2 AND f.presentation_group_key=$3 AND f.missing_since IS NULL ORDER BY f.presentation_part_index NULLS FIRST,f.id`, folderID, contentID, groupKey)
+ WHERE f.media_folder_id=$1 AND f.content_id=$2 AND f.presentation_group_key=$3 AND f.presentation_group_key<>'' AND f.missing_since IS NULL ORDER BY f.presentation_part_index NULLS FIRST,f.id`, folderID, contentID, groupKey)
 	if err != nil {
 		return nil, err
 	}

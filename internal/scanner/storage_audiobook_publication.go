@@ -155,9 +155,9 @@ func (s *Scanner) publishStagedAudioDirectoryTx(ctx context.Context, tx pgx.Tx, 
 		}
 	}
 	var omitted bool
-	query := `SELECT EXISTS(SELECT 1 FROM media_files f WHERE f.media_folder_id=$1 AND f.presentation_group_key=$2 AND NOT (f.file_path=ANY($3::text[])) AND f.missing_since IS NULL)`
+	query := `SELECT EXISTS(SELECT 1 FROM media_files f WHERE f.media_folder_id=$1 AND f.presentation_group_key=$2 AND f.presentation_group_key<>'' AND NOT (f.file_path=ANY($3::text[])) AND f.missing_since IS NULL)`
 	if finalizing {
-		query = `SELECT EXISTS(SELECT 1 FROM media_files f JOIN bloem_storage_file_refs x ON x.media_file_id=f.id WHERE f.media_folder_id=$1 AND f.presentation_group_key=$2 AND NOT (f.file_path=ANY($3::text[])) AND EXISTS(SELECT 1 FROM bloem_storage_file_roots m JOIN bloem_storage_selected_roots r ON r.location_id=m.location_id AND r.id=m.root_id AND r.enabled WHERE m.location_id=x.location_id AND m.media_file_id=f.id AND m.enabled))`
+		query = `SELECT EXISTS(SELECT 1 FROM media_files f JOIN bloem_storage_file_refs x ON x.media_file_id=f.id WHERE f.media_folder_id=$1 AND f.presentation_group_key=$2 AND f.presentation_group_key<>'' AND NOT (f.file_path=ANY($3::text[])) AND EXISTS(SELECT 1 FROM bloem_storage_file_roots m JOIN bloem_storage_selected_roots r ON r.location_id=m.location_id AND r.id=m.root_id AND r.enabled WHERE m.location_id=x.location_id AND m.media_file_id=f.id AND m.enabled))`
 	}
 	if err := tx.QueryRow(ctx, query, page.Folder.ID, key, paths).Scan(&omitted); err != nil {
 		return result, err
@@ -242,7 +242,7 @@ func (s *Scanner) nativeAudioItemTx(ctx context.Context, tx pgx.Tx, page Storage
 		}
 	}
 	var id string
-	err := tx.QueryRow(ctx, `SELECT content_id FROM media_files WHERE media_folder_id=$1 AND presentation_group_key=$2 ORDER BY missing_since NULLS FIRST,id LIMIT 1`, page.Folder.ID, key).Scan(&id)
+	err := tx.QueryRow(ctx, `SELECT content_id FROM media_files WHERE media_folder_id=$1 AND presentation_group_key=$2 AND presentation_group_key<>'' ORDER BY missing_since NULLS FIRST,id LIMIT 1`, page.Folder.ID, key).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = tx.QueryRow(ctx, `SELECT content_id FROM media_files WHERE file_path=ANY($1::text[]) ORDER BY missing_since NULLS FIRST,id LIMIT 1`, paths).Scan(&id)
 	}
@@ -377,7 +377,7 @@ func (s *Scanner) publishNativeAudioBookTx(ctx context.Context, tx pgx.Tx, page 
 	if err := s.fileRepo.UpsertBatchTx(ctx, tx, files); err != nil {
 		return result, err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE media_files SET missing_since=COALESCE(missing_since,clock_timestamp()),presentation_kind='',presentation_group_key='',presentation_part_index=NULL,presentation_part_total=NULL WHERE media_folder_id=$1 AND presentation_group_key=$2 AND NOT(file_path=ANY($3::text[]))`, page.Folder.ID, key, paths); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE media_files SET missing_since=COALESCE(missing_since,clock_timestamp()),presentation_kind='',presentation_group_key='',presentation_part_index=NULL,presentation_part_total=NULL WHERE media_folder_id=$1 AND presentation_group_key=$2 AND presentation_group_key<>'' AND NOT(file_path=ANY($3::text[]))`, page.Folder.ID, key, paths); err != nil {
 		return result, err
 	}
 	var refs []storagesource.FileRef

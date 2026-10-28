@@ -10,9 +10,14 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_media_files_held_first_seen
 
 -- A native audiobook's publication reads and retires its library's files by
 -- presentation group; without this each book scanned every file of the library.
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_media_files_folder_presentation_group
-    ON public.media_files (media_folder_id, presentation_group_key);
+-- It is partial so that lookups by library alone keep their own indexes; the
+-- queries it serves state that the group is set. A full index of the same
+-- columns, once built by hand, served those lookups too.
+DROP INDEX CONCURRENTLY IF EXISTS public.idx_media_files_folder_presentation_group;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_media_files_presentation_group
+    ON public.media_files (media_folder_id, presentation_group_key)
+    WHERE presentation_group_key <> '';
 
 -- +goose Down
-DROP INDEX CONCURRENTLY IF EXISTS public.idx_media_files_folder_presentation_group;
+DROP INDEX CONCURRENTLY IF EXISTS public.idx_media_files_presentation_group;
 DROP INDEX CONCURRENTLY IF EXISTS public.idx_media_files_held_first_seen;
