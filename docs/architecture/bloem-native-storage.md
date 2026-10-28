@@ -391,8 +391,9 @@ updated and republishes that book.
 
 ## Covers
 
-Covers stay with their source; the host never copies them into artwork
-storage. A scan records each book's cover entry and revision, and the item's
+A cover is read from its source the first time it is requested and is then
+kept in artwork storage under its revisioned key. A scan records each book's
+cover entry and revision, and the item's
 poster path names it: `bloem-storage://storage-covers/<content_id>/original.<revision>.img`
 (`artworkkey.StorageCoverPath`). The revision hashes the provider's cover entry
 and revision, so a changed cover gets a new URL. Provider-matched or manually
@@ -406,7 +407,11 @@ downloading it again under a new URL. Responses carry the revision as their
 ETag and are cached as immutable for the URL's lifetime, so a revalidation
 never reaches the source.
 
-The route, on every listener, reads covers through `nativestorage.Host`:
+The route, on every listener, first serves a cover kept in artwork storage, as
+other revisioned artwork is: the signed URL is the authority, and neither the
+source nor the viewer's policy is consulted. A cover not yet kept is
+authorized for the viewer before and after the read and read through
+`nativestorage.Host`:
 
 1. The optional cover cache, a dedicated Redis named by
    `BLOEM_STORAGE_COVER_CACHE_URL`, is checked first. Keys hold the content ID
@@ -418,6 +423,13 @@ The route, on every listener, reads covers through `nativestorage.Host`:
    the plugin starts; the signed URL is the request's authority, as for any
    artwork. Each node reads at most 16 covers at once from sources.
 3. The cover is written to the cache.
+4. Once both authorization checks allow it, the cover is kept in artwork
+   storage. A failed write only costs the next request another read.
+
+Artwork storage then holds each cover anyone has viewed, about 90 KB for a
+Bookwarehouse cover, and later views never reach the source. The artwork
+storage sweep does not walk `storage-covers/`, so a removed book's kept cover
+stays until it is deleted by hand.
 
 The cover cache must be its own Redis with a memory limit and an LRU policy
 (`maxmemory`, `maxmemory-policy allkeys-lru`). The server's main Redis runs

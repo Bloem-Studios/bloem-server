@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,7 +23,8 @@ import (
 )
 
 // StorageCoverService reads a book cover its storage source serves on demand
-// (artworkkey.StorageCoverKey). Those covers are never in artwork storage.
+// (artworkkey.StorageCoverKey). The first read keeps the cover in artwork
+// storage under its revisioned key, and later requests are served from there.
 type StorageCoverService interface {
 	ReadCover(ctx context.Context, contentID, revision string) ([]byte, error)
 }
@@ -52,13 +56,52 @@ func (reg *Registry) serveBloemStorageCover(w http.ResponseWriter, r *http.Reque
 		}
 		return false
 	}
-	reg.serveStorageCover(w, r, contentID, revision, exp)
+	if !reg.serveStoredStorageCover(w, r, key, revision, exp) {
+		reg.serveStorageCover(w, r, key, contentID, revision)
+	}
 	return true
 }
 
-// serveStorageCover checks access before conditional responses and cached reads,
-// then again after the read. Native artwork must revalidate after revocation.
-func (reg *Registry) serveStorageCover(w http.ResponseWriter, r *http.Request, contentID, revision string, _ int64) {
+// serveStoredStorageCover serves a storage cover kept in artwork storage, as
+// other revisioned artwork is: its signed URL is the authority, and neither
+// the source nor the viewer's policy is consulted again. It reports whether
+// it answered; a cover not yet kept, or a store that cannot read it, is read
+// through its source instead.
+func (reg *Registry) serveStoredStorageCover(w http.ResponseWriter, r *http.Request, key, revision string, exp int64) bool {
+	if reg.deps.ArtworkStore == nil {
+		return false
+	}
+	reader, _, err := reg.deps.ArtworkStore.Get(r.Context(), key)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = reader.Close() }()
+	data, err := io.ReadAll(io.LimitReader(reader, nativestorage.MaxCoverBytes+1))
+	if err != nil || len(data) > nativestorage.MaxCoverBytes {
+		return false
+	}
+	contentType := http.DetectContentType(data)
+	if !strings.HasPrefix(contentType, "image/") {
+		return false
+	}
+	etag := `"` + revision + `"`
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("ETag", etag)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
+	w.Header().Set("Cache-Control", "private, max-age="+strconv.FormatInt(max(exp-time.Now().Unix(), 0), 10)+", immutable")
+	if r.Header.Get(ifNoneMatchField) == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return true
+	}
+	http.ServeContent(w, r, path.Base(r.URL.Path), time.Time{}, bytes.NewReader(data))
+	return true
+}
+
+// serveStorageCover reads a cover not yet kept in artwork storage through its
+// source. It checks access before conditional responses and the read, then
+// again after the read, and keeps the cover once both allow it.
+func (reg *Registry) serveStorageCover(w http.ResponseWriter, r *http.Request, key, contentID, revision string) {
 	notFound := func() {
 		w.Header().Del("ETag")
 		w.Header().Del("Cache-Control")
@@ -102,6 +145,12 @@ func (reg *Registry) serveStorageCover(w http.ResponseWriter, r *http.Request, c
 	if !strings.HasPrefix(contentType, "image/") {
 		notFound()
 		return
+	}
+	if reg.deps.ArtworkStore != nil {
+		// A cover not kept only costs the next request another source read.
+		if err := reg.deps.ArtworkStore.Put(r.Context(), key, data); err != nil {
+			slog.WarnContext(r.Context(), "storage cover not kept in artwork storage", "component", "apiv2", "content_id", contentID, "error", err)
+		}
 	}
 	w.Header().Set("Content-Type", contentType)
 	http.ServeContent(w, r, path.Base(r.URL.Path), time.Time{}, bytes.NewReader(data))

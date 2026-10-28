@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -98,5 +99,51 @@ func TestArtworkStorageCoverFailures(t *testing.T) {
 	u, _ := signer.Sign(key, time.Now())
 	if got := do(t, h, http.MethodGet, u, "", nil); got.Code != 404 {
 		t.Fatalf("no runtime: %d", got.Code)
+	}
+}
+
+// A cover read once is kept in artwork storage and served from there: its
+// signed URL is the authority, and the source is not read or asked again.
+func TestArtworkKeepsAStorageCoverAfterItsFirstRead(t *testing.T) {
+	covers := &authorizedCoverStub{storageCoverStub: storageCoverStub{data: jpegCover}}
+	h, signer := storageCoverHandler(t, covers)
+	key := artworkkey.StorageCoverKey("146532612416483348", "cover/book-1", "cover:abc")
+	u, _ := signer.Sign(key, time.Now())
+	first := do(t, h, http.MethodGet, u, "", nil)
+	if first.Code != 200 || len(covers.reads) != 1 || covers.checks != 2 {
+		t.Fatalf("first: %d reads=%d checks=%d", first.Code, len(covers.reads), covers.checks)
+	}
+	second := do(t, h, http.MethodGet, u, "", nil)
+	if second.Code != 200 || !bytes.Equal(second.Body.Bytes(), jpegCover) || second.Header().Get("Content-Type") != "image/jpeg" ||
+		!strings.Contains(second.Header().Get("Cache-Control"), "immutable") || second.Header().Get("ETag") != first.Header().Get("ETag") {
+		t.Fatalf("kept: %d %q %q", second.Code, second.Header().Get("Content-Type"), second.Header().Get("Cache-Control"))
+	}
+	if len(covers.reads) != 1 || covers.checks != 2 {
+		t.Fatalf("kept cover read the source again: reads=%d checks=%d", len(covers.reads), covers.checks)
+	}
+	if got := do(t, h, http.MethodGet, u, "", map[string]string{"If-None-Match": first.Header().Get("ETag")}); got.Code != 304 {
+		t.Fatalf("conditional: %d", got.Code)
+	}
+	// A tampered URL is refused before artwork storage is read.
+	if got := do(t, h, http.MethodGet, u+"x", "", nil); got.Code != 404 {
+		t.Fatalf("tampered: %d", got.Code)
+	}
+}
+
+// A cover the viewer may not see is neither served nor kept.
+func TestArtworkDoesNotKeepADeniedStorageCover(t *testing.T) {
+	for _, denyAt := range []int{1, 2} {
+		covers := &authorizedCoverStub{storageCoverStub: storageCoverStub{data: jpegCover}, denyAt: denyAt}
+		h, signer := storageCoverHandler(t, covers)
+		key := artworkkey.StorageCoverKey("146532612416483348", "cover/book-1", "cover:abc")
+		u, _ := signer.Sign(key, time.Now())
+		if got := do(t, h, http.MethodGet, u, "", nil); got.Code != 404 {
+			t.Fatalf("denyAt %d: %d", denyAt, got.Code)
+		}
+		covers.denyAt = 0
+		before := len(covers.reads)
+		if got := do(t, h, http.MethodGet, u, "", nil); got.Code != 200 || len(covers.reads) != before+1 {
+			t.Fatalf("denyAt %d: cover was kept after a denial: %d reads=%d", denyAt, got.Code, len(covers.reads)-before)
+		}
 	}
 }
