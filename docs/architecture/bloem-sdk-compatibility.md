@@ -144,12 +144,12 @@ the wire.
 The October 14 integration artifacts carried source revision
 `294df15ea03dd58ee3adc509aecb23452e30f176` and normalized graph digest
 `sha256:9d096c83e1a0e9e38aca1eaa48696732191e05f1a8975932e60db513a2a421f4`.
-At `e852f92bf` the generated Kotlin/Swift headers carry source revision
-`d72d6d2d4c1789a4d4e22a8bb830658bb761a790` (regenerated in the Silo merge
-`68070f04b` for Silo's `max_channels_by_codec`) and digest
-`sha256:374e6d4c402411d6d856e258cbe648e81855b212894452d88cc63832f467b548`, which
-`422a51fed` pinned in `contracts/client/v1/digest.txt` after adding Silo's five AdminAI*
-types to the coverage allowlist. `digest.txt` and the generated headers are the
+At `5fc698915` the generated Kotlin/Swift headers carry source revision
+`8ec6855d5f524b94c72f5351621bc6ece9aa6cb2` (regenerated in that Silo merge
+for Silo's episode card artwork, dates and ratings) and digest
+`sha256:3f29a33fa47303343c9fed8f5635b135b4f5a28072e10ae4202a247f39523ddd`, which
+the same merge pinned in `contracts/client/v1/digest.txt` after adding Silo's eight
+admin Discover types to the coverage allowlist. `digest.txt` and the generated headers are the
 authority. A later documentation-only commit does not require a new graph digest
 or a new source stamp.
 

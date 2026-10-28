@@ -3,6 +3,34 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 28, 2026 — Silo integration through 564b906b8
+
+`5fc698915` merges three more Silo commits, through `564b906b8` (2026-10-28
+02:44 UTC). Admins can choose and order the rows of the Requests page's
+Discover tab on **Admin > Requests > Discover Page**: TMDB charts, TMDB
+discover filters, public TMDB and MDBList lists and the brand card rows, each
+with its own size (#3193). Migration `20261027182504_request_discover_rows`
+adds `request_discover_layout` and `request_discover_list_snapshots`; with no
+layout stored the default rows apply, so nothing changes until an admin edits
+it. A background task refreshes the stored list copies about every 12 hours.
+`/api/v1` discover keeps the six built-in rows. Episode cards on `/api/v2` carry
+series and season artwork, and section cards carry release and last-air dates
+and episode TMDB ratings (#3197). Silo's `golang.org/x/net` v0.62.0 (#3196) is
+the version `main` already had since `aeeea2357`.
+
+There were four conflicts, all in declared seams, and each keeps both sides.
+`cmd/silo/main.go` registers Bloem's book-requests task and Silo's Discover
+list refresh. `internal/api/router.go` imports both packages. Bloem keeps
+`sectionItemResponse` in `internal/api/handlers/bloem_sections_ext.go`, which
+gains Silo's four new card fields. `go.sum` keeps the `golang.org/x/vuln`
+entries `govulncheck` needs. Every line Silo added to these files is kept as
+Silo wrote it. The seam ledger stays at 305. Bloem's copy of Silo's request
+service test fake gains the two new Discover methods. Silo's eight admin
+Discover wire types join the client coverage allowlist, and the client contract
+digest is re-pinned. The native client DTOs (`contracts/client/v1`) and the API
+catalogue are regenerated; the copies in the client repositories are not
+updated.
+
 ## October 27, 2026 — Silo integration through 73a6ae6a3
 
 `7c431d470` merges 10 more Silo commits after `3e2d306b2`, through `73a6ae6a3`

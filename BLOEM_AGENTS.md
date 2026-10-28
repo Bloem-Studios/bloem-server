@@ -81,7 +81,7 @@ the repository root is the cwd." `make verify-local-paths` enforces this.
 Keep Bloem-specific documentation out of Silo-owned files: add it to a Bloem-owned doc (for a
 change to an upstream doc, its overlay under `docs/bloem/overlays/`) and list it in
 [docs/bloem/README.md](docs/bloem/README.md). `contracts/seams.txt` lists the Silo-owned files
-Bloem may edit (305 at `7c431d470`), and `make verify-seams` fails on an undeclared one; the
+Bloem may edit (305 at `5fc698915`), and `make verify-seams` fails on an undeclared one; the
 count may only go down.
 
 ## Upstream contribution direction

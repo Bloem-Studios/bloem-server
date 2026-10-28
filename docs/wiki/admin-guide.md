@@ -88,19 +88,17 @@ Cinema Dark the only theme (`39a554717`, #1534).
 
 ### What changed most recently
 
-Bloem merged Silo through `73a6ae6a3` on 2026-10-27 (`7c431d470`). For operators and viewers:
+Bloem merged Silo through `564b906b8` on 2026-10-28 (`5fc698915`). For operators and viewers:
 
-- **Every media card shows its title and details.** The card caption choice ("Title only",
-  "Nothing") is retired, and poster size is the only card option left. The merge's migration
-  resets every saved caption (Silo `33cf0ed11`, #3142).
-- **Posters, backdrops and logos can be uploaded** as local artwork (Silo `e6df1d8ed`, #3088).
-- **Manual metadata edits survive a refresh** and show in home rails (Silo `cc1a496a3`, #2254),
-  and artwork an admin publishes is kept while a refresh is writing (Silo `a5a34a556`, #3153).
-- **Ogg and Opus audiobooks** have their tags read from the audio stream (Silo `25bf16e24`,
-  #3165).
-- **Titles in no library** stay out of the admin listings (Silo `73a6ae6a3`, #3114).
-- Jellyfin-compatible clients: Latest and list pages are faster (#3096, #3097), and sign-in
-  returns every field Jellyfin sends (#3144).
+- **Admins lay out the Requests Discover tab** on **Requests → Discover Page**: TMDB charts and
+  discover filters, public TMDB and MDBList lists, and the studio, network and genre rows, in any
+  order and size. Until an admin saves a layout the default rows stay (Silo `9b84f13a8`, #3193).
+- **Episode cards** in API v2 carry the series and season artwork, and cards carry release dates
+  and episode ratings (Silo `564b906b8`, #3197).
+
+The merge before it (Silo through `73a6ae6a3`, `7c431d470`) retired the card caption choice, added
+uploaded local artwork and kept manual metadata edits through a refresh; see the
+[changelog](../bloem/CHANGELOG.md).
 
 ---
 
@@ -465,7 +463,7 @@ no single "Settings" menu. Each page is at `/admin/settings/<page>`. The ones yo
 | Manage → Autoscan → Settings | **Autoscan** | Polling defaults and connections. |
 | Manage → Playback → Settings | **Playback** | Watch thresholds, transcoding and hardware acceleration, preview images, skip markers. |
 | Manage → Downloads → Settings | **Downloads** | Whether viewers can download for offline use, per-user and server-wide limits, prepared copies. |
-| Manage → Requests → Settings | **Requests** | Request limits and approval, Sonarr and Radarr servers, routing rules. |
+| Manage → Requests → Settings | **Requests** | Request limits and approval, Sonarr and Radarr servers, routing rules. The Discover tab's rows are on **Requests → Discover Page**. |
 | Configure → Integrations | **Providers** | Watch-provider plugins such as Simkl, subtitle provider accounts, the MDBList key, skip-marker providers. |
 | Configure → Integrations | **Email** | The mail server for invitations, password resets and notification emails. |
 | Configure → Integrations | **Notifications** | Delivery channels, server channels and how new content becomes notifications (2.15). |
@@ -493,7 +491,8 @@ do not want; you decide what is on offer.
 
 Enable request access through the account/group policy and configure integrations,
 routes, approval rules and quotas on **Requests → Settings**. **Requests → Queue** shows
-the queue and its current delivery state. Viewers can follow an existing request
+the queue and its current delivery state. **Requests → Discover Page** sets the rows of the
+viewers' Discover tab; with no layout saved, the default rows show. Viewers can follow an existing request
 and select seasons where the title supports it; followers receive the relevant
 updates. Bloem stamps requests with the acting organisation and bounds its
 administration accordingly. See [request architecture](../architecture/media-requests.md)

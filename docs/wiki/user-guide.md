@@ -292,7 +292,7 @@ provider-backed ebook locations.
 ## 6. Asking for something new
 
 Where the administrator has turned it on, you can **request** things the library does not have.
-Open **Requests** in the sidebar: **Discover** lists titles to browse and request, and **Yours** shows
+Open **Requests** in the sidebar: **Discover** lists titles to browse and request, in rows the administrator chooses, and **Yours** shows
 your requests grouped as *Needs attention*, *On the way*, *In your library* and *Cancelled*. You can
 also search, and pick a title from the *Not in your library* results. For a series, choose the
 seasons you want. If someone already asked for a title, you can follow their request instead of
