@@ -412,7 +412,10 @@ build arguments and labels. At that point Bloem CI's web build and contract
 checks had passed. The merge had passed locally: the Go suite, the 377
 database pins, the library-location tests, `go vet` and lint of the changed
 lines. The image's runtime configuration is identical to
-`release-aeeea2357`.
+`release-aeeea2357`. Pushing this receipt cancelled Bloem CI on `9cc80cd33`
+(23 of 24 jobs had passed; the database pins were still running), and Bloem
+CI then passed all 24 jobs on `63e9c42c7`, which adds only this receipt and
+status lines to the same code.
 
 Before the restart:
 
