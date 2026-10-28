@@ -55,14 +55,17 @@ func (c *StorageScanner) prepareAudio(ctx context.Context, outage *audioOutage, 
 		return nil, 0, storagesource.ErrSourceUnavailable
 	}
 	page = proto.CloneOf(page)
-	sealed, err := c.audioReader.AdmitScanPage(ctx, location, source, lease, checkpoint, page)
-	if err != nil {
-		return nil, 0, err
-	}
-	// A track whose revision an earlier scan already probed is not opened again.
+	// A provider that lists a track's audio metadata spares its probe; a
+	// track whose revision an earlier scan probed is not opened again.
+	listed := map[string]scanner.StorageAudioTrack{}
 	revisions := map[string]string{}
 	for _, entry := range page.GetEntries() {
-		if entry.GetKind() == storagev1.EntryKind_ENTRY_KIND_FILE {
+		if entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_FILE {
+			continue
+		}
+		if track, ok := scanner.StorageAudioTrackFromEntry(entry); ok {
+			listed[entry.GetId()] = track
+		} else {
 			revisions[entry.GetId()] = entry.GetRevision()
 		}
 	}
@@ -70,6 +73,8 @@ func (c *StorageScanner) prepareAudio(ctx context.Context, outage *audioOutage, 
 	if err != nil {
 		return nil, 0, err
 	}
+	// The page is admitted for reads only when a track must be opened.
+	var sealed *nativestorage.ScanPage
 	var tracks []scanner.StorageAudioTrack
 	skipped := 0
 	read, unavailable := false, false
@@ -85,10 +90,19 @@ func (c *StorageScanner) prepareAudio(ctx context.Context, outage *audioOutage, 
 			}
 			continue
 		}
+		if track, ok := listed[entry.GetId()]; ok {
+			tracks = append(tracks, track)
+			continue
+		}
 		if hit, ok := cached[entry.GetId()]; ok {
 			if track, err := scanner.CachedStorageAudioTrack(entry, hit.Status, hit.Probe); err == nil {
 				tracks = append(tracks, track)
 				continue
+			}
+		}
+		if sealed == nil {
+			if sealed, err = c.audioReader.AdmitScanPage(ctx, location, source, lease, checkpoint, page); err != nil {
+				return nil, 0, err
 			}
 		}
 		track, err := c.probeAudio(ctx, sealed, i, entry)
@@ -116,8 +130,15 @@ func (c *StorageScanner) probeAudio(ctx context.Context, sealed *nativestorage.S
 		}
 		causes := scanner.StorageAudioProbeFailureCauses(err)
 		if !ok {
-			slog.WarnContext(ctx, "native audiobook track probe failed", "entry_id", entry.GetId(), "causes", causes)
-			return scanner.StorageAudioTrack{}, false
+			// A cause no rule names is still this track's own when the
+			// scan's authority holds: the track waits for the next scan
+			// instead of stopping this one, and the outage limit still
+			// stops a scan whose provider fails every book.
+			if authErr := c.audioReader.ReauthorizePage(ctx, sealed); authErr != nil {
+				slog.WarnContext(ctx, "native audiobook track probe failed", "entry_id", entry.GetId(), "causes", causes)
+				return scanner.StorageAudioTrack{}, false
+			}
+			status = scanner.StorageAudioTrackUnavailable
 		}
 		slog.WarnContext(ctx, "native audiobook track not probed", "entry_id", entry.GetId(), "status", status, "causes", causes)
 		return scanner.StorageAudioTrack{Entry: proto.CloneOf(entry), Status: status}, true

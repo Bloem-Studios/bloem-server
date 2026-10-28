@@ -242,8 +242,11 @@ func (s *server) List(ctx context.Context, r *storagev1.ListRequest) (*storagev1
 // audioCatalogTracks are audio-catalog's books, one track each. A test steers them
 // through files beside notify: <book>.rev holds a track's revision,
 // <book>.removed removes the book and <book>.missing keeps it listed while
-// reads of its track find no bytes.
+// reads of its track find no bytes. With notify.listed every track lists its
+// audio metadata.
 func (s *server) audioCatalogTracks() []object {
+	_, err := os.Stat(s.notify + ".listed")
+	listed := err == nil
 	var out []object
 	for _, book := range []string{"book-1", "book-2"} {
 		if _, err := os.Stat(s.notify + "." + book + ".removed"); err == nil {
@@ -254,7 +257,11 @@ func (s *server) audioCatalogTracks() []object {
 			revision = string(b)
 		}
 		data := s.objects[0].data
-		out = append(out, object{entry: &storagev1.Entry{Id: book + "/track", Name: "1.mp3", LogicalPath: book + "/1.mp3", Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Size: int64(len(data)), Revision: revision, AudioFile: &storagev1.AudioFileMetadata{DiscNumber: 1, TrackNumber: 1}}, data: data})
+		meta := &storagev1.AudioFileMetadata{DiscNumber: 1, TrackNumber: 1}
+		if listed {
+			meta.DurationSeconds, meta.Codec, meta.Bitrate, meta.SampleRate, meta.Channels = 2.75, "mp3", 64000, 44100, 1
+		}
+		out = append(out, object{entry: &storagev1.Entry{Id: book + "/track", Name: "1.mp3", LogicalPath: book + "/1.mp3", Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Size: int64(len(data)), Revision: revision, AudioFile: meta}, data: data})
 	}
 	return out
 }
@@ -265,6 +272,10 @@ func (s *server) audioCatalogTracks() []object {
 // in full.
 func (s *server) listAudioCatalog(r *storagev1.ListRequest) (*storagev1.ListResponse, error) {
 	s.audit("list " + r.DirectoryId + " since=" + r.ChangesSince)
+	// notify.fail-once makes the next listing fail as an unavailable provider.
+	if err := os.Remove(s.notify + ".fail-once"); err == nil {
+		return nil, status.Error(codes.Unavailable, "provider hiccup")
+	}
 	tracks := s.audioCatalogTracks()
 	if r.DirectoryId == "root" {
 		page := &storagev1.ListResponse{Complete: true, ChangeToken: "catalog"}

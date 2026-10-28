@@ -217,6 +217,8 @@ type StorageScanner struct {
 	movieReader      *nativestorage.ScanReader
 	movieProbeConfig scanner.NativeProbeConfig
 	movieMetadata    NativeMovieMetadata
+	retries          int
+	retryDelay       time.Duration
 }
 
 var _ StorageIngestor = (*StorageScanner)(nil)
@@ -233,7 +235,8 @@ func (c *StorageScanner) LocationSelections(ctx context.Context, folderID int) (
 	return c.sources.LocationSelections(ctx, folderID)
 }
 
-func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.MediaFolder, selection storagesource.LocationSelection) (result *Result, err error) {
+//nolint:funlen,gocyclo // the existing scan loop, renamed unchanged behind the retrying ScanStorageFolder
+func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *models.MediaFolder, selection storagesource.LocationSelection) (result *Result, err error) {
 	location := selection.Location
 	result = &Result{ScanResult: &scanner.ScanResult{}}
 	started := time.Now()
@@ -373,7 +376,9 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 	}
 	var following *followingPage
 	defer func() { following.stop() }()
+	var times scanPageTimes
 	for {
+		began := time.Now()
 		if err = nativeScanCause(ctx, job); err != nil {
 			return result, err
 		}
@@ -453,6 +458,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		if err != nil {
 			return result, err
 		}
+		fetched := time.Now()
 		// The previous page's matches may move items to their provider
 		// identity; publish against settled catalog rows.
 		matching.Wait()
@@ -515,6 +521,7 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		if err = c.sources.ApplyPageAuthorizedSkipping(job, lease, checkpoint, page, skipDirectory, authorize, publish); err != nil {
 			return result, err
 		}
+		times.add(job, folder.ID, len(page.GetEntries()), fetched.Sub(began), time.Since(fetched))
 		if pipeline != nil {
 			pipeline.release(checkpoint.DirectoryID)
 		}

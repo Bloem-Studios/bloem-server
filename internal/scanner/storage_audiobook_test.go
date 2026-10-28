@@ -80,3 +80,35 @@ func TestNativeAudioTrackChapters(t *testing.T) {
 		t.Fatal("subsecond track admitted")
 	}
 }
+
+func TestStorageAudioTrackFromEntryUsesListedMetadata(t *testing.T) {
+	entry := func(name string, meta *storagev1.AudioFileMetadata) *storagev1.Entry {
+		return &storagev1.Entry{Id: "book/1", Name: name, Kind: storagev1.EntryKind_ENTRY_KIND_FILE, Revision: "r1", AudioFile: meta}
+	}
+	listed := &storagev1.AudioFileMetadata{DurationSeconds: 3600.5, Codec: "AAC", Container: "m4b", Bitrate: 64000, SampleRate: 44100, Channels: 2,
+		Chapters: []*storagev1.AudioChapter{{Id: "a", Title: "One", StartSeconds: 0, EndSeconds: 1800}, {Id: "b", Title: "Two", StartSeconds: 1800, EndSeconds: 3600.5}}}
+	track, ok := StorageAudioTrackFromEntry(entry("book.m4b", listed))
+	if !ok || track.Status != StorageAudioTrackOK || track.Probe == nil || track.Probe.Probe == nil {
+		t.Fatalf("listed metadata not used: %+v %v", track, ok)
+	}
+	p := track.Probe.Probe
+	if p.Container != "mp4" || p.CodecAudio != "aac" || p.Bitrate != 64 || p.Duration != 3600 || len(p.AudioTracks) != 1 || p.AudioTracks[0].Channels != 2 || p.AudioTracks[0].SampleRate != 44100 {
+		t.Fatalf("probe facts: %+v", p)
+	}
+	if track.Probe.DurationSeconds != 3600.5 || len(track.Probe.Chapters) != 2 || track.Probe.Chapters[1].Title != "Two" || track.Probe.Chapters[1].StartSeconds != 1800 {
+		t.Fatalf("timeline: %+v", track.Probe)
+	}
+	if mp3, ok := StorageAudioTrackFromEntry(entry("part.mp3", &storagev1.AudioFileMetadata{DurationSeconds: 10, Codec: "mp3"})); !ok || mp3.Probe.Probe.Container != "mp3" {
+		t.Fatalf("mp3: %+v %v", mp3, ok)
+	}
+	for name, e := range map[string]*storagev1.Entry{
+		"no metadata":    entry("book.m4b", nil),
+		"no codec":       entry("book.m4b", &storagev1.AudioFileMetadata{DurationSeconds: 10}),
+		"under a second": entry("book.m4b", &storagev1.AudioFileMetadata{DurationSeconds: 0.5, Codec: "aac"}),
+		"no demuxer":     entry("book.aiff", &storagev1.AudioFileMetadata{DurationSeconds: 10, Codec: "pcm_s16be"}),
+	} {
+		if _, ok := StorageAudioTrackFromEntry(e); ok {
+			t.Errorf("%s: built a track", name)
+		}
+	}
+}

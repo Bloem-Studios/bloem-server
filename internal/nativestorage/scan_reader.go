@@ -144,6 +144,12 @@ func (r *ScanReader) AdmitScanPage(ctx context.Context, location storagesource.L
 	return p, nil
 }
 
+// ReauthorizePage reports whether p's scan still holds its authority, as its
+// open files' reads check it.
+func (r *ScanReader) ReauthorizePage(ctx context.Context, p *ScanPage) error {
+	return r.reauthorize(ctx, p)
+}
+
 // reauthorize authorizes p again for the reads of its open files, unless a
 // check that began within the reader's authorityReuse succeeded.
 func (r *ScanReader) reauthorize(ctx context.Context, p *ScanPage) error {

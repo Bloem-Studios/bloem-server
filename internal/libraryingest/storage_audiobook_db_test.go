@@ -59,9 +59,9 @@ func TestNativeAudioScanProbesThroughPinnedReaderDB(t *testing.T) {
 			f := nativeAudioLaneFixture(t, mode)
 			result, err := f.scan.ScanStorageFolder(t.Context(), f.folder, storagesource.LocationSelection{Location: f.location})
 			if mode == "audio-stat-conflict" || mode == "audio-read-revision-change" {
-				// A revision that changes during the read only rejects the book.
-				if (err == nil) != (mode == "audio-read-revision-change") {
-					t.Fatalf("revision conflict: %v", err)
+				// A track whose pinned file changed only rejects its book.
+				if err != nil {
+					t.Fatalf("revision conflict stopped the scan: %v", err)
 				}
 				var count int
 				if err := f.pool.QueryRow(t.Context(), `SELECT count(*) FROM media_files WHERE media_folder_id=$1`, f.folder.ID).Scan(&count); err != nil || count != 0 {
@@ -275,5 +275,40 @@ func TestNativeAudioCatalogScanRejectsOnlyTheUnreadableBookDB(t *testing.T) {
 	// Once read, the book is carried like any other.
 	if audit := c.scan(); strings.Contains(audit, "list book-") {
 		t.Fatalf("unchanged scan: %s", audit)
+	}
+}
+
+func TestNativeAudioCatalogPublishesListedMetadataWithoutReadingDB(t *testing.T) {
+	c := audioCatalog{t, nativeAudioLaneFixture(t, "audio-catalog")}
+	c.write("listed", "")
+	if audit := c.scan(); !strings.Contains(audit, "list book-1 since=") || strings.Contains(audit, "stat ") || strings.Contains(audit, "read ") {
+		t.Fatalf("listed audio metadata still opened tracks: %s", audit)
+	}
+	if got := c.present(); !maps.Equal(got, map[string]string{"book-1/track": "v1", "book-2/track": "v1"}) {
+		t.Fatalf("publication: %v", got)
+	}
+	var count int
+	if err := c.f.pool.QueryRow(t.Context(), `SELECT count(*) FROM media_files WHERE media_folder_id=$1 AND duration=2 AND codec_audio='mp3' AND container='mp3' AND missing_since IS NULL`, c.f.folder.ID).Scan(&count); err != nil || count != 2 {
+		t.Fatalf("listed facts published=%d err=%v", count, err)
+	}
+}
+
+func TestNativeAudioCatalogScanResumesAfterAFailureDB(t *testing.T) {
+	c := audioCatalog{t, nativeAudioLaneFixture(t, "audio-catalog")}
+	c.f.scan.SetRetry(1, 0)
+	c.write("listed", "")
+	c.write("fail-once", "")
+	if audit := c.scan(); strings.Count(audit, "list root since=") != 2 {
+		t.Fatalf("failed listing not resumed: %s", audit)
+	}
+	if got := c.present(); !maps.Equal(got, map[string]string{"book-1/track": "v1", "book-2/track": "v1"}) {
+		t.Fatalf("publication after resuming: %v", got)
+	}
+	// Without retries the same failure ends the scan.
+	c.f.scan.SetRetry(0, 0)
+	c.write("fail-once", "")
+	c.write("io", "")
+	if _, err := c.f.scan.ScanStorageFolder(t.Context(), c.f.folder, storagesource.LocationSelection{Location: c.f.location}); err == nil {
+		t.Fatal("a failed scan without retries succeeded")
 	}
 }

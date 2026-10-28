@@ -29,6 +29,9 @@ func newNativeMovieStorageScanner(deps *api.Dependencies) (*libraryingest.Storag
 	if err != nil {
 		return nil, err
 	}
+	// A failed storage scan resumes its journal instead of waiting for the
+	// next scheduled or manual scan.
+	storage.SetRetry(5, 30*time.Second)
 	reader, err := nativestorage.NewScanReader(deps.DB, deps.NativeStorage)
 	if err != nil {
 		return nil, err

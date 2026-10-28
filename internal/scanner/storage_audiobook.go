@@ -78,6 +78,49 @@ func (s *Scanner) ProbeStorageAudio(ctx context.Context, entry *storagev1.Entry,
 	return track, nil
 }
 
+// movFormatNames is the format name ffprobe gives an MP4 family file.
+const movFormatNames = "mov,mp4,m4a,3gp,3g2,mj2"
+
+// nativeAudioFormatNames are the ffprobe format names of each native audio
+// demuxer, so a track built from provider metadata names its container as a
+// probe of the same file would.
+var nativeAudioFormatNames = map[NativeProbeDemuxer]string{
+	NativeProbeMOV:  movFormatNames,
+	NativeProbeMP3:  "mp3",
+	NativeProbeFLAC: "flac",
+	NativeProbeOgg:  "ogg",
+	NativeProbeWAV:  "wav",
+}
+
+// StorageAudioTrackFromEntry builds a track from the audio metadata its
+// provider listed, as StorageEbookFromEntry does for books, so the track is
+// published without being opened and probed. The provider must give the
+// codec and a duration of at least a second; the container follows from the
+// file's demuxer. The page's entry metadata was validated when it was listed.
+func StorageAudioTrackFromEntry(entry *storagev1.Entry) (StorageAudioTrack, bool) {
+	meta := entry.GetAudioFile()
+	demuxer, ok := NativeAudioDemuxer(entry.GetName())
+	codec := strings.ToLower(strings.TrimSpace(meta.GetCodec()))
+	duration := meta.GetDurationSeconds()
+	if !ok || meta == nil || entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_FILE || codec == "" ||
+		!durationIsPositiveFinite(duration) || duration < 1 || duration > maxReasonableAudioDurationSeconds {
+		return StorageAudioTrack{}, false
+	}
+	kbps := int(meta.GetBitrate() / 1000)
+	probe := &ProbeData{
+		Container:   containerForFile(nativeAudioFormatNames[demuxer], entry.GetName()),
+		CodecAudio:  codec,
+		Duration:    int(duration),
+		Bitrate:     kbps,
+		AudioTracks: []AudioTrackInfo{{Codec: codec, Channels: int(meta.GetChannels()), Bitrate: kbps, SampleRate: int(meta.GetSampleRate()), Default: true}},
+	}
+	chapters := make([]ChapterInfo, 0, len(meta.GetChapters()))
+	for i, chapter := range meta.GetChapters() {
+		chapters = append(chapters, ChapterInfo{Index: i, Title: chapter.GetTitle(), StartSeconds: chapter.GetStartSeconds(), EndSeconds: chapter.GetEndSeconds(), Source: "embedded"})
+	}
+	return StorageAudioTrack{Entry: proto.CloneOf(entry), Status: StorageAudioTrackOK, Probe: &NativeAudioProbe{Probe: probe, DurationSeconds: duration, Chapters: chapters}}, true
+}
+
 // CachedStorageAudioTrack rebuilds a track from the probe an earlier scan
 // kept for this entry's exact revision, without opening it.
 func CachedStorageAudioTrack(entry *storagev1.Entry, status string, probe []byte) (StorageAudioTrack, error) {

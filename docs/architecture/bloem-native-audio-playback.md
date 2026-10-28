@@ -32,7 +32,14 @@ at once (`audioPipeline`): each directory is claimed until its page is applied,
 and pages are still applied one at a time. Audio probes read 1 MiB chunks, each
 behind the scan reader's per-read authority check.
 
-Every admitted track is probed through `ScanReader` the first time its revision
+A track whose listing carries its audio metadata (codec and a duration of at
+least a second in `AudioFileMetadata`) is published from that metadata, as an
+ebook is from `EbookMetadata`, and is never opened during a scan
+(`StorageAudioTrackFromEntry`). Its container is named from the file's demuxer,
+as a probe would name it. The page is admitted for reads only when one of its
+tracks must be opened. Bookwarehouse lists this metadata for every track.
+
+Any other track is probed through `ScanReader` the first time its revision
 is seen; provider paths and URLs never become tool inputs. The staged probe is
 kept in `bloem_storage_audio_probes` per location and entry with that revision,
 and a later scan reuses it instead of opening a track whose revision is
@@ -48,10 +55,16 @@ rejects only its book, and the scan goes on. Two kinds count as the track's own:
 - The tool rejected the bytes or exceeded its input or output budget. The track
   is `invalid` for that revision.
 
-Every other failure stops the scan: authority, the plugin or a provider outage,
-the host, or anything unrecognised. So does `audioOutageLimit`, when that many
-books in a row have an unavailable track. A provider whose storage is gone then
-leaves the rest of the catalog pending, instead of rejecting every book.
+A failure no rule names is also the track's own, and leaves it `unavailable`,
+when the scan's authority still holds afterwards. A failed authority check stops
+the scan, as does `audioOutageLimit` when that many books in a row have an
+unavailable track. A provider whose storage is gone then leaves the rest of the
+catalog pending, instead of rejecting every book.
+
+A storage scan that fails resumes its journal where it stopped
+(`StorageScanner.SetRetry`; production allows five failures in a row, pausing
+30 seconds longer after each). An attempt that ran for five minutes resets the
+count.
 
 `bloem_storage_audio_staged_tracks` retains bounded candidates across pages and
 lease takeover. Nothing publishes before directory completion, including when
