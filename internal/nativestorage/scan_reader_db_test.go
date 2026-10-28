@@ -265,6 +265,7 @@ func TestScanEntryAuthorityBeforeAndAfterIO(t *testing.T) {
 		})
 	}
 }
+
 // With authority reuse, a page's reads share one check within the window,
 // and the first check after it sees a revocation.
 func TestScanEntryReusesPageAuthorityWithinItsWindow(t *testing.T) {
