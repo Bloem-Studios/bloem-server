@@ -33,6 +33,10 @@ func newNativeMovieStorageScanner(deps *api.Dependencies) (*libraryingest.Storag
 	if err != nil {
 		return nil, err
 	}
+	// The reads of a page's files share one authority check per second
+	// instead of a locked check before and after every read; a probe makes
+	// hundreds of reads. Each page is still published under the locks.
+	reader.SetAuthorityReuse(time.Second)
 	// The scanner keeps its trusted startup ffprobe path. Bounds cover all
 	// provider bytes (including Matroska header reads) and tool diagnostics.
 	cfg := scanner.NativeProbeConfig{Input: nativestorage.ToolInputConfig{MaxBytes: 128 << 20, ChunkBytes: 128 << 10, MaxConcurrentReads: 2, Timeout: 60 * time.Second}, MaxJSONBytes: 4 << 20, MaxStderrBytes: 64 << 10}
@@ -40,8 +44,8 @@ func newNativeMovieStorageScanner(deps *api.Dependencies) (*libraryingest.Storag
 		return nil, err
 	}
 	if deps.Scanner.NativeAudioScanConfigured() {
-		// Every audio probe read is a provider range request behind a fresh
-		// authority check, so larger reads cut both per probe.
+		// Every audio probe read is a provider range request, so larger
+		// reads cut the requests per probe.
 		audio := cfg
 		audio.Input.ChunkBytes = 1 << 20
 		if err := storage.ConfigureNativeAudio(true, reader, audio, deps.NativeAudioGate); err != nil {

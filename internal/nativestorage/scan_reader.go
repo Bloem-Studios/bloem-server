@@ -32,6 +32,10 @@ type ScanReader struct {
 	runtime          Runtime
 	nativeMovieReady bool
 	nativeAudioReady bool
+	// authorityReuse is how long a page's successful authorization stands
+	// for the reads of its open files; zero checks before and after each.
+	authorityReuse time.Duration
+	now            func() time.Time
 }
 
 // ScanPage seals the validated provider page, its current pending checkpoint
@@ -48,6 +52,15 @@ type ScanPage struct {
 	snapshot   *plugins.NativeStorageSnapshot
 	owners     scanOwnerEvidence
 	resources  resourcetenancy.NativeResourceSet
+	authority  pageAuthority
+}
+
+// pageAuthority lets a page's open files share one authorization: one check
+// runs at a time, and a success stands for the reader's authorityReuse from
+// when it began. A failure is never reused.
+type pageAuthority struct {
+	turn    chan struct{}
+	checked time.Time
 }
 type scanOwnerEvidence struct {
 	folderOwner                    uuid.UUID
@@ -58,7 +71,17 @@ func NewScanReader(pool *pgxpool.Pool, host *Host) (*ScanReader, error) {
 	if pool == nil || host == nil || host.Registry == nil || host.Manager == nil {
 		return nil, storagesource.ErrSourceUnavailable
 	}
-	return &ScanReader{pool: pool, host: host, runtime: ManagedRuntime{Manager: host.Manager}}, nil
+	return &ScanReader{pool: pool, host: host, runtime: ManagedRuntime{Manager: host.Manager}, now: time.Now}, nil
+}
+
+// SetAuthorityReuse is startup-only, before this reader admits any pages. A
+// page's reads then share one authorization for up to d: a revocation stops
+// them within d instead of at the next read. Publication is unaffected; it
+// authorizes each page under the authority locks in its own transaction.
+func (r *ScanReader) SetAuthorityReuse(d time.Duration) {
+	if r != nil && d >= 0 {
+		r.authorityReuse = d
+	}
 }
 
 // SetNativeMovieReady is startup-only, before this reader admits any pages or
@@ -110,13 +133,43 @@ func (r *ScanReader) AdmitScanPage(ctx context.Context, location storagesource.L
 	if pinned.Sources[0].Generation != snapshot.Generation {
 		return nil, storagesource.ErrSourceUnavailable
 	}
-	p := &ScanPage{resources: pinned, reader: r, location: location, source: source, lease: lease, checkpoint: checkpoint, page: copyPage, snapshot: &frozen}
+	p := &ScanPage{resources: pinned, reader: r, location: location, source: source, lease: lease, checkpoint: checkpoint, page: copyPage, snapshot: &frozen, authority: pageAuthority{turn: make(chan struct{}, 1)}}
 	p.identity = p
+	began := r.now()
 	p.owners, err = r.authorize(ctx, p)
 	if err != nil {
 		return nil, err
 	}
+	p.authority.checked = began
 	return p, nil
+}
+
+// reauthorize authorizes p again for the reads of its open files, unless a
+// check that began within the reader's authorityReuse succeeded.
+func (r *ScanReader) reauthorize(ctx context.Context, p *ScanPage) error {
+	if p == nil || p.identity != p || p.reader != r {
+		return storagesource.ErrReferenceConflict
+	}
+	if r.authorityReuse <= 0 {
+		_, err := r.authorize(ctx, p)
+		return err
+	}
+	select {
+	case p.authority.turn <- struct{}{}:
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
+	defer func() { <-p.authority.turn }()
+	if !p.authority.checked.IsZero() && r.now().Sub(p.authority.checked) < r.authorityReuse {
+		return nil
+	}
+	p.authority.checked = time.Time{}
+	began := r.now()
+	if _, err := r.authorize(ctx, p); err != nil {
+		return err
+	}
+	p.authority.checked = began
+	return nil
 }
 
 func sameScanSnapshot(a, b *plugins.NativeStorageSnapshot) bool {
@@ -212,7 +265,7 @@ func (r *ScanReader) OpenScanEntry(ctx context.Context, p *ScanPage, index int) 
 			release()
 		}
 	}()
-	if _, err = r.authorize(ctx, p); err != nil {
+	if err = r.reauthorize(ctx, p); err != nil {
 		return nil, err
 	}
 	snapshot := p.snapshot
@@ -316,7 +369,7 @@ func (s *scanFileState) check(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return s.fail(context.Cause(ctx))
 	}
-	_, err := s.reader.authorize(ctx, s.page)
+	err := s.reader.reauthorize(ctx, s.page)
 	if err == nil {
 		err = s.ctx.Err()
 	}

@@ -34,6 +34,13 @@ I/O. `storagesource.ValidatePendingPageTx` and the journal's `NextDirectory`
 share the same lease/checkpoint verifier.
 
 The opened file repeats authorization before and after each pinned range.
+`SetAuthorityReuse` lets the reads of a page's open files share one
+authorization. One check runs at a time, and a success stands for the reuse
+window from when it began, so a revocation stops those reads within the window
+instead of at the next read. A failure is never reused. Production uses one
+second, because a probe makes hundreds of range reads and each check takes the
+authority locks. Publication is unaffected: the scan publishes each page after
+authorizing it under the locks in that page's own transaction.
 Source, authority and runtime failures stay sticky. A terminal error clears
 the entire destination of the enclosing read and returns zero, including when
 earlier ranges succeeded or the terminal cause contains EOF. Ordinary EOF at

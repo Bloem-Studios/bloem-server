@@ -265,6 +265,34 @@ func TestScanEntryAuthorityBeforeAndAfterIO(t *testing.T) {
 		})
 	}
 }
+// With authority reuse, a page's reads share one check within the window,
+// and the first check after it sees a revocation.
+func TestScanEntryReusesPageAuthorityWithinItsWindow(t *testing.T) {
+	f := newScanReadFixture(t)
+	now := time.Unix(1_800_000_000, 0)
+	f.r.SetAuthorityReuse(time.Second)
+	f.r.now = func() time.Time { return now }
+	page := f.admit(t)
+	opened, err := f.r.OpenScanEntry(t.Context(), page, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer opened.Close()
+	data := make([]byte, 4)
+	if _, err := opened.ReadAt(data, 0); err != nil {
+		t.Fatal(err)
+	}
+	f.mutate(t, "folder")
+	if _, err := opened.ReadAt(data, 0); err != nil {
+		t.Fatalf("authority not reused within its window: %v", err)
+	}
+	now = now.Add(time.Second)
+	before := f.media.reads.Load()
+	if n, err := opened.ReadAt(data, 0); n != 0 || err == nil || f.media.reads.Load() != before {
+		t.Fatal("revoked authority reused past its window", n, err)
+	}
+}
+
 func TestScanEntryStatFactsAndFreshDescribe(t *testing.T) {
 	for _, mode := range []string{"name", "path", "size", "mtime", "revision", "unpinned", "root", "borrow-generation", "cross-location"} {
 		t.Run(mode, func(t *testing.T) {
