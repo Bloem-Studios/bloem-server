@@ -8,8 +8,10 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -250,6 +252,38 @@ func TestToolInputByteBudgetCannotBeBypassedByMultipleRanges(t *testing.T) {
 	})
 	if !errors.Is(err, ErrToolInputBudget) || source.reads.Load() != 1 {
 		t.Fatalf("per-job budget was not retained across requests: %v", err)
+	}
+}
+
+// A tool that seeks takes a few bytes from each range it opens, so a range
+// starts with a small read and grows to ChunkBytes only while it is read on.
+func TestToolInputRangeReadsStartSmallAndGrow(t *testing.T) {
+	data := strings.Repeat("x", 3<<20)
+	var mu sync.Mutex
+	var lengths []int64
+	source := &toolFixtureSource{data: data, read: func(_ context.Context, offset, length int64, w io.Writer) error {
+		mu.Lock()
+		lengths = append(lengths, length)
+		mu.Unlock()
+		_, err := io.WriteString(w, data[offset:offset+length])
+		return err
+	}}
+	input := toolFixtureInput(t, source, func(config *ToolInputConfig) { config.ChunkBytes, config.MaxBytes = 1<<20, 8<<20 })
+	client := toolHTTP(t)
+	err := input.Run(func(_ context.Context, argument string) error {
+		if _, body, err := toolResponse(t, client, "GET", argument, ""); err != nil || len(body) != len(data) {
+			t.Fatalf("full range: %d bytes, %v", len(body), err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	want := []int64{64 << 10, 128 << 10, 256 << 10, 512 << 10, 1 << 20, 1 << 20, 64 << 10}
+	if !slices.Equal(lengths, want) {
+		t.Fatalf("reads %v, want %v", lengths, want)
 	}
 }
 

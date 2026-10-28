@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -27,18 +29,7 @@ import (
 // never the track's own.
 func StorageAudioProbeFailure(err error) (StorageAudioTrackStatus, bool) {
 	var unavailable, invalid, other bool
-	var visit func(error)
-	visit = func(e error) {
-		if joined, ok := e.(interface{ Unwrap() []error }); ok {
-			for _, cause := range joined.Unwrap() {
-				visit(cause)
-			}
-			return
-		}
-		if cause := errors.Unwrap(e); cause != nil {
-			visit(cause)
-			return
-		}
+	probeFailureCauses(err, func(e error) {
 		var exit *exec.ExitError
 		var syntax *json.SyntaxError
 		var typed *json.UnmarshalTypeError
@@ -57,10 +48,7 @@ func StorageAudioProbeFailure(err error) (StorageAudioTrackStatus, bool) {
 		default:
 			other = true
 		}
-	}
-	if err != nil {
-		visit(err)
-	}
+	})
 	switch {
 	case other:
 		return "", false
@@ -70,4 +58,36 @@ func StorageAudioProbeFailure(err error) (StorageAudioTrackStatus, bool) {
 		return StorageAudioTrackInvalid, true
 	}
 	return "", false
+}
+
+// StorageAudioProbeFailureCauses names the causes at the bottom of a failed
+// probe for the operator log: each one's type with its gRPC code or text.
+func StorageAudioProbeFailureCauses(err error) string {
+	var causes []string
+	probeFailureCauses(err, func(e error) {
+		if s, ok := status.FromError(e); ok {
+			causes = append(causes, fmt.Sprintf("%T:%s", e, s.Code()))
+			return
+		}
+		causes = append(causes, fmt.Sprintf("%T:%s", e, e.Error()))
+	})
+	return strings.Join(causes, ", ")
+}
+
+// probeFailureCauses calls visit with each cause at the bottom of err's tree.
+func probeFailureCauses(err error, visit func(error)) {
+	if err == nil {
+		return
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		for _, cause := range joined.Unwrap() {
+			probeFailureCauses(cause, visit)
+		}
+		return
+	}
+	if cause := errors.Unwrap(err); cause != nil {
+		probeFailureCauses(cause, visit)
+		return
+	}
+	visit(err)
 }

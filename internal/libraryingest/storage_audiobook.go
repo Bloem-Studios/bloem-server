@@ -111,10 +111,15 @@ func (c *StorageScanner) prepareAudio(ctx context.Context, outage *audioOutage, 
 func (c *StorageScanner) probeAudio(ctx context.Context, sealed *nativestorage.ScanPage, index int, entry *storagev1.Entry) (scanner.StorageAudioTrack, error) {
 	failed := func(err error) (scanner.StorageAudioTrack, bool) {
 		status, ok := scanner.StorageAudioProbeFailure(err)
-		if !ok || ctx.Err() != nil {
+		if ctx.Err() != nil {
 			return scanner.StorageAudioTrack{}, false
 		}
-		slog.WarnContext(ctx, "native audiobook track not probed", "entry_id", entry.GetId(), "status", status, "error", err)
+		causes := scanner.StorageAudioProbeFailureCauses(err)
+		if !ok {
+			slog.WarnContext(ctx, "native audiobook track probe failed", "entry_id", entry.GetId(), "causes", causes)
+			return scanner.StorageAudioTrack{}, false
+		}
+		slog.WarnContext(ctx, "native audiobook track not probed", "entry_id", entry.GetId(), "status", status, "causes", causes)
 		return scanner.StorageAudioTrack{Entry: proto.CloneOf(entry), Status: status}, true
 	}
 	file, err := c.audioReader.OpenScanEntry(ctx, sealed, index)

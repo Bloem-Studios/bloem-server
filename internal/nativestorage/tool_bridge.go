@@ -88,6 +88,10 @@ func (t *ToolInput) serveToolRange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	buffer := make([]byte, int(min(length, int64(t.config.ChunkBytes))))
+	// A range starts with a small read that doubles up to ChunkBytes. A tool
+	// that seeks takes a few bytes from each range it opens; a full first
+	// chunk for each would spend the byte budget on data it never reads.
+	size := min(len(buffer), toolRangeFirstChunk)
 	started := false
 	for remaining := length; remaining > 0; {
 		// A tool may deliberately close a successful HTTP stream in order to
@@ -95,7 +99,8 @@ func (t *ToolInput) serveToolRange(w http.ResponseWriter, r *http.Request) {
 		if r.Context().Err() != nil {
 			return
 		}
-		chunk := buffer[:int(min(remaining, int64(len(buffer))))]
+		chunk := buffer[:int(min(remaining, int64(size)))]
+		size = min(size*2, len(buffer))
 		if err := t.readToolChunk(chunk, start); err != nil {
 			// Recorded unless it is the teardown of a range the tool abandoned.
 			t.failServing(err)
@@ -122,6 +127,8 @@ func (t *ToolInput) serveToolRange(w http.ResponseWriter, r *http.Request) {
 		remaining -= int64(len(chunk))
 	}
 }
+
+const toolRangeFirstChunk = 64 << 10
 
 // readToolChunk buffers a complete bounded read before HTTP sees any byte.
 // Even n==len(buffer) accompanied by an error must invalidate all tool output.
