@@ -11,7 +11,10 @@ Production moved through these builds after the
 | 20:56 | `54cadaab5` | 0 | 12 s | passed |
 | 21:11 | `3ed00c8bd` | 0 | 19 s | failed: two recommendation tests that passed on the next commit |
 | 21:33 | `396dd92e9` | 0 | 13 s | passed |
-| 22:20 | `203b6e96b` | 1 | 43 s | running when this receipt was written |
+| 22:20 | `203b6e96b` | 1 | 43 s | cancelled by a newer commit |
+| 22:37 | `42c88f044` | 0 | 43 s | failed: a storage plugin test could not reach `proxy.golang.org` |
+| 23:00 | `4ca1cc3bd` | 0 | 45 s | failed: the kept cover rule below, and a web test timeout |
+| 23:26 | `ae7c01c3d` | 0 | 45 s | running when this receipt was written |
 
 At the owner's direction these were built locally instead of waiting for the
 CI-gated Bloem Image workflow: each image was built from a `git archive` of the
@@ -21,7 +24,9 @@ exact commit, with the workflow's build arguments and OCI labels, and ran as
 Before each restart: a container snapshot `pre-main-<short commit>` and a
 database restore point of the same name (`3C0/FD214BF0`, `3C1/9887CE98`,
 `3C2/E5359E40`, `3C3/A70D7060`, `3C3/B855F478`, `3C4/5FFA678`,
-`3C4/CAD73D00`). Every start came up healthy with no restarts.
+`3C4/CAD73D00`, `3C5/148235F8`, `3C5/A2E609C8`, `3C6/57C35488`). Every start
+came up healthy with no restarts. The deployments from 22:20 keep the loopback
+profiler enabled.
 
 ## What changed
 
@@ -59,6 +64,21 @@ Contention that grew with the scan:
   library. The migration is `20261028215150_bloem_media_files_presentation_and_held_indexes`;
   it builds both indexes concurrently and only if missing.
 
+Covers and the journal:
+
+- `42c88f044` lets an audiobook worker look for its next pending directory
+  after the furthest one it claimed. Completed directories stay in the pending
+  index until vacuumed, and the lookup from the first one had grown to 43 ms,
+  about ten times a book.
+- `5ea0deffd` keeps a Bookwarehouse ebook or audiobook cover in artwork storage
+  after its first authorized read; `ae7c01c3d` serves a kept cover from there
+  only after authorizing the request, as every storage cover request is, so a
+  hidden or removed book's cover stops at once. `4ca1cc3bd` adds the daily
+  `bloem_sweep_storage_covers` task, which deletes kept covers no book names
+  any more. `4ca1cc3bd` itself served kept covers on their signed URL alone
+  for 26 minutes; CI's `TestNativeAudioHiddenPresentationServesNoCoverDB`
+  caught it, and `ae7c01c3d` restored the rule.
+
 ## Production changes outside the deployments
 
 - 21:22 and 21:35: both Bookwarehouse installations upgraded to plugin 0.3.7
@@ -82,8 +102,9 @@ The Bookwarehouse ebook library's full scan completed at 20:40. The audiobook
 scan, which stopped at 18:52 and again at 21:05, ran at 4.7 books a second
 before the indexes, writing each book in about 200 ms, and at 48 books a second
 after them, about 18 ms a book, with the database still busy with the catalog
-follow-up tasks of the import. About 65,000 of the catalog's roughly 245,000
-audiobooks were published at 22:23.
+follow-up tasks of the import. About 120,000 of the catalog's roughly 245,000
+audiobooks were published at 23:20. A kept audiobook cover was served from
+artwork storage after authorization, without reading Bookwarehouse again.
 
 Measurements soon after a restart overlap `rebuild_release_interest`, which
 runs at every startup and for one to three minutes resolves each profile's
