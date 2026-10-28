@@ -40,7 +40,11 @@ func newNativeMovieStorageScanner(deps *api.Dependencies) (*libraryingest.Storag
 		return nil, err
 	}
 	if deps.Scanner.NativeAudioScanConfigured() {
-		if err := storage.ConfigureNativeAudio(true, reader, cfg, deps.NativeAudioGate); err != nil {
+		// Every audio probe read is a provider range request behind a fresh
+		// authority check, so larger reads cut both per probe.
+		audio := cfg
+		audio.Input.ChunkBytes = 1 << 20
+		if err := storage.ConfigureNativeAudio(true, reader, audio, deps.NativeAudioGate); err != nil {
 			return nil, err
 		}
 		deps.NativeAudioScannerReady = true
