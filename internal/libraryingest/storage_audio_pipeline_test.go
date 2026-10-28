@@ -23,12 +23,14 @@ type fakeAudioJournal struct {
 	children map[string][]string
 }
 
-func (j *fakeAudioJournal) NextDirectoryExcluding(_ context.Context, _ storagesource.Lease, inFlight []string) (storagesource.Checkpoint, bool, error) {
+func (j *fakeAudioJournal) NextDirectoryAfter(_ context.Context, _ storagesource.Lease, after string, inFlight []string) (storagesource.Checkpoint, bool, error) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	for _, id := range j.pending {
-		if !slices.Contains(inFlight, id) {
-			return storagesource.Checkpoint{DirectoryID: id}, true, nil
+	for _, from := range []string{after, ""} {
+		for _, id := range j.pending {
+			if id > from && !slices.Contains(inFlight, id) {
+				return storagesource.Checkpoint{DirectoryID: id}, true, nil
+			}
 		}
 	}
 	return storagesource.Checkpoint{}, false, nil

@@ -22,13 +22,30 @@ func (r *Repository) NextDirectory(ctx context.Context, lease Lease) (Checkpoint
 // A false result only means no other directory is pending now: pages still
 // in flight may queue more.
 func (r *Repository) NextDirectoryExcluding(ctx context.Context, lease Lease, inFlight []string) (Checkpoint, bool, error) {
+	return r.nextDirectory(ctx, lease, "", inFlight)
+}
+
+// NextDirectoryAfter is NextDirectoryExcluding starting after a directory
+// the caller has claimed. A completed directory stays in the pending index
+// until it is vacuumed, so a scan that looked from the first pending
+// directory each time skipped more of them the further it got. It looks from
+// the start only when nothing pending follows after.
+func (r *Repository) NextDirectoryAfter(ctx context.Context, lease Lease, after string, inFlight []string) (Checkpoint, bool, error) {
+	checkpoint, pending, err := r.nextDirectory(ctx, lease, after, inFlight)
+	if err != nil || pending || after == "" {
+		return checkpoint, pending, err
+	}
+	return r.nextDirectory(ctx, lease, "", inFlight)
+}
+
+func (r *Repository) nextDirectory(ctx context.Context, lease Lease, after string, inFlight []string) (Checkpoint, bool, error) {
 	var checkpoint Checkpoint
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return checkpoint, false, err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	checkpoint, pending, err := pendingDirectoryTx(ctx, tx, lease, inFlight...)
+	checkpoint, pending, err := pendingDirectoryTx(ctx, tx, lease, after, inFlight...)
 	if err != nil {
 		return checkpoint, false, err
 	}

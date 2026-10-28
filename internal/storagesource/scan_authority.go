@@ -36,7 +36,10 @@ func ValidatePendingPageTx(ctx context.Context, tx pgx.Tx, lease Lease, checkpoi
 	return nil
 }
 
-func pendingDirectoryTx(ctx context.Context, tx pgx.Tx, lease Lease, exclude ...string) (Checkpoint, bool, error) {
+// pendingDirectoryTx returns the first pending, reachable directory after
+// after (all of them for ""), other than those excluded. Roots are probed per
+// candidate row: as a join, the planner read every root of the run.
+func pendingDirectoryTx(ctx context.Context, tx pgx.Tx, lease Lease, after string, exclude ...string) (Checkpoint, bool, error) {
 	var checkpoint Checkpoint
 	if err := readLease(ctx, tx, lease); err != nil {
 		return checkpoint, false, err
@@ -44,7 +47,10 @@ func pendingDirectoryTx(ctx context.Context, tx pgx.Tx, lease Lease, exclude ...
 	if exclude == nil {
 		exclude = []string{}
 	}
-	err := tx.QueryRow(ctx, `SELECT directory_id,current_cursor,complete FROM bloem_storage_scan_directories WHERE run_id=$1 AND NOT complete AND NOT directory_id=ANY($2::text[]) AND EXISTS(SELECT 1 FROM bloem_storage_scan_directory_roots dr WHERE dr.run_id=bloem_storage_scan_directories.run_id AND dr.directory_id=bloem_storage_scan_directories.directory_id) ORDER BY directory_id LIMIT 1`, lease.RunID, exclude).Scan(&checkpoint.DirectoryID, &checkpoint.Cursor, &checkpoint.Complete)
+	err := tx.QueryRow(ctx, `SELECT d.directory_id,d.current_cursor,d.complete FROM bloem_storage_scan_directories d
+ WHERE d.run_id=$1 AND NOT d.complete AND d.directory_id>$3 AND NOT d.directory_id=ANY($2::text[])
+ AND (SELECT true FROM bloem_storage_scan_directory_roots dr WHERE dr.run_id=d.run_id AND dr.directory_id=d.directory_id LIMIT 1)
+ ORDER BY d.directory_id LIMIT 1`, lease.RunID, exclude, after).Scan(&checkpoint.DirectoryID, &checkpoint.Cursor, &checkpoint.Complete)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return checkpoint, false, nil
 	}

@@ -41,6 +41,8 @@ type audioPipeline struct {
 	mu       sync.Mutex
 	changed  *sync.Cond
 	inFlight map[string]bool
+	// after is the furthest directory claimed; the next claim looks after it.
+	after string
 	// version counts releases. A worker that found nothing pending decides
 	// the run is finished only if no release happened since it looked, since
 	// a released page may have queued new directories.
@@ -49,7 +51,7 @@ type audioPipeline struct {
 }
 
 type audioPageSource interface {
-	NextDirectoryExcluding(ctx context.Context, lease storagesource.Lease, inFlight []string) (storagesource.Checkpoint, bool, error)
+	NextDirectoryAfter(ctx context.Context, lease storagesource.Lease, after string, inFlight []string) (storagesource.Checkpoint, bool, error)
 }
 
 func startAudioPipeline(ctx context.Context, workers int, sources audioPageSource, lease storagesource.Lease, fetch func(context.Context, storagesource.Checkpoint) (*storagev1.ListResponse, error), prepare func(context.Context, storagesource.Checkpoint, *storagev1.ListResponse) ([]scanner.StorageAudioTrack, int, error)) *audioPipeline {
@@ -87,10 +89,10 @@ func (p *audioPipeline) work(ctx context.Context, sources audioPageSource, lease
 		for id := range p.inFlight {
 			claimed = append(claimed, id)
 		}
-		version := p.version
+		version, after := p.version, p.after
 		p.mu.Unlock()
 
-		checkpoint, more, err := sources.NextDirectoryExcluding(ctx, lease, claimed)
+		checkpoint, more, err := sources.NextDirectoryAfter(ctx, lease, after, claimed)
 		if err != nil {
 			p.fail(err)
 			return
@@ -117,6 +119,7 @@ func (p *audioPipeline) work(ctx context.Context, sources audioPageSource, lease
 			continue
 		}
 		p.inFlight[checkpoint.DirectoryID] = true
+		p.after = max(p.after, checkpoint.DirectoryID)
 		p.mu.Unlock()
 
 		page, err := fetch(ctx, checkpoint)
