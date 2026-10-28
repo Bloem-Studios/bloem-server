@@ -272,9 +272,18 @@ func (s *server) audioCatalogTracks() []object {
 // in full.
 func (s *server) listAudioCatalog(r *storagev1.ListRequest) (*storagev1.ListResponse, error) {
 	s.audit("list " + r.DirectoryId + " since=" + r.ChangesSince)
-	// notify.fail-once makes the next listing fail as an unavailable provider.
+	// notify.fail-once makes the next listing fail as an unavailable provider;
+	// notify.fail-times holds how many listings in a row fail so.
 	if err := os.Remove(s.notify + ".fail-once"); err == nil {
 		return nil, status.Error(codes.Unavailable, "provider hiccup")
+	}
+	if b, err := os.ReadFile(s.notify + ".fail-times"); err == nil {
+		if n, _ := strconv.Atoi(strings.TrimSpace(string(b))); n > 0 {
+			if err := os.WriteFile(s.notify+".fail-times", []byte(strconv.Itoa(n-1)), 0o600); err != nil {
+				return nil, status.Error(codes.Internal, "fixture state")
+			}
+			return nil, status.Error(codes.Unavailable, "provider outage")
+		}
 	}
 	tracks := s.audioCatalogTracks()
 	if r.DirectoryId == "root" {

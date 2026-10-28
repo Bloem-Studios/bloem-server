@@ -5,8 +5,12 @@ import (
 	"log/slog"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/scanner"
+	storagev1 "github.com/Silo-Server/silo-server/internal/storageproto/bloem/plugin/v1"
 	"github.com/Silo-Server/silo-server/internal/storagesource"
 )
 
@@ -51,4 +55,40 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			return total, err
 		}
 	}
+}
+
+// pageListRetries is how many times a page listing the provider failed as
+// unavailable is listed again, after 1, 2 and 4 seconds, before the scan
+// fails. One failed backend request then costs a pause, not a scan attempt
+// and every directory its workers had in flight.
+const pageListRetries = 3
+
+var pageListRetryDelay = time.Second
+
+// fetchPage lists a checkpoint's page, again after a transient provider
+// failure. Listing reads the provider and records only the directory's
+// listing mode, so listing a page again is safe.
+func (c *StorageScanner) fetchPage(ctx context.Context, lease storagesource.Lease, checkpoint storagesource.Checkpoint, provider storagev1.StorageProviderClient) (*storagev1.ListResponse, error) {
+	for attempt := 0; ; attempt++ {
+		page, err := c.sources.FetchPage(ctx, lease, checkpoint, provider)
+		if err == nil || attempt == pageListRetries || ctx.Err() != nil || !transientProviderFailure(err) {
+			return page, err
+		}
+		slog.WarnContext(ctx, "storage page listing failed; listing again", "component", "libraryingest", "location_id", lease.LocationID, "directory_id", checkpoint.DirectoryID, "attempt", attempt+1, "error", err)
+		timer := time.NewTimer(pageListRetryDelay << attempt)
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, err
+		}
+	}
+}
+
+func transientProviderFailure(err error) bool {
+	switch status.Code(err) {
+	case codes.Unavailable, codes.DeadlineExceeded, codes.ResourceExhausted, codes.Aborted:
+		return true
+	}
+	return false
 }

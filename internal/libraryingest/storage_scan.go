@@ -360,7 +360,7 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 		outage := new(audioOutage)
 		pipeline = startAudioPipeline(job, nativeAudioScanWorkers, c.sources, lease,
 			func(ctx context.Context, checkpoint storagesource.Checkpoint) (*storagev1.ListResponse, error) {
-				return c.sources.FetchPage(ctx, lease, checkpoint, provider)
+				return c.fetchPage(ctx, lease, checkpoint, provider)
 			},
 			func(ctx context.Context, checkpoint storagesource.Checkpoint, page *storagev1.ListResponse) ([]scanner.StorageAudioTrack, int, error) {
 				tracks, skipped, err := c.prepareAudio(ctx, outage, location, source, lease, checkpoint, page)
@@ -552,7 +552,7 @@ func (c *StorageScanner) scanStorageFolderOnce(ctx context.Context, folder *mode
 // fetchAndPrepare lists a directory's next page and prepares its ebooks or
 // movies. restart reports a checkpoint the journal reset; list it again.
 func (c *StorageScanner) fetchAndPrepare(ctx context.Context, folder *models.MediaFolder, location storagesource.Location, source storagesource.SourceConfig, lease storagesource.Lease, checkpoint storagesource.Checkpoint, provider storagev1.StorageProviderClient, media mediasource.Source) (page *storagev1.ListResponse, books []scanner.StorageEbook, movies []scanner.StorageMovie, skipped int, excluded []string, restart bool, err error) {
-	page, err = c.sources.FetchPage(ctx, lease, checkpoint, provider)
+	page, err = c.fetchPage(ctx, lease, checkpoint, provider)
 	if errors.Is(err, storagesource.ErrCheckpointRestart) {
 		return nil, nil, nil, 0, nil, true, nil
 	}

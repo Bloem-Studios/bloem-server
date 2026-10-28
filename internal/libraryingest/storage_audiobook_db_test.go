@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -294,21 +295,39 @@ func TestNativeAudioCatalogPublishesListedMetadataWithoutReadingDB(t *testing.T)
 }
 
 func TestNativeAudioCatalogScanResumesAfterAFailureDB(t *testing.T) {
+	pageListRetryDelay = time.Millisecond
+	t.Cleanup(func() { pageListRetryDelay = time.Second })
 	c := audioCatalog{t, nativeAudioLaneFixture(t, "audio-catalog")}
 	c.f.scan.SetRetry(1, 0)
 	c.write("listed", "")
-	c.write("fail-once", "")
-	if audit := c.scan(); strings.Count(audit, "list root since=") != 2 {
-		t.Fatalf("failed listing not resumed: %s", audit)
+	// Every listing of the first attempt fails, the page's retries included.
+	c.write("fail-times", strconv.Itoa(pageListRetries+1))
+	if audit := c.scan(); strings.Count(audit, "list root since=") != pageListRetries+2 {
+		t.Fatalf("failed attempt not resumed: %s", audit)
 	}
 	if got := c.present(); !maps.Equal(got, map[string]string{"book-1/track": "v1", "book-2/track": "v1"}) {
 		t.Fatalf("publication after resuming: %v", got)
 	}
 	// Without retries the same failure ends the scan.
 	c.f.scan.SetRetry(0, 0)
-	c.write("fail-once", "")
+	c.write("fail-times", strconv.Itoa(pageListRetries+1))
 	c.write("io", "")
 	if _, err := c.f.scan.ScanStorageFolder(t.Context(), c.f.folder, storagesource.LocationSelection{Location: c.f.location}); err == nil {
 		t.Fatal("a failed scan without retries succeeded")
+	}
+}
+
+func TestNativeAudioCatalogListsAFailedPageAgainDB(t *testing.T) {
+	pageListRetryDelay = time.Millisecond
+	t.Cleanup(func() { pageListRetryDelay = time.Second })
+	c := audioCatalog{t, nativeAudioLaneFixture(t, "audio-catalog")}
+	c.write("listed", "")
+	c.write("fail-once", "")
+	// No scan retries: the page is listed again within the attempt.
+	if audit := c.scan(); strings.Count(audit, "list root since=") != 2 {
+		t.Fatalf("failed page not listed again: %s", audit)
+	}
+	if got := c.present(); !maps.Equal(got, map[string]string{"book-1/track": "v1", "book-2/track": "v1"}) {
+		t.Fatalf("publication: %v", got)
 	}
 }
