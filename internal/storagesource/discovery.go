@@ -100,7 +100,11 @@ func (r *Repository) directoryListing(ctx context.Context, lease Lease, cp Check
 		return "", "", err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	if err = verifyLease(ctx, tx, lease); err != nil {
+	// Listing writes only the directory's own row, under its lock, and the
+	// mode it records follows from the retained token; the page that lists
+	// it is applied under the run's lock. Waiting here for that lock queued
+	// every worker behind each page being applied.
+	if err = readLease(ctx, tx, lease); err != nil {
 		return "", "", err
 	}
 	var mode, token, cursor string
