@@ -167,8 +167,7 @@ dead-code removals.
 
 At `5fc698915` (October 28, 2026), Bloem `main` contains all of Silo `main`
 through `564b906b8` (2026-10-28 02:44 UTC), merged in `5fc698915`, and the
-ledger declares **305 seams**. Production runs `aeeea2357`, which has Silo
-through `73a6ae6a3`: the
+ledger declares **305 seams**. Production runs `9cc80cd33`: the
 [October 27 receipt](docs/operations/2026-10-27-main-deployment.md) records that
 deployment and the ones before it, starting with `422a51fed`, the first
 production image built and published by CI. A source

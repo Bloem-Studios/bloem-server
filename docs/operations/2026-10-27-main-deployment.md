@@ -5,8 +5,9 @@ Production had run `d064644a8` since 06:41 UTC on October 26
 ([previous receipt](2026-10-26-stage-a-deployment.md#follow-up-deployment-account-provisioning-0641-utc)).
 It also records the follow-up deployment of `276becf4a`, two PostgreSQL
 configuration changes the same morning, the afternoon deployment of
-`7a3b59027` and the evening deployments of `bee8a7728` and `aeeea2357`. It is
-the newest deployment receipt.
+`7a3b59027`, the evening deployments of `bee8a7728` and `aeeea2357`, and the
+deployment of `9cc80cd33` on the morning of October 28. It is the newest
+deployment receipt.
 
 ## How these deployments are done
 
@@ -380,3 +381,61 @@ The HDR10+ backfill warning is the known one.
 The migration is forward-only. To roll back, restore the database to the
 restore point above together with the container snapshot. The dump restores
 the four rewritten captions on their own.
+
+## Follow-up: `9cc80cd33`
+
+At 07:28 UTC on October 28 production moved to `main` at
+`9cc80cd33150921bd07c105a04d12b15f3e61689` (system info `9cc80cd3`). Since
+`aeeea2357` it brings Silo through `564b906b8`, merged in `5fc698915`
+([changelog](../bloem/CHANGELOG.md)): the Requests Discover page an admin lays
+out, and series artwork, dates and ratings on API v2 episode cards. It has one
+migration and web changes.
+
+| Item | Verified value |
+| --- | --- |
+| Runtime image | `bloem-server:release-9cc80cd33`, built on the operator's workstation, revision label `9cc80cd33150921bd07c105a04d12b15f3e61689` |
+| Server binary SHA-256 | `2212b8784aa3bca3ed4a827cbb3d0400ff9ca628089a6244574a51738ddfc24e`, the same in the built image and on the application host |
+| Migrations | 1 applied, forward-only; 727 applied, maximum `20261027182504`, zero pending |
+
+The migration, `20261027182504_request_discover_rows` (Silo), creates the
+empty tables `request_discover_layout` and `request_discover_list_snapshots`
+and changes no existing table. With no layout stored, the Discover tab shows
+Silo's default rows.
+
+**This image was not published by Bloem Image.** The deployment was asked for
+while Bloem CI on `main` was still running, so the image was built locally
+before CI finished. It used the steps the Bloem Image workflow uses: a
+`git archive` of `9cc80cd33`, the web bundle Bloem CI's Web (build) job had
+already produced for that commit (artifact
+`frontend-dist-9cc80cd33150921bd07c105a04d12b15f3e61689`), and the workflow's
+build arguments and labels. At that point Bloem CI's web build and contract
+checks had passed. The merge had passed locally: the Go suite, the 377
+database pins, the library-location tests, `go vet` and lint of the changed
+lines. The image's runtime configuration is identical to
+`release-aeeea2357`.
+
+Before the restart:
+
+- container snapshot `pre-main-9cc80cd33`;
+- database restore point `pre-main-9cc80cd33` at LSN `3BE/4C860190`; the WAL
+  segment holding it was archived at 07:28:17 UTC with no archive failures,
+  and the standby was streaming;
+- a dump of `goose_db_version`. The migration writes to no existing table.
+
+The restart script refused to run unless the live image was `aeeea2357`. It
+stopped the server in 9 seconds, applied the migration offline in about a
+second, and started the new image. Ready returned 200 15 seconds after the
+stop began, and the server was healthy with no restarts. The runtime
+fingerprint did not change. Ready and health returned 200 locally, and ready,
+health and the site returned 200 publicly. Active streams continued (two
+FFmpeg processes before and after). Both new tables exist and are empty. There
+were no panic lines and no tuning lines. The one ERROR line was the
+recommendation embeddings job: the Gemini embedding API answered `402`
+because the AI provider account's prepaid credit is used up. That needs a
+top-up or another embedding provider, not a code change. The warnings were
+the cold-cache slow section fetches on the first home page (10 seconds in
+all), the known `PutBucketCors` 403 on the private assets bucket and the known
+HDR10+ backfill.
+
+The migration is forward-only. To roll back, restore the database to the
+restore point above together with the container snapshot.

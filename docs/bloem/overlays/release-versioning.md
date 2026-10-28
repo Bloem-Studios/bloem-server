@@ -77,7 +77,8 @@ binary checksum, migrations and the checks run, and it stays true to its date:
 - From [October 27, 2026](../../operations/2026-10-27-main-deployment.md)
   (`422a51fed`, then `276becf4a`, `7a3b59027`, `bee8a7728` and `aeeea2357`), production runs images that Bloem Image
   published, loaded on the application host and retagged
-  `bloem-server:release-<short sha>`.
+  `bloem-server:release-<short sha>`. The exception is `9cc80cd33` (October 28),
+  built locally with the same steps before Bloem CI finished.
 - The [October 26](../../operations/2026-10-26-main-deployment.md) and
   [October 26 Stage A](../../operations/2026-10-26-stage-a-deployment.md)
   deployments used images built locally from a `git archive` of the source.
