@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ValidatePendingPageTx retains the journal's current lease and confirms the
+// ValidatePendingPageTx reads the journal's current lease and confirms the
 // checkpoint is a pending, reachable directory of the run at its retained
 // cursor. A scan may work on several pending directories at once, so it need
 // not be the first. Host scan authorizers must acquire installation/source
@@ -17,7 +17,7 @@ func ValidatePendingPageTx(ctx context.Context, tx pgx.Tx, lease Lease, checkpoi
 	if tx == nil || checkpoint.Complete {
 		return ErrCheckpointConflict
 	}
-	if err := verifyLease(ctx, tx, lease); err != nil {
+	if err := readLease(ctx, tx, lease); err != nil {
 		return err
 	}
 	var cursor string
@@ -38,7 +38,7 @@ func ValidatePendingPageTx(ctx context.Context, tx pgx.Tx, lease Lease, checkpoi
 
 func pendingDirectoryTx(ctx context.Context, tx pgx.Tx, lease Lease, exclude ...string) (Checkpoint, bool, error) {
 	var checkpoint Checkpoint
-	if err := verifyLease(ctx, tx, lease); err != nil {
+	if err := readLease(ctx, tx, lease); err != nil {
 		return checkpoint, false, err
 	}
 	if exclude == nil {

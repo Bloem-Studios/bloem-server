@@ -150,18 +150,37 @@ func (r *Repository) beginLocation(ctx context.Context, sourceKey uuid.UUID, own
 }
 
 // verifyLease retains the source FOR SHARE, the mode library aggregate
-// authority already holds, then locks the run. Page, renewal, completion and
-// scan-entry transactions therefore never upgrade a retained source lock while
-// holding a folder lock another retaining transaction waits for (40P01). SHARE
-// still fences configuration, enablement and Begin's discovery pointer writes;
-// the run row serializes one scan's journal transactions. Begin alone takes
-// the source exclusively, with NOWAIT.
+// authority already holds, then locks the run. Page, renewal and completion
+// transactions therefore never upgrade a retained source lock while holding a
+// folder lock another retaining transaction waits for (40P01). SHARE still
+// fences configuration, enablement and Begin's discovery pointer writes; the
+// run row serializes one scan's journal-writing transactions. Begin alone
+// takes the source exclusively, with NOWAIT. Transactions that only read the
+// journal use readLease instead.
 func verifyLease(ctx context.Context, tx pgx.Tx, lease Lease) error {
+	return checkLease(ctx, tx, lease, true)
+}
+
+// readLease checks the lease for a transaction that only reads the journal.
+// It takes no lock on the source or the run, so it never waits for the scan's
+// own page transactions, which hold the run row while they apply a page; a
+// scan's workers looking for their next directory queued behind every page.
+// The check holds as of its read. Every transaction that writes the journal
+// verifies the lease under the locks.
+func readLease(ctx context.Context, tx pgx.Tx, lease Lease) error {
+	return checkLease(ctx, tx, lease, false)
+}
+
+func checkLease(ctx context.Context, tx pgx.Tx, lease Lease, lock bool) error {
+	sourceLock, runLock := "", ""
+	if lock {
+		sourceLock, runLock = " FOR SHARE", " FOR UPDATE"
+	}
 	// Acquire locks before checking database clock expiry: a query that waits for
 	// a lock must not use an expiry predicate evaluated before that wait.
 	var configRevision int64
 	var enabled bool
-	err := tx.QueryRow(ctx, `SELECT configuration_revision,enabled FROM bloem_storage_sources WHERE key=$1 FOR SHARE`, lease.SourceKey).Scan(&configRevision, &enabled)
+	err := tx.QueryRow(ctx, `SELECT configuration_revision,enabled FROM bloem_storage_sources WHERE key=$1`+sourceLock, lease.SourceKey).Scan(&configRevision, &enabled)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrStaleLease
 	}
@@ -179,7 +198,7 @@ func verifyLease(ctx context.Context, tx pgx.Tx, lease Lease) error {
  AND EXISTS(SELECT 1 FROM bloem_storage_selected_roots s WHERE s.location_id=r.location_id AND s.enabled)
  AND NOT EXISTS(SELECT 1 FROM bloem_storage_selected_roots s WHERE s.location_id=r.location_id AND NOT s.enabled
   AND EXISTS(SELECT 1 FROM bloem_storage_scan_directory_roots dr WHERE dr.location_id=r.location_id AND dr.root_id=s.id AND dr.run_id=r.id))
-	 FROM bloem_storage_scan_runs r WHERE r.id=$1 FOR UPDATE`, lease.RunID).Scan(&actual.SourceKey, &actual.ConfigurationRevision, &actual.Epoch, &actual.Owner, &state, &actual.LocationID, &actual.SelectionRevision, &currentSelection)
+	 FROM bloem_storage_scan_runs r WHERE r.id=$1`+runLock, lease.RunID).Scan(&actual.SourceKey, &actual.ConfigurationRevision, &actual.Epoch, &actual.Owner, &state, &actual.LocationID, &actual.SelectionRevision, &currentSelection)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrStaleLease
 	}

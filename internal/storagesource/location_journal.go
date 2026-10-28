@@ -244,20 +244,36 @@ func propagatePageRootsTx(ctx context.Context, tx pgx.Tx, lease Lease, page page
 		}
 	}
 	args := []any{lease.RunID, lease.LocationID, lease.ConfigurationRevision}
-	if _, err := tx.Exec(ctx, membershipSQL(edgesIntoEntries), append(args, page.entries)...); err != nil {
+	if err := pageMembershipTx(ctx, tx, edgesIntoEntries, append(args, page.entries)...); err != nil {
 		return err
 	}
 	if page.opened || page.closed {
-		if _, err := tx.Exec(ctx, membershipSQL(edgesIntoChildren), append(args, page.directoryID)...); err != nil {
+		if err := pageMembershipTx(ctx, tx, edgesIntoChildren, append(args, page.directoryID)...); err != nil {
 			return err
 		}
 	}
 	if len(dirs) > 0 {
-		if _, err := tx.Exec(ctx, membershipSQL(edgesOfReached), append(args, dirs, roots)...); err != nil {
+		if err := pageMembershipTx(ctx, tx, edgesOfReached, append(args, dirs, roots)...); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// pageMembershipTx publishes the memberships of edges a page bounds, under a
+// generic plan. Given the page's own arguments, the planner still anti-joins
+// every membership and file reference of the location, a cost that grows with
+// the library (49 ms per book at 6,000 tracks); the generic plan starts from
+// the page's edges (0.2 ms).
+func pageMembershipTx(ctx context.Context, tx pgx.Tx, source edgeSource, args ...any) error {
+	if _, err := tx.Exec(ctx, `SET LOCAL plan_cache_mode = force_generic_plan`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, membershipSQL(source), args...); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `SET LOCAL plan_cache_mode TO DEFAULT`)
+	return err
 }
 
 // carryUnchangedTx applies an incremental listing's evidence about its child
@@ -301,21 +317,24 @@ type reachedPair struct {
 // that yield e and the condition restricting them. Page-sized sources are
 // bounded by their argument arrays, so their plans stay bounded by the page
 // even when table statistics lag a growing location.
-type edgeSource struct{ from, where string }
+// A source may first materialize the rows it starts from (with).
+type edgeSource struct{ with, from, where string }
 
 var (
 	// Edges, from every parent, into the page's listed entries ($4). As an
 	// array condition the planner sees how many entries the page lists; as a
 	// join from unnest it could walk every edge of the location instead.
-	edgesIntoEntries = edgeSource{`bloem_storage_location_edges e`, `e.entry_id=ANY($4::text[])`}
+	edgesIntoEntries = edgeSource{``, `bloem_storage_location_edges e`, `e.entry_id=ANY($4::text[])`}
 	// The listed directory's ($4) own edges.
-	edgesOfDirectory = edgeSource{`bloem_storage_location_edges e`, `e.parent_directory_id=$4`}
-	// Edges, from every parent, into the listed directory's ($4) children.
-	edgesIntoChildren = edgeSource{`bloem_storage_location_edges c JOIN bloem_storage_location_edges e ON e.location_id=c.location_id AND e.entry_id=c.entry_id`, `c.location_id=$2 AND c.parent_directory_id=$4`}
+	edgesOfDirectory = edgeSource{``, `bloem_storage_location_edges e`, `e.parent_directory_id=$4`}
+	// Edges, from every parent, into the listed directory's ($4) children,
+	// starting from those children.
+	edgesIntoChildren = edgeSource{`WITH c AS MATERIALIZED (SELECT location_id,entry_id FROM bloem_storage_location_edges WHERE location_id=$2 AND parent_directory_id=$4) `,
+		`c JOIN bloem_storage_location_edges e ON e.location_id=c.location_id AND e.entry_id=c.entry_id`, `true`}
 	// Edges of newly reached directories ($4), under their new roots ($5).
-	edgesOfReached = edgeSource{`unnest($4::text[],$5::uuid[]) n(directory_id,root_id) JOIN bloem_storage_location_edges e ON e.location_id=$2 AND e.parent_directory_id=n.directory_id`, `r.root_id=n.root_id`}
+	edgesOfReached = edgeSource{``, `unnest($4::text[],$5::uuid[]) n(directory_id,root_id) JOIN bloem_storage_location_edges e ON e.location_id=$2 AND e.parent_directory_id=n.directory_id`, `r.root_id=n.root_id`}
 	// Every edge of the location.
-	edgesOfLocation = edgeSource{`bloem_storage_location_edges e`, `true`}
+	edgesOfLocation = edgeSource{``, `bloem_storage_location_edges e`, `true`}
 )
 
 // countedEdgeSQL holds when edge e, from a directory d this run has begun to
@@ -383,7 +402,7 @@ func reachedPairsTx(ctx context.Context, tx pgx.Tx, sql string, args ...any) ([]
 // of its listed parent. Memberships already enabled are left unwritten, so
 // re-reaching a file costs a read, not a new row version.
 func membershipSQL(source edgeSource) string {
-	return `INSERT INTO bloem_storage_file_roots(location_id,media_file_id,root_id)
+	return source.with + `INSERT INTO bloem_storage_file_roots(location_id,media_file_id,root_id)
  SELECT DISTINCT $2::uuid,f.media_file_id,r.root_id FROM ` + source.from + `
  JOIN bloem_storage_scan_directory_roots r ON r.run_id=$1 AND r.directory_id=e.parent_directory_id
  JOIN bloem_storage_scan_directories d ON d.run_id=$1 AND d.directory_id=e.parent_directory_id AND d.listing_mode<>'pending'
