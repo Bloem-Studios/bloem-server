@@ -177,7 +177,8 @@ func verifyLease(ctx context.Context, tx pgx.Tx, lease Lease) error {
 	err = tx.QueryRow(ctx, `SELECT r.source_key,r.configuration_revision,r.lease_epoch,r.owner,r.state,r.location_id,r.selection_revision,
 	 EXISTS(SELECT 1 FROM library_storage_locations l WHERE l.id=r.location_id AND l.source_key=r.source_key AND l.selection_revision=r.selection_revision)
  AND EXISTS(SELECT 1 FROM bloem_storage_selected_roots s WHERE s.location_id=r.location_id AND s.enabled)
- AND NOT EXISTS(SELECT 1 FROM bloem_storage_scan_directory_roots dr JOIN bloem_storage_selected_roots s ON s.id=dr.root_id WHERE dr.run_id=r.id AND NOT s.enabled)
+ AND NOT EXISTS(SELECT 1 FROM bloem_storage_selected_roots s WHERE s.location_id=r.location_id AND NOT s.enabled
+  AND EXISTS(SELECT 1 FROM bloem_storage_scan_directory_roots dr WHERE dr.location_id=r.location_id AND dr.root_id=s.id AND dr.run_id=r.id))
 	 FROM bloem_storage_scan_runs r WHERE r.id=$1 FOR UPDATE`, lease.RunID).Scan(&actual.SourceKey, &actual.ConfigurationRevision, &actual.Epoch, &actual.Owner, &state, &actual.LocationID, &actual.SelectionRevision, &currentSelection)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrStaleLease
