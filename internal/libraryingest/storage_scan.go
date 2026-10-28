@@ -371,6 +371,8 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 			})
 		defer pipeline.stop()
 	}
+	var following *followingPage
+	defer func() { following.stop() }()
 	for {
 		if err = nativeScanCause(ctx, job); err != nil {
 			return result, err
@@ -432,10 +434,20 @@ func (c *StorageScanner) ScanStorageFolder(ctx context.Context, folder *models.M
 		if pipeline != nil {
 			page, audio, skipped = prepared.page, prepared.tracks, prepared.skipped
 		} else {
-			var restart bool
-			page, books, movies, skipped, excluded, restart, err = c.fetchAndPrepare(job, folder, location, source, lease, checkpoint, provider, media)
+			var restart, ahead bool
+			page, books, skipped, ahead = following.take(checkpoint)
+			following.stop()
+			following = nil
+			if !ahead {
+				page, books, movies, skipped, excluded, restart, err = c.fetchAndPrepare(job, folder, location, source, lease, checkpoint, provider, media)
+			}
 			if restart {
 				continue
+			}
+			// Listing an ebook page needs nothing this page writes, so the
+			// next one is listed while this one is applied.
+			if err == nil && !librarykind.IsMovie(folder.Type) && !page.GetComplete() {
+				following = c.fetchFollowing(job, lease, checkpoint, page.GetNextCursor(), source, provider, media)
 			}
 		}
 		if err != nil {

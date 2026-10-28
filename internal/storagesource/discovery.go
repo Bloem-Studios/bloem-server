@@ -54,6 +54,25 @@ func (r *Repository) FetchPage(ctx context.Context, lease Lease, checkpoint Chec
 	return page, err
 }
 
+// FetchFollowingPage lists the page after checkpoint's, at next, as FetchPage
+// will once checkpoint's page is applied, so a scan can list it meanwhile. It
+// claims nothing and changes no journal state: the page is used only if the
+// journal then stands at next, and ApplyPage checks that cursor again.
+func (r *Repository) FetchFollowingPage(ctx context.Context, lease Lease, checkpoint Checkpoint, next string, client storagev1.StorageProviderClient) (*storagev1.ListResponse, error) {
+	var sourceID, token string
+	err := r.pool.QueryRow(ctx, `SELECT s.provider_source_id,d.changes_since FROM bloem_storage_sources s
+ JOIN bloem_storage_scan_directories d ON d.run_id=$3 AND d.directory_id=$4
+ WHERE s.key=$1 AND s.configuration_revision=$2 AND s.enabled AND NOT d.complete AND d.current_cursor IN ($5,$6) AND d.listing_mode IN ('full','incremental')`,
+		lease.SourceKey, lease.ConfigurationRevision, lease.RunID, checkpoint.DirectoryID, checkpoint.Cursor, next).Scan(&sourceID, &token)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrCheckpointConflict
+	}
+	if err != nil {
+		return nil, err
+	}
+	return fetchPage(ctx, client, sourceID, Checkpoint{DirectoryID: checkpoint.DirectoryID, Cursor: next}, token)
+}
+
 func fetchPage(ctx context.Context, client storagev1.StorageProviderClient, sourceID string, checkpoint Checkpoint, changesSince string) (*storagev1.ListResponse, error) {
 	if client == nil || !validText(sourceID, 1024, true) || !validText(checkpoint.DirectoryID, 1024, true) || !validText(checkpoint.Cursor, 4096, false) || checkpoint.Complete {
 		return nil, fmt.Errorf("invalid storage discovery request")
