@@ -2,7 +2,8 @@ package storagesource
 
 import (
 	"context"
-	"errors"
+	"maps"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -59,40 +60,26 @@ func applyLocationEntries(ctx context.Context, tx pgx.Tx, lease Lease, cp Checkp
 			return nil, false, err
 		}
 	}
-	files = make([]*storagev1.Entry, 0, len(page.Entries))
+	files, skipped, err := recordLocationEntriesTx(ctx, tx, lease, page.Entries, skip)
+	if err != nil {
+		return nil, false, err
+	}
+	edges := make([]string, 0, len(page.Entries))
 	for _, e := range page.Entries {
-		var oldKind int32
-		var oldSize, oldModified int64
-		var oldRevision string
-		err := tx.QueryRow(ctx, `SELECT kind,size,modified_unix_nano,revision FROM bloem_storage_location_entries WHERE location_id=$1 AND entry_id=$2 AND last_seen_run=$3`, lease.LocationID, e.Id, lease.RunID).Scan(&oldKind, &oldSize, &oldModified, &oldRevision)
-		if err == nil {
-			if oldKind != int32(e.Kind) || oldSize != e.Size || oldModified != e.ModifiedUnixNano || oldRevision != e.Revision {
-				return nil, false, ErrReferenceConflict
-			}
-		} else if !errors.Is(err, pgx.ErrNoRows) {
+		if !skipped[e.Id] {
+			edges = append(edges, e.Id)
+		}
+	}
+	if len(skipped) > 0 {
+		tag, err := tx.Exec(ctx, `DELETE FROM bloem_storage_location_edges WHERE location_id=$1 AND parent_directory_id=$2 AND entry_id=ANY($3::text[])`, lease.LocationID, cp.DirectoryID, slices.Collect(maps.Keys(skipped)))
+		if err != nil {
 			return nil, false, err
-		} else {
-			if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_location_entries(location_id,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,selection_revision,last_seen_run)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(location_id,entry_id) DO UPDATE SET name=EXCLUDED.name,logical_path=EXCLUDED.logical_path,kind=EXCLUDED.kind,size=EXCLUDED.size,modified_unix_nano=EXCLUDED.modified_unix_nano,revision=EXCLUDED.revision,configuration_revision=EXCLUDED.configuration_revision,selection_revision=EXCLUDED.selection_revision,last_seen_run=EXCLUDED.last_seen_run,absence_confirmed_at=NULL`, lease.LocationID, e.Id, e.Name, e.LogicalPath, int32(e.Kind), e.Size, e.ModifiedUnixNano, e.Revision, lease.ConfigurationRevision, lease.SelectionRevision, lease.RunID); err != nil {
-				return nil, false, err
-			}
-			if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_entries(source_key,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,last_seen_run)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(source_key,entry_id) DO UPDATE SET name=EXCLUDED.name,logical_path=EXCLUDED.logical_path,kind=EXCLUDED.kind,size=EXCLUDED.size,modified_unix_nano=EXCLUDED.modified_unix_nano,revision=EXCLUDED.revision,configuration_revision=EXCLUDED.configuration_revision,last_seen_run=EXCLUDED.last_seen_run,absence_confirmed_at=NULL`, lease.SourceKey, e.Id, e.Name, e.LogicalPath, int32(e.Kind), e.Size, e.ModifiedUnixNano, e.Revision, lease.ConfigurationRevision, lease.RunID); err != nil {
-				return nil, false, err
-			}
-			if e.Kind == storagev1.EntryKind_ENTRY_KIND_FILE {
-				files = append(files, e)
-			}
 		}
-		if e.Kind == storagev1.EntryKind_ENTRY_KIND_DIRECTORY && skip != nil && skip(e) {
-			tag, err := tx.Exec(ctx, `DELETE FROM bloem_storage_location_edges WHERE location_id=$1 AND parent_directory_id=$2 AND entry_id=$3`, lease.LocationID, cp.DirectoryID, e.Id)
-			if err != nil {
-				return nil, false, err
-			}
-			shrunk = shrunk || tag.RowsAffected() > 0
-			continue
-		}
-		if _, err = tx.Exec(ctx, `INSERT INTO bloem_storage_location_edges(location_id,parent_directory_id,entry_id) VALUES($1,$2,$3) ON CONFLICT(location_id,parent_directory_id,entry_id) DO UPDATE SET absence_suspected_run=NULL`, lease.LocationID, cp.DirectoryID, e.Id); err != nil {
+		shrunk = shrunk || tag.RowsAffected() > 0
+	}
+	if len(edges) > 0 {
+		if _, err := tx.Exec(ctx, `INSERT INTO bloem_storage_location_edges(location_id,parent_directory_id,entry_id) SELECT $1,$2,unnest($3::text[])
+ ON CONFLICT(location_id,parent_directory_id,entry_id) DO UPDATE SET absence_suspected_run=NULL`, lease.LocationID, cp.DirectoryID, edges); err != nil {
 			return nil, false, err
 		}
 	}
@@ -105,6 +92,78 @@ func applyLocationEntries(ctx context.Context, tx pgx.Tx, lease Lease, cp Checkp
 		shrunk = shrunk || removedDirectory
 	}
 	return files, shrunk, nil
+}
+
+// recordLocationEntriesTx records a page's entries in a few statements, not
+// several per entry. An entry this run already recorded must be listed the
+// same again; the others are written and their files returned, in page order.
+// skipped holds the page's directories the library does not descend into.
+func recordLocationEntriesTx(ctx context.Context, tx pgx.Tx, lease Lease, entries []*storagev1.Entry, skip DirectorySkipper) (files []*storagev1.Entry, skipped map[string]bool, err error) {
+	ids := make([]string, len(entries))
+	for i, e := range entries {
+		ids[i] = e.Id
+	}
+	type seen struct {
+		kind           int32
+		size, modified int64
+		revision       string
+	}
+	recorded := map[string]seen{}
+	rows, err := tx.Query(ctx, `SELECT entry_id,kind,size,modified_unix_nano,revision FROM bloem_storage_location_entries WHERE location_id=$1 AND entry_id=ANY($2::text[]) AND last_seen_run=$3`, lease.LocationID, ids, lease.RunID)
+	if err != nil {
+		return nil, nil, err
+	}
+	for rows.Next() {
+		var id string
+		var old seen
+		if err := rows.Scan(&id, &old.kind, &old.size, &old.modified, &old.revision); err != nil {
+			rows.Close()
+			return nil, nil, err
+		}
+		recorded[id] = old
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	var fresh struct {
+		ids, names, paths, revisions []string
+		kinds                        []int32
+		sizes, modified              []int64
+	}
+	skipped = map[string]bool{}
+	for _, e := range entries {
+		if old, ok := recorded[e.Id]; ok {
+			if old.kind != int32(e.Kind) || old.size != e.Size || old.modified != e.ModifiedUnixNano || old.revision != e.Revision {
+				return nil, nil, ErrReferenceConflict
+			}
+		} else {
+			fresh.ids, fresh.names, fresh.paths, fresh.revisions = append(fresh.ids, e.Id), append(fresh.names, e.Name), append(fresh.paths, e.LogicalPath), append(fresh.revisions, e.Revision)
+			fresh.kinds, fresh.sizes, fresh.modified = append(fresh.kinds, int32(e.Kind)), append(fresh.sizes, e.Size), append(fresh.modified, e.ModifiedUnixNano)
+			if e.Kind == storagev1.EntryKind_ENTRY_KIND_FILE {
+				files = append(files, e)
+			}
+		}
+		if e.Kind == storagev1.EntryKind_ENTRY_KIND_DIRECTORY && skip != nil && skip(e) {
+			skipped[e.Id] = true
+		}
+	}
+	if len(fresh.ids) == 0 {
+		return files, skipped, nil
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO bloem_storage_location_entries(location_id,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,selection_revision,last_seen_run)
+ SELECT $1,n.id,n.name,n.path,n.kind,n.size,n.modified,n.revision,$9,$10,$11 FROM unnest($2::text[],$3::text[],$4::text[],$5::int[],$6::bigint[],$7::bigint[],$8::text[]) n(id,name,path,kind,size,modified,revision)
+ ON CONFLICT(location_id,entry_id) DO UPDATE SET name=EXCLUDED.name,logical_path=EXCLUDED.logical_path,kind=EXCLUDED.kind,size=EXCLUDED.size,modified_unix_nano=EXCLUDED.modified_unix_nano,revision=EXCLUDED.revision,configuration_revision=EXCLUDED.configuration_revision,selection_revision=EXCLUDED.selection_revision,last_seen_run=EXCLUDED.last_seen_run,absence_confirmed_at=NULL`,
+		lease.LocationID, fresh.ids, fresh.names, fresh.paths, fresh.kinds, fresh.sizes, fresh.modified, fresh.revisions, lease.ConfigurationRevision, lease.SelectionRevision, lease.RunID); err != nil {
+		return nil, nil, err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO bloem_storage_entries(source_key,entry_id,name,logical_path,kind,size,modified_unix_nano,revision,configuration_revision,last_seen_run)
+ SELECT $1,n.id,n.name,n.path,n.kind,n.size,n.modified,n.revision,$9,$10 FROM unnest($2::text[],$3::text[],$4::text[],$5::int[],$6::bigint[],$7::bigint[],$8::text[]) n(id,name,path,kind,size,modified,revision)
+ ON CONFLICT(source_key,entry_id) DO UPDATE SET name=EXCLUDED.name,logical_path=EXCLUDED.logical_path,kind=EXCLUDED.kind,size=EXCLUDED.size,modified_unix_nano=EXCLUDED.modified_unix_nano,revision=EXCLUDED.revision,configuration_revision=EXCLUDED.configuration_revision,last_seen_run=EXCLUDED.last_seen_run,absence_confirmed_at=NULL`,
+		lease.SourceKey, fresh.ids, fresh.names, fresh.paths, fresh.kinds, fresh.sizes, fresh.modified, fresh.revisions, lease.ConfigurationRevision, lease.RunID); err != nil {
+		return nil, nil, err
+	}
+	return files, skipped, nil
 }
 
 // UNION (not UNION ALL) terminates cycles and carries each root across aliases,
@@ -239,14 +298,16 @@ type reachedPair struct {
 }
 
 // edgeSource names the location edges e a statement visits: the FROM items
-// that yield e and the condition restricting them. Page-sized sources start
-// from their argument arrays, so their plans stay bounded by the page even
-// when table statistics lag a growing location.
+// that yield e and the condition restricting them. Page-sized sources are
+// bounded by their argument arrays, so their plans stay bounded by the page
+// even when table statistics lag a growing location.
 type edgeSource struct{ from, where string }
 
 var (
-	// Edges, from every parent, into the page's listed entries ($4).
-	edgesIntoEntries = edgeSource{`unnest($4::text[]) t(entry_id) JOIN bloem_storage_location_edges e ON e.location_id=$2 AND e.entry_id=t.entry_id`, `true`}
+	// Edges, from every parent, into the page's listed entries ($4). As an
+	// array condition the planner sees how many entries the page lists; as a
+	// join from unnest it could walk every edge of the location instead.
+	edgesIntoEntries = edgeSource{`bloem_storage_location_edges e`, `e.entry_id=ANY($4::text[])`}
 	// The listed directory's ($4) own edges.
 	edgesOfDirectory = edgeSource{`bloem_storage_location_edges e`, `e.parent_directory_id=$4`}
 	// Edges, from every parent, into the listed directory's ($4) children.
