@@ -14,7 +14,8 @@ Production moved through these builds after the
 | 22:20 | `203b6e96b` | 1 | 43 s | cancelled by a newer commit |
 | 22:37 | `42c88f044` | 0 | 43 s | failed: a storage plugin test could not reach `proxy.golang.org` |
 | 23:00 | `4ca1cc3bd` | 0 | 45 s | failed: the kept cover rule below, and a web test timeout |
-| 23:26 | `ae7c01c3d` | 0 | 45 s | running when this receipt was written |
+| 23:26 | `ae7c01c3d` | 0 | 45 s | cancelled by a newer commit; passed on the docs commit `82542b034` |
+| 01:30 (October 29) | `deeef897f` | 0 | 45 s | passed |
 
 At the owner's direction these were built locally instead of waiting for the
 CI-gated Bloem Image workflow: each image was built from a `git archive` of the
@@ -24,7 +25,8 @@ exact commit, with the workflow's build arguments and OCI labels, and ran as
 Before each restart: a container snapshot `pre-main-<short commit>` and a
 database restore point of the same name (`3C0/FD214BF0`, `3C1/9887CE98`,
 `3C2/E5359E40`, `3C3/A70D7060`, `3C3/B855F478`, `3C4/5FFA678`,
-`3C4/CAD73D00`, `3C5/148235F8`, `3C5/A2E609C8`, `3C6/57C35488`). Every start
+`3C4/CAD73D00`, `3C5/148235F8`, `3C5/A2E609C8`, `3C6/57C35488`,
+`3C8/7B3C01D0`). Every start
 came up healthy with no restarts. The deployments from 22:20 keep the loopback
 profiler enabled.
 
@@ -79,6 +81,20 @@ Covers and the journal:
   for 26 minutes; CI's `TestNativeAudioHiddenPresentationServesNoCoverDB`
   caught it, and `ae7c01c3d` restored the rule.
 
+Completing a whole location:
+
+- `deeef897f` completes a location from its reach and reachable memberships
+  held in analyzed temporary tables. The planner estimated the recursive reach
+  at 571 rows and the reachable set at one, and disabled unreached memberships
+  with a merge anti join on the location's one root. On the audiobook location
+  that statement ran for more than nine minutes, past the one-minute lease, so
+  completion failed as stale and every retry failed the same way, each attempt
+  long enough to reset the retry count. Measured on production data in a
+  rolled-back transaction, the reach took 6.5 s, the memberships 4.0 s, each
+  membership write about 0.2 s as a hash anti join, and the absence stamps
+  1.3 s. Completion also renews the lease to at least 30 minutes for each of
+  its steps; the renewal commits only with the completion.
+
 ## Production changes outside the deployments
 
 - 21:22 and 21:35: both Bookwarehouse installations upgraded to plugin 0.3.7
@@ -106,6 +122,10 @@ Covers and the journal:
   audiobook cover and a new ebook cover were served afterwards; the ebook cover
   took 2.9 seconds from Bookwarehouse and 0.2 seconds once kept.
 
+- 01:52 (October 29): both Bookwarehouse installations upgraded to plugin
+  0.3.9, which lists a one-file audiobook's embedded chapters. See the result
+  below.
+
 ## Result
 
 The Bookwarehouse ebook library's full scan completed at 20:40. The audiobook
@@ -120,8 +140,29 @@ Measurements soon after a restart overlap `rebuild_release_interest`, which
 runs at every startup and for one to three minutes resolves each profile's
 viewer once per series.
 
-Not established here: a completed whole-catalog audiobook scan, and the Bible's
-chapters after the next incremental scan.
+The audiobook scan's run, begun at 15:12, completed at 01:32 on October 29,
+about two minutes after `deeef897f` started, with one 30-second retry because
+the library kind was not ready at startup. All 245,232 files were present with
+enabled memberships, none was marked missing and no staged track was left.
+The next scan, from 01:33 to 01:35, carried 244,857 book directories and
+listed 12.
+
+That scan listed the ESV Bible again, but without chapters. Bookwarehouse
+lists all 1,194 of its chapters, and every chapter of each of 25 sampled
+one-file books, without a file association and not marked accurate, and the
+plugin listed only accurate associated chapters. While Bloem probed each
+track, the probe read the file's own chapters; since `72b346443` publishes
+from the listing, nearly every audiobook was published without chapters
+(486 of 245,243 kept probes had any). Plugin 0.3.9 lists them on a one-file
+book (244,478 of the 244,860 books are one file) and refuses the audiobook
+change tokens issued before, so the scan started at 01:52 lists every book in
+full. Of its first 1,974 relisted tracks, 1,972 carried chapters, about 30
+each. It listed the Bible at 02:04 with all 1,194 chapters, the last ending
+with the track, and the catalog API returned them on the book's version and
+playback variant.
+
+Not established here: the completion of the full relisting started at 01:52,
+which had listed 23,000 of about 245,000 books at 02:06.
 
 ## Rollback
 
