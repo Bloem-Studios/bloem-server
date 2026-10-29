@@ -222,6 +222,33 @@ func TestTranscribeAttachesTopLevelWordsBySegmentTime(t *testing.T) {
 	}
 }
 
+func TestTranscribeBuildsSegmentFromWordsWhenSegmentsAreAbsent(t *testing.T) {
+	// NeMo-Speech.cpp shape: verbose_json carries word timings only.
+	tr, err := transcribeStub(t, http.StatusOK, `{"task":"transcribe","language":"en","duration":3.0,
+			"text":"hi there friend","words":[{"start":0.2,"end":0.5,"word":"hi"},
+			{"start":0.6,"end":1.0,"word":"there"},{"start":1.8,"end":2.2,"word":"friend"}]}`)
+	if err != nil {
+		t.Fatalf("Transcribe: %v", err)
+	}
+	if len(tr.Segments) != 1 {
+		t.Fatalf("segments = %+v, want one built from the words", tr.Segments)
+	}
+	seg := tr.Segments[0]
+	if seg.Start != 0.2 || seg.End != 2.2 || strings.TrimSpace(seg.Text) == "" || len(seg.Words) != 3 {
+		t.Errorf("segment = %+v, want 0.2-2.2 with text and 3 words", seg)
+	}
+}
+
+func TestTranscribeEmptyWordsWithoutSegmentsIsNotAnError(t *testing.T) {
+	tr, err := transcribeStub(t, http.StatusOK, `{"language":"en","text":"","words":[]}`)
+	if err != nil {
+		t.Fatalf("Transcribe: %v", err)
+	}
+	if len(tr.Segments) != 0 {
+		t.Errorf("segments = %v, want empty", tr.Segments)
+	}
+}
+
 func TestTranscribeEmptySegmentsIsNotAnError(t *testing.T) {
 	tr, err := transcribeStub(t, http.StatusOK, `{"language":"english","text":"","segments":[]}`)
 	if err != nil {

@@ -69,8 +69,9 @@ type transcriptionResponse struct {
 	Language string `json:"language"`
 	Text     string `json:"text"`
 	// Segments distinguishes "verbose_json honored, no speech" (empty array)
-	// from "endpoint ignored verbose_json" (field absent) — the latter cannot
-	// produce timed cues and must fail rather than silently emit nothing.
+	// from "endpoint ignored verbose_json" (field absent, and no words
+	// either) — the latter cannot produce timed cues and must fail rather
+	// than silently emit nothing.
 	Segments *[]struct {
 		Start *float64                `json:"start"`
 		End   *float64                `json:"end"`
@@ -78,7 +79,9 @@ type transcriptionResponse struct {
 		Words []transcriptionWordJSON `json:"words"`
 	} `json:"segments"`
 	// Words is where OpenAI puts word timings; faster-whisper servers
-	// (speaches) nest them inside each segment instead.
+	// (speaches) nest them inside each segment instead, and NeMo-Speech.cpp
+	// sends only words, without segments. Nil means the field was absent or
+	// null; an empty array decodes to a non-nil slice.
 	Words []transcriptionWordJSON `json:"words"`
 	Error *struct {
 		Message string `json:"message"`
@@ -198,28 +201,33 @@ func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc
 			if parsed.Error != nil && parsed.Error.Message != "" {
 				return fmt.Errorf("transcription API error: %s", parsed.Error.Message)
 			}
-			if parsed.Segments == nil {
-				return &permanentError{err: fmt.Errorf(
-					"transcription endpoint did not return verbose_json segments (model %q); a verbose_json-capable Whisper endpoint is required", cfg.ASRModel)}
-			}
 			out := &Transcription{Language: parsed.Language}
-			for _, s := range *parsed.Segments {
-				// Whisper may emit empty, zero-duration entries at chunk boundaries.
-				// They contain no cue text and need no timestamps.
-				if strings.TrimSpace(s.Text) == "" {
-					continue
+			words := wordsFromJSON(parsed.Words)
+			switch {
+			case parsed.Segments != nil:
+				for _, s := range *parsed.Segments {
+					// Whisper may emit empty, zero-duration entries at chunk boundaries.
+					// They contain no cue text and need no timestamps.
+					if strings.TrimSpace(s.Text) == "" {
+						continue
+					}
+					if s.Start == nil || s.End == nil || *s.Start < 0 || *s.End <= *s.Start {
+						return &permanentError{err: fmt.Errorf("transcription endpoint returned missing or invalid segment timestamps (model %q)", cfg.ASRModel)}
+					}
+					out.Segments = append(out.Segments, TranscriptionSegment{
+						Start: *s.Start, End: *s.End, Text: s.Text, Words: wordsFromJSON(s.Words),
+					})
 				}
-				if s.Start == nil || s.End == nil || *s.Start < 0 || *s.End <= *s.Start {
-					return &permanentError{err: fmt.Errorf("transcription endpoint returned missing or invalid segment timestamps (model %q)", cfg.ASRModel)}
-				}
-				out.Segments = append(out.Segments, TranscriptionSegment{
-					Start: *s.Start, End: *s.End, Text: s.Text, Words: wordsFromJSON(s.Words),
-				})
+				attachTopLevelWords(out.Segments, words)
+			case parsed.Words != nil:
+				out.Segments = segmentsFromWords(words)
+			default:
+				return &permanentError{err: fmt.Errorf(
+					"transcription endpoint did not return verbose_json segments or words (model %q); a verbose_json-capable Whisper endpoint is required", cfg.ASRModel)}
 			}
 			if len(out.Segments) == 0 && strings.TrimSpace(parsed.Text) != "" {
 				return &permanentError{err: fmt.Errorf("transcription endpoint returned text without timed segments (model %q)", cfg.ASRModel)}
 			}
-			attachTopLevelWords(out.Segments, wordsFromJSON(parsed.Words))
 			result = out
 			return nil
 		})
@@ -227,6 +235,27 @@ func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc
 		return nil, decorateTranscribeError(doErr)
 	}
 	return result, nil
+}
+
+// segmentsFromWords wraps a segment-less word list in one segment spanning
+// it; cue building splits the words at pauses, so no segment boundaries are
+// lost. Speech-free audio (no non-empty words) yields no segments.
+func segmentsFromWords(words []TranscriptionWord) []TranscriptionSegment {
+	texts := make([]string, 0, len(words))
+	for _, w := range words {
+		if text := strings.TrimSpace(w.Text); text != "" {
+			texts = append(texts, text)
+		}
+	}
+	if len(texts) == 0 {
+		return nil
+	}
+	return []TranscriptionSegment{{
+		Start: words[0].Start,
+		End:   words[len(words)-1].End,
+		Text:  strings.Join(texts, " "),
+		Words: words,
+	}}
 }
 
 func wordsFromJSON(words []transcriptionWordJSON) []TranscriptionWord {
