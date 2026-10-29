@@ -78,6 +78,10 @@ object SettingKeys {
     const val PLAYBACK_PREFERRED_QUALITY = "playback.preferred_quality"
     /** Show forced subtitles */
     const val PLAYBACK_SHOW_FORCED_SUBTITLES = "playback.show_forced_subtitles"
+    /** Show marker confidence */
+    const val PLAYBACK_SHOW_MARKER_CONFIDENCE = "playback.show_marker_confidence"
+    /** Show marker source */
+    const val PLAYBACK_SHOW_MARKER_SOURCE = "playback.show_marker_source"
     /** Subtitle appearance */
     const val PLAYBACK_SUBTITLE_APPEARANCE = "playback.subtitle_appearance"
     /** Preferred subtitle language */
@@ -197,6 +201,8 @@ object SettingKeys {
         PLAYBACK_NEXT_UP_PROMPT_SECONDS,
         PLAYBACK_PREFERRED_QUALITY,
         PLAYBACK_SHOW_FORCED_SUBTITLES,
+        PLAYBACK_SHOW_MARKER_CONFIDENCE,
+        PLAYBACK_SHOW_MARKER_SOURCE,
         PLAYBACK_SUBTITLE_APPEARANCE,
         PLAYBACK_SUBTITLE_LANGUAGE,
         PLAYBACK_SUBTITLE_MODE,
@@ -275,6 +281,8 @@ object SettingKeys {
         PLAYBACK_AUTO_SKIP_INTRO,
         PLAYBACK_AUTO_SKIP_RECAP,
         PLAYBACK_SHOW_FORCED_SUBTITLES,
+        PLAYBACK_SHOW_MARKER_CONFIDENCE,
+        PLAYBACK_SHOW_MARKER_SOURCE,
         PLAYER_DOLBY_VISION_ENABLED,
         PLAYER_DV_PROFILE7_HDR10_FALLBACK,
         PLAYER_HDR_ENABLED,

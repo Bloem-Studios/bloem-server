@@ -180,7 +180,7 @@ func TestNativeAudioReplanKeepsBoundFile(t *testing.T) {
 			if w.Code != 201 || json.Unmarshal(w.Body.Bytes(), &started) != nil || started.PlaybackPlan == nil || started.PlaybackPlan.Delivery != playback.DeliveryOriginalHTTPV3 {
 				t.Fatalf("start=%d %s", w.Code, w.Body.String())
 			}
-			t.Cleanup(func() { _ = a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), started.SessionID, false) })
+			t.Cleanup(func() { _ = a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), started.SessionID, "") })
 			record, err := a.h.PlanStoreV3.GetAttempt(t.Context(), started.SessionID)
 			if err != nil || record.NormalizedRequest.AllowAlternateVersions == nil || record.NormalizedRequest.AllowsAlternateVersions() {
 				t.Fatalf("stored request=%+v err=%v", record, err)

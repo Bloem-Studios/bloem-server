@@ -1,6 +1,11 @@
 package auth
 
-import "github.com/Silo-Server/silo-server/internal/models"
+import (
+	"context"
+	"time"
+
+	"github.com/Silo-Server/silo-server/internal/models"
+)
 
 // Bloem-owned. Account refresh re-issues a pair by copying the presented
 // refresh token's tenant, credential, and auth-method claims forward. No
@@ -32,4 +37,35 @@ func accountRefreshBindingHolds(claims *Claims, session *models.AuthSession, use
 		return false
 	}
 	return true
+}
+
+// bloemRefreshSession refreshes the session kinds Bloem adds, ahead of
+// Silo's session checks: a direct-profile session revalidates its profile
+// credential, and a preview guest session never slides. Any other session,
+// and one that cannot be read or is no longer live, is left to Refresh,
+// which answers for it.
+func (s *Service) bloemRefreshSession(ctx context.Context, claims *Claims) (*TokenPair, bool, error) {
+	session := s.bloemLiveSession(ctx, claims.SessionID)
+	if session == nil {
+		return nil, false, nil
+	}
+	switch session.AuthMethod {
+	case AuthMethodDirectProfile:
+		pair, err := s.refreshDirectProfile(ctx, claims, session)
+		return pair, true, err
+	case AuthMethodPreviewGuest:
+		pair, err := s.refreshPreviewGuest(ctx, claims)
+		return pair, true, err
+	}
+	return nil, false, nil
+}
+
+// bloemLiveSession is the session while it is live, and nil when it cannot be
+// read or has ended.
+func (s *Service) bloemLiveSession(ctx context.Context, id string) *models.AuthSession {
+	session, err := s.sessions.GetByID(ctx, id)
+	if err != nil || session.RevokedAt != nil || !session.ExpiresAt.After(time.Now()) {
+		return nil
+	}
+	return session
 }

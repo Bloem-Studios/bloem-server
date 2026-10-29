@@ -88,17 +88,20 @@ Cinema Dark the only theme (`39a554717`, #1534).
 
 ### What changed most recently
 
-Bloem merged Silo through `564b906b8` on 2026-10-28 (`5fc698915`). For operators and viewers:
+Bloem merged Silo through `cc8514943` on 2026-10-29. For operators and viewers:
 
-- **Admins lay out the Requests Discover tab** on **Requests → Discover Page**: TMDB charts and
-  discover filters, public TMDB and MDBList lists, and the studio, network and genre rows, in any
-  order and size. Until an admin saves a layout the default rows stay (Silo `9b84f13a8`, #3193).
-- **Episode cards** in API v2 carry the series and season artwork, and cards carry release dates
-  and episode ratings (Silo `564b906b8`, #3197).
+- **Playback history** records the device, client, stream decisions and why a play ended, and
+  admins are told when a session starts, pauses, resumes and ends (Silo #3184, #3191, #3194).
+- **API keys** can carry the `admin:monitor:read` and `admin:sessions:control` scopes, for an
+  outside monitoring tool and for pausing, stopping or messaging live sessions (Silo #3182).
+- **Multi-episode files** list and play every episode they hold, and seasons have backdrops
+  (Silo #3112, #3224).
+- **Plugin pages** stay signed in while their login session lasts (Silo #3021).
+- **Docker Compose** in the repository now runs Silo's all-in-one image; Bloem publishes no such
+  image, so install Bloem from `ghcr.io/bloem-studios/bloem-server` as before.
 
-The merge before it (Silo through `73a6ae6a3`, `7c431d470`) retired the card caption choice, added
-uploaded local artwork and kept manual metadata edits through a refresh; see the
-[changelog](../bloem/CHANGELOG.md).
+The merge before it (Silo through `564b906b8`, `5fc698915`) let admins lay out the Requests
+Discover tab; see the [changelog](../bloem/CHANGELOG.md).
 
 ---
 

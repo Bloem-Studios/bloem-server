@@ -3,6 +3,92 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 29, 2026 — Silo integration through cc8514943
+
+This merge brings in 43 Silo commits after `564b906b8`, through `cc8514943`
+(2026-10-29 01:02 UTC). Silo wins every conflict, and the seam ledger goes from
+305 to 304.
+
+- **Admin and monitoring.** Playback history records the device, client,
+  stream decisions and end reason (#3184, #3191, #3192). Admins see
+  announcements when a session starts, pauses, resumes and ends (#3194). Two
+  new API key scopes, `admin:monitor:read` and `admin:sessions:control`, cover
+  monitoring and session control (#3182, #3220). A monitoring key can open the
+  events socket to follow catalog item changes. Admins can list present titles
+  (#3183) and see profile avatars (#3176). Hidden setup notices are remembered
+  on the server (#3210).
+- **Playback.** Silo transcodes H.264 High 10 for browsers that cannot decode
+  it, and keeps a session alive through a client's startup timeout (#3208). The
+  player shows where a skip range came from and how confident it is (#3084).
+- **Catalog and metadata.** Every episode of a multi-episode file is listed and
+  plays (#3112). Seasons have backdrops (#3224), and Continue Watching shows
+  season art (#3214). Markers are detected again after a file's markers are
+  invalidated (#3086). Clients can cap section row sizes (#3055). One TMDB
+  client is shared across the cluster (#3198).
+- **Other fixes.** MicroDVD and SubViewer subtitles convert (#3028). Season-pack
+  subtitle downloads record their episode (#3227). MDBList Discover rows choose
+  their order (#3223). Plugin pages stay signed in while their login session
+  lasts, and plugin routes verify the profile and the acting admin (#3021).
+- **Docker.** The Compose deployment becomes Silo's omnibus image (#3118,
+  #3178–#3180).
+
+There are nine migrations, all from Silo:
+- `20261025203537_track_marker_invalidation`
+- `20261027185055_playback_device_identity_and_end_reason`
+- `20261027195324_catalog_item_change_events`
+- `20261027235549_add_playback_session_lifecycle`
+- `20261028061244_watch_history_planner_stats`
+- `20261028150252_add_season_backdrop`
+- `20261028150253_index_season_backdrop_path`
+- `20261028165234_reparse_multi_episode_ranges`
+- `20261028165553_episode_catalog_spanned_files`
+
+Seventeen files conflicted. In each one Silo's lines are kept as Silo wrote
+them, and Bloem keeps only what does not change one of them:
+
+- **`docker-compose.yml`** returns to Silo's file, which leaves the ledger.
+  - It now runs Silo's omnibus image. Bloem publishes no omnibus image, so the
+    file starts Silo, not Bloem.
+- **Plugin access.** Silo moved plugin access into `plugin_access.go`.
+  - Bloem's rules now sit on top of Silo's resolver, in
+    `bloem_plugin_content_access.go`:
+    - preview sessions and preview accounts' API keys reach plugins only as
+      anonymous;
+    - direct-profile sessions are refused;
+    - browse-only viewers are denied plugin content.
+  - Bloem's own `resolveOptionalPluginAccessUser` is gone.
+  - As in Silo, plugin assets accept login tokens only. API keys, which
+    Bloem had let through, now get 401 there.
+- **Refresh.** Silo split `Refresh`'s session checks into
+  `checkSessionStanding`, which is now Silo's as written.
+  - Bloem's direct-profile and preview-guest refreshes run first, in
+    `bloemRefreshSession`.
+  - The account refresh binding check runs after Silo's checks.
+  - The refreshed token keeps Bloem's tenant, credential and device claims.
+- **Playback.** `playback.Session` uses Silo's `DeviceID` and `DevicePlatform`
+  in place of Bloem's `DeviceID`. Bloem's remote control maps its stops onto
+  Silo's end reasons: a remote stop is `stopped`, and a withdrawn plan records
+  no reason.
+- **Events socket.** Bloem's events socket passes Silo's API keys and ticket
+  audience through. Bloem's tenant binding still needs a login session, so an
+  API key cannot open the events socket on Bloem.
+- **Other files.** The rest keep both sides:
+  - `cmd/silo/main.go`;
+  - the home and library section services;
+  - `playback_v3.go`, `apiv2/home.go` and `api_key_scopes.go`;
+  - `plugins/content.go`;
+  - `document_test.go`;
+  - `App.tsx` and `WatchPlaybackChrome.tsx`.
+
+Silo's eight new admin wire types join the client coverage allowlist. The
+client contract digest is re-pinned. The following are regenerated:
+- the native client DTOs;
+- the native setting keys;
+- the API v2 document, fixtures and route inventory;
+- the API catalogue.
+
+The copies in the client repositories are not updated.
+
 ## October 28, 2026 — Silo integration through 564b906b8
 
 `5fc698915` merges three more Silo commits, through `564b906b8` (2026-10-28

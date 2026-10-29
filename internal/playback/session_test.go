@@ -701,8 +701,10 @@ func TestSessionManager_LimitCountsIgnoreStaleSessions(t *testing.T) {
 	stale := time.Now().Add(-2 * time.Hour)
 	direct.LastActivityAt = stale
 	direct.UpdatedAt = stale
+	direct.PlanCommittedAt = stale
 	transcode.LastActivityAt = stale
 	transcode.UpdatedAt = stale
+	transcode.PlanCommittedAt = stale
 
 	if got := sm.ActiveCount(1); got != 0 {
 		t.Fatalf("ActiveCount after grace = %d, want 0", got)
@@ -723,6 +725,7 @@ func TestSessionManager_ActiveTransportKeepsSessionLive(t *testing.T) {
 
 	session.LastActivityAt = time.Now().Add(-2 * time.Hour)
 	session.UpdatedAt = session.LastActivityAt
+	session.PlanCommittedAt = session.LastActivityAt
 
 	if got := sm.ActiveCount(1); got != 1 {
 		t.Fatalf("ActiveCount with active transport = %d, want 1", got)
@@ -733,6 +736,7 @@ func TestSessionManager_ActiveTransportKeepsSessionLive(t *testing.T) {
 	}
 	session.LastActivityAt = time.Now().Add(-2 * time.Hour)
 	session.UpdatedAt = session.LastActivityAt
+	session.PlanCommittedAt = session.LastActivityAt
 
 	if got := sm.ActiveCount(1); got != 0 {
 		t.Fatalf("ActiveCount after transport ends = %d, want 0", got)
@@ -850,6 +854,7 @@ func TestCheckReplacementAllowedExcludesOnlyTheReplacedSession(t *testing.T) {
 	// Age the failed session past the active grace so it no longer counts.
 	failed.LastActivityAt = time.Now().Add(-2 * time.Hour)
 	failed.UpdatedAt = failed.LastActivityAt
+	failed.PlanCommittedAt = failed.LastActivityAt
 
 	for i := 0; i < 2; i++ {
 		mustStartSession(t, sm, 1, "profile-1", 200+i, playback.PlayTranscode, false)

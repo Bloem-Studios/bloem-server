@@ -26,7 +26,6 @@ contracts/api/v2/migration.schema.json  # section and auth-trait enums Bloem's o
 contracts/api/v2/offline-routes.txt  # generated: Bloem registers more routes than Silo, so this artifact necessarily differs
 contracts/api/v2/openapi.json
 contracts/api/v2/route-inventory.json  # generated: Bloem registers about 400 more routes, and its global middleware (preview guards, tenancy, native-video capture) changes the chain of almost every Silo route, so a separate Bloem file would not restore Silo's bytes; regenerate with `make route-inventory`, never hand-edit
-docker-compose.yml
 docs/design/schemas/playback-v3/v3/capability-response.schema.json
 docs/design/schemas/playback-v3/v3/decision-response.schema.json
 docs/design/schemas/playback-v3/v3/fixtures/invalid/native-and-artifact-decision_response.json

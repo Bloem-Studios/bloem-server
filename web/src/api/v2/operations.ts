@@ -122,7 +122,9 @@ export const v2Operations = {
   "GET /api/v2/admin/autoscan/sources/{id}/rewrite-suggestions":
     "getAdminAutoscanRewriteSuggestions",
   "GET /api/v2/admin/autoscan/status": "getAdminAutoscanStatus",
+  "GET /api/v2/admin/catalog/capabilities": "getAdminCatalogCapabilities",
   "GET /api/v2/admin/catalog/import-sources": "listCatalogImportSources",
+  "GET /api/v2/admin/catalog/items": "listAdminCatalogItems",
   "GET /api/v2/admin/catalog/local-import-sources": "listLocalCatalogImportSources",
   "GET /api/v2/admin/catalog/search/status": "getAdminCatalogSearchStatus",
   "GET /api/v2/admin/collection-groups/{group_id}/collections/order":
@@ -199,8 +201,10 @@ export const v2Operations = {
   "GET /api/v2/admin/node-sessions": "listAdminNodeSessions",
   "GET /api/v2/admin/nodes": "listAdminNodes",
   "GET /api/v2/admin/nodes/capabilities": "getAdminNodeCapabilities",
+  "GET /api/v2/admin/nodes/summary": "listAdminNodeSummaries",
   "GET /api/v2/admin/notifications/server-channels": "listAdminNotificationServerChannels",
   "GET /api/v2/admin/playback-history": "listAdminPlaybackHistory",
+  "GET /api/v2/admin/playback-history/capabilities": "getAdminPlaybackHistoryCapabilities",
   "GET /api/v2/admin/playback-routing/capabilities": "getAdminPlaybackRoutingCapabilities",
   "GET /api/v2/admin/plugins/catalog": "listAdminPluginCatalog",
   "GET /api/v2/admin/plugins/catalog-settings": "getAdminPluginCatalogSettings",

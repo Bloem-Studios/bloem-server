@@ -77,6 +77,10 @@ public enum SettingKey: String, CaseIterable, Sendable {
     case playbackPreferredQuality = "playback.preferred_quality"
     /// Show forced subtitles
     case playbackShowForcedSubtitles = "playback.show_forced_subtitles"
+    /// Show marker confidence
+    case playbackShowMarkerConfidence = "playback.show_marker_confidence"
+    /// Show marker source
+    case playbackShowMarkerSource = "playback.show_marker_source"
     /// Subtitle appearance
     case playbackSubtitleAppearance = "playback.subtitle_appearance"
     /// Preferred subtitle language
@@ -200,6 +204,8 @@ public extension SettingKey {
         .playbackNextUpPromptSeconds,
         .playbackPreferredQuality,
         .playbackShowForcedSubtitles,
+        .playbackShowMarkerConfidence,
+        .playbackShowMarkerSource,
         .playbackSubtitleAppearance,
         .playbackSubtitleLanguage,
         .playbackSubtitleMode,

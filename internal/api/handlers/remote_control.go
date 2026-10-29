@@ -138,7 +138,7 @@ func (s *playbackRemoteSender) Dispatch(ctx context.Context, command playback.Co
 			h.RemoteObserver.OnDeadline(context.WithoutCancel(ctx), commandID)
 		}
 		if tearDown {
-			_ = h.stopPlaybackSessionByID(context.WithoutCancel(ctx), sessionID, true)
+			_ = h.stopPlaybackSessionByID(context.WithoutCancel(ctx), sessionID, PlaybackEndStopped)
 		}
 	}
 	h.rememberRealtimeCommand(commandID, sessionID, command.Name)
@@ -201,7 +201,7 @@ func (s *playbackRemoteSender) Replan(ctx context.Context, sessionID, commandID 
 		if h.RemoteObserver != nil {
 			h.RemoteObserver.OnDeadline(context.WithoutCancel(ctx), commandID)
 		}
-		_ = h.stopPlaybackSessionByID(context.WithoutCancel(ctx), sessionID, false)
+		_ = h.stopPlaybackSessionByID(context.WithoutCancel(ctx), sessionID, "")
 	}
 	h.rememberRealtimeCommand(commandID, sessionID, playback.CommandPlanInvalidated)
 	result := h.CommandDispatcher.DispatchToSession(command, deadline, fallback)

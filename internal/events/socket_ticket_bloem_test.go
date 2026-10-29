@@ -16,7 +16,7 @@ func TestSocketTicketBloemBindingSerializationAndSingleUse(t *testing.T) {
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	store := NewSocketTicketStore(nil)
+	store := NewSocketTicketStore(nil, SocketAudienceEvents)
 	ticket, err := store.Mint(t.Context(), decoded)
 	if err != nil {
 		t.Fatal(err)

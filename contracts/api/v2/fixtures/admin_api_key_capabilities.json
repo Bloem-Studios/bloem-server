@@ -1,5 +1,5 @@
 {
-  "revision": "6532601df4e0e59d3f105b6896b8d033b28c0014278974836c064cac20b936fa",
+  "revision": "bfedcdf06f1eeb57309b86a92258183bd8f52f268114a8f6da94a915051a072f",
   "state": "available",
   "allowed": true,
   "available": true,
@@ -20,6 +20,14 @@
     {
       "name": "admin:access-groups:read",
       "description": "Read access groups and their policies."
+    },
+    {
+      "name": "admin:monitor:read",
+      "description": "Monitor the server read-only: live sessions, playback history, activity stats, accounts, devices, downloads, node and host health, and the catalog listing. Never exposes filesystem paths, node addresses, storage keys, setting values or credentials."
+    },
+    {
+      "name": "admin:sessions:control",
+      "description": "Pause, resume, stop, message and terminate live playback sessions."
     },
     {
       "name": "admin:entitlements:bulk",

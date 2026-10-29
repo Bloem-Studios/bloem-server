@@ -3,6 +3,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"log/slog"
@@ -185,11 +186,14 @@ type Dependencies struct {
 	NodeCapabilityInvalidator func(nodeURL string)
 	ResourceSampler           *nodemetrics.Sampler           // this host's own resource sampler (may be nil)
 	SessionSyncer             handlers.PlaybackSessionSyncer // optional; immediate playback session sync trigger
-	EventBus                  cache.EventBus
-	AdminStatsProvider        handlers.AdminStatsSource
-	Recommender               recommendations.Recommender // nil when disabled
-	RecWorker                 *recommendations.Worker     // nil when disabled
-	CatalogSearchVectorizer   catalog.CatalogSearchQueryVectorizer
+	// LiveSessionRowJSON renders a session as the live row a sync would
+	// store for it, so a session.started event can carry it before a sync.
+	LiveSessionRowJSON      func(*playback.Session) (json.RawMessage, error)
+	EventBus                cache.EventBus
+	AdminStatsProvider      handlers.AdminStatsSource
+	Recommender             recommendations.Recommender // nil when disabled
+	RecWorker               *recommendations.Worker     // nil when disabled
+	CatalogSearchVectorizer catalog.CatalogSearchQueryVectorizer
 	// CatalogSearchSettings is the process-lifetime startup snapshot shared by
 	// every native/jellycompat provider and the index maintenance worker.
 	CatalogSearchSettings *catalog.CatalogSearchSettings
@@ -322,6 +326,11 @@ type Dependencies struct {
 	// that case rather than failing.
 	MDBListClient *mdblist.Client
 
+	// TMDB is the process's one TMDB client, built in main.go: request
+	// discovery, the collection sources, and their syncs share its response
+	// caches and its request budget. Nil builds one for this router.
+	TMDB *tmdb.Client
+
 	// Admin dashboard aggregates, cached like AdminStatsProvider. Each is
 	// optional: without one, the matching route queries Postgres per request.
 	AdminPlaybackActivityProvider handlers.AdminPlaybackActivitySource
@@ -452,6 +461,14 @@ func newChiRouter(deps Dependencies) chi.Router {
 	declareNativeMediaRoutes()
 	r := chi.NewRouter()
 	r.Use(captureNativeVideoRequest)
+
+	if deps.TMDB == nil {
+		tmdbAPIKey := ""
+		if deps.Config != nil {
+			tmdbAPIKey = deps.Config.TMDBAPIKey
+		}
+		deps.TMDB = tmdb.NewClient(tmdbAPIKey, tmdb.RequestsPerSecond)
+	}
 
 	useBaseMiddleware(r, deps)
 	if overlay := deps.overlayOrigins(); overlay != nil {
@@ -1029,15 +1046,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 				ebookReaderHandler.Conversion = conv
 			}
 		}
-		tmdbAPIKey := ""
-		if deps.Config != nil {
-			tmdbAPIKey = deps.Config.TMDBAPIKey
-		}
-		requestsTMDB := tmdb.NewClient(tmdbAPIKey, 40)
 		// deps.UserStoreProvider is the notification-wrapped provider, so a
 		// promoted series queues an interest recompute. The promotion effects
 		// are the personal data handler, wired once it exists.
-		watchlistTitles = watchlist.NewTitles(deps.DB, itemRepo, deps.UserStoreProvider, requestsTMDB, nil)
+		watchlistTitles = watchlist.NewTitles(deps.DB, itemRepo, deps.UserStoreProvider, deps.TMDB, nil)
 
 		catalogResourceHandler = handlers.NewCatalogResourceHandler(itemsHandler)
 		catalogResourceHandler.SetWatchlistPromoter(watchlistTitles)
@@ -1054,12 +1066,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 		requestsRepo := mediarequests.NewRepository(deps.DB, deps.SecretCipher)
 		requestSvc := mediarequests.NewService(
 			requestsRepo,
-			requestsTMDB,
+			deps.TMDB,
 			mediarequests.NewCatalogPresence(itemRepo, providerIDRepo),
 		)
 		requestSvc.SetTitleObserver(watchlistTitles)
 		discoverLists := discoverrows.NewSnapshotRepository(deps.DB)
-		requestSvc.SetDiscoverLists(discoverLists, discoverrows.NewRefresher(requestsRepo, discoverLists, requestsTMDB))
+		requestSvc.SetDiscoverLists(discoverLists, discoverrows.NewRefresher(requestsRepo, discoverLists, deps.TMDB))
 		watchlistRequestWithdrawer = requestSvc
 		requestSvc.SetWatchlistPreference(mediarequests.StoreWatchlistPreference{Stores: deps.UserStoreProvider})
 		AttachRequestRouter(requestSvc, deps.PluginService)
@@ -1450,6 +1462,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		playbackHandler.AdminStore = playbackAdminStore
 		playbackHandler.EventsHub = deps.EventsHub
+		playbackHandler.LifecycleEncoder = apiv2.PlaybackLifecycleEncoder{}
+		playbackHandler.LiveRowJSON = deps.LiveSessionRowJSON
 		if deps.FileRepo != nil {
 			playbackHandler.MissingMarker = deps.FileRepo
 		}
@@ -1463,6 +1477,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			streamHandler.TM = playbackHandler.TranscodeManager()
 			streamHandler.StreamDeny = playbackHandler.StreamDeny
 			streamHandler.PlanStoreV3 = playbackHandler.PlanStoreV3
+			streamHandler.FinishOtherEnd = playbackHandler.FinishOtherEnd
 			if deps.Config != nil {
 				streamHandler.JWTSecret = deps.Config.Auth.JWTSecret
 			}
@@ -1725,6 +1740,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		adminHandler.RestartStatus = restartStatus
 		adminHandler.CatalogSearchStatus = catalogSearchService
 		adminHandler.DiagnosticsStore = diagnosticsStore
+		if profileHandler != nil {
+			adminHandler.ProfileAvatars = profileHandler
+		}
 		if watchlistTitles != nil && deps.DB != nil {
 			adminHandler.WatchlistTitlesSweeper = watchlistTitles
 		}
@@ -2151,40 +2169,16 @@ func newChiRouter(deps Dependencies) chi.Router {
 			)
 		}
 		if libraryCollectionService.TMDBCollections == nil {
-			apiKey := ""
-			if deps.Config != nil {
-				apiKey = deps.Config.TMDBAPIKey
-			}
-			libraryCollectionService.TMDBCollections = &tmdbCollectionAdapter{
-				client: tmdb.NewClient(apiKey, 40),
-			}
+			libraryCollectionService.TMDBCollections = &tmdbCollectionAdapter{client: deps.TMDB}
 		}
 		if libraryCollectionService.TMDBFranchises == nil {
-			apiKey := ""
-			if deps.Config != nil {
-				apiKey = deps.Config.TMDBAPIKey
-			}
-			libraryCollectionService.TMDBFranchises = &tmdbFranchiseAdapter{
-				client: tmdb.NewClient(apiKey, 40),
-			}
+			libraryCollectionService.TMDBFranchises = &tmdbFranchiseAdapter{client: deps.TMDB}
 		}
 		if libraryCollectionService.TMDBDiscovers == nil {
-			apiKey := ""
-			if deps.Config != nil {
-				apiKey = deps.Config.TMDBAPIKey
-			}
-			libraryCollectionService.TMDBDiscovers = &tmdbDiscoverAdapter{
-				client: tmdb.NewClient(apiKey, 40),
-			}
+			libraryCollectionService.TMDBDiscovers = &tmdbDiscoverAdapter{client: deps.TMDB}
 		}
 		if libraryCollectionService.TMDBLists == nil {
-			apiKey := ""
-			if deps.Config != nil {
-				apiKey = deps.Config.TMDBAPIKey
-			}
-			libraryCollectionService.TMDBLists = &tmdbListAdapter{
-				client: tmdb.NewClient(apiKey, 40),
-			}
+			libraryCollectionService.TMDBLists = &tmdbListAdapter{client: deps.TMDB}
 		}
 		// Propagate the now-wired TMDB fetchers to the user-side sync service
 		// (constructed earlier in main.go before settingsRepo existed, so its
@@ -2582,7 +2576,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 		v2deps.ScanControls = libraryHandler
 	}
 	if deps.OpsLogRepo != nil && deps.ActivityLogRepo != nil && deps.LogStreamHub != nil && sessionRepo != nil && userRepo != nil {
-		socket := handlers.NewAdminLogsSocketV2(handlers.NewAdminLogsHandler(deps.OpsLogRepo, deps.ActivityLogRepo, deps.LogStreamHub), evt.NewSocketTicketStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, actingAdmin, deps.PublicURL)
+		socket := handlers.NewAdminLogsSocketV2(handlers.NewAdminLogsHandler(deps.OpsLogRepo, deps.ActivityLogRepo, deps.LogStreamHub), evt.NewSocketTicketStore(deps.RedisClient, evt.SocketAudienceAdminLogs), sessionRepo, userRepo, viewerResolver, actingAdmin, deps.PublicURL)
 		v2deps.AdminLogsSocket = socket
 		if deps.OnConfigChange != nil {
 			deps.OnConfigChange(func(_, updated *config.Config) { socket.SetPublicOrigin(updated.Server.PublicURL) })
@@ -2804,6 +2798,10 @@ func newChiRouter(deps Dependencies) chi.Router {
 			v2deps.AdminWatchSummary = adminHandler
 		}
 		v2deps.AdminPlaybackSessions = adminHandler
+		if playbackHandler != nil && deps.DB != nil {
+			playbackHandler.LifecycleViews = adminHandler
+			v2deps.PlaybackLifecycleEvents = deps.EventsHub != nil
+		}
 		if deps.DB != nil && deps.ArtifactManager != nil {
 			v2deps.AdminDownloadPreparations = downloads.NewPreparationReader(deps.DB, profileNamesByUser(deps.UserStoreProvider))
 			v2deps.AdminDownloadPreparationControls = deps.ArtifactManager
@@ -2870,8 +2868,12 @@ func newChiRouter(deps Dependencies) chi.Router {
 		events.SetNotificationsSystem(deps.Notifications)
 		v2deps.EventsCapability = events
 		if sessionRepo != nil && userRepo != nil {
+			var socketKeys handlers.SocketAPIKeys
+			if apiKeyRepo != nil {
+				socketKeys = apiKeyRepo
+			}
 			tenantStore := tenancy.NewStore(deps.DB)
-			socket := handlers.NewBloemEventsSocketV2(events, evt.NewSocketTicketStore(deps.RedisClient), sessionRepo, userRepo, viewerResolver, actingAdmin, tenancy.NewResolver(tenantStore), tenantStore, deps.PublicURL)
+			socket := handlers.NewBloemEventsSocketV2(events, evt.NewSocketTicketStore(deps.RedisClient, evt.SocketAudienceEvents), sessionRepo, userRepo, viewerResolver, actingAdmin, socketKeys, tenancy.NewResolver(tenantStore), tenantStore, deps.PublicURL)
 			v2deps.EventsSocket = socket
 			if deps.OnConfigChange != nil {
 				deps.OnConfigChange(func(_, updated *config.Config) { socket.SetPublicOrigin(updated.Server.PublicURL) })
@@ -3015,6 +3017,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	v2deps.AdminItemMetadata = adminHandler
 	if adminHandler != nil {
 		v2deps.AdminUnmatchedFiles = adminHandler
+	}
+	if itemRepo != nil {
+		v2deps.AdminCatalogItems = itemRepo
 	}
 	if adminImageHandler != nil {
 		v2deps.AdminCatalogImages = adminImageHandler
@@ -3207,10 +3212,24 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if deps.PluginHTTPProxy != nil {
 		v2deps.AuthProviderIconPublic = deps.PluginHTTPProxy.PublicGETRoute
 	}
-	pluginContentAccess := func(r *http.Request) plugins.ContentAccess {
-		return resolveBloemPluginContentAccess(r, jwtService, sessionRepo, apiKeyRepo, userRepo, contentViewer)
-	}
-	v2deps.PluginContent = plugins.NewContentHandler(deps.PluginHTTPProxy, pluginContentAccess, pluginContentAccess)
+	pluginRouteAccess := newPluginAccessResolver(jwtService, sessionRepo, authService, apiKeyRepo, userRepo, viewerResolver, actingAdmin)
+	// Assets keep their JWT-only access: API keys never reached them. Their
+	// callers keep only authenticated and admin, so they never renew the
+	// launch cookie.
+	pluginAssetAccess := newPluginAccessResolver(jwtService, sessionRepo, nil, nil, nil, viewerResolver, actingAdmin)
+	pluginAssetAccess.noRenewal = true
+	bloemHoldPluginPreviews(sessionRepo, pluginRouteAccess, pluginAssetAccess)
+	pluginBoundary := bloemPluginBoundary{jwt: jwtService, users: userRepo, viewer: contentViewer}
+	v2deps.PluginContent = plugins.NewContentHandler(deps.PluginHTTPProxy, pluginBoundary.content(func(r *http.Request) plugins.ContentAccess {
+		resolved := pluginRouteAccess.resolve(r)
+		return plugins.ContentAccess{
+			Authenticated: resolved.authenticated, Admin: resolved.admin, UserID: resolved.userID, ProfileID: resolved.profileID,
+			RenewedCookie: renewedPluginCookie(r, resolved, plugins.ContentPrefix),
+		}
+	}), pluginBoundary.content(func(r *http.Request) plugins.ContentAccess {
+		resolved := pluginAssetAccess.resolve(r)
+		return plugins.ContentAccess{Authenticated: resolved.authenticated, Admin: resolved.admin}
+	}))
 	if deps.BrandingService != nil {
 		v2deps.AdminBrandingAssets = handlers.NewBrandingHandler(deps.BrandingService)
 	}
@@ -3266,25 +3285,13 @@ func newChiRouter(deps Dependencies) chi.Router {
 					http.Error(w, "invalid installation id", http.StatusBadRequest)
 					return
 				}
-				contentAccess := pluginContentAccess(r)
-				if contentAccess.PlaybackDenied {
-					http.Error(w, "Plugin content access has not been granted", http.StatusForbidden)
+				resolved := pluginRouteAccess.resolve(r)
+				if pluginBoundary.refused(w, r, resolved) {
 					return
 				}
-				authenticated, admin, userID, profileID, profileBound := contentAccess.Authenticated, contentAccess.Admin, contentAccess.UserID, contentAccess.ProfileID, contentAccess.ProfileBound
-				if profileBound {
-					// The plugin proxy authenticates on its own and so never
-					// passes RequireAuth, which is where direct-profile
-					// sessions are held to their allowlist. Rather than teach
-					// the allowlist about routes a plugin defines at runtime,
-					// refuse the whole surface: the proxy hands plugin code
-					// the owning account's id and role, which is precisely
-					// what a profile-bound session must not be able to spend.
-					http.Error(w, "Direct profile sessions cannot use plugin routes", http.StatusForbidden)
-					return
-				}
-				ctx := plugins.WithPluginAccessUser(r.Context(), authenticated, admin, userID, profileID)
-				deps.PluginHTTPProxy.ServeRoute(w, r.WithContext(ctx), installationID, authenticated, admin)
+				w = plugins.WithRenewedCookie(w, renewedPluginCookie(r, resolved, "/api/v1"))
+				ctx := plugins.WithPluginAccessUser(r.Context(), resolved.authenticated, resolved.admin, resolved.userID, resolved.profileID)
+				deps.PluginHTTPProxy.ServeRoute(w, r.WithContext(ctx), installationID, resolved.authenticated, resolved.admin)
 			})
 			r.Get("/plugin-assets/{installation_id}/*", func(w http.ResponseWriter, r *http.Request) {
 				installationID, err := strconv.Atoi(chi.URLParam(r, "installation_id"))
@@ -3297,22 +3304,11 @@ func newChiRouter(deps Dependencies) chi.Router {
 					http.NotFound(w, r)
 					return
 				}
-				contentAccess := pluginContentAccess(r)
-				if contentAccess.PlaybackDenied {
-					http.Error(w, "Plugin content access has not been granted", http.StatusForbidden)
+				resolved := pluginAssetAccess.resolve(r)
+				if pluginBoundary.refused(w, r, resolved) {
 					return
 				}
-				authenticated, admin, profileBound := contentAccess.Authenticated, contentAccess.Admin, contentAccess.ProfileBound
-				if profileBound {
-					// Same boundary as the route proxy above: an asset
-					// descriptor may be marked authenticated, and this entry
-					// point authenticates itself rather than through the
-					// middleware that holds direct-profile sessions to their
-					// allowlist.
-					http.Error(w, "Direct profile sessions cannot use plugin routes", http.StatusForbidden)
-					return
-				}
-				deps.PluginHTTPProxy.ServeAsset(w, r.WithContext(plugins.WithPluginAccess(r.Context(), authenticated, admin)), installationID, assetPath)
+				deps.PluginHTTPProxy.ServeAsset(w, r.WithContext(plugins.WithPluginAccess(r.Context(), resolved.authenticated, resolved.admin)), installationID, assetPath)
 			})
 		}
 
@@ -4990,6 +4986,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 	if nodeHandler != nil {
 		nodeHandler.StartConfigurationReconciliation(deps.AppContext)
 	}
+	// The sweep ends sessions through the handler's fields, so it starts
+	// once every route above has finished wiring them.
+	playbackHandler.StartLifecycleSweep(deps.AppContext, deps.DB)
 	return r
 }
 
@@ -5118,7 +5117,8 @@ func (r *pgSubtitleMediaResolver) GetMediaFileWithMetadata(ctx context.Context, 
 			COALESCE(mi.year, 0),
 			COALESCE(mi.imdb_id, ''),
 			COALESCE(e.season_number, 0),
-			COALESCE(e.episode_number, 0)
+			COALESCE(e.episode_number, 0),
+			COALESCE(mf.multi_episode_end, 0)
 		FROM media_files mf
 		JOIN media_items mi ON mi.content_id = mf.content_id
 		LEFT JOIN episodes e ON e.content_id = mf.episode_id
@@ -5136,6 +5136,7 @@ func (r *pgSubtitleMediaResolver) GetMediaFileWithMetadata(ctx context.Context, 
 		&meta.IMDbID,
 		&meta.Season,
 		&meta.Episode,
+		&meta.EpisodeEnd,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -5146,89 +5147,10 @@ func (r *pgSubtitleMediaResolver) GetMediaFileWithMetadata(ctx context.Context, 
 	return &meta, nil
 }
 
-// adminRole is the legacy account role that grants server administration.
-const adminRole = "admin"
-
-// resolveOptionalPluginAccessUser resolves the optional identity behind a
-// plugin request: whether it is authenticated, whether it is an admin, the
-// account and profile it belongs to, and whether its profile is fixed by the
-// token. It accepts API-key bearer tokens (sa_*) when apiKeyRepo and userRepo
-// are provided. Both plugin entry points authenticate through this rather than
-// the auth middleware, so both must apply the direct-profile boundary
-// themselves.
-func resolveOptionalPluginAccessUser(
-	r *http.Request,
-	jwtService *auth.JWTService,
-	sessionRepo *auth.SessionRepository,
-	apiKeyRepo *auth.APIKeyRepository,
-	userRepo *auth.UserRepository,
-) (authenticated bool, admin bool, userID int, profileID string, profileBound bool) {
-	if jwtService == nil || sessionRepo == nil {
-		return false, false, 0, "", false
-	}
-
-	token := optionalPluginAccessToken(r)
-	if token == "" {
-		return false, false, 0, "", false
-	}
-
-	if strings.HasPrefix(token, "sa_") {
-		if apiKeyRepo == nil || userRepo == nil {
-			return false, false, 0, "", false
-		}
-		apiKey, err := apiKeyRepo.GetByKey(r.Context(), token)
-		if err != nil {
-			return false, false, 0, "", false
-		}
-		// Scoped keys are allowlist credentials for the routes their scopes
-		// name; plugin access is not on any scope's allowlist.
-		if len(apiKey.Scopes) > 0 {
-			return false, false, 0, "", false
-		}
-		user, err := userRepo.GetByID(r.Context(), apiKey.UserID)
-		if err != nil || !user.Enabled {
-			return false, false, 0, "", false
-		}
-		if preview, err := sessionRepo.AccountPreviewOnly(r.Context(), user.ID); err != nil || preview {
-			// Bloem: preview principals reach plugins only as anonymous.
-			return false, false, 0, "", false
-		}
-		return true, user.Role == adminRole, user.ID, "", false
-	}
-
-	claims, err := jwtService.ValidateToken(token)
-	if err != nil || (claims.TokenType != auth.TokenTypeAccess && claims.TokenType != auth.TokenTypePluginAccess) {
-		return false, false, 0, "", false
-	}
-	// A session holding a temporary password may only change it.
-	if claims.PasswordChangeRequired {
-		return false, false, 0, "", false
-	}
-	// Plugin launch tokens copy the role of the access token they were minted
-	// from, and a role change keeps the session, so admin access follows the
-	// account's current role rather than the token's.
-	// A remote-playback handoff only plays on its device; plugins are not
-	// part of that.
-	authority, preview, valid, err := sessionRepo.ActivePreviewSession(r.Context(), claims.SessionID, claims.UserID)
-	if err != nil || !valid || authority.IsRemotePlayback() || preview {
-		return false, false, 0, "", false
-	}
-	profileBound = claims.AuthMethod == auth.AuthMethodDirectProfile
-	if profileBound && strings.TrimSpace(claims.ProfileID) == "" {
-		// A direct-profile token without its profile is not a usable
-		// identity; treating it as anonymous is safer than letting the
-		// request name its own profile downstream.
-		return false, false, 0, "", false
-	}
-	return true, authority.Role == adminRole, claims.UserID, claims.ProfileID, profileBound
-}
-
-// NewTMDBCollectionFetcher creates a TMDBCollectionFetcher from an API key.
+// NewTMDBCollectionFetcher adapts client to a TMDBCollectionFetcher.
 // Exported so main.go can construct it for the collection sync scheduler.
-func NewTMDBCollectionFetcher(apiKey string) catalog.TMDBCollectionFetcher {
-	return &tmdbCollectionAdapter{
-		client: tmdb.NewClient(apiKey, 40),
-	}
+func NewTMDBCollectionFetcher(client *tmdb.Client) catalog.TMDBCollectionFetcher {
+	return &tmdbCollectionAdapter{client: client}
 }
 
 // tmdbCollectionAdapter adapts the tmdb.Client to the catalog.TMDBCollectionFetcher interface.

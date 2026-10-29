@@ -132,14 +132,14 @@ func TestNativeVideoRemoteStopKeepsSessionWhenRevocationFails(t *testing.T) {
 	service.WorkerGrants = NewNativeVideoWorkerGrantStore(dead)
 	h := NewPlaybackHandler(manager, service.Files)
 	h.NativeVideo = service
-	if err := h.stopPlaybackSession(t.Context(), session, true); err == nil {
+	if err := h.stopPlaybackSession(t.Context(), session, PlaybackEndStopped); err == nil {
 		t.Fatal("stop succeeded without durable native grant revocation")
 	}
 	if _, err := manager.GetSession(session.ID); err != nil {
 		t.Fatalf("failed stop removed retryable session: %v", err)
 	}
 	service.WorkerGrants = store
-	if err := h.stopPlaybackSession(t.Context(), session, true); err != nil {
+	if err := h.stopPlaybackSession(t.Context(), session, PlaybackEndStopped); err != nil {
 		t.Fatalf("retry stop: %v", err)
 	}
 	if _, err := store.Resolve(t.Context(), transcodenode.NativeExecutionRequest{WorkerID: 7, TransportID: start.SessionID, InputPath: start.InputPath, Start: &start}, service); err == nil {
@@ -156,14 +156,14 @@ func TestNativeVideoLocalStopRequiresDurableDenial(t *testing.T) {
 	dead := redis.NewClient(client.Options())
 	_ = dead.Close()
 	service.Bindings = NewNativeVideoBindingStore(dead)
-	if err := h.stopPlaybackSession(t.Context(), session, true); err == nil {
+	if err := h.stopPlaybackSession(t.Context(), session, PlaybackEndStopped); err == nil {
 		t.Fatal("local stop succeeded without durable native denial")
 	}
 	if _, err := manager.GetSession(session.ID); err != nil {
 		t.Fatalf("failed local stop removed retryable session: %v", err)
 	}
 	service.Bindings = NewNativeVideoBindingStore(client)
-	if err := h.stopPlaybackSession(t.Context(), session, true); err != nil {
+	if err := h.stopPlaybackSession(t.Context(), session, PlaybackEndStopped); err != nil {
 		t.Fatalf("retry local stop: %v", err)
 	}
 	if value, err := client.Exists(t.Context(), playback.StreamDenyKey(session.ID)).Result(); err != nil || value != 1 {

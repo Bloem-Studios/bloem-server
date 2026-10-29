@@ -30,7 +30,7 @@ Terms used below:
 | CI | `ci.yml` | As in Silo | Nothing on Bloem: its one job runs only in Silo's repository ([below](#silos-ciyml)) | Silo's file; a one-line seam |
 
 The other files in `.github/workflows/` are Silo's and byte-identical to
-Silo's `main` at `564b906b8`. None of them tests or publishes Bloem. Silo's
+Silo's `main` at `cc8514943`. None of them tests or publishes Bloem. Silo's
 `docker.yml` publishes only after a successful "CI" run, and on Bloem every
 "CI" run concludes `skipped`, so Silo's image job is skipped too. The
 reusable `trusted-linux-build.yml` runs only in Silo's repository, and

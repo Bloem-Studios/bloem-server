@@ -33,7 +33,7 @@ func TestBrowseOnlyPluginRouterPostgres(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie, err := jwt.GeneratePluginAccessToken(user.ID, "user", "browse-session", "", time.Hour)
+	cookie, err := jwt.GeneratePluginAccessToken(user.ID, "user", "browse-session", "", nil, time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,6 +74,13 @@ func TestBrowseOnlyPluginRouterPostgres(t *testing.T) {
 				r.Header.Set("Range", "bytes=2-4")
 				w := httptest.NewRecorder()
 				router.ServeHTTP(w, r)
+				if credential == "api-key" && strings.Contains(path, "/plugin-assets/") {
+					// Silo's plugin assets accept login tokens only (#3021).
+					if w.Code != http.StatusUnauthorized || strings.Contains(w.Body.String(), "ndo") {
+						t.Fatalf("api-key asset %s: %d %s", path, w.Code, w.Body)
+					}
+					continue
+				}
 				if allowed {
 					if w.Code != 206 {
 						t.Fatalf("allowed %s %s: %d %s", credential, path, w.Code, w.Body)

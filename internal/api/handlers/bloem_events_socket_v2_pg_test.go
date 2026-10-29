@@ -63,7 +63,7 @@ func TestBloemEventsSocketPostgresAuthorityBinding(t *testing.T) {
 	f.identity.ProfileID, f.identity.ProfileToken = "profile", "pin-proof"
 	f.ctx = apimw.SetProfileID(f.ctx, "profile")
 	store := tenancy.NewStore(pool)
-	h := NewBloemEventsSocketV2(f.h.Events, evt.NewSocketTicketStore(nil), sessions, auth.NewUserRepository(pool), f.viewer, apimw.NewActingAdminDecider(func(context.Context, int, string) (bool, bool, error) { return true, true, nil }, nil), tenancy.NewResolver(store), store, "")
+	h := NewBloemEventsSocketV2(f.h.Events, evt.NewSocketTicketStore(nil, evt.SocketAudienceEvents), sessions, auth.NewUserRepository(pool), f.viewer, apimw.NewActingAdminDecider(func(context.Context, int, string) (bool, bool, error) { return true, true, nil }, nil), nil, tenancy.NewResolver(store), store, "")
 	ticket, err := h.Mint(f.ctx, f.identity)
 	if err != nil {
 		t.Fatalf("mint with real authority: %v", err)

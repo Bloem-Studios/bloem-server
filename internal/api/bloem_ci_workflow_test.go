@@ -41,22 +41,22 @@ func readBloemWorkflow(t *testing.T, path string) map[string]bloemWorkflowJob {
 // 17 does not (23001 for RESTRICT), so a 17 service hides behavior production
 // has.
 func TestCIPostgresServicesMatchTheDeploymentMajor(t *testing.T) {
-	raw, err := os.ReadFile("../../docker-compose.yml")
+	// The Compose deployment runs Silo's omnibus image, which bundles the
+	// PostgreSQL major its Dockerfile pins.
+	raw, err := os.ReadFile("../../omnibus/Dockerfile")
 	if err != nil {
-		t.Fatalf("read docker-compose.yml: %v", err)
+		t.Fatalf("read omnibus/Dockerfile: %v", err)
 	}
-	var compose struct {
-		Services map[string]struct {
-			Image string `yaml:"image"`
-		} `yaml:"services"`
+	major := ""
+	for _, line := range strings.Split(string(raw), "\n") {
+		if value, ok := strings.CutPrefix(strings.TrimSpace(line), "ARG PG_MAJOR="); ok {
+			major = value
+		}
 	}
-	if err := yaml.Unmarshal(raw, &compose); err != nil {
-		t.Fatalf("parse docker-compose.yml: %v", err)
+	if major == "" {
+		t.Fatal("omnibus/Dockerfile pins no PG_MAJOR")
 	}
-	deployed := compose.Services["postgres"].Image
-	if !strings.HasPrefix(deployed, "pgvector/pgvector:pg") {
-		t.Fatalf("docker-compose.yml postgres image = %q", deployed)
-	}
+	deployed := "pgvector/pgvector:pg" + major
 	services := 0
 	for name, job := range readBloemWorkflow(t, "../../.github/workflows/bloem-ci.yml") {
 		postgres, ok := job.Services["postgres"]

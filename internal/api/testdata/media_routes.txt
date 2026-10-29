@@ -71,12 +71,14 @@ GET /api/v2/admin/autoscan/status	non-media
 POST /api/v2/admin/autoscan/trigger	non-media
 DELETE /api/v2/admin/branding/assets/{kind}	non-media
 POST /api/v2/admin/branding/assets/{kind}	non-media
+GET /api/v2/admin/catalog/capabilities	non-media
 POST /api/v2/admin/catalog/export	non-media
 POST /api/v2/admin/catalog/export-jobs	non-media
 POST /api/v2/admin/catalog/export-jobs/{id}/publish	non-media
 POST /api/v2/admin/catalog/import	non-media
 POST /api/v2/admin/catalog/import-jobs	non-media
 GET /api/v2/admin/catalog/import-sources	non-media
+GET /api/v2/admin/catalog/items	non-media
 GET /api/v2/admin/catalog/local-import-sources	non-media
 GET /api/v2/admin/catalog/search/status	non-media
 GET /api/v2/admin/collection-groups/{group_id}/collections/order	non-media
@@ -234,6 +236,7 @@ GET /api/v2/admin/nodes	non-media
 POST /api/v2/admin/nodes	non-media
 GET /api/v2/admin/nodes/capabilities	non-media
 POST /api/v2/admin/nodes/force-reload	non-media
+GET /api/v2/admin/nodes/summary	non-media
 DELETE /api/v2/admin/nodes/{id}	non-media
 PUT /api/v2/admin/nodes/{id}	non-media
 POST /api/v2/admin/nodes/{id}/check	non-media
@@ -255,6 +258,7 @@ POST /api/v2/admin/notifications/server-channels/{id}/test	non-media
 PATCH /api/v2/admin/people/{id}	non-media
 POST /api/v2/admin/people/{id}/refresh	non-media
 GET /api/v2/admin/playback-history	non-media
+GET /api/v2/admin/playback-history/capabilities	non-media
 GET /api/v2/admin/playback-routing/capabilities	non-media
 GET /api/v2/admin/plugins/catalog	non-media
 GET /api/v2/admin/plugins/catalog-settings	non-media
@@ -1709,12 +1713,14 @@ GET /api/v2/admin/autoscan/status	non-media
 POST /api/v2/admin/autoscan/trigger	non-media
 DELETE /api/v2/admin/branding/assets/{kind}	non-media
 POST /api/v2/admin/branding/assets/{kind}	non-media
+GET /api/v2/admin/catalog/capabilities	non-media
 POST /api/v2/admin/catalog/export	non-media
 POST /api/v2/admin/catalog/export-jobs	non-media
 POST /api/v2/admin/catalog/export-jobs/{id}/publish	non-media
 POST /api/v2/admin/catalog/import	non-media
 POST /api/v2/admin/catalog/import-jobs	non-media
 GET /api/v2/admin/catalog/import-sources	non-media
+GET /api/v2/admin/catalog/items	non-media
 GET /api/v2/admin/catalog/local-import-sources	non-media
 GET /api/v2/admin/catalog/search/status	non-media
 GET /api/v2/admin/collection-groups/{group_id}/collections/order	non-media
@@ -1872,6 +1878,7 @@ GET /api/v2/admin/nodes	non-media
 POST /api/v2/admin/nodes	non-media
 GET /api/v2/admin/nodes/capabilities	non-media
 POST /api/v2/admin/nodes/force-reload	non-media
+GET /api/v2/admin/nodes/summary	non-media
 DELETE /api/v2/admin/nodes/{id}	non-media
 PUT /api/v2/admin/nodes/{id}	non-media
 POST /api/v2/admin/nodes/{id}/check	non-media
@@ -1893,6 +1900,7 @@ POST /api/v2/admin/notifications/server-channels/{id}/test	non-media
 PATCH /api/v2/admin/people/{id}	non-media
 POST /api/v2/admin/people/{id}/refresh	non-media
 GET /api/v2/admin/playback-history	non-media
+GET /api/v2/admin/playback-history/capabilities	non-media
 GET /api/v2/admin/playback-routing/capabilities	non-media
 GET /api/v2/admin/plugins/catalog	non-media
 GET /api/v2/admin/plugins/catalog-settings	non-media

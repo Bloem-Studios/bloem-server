@@ -278,7 +278,7 @@ func (a *nativeAcceptance) start(t *testing.T, delivery string, encode bool) pla
 		t.Fatalf("start %d %s", w.Code, w.Body.String())
 	}
 	t.Cleanup(func() {
-		_ = a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), result.SessionID, false)
+		_ = a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), result.SessionID, "")
 		a.h.tm.CloseTranscodeSession(result.SessionID, "")
 	})
 	return result
@@ -339,7 +339,7 @@ func TestNativeVideoAcceptanceDirectAndAuthority(t *testing.T) {
 			case "viewer":
 				a.p.revoked.Store(true)
 			case "stop":
-				if err := a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), result.SessionID, true); err != nil {
+				if err := a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), result.SessionID, PlaybackEndStopped); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -373,7 +373,7 @@ func TestNativeVideoAcceptanceProgressive(t *testing.T) {
 		case "revision":
 			a.p.replace()
 		case "stop":
-			if err := a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), result.SessionID, true); err != nil {
+			if err := a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), result.SessionID, PlaybackEndStopped); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -490,7 +490,7 @@ func TestNativeVideoAcceptanceHLS(t *testing.T) {
 			a.p.mu.Lock()
 			a.p.ref.Revision = "version-1"
 			a.p.mu.Unlock()
-			if err := a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), result.SessionID, true); err != nil {
+			if err := a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), result.SessionID, PlaybackEndStopped); err != nil {
 				t.Fatal(err)
 			}
 			if refused := a.manifest(result.SessionID); refused.Code < 400 {
@@ -540,7 +540,7 @@ func TestNativeVideoAcceptanceStopJoinsInflightRange(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("actual stream never reached provider range")
 	}
-	if err := a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), result.SessionID, true); err != nil {
+	if err := a.h.stopPlaybackSessionByID(newAuthorizedPlaybackContext(), result.SessionID, PlaybackEndStopped); err != nil {
 		t.Fatal(err)
 	}
 	select {

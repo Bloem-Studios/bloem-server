@@ -410,7 +410,7 @@ func TestRemoteControlReplanStillOpenAtSessionEndIsExpiredAndReleasesPin(t *test
 	if _, ok := h.playback.remotePlanOverridesV3(ctx, h.session.ID); !ok {
 		t.Fatal("pin not readable while the replan is open")
 	}
-	if err := h.playback.stopPlaybackSessionByID(ctx, h.session.ID, true); err != nil {
+	if err := h.playback.stopPlaybackSessionByID(ctx, h.session.ID, PlaybackEndStopped); err != nil {
 		t.Fatalf("stop: %v", err)
 	}
 	got, _ := h.service.Get(ctx, command.ID)

@@ -65,7 +65,7 @@ func TestNativeVideoStopHistorySurvivesCatalogChange(t *testing.T) {
 			h := NewPlaybackHandler(manager, service.Files)
 			h.NativeVideo = service
 			h.StreamDeny = playback.NewStreamDeny(failed)
-			if err := h.stopPlaybackSession(t.Context(), session, true); err == nil {
+			if err := h.stopPlaybackSession(t.Context(), session, PlaybackEndStopped); err == nil {
 				t.Fatal("stop discarded native history without durable denial")
 			}
 			if _, err := manager.GetSession(session.ID); err != nil {
@@ -76,7 +76,7 @@ func TestNativeVideoStopHistorySurvivesCatalogChange(t *testing.T) {
 			}
 			service.Bindings = NewNativeVideoBindingStore(client)
 			h.StreamDeny = playback.NewStreamDeny(client)
-			if err := h.stopPlaybackSession(t.Context(), session, true); err != nil {
+			if err := h.stopPlaybackSession(t.Context(), session, PlaybackEndStopped); err != nil {
 				t.Fatalf("retry after repaired denial: %v", err)
 			}
 			if _, err := manager.GetSession(session.ID); !errors.Is(err, playback.ErrSessionNotFound) {
@@ -106,7 +106,7 @@ func TestNativeVideoStopHistoryLeavesOrdinaryFilesystemStop(t *testing.T) {
 	h := NewPlaybackHandler(manager, service.Files)
 	h.NativeVideo = service
 	h.StreamDeny = playback.NewStreamDeny(failed)
-	if err := h.stopPlaybackSession(t.Context(), session, true); err != nil {
+	if err := h.stopPlaybackSession(t.Context(), session, PlaybackEndStopped); err != nil {
 		t.Fatalf("ordinary filesystem stop required native history: %v", err)
 	}
 	if _, err := manager.GetSession(session.ID); !errors.Is(err, playback.ErrSessionNotFound) {

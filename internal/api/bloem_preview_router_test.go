@@ -61,7 +61,7 @@ func TestPreviewPrincipalRouterBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cookie, err := jwt.GeneratePluginAccessToken(user.ID, "user", "preview-session", "", time.Hour)
+	cookie, err := jwt.GeneratePluginAccessToken(user.ID, "user", "preview-session", "", nil, time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,9 @@ func TestPreviewPrincipalRouterBoundary(t *testing.T) {
 		case "api-key":
 			r.Header.Set("Authorization", "Bearer "+key.Key)
 		}
-		if authenticated, _, _, _, _ := resolveOptionalPluginAccessUser(r, jwt, sessions, auth.NewAPIKeyRepository(pool), users); authenticated {
+		resolver := newPluginAccessResolver(jwt, sessions, nil, auth.NewAPIKeyRepository(pool), users, nil, nil)
+		bloemHoldPluginPreviews(sessions, resolver)
+		if resolver.resolve(r).authenticated {
 			t.Errorf("plugin resolver authenticated preview %s", credential)
 		}
 	}
