@@ -445,13 +445,65 @@ const completedLocationReachSQL = `WITH RECURSIVE reach(directory_id,root_id) AS
  WHERE x.configuration_revision=$2
 ) `
 
-// completedMembershipSQL selects each file under every root the completed
-// graph reaches.
-const completedMembershipSQL = `SELECT DISTINCT f.media_file_id,r.root_id FROM reach r
+// completedMembershipFrom selects each file under every root the completed
+// graph reaches, from a reach relation of directories and their roots.
+func completedMembershipFrom(reach string) string {
+	return `SELECT DISTINCT f.media_file_id,r.root_id FROM ` + reach + ` r
  JOIN bloem_storage_location_edges e ON e.location_id=$1 AND e.parent_directory_id=r.directory_id
  JOIN bloem_storage_file_refs f ON f.location_id=e.location_id AND f.entry_id=e.entry_id
  JOIN bloem_storage_location_entries x ON x.location_id=f.location_id AND x.entry_id=f.entry_id AND x.kind=1 AND x.revision=f.revision AND x.configuration_revision=f.configuration_revision
  WHERE f.configuration_revision=$2`
+}
+
+// completedMembershipSQL is completedMembershipFrom over completedLocationReachSQL.
+var completedMembershipSQL = completedMembershipFrom("reach")
+
+// Completion writes from the completed graph held in temporary tables, not
+// from a recursive CTE. The planner estimates a recursive reach at a few
+// hundred rows whatever its size; on the 245,000-book audiobook location it
+// planned disabling unreached memberships as a merge anti join on the root
+// alone, which ran for more than nine minutes on the location's one root.
+// The tables are analyzed before they are read and drop at commit.
+const (
+	completedReachTable      = "pg_temp.bloem_completed_reach"
+	completedMembershipTable = "pg_temp.bloem_completed_memberships"
+)
+
+// completedReachTx holds the completed graph's reach in completedReachTable,
+// replacing any reach an earlier step of this transaction held.
+func completedReachTx(ctx context.Context, tx pgx.Tx, lease Lease) error {
+	if err := execEachTx(ctx, tx, `DROP TABLE IF EXISTS `+completedReachTable,
+		`CREATE TEMP TABLE bloem_completed_reach(directory_id text NOT NULL,root_id uuid NOT NULL) ON COMMIT DROP`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, completedLocationReachSQL+`INSERT INTO `+completedReachTable+` SELECT directory_id,root_id FROM reach`, lease.LocationID, lease.ConfigurationRevision); err != nil {
+		return err
+	}
+	return execEachTx(ctx, tx, `CREATE INDEX ON `+completedReachTable+`(directory_id)`, `ANALYZE `+completedReachTable)
+}
+
+// completedMembershipsTx holds every membership the completed graph reaches
+// in completedMembershipTable, from completedReachTable.
+func completedMembershipsTx(ctx context.Context, tx pgx.Tx, lease Lease) error {
+	if err := execEachTx(ctx, tx, `DROP TABLE IF EXISTS `+completedMembershipTable,
+		`CREATE TEMP TABLE bloem_completed_memberships(media_file_id bigint NOT NULL,root_id uuid NOT NULL) ON COMMIT DROP`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO `+completedMembershipTable+` `+completedMembershipFrom(completedReachTable), lease.LocationID, lease.ConfigurationRevision); err != nil {
+		return err
+	}
+	return execEachTx(ctx, tx, `CREATE INDEX ON `+completedMembershipTable+`(media_file_id,root_id)`, `ANALYZE `+completedMembershipTable)
+}
+
+// execEachTx runs statements that take no arguments, in turn.
+func execEachTx(ctx context.Context, tx pgx.Tx, statements ...string) error {
+	for _, statement := range statements {
+		if _, err := tx.Exec(ctx, statement); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func reconcileLocationTx(ctx context.Context, tx pgx.Tx, lease Lease) (int, error) {
 	// Negative evidence from an older configuration or selection cannot confirm
@@ -476,29 +528,32 @@ func reconcileLocationTx(ctx context.Context, tx pgx.Tx, lease Lease) (int, erro
  AND NOT EXISTS(SELECT 1 FROM bloem_storage_scan_directory_entries x WHERE x.run_id=$2 AND x.directory_id=e.parent_directory_id AND x.entry_id=e.entry_id AND NOT x.removed)`, lease.LocationID, lease.RunID); err != nil {
 		return 0, err
 	}
+	if err := completedReachTx(ctx, tx, lease); err != nil {
+		return 0, err
+	}
+	if err := completedMembershipsTx(ctx, tx, lease); err != nil {
+		return 0, err
+	}
 	// Disable the memberships the completed graph no longer reaches, then
 	// publish the reachable ones that are missing or disabled. The result is
 	// the reachable set exactly, as disabling every membership and enabling
 	// the reachable ones would leave it, without rewriting unchanged rows.
-	// One statement computes the reachable set once for both writes. They
-	// touch disjoint rows, enabled unreachable ones and disabled or missing
-	// reachable ones, so neither sees the other's change.
-	args := []any{lease.LocationID, lease.ConfigurationRevision}
-	if _, err := tx.Exec(ctx, completedLocationReachSQL+`, reachable AS MATERIALIZED (`+completedMembershipSQL+`),
- disabled AS (UPDATE bloem_storage_file_roots m SET enabled=false WHERE m.location_id=$1 AND m.enabled
- AND NOT EXISTS(SELECT 1 FROM reachable v WHERE v.media_file_id=m.media_file_id AND v.root_id=m.root_id))
+	// The two writes touch disjoint rows, enabled unreachable ones and
+	// disabled or missing reachable ones, so neither sees the other's change.
+	if _, err := tx.Exec(ctx, `WITH disabled AS (UPDATE bloem_storage_file_roots m SET enabled=false WHERE m.location_id=$1 AND m.enabled
+ AND NOT EXISTS(SELECT 1 FROM `+completedMembershipTable+` v WHERE v.media_file_id=m.media_file_id AND v.root_id=m.root_id))
  INSERT INTO bloem_storage_file_roots(location_id,media_file_id,root_id)
- SELECT $1::uuid,v.media_file_id,v.root_id FROM reachable v
+ SELECT $1::uuid,v.media_file_id,v.root_id FROM `+completedMembershipTable+` v
  WHERE NOT EXISTS(SELECT 1 FROM bloem_storage_file_roots m WHERE m.location_id=$1 AND m.media_file_id=v.media_file_id AND m.root_id=v.root_id AND m.enabled)
- ON CONFLICT(location_id,media_file_id,root_id) DO UPDATE SET enabled=true`, args...); err != nil {
+ ON CONFLICT(location_id,media_file_id,root_id) DO UPDATE SET enabled=true`, lease.LocationID); err != nil {
 		return 0, err
 	}
 	// Entries still reached keep a NULL confirmation; every absent entry is
 	// stamped with this completion. Present entries already NULL are skipped.
-	const reached = `EXISTS(SELECT 1 FROM bloem_storage_location_edges edge JOIN reach r ON r.directory_id=edge.parent_directory_id
+	const reached = `EXISTS(SELECT 1 FROM bloem_storage_location_edges edge JOIN ` + completedReachTable + ` r ON r.directory_id=edge.parent_directory_id
  WHERE edge.location_id=e.location_id AND edge.entry_id=e.entry_id)`
-	if _, err := tx.Exec(ctx, completedLocationReachSQL+`UPDATE bloem_storage_location_entries e SET absence_confirmed_at=CASE WHEN `+reached+` THEN NULL ELSE clock_timestamp() END
- WHERE e.location_id=$1 AND (e.absence_confirmed_at IS NOT NULL OR NOT `+reached+`)`, args...); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE bloem_storage_location_entries e SET absence_confirmed_at=CASE WHEN `+reached+` THEN NULL ELSE clock_timestamp() END
+ WHERE e.location_id=$1 AND (e.absence_confirmed_at IS NOT NULL OR NOT `+reached+`)`, lease.LocationID); err != nil {
 		return 0, err
 	}
 	tag, err := tx.Exec(ctx, `UPDATE media_files f SET missing_since=COALESCE(f.missing_since,clock_timestamp()) FROM bloem_storage_file_refs x

@@ -163,17 +163,21 @@ func DeleteStaleAudioStagingTx(ctx context.Context, tx pgx.Tx, lease Lease) (int
 
 // RefreshAudioPublicationRootsTx attaches finalizer publications to the
 // reconciled retained-edge graph. It never invents membership from a path.
+// Memberships already enabled are left unwritten.
 func RefreshAudioPublicationRootsTx(ctx context.Context, tx pgx.Tx, lease Lease) error {
 	if err := audioLeaseScope(ctx, tx, lease); err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, completedLocationReachSQL+`INSERT INTO bloem_storage_file_roots(location_id,media_file_id,root_id)
- SELECT DISTINCT $1,f.media_file_id,r.root_id FROM reach r
+	if err := completedReachTx(ctx, tx, lease); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO bloem_storage_file_roots(location_id,media_file_id,root_id)
+ SELECT DISTINCT $1::uuid,f.media_file_id,r.root_id FROM `+completedReachTable+` r
  JOIN bloem_storage_location_edges e ON e.location_id=$1 AND e.parent_directory_id=r.directory_id
  JOIN bloem_storage_file_refs f ON f.location_id=e.location_id AND f.entry_id=e.entry_id
  JOIN media_files mf ON mf.id=f.media_file_id AND mf.presentation_group_key LIKE 'bloem-storage:audiobook:%' AND mf.missing_since IS NULL
  JOIN bloem_storage_location_entries x ON x.location_id=f.location_id AND x.entry_id=f.entry_id AND x.kind=1 AND x.revision=f.revision AND x.configuration_revision=f.configuration_revision
- WHERE f.configuration_revision=$2 ON CONFLICT(location_id,media_file_id,root_id) DO UPDATE SET enabled=true`, lease.LocationID, lease.ConfigurationRevision)
+ WHERE f.configuration_revision=$2 ON CONFLICT(location_id,media_file_id,root_id) DO UPDATE SET enabled=true WHERE NOT bloem_storage_file_roots.enabled`, lease.LocationID, lease.ConfigurationRevision)
 	return err
 }
 

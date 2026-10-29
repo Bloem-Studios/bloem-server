@@ -275,10 +275,15 @@ For each selection, `libraryingest.StorageScanner`:
    grows with the location.
 4. Stops lease renewal, then `CompleteLocationAuthorized` checks current resource
    authority before journal source/run locks and renews the lease for its own
-   work. It rebuilds root memberships from the completed graph, computing the
-   reachable set once, and writes only memberships and absence stamps that
-   change. It then checks and renews the lease again, so reconciliation and
-   the finalizer each have the lease's full duration. Its finalizer runs
+   work. It rebuilds root memberships from the completed graph, holding the
+   graph's reach and reachable memberships in analyzed temporary tables that
+   drop at commit, and writes only memberships and absence stamps that
+   change. A recursive reach is always estimated at a few hundred rows, and
+   writes planned from it degrade to nested comparisons on a large location.
+   It then checks and renews the lease again. Each renewal extends the lease
+   to at least 30 minutes, so reconciliation and the finalizer each have that
+   long even when the scan's lease is shorter; the extension commits only with
+   the completion, which holds the run row and the source throughout. Its finalizer runs
    `SweepStorageLocationTx` to reconcile memberships and orphans and sweep
    expired missing files with the existing grace and empty-trash settings.
    Authority stays locked through the single catalog and journal commit;

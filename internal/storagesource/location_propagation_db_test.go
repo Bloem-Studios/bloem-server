@@ -568,18 +568,20 @@ func TestCompletionRenewsLeaseForItsWorkDB(t *testing.T) {
 // completion whose phases together outlast the lease commits. A phase that
 // alone outlasts it still fails: completion never revives an expired lease.
 func TestCompletionRenewsLeaseBetweenPhasesDB(t *testing.T) {
-	const ttl = 2 * time.Second
+	const ttl, budget = 2 * time.Second, 3 * time.Second
 	cases := map[string]struct {
 		reconcile, finalize string
 		wantStale           bool
 	}{
-		"phases together outlast the lease": {reconcile: "1.4", finalize: "1.4"},
-		"reconciliation outlasts the lease": {reconcile: "2.5", finalize: "0", wantStale: true},
-		"finalizer outlasts the lease":      {reconcile: "0", finalize: "2.5", wantStale: true},
+		"phases together outlast the budget":      {reconcile: "2.2", finalize: "2.2"},
+		"reconciliation outlasts the lease, only": {reconcile: "2.5", finalize: "0"},
+		"reconciliation outlasts the budget":      {reconcile: "3.5", finalize: "0", wantStale: true},
+		"finalizer outlasts the budget":           {reconcile: "0", finalize: "3.5", wantStale: true},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			r, _, l := scopedFixture(t, "root")
+			r.completionBudget = budget
 			lease, err := r.BeginLocationAuthorized(t.Context(), l, "worker", ttl, func(context.Context, pgx.Tx) error { return nil })
 			if err != nil {
 				t.Fatal(err)
@@ -601,12 +603,12 @@ func TestCompletionRenewsLeaseBetweenPhasesDB(t *testing.T) {
 			err = r.CompleteAuthorized(t.Context(), lease, func(context.Context, pgx.Tx) error { return nil }, slow)
 			if tc.wantStale {
 				if !errors.Is(err, ErrStaleLease) {
-					t.Fatalf("completion phase outlasting the lease: %v, want ErrStaleLease", err)
+					t.Fatalf("completion phase outlasting the budget: %v, want ErrStaleLease", err)
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("completion whose phases together outlast the lease: %v", err)
+				t.Fatalf("completion whose phases each fit the budget: %v", err)
 			}
 		})
 	}

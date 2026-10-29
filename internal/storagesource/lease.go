@@ -230,6 +230,26 @@ func renewLeaseTx(ctx context.Context, tx pgx.Tx, lease Lease) error {
 	return err
 }
 
+// completionLeaseBudget is the least lease completion renews for each of its
+// steps. A whole location's reconciliation and finalizer can outlast a scan's
+// lease, and a completion that outlasts it fails and is retried from the
+// start: the 245,000-book audiobook location's outlasted a one-minute lease
+// on every attempt. The renewal commits only with the completion, and the
+// completion transaction holds the run row and the source throughout, so a
+// longer lease delays no takeover of a scan that stopped.
+const completionLeaseBudget = 30 * time.Minute
+
+func (r *Repository) completionLease(lease Lease) Lease {
+	budget := completionLeaseBudget
+	if r.completionBudget > 0 {
+		budget = r.completionBudget
+	}
+	if lease.TTL > 0 && lease.TTL < budget {
+		lease.TTL = budget
+	}
+	return lease
+}
+
 // Release ends this owner's claim when its scan stops without completing, so a
 // retry resumes the journal at once instead of failing as a stale lease until
 // the claim expires. Only this exact owner and epoch of a running run is
@@ -315,7 +335,7 @@ func (r *Repository) complete(ctx context.Context, lease Lease, authorize Comple
 	}
 	// Renewal stops before completion, so completion renews the lease for its
 	// own work. The final check below still fails a completion that outlasts it.
-	if err = renewLeaseTx(ctx, tx, lease); err != nil {
+	if err = renewLeaseTx(ctx, tx, r.completionLease(lease)); err != nil {
 		return err
 	}
 	var pending bool
@@ -332,13 +352,13 @@ func (r *Repository) complete(ctx context.Context, lease Lease, authorize Comple
 	if missing != nil {
 		*missing = newMissing
 	}
-	// Reconciliation and the finalizer each get the lease's full duration.
+	// Reconciliation and the finalizer each get the completion lease.
 	// This transaction holds the run row and the source, so no other owner
 	// can take the run over between them; the lease must still be current.
 	if err = verifyLease(ctx, tx, lease); err != nil {
 		return err
 	}
-	if err = renewLeaseTx(ctx, tx, lease); err != nil {
+	if err = renewLeaseTx(ctx, tx, r.completionLease(lease)); err != nil {
 		return err
 	}
 	if finalize != nil {

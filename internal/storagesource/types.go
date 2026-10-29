@@ -63,7 +63,11 @@ type Checkpoint struct {
 	DirectoryID, Cursor string
 	Complete            bool
 }
-type Repository struct{ pool *pgxpool.Pool }
+type Repository struct {
+	pool *pgxpool.Pool
+	// completionBudget replaces completionLeaseBudget when set, for tests.
+	completionBudget time.Duration
+}
 
 func NewRepository(pool *pgxpool.Pool) *Repository { return &Repository{pool: pool} }
 
