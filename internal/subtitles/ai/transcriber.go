@@ -32,9 +32,11 @@ const (
 	// Per-chunk request timeout: 3× realtime accommodates local Whisper
 	// servers on modest hardware.
 	asrChunkTimeoutFactor = 3
-	// Cue text wrapping: standard subtitle conventions.
-	cueMaxLineLength = 42
-	cueMaxLines      = 2
+	// Cue text wrapping: standard subtitle conventions. Lines of Chinese or
+	// Japanese text hold 16 wide characters (two columns each).
+	cueMaxLineLength     = 42
+	cueMaxLineLengthWide = 32
+	cueMaxLines          = 2
 	// Cue timing conventions. When word timings are available a cue closes
 	// at a speech pause, at text capacity, at the maximum duration, or after
 	// a sentence ends; without them a segment becomes one duration-capped
@@ -391,24 +393,42 @@ func cuesFromSegments(segments []llm.TranscriptionSegment, offsetSeconds float64
 	return out
 }
 
+// cueWord is one word of the cue being built; spaced words follow the
+// previous word after a space.
+type cueWord struct {
+	text       string
+	start, end float64
+	spaced     bool
+}
+
 // cuesFromWords groups word timings into cues: a cue closes at a speech
 // pause, when the text would exceed the wrap capacity, when it would exceed
 // the maximum duration, or after a sentence ends once a full line is
 // accumulated. Cue end times come from the last word, so cues disappear when
 // speech stops instead of lingering through silence. Chinese and Japanese
-// words follow each other without a space.
+// words follow each other without a space, and a cue of such text too full
+// for the next word closes after its last clause mark rather than inside a
+// word, when at least a line comes before the mark.
 func cuesFromWords(words []llm.TranscriptionWord, offsetSeconds float64) []SubtitleCue {
-	maxWidth := cueMaxLineLength * cueMaxLines
 	var out []SubtitleCue
-	var text strings.Builder
-	var start, end float64
+	var cue []cueWord
 	width := 0
-	flush := func() {
-		if text.Len() > 0 {
-			out = append(out, newCue(offsetSeconds+start, offsetSeconds+end, text.String()))
+	emit := func(ws []cueWord) {
+		if len(ws) > 0 {
+			out = append(out, newCue(offsetSeconds+ws[0].start, offsetSeconds+ws[len(ws)-1].end, joinCueWords(ws)))
 		}
-		text.Reset()
+	}
+	// restart begins the next cue with the words a clause split carried over.
+	restart := func(carried []cueWord) {
+		cue = append([]cueWord(nil), carried...)
 		width = 0
+		for i := range cue {
+			cue[i].spaced = cue[i].spaced && i > 0
+			width += textWidth(cue[i].text)
+			if cue[i].spaced {
+				width++
+			}
+		}
 	}
 	prev := ""
 	for _, w := range words {
@@ -416,31 +436,51 @@ func cuesFromWords(words []llm.TranscriptionWord, offsetSeconds float64) []Subti
 		if word == "" {
 			continue
 		}
-		n := textWidth(word)
-		space := 1
-		if w.JoinsPrevious || joinsWithoutSpace(prev, word) {
-			space = 0
-		}
+		spaced := !w.JoinsPrevious && !joinsWithoutSpace(prev, word)
 		prev = word
-		if text.Len() > 0 &&
-			(w.Start-end >= cueSplitPauseSeconds || width+space+n > maxWidth || w.End-start > maxCueSeconds) {
-			flush()
+		added := textWidth(word)
+		if spaced {
+			added++
 		}
-		if text.Len() == 0 {
-			start = w.Start
-		} else if space == 1 {
-			text.WriteByte(' ')
-			width++
+		if len(cue) > 0 {
+			switch {
+			case w.Start-cue[len(cue)-1].end >= cueSplitPauseSeconds || w.End-cue[0].start > maxCueSeconds:
+				emit(cue)
+				restart(nil)
+			case width+added > cueLineLength(cue[0].text)*cueMaxLines:
+				keep := len(cue)
+				if i := lastClauseEnd(cue); !spaced && i > 0 &&
+					textWidth(joinCueWords(cue[:i])) >= cueLineLength(cue[0].text) {
+					keep = i
+				}
+				emit(cue[:keep])
+				restart(cue[keep:])
+			}
 		}
-		text.WriteString(word)
-		width += n
-		end = w.End
-		if width >= cueMaxLineLength && endsSentence(word) {
-			flush()
+		if len(cue) == 0 {
+			spaced = false
+			added = textWidth(word)
+		}
+		cue = append(cue, cueWord{text: word, start: w.Start, end: w.End, spaced: spaced})
+		width += added
+		if width >= cueLineLength(cue[0].text) && endsSentence(word) {
+			emit(cue)
+			restart(nil)
 		}
 	}
-	flush()
+	emit(cue)
 	return out
+}
+
+func joinCueWords(words []cueWord) string {
+	var text strings.Builder
+	for i, w := range words {
+		if i > 0 && w.spaced {
+			text.WriteByte(' ')
+		}
+		text.WriteString(w.text)
+	}
+	return text.String()
 }
 
 // joinsWithoutSpace reports whether next follows prev without a space: both
@@ -460,6 +500,30 @@ func joinsWithoutSpace(prev, next string) bool {
 // full-width forms.
 func unspacedScript(r rune) bool {
 	return unicode.Is(unicode.Han, r) || (r >= 0x3000 && r <= 0x30FF) || (r >= 0xFF01 && r <= 0xFF60)
+}
+
+// cueLineLength is the wrap width in columns for a cue that begins with text.
+func cueLineLength(text string) int {
+	if first, _ := utf8.DecodeRuneInString(text); unspacedScript(first) {
+		return cueMaxLineLengthWide
+	}
+	return cueMaxLineLength
+}
+
+// clauseMarks close a clause in unspaced text; a full cue splits after the
+// last one.
+const clauseMarks = "、。，．！？…,.!?"
+
+// lastClauseEnd is the number of leading words up to and including the last
+// one that ends a clause, or 0 when none does.
+func lastClauseEnd(words []cueWord) int {
+	for i := len(words) - 1; i >= 0; i-- {
+		r, _ := utf8.DecodeLastRuneInString(strings.TrimRight(words[i].text, `"')]”’」』）`))
+		if strings.ContainsRune(clauseMarks, r) {
+			return i + 1
+		}
+	}
+	return 0
 }
 
 // endsSentence reports whether a word closes a sentence, tolerating a
@@ -483,7 +547,7 @@ func newCue(startSec, endSec float64, text string) SubtitleCue {
 	return SubtitleCue{
 		Start: time.Duration(startSec * float64(time.Second)),
 		End:   time.Duration(endSec * float64(time.Second)),
-		Lines: wrapCueText(text, cueMaxLineLength, cueMaxLines),
+		Lines: wrapCueText(text, cueLineLength(text), cueMaxLines),
 	}
 }
 

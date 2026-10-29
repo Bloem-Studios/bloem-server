@@ -331,6 +331,42 @@ func TestCuesFromWordsJoinsWhisperChineseAndJapaneseWords(t *testing.T) {
 	}
 }
 
+func TestCuesFromWordsShortensChineseAndJapaneseLines(t *testing.T) {
+	// Subtitle lines of wide characters hold 16 of them, not 21.
+	text := strings.Repeat("あいうえおかきくけこ", 3)
+	cues := cuesFromWords(joinedSeq(0, 0.05, text), 0)
+	if got := cueText(cues); got != text {
+		t.Fatalf("cue text = %q, want %q", got, text)
+	}
+	for i, c := range cues {
+		for _, line := range c.Lines {
+			if n := utf8.RuneCountInString(line); n > 16 {
+				t.Errorf("cue %d line %q has %d wide characters, over 16", i, line, n)
+			}
+		}
+	}
+}
+
+func TestCuesFromWordsSplitsUnspacedTextAtClauses(t *testing.T) {
+	// A cue too full for the next character closes after the last clause
+	// mark instead of in the middle of a word.
+	first := strings.Repeat("あ", 20) + "、"
+	cues := cuesFromWords(joinedSeq(0, 0.05, first+strings.Repeat("い", 20)), 0)
+	if len(cues) != 2 || strings.Join(cues[0].Lines, "") != first {
+		t.Fatalf("cues = %+v, want the first to end at 、", cues)
+	}
+	if cues[1].Start != time.Duration(21*0.05*float64(time.Second)) {
+		t.Errorf("second cue start = %v, want the first carried character's start", cues[1].Start)
+	}
+
+	// A clause mark that would leave less than a line before it is no place
+	// to split.
+	early := cuesFromWords(joinedSeq(0, 0.05, "あ、"+strings.Repeat("い", 40)), 0)
+	if len(early) < 2 || strings.Join(early[0].Lines, "") == "あ、" {
+		t.Errorf("cues = %+v, want no split right after an early 、", early)
+	}
+}
+
 func TestWrapCueTextBreaksUnspacedText(t *testing.T) {
 	// 30 wide characters need two lines, broken inside the unspaced text, and
 	// a closing mark never starts a line.
