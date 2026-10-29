@@ -2680,6 +2680,14 @@
     {
       "type": "internal/api/handlers.AdminPlaybackHistoryFilter",
       "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
+    },
+    {
+      "type": "internal/api/handlers.BloemLibraryFigure",
+      "reason": "Platform administration response for storefronts (Garden reads it with an administrator API key to publish live library figures); no Bloem app or generated native client decodes it."
+    },
+    {
+      "type": "internal/api/handlers.BloemLibraryFigures",
+      "reason": "Platform administration response for storefronts (Garden reads it with an administrator API key to publish live library figures); no Bloem app or generated native client decodes it."
     }
   ]
 }
