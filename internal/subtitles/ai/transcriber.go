@@ -395,8 +395,8 @@ func cuesFromSegments(segments []llm.TranscriptionSegment, offsetSeconds float64
 // pause, when the text would exceed the wrap capacity, when it would exceed
 // the maximum duration, or after a sentence ends once a full line is
 // accumulated. Cue end times come from the last word, so cues disappear when
-// speech stops instead of lingering through silence. A word that joins the
-// previous one (a Chinese or Japanese character) follows it without a space.
+// speech stops instead of lingering through silence. Chinese and Japanese
+// words follow each other without a space.
 func cuesFromWords(words []llm.TranscriptionWord, offsetSeconds float64) []SubtitleCue {
 	maxWidth := cueMaxLineLength * cueMaxLines
 	var out []SubtitleCue
@@ -410,6 +410,7 @@ func cuesFromWords(words []llm.TranscriptionWord, offsetSeconds float64) []Subti
 		text.Reset()
 		width = 0
 	}
+	prev := ""
 	for _, w := range words {
 		word := strings.TrimSpace(w.Text)
 		if word == "" {
@@ -417,9 +418,10 @@ func cuesFromWords(words []llm.TranscriptionWord, offsetSeconds float64) []Subti
 		}
 		n := textWidth(word)
 		space := 1
-		if w.JoinsPrevious {
+		if w.JoinsPrevious || joinsWithoutSpace(prev, word) {
 			space = 0
 		}
+		prev = word
 		if text.Len() > 0 &&
 			(w.Start-end >= cueSplitPauseSeconds || width+space+n > maxWidth || w.End-start > maxCueSeconds) {
 			flush()
@@ -439,6 +441,25 @@ func cuesFromWords(words []llm.TranscriptionWord, offsetSeconds float64) []Subti
 	}
 	flush()
 	return out
+}
+
+// joinsWithoutSpace reports whether next follows prev without a space: both
+// sides of the boundary are Chinese or Japanese, which Whisper servers time
+// as separate words.
+func joinsWithoutSpace(prev, next string) bool {
+	if prev == "" {
+		return false
+	}
+	last, _ := utf8.DecodeLastRuneInString(prev)
+	first, _ := utf8.DecodeRuneInString(next)
+	return unspacedScript(last) && unspacedScript(first)
+}
+
+// unspacedScript reports whether r belongs to text written without spaces
+// between words: Chinese characters, kana, and their punctuation and
+// full-width forms.
+func unspacedScript(r rune) bool {
+	return unicode.Is(unicode.Han, r) || (r >= 0x3000 && r <= 0x30FF) || (r >= 0xFF01 && r <= 0xFF60)
 }
 
 // endsSentence reports whether a word closes a sentence, tolerating a

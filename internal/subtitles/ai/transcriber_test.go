@@ -310,6 +310,27 @@ func TestCuesFromWordsClosesJapaneseSentences(t *testing.T) {
 	}
 }
 
+func TestCuesFromWordsJoinsWhisperChineseAndJapaneseWords(t *testing.T) {
+	// Whisper servers send Japanese words without joins_previous; a boundary
+	// between two Chinese or Japanese words still takes no space, while
+	// Korean and a kanji word in English text keep theirs.
+	cases := []struct {
+		words []string
+		want  string
+	}{
+		{[]string{" なんか", "ごめん", "ね。"}, "なんかごめんね。"},
+		{[]string{" 我们", "走吧"}, "我们走吧"},
+		{[]string{" 안녕하세요", "여러분"}, "안녕하세요 여러분"},
+		{[]string{" I", "love", "東京"}, "I love 東京"},
+	}
+	for _, c := range cases {
+		cues := cuesFromWords(wordSeq(0, 0.3, 0.05, c.words...), 0)
+		if len(cues) != 1 || strings.Join(cues[0].Lines, " ") != c.want {
+			t.Errorf("cues for %q = %+v, want %q", c.words, cues, c.want)
+		}
+	}
+}
+
 func TestWrapCueTextBreaksUnspacedText(t *testing.T) {
 	// 30 wide characters need two lines, broken inside the unspaced text, and
 	// a closing mark never starts a line.
