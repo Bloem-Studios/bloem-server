@@ -47,6 +47,7 @@ internal/activitylog/cleanup.go
 internal/adminjob/catalog_import.go
 internal/adminjob/lifecycle_test.go  # isolate durable job fixtures and create their real actor account
 internal/adminjob/runner.go
+internal/ai/llm/transcribe.go  # verbose_json with top-level words and no segments (NeMo-Speech.cpp), and each word's display text and joins_previous; candidate for a Silo upstream PR
 internal/api/handlers/access_groups_test.go
 internal/api/handlers/admin.go
 internal/api/handlers/admin_access_group_delete_test.go  # Run upstream group-delete callback tests through organization-aware interface
@@ -232,6 +233,7 @@ internal/scenariocatalog/executor/env.go  # restore canonical fixture authority;
 internal/scenariocatalog/executor/run.go  # row-scoped prerequisites/lifecycle readiness; avoid duplicate FreshState reseeds; apply explicit SHA-pinned Bloem adjudications while retaining frozen Silo catalogs
 internal/sections/fetcher.go
 internal/sections/types.go
+internal/subtitles/ai/transcriber.go  # Chinese and Japanese cues: words joined without spaces, width counted in columns, 16-character lines, splits at clause marks; candidate for a Silo upstream PR
 internal/transcodenode/server_test.go
 internal/userstore/pgstore/profile_libraries.go
 internal/userstore/pgstore/profiles.go

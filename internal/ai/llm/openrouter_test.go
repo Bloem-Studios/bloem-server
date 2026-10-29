@@ -70,7 +70,6 @@ func TestTranscribeRejectsUnusableSegmentsWithoutRetry(t *testing.T) {
 		"null segments":           `{"text":"Hello","segments":null}`,
 		"text with empty entries": `{"text":"Hello","segments":[{"start":0,"end":0,"text":""}]}`,
 		"text without segments":   `{"text":"Hello","segments":[]}`,
-		"text without words":      `{"text":"Hello","words":[]}`,
 		"missing start":           `{"segments":[{"end":1,"text":"Hello"}]}`,
 		"missing end":             `{"segments":[{"start":0,"text":"Hello"}]}`,
 		"null start":              `{"segments":[{"start":null,"end":1,"text":"Hello"}]}`,
