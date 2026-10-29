@@ -1,17 +1,19 @@
 # Bloem Server deployment — October 29, 2026: Silo through cc8514943 and preview free play
 
-Production moved once after the
+Production moved twice after the
 [native scan redesign receipt](2026-10-28-native-scan-redesign-deployment.md):
 
 | Live from (UTC) | `main` at | Migrations | Downtime | Bloem CI on that commit |
 | --- | --- | --- | --- | --- |
 | 07:48 | `38e58780589e5de8ac5804283460dbc3f68560e1` | 10 | 17 min 41 s | failed: the scenario executor's scope-catalog pins, fixed by `af8a3781b`, which passed |
+| 08:18 | `cc37f39000dd11ee15f130991f719b1fac024614` | 0 | 16 s | ran in parallel |
 
 The owner asked to deploy without waiting for CI ("can you deploy now?", 07:22
 UTC). The image was therefore built locally rather than by the CI-gated Bloem
 Image workflow. It was built from a `git archive` of the exact commit, with
 the workflow's build arguments and OCI labels and the web bundle built from
-the same archive. It ran as `bloem-server:release-38e587805`.
+the same archive. It ran as `bloem-server:release-38e587805`. `cc37f3900` was built the same
+way, also at the owner's direction ("do it").
 
 ## What changed
 
@@ -76,3 +78,31 @@ check its migrations for full-table backfills of large tables.
 To roll back, restore the database to the restore point together with the
 container snapshot. The migrations are forward-only, so starting `deeef897f`
 on the new schema is not a rollback.
+
+## Monitoring key events socket: cc37f3900
+
+`cc37f3900` lets an `admin:monitor:read` API key open the events socket, as
+Silo does.
+
+- Before it, Bloem's socket wrapper refused the key at ticket mint, because it
+  binds every ticket to a login session.
+- The key now goes to Silo's key checks, in the legacy tenant its owner's HTTP
+  requests resolve to. Login sessions keep Bloem's binding.
+
+Before the restart:
+
+- **Container snapshot** `pre-main-cc37f3900`.
+- **Database restore point** of the same name at LSN `3D6/313762B0`. Segment
+  `00000003000003D600000031` was archived, with no archive failures.
+
+The restart script refused to run unless the live image was `38e587805`. It
+applied no migrations, and 739 stay applied. Ready returned 200 at 08:18:39
+UTC, 16 seconds after the stop, and the server was healthy with no restarts.
+
+The container's runtime fingerprint is unchanged. The binary's SHA-256 is
+`b1bac245dec411b84a1138b372005f7acab04b2e401dc4c20672a616a91e96bb`, and
+`/api/v2/system/info` reports `cc37f390`. The only error line is the
+recommendation embeddings 402 described above.
+
+No migrations ran, so to roll back, start `bloem-server:release-38e587805`
+again.
