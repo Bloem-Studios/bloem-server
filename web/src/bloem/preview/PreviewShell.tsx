@@ -54,6 +54,9 @@ export function PreviewShell({ children }: { children: ReactNode }) {
                     (routeCta && routeItem ? decodeURIComponent(routeItem) : undefined)
                   }
                   ended={mode.ended}
+                  freePlayEnded={
+                    guestSession()?.free_play_ended === true && !presentation?.free_play
+                  }
                   onOpenChange={close}
                 />
               )}

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
+	"github.com/Silo-Server/silo-server/internal/previewcontext"
 )
 
 // previewAccess classifies a v2 operation for preview principals. The zero
@@ -66,13 +67,24 @@ var previewPrefetchReads = map[string]bool{"getPerson": true}
 // previewGate refuses a preview principal an operation it may not run.
 // Everyone else passes untouched.
 func previewGate(operationID string) func(http.Handler) http.Handler {
+	return previewGateWith(nil, operationID)
+}
+
+// previewGateWith is previewGate with free play: a guest whose session holds
+// a live grant may also run the free-play operations (bloem_preview_free_play.go).
+func previewGateWith(freePlay PreviewFreePlayService, operationID string) func(http.Handler) http.Handler {
 	access := previewOperations[operationID]
+	freePlayOperation := previewFreePlayOperations[operationID]
 	prefetch := previewPrefetchReads[operationID]
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 			if !apimw.IsPreviewPrincipal(ctx) {
 				next.ServeHTTP(w, r)
+				return
+			}
+			if _, live := previewcontext.FreePlayGrant(ctx); freePlayOperation && freePlay != nil && live && apimw.IsPreviewGuest(ctx) {
+				serveFreePlay(freePlay, operationID, next, w, r)
 				return
 			}
 			guestRefused := access == previewPersonalOnly && apimw.IsPreviewGuest(ctx)

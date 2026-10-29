@@ -16,7 +16,20 @@ type PreviewPresentationSource interface {
 }
 
 // BloemPreviewPresentation is the API projection of the stored display facts.
-type BloemPreviewPresentation preview.Presentation
+type BloemPreviewPresentation struct {
+	preview.PresentationFacts
+	FreePlay *BloemPreviewFreePlay `json:"free_play,omitempty" doc:"The guest's free play while it lasts; absent for every other session and once it is used."`
+}
+
+// BloemPreviewFreePlay is the API projection of a guest's live free-play grant.
+type BloemPreviewFreePlay preview.FreePlayView
+
+func bloemPreviewPresentationView(view *preview.Presentation) *BloemPreviewPresentation {
+	if view == nil {
+		return nil
+	}
+	return &BloemPreviewPresentation{PresentationFacts: view.PresentationFacts, FreePlay: (*BloemPreviewFreePlay)(view.FreePlay)}
+}
 
 type BloemAccount struct {
 	Account
@@ -100,7 +113,7 @@ func registerBloemPreviewProjection[I, O any](reg *Registry, op Operation, handl
 			if err != nil {
 				return nil, err
 			}
-			return &BloemAccountOutput{Body: BloemAccount{Account: out.Body, Preview: (*BloemPreviewPresentation)(view), PlaybackAllowed: allowed}}, nil
+			return &BloemAccountOutput{Body: BloemAccount{Account: out.Body, Preview: bloemPreviewPresentationView(view), PlaybackAllowed: allowed}}, nil
 		})
 		return true
 	}

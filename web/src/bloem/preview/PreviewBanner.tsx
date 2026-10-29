@@ -3,14 +3,33 @@ import { API_READ_TIMEOUT_MS, startRequestDeadline } from "@/api/requestDeadline
 import { getAccessToken } from "@/api/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useBranding } from "@/hooks/useBranding";
-import { endGuestSession } from "./session";
+import { endGuestSession, guestSession, markFreePlayEnded } from "./session";
 import { usePreviewMode } from "./usePreviewMode";
 import { safePreviewHref } from "./routes";
 import { previewEvent } from "./api";
 import { Button } from "@/components/ui/button";
 export default function PreviewBanner() {
-  const { active, guest, ended, presentation, requestSubscription } = usePreviewMode();
-  const { logout } = useAuth();
+  const { active, guest, ended, presentation, freePlay, requestSubscription } = usePreviewMode();
+  const { logout, refreshAccount } = useAuth();
+  const hadFreePlay = useRef(false);
+  const playing = freePlay !== null;
+  // The server meters free play; re-reading the account keeps what is left
+  // current, and is how the app learns that it ran out.
+  useEffect(() => {
+    if (!playing) return;
+    const timer = setInterval(() => void refreshAccount?.(), 30_000);
+    return () => clearInterval(timer);
+  }, [playing, refreshAccount]);
+  useEffect(() => {
+    if (playing) {
+      hadFreePlay.current = true;
+      return;
+    }
+    if (!hadFreePlay.current) return;
+    hadFreePlay.current = false;
+    markFreePlayEnded();
+    requestSubscription(guestSession()?.item || undefined);
+  }, [playing, requestSubscription]);
   const { serverName } = useBranding();
   const [now, setNow] = useState(Date.now);
   const [exiting, setExiting] = useState(false);
@@ -48,10 +67,15 @@ export default function PreviewBanner() {
   }, [guest, ended, end, now]);
   if (!active) return null;
   const remaining = end === null ? null : Math.max(0, Math.ceil((end - now) / 60000));
+  const freeLeft = freePlay
+    ? Math.max(0, Math.ceil((freePlay.allowance_seconds - freePlay.used_seconds) / 60))
+    : null;
   const deadline = guest
-    ? remaining === null
-      ? "Browse-only preview"
-      : `${remaining} min remaining`
+    ? freeLeft !== null
+      ? `Free play: ${freeLeft} min left`
+      : remaining === null
+        ? "Browse-only preview"
+        : `${remaining} min remaining`
     : end === null
       ? "Your library preview"
       : `Your preview ends on ${new Date(end).toLocaleDateString()}`;

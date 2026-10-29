@@ -39,6 +39,12 @@ type BloemPreviewSettingsOutput struct {
 		StorefrontURL     string   `json:"storefront_url"`
 		LaunchURL         string   `json:"launch_url"`
 		MaturityCeiling   string   `json:"maturity_ceiling"`
+		FreePlaySupported bool     `json:"free_play_supported" readOnly:"true" doc:"True on servers that honor and meter free-play allowances."`
+		FreePlayEnabled   bool     `json:"free_play_enabled"`
+		FreePlayMaxActive int      `json:"free_play_max_active"`
+		FreePlayURL       string   `json:"free_play_url"`
+		FreePlayLabel     string   `json:"free_play_label"`
+		FreePlaySeconds   int      `json:"free_play_seconds"`
 	}
 }
 type BloemPreviewLibrariesInput struct {

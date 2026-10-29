@@ -9,6 +9,14 @@ import (
 
 // Presentation gives clients browse-only display facts; it grants no authority.
 type Presentation struct {
+	PresentationFacts
+	// FreePlay is this guest's live free-play grant; absent otherwise.
+	FreePlay *FreePlayView `json:"free_play,omitempty" doc:"The guest's free play while it lasts; absent for every other session and once it is used."`
+}
+
+// PresentationFacts are the operator's display facts every preview session
+// is shown.
+type PresentationFacts struct {
 	Kind           string     `json:"kind" enum:"guest,personal"`
 	EndsAt         *time.Time `json:"ends_at" nullable:"true" doc:"Absolute guest session expiry, or the personal end date supplied by the storefront; null until supplied."`
 	CTAURL         string     `json:"cta_url" format:"uri-reference"`
@@ -19,6 +27,18 @@ type Presentation struct {
 	SubscribeURL   string     `json:"subscribe_url" format:"uri-reference" doc:"Where the banner's subscription button goes; empty means no such button, only the exit."`
 	StorefrontURL  string     `json:"storefront_url" format:"uri-reference"`
 	LaunchURL      string     `json:"launch_url" format:"uri-reference"`
+	// The storefront's free-play offer, present only while free play is on.
+	FreePlayURL     string `json:"free_play_url,omitempty" format:"uri-reference" doc:"Where a guest asks for free play; absent while free play is off."`
+	FreePlayLabel   string `json:"free_play_label,omitempty" doc:"Operator wording for the free-play button; absent means the client's own."`
+	FreePlaySeconds int    `json:"free_play_seconds,omitempty" doc:"The free play the storefront offers, in seconds, for the button's wording."`
+}
+
+// FreePlayView is what the app shows of a live grant. Used seconds are the
+// server's meter; the app counts down locally while playing between reads.
+type FreePlayView struct {
+	AllowanceSeconds int       `json:"allowance_seconds"`
+	UsedSeconds      int       `json:"used_seconds"`
+	EndsAt           time.Time `json:"ends_at" doc:"When the grant ends, whatever is left of it."`
 }
 
 func (s *Store) Presentation(ctx context.Context, account int, session string, guest bool) (*Presentation, error) {
@@ -26,9 +46,12 @@ func (s *Store) Presentation(ctx context.Context, account int, session string, g
 	if err != nil {
 		return nil, err
 	}
-	out := &Presentation{Kind: "personal", CTAURL: settings.CTAURL, CTALabel: settings.CTALabel, ItemCTALabel: settings.ItemCTALabel, CTAMessage: settings.CTAMessage, SubscribeLabel: settings.SubscribeLabel, SubscribeURL: settings.SubscribeURL, StorefrontURL: settings.StorefrontURL, LaunchURL: settings.LaunchURL}
+	out := &Presentation{PresentationFacts: PresentationFacts{Kind: "personal", CTAURL: settings.CTAURL, CTALabel: settings.CTALabel, ItemCTALabel: settings.ItemCTALabel, CTAMessage: settings.CTAMessage, SubscribeLabel: settings.SubscribeLabel, SubscribeURL: settings.SubscribeURL, StorefrontURL: settings.StorefrontURL, LaunchURL: settings.LaunchURL}}
 	if out.CTAURL == "" {
 		out.CTAURL = settings.StorefrontURL
+	}
+	if settings.FreePlayEnabled && settings.FreePlayURL != "" {
+		out.FreePlayURL, out.FreePlayLabel, out.FreePlaySeconds = settings.FreePlayURL, settings.FreePlayLabel, settings.FreePlaySeconds
 	}
 	if out.CTALabel == "" {
 		out.CTALabel = "Subscribe"
@@ -41,6 +64,13 @@ func (s *Store) Presentation(ctx context.Context, account int, session string, g
 		var expires time.Time
 		err = s.pool.QueryRow(ctx, `SELECT expires_at FROM auth_sessions WHERE id=$1 AND user_id=$2 AND auth_method='preview_guest' AND revoked_at IS NULL AND expires_at>now()`, session, account).Scan(&expires)
 		out.EndsAt = &expires
+		if err == nil {
+			var grant FreePlay
+			var live bool
+			if grant, live, err = LiveGrant(ctx, s.pool, session); live {
+				out.FreePlay = &FreePlayView{AllowanceSeconds: int(grant.Allowance / time.Second), UsedSeconds: int(grant.Used / time.Second), EndsAt: grant.ExpiresAt}
+			}
+		}
 	} else {
 		err = s.pool.QueryRow(ctx, `SELECT (SELECT ends_at FROM bloem_preview_personal_presentation WHERE account_id=$1)`, account).Scan(&out.EndsAt)
 	}

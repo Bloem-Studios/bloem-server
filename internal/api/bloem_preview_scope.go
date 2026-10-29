@@ -37,7 +37,10 @@ func narrowBloemPreviewScope(ctx context.Context, pool *pgxpool.Pool, scope acce
 	scope.AllowedLibraryIDs = allowed
 	scope.LibrariesRestricted = true
 	scope.MaxContentRating = access.StricterCeiling(scope.MaxContentRating, ceiling)
-	scope.PlaybackAllowed = false
+	// Only a guest holding a live free-play grant may play (spec: free play);
+	// guest admission checked the grant before marking the request.
+	_, freePlay := previewcontext.FreePlayGrant(ctx)
+	scope.PlaybackAllowed = freePlay
 	scope.DownloadAllowed = false
 	scope.LiveTVAllowed = false
 	return scope, nil

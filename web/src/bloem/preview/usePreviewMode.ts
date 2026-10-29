@@ -19,6 +19,8 @@ export function usePreviewMode() {
     presentation,
     host: guestHost(),
     ended: guestHost() && guest?.ended === true,
+    // The guest's live free play; null for every other session.
+    freePlay: presentation?.kind === "guest" ? (presentation.free_play ?? null) : null,
     requestSubscription: useContext(PreviewCtaContext),
   };
 }

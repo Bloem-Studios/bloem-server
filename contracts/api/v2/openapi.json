@@ -23322,6 +23322,30 @@
         ],
         "type": "object"
       },
+      "BloemPreviewFreePlay": {
+        "additionalProperties": false,
+        "properties": {
+          "allowance_seconds": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "ends_at": {
+            "description": "When the grant ends, whatever is left of it.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "used_seconds": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "allowance_seconds",
+          "used_seconds",
+          "ends_at"
+        ],
+        "type": "object"
+      },
       "BloemPreviewPresentation": {
         "additionalProperties": false,
         "properties": {
@@ -23343,6 +23367,24 @@
               "string",
               "null"
             ]
+          },
+          "free_play": {
+            "$ref": "#/components/schemas/BloemPreviewFreePlay",
+            "description": "The guest's free play while it lasts; absent for every other session and once it is used."
+          },
+          "free_play_label": {
+            "description": "Operator wording for the free-play button; absent means the client's own.",
+            "type": "string"
+          },
+          "free_play_seconds": {
+            "description": "The free play the storefront offers, in seconds, for the button's wording.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "free_play_url": {
+            "description": "Where a guest asks for free play; absent while free play is off.",
+            "format": "uri-reference",
+            "type": "string"
           },
           "item_cta_label": {
             "description": "Operator wording for the title-page button; empty means the client's own (Subscribe to watch, read or listen).",

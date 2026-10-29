@@ -43,3 +43,20 @@ func TestPreviewScopeNarrowsCurrentVisibility(t *testing.T) {
 	}
 	_ = two
 }
+
+// A free-play request may play; it still may not download or watch Live TV,
+// and its libraries are the preview's. Without the mark nothing changes.
+func TestPreviewScopeLetsAFreePlayRequestPlay(t *testing.T) {
+	pool := newV1TenancyDatabase(t)
+	browse := previewcontext.With(t.Context())
+	play := previewcontext.WithFreePlay(browse, "GrantGrantGrantGrantGr")
+	before := access.Scope{PlaybackAllowed: true, DownloadAllowed: true, LiveTVAllowed: true}
+	got, err := narrowBloemPreviewScope(play, pool, before)
+	if err != nil || !got.PlaybackAllowed || got.DownloadAllowed || got.LiveTVAllowed || !got.LibrariesRestricted {
+		t.Fatalf("free-play scope = %+v, %v", got, err)
+	}
+	got, err = narrowBloemPreviewScope(browse, pool, before)
+	if err != nil || got.PlaybackAllowed {
+		t.Fatalf("browse-only scope may play: %+v, %v", got, err)
+	}
+}

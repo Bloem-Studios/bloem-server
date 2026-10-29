@@ -21550,6 +21550,17 @@ export interface components {
       /** Format: uri-reference */
       cta_url: string;
     };
+    BloemPreviewFreePlay: {
+      /** Format: int64 */
+      allowance_seconds: number;
+      /**
+       * Format: date-time
+       * @description When the grant ends, whatever is left of it.
+       */
+      ends_at: string;
+      /** Format: int64 */
+      used_seconds: number;
+    };
     BloemPreviewPresentation: {
       cta_label: string;
       /** @description Operator sentence for the subscribe dialog; empty means the client's own. */
@@ -21561,6 +21572,20 @@ export interface components {
        * @description Absolute guest session expiry, or the personal end date supplied by the storefront; null until supplied.
        */
       ends_at: string | null;
+      /** @description The guest's free play while it lasts; absent for every other session and once it is used. */
+      free_play?: components["schemas"]["BloemPreviewFreePlay"];
+      /** @description Operator wording for the free-play button; absent means the client's own. */
+      free_play_label?: string;
+      /**
+       * Format: int64
+       * @description The free play the storefront offers, in seconds, for the button's wording.
+       */
+      free_play_seconds?: number;
+      /**
+       * Format: uri-reference
+       * @description Where a guest asks for free play; absent while free play is off.
+       */
+      free_play_url?: string;
       /** @description Operator wording for the title-page button; empty means the client's own (Subscribe to watch, read or listen). */
       item_cta_label: string;
       /** @enum {string} */

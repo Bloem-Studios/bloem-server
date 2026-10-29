@@ -7,6 +7,7 @@ import (
 
 	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/models"
+	"github.com/Silo-Server/silo-server/internal/previewcontext"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/google/uuid"
 )
@@ -39,6 +40,37 @@ func TestPlaybackSessionLimitProviderResolvesCanonicalProfileGroup(t *testing.T)
 	}
 	if limits.MaxStreams != 1 || limits.MaxTranscodes != 1 {
 		t.Fatalf("session limits = %+v, want profile group stream/transcode limits of 1", limits)
+	}
+}
+
+// The shared preview account's policy forbids playback. A free-play request
+// may play and transcode, with no per-account stream cap, because every guest
+// shares that one account; the storefront's free-play cap applies instead.
+func TestPlaybackSessionLimitProviderLetsFreePlayPlay(t *testing.T) {
+	organizationID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+	groups := &profileSessionLimitGroupProvider{
+		want:   access.GroupSubject{OrganizationID: organizationID, AccountID: 7, ProfileID: "profile-v2"},
+		policy: &access.GroupPolicy{PreviewOnly: true, MaxStreams: 1},
+	}
+	provider := playbackSessionLimitProvider(
+		sessionLimitUserRepositoryStub{user: &models.User{ID: 7}},
+		groups,
+		sessionLimitTenantResolverStub{tenant: tenancy.Context{OrganizationID: organizationID, AccountID: 7}},
+		nil,
+	)
+	browse, err := provider(previewcontext.With(context.Background()), 7, "profile-v2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !browse.PlaybackDisabled || !browse.TranscodingDisabled {
+		t.Fatalf("browse-only limits = %+v, want playback and transcoding disabled", browse)
+	}
+	play, err := provider(previewcontext.WithFreePlay(previewcontext.With(context.Background()), "GrantGrantGrantGrantGr"), 7, "profile-v2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if play.PlaybackDisabled || play.TranscodingDisabled || play.AudioTranscodingDisabled || play.MaxStreams != 0 || play.MaxTranscodes != 0 {
+		t.Fatalf("free-play limits = %+v", play)
 	}
 }
 

@@ -90,6 +90,28 @@ func (am *AuthMiddleware) accountPreview(ctx context.Context, accountID int) (bo
 // another host, the preview is off, or the session belongs to another account.
 const CodePreviewSessionInvalid = "preview_session_invalid"
 
+// Free-play refusals. Ended: the grant's time is used, it has ended or free
+// play is off. Busy: the preview's free-play capacity is streaming.
+const (
+	CodeFreePlayEnded = "free_play_ended"
+	CodeFreePlayBusy  = "free_play_busy"
+)
+
+func WriteFreePlayEnded(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Bloem-Denial", CodeFreePlayEnded)
+	w.WriteHeader(http.StatusForbidden)
+	_, _ = w.Write([]byte(`{"error":"forbidden","code":"free_play_ended","message":"Your free play has ended."}`))
+}
+
+func WriteFreePlayBusy(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Bloem-Denial", CodeFreePlayBusy)
+	w.Header().Set("Retry-After", "60")
+	w.WriteHeader(http.StatusTooManyRequests)
+	_, _ = w.Write([]byte(`{"error":"rate_limited","code":"free_play_busy","message":"Free play is busy right now. Try again in a few minutes."}`))
+}
+
 // SetPreviewGuests installs what guest admission needs. Without it a guest
 // token is refused.
 func (am *AuthMiddleware) SetPreviewGuests(settings auth.PreviewGuestSettingsSource, limiter *PreviewGuestLimiter) {
@@ -106,6 +128,24 @@ func IsPreviewGuest(ctx context.Context) bool {
 
 func withPreviewGuest(ctx context.Context) context.Context {
 	return context.WithValue(ctx, previewGuestKey{}, true)
+}
+
+// PreviewFreePlaySource is the optional part of the guest settings source
+// that names a session's live free-play grant.
+type PreviewFreePlaySource interface {
+	LiveFreePlay(ctx context.Context, sessionID string) (grantID string, live bool, err error)
+}
+
+// markPreviewGuest marks an admitted guest, and marks it for free play while
+// its session holds a live grant. A failed lookup leaves the guest browsing.
+func (am *AuthMiddleware) markPreviewGuest(ctx context.Context, claims *auth.Claims) context.Context {
+	ctx = withPreviewGuest(ctx)
+	if source, ok := am.previewGuests.(PreviewFreePlaySource); ok {
+		if grant, live, err := source.LiveFreePlay(ctx, claims.SessionID); err == nil && live && grant != "" {
+			ctx = previewcontext.WithFreePlay(ctx, grant)
+		}
+	}
+	return ctx
 }
 
 // admitPreviewGuest checks a guest token against the current preview: on,

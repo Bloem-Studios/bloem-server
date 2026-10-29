@@ -102,3 +102,45 @@ func noneTicket(t *testing.T, c jwt.MapClaims) string {
 	}
 	return raw
 }
+
+// A free-play allowance is three claims signed together: the seconds, the
+// storefront's grant and the grant's end. A ticket carrying only some of them
+// is refused rather than read as a smaller allowance.
+func TestVerifyTicketPlayClaims(t *testing.T) {
+	now := time.Now()
+	pub, priv := newKey(t)
+	keys := []ed25519.PublicKey{pub}
+	grant := "GGGGGGGGGGGGGGGGGGGGGG"
+	play := func(c jwt.MapClaims) jwt.MapClaims {
+		return with(with(with(c, "play", 1800), "grant", grant), "grant_exp", now.Add(24*time.Hour).Unix())
+	}
+	plain, err := preview.VerifyTicket(sign(t, priv, baseClaims(now)), keys, want, now)
+	if err != nil || plain.Play != 0 || plain.Grant != "" || !plain.GrantExpiresAt.IsZero() {
+		t.Fatalf("plain ticket = %+v, %v", plain, err)
+	}
+	got, err := preview.VerifyTicket(sign(t, priv, play(baseClaims(now))), keys, want, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Play != 30*time.Minute || got.Grant != grant || got.GrantExpiresAt.Unix() != now.Add(24*time.Hour).Unix() {
+		t.Fatalf("play ticket = %+v", got)
+	}
+	for name, claims := range map[string]jwt.MapClaims{
+		"play alone":          with(baseClaims(now), "play", 1800),
+		"grant alone":         with(baseClaims(now), "grant", grant),
+		"grant_exp alone":     with(baseClaims(now), "grant_exp", now.Add(time.Hour).Unix()),
+		"no play":             without(play(baseClaims(now)), "play"),
+		"no grant":            without(play(baseClaims(now)), "grant"),
+		"no grant_exp":        without(play(baseClaims(now)), "grant_exp"),
+		"59 seconds":          with(play(baseClaims(now)), "play", 59),
+		"four hours and one":  with(play(baseClaims(now)), "play", 14401),
+		"short grant":         with(play(baseClaims(now)), "grant", "GGGGGGGGGGGGGGGGGGGGG"),
+		"odd grant":           with(play(baseClaims(now)), "grant", "GGGGGGGGGGGGGGGGGGGGG."),
+		"grant ends at exp":   with(play(baseClaims(now)), "grant_exp", now.Add(60*time.Second).Unix()),
+		"grant beyond a week": with(play(baseClaims(now)), "grant_exp", now.Add(7*24*time.Hour+time.Minute).Unix()),
+	} {
+		if _, err := preview.VerifyTicket(sign(t, priv, claims), keys, want, now); !errors.Is(err, preview.ErrTicketInvalid) {
+			t.Errorf("%s: err = %v, want ErrTicketInvalid", name, err)
+		}
+	}
+}

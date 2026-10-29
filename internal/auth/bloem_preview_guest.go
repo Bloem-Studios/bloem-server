@@ -69,6 +69,9 @@ type NewPreviewGuest struct {
 	ExpiresAt    time.Time
 	IdleTTL      time.Duration
 	ClientBucket string
+	// PlayGrantID binds the session to a free-play grant; empty for a
+	// browse-only guest.
+	PlayGrantID string
 }
 
 // PreviewGuests opens, reissues and refreshes guest sessions.
@@ -107,8 +110,8 @@ func (p *PreviewGuests) CreateInTx(ctx context.Context, tx pgx.Tx, guest NewPrev
 		VALUES ($1, $2, '', '', $3, 'preview_guest')`, id, guest.AccountID, guest.ExpiresAt); err != nil {
 		return nil, fmt.Errorf("opening a guest session: %w", err)
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO bloem_preview_guest_sessions (session_id, idle_ttl_seconds, client_bucket)
-		VALUES ($1, $2, $3)`, id, int(guest.IdleTTL/time.Second), guest.ClientBucket); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO bloem_preview_guest_sessions (session_id, idle_ttl_seconds, client_bucket, play_grant_id)
+		VALUES ($1, $2, $3, NULLIF($4, ''))`, id, int(guest.IdleTTL/time.Second), guest.ClientBucket, guest.PlayGrantID); err != nil {
 		return nil, fmt.Errorf("opening a guest session: %w", err)
 	}
 	return p.tokens(Claims{UserID: guest.AccountID, AccountIncarnationID: incarnation, Role: role, SessionID: id, AuthMethod: AuthMethodPreviewGuest}, guest.ExpiresAt)

@@ -3141,8 +3141,8 @@ are refused. Responses use `Cache-Control: no-store`.
 | Method and suffix | Request | Response |
 | --- | --- | --- |
 | `POST /account` | `{issuer}` | `201 {account_id}`; repeats reuse the account |
-| `GET /settings` | None | Settings, public keys and read-only account ID; TTLs in seconds |
-| `PUT /settings` | `{issuer, enabled?, host?, brand?, cta_url?, cta_label?, item_cta_label?, cta_message?, subscribe_label?, subscribe_url?, storefront_url?, launch_url?, maturity_ceiling?, session_ttl_seconds?, idle_ttl_seconds?, max_concurrent?}` | `204`; merges supplied fields atomically |
+| `GET /settings` | None | Settings, public keys and read-only account ID; TTLs in seconds; `free_play_supported:true` |
+| `PUT /settings` | `{issuer, enabled?, host?, brand?, cta_url?, cta_label?, item_cta_label?, cta_message?, subscribe_label?, subscribe_url?, storefront_url?, launch_url?, maturity_ceiling?, session_ttl_seconds?, idle_ttl_seconds?, max_concurrent?, free_play_enabled?, free_play_max_active?, free_play_url?, free_play_label?, free_play_seconds?}` | `204`; merges supplied fields atomically |
 | `PUT /libraries` | `{issuer, library_ids}`; explicit array, at most 1000 IDs | `{template_revision}`; empty array grants no libraries |
 | `PUT /keys` | `{issuer, public_keys}`; one or two distinct base64 Ed25519 public keys | `204`; replaces the key allowlist |
 | `DELETE /sessions` | `{issuer}` | `204`; revokes guests without disabling the preview |
@@ -3173,6 +3173,11 @@ limits to both keyword and provider lookup. They return no file data or grants.
 reuses its session without extending expiry. Successful tickets are single-use.
 Session responses and status are not cacheable; status exposes no capacity.
 
+A ticket may carry a free-play allowance: `play` (60-14400 seconds), `grant` (22-64 characters of
+`A-Za-z0-9_-`) and `grant_exp` (Unix seconds, after `exp`, at most seven days after `iat`), all three
+or none. With free play on, the session is bound to that grant; see
+[free play](architecture/bloem-browse-only-content-policy.md#free-play).
+
 Exchange errors are `400 invalid_request`, `403 preview_ticket_invalid`,
 `404 preview_unavailable`, `429 rate_limited` or `503 preview_busy`. Rate and
 capacity refusals include `Retry-After`. Guest traffic remains host-bound and
@@ -3191,6 +3196,12 @@ URL uses the configured value or storefront URL.
 client then keeps its own wording. `subscribe_url` is the operator's subscription, which a guest's
 banner offers beside the trial in place of the plain exit, worded by `subscribe_label` (the client's
 "Subscribe" when empty); an empty `subscribe_url` keeps the exit.
+
+While free play is on and `free_play_url` is set, `preview` also carries the storefront's offer:
+`free_play_url`, `free_play_label` (empty keeps the client's "Play free for N minutes") and
+`free_play_seconds`. A guest whose session holds a live grant gets
+`free_play: {allowance_seconds, used_seconds, ends_at}` and `playback_allowed:true`; the field is absent
+for every other session and once the grant is used, ended or free play is off.
 
 `GET /api/v2/playback/capabilities` reports effective policy; preview principals
 receive `allowed:false` with `denial:{code:"preview_only", cta_url, cta_label}`.

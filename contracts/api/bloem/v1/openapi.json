@@ -5000,6 +5000,28 @@
           "enabled": {
             "type": "boolean"
           },
+          "free_play_enabled": {
+            "type": "boolean"
+          },
+          "free_play_label": {
+            "type": "string"
+          },
+          "free_play_max_active": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "free_play_seconds": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "free_play_supported": {
+            "description": "True on servers that honor and meter free-play allowances.",
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "free_play_url": {
+            "type": "string"
+          },
           "host": {
             "type": "string"
           },
@@ -5062,7 +5084,13 @@
           "subscribe_url",
           "storefront_url",
           "launch_url",
-          "maturity_ceiling"
+          "maturity_ceiling",
+          "free_play_supported",
+          "free_play_enabled",
+          "free_play_max_active",
+          "free_play_url",
+          "free_play_label",
+          "free_play_seconds"
         ],
         "type": "object"
       },
@@ -8793,6 +8821,33 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "free_play_enabled": {
+            "description": "Lets a guest whose launch ticket carries a signed allowance stream video until it is used.",
+            "type": "boolean"
+          },
+          "free_play_label": {
+            "description": "The free-play button's wording; empty keeps the client's (Play free for N minutes).",
+            "maxLength": 80,
+            "type": "string"
+          },
+          "free_play_max_active": {
+            "description": "Allowances that may stream at once; a further start is refused as busy.",
+            "format": "int64",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "free_play_seconds": {
+            "description": "The allowance the storefront offers, for the button's wording; the ticket carries the real one.",
+            "format": "int64",
+            "maximum": 14400,
+            "minimum": 60,
+            "type": "integer"
+          },
+          "free_play_url": {
+            "description": "The storefront page where a guest asks for free play; empty shows no free-play button.",
+            "type": "string"
           },
           "host": {
             "type": "string"

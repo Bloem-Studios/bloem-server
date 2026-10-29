@@ -55,6 +55,31 @@ type Settings struct {
 	StorefrontURL   string
 	LaunchURL       string
 	MaturityCeiling string
+	// FreePlayEnabled lets a guest whose ticket carries a signed allowance
+	// stream video (see play_grants.go). FreePlayMaxActive caps the grants
+	// streaming at once; FreePlayURL, FreePlayLabel and FreePlaySeconds are
+	// the storefront's free-play offer, shown to guests without an allowance.
+	FreePlayEnabled   bool
+	FreePlayMaxActive int
+	FreePlayURL       string
+	FreePlayLabel     string
+	FreePlaySeconds   int
+}
+
+// Free play's defaults, which a zero setting stands for.
+const (
+	DefaultFreePlayMaxActive = 20
+	DefaultFreePlaySeconds   = 1800
+)
+
+func withFreePlayDefaults(s Settings) Settings {
+	if s.FreePlayMaxActive == 0 {
+		s.FreePlayMaxActive = DefaultFreePlayMaxActive
+	}
+	if s.FreePlaySeconds == 0 {
+		s.FreePlaySeconds = DefaultFreePlaySeconds
+	}
+	return s
 }
 
 // Store reads and writes the single settings row.
@@ -69,7 +94,8 @@ type queryRower interface {
 const settingsColumns = `enabled, host, issuer, COALESCE(account_id, 0), ticket_public_keys,
 	session_ttl_seconds, idle_ttl_seconds, max_concurrent, brand, cta_url, cta_label,
 	storefront_url, launch_url, maturity_ceiling, item_cta_label, cta_message,
-	subscribe_label, subscribe_url`
+	subscribe_label, subscribe_url, free_play_enabled, free_play_max_active, free_play_url,
+	free_play_label, free_play_seconds`
 
 func (s *Store) Get(ctx context.Context) (Settings, error) { return getSettings(ctx, s.pool) }
 
@@ -81,7 +107,8 @@ func getSettings(ctx context.Context, db queryRower) (Settings, error) {
 		&out.Enabled, &out.Host, &out.Issuer, &out.AccountID, &keys, &sessionTTL, &idleTTL,
 		&out.MaxConcurrent, &out.Brand, &out.CTAURL, &out.CTALabel, &out.StorefrontURL,
 		&out.LaunchURL, &out.MaturityCeiling, &out.ItemCTALabel, &out.CTAMessage,
-		&out.SubscribeLabel, &out.SubscribeURL)
+		&out.SubscribeLabel, &out.SubscribeURL, &out.FreePlayEnabled, &out.FreePlayMaxActive,
+		&out.FreePlayURL, &out.FreePlayLabel, &out.FreePlaySeconds)
 	if err != nil {
 		return Settings{}, fmt.Errorf("reading preview settings: %w", err)
 	}
@@ -145,7 +172,16 @@ func validate(s Settings) error {
 	if len(s.CTAMessage) > 300 {
 		return fail("cta_message is too long")
 	}
-	for name, value := range map[string]string{"cta_url": s.CTAURL, "storefront_url": s.StorefrontURL, "launch_url": s.LaunchURL, "subscribe_url": s.SubscribeURL} {
+	if s.FreePlayMaxActive < 1 || s.FreePlayMaxActive > 1000 {
+		return fail("free play capacity must be between 1 and 1000")
+	}
+	if s.FreePlaySeconds < 60 || s.FreePlaySeconds > 14400 {
+		return fail("free play must last between one minute and four hours")
+	}
+	if len(s.FreePlayLabel) > 80 {
+		return fail("free_play_label is too long")
+	}
+	for name, value := range map[string]string{"cta_url": s.CTAURL, "storefront_url": s.StorefrontURL, "launch_url": s.LaunchURL, "subscribe_url": s.SubscribeURL, "free_play_url": s.FreePlayURL} {
 		if len(value) > 2048 {
 			return fail("%s is too long", name)
 		}
@@ -164,6 +200,7 @@ func validate(s Settings) error {
 // the database guard (migration 20261014130000) holds from then on. Turning
 // the preview off revokes every guest.
 func (s *Store) Put(ctx context.Context, next Settings) error {
+	next = withFreePlayDefaults(next)
 	if err := validate(next); err != nil {
 		return err
 	}
@@ -179,6 +216,7 @@ func (s *Store) Put(ctx context.Context, next Settings) error {
 }
 
 func (s *Store) putInTransaction(ctx context.Context, tx pgx.Tx, next Settings) error {
+	next = withFreePlayDefaults(next)
 	if err := validate(next); err != nil {
 		return err
 	}
@@ -229,11 +267,14 @@ func (s *Store) putInTransaction(ctx context.Context, tx pgx.Tx, next Settings) 
 	if _, err := tx.Exec(ctx, `UPDATE bloem_preview_settings SET enabled=$1, host=$2, issuer=$3, account_id=$4,
 		ticket_public_keys=$5, session_ttl_seconds=$6, idle_ttl_seconds=$7, max_concurrent=$8, brand=$9,
 		cta_url=$10, cta_label=$11, storefront_url=$12, launch_url=$13, maturity_ceiling=$14,
-		item_cta_label=$15, cta_message=$16, subscribe_label=$17, subscribe_url=$18, updated_at=now()`,
+		item_cta_label=$15, cta_message=$16, subscribe_label=$17, subscribe_url=$18,
+		free_play_enabled=$19, free_play_max_active=$20, free_play_url=$21, free_play_label=$22,
+		free_play_seconds=$23, updated_at=now()`,
 		next.Enabled, next.Host, next.Issuer, account, keys, int(next.SessionTTL/time.Second),
 		int(next.IdleTTL/time.Second), next.MaxConcurrent, next.Brand, next.CTAURL, next.CTALabel,
 		next.StorefrontURL, next.LaunchURL, next.MaturityCeiling, next.ItemCTALabel, next.CTAMessage,
-		next.SubscribeLabel, next.SubscribeURL); err != nil {
+		next.SubscribeLabel, next.SubscribeURL, next.FreePlayEnabled, next.FreePlayMaxActive,
+		next.FreePlayURL, next.FreePlayLabel, next.FreePlaySeconds); err != nil {
 		return fmt.Errorf("writing preview settings: %w", err)
 	}
 	return nil

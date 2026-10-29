@@ -47,6 +47,8 @@ type ExchangeResult struct {
 	Item      string
 	Ref       string
 	Reused    bool
+	// FreePlay reports that the session is bound to a free-play grant.
+	FreePlay bool
 }
 
 type Exchanger struct {
@@ -102,9 +104,36 @@ func (e *Exchanger) Exchange(ctx context.Context, in ExchangeInput) (ExchangeRes
 		return ExchangeResult{}, err
 	}
 	result := ExchangeResult{Item: ticket.Item, Ref: ticket.Ref}
+	// An allowance counts only while free play is on; otherwise the visitor
+	// browses like any guest.
+	grant := ""
+	if settings.FreePlayEnabled && ticket.Grant != "" {
+		if err := UpsertGrant(ctx, tx, ticket.Grant, ticket.Play, ticket.GrantExpiresAt); err != nil {
+			return ExchangeResult{}, err
+		}
+		grant, result.FreePlay = ticket.Grant, true
+	}
 
 	if in.RefreshToken != "" {
-		if tokens, err := e.guests.ReissueInTx(auth.WithRequestHost(ctx, in.Host), tx, in.RefreshToken); err == nil {
+		tokens, err := e.guests.ReissueInTx(auth.WithRequestHost(ctx, in.Host), tx, in.RefreshToken)
+		if err == nil {
+			// A ticket with an allowance needs a session bound to that grant: a
+			// browse-only tab given one gets a new session, and the one it
+			// replaces ends now. A plain ticket keeps whatever the tab has.
+			var bound string
+			if err := tx.QueryRow(ctx, `SELECT COALESCE(play_grant_id, '') FROM bloem_preview_guest_sessions WHERE session_id = $1`, tokens.SessionID).Scan(&bound); err != nil {
+				return ExchangeResult{}, fmt.Errorf("preview exchange: %w", err)
+			}
+			if grant != "" && bound != grant {
+				if _, err := tx.Exec(ctx, `UPDATE auth_sessions SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL`, tokens.SessionID); err != nil {
+					return ExchangeResult{}, fmt.Errorf("preview exchange: replacing a session: %w", err)
+				}
+				tokens = nil
+			} else {
+				result.FreePlay = bound != "" && settings.FreePlayEnabled
+			}
+		}
+		if err == nil && tokens != nil {
 			var expiresAt time.Time
 			if err := tx.QueryRow(ctx, `SELECT expires_at FROM auth_sessions WHERE id = $1`, tokens.SessionID).Scan(&expiresAt); err != nil {
 				return ExchangeResult{}, fmt.Errorf("preview exchange: %w", err)
@@ -135,6 +164,7 @@ func (e *Exchanger) Exchange(ctx context.Context, in ExchangeInput) (ExchangeRes
 	expiresAt := e.now().Add(settings.SessionTTL)
 	tokens, err := e.guests.CreateInTx(ctx, tx, auth.NewPreviewGuest{
 		AccountID: settings.AccountID, ExpiresAt: expiresAt, IdleTTL: settings.IdleTTL, ClientBucket: bucket,
+		PlayGrantID: grant,
 	})
 	if err != nil {
 		return ExchangeResult{}, err

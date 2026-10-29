@@ -1,6 +1,15 @@
 const blocked =
   /^\/(?:watch|reader|livetv|rooms|taste-seed|settings|profiles|notifications|requests|title|activate|household-setup|recommendations|favorites|watchlist|history|profile|admin)(?:\/|$)/i;
-export function previewRouteRedirect(path: string, search: string): string | null {
+// Free play opens the video player and nothing else that is blocked.
+export function freePlayRoute(path: string): boolean {
+  return /^\/watch\/[^/]+\/?$/i.test(path);
+}
+export function previewRouteRedirect(
+  path: string,
+  search: string,
+  freePlay = false,
+): string | null {
+  if (freePlay && freePlayRoute(path)) return null;
   const params = new URLSearchParams(search);
   const collectionWrite = /^\/collections\/(?:new|[^/]+\/edit)(?:\/|$)/i.test(path);
   const personalCatalog =
@@ -35,6 +44,15 @@ export function subscriptionHref(url: string, item?: string, ref?: string): stri
   } catch {
     return null;
   }
+}
+// The storefront's free-play request page, for the title the guest was on.
+export function freePlayHref(url: string | undefined, item?: string, ref?: string): string | null {
+  const href = safePreviewHref(url);
+  if (!href) return null;
+  const target = new URL(href);
+  if (item) target.searchParams.set("item", item);
+  if (ref) target.searchParams.set("ref", ref);
+  return target.href;
 }
 export function safePreviewHref(url: string | undefined): string | null {
   try {

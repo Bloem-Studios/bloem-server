@@ -25,6 +25,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/policy"
 	"github.com/Silo-Server/silo-server/internal/preview"
+	"github.com/Silo-Server/silo-server/internal/previewcontext"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/remote"
 	"github.com/Silo-Server/silo-server/internal/serverid"
@@ -67,10 +68,10 @@ func wireBloemViewerTokenResolver(viewer *apimw.ViewerAccessMiddleware, resolver
 		return
 	}
 	tenantStore := tenancy.NewStore(pool)
-	viewer.SetTokenResolver(policy.NewTenantViewerResolver(
+	viewer.SetTokenResolver(bloemPreviewTokenViewer{inner: policy.NewTenantViewerResolver(
 		resolver,
 		tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore),
-	))
+	), pool: pool})
 }
 
 // wireBloemPlaybackSessionLimits replaces upstream's account-only session
@@ -145,6 +146,14 @@ func playbackSessionLimitProvider(
 			PlaybackDisabled:         !effective.PlaybackAllowed,
 			TranscodingDisabled:      !effective.TranscodeAllowed,
 			AudioTranscodingDisabled: !effective.AudioTranscodeAllowed,
+		}
+		// Bloem free play: every guest shares the preview account, whose
+		// protected policy forbids playback. A request guest admission marked
+		// for a live grant may play and transcode; the account-wide stream
+		// caps would make one guest's play block another's, so the preview's
+		// free-play capacity limits concurrent grants instead.
+		if _, ok := previewcontext.FreePlayGrant(ctx); ok {
+			limits = playback.SessionLimits{}
 		}
 		// Park tenant entitlements (bloem-park growth G2): the shared
 		// transcode pool and the frozen flag ride the same lookup, keyed by
@@ -323,7 +332,11 @@ func wireBloemV2(v2deps *apiv2.Dependencies, deps Dependencies, tenantMiddleware
 		v2deps.TenantIdentity = tenantMiddleware.ResolveNative
 	}
 	if deps.Config != nil {
-		v2deps.StreamTokens = authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret)
+		freePlay := newBloemFreePlayDelivery(deps)
+		v2deps.StreamTokens = bloemStreamTokenAuth(authMiddleware, deps.Config.Auth.JWTSecret, freePlay)
+		if freePlay != nil {
+			v2deps.PreviewFreePlay = freePlay
+		}
 	}
 }
 

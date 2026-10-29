@@ -103,6 +103,11 @@ func TestPreviewAdminRouterScopedControlPlane(t *testing.T) {
 	if w = call("GET", prefix+"/settings", contextToken, nil); w.Code != http.StatusOK {
 		t.Fatalf("Platform context refused: %d %s", w.Code, w.Body)
 	}
+	// The storefront signs free-play allowances only for a server that says
+	// it meters them.
+	if !bytes.Contains(w.Body.Bytes(), []byte(`"free_play_supported":true`)) {
+		t.Fatalf("settings read does not report free play support: %s", w.Body)
+	}
 	nonAdmin, err := users.Create(ctx, models.CreateUserInput{Username: "preview-ordinary", Email: "ordinary@example.test", Password: "synthetic-password", Role: "user"})
 	if err != nil {
 		t.Fatal(err)

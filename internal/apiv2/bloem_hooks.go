@@ -11,6 +11,8 @@ import (
 // and deps.StreamTokens directly.
 type bloemDependencies struct {
 	PreviewPresentation PreviewPresentationSource
+	// PreviewFreePlay meters free play for the preview gate; nil without it.
+	PreviewFreePlay PreviewFreePlayService
 	// TenantIdentity revalidates tenant selection after authentication and before policy.
 	TenantIdentity func(http.Handler) http.Handler
 	StreamTokens   func(http.Handler) http.Handler

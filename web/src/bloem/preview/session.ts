@@ -8,6 +8,8 @@ export interface GuestSession {
   item: string;
   ref?: string;
   ended?: boolean;
+  /** Set once this guest's free play ran out, so it is not offered again. */
+  free_play_ended?: boolean;
   presentation?: PreviewPresentation;
   /** The shared account's profile. A guest never picks one, but the v2 home
    * and library layouts require X-Profile-Id. */
@@ -114,6 +116,12 @@ export function endGuestSession() {
 }
 export function previewForUser(user: User | null | undefined): PreviewPresentation | null {
   return (user as (User & { preview?: PreviewPresentation | null }) | undefined)?.preview ?? null;
+}
+export function markFreePlayEnded() {
+  if (current && !current.free_play_ended) {
+    current = { ...current, free_play_ended: true };
+    persist();
+  }
 }
 export function rememberGuestPresentation(value: PreviewPresentation) {
   if (value.kind === "guest" && current) {

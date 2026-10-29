@@ -24,6 +24,11 @@ type SettingsPatch struct {
 	SessionTTLSeconds *int    `json:"session_ttl_seconds,omitempty"`
 	IdleTTLSeconds    *int    `json:"idle_ttl_seconds,omitempty"`
 	MaxConcurrent     *int    `json:"max_concurrent,omitempty"`
+	FreePlayEnabled   *bool   `json:"free_play_enabled,omitempty" doc:"Lets a guest whose launch ticket carries a signed allowance stream video until it is used."`
+	FreePlayMaxActive *int    `json:"free_play_max_active,omitempty" minimum:"1" maximum:"1000" doc:"Allowances that may stream at once; a further start is refused as busy."`
+	FreePlayURL       *string `json:"free_play_url,omitempty" doc:"The storefront page where a guest asks for free play; empty shows no free-play button."`
+	FreePlayLabel     *string `json:"free_play_label,omitempty" maxLength:"80" doc:"The free-play button's wording; empty keeps the client's (Play free for N minutes)."`
+	FreePlaySeconds   *int    `json:"free_play_seconds,omitempty" minimum:"60" maximum:"14400" doc:"The allowance the storefront offers, for the button's wording; the ticket carries the real one."`
 }
 
 func (a *Admin) UpdateSettings(ctx context.Context, actor int, p SettingsPatch, servedHost string) error {
@@ -41,10 +46,13 @@ func (a *Admin) UpdateSettings(ctx context.Context, actor int, p SettingsPatch, 
 	if p.Enabled != nil {
 		s.Enabled = *p.Enabled
 	}
+	if p.FreePlayEnabled != nil {
+		s.FreePlayEnabled = *p.FreePlayEnabled
+	}
 	for _, field := range []struct {
 		value  *string
 		target *string
-	}{{p.Host, &s.Host}, {p.Brand, &s.Brand}, {p.CTAURL, &s.CTAURL}, {p.CTALabel, &s.CTALabel}, {p.ItemCTALabel, &s.ItemCTALabel}, {p.CTAMessage, &s.CTAMessage}, {p.SubscribeLabel, &s.SubscribeLabel}, {p.SubscribeURL, &s.SubscribeURL}, {p.StorefrontURL, &s.StorefrontURL}, {p.LaunchURL, &s.LaunchURL}, {p.MaturityCeiling, &s.MaturityCeiling}} {
+	}{{p.Host, &s.Host}, {p.Brand, &s.Brand}, {p.CTAURL, &s.CTAURL}, {p.CTALabel, &s.CTALabel}, {p.ItemCTALabel, &s.ItemCTALabel}, {p.CTAMessage, &s.CTAMessage}, {p.SubscribeLabel, &s.SubscribeLabel}, {p.SubscribeURL, &s.SubscribeURL}, {p.StorefrontURL, &s.StorefrontURL}, {p.LaunchURL, &s.LaunchURL}, {p.MaturityCeiling, &s.MaturityCeiling}, {p.FreePlayURL, &s.FreePlayURL}, {p.FreePlayLabel, &s.FreePlayLabel}} {
 		if field.value != nil {
 			*field.target = *field.value
 		}
@@ -63,6 +71,17 @@ func (a *Admin) UpdateSettings(ctx context.Context, actor int, p SettingsPatch, 
 	}
 	if p.MaxConcurrent != nil {
 		s.MaxConcurrent = *p.MaxConcurrent
+	}
+	for _, field := range []struct {
+		value  *int
+		target *int
+	}{{p.FreePlayMaxActive, &s.FreePlayMaxActive}, {p.FreePlaySeconds, &s.FreePlaySeconds}} {
+		if field.value != nil {
+			if *field.value == 0 {
+				return ErrInvalidSettings
+			}
+			*field.target = *field.value
+		}
 	}
 	if err = a.configureInTransaction(ctx, tx, s, servedHost); err != nil {
 		return err

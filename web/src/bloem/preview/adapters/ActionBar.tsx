@@ -76,10 +76,15 @@ export default function ActionBar(props: ComponentProps<typeof Original>) {
         compactMobile={props.compactMobile}
         canAddToCollection={false}
         links={props.links}
-        primaryAction={{
-          label: itemCtaLabel(mode.presentation, "watch"),
-          onClick: () => mode.requestSubscription(props.contentId),
-        }}
+        primaryAction={
+          // Free play keeps the title's own Play.
+          mode.freePlay
+            ? props.primaryAction
+            : {
+                label: itemCtaLabel(mode.presentation, "watch"),
+                onClick: () => mode.requestSubscription(props.contentId),
+              }
+        }
       />
       <TechnicalMetadata versions={props.versions ?? []} selected={props.selectedVersion} />
     </div>

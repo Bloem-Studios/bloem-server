@@ -61,7 +61,7 @@ func classGate(deps Dependencies) func(huma.Context, func(huma.Context)) {
 		}
 		if class != ClassPublic && missing == "" {
 			// Bloem: preview principals run listed operations only.
-			chain = append(chain, previewGate(op.OperationID))
+			chain = append(chain, previewGateWith(deps.PreviewFreePlay, op.OperationID))
 		}
 		r, w := humachi.Unwrap(ctx)
 		if missing != "" {

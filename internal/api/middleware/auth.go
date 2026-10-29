@@ -259,7 +259,7 @@ func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		if previewOnly {
 			ctx = withPreviewPrincipal(ctx)
 			if claims.AuthMethod == auth.AuthMethodPreviewGuest {
-				ctx = withPreviewGuest(ctx)
+				ctx = am.markPreviewGuest(ctx, claims)
 			}
 
 			if am.previewRoutes == nil || !am.previewRoutes(r.WithContext(ctx)) {

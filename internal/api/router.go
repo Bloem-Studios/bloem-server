@@ -3590,7 +3590,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if authMiddleware != nil {
 			r.Group(func(r chi.Router) {
 				if deps.Config != nil {
-					r.Use(authMiddleware.StreamTokenAuth(deps.Config.Auth.JWTSecret))
+					// Bloem: free play meters the preview account's media (bloem_preview_free_play.go).
+					r.Use(bloemStreamTokenAuth(authMiddleware, deps.Config.Auth.JWTSecret, newBloemFreePlayDelivery(deps)))
 				}
 				r.Use(authMiddleware.RequireAuth)
 				r.Use(optionalLegacyTenant(tenantMiddleware))

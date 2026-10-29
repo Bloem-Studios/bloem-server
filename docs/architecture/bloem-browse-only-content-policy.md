@@ -235,6 +235,61 @@ keys stay in bounded process memory for rate limiting: one event per ten seconds
 with burst three, and an aggregate five per second with burst twenty per process.
 Retries increment again; clients should treat telemetry as best effort.
 
+## Free play
+
+A storefront may give a guest a free-play allowance: real video playback for a
+number of seconds, metered by the server. The storefront decides who gets one
+(Garden confirms an email address and refuses repeats); the server only
+honours and meters signed allowances. Free play is off by default
+(`free_play_enabled`).
+
+- **Claims.** `play`, `grant` and `grant_exp` arrive together in the launch
+  ticket (`internal/preview/ticket.go`) or not at all. The first exchange
+  records the grant in `bloem_preview_play_grants`; later tickets for the same
+  grant never raise its allowance or end and never reset what it used. The
+  guest session row names its grant (`play_grant_id`). A grant ticket in a tab
+  holding a browse-only session opens a new session and revokes the old one;
+  a plain ticket in a free-play tab keeps the free-play session.
+- **Live grant.** A grant is live while the preview and free play are on, its
+  `used_seconds` is below its allowance and it has not ended
+  (`preview.LiveGrant`, read in one statement with the settings, never cached).
+  Switching free play off ends it on the next request without revoking
+  sessions.
+- **Bearer requests.** Guest admission (`markPreviewGuest`) marks a request
+  whose session holds a live grant (`previewcontext.WithFreePlay`). Only a
+  marked request gets `PlaybackAllowed` in the preview scope and playback
+  limits without the shared account's stream caps (every guest shares that
+  account). Downloads and Live TV stay off; the protected template and its
+  constraints are unchanged.
+- **Operations.** For a marked guest the v2 preview gate also admits
+  `startPlayback`, `stopPlayback`, `updatePlaybackProgress`, the playlist,
+  segment and subtitle reads. `replanPlayback`, the progressive original
+  (`getPlaybackMedia`), downloads, trickplay, theme songs, books and every
+  personal write stay refused. The gate rewrites the start body so only the
+  `hls` delivery class is enabled and progress stays on the device, refuses
+  with `429 free_play_busy` when `free_play_max_active` other grants had a
+  segment delivered in the last 60 seconds, and binds the returned playback
+  session to the grant (`bloem_preview_play_sessions`). A plan that is not an
+  HLS transcode stream is stopped and refused.
+- **Stream tokens.** Plan URLs carry a stream token, which skips bearer
+  authentication and the preview gate. `bloemStreamTokenAuth` therefore judges
+  every stream token of the shared preview account on v1 and v2: only
+  `/playback/transcode/{session}/` playlists and segments and
+  `/stream/{session}/subtitles/` pass, for a session bound to a live grant,
+  and the request is marked so the stream-token viewer resolver narrows scope
+  with playback on. Anything else is `403 preview_only`; a spent or switched-off
+  grant is `403 free_play_ended` and its playback session is stopped.
+- **Meter.** Each segment delivery charges the seconds since the grant's
+  previous delivery, at most 20, none for the first (`preview.ChargeDelivery`,
+  one statement). Playlists and subtitles only need a live grant, so a paused
+  player's playlist reloads cost nothing. Two tabs on one grant pay wall-clock
+  time once.
+- **Telling the app.** The account projection carries `free_play` and
+  `playback_allowed:true` for a live grant (see the API reference). The web
+  client opens video only, shows what is left, re-reads the account every 30
+  seconds during free play and shows the ended dialog when `free_play`
+  disappears.
+
 ## Web preview presentation
 
 The collections route selects a browse-only server collection view before the

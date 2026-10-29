@@ -268,7 +268,7 @@ function playbackUnavailableMessage(error: Error): string {
 
 function PlaybackUnavailableScreen({ error, onBack }: { error: Error; onBack: () => void }) {
   const preview = usePreviewMode();
-  if (preview.active)
+  if (preview.active && !preview.freePlay)
     return (
       <div className="p-8">
         <button onClick={() => preview.requestSubscription()}>
@@ -296,7 +296,10 @@ function PlaybackUnavailableScreen({ error, onBack }: { error: Error; onBack: ()
 }
 
 export function WatchPlaybackProvider({ children }: { children: ReactNode }) {
-  const { active: previewOnly, requestSubscription } = usePreviewMode();
+  const preview = usePreviewMode();
+  // Bloem: a guest with free play left may watch; every other preview may not.
+  const previewOnly = preview.active && !preview.freePlay;
+  const { requestSubscription } = preview;
   const navigate = useViewTransitionNavigate();
   const [state, dispatch] = useReducer(watchPlaybackReducer, undefined, createEmptyPlaybackState);
   const [snapshotStore] = useState(createWatchPlaybackSnapshotStore);

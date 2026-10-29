@@ -52,6 +52,36 @@ func TestStoreRoundTripsSettings(t *testing.T) {
 	}
 }
 
+// Free play's switch, capacity and the storefront's free-play link survive a
+// write and a read; unset numbers take their defaults (20 at once, 30 minutes).
+func TestStoreRoundTripsFreePlay(t *testing.T) {
+	ctx, pool := previewTestDB(t)
+	store := preview.NewStore(pool)
+	pub, _ := newKey(t)
+	want := validSettings(t, insertAccount(t, ctx, pool, "user"), pub)
+	if err := store.Put(ctx, want); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Get(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.FreePlayEnabled || got.FreePlayMaxActive != 20 || got.FreePlaySeconds != 1800 || got.FreePlayURL != "" || got.FreePlayLabel != "" {
+		t.Fatalf("defaults: %+v", got)
+	}
+	want.FreePlayEnabled, want.FreePlayMaxActive, want.FreePlaySeconds = true, 5, 3600
+	want.FreePlayURL, want.FreePlayLabel = "https://shop.example.test/preview/play", "Watch free for an hour"
+	if err := store.Put(ctx, want); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = store.Get(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if !got.FreePlayEnabled || got.FreePlayMaxActive != 5 || got.FreePlaySeconds != 3600 || got.FreePlayURL != want.FreePlayURL || got.FreePlayLabel != want.FreePlayLabel {
+		t.Fatalf("got %+v", got)
+	}
+}
+
 func TestPutRefusesInvalidSettings(t *testing.T) {
 	ctx, pool := previewTestDB(t)
 	store := preview.NewStore(pool)
@@ -76,6 +106,12 @@ func TestPutRefusesInvalidSettings(t *testing.T) {
 		"long cta_message":     func(s *preview.Settings) { s.CTAMessage = strings.Repeat("x", 301) },
 		"long subscribe_label": func(s *preview.Settings) { s.SubscribeLabel = strings.Repeat("x", 121) },
 		"http subscribe_url":   func(s *preview.Settings) { s.SubscribeURL = "http://shop.example.test/plans" },
+		"free play max 1001":   func(s *preview.Settings) { s.FreePlayMaxActive = 1001 },
+		"free play max -1":     func(s *preview.Settings) { s.FreePlayMaxActive = -1 },
+		"free play 59 seconds": func(s *preview.Settings) { s.FreePlaySeconds = 59 },
+		"free play 4h+1s":      func(s *preview.Settings) { s.FreePlaySeconds = 14401 },
+		"long free_play_label": func(s *preview.Settings) { s.FreePlayLabel = strings.Repeat("x", 81) },
+		"http free_play_url":   func(s *preview.Settings) { s.FreePlayURL = "http://shop.example.test/preview/play" },
 	} {
 		s := validSettings(t, account, pub)
 		mutate(&s)

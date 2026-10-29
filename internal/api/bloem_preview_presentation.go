@@ -29,5 +29,6 @@ func (p bloemPreviewPresentation) AccountPresentation(ctx context.Context, claim
 		return nil, scope.PlaybackAllowed, nil
 	}
 	view, err := preview.NewStore(p.pool).Presentation(ctx, claims.UserID, claims.SessionID, apimw.IsPreviewGuest(ctx))
-	return view, false, err
+	// A guest with free play left may play; every other preview may not.
+	return view, err == nil && view.FreePlay != nil, err
 }
