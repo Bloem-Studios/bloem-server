@@ -239,6 +239,29 @@ func TestTranscribeBuildsSegmentFromWordsWhenSegmentsAreAbsent(t *testing.T) {
 	}
 }
 
+func TestTranscribeReadsDisplayAndJoinsPrevious(t *testing.T) {
+	// NeMo-Speech.cpp times Japanese per character: the running text (with
+	// its punctuation) is in display, and joins_previous drops the space.
+	tr, err := transcribeStub(t, http.StatusOK, `{"language":"ja","text":"小林さん。","words":[
+			{"start":0.0,"end":0.2,"word":"小"},
+			{"start":0.2,"end":0.4,"word":"林","joins_previous":true},
+			{"start":0.4,"end":0.6,"word":"さ","joins_previous":true},
+			{"start":0.6,"end":0.8,"word":"ん","display":"ん。","joins_previous":true}]}`)
+	if err != nil {
+		t.Fatalf("Transcribe: %v", err)
+	}
+	if len(tr.Segments) != 1 || len(tr.Segments[0].Words) != 4 {
+		t.Fatalf("segments = %+v, want one with 4 words", tr.Segments)
+	}
+	words := tr.Segments[0].Words
+	if words[0].JoinsPrevious || !words[1].JoinsPrevious || words[3].Text != "ん。" {
+		t.Errorf("words = %+v, want display text and joins_previous carried", words)
+	}
+	if tr.Segments[0].Text != "小林さん。" {
+		t.Errorf("segment text = %q, want the characters joined without spaces", tr.Segments[0].Text)
+	}
+}
+
 func TestTranscribeEmptyWordsWithoutSegmentsIsNotAnError(t *testing.T) {
 	tr, err := transcribeStub(t, http.StatusOK, `{"language":"en","text":"","words":[]}`)
 	if err != nil {

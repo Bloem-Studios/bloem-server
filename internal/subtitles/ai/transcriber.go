@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/Silo-Server/silo-server/internal/ai/llm"
@@ -394,36 +395,45 @@ func cuesFromSegments(segments []llm.TranscriptionSegment, offsetSeconds float64
 // pause, when the text would exceed the wrap capacity, when it would exceed
 // the maximum duration, or after a sentence ends once a full line is
 // accumulated. Cue end times come from the last word, so cues disappear when
-// speech stops instead of lingering through silence.
+// speech stops instead of lingering through silence. A word that joins the
+// previous one (a Chinese or Japanese character) follows it without a space.
 func cuesFromWords(words []llm.TranscriptionWord, offsetSeconds float64) []SubtitleCue {
-	maxRunes := cueMaxLineLength * cueMaxLines
+	maxWidth := cueMaxLineLength * cueMaxLines
 	var out []SubtitleCue
-	var texts []string
+	var text strings.Builder
 	var start, end float64
-	runes := 0
+	width := 0
 	flush := func() {
-		if len(texts) > 0 {
-			out = append(out, newCue(offsetSeconds+start, offsetSeconds+end, strings.Join(texts, " ")))
+		if text.Len() > 0 {
+			out = append(out, newCue(offsetSeconds+start, offsetSeconds+end, text.String()))
 		}
-		texts, runes = nil, 0
+		text.Reset()
+		width = 0
 	}
 	for _, w := range words {
-		text := strings.TrimSpace(w.Text)
-		if text == "" {
+		word := strings.TrimSpace(w.Text)
+		if word == "" {
 			continue
 		}
-		n := utf8.RuneCountInString(text)
-		if len(texts) > 0 &&
-			(w.Start-end >= cueSplitPauseSeconds || runes+1+n > maxRunes || w.End-start > maxCueSeconds) {
+		n := textWidth(word)
+		space := 1
+		if w.JoinsPrevious {
+			space = 0
+		}
+		if text.Len() > 0 &&
+			(w.Start-end >= cueSplitPauseSeconds || width+space+n > maxWidth || w.End-start > maxCueSeconds) {
 			flush()
 		}
-		if len(texts) == 0 {
+		if text.Len() == 0 {
 			start = w.Start
+		} else if space == 1 {
+			text.WriteByte(' ')
+			width++
 		}
-		texts = append(texts, text)
-		runes += n + 1
+		text.WriteString(word)
+		width += n
 		end = w.End
-		if runes >= cueMaxLineLength && endsSentence(text) {
+		if width >= cueMaxLineLength && endsSentence(word) {
 			flush()
 		}
 	}
@@ -434,9 +444,13 @@ func cuesFromWords(words []llm.TranscriptionWord, offsetSeconds float64) []Subti
 // endsSentence reports whether a word closes a sentence, tolerating a
 // trailing quote or bracket after the punctuation.
 func endsSentence(word string) bool {
-	word = strings.TrimRight(word, `"')]”’`)
-	return strings.HasSuffix(word, ".") || strings.HasSuffix(word, "?") ||
-		strings.HasSuffix(word, "!") || strings.HasSuffix(word, "…")
+	word = strings.TrimRight(word, `"')]”’」』）`)
+	for _, mark := range []string{".", "?", "!", "…", "。", "？", "！"} {
+		if strings.HasSuffix(word, mark) {
+			return true
+		}
+	}
+	return false
 }
 
 // newCue builds a wrapped cue, guarding degenerate timestamps with a minimal
@@ -469,27 +483,92 @@ func enforceMinCueDurations(cues []SubtitleCue) {
 }
 
 // wrapCueText greedily wraps text into at most maxLines lines of roughly
-// maxLen characters (counted in runes, so multi-byte scripts like Arabic or
-// Cyrillic wrap at the same visual width as Latin). The last line absorbs any
-// overflow — text is never dropped.
+// maxLen columns of display width (textWidth), so multi-byte scripts like
+// Arabic or Cyrillic wrap at the same visual width as Latin and a wide Chinese
+// or Japanese character counts two. Lines break between words, and inside
+// unspaced Chinese or Japanese text too wide for a line. The last line absorbs
+// any overflow — text is never dropped.
 func wrapCueText(text string, maxLen, maxLines int) []string {
-	words := strings.Fields(text)
-	if len(words) == 0 {
+	pieces := wrapPieces(text, maxLen)
+	if len(pieces) == 0 {
 		return nil
 	}
-	lines := []string{words[0]}
-	for _, w := range words[1:] {
+	lines := []string{pieces[0].text}
+	widths := []int{pieces[0].width}
+	for _, p := range pieces[1:] {
 		last := len(lines) - 1
-		switch {
-		case utf8.RuneCountInString(lines[last])+1+utf8.RuneCountInString(w) <= maxLen:
-			lines[last] += " " + w
-		case len(lines) < maxLines:
-			lines = append(lines, w)
-		default:
-			lines[last] += " " + w
+		space := ""
+		if p.spaced {
+			space = " "
 		}
+		if widths[last]+len(space)+p.width <= maxLen || len(lines) >= maxLines {
+			lines[last] += space + p.text
+			widths[last] += len(space) + p.width
+			continue
+		}
+		lines = append(lines, p.text)
+		widths = append(widths, p.width)
 	}
 	return lines
+}
+
+// wrapPiece is a run of text a line may break before; spaced runs follow the
+// previous one after a space.
+type wrapPiece struct {
+	text   string
+	width  int
+	spaced bool
+}
+
+// wrapPieces splits text at spaces, and a word with wide characters that is
+// wider than a line into its characters, each mark in noLineStart kept with
+// the character before it.
+func wrapPieces(text string, maxLen int) []wrapPiece {
+	var out []wrapPiece
+	for _, word := range strings.Fields(text) {
+		width := textWidth(word)
+		if width <= maxLen || width == utf8.RuneCountInString(word) {
+			out = append(out, wrapPiece{text: word, width: width, spaced: true})
+			continue
+		}
+		for i, r := range []rune(word) {
+			if i > 0 && strings.ContainsRune(noLineStart, r) {
+				out[len(out)-1].text += string(r)
+				out[len(out)-1].width += runeWidth(r)
+				continue
+			}
+			out = append(out, wrapPiece{text: string(r), width: runeWidth(r), spaced: i == 0})
+		}
+	}
+	return out
+}
+
+// noLineStart lists the marks Chinese and Japanese typesetting keeps off the
+// start of a line: closing punctuation and brackets, small kana and the
+// long-vowel mark.
+const noLineStart = "、。，．・：；？！ー々」』）〕］｝〉》】ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ…"
+
+// textWidth is text's display width in columns (runeWidth).
+func textWidth(text string) int {
+	n := 0
+	for _, r := range text {
+		n += runeWidth(r)
+	}
+	return n
+}
+
+// runeWidth is a rune's display width in columns: two for the wide characters
+// of Chinese, Japanese and Korean text, one otherwise.
+func runeWidth(r rune) int {
+	switch {
+	case unicode.Is(unicode.Han, r), unicode.Is(unicode.Hangul, r):
+		return 2
+	case r >= 0x3000 && r <= 0x30FF: // CJK punctuation, hiragana, katakana
+		return 2
+	case r >= 0xFF01 && r <= 0xFF60, r >= 0xFFE0 && r <= 0xFFE6: // full-width forms
+		return 2
+	}
+	return 1
 }
 
 // normalizeDetectedLanguage maps a Whisper-reported language to an ISO 639-1

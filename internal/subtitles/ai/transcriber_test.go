@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Silo-Server/silo-server/internal/ai/llm"
 	"github.com/Silo-Server/silo-server/internal/playback"
@@ -250,6 +251,80 @@ func TestCuesFromWordsSplitsParagraphAtSentencesAndCapacity(t *testing.T) {
 		if dur := c.End - c.Start; dur > time.Duration(maxCueSeconds*float64(time.Second))+time.Second {
 			t.Errorf("cue %d duration %v exceeds max", i, dur)
 		}
+	}
+}
+
+// joinedSeq times each character of text as its own word that follows the
+// previous one without a space, as NeMo-Speech.cpp reports Japanese.
+func joinedSeq(startAt, dur float64, text string) []llm.TranscriptionWord {
+	var out []llm.TranscriptionWord
+	at := startAt
+	for i, r := range []rune(text) {
+		out = append(out, llm.TranscriptionWord{Start: at, End: at + dur, Text: string(r), JoinsPrevious: i > 0})
+		at += dur
+	}
+	return out
+}
+
+func cueText(cues []SubtitleCue) string {
+	var b strings.Builder
+	for _, c := range cues {
+		b.WriteString(strings.Join(c.Lines, ""))
+	}
+	return b.String()
+}
+
+func TestCuesFromWordsJoinsUnspacedWords(t *testing.T) {
+	cues := cuesFromWords(joinedSeq(0, 0.1, "なんかごめんね。"), 0)
+	if len(cues) != 1 || fmt.Sprint(cues[0].Lines) != "[なんかごめんね。]" {
+		t.Fatalf("cues = %+v, want one unspaced line", cues)
+	}
+}
+
+func TestCuesFromWordsCountsWideCharactersTwice(t *testing.T) {
+	// 60 wide characters fill 120 columns: more than one cue's two 42-column
+	// lines, though only 60 runes.
+	text := strings.Repeat("あいうえおかきくけこ", 6)
+	cues := cuesFromWords(joinedSeq(0, 0.05, text), 0)
+	if len(cues) < 2 {
+		t.Fatalf("cues = %d, want the text split by display width", len(cues))
+	}
+	for i, c := range cues {
+		for _, line := range c.Lines {
+			if n := utf8.RuneCountInString(line); n > cueMaxLineLength/2 {
+				t.Errorf("cue %d line %q has %d wide characters, over %d columns", i, line, n, cueMaxLineLength)
+			}
+		}
+	}
+	if got := cueText(cues); got != text {
+		t.Errorf("cue text = %q, want %q", got, text)
+	}
+}
+
+func TestCuesFromWordsClosesJapaneseSentences(t *testing.T) {
+	// 。 ends a sentence: once a line's worth is shown, the cue closes there.
+	first := strings.Repeat("あ", 24) + "。"
+	cues := cuesFromWords(joinedSeq(0, 0.05, first+"いいいい"), 0)
+	if len(cues) != 2 || strings.Join(cues[0].Lines, "") != first {
+		t.Fatalf("cues = %+v, want the first to end at 。", cues)
+	}
+}
+
+func TestWrapCueTextBreaksUnspacedText(t *testing.T) {
+	// 30 wide characters need two lines, broken inside the unspaced text, and
+	// a closing mark never starts a line.
+	text := strings.Repeat("あ", 21) + "。" + strings.Repeat("い", 8)
+	lines := wrapCueText(text, 42, 2)
+	if len(lines) != 2 || strings.Join(lines, "") != text {
+		t.Fatalf("lines = %q, want %q in two lines", lines, text)
+	}
+	for _, line := range lines {
+		if n := utf8.RuneCountInString(line); n > 21 {
+			t.Errorf("line %q has %d wide characters, over 42 columns", line, n)
+		}
+	}
+	if strings.HasPrefix(lines[1], "。") {
+		t.Errorf("second line %q starts with a closing mark", lines[1])
 	}
 }
 

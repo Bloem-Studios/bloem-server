@@ -46,6 +46,10 @@ type TranscriptionWord struct {
 	Start float64
 	End   float64
 	Text  string
+	// JoinsPrevious reports that the word follows the previous one without a
+	// space (one character of a Chinese or Japanese word, as NeMo-Speech.cpp
+	// times them).
+	JoinsPrevious bool
 }
 
 // Transcription is the parsed verbose_json transcription result.
@@ -63,6 +67,11 @@ type transcriptionWordJSON struct {
 	Start float64 `json:"start"`
 	End   float64 `json:"end"`
 	Word  string  `json:"word"`
+	// Display and JoinsPrevious are NeMo-Speech.cpp extensions: the word in
+	// running text (with its punctuation) when that differs from Word, and
+	// whether it follows the previous word without a space.
+	Display       string `json:"display"`
+	JoinsPrevious bool   `json:"joins_previous"`
 }
 
 type transcriptionResponse struct {
@@ -241,27 +250,38 @@ func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc
 // it; cue building splits the words at pauses, so no segment boundaries are
 // lost. Speech-free audio (no non-empty words) yields no segments.
 func segmentsFromWords(words []TranscriptionWord) []TranscriptionSegment {
-	texts := make([]string, 0, len(words))
+	var text strings.Builder
 	for _, w := range words {
-		if text := strings.TrimSpace(w.Text); text != "" {
-			texts = append(texts, text)
+		word := strings.TrimSpace(w.Text)
+		if word == "" {
+			continue
 		}
+		if text.Len() > 0 && !w.JoinsPrevious {
+			text.WriteByte(' ')
+		}
+		text.WriteString(word)
 	}
-	if len(texts) == 0 {
+	if text.Len() == 0 {
 		return nil
 	}
 	return []TranscriptionSegment{{
 		Start: words[0].Start,
 		End:   words[len(words)-1].End,
-		Text:  strings.Join(texts, " "),
+		Text:  text.String(),
 		Words: words,
 	}}
 }
 
+// wordsFromJSON prefers a word's running text (display) over the bare word,
+// so punctuation NeMo-Speech.cpp keeps out of a character's word survives.
 func wordsFromJSON(words []transcriptionWordJSON) []TranscriptionWord {
 	out := make([]TranscriptionWord, 0, len(words))
 	for _, w := range words {
-		out = append(out, TranscriptionWord{Start: w.Start, End: w.End, Text: w.Word})
+		text := w.Word
+		if w.Display != "" {
+			text = w.Display
+		}
+		out = append(out, TranscriptionWord{Start: w.Start, End: w.End, Text: text, JoinsPrevious: w.JoinsPrevious})
 	}
 	return out
 }
