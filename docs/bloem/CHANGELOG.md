@@ -70,8 +70,13 @@ them, and Bloem keeps only what does not change one of them:
   Silo's end reasons: a remote stop is `stopped`, and a withdrawn plan records
   no reason.
 - **Events socket.** Bloem's events socket passes Silo's API keys and ticket
-  audience through. Bloem's tenant binding still needs a login session, so an
-  API key cannot open the events socket on Bloem.
+  audience through.
+  - At first Bloem's tenant binding, which needs a login session, still refused
+    API keys.
+  - Since the follow-up commit, a monitoring key opens the socket as in Silo
+    ([realtime API](../realtime-api.md)). Silo's key checks admit it, in the
+    legacy tenant its owner's HTTP requests resolve to.
+  - A login session keeps Bloem's binding.
 - **Other files.** The rest keep both sides:
   - `cmd/silo/main.go`;
   - the home and library section services;

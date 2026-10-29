@@ -364,3 +364,74 @@ func TestBloemEventsSocketAccountSessionDeviceCapture(t *testing.T) {
 		t.Fatalf("changed captured device accepted: %v", err)
 	}
 }
+
+// bloemKeyTenants resolves an account's own requests to its legacy tenant, as
+// the tenant middleware does for an API key.
+type bloemKeyTenants struct {
+	tenant tenancy.Context
+	err    error
+}
+
+func (s *bloemKeyTenants) Resolve(_ context.Context, accountID int, organization *uuid.UUID, legacy bool) (tenancy.Context, error) {
+	if organization != nil || !legacy || accountID != s.tenant.AccountID {
+		return tenancy.Context{}, tenancy.ErrTenantNotFoundOrHidden
+	}
+	return s.tenant, s.err
+}
+
+func (s *bloemKeyTenants) ProfileOrganization(context.Context, int, string) (uuid.UUID, error) {
+	return uuid.Nil, errors.New("a key has no profile")
+}
+
+// A monitoring key passes Bloem's socket wrapper to Silo's key checks, in its
+// owner's legacy tenant, and is refused when those checks or the tenant fail.
+func TestBloemEventsSocketAdmitsMonitorKey(t *testing.T) {
+	keys := new(socketKeyFixture)
+	keys.key.Store(&models.APIKeyMetadata{ID: 3, UserID: 7, Scopes: []string{auth.ScopeAdminMonitorRead}, Revision: 40})
+	users := &socketUserFixture{user: models.User{ID: 7, Role: "admin", Enabled: true, AccountIncarnationID: uuid.New()}}
+	tenants := &bloemKeyTenants{tenant: tenancy.Context{AccountID: 7, OrganizationID: uuid.New(), MembershipID: uuid.New(), PolicyRevision: 1, SecurityRevision: 1, Legacy: true, OrganizationDefault: true}}
+	sessions := &bloemSocketSessionFixture{socketSessionFixture: socketSessionFixture{valid: true, account: users}}
+	decide := func(context.Context, apimw.ActingAdminRequest) (bool, error) { return true, nil }
+	h := NewBloemEventsSocketV2(NewEventsHandler(evt.NewHub("bloem-key-socket-test", nil), nil, nil, nil, nil, nil, nil), evt.NewSocketTicketStore(nil, evt.SocketAudienceEvents), sessions, users, &bloemSocketViewer{}, decide, keys, tenants, tenants, "")
+	identity := evt.SocketIdentity{UserID: 7, Role: "admin", APIKeyID: 3, AccessExpiresAt: time.Now().Add(evt.APIKeySocketMaxLifetime)}
+
+	ticket, err := h.Mint(t.Context(), identity)
+	if err != nil {
+		t.Fatalf("monitor key mint: %v", err)
+	}
+	proof, err := h.Tickets.Consume(t.Context(), ticket)
+	if err != nil || proof.APIKeyRevision != 40 || proof.AuthorityBinding != "" || proof.SessionID != "" {
+		t.Fatalf("key ticket = %+v, %v", proof, err)
+	}
+	validated, claims, err := h.Validate(t.Context(), proof)
+	if err != nil || claims.TokenType != auth.TokenTypeAPIKey || claims.APIKeyID != 3 || claims.Role != "admin" {
+		t.Fatalf("key claims = %+v, %v", claims, err)
+	}
+	if tenant, ok := tenancy.FromContext(validated); !ok || tenant != tenants.tenant {
+		t.Fatalf("key socket tenant = %+v, %v", tenant, ok)
+	}
+
+	for name, forged := range map[string]func(*evt.SocketIdentity){
+		"binding": func(i *evt.SocketIdentity) { i.AuthorityBinding = `{"version":1}` },
+		"session": func(i *evt.SocketIdentity) { i.SessionID = "session" },
+		"profile": func(i *evt.SocketIdentity) { i.ProfileID = "profile" },
+	} {
+		changed := proof
+		forged(&changed)
+		if _, _, err := h.Validate(t.Context(), changed); !errors.Is(err, evt.ErrSocketTicket) {
+			t.Errorf("key ticket with a %s: %v", name, err)
+		}
+	}
+	tenants.err = tenancy.ErrTenantNotFoundOrHidden
+	if _, _, err := h.Validate(t.Context(), proof); !errors.Is(err, evt.ErrSocketTicket) {
+		t.Fatalf("unresolvable tenant: %v", err)
+	}
+	tenants.err = nil
+	keys.edit(func(k *models.APIKeyMetadata) { k.Scopes = []string{auth.ScopeLibrariesRead} })
+	if _, _, err := h.Validate(t.Context(), proof); !errors.Is(err, errSocketAccessChanged) {
+		t.Fatalf("key without the scope: %v", err)
+	}
+	if _, err := h.Mint(t.Context(), identity); err == nil {
+		t.Fatal("a key without admin:monitor:read minted a ticket")
+	}
+}

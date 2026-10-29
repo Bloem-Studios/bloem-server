@@ -26,6 +26,11 @@ func (h *BloemEventsSocketV2) Mint(ctx context.Context, identity evt.SocketIdent
 	if h == nil || h.EventsSocketV2 == nil {
 		return "", evt.ErrSocketTicket
 	}
+	// A monitoring key has no login session to bind; Silo's key checks admit
+	// it, in its owner's tenant (bloemSocketAuthority.validateKey).
+	if identity.APIKeyID != 0 {
+		return h.EventsSocketV2.Mint(ctx, identity)
+	}
 	bound, err := h.bind(ctx, identity)
 	if err != nil {
 		return "", err

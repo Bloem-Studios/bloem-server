@@ -84,6 +84,9 @@ func (h *bloemSocketAuthority) validate(ctx context.Context, identity evt.Socket
 	if h == nil || h.base == nil || h.tenants == nil || h.profiles == nil {
 		return ctx, nil, evt.ErrSocketTicket
 	}
+	if identity.APIKeyID != 0 {
+		return h.validateKey(ctx, identity)
+	}
 	var binding bloemSocketBinding
 	if json.Unmarshal([]byte(identity.AuthorityBinding), &binding) != nil || binding.Version != 1 || !bloemSocketPrincipalMatches(binding.Principal, identity) {
 		return ctx, nil, evt.ErrSocketTicket
@@ -141,6 +144,23 @@ func (h *bloemSocketAuthority) validate(ctx context.Context, identity evt.Socket
 	principal.Role = effective.Role
 	validated = apimw.SetClaims(validated, &principal)
 	return validated, &principal, nil
+}
+
+// validateKey admits a monitoring API key as an HTTP request with that key is
+// admitted: Silo's key checks decide it, in the tenant its owner's requests
+// resolve to. A key holds no login session to bind, so its ticket carries no
+// Bloem binding, and one that does was not minted for a key.
+func (h *bloemSocketAuthority) validateKey(ctx context.Context, identity evt.SocketIdentity) (context.Context, *auth.Claims, error) {
+	if identity.AuthorityBinding != "" || identity.SessionID != "" || identity.ProfileID != "" {
+		return ctx, nil, evt.ErrSocketTicket
+	}
+	checkCtx, stop := context.WithTimeout(ctx, 2*time.Second)
+	tenant, err := h.tenants.Resolve(checkCtx, identity.UserID, nil, true)
+	stop()
+	if err != nil {
+		return ctx, nil, evt.ErrSocketTicket
+	}
+	return h.base(tenancy.WithContext(ctx, tenant), identity)
 }
 
 func bloemSocketPrincipalMatches(claims auth.Claims, identity evt.SocketIdentity) bool {
