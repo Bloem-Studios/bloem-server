@@ -1,6 +1,6 @@
 # Bloem Server deployment — October 29, 2026: Silo through cc8514943 and preview free play
 
-Production moved three times after the
+Production moved four times after the
 [native scan redesign receipt](2026-10-28-native-scan-redesign-deployment.md):
 
 | Live from (UTC) | `main` at | Migrations | Downtime | Bloem CI on that commit |
@@ -8,6 +8,7 @@ Production moved three times after the
 | 07:48 | `38e58780589e5de8ac5804283460dbc3f68560e1` | 10 | 17 min 41 s | failed: the scenario executor's scope-catalog pins, fixed by `af8a3781b`, which passed |
 | 08:18 | `cc37f39000dd11ee15f130991f719b1fac024614` | 0 | 16 s | ran in parallel |
 | 12:16 | `09dab0097de5ad29af6fb34237764521569e4287` | 0 | 51 s | ran in parallel |
+| 15:15 | `6d6fbf1b51dd849eb7eb5927bd8279fbfb215f58` | 0 | 43 s | passed on the third attempt (see [Library figures](#library-figures-6d6fbf1b5)) |
 
 The owner asked to deploy without waiting for CI ("can you deploy now?", 07:22
 UTC). The image was therefore built locally rather than by the CI-gated Bloem
@@ -151,4 +152,52 @@ metadata lookups, the known `PutBucketCors` 403 on the private assets bucket,
 and one download job that the restart interrupted and that was queued again.
 
 No migrations ran, so to roll back, start `bloem-server:release-cc37f3900`
+again.
+
+## Library figures: 6d6fbf1b5
+
+`6314dcd0a` adds `GET /api/bloem/v1/admin/platform/library-figures`: every
+library's movies, series, episodes, audiobooks and ebooks, read in one
+snapshot, for a storefront's live library figures
+([API reference](../bloem-api-reference.md#platform-library-figures)).
+`6d6fbf1b5` lists its two response types in the client coverage allowlist,
+which Bloem CI's first run asked for. The owner asked for the figures on
+2026-10-29 and chose to deploy the server and the storefront together.
+
+This image is the one the Bloem Image workflow published after Bloem CI
+passed, copied with `docker save | docker load`. Bloem CI failed twice on
+tests the change does not touch: a web test that timed out after 30 seconds
+(`AdminHomeRows.libraryCopies`) and, on the rerun,
+`TestTitleCountsServeExpiredCountsWhileRefreshing` in
+`internal/recommendations`, which hung for 20 minutes. Rerunning the failed
+job passed.
+
+Before the restart:
+
+- **Container snapshot** `pre-main-6d6fbf1b5`.
+- **Database restore point** of the same name at LSN `3D7/49132940`. Segment
+  `00000003000003D700000049`, which holds it, was archived at 15:14:33 with
+  no failures.
+
+The restart script refused to run unless the live image was `09dab0097`. It
+went as follows:
+
+- **15:15:02–15:15:39:** the server stopped, in 37 seconds. One ffmpeg process
+  was running when the stop began.
+- **15:15:39–15:15:40:** no migrations applied, and 739 stay applied.
+- **15:15:45:** ready returned 200, 43 seconds after the stop began.
+- **15:15:47:** healthy, with no restarts.
+
+The container's runtime fingerprint is unchanged. The binary's SHA-256 is
+`ad81283933d8e046ccd65096b75d35d39ab54f7026c613335737ab48e9f6b8b3`, and
+`/api/v2/system/info` reports `6d6fbf1b`. The new route answers 401 without
+a credential. The only error line is the recommendation embeddings 402
+described above; the warnings are ebook metadata lookups, slow section
+fetches, one trickplay fallback to software decoding and one HDR10+ backfill
+retry.
+
+The storefront's first call with its administrator key succeeded at 15:45:30
+and returned all eleven libraries; its live figures were published at 15:46.
+
+No migrations ran, so to roll back, start `bloem-server:release-09dab0097`
 again.
