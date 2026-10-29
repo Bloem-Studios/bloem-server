@@ -1100,6 +1100,7 @@ POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/clone	non-media
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/history	non-media
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions	non-media
 POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions	non-media
+GET /api/bloem/v1/admin/platform/library-figures	non-media
 POST /api/bloem/v1/admin/platform/library-locations	non-media
 GET /api/bloem/v1/admin/platform/library-locations/{library_id}	non-media
 PUT /api/bloem/v1/admin/platform/library-locations/{library_id}	non-media

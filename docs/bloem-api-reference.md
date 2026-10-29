@@ -3261,6 +3261,22 @@ comes from `POST .../people/selections`, described under People Administration. 
 description of the job route still mentions `503 lifecycle_request_pending`; that response
 belonged to the lifecycle receipts removed on 2026-10-26 (`b017bfe84`) and no handler returns it.
 
+### Platform library figures
+
+`GET /api/bloem/v1/admin/platform/library-figures` returns every library's item
+counts in one read-only snapshot, for a storefront's selling page:
+`200 {counted_at, libraries: [{library_id, name, type, enabled, movies, series,
+episodes, audiobooks, ebooks}]}` in library order. Movies, series, audiobooks
+and ebooks are catalog items listed in the library, episodes are episodes listed
+in it, and an item in two libraries counts in both. Disabled libraries are
+included with `enabled:false`. Authentication is a Platform administrative
+context or an enabled administrator's unscoped API key; scoped keys and
+organization contexts are refused (`403`). The account is rechecked on every
+request. Query parameters are refused (`400 invalid_request`). A full count of a
+large catalog takes about a second, so callers cache it; a timeout or database
+failure is `503 library_figures_unavailable`. Responses use
+`Cache-Control: no-store`.
+
 ### Platform policy snapshot reads
 
 | Method and path | Contract |

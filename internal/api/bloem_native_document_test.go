@@ -271,8 +271,8 @@ func mountedAdministrativeAndLiveTVOperations(t *testing.T) map[string]struct{} 
 			Organization: &handlers.BloemAdminOrganizationHandler{}, Explain: &handlers.BloemPolicyExplainHandler{},
 			Promotions: &handlers.AdminPromotionsHandler{}, Ambience: &handlers.AmbienceHandler{},
 			Entitlement: &handlers.EntitlementTemplatesHandler{}, AccountPolicy: &handlers.AdminHandler{},
-			PreviewAdmin: &handlers.BloemPreviewAdminHandler{},
-			Client:       bloemClientSurface{auth: &apimw.AuthMiddleware{}, tenant: &apimw.TenantMiddleware{}, viewer: &apimw.ViewerAccessMiddleware{}, liveTV: &handlers.LiveTVHandler{}, liveTVAdmin: func(h http.Handler) http.Handler { return h }},
+			PreviewAdmin: &handlers.BloemPreviewAdminHandler{}, LibraryFigures: &handlers.BloemLibraryFiguresHandler{},
+			Client: bloemClientSurface{auth: &apimw.AuthMiddleware{}, tenant: &apimw.TenantMiddleware{}, viewer: &apimw.ViewerAccessMiddleware{}, liveTV: &handlers.LiveTVHandler{}, liveTVAdmin: func(h http.Handler) http.Handler { return h }},
 		})
 	operations := map[string]struct{}{}
 	gated := map[string]string{}

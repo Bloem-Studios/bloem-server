@@ -125,10 +125,11 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	}
 	mountBloemRoutes(r, system, session, authMW, adminMW,
 		bloemRouteSurfaces{
-			Preview:      bloemPreviewHandler(deps),
-			PreviewAdmin: bloemPreviewAdminHandler(deps),
-			Client:       newBloemClientSurface(deps, authMW, tenantMW, searchProvider, liveTVAdmin),
-			Platform:     platformHandler, People: peopleHandler, Organization: organizationHandler,
+			Preview:        bloemPreviewHandler(deps),
+			PreviewAdmin:   bloemPreviewAdminHandler(deps),
+			LibraryFigures: bloemLibraryFiguresHandler(deps),
+			Client:         newBloemClientSurface(deps, authMW, tenantMW, searchProvider, liveTVAdmin),
+			Platform:       platformHandler, People: peopleHandler, Organization: organizationHandler,
 			Explain:     explainHandler,
 			Entitlement: entitlementHandler, AccountPolicy: accountPolicyHandler,
 			Promotions: handlers.NewAdminPromotionsHandler(deps.Promotions), Ambience: handlers.NewAmbienceHandler(deps.Ambience),
@@ -146,6 +147,7 @@ const NativeAPIPrefix = handlers.NativeAPIPrefix
 type bloemRouteSurfaces struct {
 	Preview                *handlers.BloemPreviewHandler
 	PreviewAdmin           *handlers.BloemPreviewAdminHandler
+	LibraryFigures         *handlers.BloemLibraryFiguresHandler
 	BookRequests           *handlers.BloemBookRequestsHandler
 	Client                 bloemClientSurface
 	Platform               *handlers.BloemAdminPlatformHandler
@@ -174,6 +176,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 	r.Route("/api/bloem/v1", func(r chi.Router) {
 		r.Get("/capabilities", system.HandleCapabilities)
 		mountBloemPreviewAdmin(r, surfaces.PreviewAdmin, authMW, adminMW)
+		mountBloemLibraryFigures(r, surfaces.LibraryFigures, authMW, adminMW)
 		if surfaces.Preview != nil {
 			// Public: a ticket or nothing authenticates these (bloem_preview_host.go).
 			r.Post("/preview/sessions", surfaces.Preview.HandleCreateSession)

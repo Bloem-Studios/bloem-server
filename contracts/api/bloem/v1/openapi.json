@@ -2100,6 +2100,93 @@
         ],
         "type": "object"
       },
+      "BloemLibraryFigure": {
+        "additionalProperties": false,
+        "properties": {
+          "audiobooks": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "ebooks": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "episodes": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "library_id": {
+            "examples": [
+              1
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
+          "movies": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "name": {
+            "examples": [
+              "Movies"
+            ],
+            "type": "string"
+          },
+          "series": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": {
+            "description": "Library kind (movies, series, mixed, audiobooks, ebooks, ...)",
+            "examples": [
+              "movies"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "library_id",
+          "name",
+          "type",
+          "enabled",
+          "movies",
+          "series",
+          "episodes",
+          "audiobooks",
+          "ebooks"
+        ],
+        "type": "object"
+      },
+      "BloemLibraryFigures": {
+        "additionalProperties": false,
+        "properties": {
+          "counted_at": {
+            "description": "When the snapshot was read (UTC)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "libraries": {
+            "description": "Every library, in the server's library order",
+            "items": {
+              "$ref": "#/components/schemas/BloemLibraryFigure"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "counted_at",
+          "libraries"
+        ],
+        "type": "object"
+      },
       "BloemLibraryLocationsCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -20802,6 +20889,86 @@
         "summary": "Create a new revision or copy a historical policy into a new revision.",
         "tags": [
           "administration"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/library-figures": {
+      "get": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys and organization contexts are refused. Counts every library, enabled or not, in one read-only snapshot: no titles, paths or accounts. A full count of a large catalog takes about a second, so cache the result rather than poll. Responses are not cacheable.",
+        "operationId": "getBloemLibraryFigures",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemLibraryFigures"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: query parameters were sent."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator; forbidden: the API key's scopes exclude this route."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "library_figures_unavailable: the database is unavailable or the count timed out; tenant_unavailable or service_unavailable: the credential could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read item counts for every library.",
+        "tags": [
+          "libraries"
         ]
       }
     },

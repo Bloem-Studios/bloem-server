@@ -120,6 +120,7 @@ GET /api/bloem/v1/admin/platform/entitlement-templates
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/history
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions
+GET /api/bloem/v1/admin/platform/library-figures
 GET /api/bloem/v1/admin/platform/library-locations/{library_id}
 GET /api/bloem/v1/admin/platform/native-storage/artifacts
 GET /api/bloem/v1/admin/platform/native-storage/capabilities

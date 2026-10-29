@@ -115,6 +115,7 @@ func registerBloemAll(reg *Registry) {
 	registerBloemSeasonalViewerDocument(reg)
 	registerBloemNativeStorageDocument(reg)
 	registerBloemLibraryLocationsDocument(reg)
+	registerBloemLibraryFiguresDocument(reg)
 	registerBloemBookRequestsDocument(reg)
 }
 

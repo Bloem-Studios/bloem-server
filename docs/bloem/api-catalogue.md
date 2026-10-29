@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 906 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v1` | 213 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v1` | 214 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -120,6 +120,7 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/history` | `listBloemEntitlementTemplateHistory` | List immutable template revisions (history alias). |
 | `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions` | `listBloemEntitlementTemplateRevisions` | List immutable template revisions. |
 | `POST /api/bloem/v1/admin/platform/entitlement-templates/{key}/revisions` | `reviseBloemEntitlementTemplate` | Create a new revision or copy a historical policy into a new revision. |
+| `GET /api/bloem/v1/admin/platform/library-figures` | `getBloemLibraryFigures` | Read item counts for every library. |
 | `POST /api/bloem/v1/admin/platform/library-locations` | `createBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
 | `GET /api/bloem/v1/admin/platform/library-locations/{library_id}` | `getBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
 | `PUT /api/bloem/v1/admin/platform/library-locations/{library_id}` | `replaceBloemPlatformLibraryLocations` | Read or atomically save filesystem paths and selected plugin directories. |
