@@ -1,19 +1,21 @@
 # Bloem Server deployment — October 29, 2026: Silo through cc8514943 and preview free play
 
-Production moved twice after the
+Production moved three times after the
 [native scan redesign receipt](2026-10-28-native-scan-redesign-deployment.md):
 
 | Live from (UTC) | `main` at | Migrations | Downtime | Bloem CI on that commit |
 | --- | --- | --- | --- | --- |
 | 07:48 | `38e58780589e5de8ac5804283460dbc3f68560e1` | 10 | 17 min 41 s | failed: the scenario executor's scope-catalog pins, fixed by `af8a3781b`, which passed |
 | 08:18 | `cc37f39000dd11ee15f130991f719b1fac024614` | 0 | 16 s | ran in parallel |
+| 12:16 | `09dab0097de5ad29af6fb34237764521569e4287` | 0 | 51 s | ran in parallel |
 
 The owner asked to deploy without waiting for CI ("can you deploy now?", 07:22
 UTC). The image was therefore built locally rather than by the CI-gated Bloem
 Image workflow. It was built from a `git archive` of the exact commit, with
 the workflow's build arguments and OCI labels and the web bundle built from
 the same archive. It ran as `bloem-server:release-38e587805`. `cc37f3900` was built the same
-way, also at the owner's direction ("do it").
+way, also at the owner's direction ("do it"), and so was `09dab0097` ("can you
+push the changes to server main and deploy?").
 
 ## What changed
 
@@ -105,4 +107,48 @@ The container's runtime fingerprint is unchanged. The binary's SHA-256 is
 recommendation embeddings 402 described above.
 
 No migrations ran, so to roll back, start `bloem-server:release-38e587805`
+again.
+
+## AI subtitles: 09dab0097
+
+`f2f94837e` through `09dab0097` change how AI subtitles are built from
+speech-to-text results:
+
+- **`f2f94837e`** accepts a `verbose_json` response that times words at the
+  top level and has no segments, as NeMo-Speech.cpp returns. Every job against
+  such a server used to fail.
+- **`ae7afb0fd`** reads a word's `display` text and `joins_previous` flag, and
+  measures cue width in columns, a Chinese or Japanese character counting two.
+- **`7417cbafd`** joins Chinese and Japanese words from Whisper servers without
+  a space: "では、 万 丈 一 致 で" now reads "では、万丈一致で".
+- **`09dab0097`** wraps Chinese and Japanese lines at 16 characters and closes
+  a full cue after its last clause mark rather than inside a word.
+
+The transcription provider is unchanged, and cues in languages written with
+spaces are built as before.
+
+Before the restart:
+
+- **Container snapshot** `pre-main-09dab0097`.
+- **Database restore point** of the same name at LSN `3D6/C6EFB938`. Segment
+  `00000003000003D6000000C6`, which holds it, was archived; archiving had
+  reached `00000003000003D6000000C8` at 12:16:42 with no failures.
+
+The restart script refused to run unless the live image was `cc37f3900`. It
+went as follows:
+
+- **12:15:26–12:16:03:** the server stopped, in 37 seconds. One ffmpeg process
+  was running when the stop began.
+- **12:16:03–12:16:05:** no migrations applied, and 739 stay applied.
+- **12:16:17:** ready returned 200, 51 seconds after the stop began.
+- **12:16:20:** healthy, with no restarts.
+
+The container's runtime fingerprint is unchanged. The binary's SHA-256 is
+`0b4ac16ebaa9451f1c2bac49d9ea787d8b12e2c413b2ed0707f0bf81c827a39f`, and
+`/api/v2/system/info` reports `09dab009`. The only error line is the
+recommendation embeddings 402 described above. The warnings are audiobook
+metadata lookups, the known `PutBucketCors` 403 on the private assets bucket,
+and one download job that the restart interrupted and that was queued again.
+
+No migrations ran, so to roll back, start `bloem-server:release-cc37f3900`
 again.
