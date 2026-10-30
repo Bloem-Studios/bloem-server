@@ -6,9 +6,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminV2ClientError } from "@/api/adminV2Client";
 import {
   discoverBody,
+  isAllBucketsSource,
+  locationRootName,
   rotateBody,
   s3BucketsBody,
   s3FoldersBody,
+  storageSourceLabel,
   useConfigureStorageSource,
   useDiscoverStorageSource,
   useDisableStorageSource,
@@ -465,5 +468,54 @@ describe("storage source mutations holding credentials", () => {
     expect(
       rotateBody({ revision: 1, accessKey: "AK", secretKey: "SK", sessionToken: "   " }),
     ).not.toHaveProperty("session_token");
+  });
+});
+
+describe("storage source names", () => {
+  const s3 = (summary: Record<string, string>) =>
+    ({
+      plugin_id: "bloem.storage.s3",
+      provider_source_id: "s3_abc",
+      root_entry_id: "root",
+      connection_summary: summary,
+    }) as unknown as StorageSource;
+
+  it("names an S3 source by its source name, and says when it covers every bucket", () => {
+    expect(storageSourceLabel(s3({ source_name: "Movies", bucket: "media", region: "x" }))).toBe(
+      "Movies",
+    );
+    const all = s3({ source_name: "Backblaze B2", region: "us-west-004", prefix: "" });
+    expect(isAllBucketsSource(all)).toBe(true);
+    expect(storageSourceLabel(all)).toBe("Backblaze B2 · all buckets");
+  });
+
+  it("falls back to the source id and keeps other plugins' names", () => {
+    expect(storageSourceLabel(s3({}))).toBe("s3_abc");
+    expect(isAllBucketsSource(s3({}))).toBe(false);
+    expect(isAllBucketsSource(s3({ prefix: "" }))).toBe(false);
+    expect(
+      storageSourceLabel({
+        plugin_id: "bloem.storage.bookwarehouse",
+        root_entry_id: "audio-root",
+      } as unknown as StorageSource),
+    ).toBe("Bookwarehouse audiobooks");
+  });
+});
+
+describe("locationRootName", () => {
+  const all = {
+    plugin_id: "bloem.storage.s3",
+    provider_source_id: "s3_all",
+    connection_summary: { source_name: "Backblaze B2", region: "us-west-004" },
+  } as unknown as StorageSource;
+
+  it("calls the root of an all-buckets source All buckets", () => {
+    expect(locationRootName({ name: "s3_all", logical_path: "" }, all)).toBe("All buckets");
+    expect(locationRootName({ name: "movies", logical_path: "movies/" }, all)).toBe("movies");
+  });
+
+  it("keeps other names, and Root for a nameless root", () => {
+    expect(locationRootName({ name: "", logical_path: "" }, undefined)).toBe("Root");
+    expect(locationRootName({ name: "Books", logical_path: "" }, undefined)).toBe("Books");
   });
 });

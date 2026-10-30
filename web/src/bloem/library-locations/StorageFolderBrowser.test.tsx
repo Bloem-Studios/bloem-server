@@ -237,3 +237,86 @@ it("keeps the plain empty text for an empty folder below the root", async () => 
   expect(await screen.findByText(plainMessage)).toBeInTheDocument();
   expect(screen.queryByText(prefixMessage)).not.toBeInTheDocument();
 });
+
+const allBucketsSource = {
+  ...source,
+  provider_source_id: "s3_all",
+  connection_summary: { source_name: "Backblaze B2", region: "us-west-004", prefix: "" },
+} as unknown as StorageSource;
+const bucketRoot = { name: "s3_all", logical_path: "", selection_ref: "root-ref" };
+const folder = (logical_path: string) => ({
+  name: logical_path.replace(/\/$/, "").split("/").pop()!,
+  logical_path,
+  selection_ref: logical_path + "-ref",
+});
+it("shows the buckets of an all-buckets source and warns before using them all", async () => {
+  const browse = vi.fn().mockResolvedValue({
+    current: bucketRoot,
+    breadcrumbs: [],
+    directories: [folder("movies/"), folder("shows/")],
+    next_cursor: "",
+  });
+  const select = vi.fn();
+  render(
+    <StorageFolderBrowser
+      open
+      onOpenChange={() => {}}
+      api={{ browse } as unknown as LocationApi}
+      source={allBucketsSource}
+      onSelect={select}
+    />,
+  );
+  expect(await screen.findByText("Browse Backblaze B2 · all buckets")).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      "Each bucket is a folder. Tick whole buckets or folders inside them, in as many buckets as you like.",
+    ),
+  ).toBeInTheDocument();
+  expect(screen.getByText("All buckets", { selector: "[aria-current=page]" })).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      "Every bucket these keys can see, including buckets added later, becomes part of this library.",
+    ),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Use all buckets" }));
+  expect(select).toHaveBeenCalledWith([expect.objectContaining({ selection_ref: "root-ref" })]);
+});
+it("counts folders picked across buckets and adds them together", async () => {
+  const browse = vi.fn(async (_key: string, ref: string) =>
+    ref === "shows/-ref"
+      ? {
+          current: folder("shows/"),
+          breadcrumbs: [bucketRoot],
+          directories: [folder("shows/Drama/")],
+          next_cursor: "",
+        }
+      : {
+          current: bucketRoot,
+          breadcrumbs: [],
+          directories: [folder("movies/"), folder("shows/")],
+          next_cursor: "",
+        },
+  );
+  const select = vi.fn();
+  render(
+    <StorageFolderBrowser
+      open
+      onOpenChange={() => {}}
+      api={{ browse } as unknown as LocationApi}
+      source={allBucketsSource}
+      onSelect={select}
+    />,
+  );
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Select movies" }));
+  fireEvent.click(screen.getByRole("button", { name: "shows" }));
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Select Drama" }));
+  expect(screen.getByRole("button", { name: "All buckets" })).toBeInTheDocument();
+  expect(screen.getByText("2 folders in 2 buckets")).toBeInTheDocument();
+  expect(screen.getByText("movies/")).toBeInTheDocument();
+  expect(screen.getByText("shows/Drama/")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Add selected folders" }));
+  expect(select).toHaveBeenCalledWith([
+    expect.objectContaining({ logical_path: "movies/" }),
+    expect.objectContaining({ logical_path: "shows/Drama/" }),
+  ]);
+});

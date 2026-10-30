@@ -14,6 +14,7 @@ vi.mock("@/contexts/AdminContextProvider", () => ({
 vi.mock("@/hooks/queries/admin/storageSources", () => ({
   useStorageSources: () => ({ data: [] }),
   storageSourceLabel: () => "Fixture",
+  locationRootName: (root: { name: string }) => root.name || "Root",
 }));
 vi.mock("@/hooks/queries/admin/libraries", () => ({
   useCreateLibrary: () => ({ mutate: state.mutate, isPending: false }),

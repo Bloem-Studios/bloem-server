@@ -485,9 +485,35 @@ export function useTestStorageSource() {
   });
 }
 
+/**
+ * True for an S3 source that names no bucket and so covers every bucket its
+ * keys can see. An unconfigured source has an empty summary and is not one.
+ */
+export function isAllBucketsSource(source: StorageSource): boolean {
+  const summary = source.connection_summary ?? {};
+  return (
+    source.plugin_id === "bloem.storage.s3" &&
+    !summary.bucket &&
+    Boolean(summary.source_name || summary.region || summary.endpoint)
+  );
+}
+
+/** How a chosen library folder is named: an all-buckets source's root is every bucket. */
+export function locationRootName(
+  root: { name: string; logical_path: string },
+  source: StorageSource | undefined,
+): string {
+  if (source && isAllBucketsSource(source) && root.logical_path === "") return "All buckets";
+  return root.name || "Root";
+}
+
 export function storageSourceLabel(source: StorageSource): string {
   if (source.plugin_id === "bloem.storage.bookwarehouse") {
     return source.root_entry_id === "audio-root" ? "Bookwarehouse audiobooks" : "Bookwarehouse";
+  }
+  if (source.plugin_id === "bloem.storage.s3") {
+    const name = source.connection_summary?.source_name || source.provider_source_id;
+    return isAllBucketsSource(source) ? `${name} · all buckets` : name;
   }
   return `${source.provider_source_id} (${source.plugin_id})`;
 }

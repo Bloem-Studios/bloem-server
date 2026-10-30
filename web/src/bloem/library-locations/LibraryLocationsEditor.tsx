@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { storageSourceLabel } from "@/hooks/queries/admin/storageSources";
+import { locationRootName, storageSourceLabel } from "@/hooks/queries/admin/storageSources";
 import type { LibraryFormController } from "@/components/admin/libraries/useLibraryForm";
 import { supportsSource } from "./types";
 import { StorageFolderBrowser } from "./StorageFolderBrowser";
@@ -90,7 +90,7 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
               className="border-border flex items-center gap-2 rounded-md border p-2 text-sm"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate">{root.name || "Root"}</p>
+                <p className="truncate">{locationRootName(root, savedSource)}</p>
                 <p className="text-muted-foreground truncate text-xs">
                   {savedSource ? storageSourceLabel(savedSource) : "Storage source"} ·{" "}
                   {root.logical_path}
