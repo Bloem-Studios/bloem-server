@@ -204,6 +204,31 @@ Bloem Apple or Android, and changes no Jellyfin library or playback behavior.
 An admin client that adopts it must check `s3_initial_root_discovery` and
 reconcile an unknown installation outcome before retrying.
 
+## S3 all-buckets sources
+
+From S3 plugin 0.4.0 a source may leave `bucket` empty. It then covers every
+bucket its keys can list:
+
+- The source root lists buckets (`ListBuckets`); each bucket is a top-level
+  folder, and logical paths are `bucket/key`. A library may select the root (every
+  bucket, including buckets created later), whole buckets, or folders in several
+  buckets of the one source, so one source serves a multi-bucket library without
+  `library_location_mixing`.
+- `prefix` does not apply and the plugin refuses it without a bucket.
+- The plugin's identity namespace includes the (empty) bucket, so IDs never collide
+  with a bucket-bound source, and sources that name a bucket keep their namespace
+  and IDs. Switching a source between the two modes is a namespace change.
+- The host code is unchanged: it passes the connection through and summarizes it.
+  A summary without `bucket` (but with a region, endpoint or name) marks an
+  all-buckets source in the web UI. The add and edit forms offer an empty bucket
+  only when the artifact's JSON schema lets `bucket` be empty (`minLength` absent
+  or 0), so a 0.3.x artifact keeps the bucket-per-source flow.
+- The Add form asks for the provider first (Backblaze B2, Wasabi, Cloudflare R2,
+  Amazon S3, DigitalOcean Spaces, Hetzner, or Other) and derives the endpoint and
+  signing region from the provider's region, datacenter or account ID
+  (`web/src/components/admin/plugins/s3Providers.ts`). Bucket browsing and
+  discovery use the derived values exactly as if they had been typed.
+
 ## Scanning
 
 The executor holds one whole-library claim while it runs the existing
