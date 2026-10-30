@@ -7425,13 +7425,31 @@ func providerIDsFromSkeletonResult(res *skeletonResult) map[string]string {
 	return providerIDs
 }
 
-func trustedStructuredIDsForSkeleton(filePath, observedRootPath, contentRootPath string, libraryRoots ...string) *naming.FolderIDHints {
-	folderIDs := naming.ParseStructuredFolderIDs(skeletonFolderAnchorName(observedRootPath, libraryRoots))
+// trustedStructuredIDsForSkeleton reads the explicit provider tags on a file's
+// folder and name. A folder tag wins and the file name only fills providers the
+// folder leaves out, as naming.InferGroupIdentity does when it stores a group's
+// IDs: the scanned-group comparison would otherwise see a folder and file that
+// disagree as an identity change no rescan can clear.
+//
+// A bare IMDb ID ending the folder name ("Movie (2020) {tmdb-1} tt1234567")
+// is not a structured tag, so on its own it adds no trusted ID. It still beats
+// an IMDb tag in the file name, which the scanner also lets it do, unless the
+// group override forces an IMDb ID: the scanner keeps a forced ID over a bare
+// one, and the file's tag beats a forced ID as before.
+func trustedStructuredIDsForSkeleton(filePath, observedRootPath, contentRootPath string, override *models.MediaGroupOverride, libraryRoots ...string) *naming.FolderIDHints {
+	observedAnchor := skeletonFolderAnchorName(observedRootPath, libraryRoots)
+	folderIDs := naming.ParseStructuredFolderIDs(observedAnchor)
 	if folderIDs == nil && contentRootPath != "" && contentRootPath != observedRootPath {
 		folderIDs = naming.ParseStructuredFolderIDs(skeletonFolderAnchorName(contentRootPath, libraryRoots))
 	}
 	fileIDs := naming.ParseStructuredFolderIDs(strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath)))
-	return mergeFolderIDHints(folderIDs, fileIDs)
+	merged := mergeFolderIDHints(fileIDs, folderIDs)
+	if merged != nil && merged.ImdbID != "" && (override == nil || override.ForcedImdbID == "") {
+		if folder := naming.ParseFolderIDs(observedAnchor); folder != nil && folder.ImdbID != "" {
+			merged.ImdbID = folder.ImdbID
+		}
+	}
+	return merged
 }
 
 // seriesContentIDForGroup returns the series item already linked to another
@@ -7481,6 +7499,19 @@ const manualIdentityOverrideSource = "manual"
 
 // scannedGroupStateResolved marks a scanner group whose members agree on identity.
 const scannedGroupStateResolved = "resolved"
+
+// rescannedGroupIDs returns the provider IDs a rescan would store on the
+// file's content group, for scannedGroupIdentityChanged to compare. It reads
+// the path as the scanner does, which also accepts a bare IMDb ID at the end of
+// a folder name, so the comparison flags only what a rescan would change.
+func rescannedGroupIDs(file *models.MediaFile, observedRootPath string, libraryRoots ...string) *naming.FolderIDHints {
+	libraryRoot := naming.ResolvePathContext(file.FilePath, file.BaseType, libraryRoots...).LibraryRootPath
+	ids := naming.GroupProviderIDs(file.FilePath, observedRootPath, libraryRoot)
+	if !hasFolderIDHints(&ids) {
+		return nil
+	}
+	return &ids
+}
 
 func scannedGroupIdentityChanged(group *models.ScannedMediaGroup, file *models.MediaFile, currentIDs *naming.FolderIDHints, libraryRoots ...string) bool {
 	if group == nil || file == nil || strings.EqualFold(strings.TrimSpace(group.OverrideSource), manualIdentityOverrideSource) {
@@ -7639,9 +7670,9 @@ func (s *MetadataService) createOrFindSkeleton(ctx context.Context, file *models
 
 	// Explicit structured IDs from the file or folder are treated as trusted.
 	// When present, they override scanner ambiguity and become the authoritative
-	// external IDs used for dedup/link/create. Filename tags take precedence
-	// over folder tags because the file is generally the freshest artifact.
-	trustedIDs := trustedStructuredIDsForSkeleton(file.FilePath, observedRootPath, contentRootPath, libraryRoots...)
+	// external IDs used for dedup/link/create. Folder tags take precedence
+	// over file-name tags for the same provider, as the scanner stores them.
+	trustedIDs := trustedStructuredIDsForSkeleton(file.FilePath, observedRootPath, contentRootPath, groupOverride, libraryRoots...)
 	if trustedIDs != nil {
 		applyFolderIDHints(res, trustedIDs)
 		res.ItemStatus = "pending"
@@ -7680,7 +7711,7 @@ func (s *MetadataService) createOrFindSkeleton(ctx context.Context, file *models
 	// subsequent claim relink unrelated files. Let a scan rebuild that grouping
 	// before any catalog writes; operator overrides and explicit IDs establish
 	// identity independently of how the filename currently parses.
-	if groupOverride == nil && scannedGroupIdentityChanged(scannedIdentity, file, effectiveExternalIDs, libraryRoots...) {
+	if groupOverride == nil && scannedGroupIdentityChanged(scannedIdentity, file, rescannedGroupIDs(file, observedRootPath, libraryRoots...), libraryRoots...) {
 		return nil, errors.New("filename identity changed since the last scan; rescan the library to update file grouping")
 	}
 	if effectiveExternalIDs != nil {
