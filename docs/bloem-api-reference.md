@@ -3277,6 +3277,21 @@ large catalog takes about a second, so callers cache it; a timeout or database
 failure is `503 library_figures_unavailable`. Responses use
 `Cache-Control: no-store`.
 
+### Platform new arrivals
+
+`GET /api/bloem/v1/admin/platform/new-arrivals` lists recent additions for a
+storefront's "new this week" email: `200 {since, items: [{content_id, kind,
+title, year?, added_at, new_episodes, new_series}]}`, newest first. A film is
+listed when it was first seen in a chosen library inside the window; a series
+when any of its episodes was, with `new_episodes` counting them and
+`new_series` set when the series itself first appeared in the window. Query:
+`days` (1–31, default 7), `limit` (1–50, default 20) and any number of
+`library` IDs (default every enabled library; disabled libraries never count).
+Anything else is `400 invalid_request`. Titles and years only: no paths, files
+or accounts. Authentication matches the library figures (`403
+insufficient_platform_authority`); a timeout or database failure is `503
+new_arrivals_unavailable`. Responses use `Cache-Control: no-store`.
+
 ### Platform upgrade prompt
 
 `GET` and `PUT /api/bloem/v1/admin/platform/upgrade-prompt` read and replace the

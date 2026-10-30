@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 906 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v1` | 216 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v1` | 217 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -141,6 +141,7 @@ security declaration and the wire reference before sending credentials or mutati
 | `GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse` | `browseBloemPlatformNativeStorage` | Browse authorized directories without starting discovery or opening files. |
 | `PUT /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration` | `replaceConfigurationBloemPlatformNativeStorage` | Replace complete configuration only while the source namespace is empty. |
 | `POST /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/credentials` | `rotateCredentialsBloemPlatformNativeStorage` | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
+| `GET /api/bloem/v1/admin/platform/new-arrivals` | `getBloemNewArrivals` | List recent additions to libraries. |
 | `GET /api/bloem/v1/admin/platform/organizations/` | `listBloemPlatformOrganizations` | Page organizations with current summary counts. |
 | `POST /api/bloem/v1/admin/platform/organizations/` | `createBloemPlatformOrganization` | Create an organization for an existing owner account. |
 | `GET /api/bloem/v1/admin/platform/organizations/{id}/` | `getBloemPlatformOrganization` | Read an organization summary. |

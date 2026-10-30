@@ -3541,6 +3541,71 @@
         ],
         "type": "object"
       },
+      "BloemNewArrival": {
+        "additionalProperties": false,
+        "properties": {
+          "added_at": {
+            "description": "When the film, or the series' newest episode, was first seen in a chosen library",
+            "format": "date-time",
+            "type": "string"
+          },
+          "content_id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "movie",
+              "series"
+            ],
+            "type": "string"
+          },
+          "new_episodes": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "new_series": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          },
+          "year": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "content_id",
+          "kind",
+          "title",
+          "added_at",
+          "new_episodes",
+          "new_series"
+        ],
+        "type": "object"
+      },
+      "BloemNewArrivals": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BloemNewArrival"
+            },
+            "type": "array"
+          },
+          "since": {
+            "description": "Start of the window (UTC)",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since",
+          "items"
+        ],
+        "type": "object"
+      },
       "BloemNotificationPage": {
         "additionalProperties": false,
         "properties": {
@@ -25100,6 +25165,86 @@
         "summary": "Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned.",
         "tags": [
           "native-storage"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/new-arrivals": {
+      "get": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys and organization contexts are refused. Query: days (1-31, default 7), limit (1-50, default 20) and any number of library IDs (default every enabled library; disabled libraries never count). Lists films first seen in a chosen library inside the window and series with episodes first seen there, newest first: titles and years only, no paths, files or accounts. Responses are not cacheable.",
+        "operationId": "getBloemNewArrivals",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNewArrivals"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_request: days, limit or a library ID is out of range, or an unknown query parameter was sent."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator; forbidden: the API key's scopes exclude this route."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "new_arrivals_unavailable: the database is unavailable or the read timed out; tenant_unavailable or service_unavailable: the credential could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List recent additions to libraries.",
+        "tags": [
+          "libraries"
         ]
       }
     },

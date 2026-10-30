@@ -115,6 +115,7 @@ BLOEM_PLATFORM = {
     "promotions": {None: "bloem-platform-engagement"},
     "library-figures": {None: "bloem-platform-engagement"},
     "upgrade-prompt": {None: "bloem-platform-engagement"},
+    "new-arrivals": {None: "bloem-platform-engagement"},
     "native-storage": {None: "bloem-native-storage"},
     "preview": {None: "bloem-preview"},
 }

@@ -117,6 +117,7 @@ func registerBloemAll(reg *Registry) {
 	registerBloemLibraryLocationsDocument(reg)
 	registerBloemLibraryFiguresDocument(reg)
 	registerBloemUpgradePromptDocument(reg)
+	registerBloemNewArrivalsDocument(reg)
 	registerBloemBookRequestsDocument(reg)
 }
 

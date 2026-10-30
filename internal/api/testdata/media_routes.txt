@@ -1121,6 +1121,7 @@ GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}	non-media
 GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse	non-media
 PUT /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration	non-media
 POST /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/credentials	non-media
+GET /api/bloem/v1/admin/platform/new-arrivals	non-media
 GET /api/bloem/v1/admin/platform/organizations/	non-media
 POST /api/bloem/v1/admin/platform/organizations/	non-media
 GET /api/bloem/v1/admin/platform/organizations/{id}/	non-media

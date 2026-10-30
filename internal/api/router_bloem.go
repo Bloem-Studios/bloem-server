@@ -129,6 +129,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			PreviewAdmin:   bloemPreviewAdminHandler(deps),
 			LibraryFigures: bloemLibraryFiguresHandler(deps),
 			UpgradePrompt:  bloemUpgradePromptHandler(deps),
+			NewArrivals:    bloemNewArrivalsHandler(deps),
 			Client:         newBloemClientSurface(deps, authMW, tenantMW, searchProvider, liveTVAdmin),
 			Platform:       platformHandler, People: peopleHandler, Organization: organizationHandler,
 			Explain:     explainHandler,
@@ -150,6 +151,7 @@ type bloemRouteSurfaces struct {
 	PreviewAdmin           *handlers.BloemPreviewAdminHandler
 	LibraryFigures         *handlers.BloemLibraryFiguresHandler
 	UpgradePrompt          *handlers.BloemUpgradePromptHandler
+	NewArrivals            *handlers.BloemNewArrivalsHandler
 	BookRequests           *handlers.BloemBookRequestsHandler
 	Client                 bloemClientSurface
 	Platform               *handlers.BloemAdminPlatformHandler
@@ -180,6 +182,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 		mountBloemPreviewAdmin(r, surfaces.PreviewAdmin, authMW, adminMW)
 		mountBloemLibraryFigures(r, surfaces.LibraryFigures, authMW, adminMW)
 		mountBloemUpgradePrompt(r, surfaces.UpgradePrompt, authMW, adminMW)
+		mountBloemNewArrivals(r, surfaces.NewArrivals, authMW, adminMW)
 		if surfaces.Preview != nil {
 			// Public: a ticket or nothing authenticates these (bloem_preview_host.go).
 			r.Post("/preview/sessions", surfaces.Preview.HandleCreateSession)

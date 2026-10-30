@@ -127,6 +127,7 @@ GET /api/bloem/v1/admin/platform/native-storage/capabilities
 GET /api/bloem/v1/admin/platform/native-storage/sources
 GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}
 GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse
+GET /api/bloem/v1/admin/platform/new-arrivals
 GET /api/bloem/v1/admin/platform/organizations/
 GET /api/bloem/v1/admin/platform/organizations/{id}/
 GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement
