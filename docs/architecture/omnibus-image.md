@@ -67,7 +67,12 @@ order:
    `svc-meilisearch` start alongside. A service that is off reports ready and
    sleeps, so the dependency graph stays fixed.
 5. `svc-silo` runs Silo once the database exists and the enabled services
-   are ready.
+   are ready. It passes a granted NET_ADMIN to `silo` as an ambient capability
+   through `setpriv`, so Silo's startup helper can configure client sockets.
+   If `setpriv` fails, including when the ambient raise is refused, `svc-silo`
+   starts Silo through `s6-setuidgid` without the grant, so a refusal never
+   keeps Silo from starting. Silo then holds only the bounding bit and enables
+   `no_new_privs` to contain its child processes.
 
 s6 stops services in reverse order, so Silo drains before PostgreSQL's fast
 shutdown. `svc-silo` and `svc-postgres` have no stop timeout of their own; the
