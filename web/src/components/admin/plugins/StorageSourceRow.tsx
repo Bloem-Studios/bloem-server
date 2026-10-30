@@ -26,7 +26,14 @@ import {
   useUpgradeStorageSource,
 } from "@/hooks/queries/admin/storageSources";
 
-import { pruneConfigSchema, sourceName, validateS3Connection, withoutEmpty } from "./storageSchema";
+import {
+  pruneConfigSchema,
+  s3BucketOptional,
+  sourceName,
+  validateS3Connection,
+  withS3FieldCopy,
+  withoutEmpty,
+} from "./storageSchema";
 
 const S3_PLUGIN = "bloem.storage.s3";
 const BOOKWAREHOUSE_PLUGIN = "bloem.storage.bookwarehouse";
@@ -233,7 +240,8 @@ function RotateKeysForm({ source, onDone }: { source: StorageSource; onDone: () 
 
 /**
  * Edits an unused S3 source by replacing its whole configuration. The keys are
- * not kept anywhere, so they must be entered again.
+ * not kept anywhere, so they must be entered again. A release that allows it
+ * takes an empty bucket as every bucket.
  */
 function S3EditForm({
   source,
@@ -251,9 +259,10 @@ function S3EditForm({
   const section = artifact.config_schema[0];
   // Memoized: the form resets its values whenever it is handed a new schema or value.
   const schema = useMemo(
-    () => (section ? pruneConfigSchema(section, HIDDEN_EDIT_FIELDS) : undefined),
+    () => (section ? withS3FieldCopy(pruneConfigSchema(section, HIDDEN_EDIT_FIELDS)) : undefined),
     [section],
   );
+  const bucketOptional = section ? s3BucketOptional(section) : false;
   const summary = source.connection_summary;
   const value = useMemo(
     () =>
@@ -272,7 +281,7 @@ function S3EditForm({
   const labels = new Map((schema.admin_form?.fields ?? []).map((f) => [f.key, f.label || f.key]));
 
   function handleSave(key: string, entry: Record<string, unknown>) {
-    const problems = validateS3Connection(entry);
+    const problems = validateS3Connection(entry, { bucketOptional });
     const messages = Object.entries(problems).map(
       ([field, message]) => `${labels.get(field) ?? field}: ${message}`,
     );
@@ -303,6 +312,10 @@ function S3EditForm({
 
   return (
     <div className="mt-3 space-y-3">
+      <p className="text-muted-foreground text-[13px]">
+        Enter the access key and secret key again to save. Bloem keeps them encrypted and can&apos;t
+        show them.
+      </p>
       <PluginConfigForm
         bare
         idPrefix={`s3-edit-${source.source_key}`}
@@ -388,7 +401,10 @@ function displayName(source: StorageSource): string {
 
 function SummaryLine({ source }: { source: StorageSource }) {
   const summary = source.connection_summary ?? {};
+  // A configured source with no bucket covers every bucket its keys can see.
+  const allBuckets = !summary.bucket && Object.keys(summary).length > 0;
   const parts = [
+    allBuckets ? "All buckets" : "",
     summary.bucket ? `Bucket ${summary.bucket}` : "",
     summary.prefix ? `Prefix ${summary.prefix}` : "",
     summary.region ? `Region ${summary.region}` : "",

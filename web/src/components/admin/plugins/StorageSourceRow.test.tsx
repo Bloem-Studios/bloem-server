@@ -46,7 +46,7 @@ const s3Schema = {
     properties: {
       source_id: { type: "string" },
       source_name: { type: "string" },
-      bucket: { type: "string" },
+      bucket: { type: "string", minLength: 3, maxLength: 63 },
       prefix: { type: "string" },
       region: { type: "string" },
       endpoint: { type: "string" },
@@ -79,6 +79,16 @@ const s3Artifact: StorageArtifact = {
   arch: "amd64",
   catalog: true,
   config_schema: [s3Schema as never],
+};
+
+/** The 0.4.0 release, whose schema lets the bucket be empty. */
+const s3Artifact040: StorageArtifact = {
+  ...s3Artifact,
+  artifact_key: "s3-0.4.0-linux-amd64-y",
+  version: "0.4.0",
+  config_schema: [
+    { ...s3Schema, json_schema: s3Schema.json_schema.replace('"minLength":3,', "") } as never,
+  ],
 };
 
 const s3Source = {
@@ -147,7 +157,7 @@ describe("StorageSourceRow", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByLabelText("Bucket")).toHaveValue("media");
-    expect(screen.getByLabelText("Prefix")).toHaveValue("movies/");
+    expect(screen.getByLabelText("Prefix (optional)")).toHaveValue("movies/");
     expect(screen.getByLabelText("Access key")).toHaveValue("");
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
     expect(screen.getByRole("alert")).toHaveTextContent(/Enter the keys again to save/);
@@ -167,6 +177,74 @@ describe("StorageSourceRow", () => {
       access_key: "AK",
       secret_key: "SK",
     });
+  });
+
+  describe("a source covering every bucket", () => {
+    const allBuckets = {
+      ...s3Source,
+      connection_summary: {
+        source_name: "Backblaze B2",
+        prefix: "",
+        region: "us-west-004",
+        endpoint: "https://s3.us-west-004.backblazeb2.com",
+      },
+    } as StorageSource;
+    const edit = () => {
+      render(
+        <ul>
+          <StorageSourceRow source={allBuckets} artifact={s3Artifact040} />
+        </ul>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK" } });
+      fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK" } });
+    };
+
+    it("says so in its summary", () => {
+      render(
+        <ul>
+          <StorageSourceRow source={allBuckets} artifact={s3Artifact040} />
+        </ul>,
+      );
+      expect(screen.getByText("All buckets")).toBeInTheDocument();
+    });
+
+    it("saves without a bucket", () => {
+      edit();
+      expect(screen.getByLabelText("Bucket (optional)")).toHaveValue("");
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      const call = replaceConfig.mock.calls[0]![0] as {
+        config: { connection: Record<string, unknown> };
+      };
+      expect(call.config.connection).not.toHaveProperty("bucket");
+      expect(call.config.connection).toMatchObject({ source_name: "Backblaze B2" });
+    });
+
+    it("refuses a prefix without a bucket", () => {
+      edit();
+      fireEvent.change(screen.getByLabelText("Prefix (optional)"), {
+        target: { value: "movies/" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /save/i }));
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "A prefix needs a bucket. Leave it empty to use every bucket.",
+      );
+      expect(replaceConfig).not.toHaveBeenCalled();
+    });
+  });
+
+  it("says before saving that the keys must be entered again", () => {
+    render(
+      <ul>
+        <StorageSourceRow source={s3Source} artifact={s3Artifact} />
+      </ul>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(
+      screen.getByText(
+        "Enter the access key and secret key again to save. Bloem keeps them encrypted and can't show them.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("keeps what the user types while the form is open", () => {
