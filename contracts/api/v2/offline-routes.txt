@@ -144,6 +144,7 @@ GET /api/bloem/v1/admin/platform/preview/capacity
 GET /api/bloem/v1/admin/platform/preview/catalog
 GET /api/bloem/v1/admin/platform/preview/settings
 GET /api/bloem/v1/admin/platform/promotions/
+GET /api/bloem/v1/admin/platform/upgrade-prompt
 GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement
 GET /api/bloem/v1/capabilities
 GET /api/bloem/v1/organizations
@@ -589,6 +590,7 @@ PUT /api/bloem/v1/admin/platform/preview/keys
 PUT /api/bloem/v1/admin/platform/preview/libraries
 PUT /api/bloem/v1/admin/platform/preview/settings
 PUT /api/bloem/v1/admin/platform/promotions/{id}
+PUT /api/bloem/v1/admin/platform/upgrade-prompt
 PUT /api/v1/admin/access-groups/{id}
 PUT /api/v1/admin/api-keys/{id}/tier
 PUT /api/v1/admin/collection-groups/{groupID}/collections/reorder

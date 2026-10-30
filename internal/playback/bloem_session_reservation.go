@@ -464,6 +464,9 @@ type bloemSessionManagerState struct {
 	// reservationLifecycle, then a session reservation lock, then mu.
 	reservationLocksMu sync.Mutex
 	reservationLocks   map[string]*sessionReservationLock
+	// streamLimitObserver hears refusals at the stream limit
+	// (bloem_stream_limit.go).
+	streamLimitObserver StreamLimitObserver
 }
 
 // reservationLeaseLocked returns the configured fleet reservation lease.

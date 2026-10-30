@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 906 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v1` | 214 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v1` | 216 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -177,6 +177,8 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v1/admin/platform/promotions/` | `createBloemPlatformPromotion` | Create a registry entry. |
 | `DELETE /api/bloem/v1/admin/platform/promotions/{id}` | `deleteBloemPlatformPromotion` | Delete a registry entry. |
 | `PUT /api/bloem/v1/admin/platform/promotions/{id}` | `updateBloemPlatformPromotion` | Replace every editable field of a registry entry. |
+| `GET /api/bloem/v1/admin/platform/upgrade-prompt` | `getBloemUpgradePrompt` | Read the upgrade prompt. |
+| `PUT /api/bloem/v1/admin/platform/upgrade-prompt` | `putBloemUpgradePrompt` | Replace the upgrade prompt. |
 | `GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement` | `getBloemLegacyAccountEntitlement` | Read the legacy managed account entitlement projection. |
 | `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply` | `applyBloemLegacyAccountEntitlement` | Apply a pinned entitlement template. |
 | `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run` | `previewBloemLegacyAccountEntitlement` | Preview a pinned entitlement template. |

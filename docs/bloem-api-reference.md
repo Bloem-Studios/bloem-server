@@ -3277,6 +3277,26 @@ large catalog takes about a second, so callers cache it; a timeout or database
 failure is `503 library_figures_unavailable`. Responses use
 `Cache-Control: no-store`.
 
+### Platform upgrade prompt
+
+`GET` and `PUT /api/bloem/v1/admin/platform/upgrade-prompt` read and replace the
+alert a viewer gets when a stream is refused because their plan's
+simultaneous-stream limit is reached: `{enabled, title, body, cta_label,
+cta_url, updated_at}`. It is off until set. Turning it on needs a title (80
+characters at most), a button label (40) and an `https://` link; the body is
+optional (240). A refused body is `422 invalid_upgrade_prompt` with the reason,
+malformed JSON or an unknown field `400 invalid_request`. Authentication is the
+same as the library figures: a Platform administrative context or an enabled
+administrator's unscoped API key, rechecked on every request (`403
+insufficient_platform_authority`). Responses use `Cache-Control: no-store`.
+
+When the prompt is on, a start refused with `max_streams_exceeded`, on the
+inline or the policy admission path, sends one `system.alert` with the button as
+its `cta` to the refused profile, through the operational inbox and its push
+channels, unless that profile's notifications are off. The delivery ID is
+derived from the account, profile and UTC day, so a profile gets at most one a
+day; the alert expires after three days. Other refusals send nothing.
+
 ### Platform policy snapshot reads
 
 | Method and path | Contract |

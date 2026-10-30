@@ -1229,6 +1229,8 @@ GET /api/bloem/v1/admin/platform/promotions/	non-media
 POST /api/bloem/v1/admin/platform/promotions/	non-media
 DELETE /api/bloem/v1/admin/platform/promotions/{id}	non-media
 PUT /api/bloem/v1/admin/platform/promotions/{id}	non-media
+GET /api/bloem/v1/admin/platform/upgrade-prompt	non-media
+PUT /api/bloem/v1/admin/platform/upgrade-prompt	non-media
 GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement	non-media
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply	non-media
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run	non-media

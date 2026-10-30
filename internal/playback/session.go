@@ -629,10 +629,11 @@ func (m *SessionManager) StartSessionWithFilesContext(
 	requestedFileID int,
 	method PlayMethod,
 	transcodeAudio bool,
-) (*Session, error) {
+) (_ *Session, err error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	defer m.noteStreamLimit(ctx, userID, profileID, &err)
 	ctx, limits, candidate, err := m.startPreflight(ctx, userID, profileID, effectiveFileID, requestedFileID, method, transcodeAudio)
 	if err != nil {
 		return nil, err

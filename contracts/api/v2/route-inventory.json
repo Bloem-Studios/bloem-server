@@ -40,7 +40,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1117
+      "route_count": 1119
     },
     {
       "id": "api_v2",
@@ -62,7 +62,7 @@
     }
   ],
   "totals": {
-    "routes": 1302,
+    "routes": 1304,
     "conditional_routes": 883,
     "streaming_routes": 45,
     "websocket_routes": 4
@@ -12590,6 +12590,64 @@
       "success_statuses": null,
       "error_codes": null,
       "source_file": "internal/api/router_bloem_engagement.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/admin/platform/upgrade-prompt",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemUpgradePromptHandler).HandleGet",
+      "handler_expr": "h.HandleGet",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 41,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_upgrade_prompt.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
+      "path": "/api/bloem/v1/admin/platform/upgrade-prompt",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemUpgradePromptHandler).HandlePut",
+      "handler_expr": "h.HandlePut",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 41,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [],
+      "conditional": false,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_upgrade_prompt.go"
     },
     {
       "listener": "api",
