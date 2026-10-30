@@ -233,7 +233,7 @@ function DialogBody({
       {s3 ? (
         <PluginRow
           title="S3-compatible storage"
-          description={`Amazon S3, MinIO, Ceph and similar · ${s3.version}`}
+          description={`Backblaze B2, Wasabi, Cloudflare R2, Amazon S3 and more · ${s3.version}`}
         >
           <Button variant="outline" onClick={() => setChoice("s3")}>
             S3

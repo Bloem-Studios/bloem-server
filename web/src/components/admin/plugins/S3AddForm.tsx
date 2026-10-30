@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { PluginAdminForm } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   type S3ConnectionInput,
@@ -34,13 +35,22 @@ import {
   type RevisionMode,
 } from "./s3Browse";
 import { parseS3Details } from "./s3Paste";
+import {
+  S3_PROVIDERS,
+  detectS3Provider,
+  providerConnection,
+  s3Provider,
+  type S3ProviderId,
+} from "./s3Providers";
 import { SchemaForm } from "./SchemaForm";
 import { buildSchemaValues } from "./schemaFormUtils";
 import {
   newProviderSourceId,
   pruneConfigSchema,
+  s3BucketOptional,
   sourceName,
   validateS3Connection,
+  withS3FieldCopy,
   withoutEmpty,
 } from "./storageSchema";
 
@@ -68,8 +78,13 @@ const TRIM_KEYS = [
 ];
 const PROBLEMS_ID = "s3-add-problems";
 const BUCKET_GROUP_ID = "s3-add-bucket-group";
+const LOCATION_ID = "s3-add-location";
+// How many found buckets the all-buckets choice names before "and N more".
+const NAMED_BUCKETS = 8;
 
 type Mode = "connect" | "connected" | "typed";
+/** All buckets in one source, or one source per chosen bucket. */
+type Scope = "all" | "some";
 type Values = Record<string, unknown>;
 
 interface Outcome {
@@ -108,11 +123,21 @@ function plural(count: number, one: string, many: string): string {
   return count === 1 ? one : many;
 }
 
+function hostName(endpoint: string): string {
+  try {
+    return new URL(endpoint).hostname;
+  } catch {
+    return "";
+  }
+}
+
 /**
- * The S3 part of the Add dialog. An administrator pastes or types an endpoint
- * and a pair of keys, connects to list the buckets, picks one or more, and one
- * source is created for each. The keys live only in this component's state and
- * its password inputs, and are dropped as soon as the sources are added.
+ * The S3 part of the Add dialog. An administrator says where their files are
+ * stored, gives what that provider asks for and a pair of keys, and connects
+ * to list the buckets. A release that allows it adds one source covering every
+ * bucket; otherwise, or by choice, one source is created for each chosen
+ * bucket. The keys live only in this component's state and its password
+ * inputs, and are dropped as soon as the sources are added.
  */
 export function S3AddForm({
   artifact,
@@ -132,11 +157,12 @@ export function S3AddForm({
   // Memoized: a new schema would reset the form.
   const form = useMemo(() => {
     if (!section) return undefined;
-    const schema = pruneConfigSchema(section, HIDDEN_S3_FIELDS);
+    const schema = withS3FieldCopy(pruneConfigSchema(section, HIDDEN_S3_FIELDS));
     const descriptor = adminFormForConfigSchema(schema);
     if (!descriptor) return undefined;
     return {
       key: schema.key,
+      bucketOptional: s3BucketOptional(section),
       descriptor: {
         ...descriptor,
         fields: descriptor.fields.map((field) =>
@@ -159,6 +185,7 @@ export function S3AddForm({
       artifactKey={artifact.artifact_key}
       schemaKey={form.key}
       descriptor={form.descriptor}
+      bucketOptional={form.bucketOptional}
       sources={sources}
       onBack={onBack}
       onDone={onDone}
@@ -171,6 +198,7 @@ function S3AddFormBody({
   artifactKey,
   schemaKey,
   descriptor,
+  bucketOptional,
   sources,
   onBack,
   onDone,
@@ -179,6 +207,8 @@ function S3AddFormBody({
   artifactKey: string;
   schemaKey: string;
   descriptor: PluginAdminForm;
+  /** The release accepts a source with no bucket, covering every bucket. */
+  bucketOptional: boolean;
   sources: StorageSource[];
   onBack: () => void;
   onDone: () => void;
@@ -201,6 +231,10 @@ function S3AddFormBody({
   // Region and revision mode follow the endpoint until the administrator sets them.
   const touched = useRef(new Set<string>());
   const [mode, setMode] = useState<Mode>("connect");
+  const [provider, setProvider] = useState<S3ProviderId | null>(null);
+  // What the provider's address is built from: a region, datacenter or account ID.
+  const [location, setLocation] = useState("");
+  const [scope, setScope] = useState<Scope>("some");
   const [buckets, setBuckets] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [browsing, setBrowsing] = useState(false);
@@ -290,25 +324,51 @@ function S3AddFormBody({
     clean.region = inferAmazonRegion(clean.endpoint);
   }
 
-  const labels = new Map(descriptor.fields.map((f) => [f.key, f.label || f.key]));
+  const chosen = provider ? s3Provider(provider) : null;
+  // A provider with a location builds the address itself; Other types one.
+  const located = chosen?.location ? chosen : null;
+  const form: PluginAdminForm =
+    chosen && chosen.id !== "other"
+      ? {
+          ...descriptor,
+          fields: descriptor.fields.map((f) =>
+            f.key === "access_key"
+              ? { ...f, label: chosen.accessKeyLabel }
+              : f.key === "secret_key"
+                ? { ...f, label: chosen.secretKeyLabel }
+                : f,
+          ),
+        }
+      : descriptor;
+  const labels = new Map(form.fields.map((f) => [f.key, f.label || f.key]));
   const label = (key: string) => labels.get(key) ?? key;
   const text = (key: string) => (typeof clean[key] === "string" ? (clean[key] as string) : "");
   const busy = connecting || saving;
   const revision: RevisionMode = values.revision_mode === "strict" ? "strict" : "checked-etag";
 
-  const primaryForm = ordered(descriptor, PRIMARY_KEYS);
-  const advancedForm = ordered(descriptor, ADVANCED_ORDER);
-  const allKeys = descriptor.fields.map((f) => f.key);
-  const primaryHidden = allKeys.filter((k) => !PRIMARY_KEYS.includes(k));
-  const targets = mode === "typed" ? [text("bucket")] : selected;
+  const primaryForm = ordered(form, PRIMARY_KEYS);
+  const advancedForm = ordered(form, ADVANCED_ORDER);
+  const allKeys = form.fields.map((f) => f.key);
+  const primaryHidden = allKeys.filter(
+    (k) => !PRIMARY_KEYS.includes(k) || (located !== null && k === "endpoint"),
+  );
+  // Every bucket in one source, when the release allows it and buckets were found.
+  const offerAll = bucketOptional && mode === "connected" && buckets.length > 0;
+  const allBuckets = offerAll && scope === "all";
+  const targets = mode === "typed" ? [text("bucket")] : allBuckets ? [""] : selected;
   const single = targets.length <= 1;
   const prefix = single ? text("prefix") : "";
   const advancedHidden = [
     ...PRIMARY_KEYS,
     "revision_mode",
     ...(mode === "typed" ? [] : ["bucket"]),
-    ...(single ? [] : ["prefix", "source_name"]),
+    ...(single && !allBuckets ? [] : ["prefix"]),
+    ...(single ? [] : ["source_name"]),
+    ...(located ? ["region"] : []),
   ];
+  // What a source without a bucket is called unless a name is typed.
+  const allBucketsName =
+    chosen && chosen.id !== "other" ? chosen.name : hostName(text("endpoint")) || "All buckets";
 
   function connection(): S3ConnectionInput {
     return {
@@ -335,20 +395,36 @@ function S3AddFormBody({
     setResults({});
   }
 
-  function update(next: Values) {
-    let merged = next;
+  /** `derivedRegion` is the signing region a provider's address fixes. */
+  function update(next: Values, derivedRegion?: string) {
+    const merged = { ...next };
     if (next.endpoint !== values.endpoint) {
       const endpoint =
         typeof next.endpoint === "string" ? withHttpsScheme(next.endpoint.trim()) : "";
-      merged = { ...next };
       if (!touched.current.has("region")) merged.region = defaultRegionFor(endpoint);
       if (!touched.current.has("revision_mode"))
         merged.revision_mode = defaultRevisionModeFor(endpoint);
     }
+    if (derivedRegion !== undefined) merged.region = derivedRegion;
     if (CONNECTION_KEYS.some((key) => merged[key] !== values[key])) dropConnection();
     // A browser opened for one typed bucket means nothing once the name changes.
     if (merged.bucket !== values.bucket) setBrowsing(false);
     setValues(merged);
+  }
+
+  function chooseProvider(id: S3ProviderId) {
+    if (id === provider) return;
+    setProvider(id);
+    setLocation("");
+    // An address and region made for one provider mean nothing for another.
+    touched.current.delete("region");
+    update({ ...values, endpoint: "" }, id === "other" ? undefined : "");
+  }
+
+  function changeLocation(raw: string) {
+    setLocation(raw);
+    const built = provider ? providerConnection(provider, raw) : null;
+    update({ ...values, endpoint: built?.endpoint ?? "" }, built?.region ?? "");
   }
 
   function handleChange(next: Values) {
@@ -370,8 +446,21 @@ function S3AddFormBody({
     const found = parseS3Details(pasted);
     const next: Values = { ...values };
     const filled: string[] = [];
+    let derivedRegion: string | undefined;
     if (found.endpoint) {
-      next.endpoint = found.endpoint;
+      // A known provider's address picks the provider and what it is built from.
+      const detected = detectS3Provider(found.endpoint);
+      const built = providerConnection(detected.provider, detected.location);
+      if (built) {
+        setProvider(detected.provider);
+        setLocation(detected.location);
+        next.endpoint = built.endpoint;
+        derivedRegion = built.region;
+      } else {
+        setProvider("other");
+        next.endpoint = found.endpoint;
+      }
+      touched.current.delete("region");
       filled.push("address");
     }
     if (found.accessKey) {
@@ -382,7 +471,7 @@ function S3AddFormBody({
       next.secret_key = found.secretKey;
       filled.push("secret key");
     }
-    if (found.region) {
+    if (found.region && derivedRegion === undefined) {
       next.region = found.region;
       touched.current.add("region");
       filled.push("region");
@@ -391,16 +480,26 @@ function S3AddFormBody({
       setPasteNote("We couldn't find an address or keys in that text. Type them in below.");
       return;
     }
-    update(next);
+    update(next, derivedRegion);
     // Cleared so the keys are not left on screen twice.
     setPasteText("");
-    setPasteNote(`Filled in: ${filled.join(", ")}. Check them below, then connect.`);
+    setPasteNote(
+      provider || found.endpoint
+        ? `Filled in: ${filled.join(", ")}. Check them below, then connect.`
+        : `Filled in: ${filled.join(", ")}. Choose where your files are stored, then connect.`,
+    );
   }
 
   function connectionProblems(): Problem[] {
     const found: Problem[] = [];
     const endpoint = text("endpoint");
-    if (!endpoint)
+    if (located?.location) {
+      if (!providerConnection(located.id, location))
+        found.push({
+          field: "location",
+          text: `${located.location.label}: ${located.location.invalid}`,
+        });
+    } else if (!endpoint)
       found.push({ field: "endpoint", text: `${label("endpoint")}: Enter the address.` });
     else {
       const bad = validateS3Connection({ endpoint }).endpoint;
@@ -410,7 +509,7 @@ function S3AddFormBody({
       found.push({ field: "access_key", text: `${label("access_key")}: Enter the access key.` });
     if (!text("secret_key"))
       found.push({ field: "secret_key", text: `${label("secret_key")}: Enter the secret key.` });
-    if (!text("region"))
+    if (!located && !text("region"))
       found.push({
         field: "region",
         text: isAmazonEndpoint(endpoint)
@@ -450,6 +549,8 @@ function S3AddFormBody({
       const names = await listBuckets.mutateAsync(connection());
       if (id !== listSeq.current) return;
       setBuckets(names);
+      // Every bucket in one source is the recommended choice when the release allows it.
+      setScope(bucketOptional && names.length > 0 ? "all" : "some");
       // A single bucket is the obvious choice.
       setSelected(names.length === 1 ? names : []);
       setMode("connected");
@@ -482,6 +583,13 @@ function S3AddFormBody({
     setSelected(buckets.filter((b) => next.includes(b)));
   }
 
+  function chooseScope(next: Scope) {
+    // A folder chosen inside one bucket means nothing for every bucket.
+    if (values.prefix) setValues({ ...values, prefix: "" });
+    setBrowsing(false);
+    setScope(next);
+  }
+
   function toggleBucket(bucket: string) {
     chooseBuckets(
       selected.includes(bucket) ? selected.filter((b) => b !== bucket) : [...selected, bucket],
@@ -490,7 +598,8 @@ function S3AddFormBody({
 
   function buildEntry(bucket: string, id: string, only: boolean): Values {
     const built = buildSchemaValues(descriptor, clean, undefined, SAVE_OPTIONS);
-    const entryPrefix = only && typeof built.prefix === "string" ? built.prefix : "";
+    // A source with no bucket covers every bucket and takes no prefix.
+    const entryPrefix = only && bucket && typeof built.prefix === "string" ? built.prefix : "";
     const entry = withoutEmpty({
       ...built,
       bucket,
@@ -499,7 +608,10 @@ function S3AddFormBody({
     });
     delete entry.revision_mode;
     if (revision === "checked-etag") entry.revision_mode = "checked-etag";
-    entry.source_name = sourceName({ source_name: entry.source_name, bucket, prefix: entryPrefix });
+    entry.source_name = sourceName(
+      { source_name: entry.source_name, bucket, prefix: entryPrefix },
+      allBucketsName,
+    );
     entry.source_id = id;
     return entry;
   }
@@ -509,10 +621,13 @@ function S3AddFormBody({
     const only = targets.length <= 1;
     if (mode !== "typed" && targets.length === 0)
       found.push({ field: "bucket", text: `${label("bucket")}: Select at least one bucket.` });
-    const badPrefix = validateS3Connection({ prefix: only ? text("prefix") : "" }).prefix;
+    const badPrefix = validateS3Connection(
+      { bucket: only ? (targets[0] ?? "") : "", prefix: only && !allBuckets ? text("prefix") : "" },
+      { bucketOptional },
+    ).prefix;
     if (badPrefix) found.push({ field: "prefix", text: `${label("prefix")}: ${badPrefix}` });
     for (const bucket of targets) {
-      const bad = validateS3Connection({ bucket }).bucket;
+      const bad = validateS3Connection({ bucket }, { bucketOptional }).bucket;
       if (bad)
         found.push({
           field: "bucket",
@@ -596,6 +711,9 @@ function S3AddFormBody({
     resetDiscover();
     resetBuckets();
     setValues(initial);
+    // The provider stays chosen for the next source; what was typed for it does not.
+    setLocation("");
+    setScope("some");
     setMode("connect");
     setBuckets([]);
     setSelected([]);
@@ -622,7 +740,7 @@ function S3AddFormBody({
         <div className="flex flex-wrap gap-2">
           <Button asChild>
             <Link to="/admin/libraries" onClick={onDone}>
-              Add a library from these
+              {added.length === 1 ? "Create a library from this" : "Create a library from these"}
             </Link>
           </Button>
           <Button type="button" variant="outline" onClick={() => setAdded(null)}>
@@ -654,7 +772,9 @@ function S3AddFormBody({
         ? `Add ${pending.length} sources`
         : "Add source";
   const connectReady =
-    text("endpoint") !== "" && text("access_key") !== "" && text("secret_key") !== "";
+    (located ? location.trim() !== "" : text("endpoint") !== "") &&
+    text("access_key") !== "" &&
+    text("secret_key") !== "";
   const allSelected = buckets.length > 0 && selected.length === buckets.length;
   const resultEntries = Object.entries(results);
   const typedBucket = text("bucket");
@@ -725,17 +845,71 @@ function S3AddFormBody({
           ) : null}
         </div>
 
-        <div onBlur={handleBlur}>
-          <SchemaForm
-            descriptor={primaryForm}
-            values={values}
-            onChange={handleChange}
-            idPrefix="s3-add"
-            hiddenKeys={primaryHidden}
-          />
-        </div>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">Where are your files stored?</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {S3_PROVIDERS.map((option) => (
+              <label
+                key={option.id}
+                className="has-[:checked]:border-primary flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm"
+              >
+                <input
+                  type="radio"
+                  name="s3-add-provider"
+                  value={option.id}
+                  checked={provider === option.id}
+                  onChange={() => chooseProvider(option.id)}
+                />
+                {option.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
-        <div className="space-y-2">
+        {chosen ? (
+          <div className="space-y-3">
+            {located?.location ? (
+              <div className="space-y-1.5">
+                <Label htmlFor={LOCATION_ID}>{located.location.label}</Label>
+                <Input
+                  id={LOCATION_ID}
+                  value={location}
+                  placeholder={located.location.placeholder}
+                  list={`${LOCATION_ID}-options`}
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-describedby={`${LOCATION_ID}-hint`}
+                  onChange={(event) => changeLocation(event.target.value)}
+                />
+                <datalist id={`${LOCATION_ID}-options`}>
+                  {located.location.suggestions.map((option) => (
+                    <option key={option} value={option} />
+                  ))}
+                </datalist>
+                <p id={`${LOCATION_ID}-hint`} className="text-muted-foreground text-xs">
+                  {located.location.hint}
+                </p>
+              </div>
+            ) : null}
+            <div onBlur={handleBlur}>
+              <SchemaForm
+                descriptor={primaryForm}
+                values={values}
+                onChange={handleChange}
+                idPrefix="s3-add"
+                hiddenKeys={primaryHidden}
+              />
+            </div>
+            <details className="text-xs">
+              <summary className="text-muted-foreground cursor-pointer">
+                Where do I find these?
+              </summary>
+              <p className="text-muted-foreground mt-1">{chosen.keysHint}</p>
+            </details>
+          </div>
+        ) : null}
+
+        <div className={chosen ? "space-y-2" : "hidden"}>
           <Button
             type="button"
             variant="ghost"
@@ -797,7 +971,7 @@ function S3AddFormBody({
           ) : null}
         </div>
 
-        {mode === "connect" ? (
+        {mode === "connect" && chosen ? (
           <Button type="button" disabled={!connectReady} onClick={() => void connect()}>
             {connecting ? "Connecting..." : "Connect"}
           </Button>
@@ -811,8 +985,52 @@ function S3AddFormBody({
 
         {mode === "connected" ? (
           <div className="space-y-3">
-            <fieldset id={BUCKET_GROUP_ID} className="space-y-2">
-              <legend ref={legendRef} tabIndex={-1} className="text-sm font-medium outline-none">
+            {offerAll ? (
+              <fieldset className="space-y-2">
+                <legend ref={legendRef} tabIndex={-1} className="text-sm font-medium outline-none">
+                  What should Bloem see?
+                </legend>
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="s3-add-scope"
+                      checked={scope === "all"}
+                      aria-describedby="s3-add-scope-all"
+                      onChange={() => chooseScope("all")}
+                    />
+                    All buckets these keys can see (recommended)
+                  </label>
+                  <p id="s3-add-scope-all" className="text-muted-foreground pl-6 text-xs">
+                    One source. Each bucket appears as a folder, and you choose folders when you
+                    create a library. Found: {buckets.slice(0, NAMED_BUCKETS).join(", ")}
+                    {buckets.length > NAMED_BUCKETS
+                      ? ` and ${buckets.length - NAMED_BUCKETS} more`
+                      : ""}
+                    .
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="s3-add-scope"
+                    checked={scope === "some"}
+                    onChange={() => chooseScope("some")}
+                  />
+                  Choose buckets
+                </label>
+              </fieldset>
+            ) : null}
+            <fieldset
+              id={BUCKET_GROUP_ID}
+              className={allBuckets ? "hidden" : "space-y-2"}
+              disabled={allBuckets}
+            >
+              <legend
+                ref={offerAll ? undefined : legendRef}
+                tabIndex={-1}
+                className="text-sm font-medium outline-none"
+              >
                 Buckets
               </legend>
               {buckets.length > 1 ? (
@@ -865,13 +1083,13 @@ function S3AddFormBody({
               )}
             </fieldset>
 
-            {selected.length >= 2 ? (
+            {selected.length >= 2 && !allBuckets ? (
               <p className="text-muted-foreground text-sm">
                 Each selected bucket is added from its root.
               </p>
             ) : null}
 
-            {selected.length === 1 ? folderControl(selected[0]!) : null}
+            {selected.length === 1 && !allBuckets ? folderControl(selected[0]!) : null}
           </div>
         ) : null}
 
@@ -934,7 +1152,7 @@ function S3AddFormBody({
                     outcome.state === "failed" ? "text-destructive" : "text-muted-foreground"
                   }
                 >
-                  {bucket}:{" "}
+                  {bucket || "All buckets"}:{" "}
                   {outcome.state === "added"
                     ? "added"
                     : outcome.state === "failed"
@@ -953,7 +1171,7 @@ function S3AddFormBody({
                         setResults({ ...results, [bucket]: { ...outcome, unknown: false } })
                       }
                     >
-                      Retry {bucket} anyway
+                      Retry {bucket || "all buckets"} anyway
                     </Button>
                   ) : null}
                 </li>

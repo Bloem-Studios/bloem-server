@@ -22,7 +22,14 @@ export interface S3Provider {
   /** Where the keys come from, in the provider's own words. */
   keysHint: string;
   /** What the provider's address is built from; absent for Other, which types an address. */
-  location?: { label: string; placeholder: string; suggestions: string[]; hint: string };
+  location?: {
+    label: string;
+    placeholder: string;
+    suggestions: string[];
+    hint: string;
+    /** Shown when what was typed can't be one. */
+    invalid: string;
+  };
 }
 
 export const S3_PROVIDERS: S3Provider[] = [
@@ -46,6 +53,7 @@ export const S3_PROVIDERS: S3Provider[] = [
         "ca-east-006",
       ],
       hint: "It is part of your bucket's Endpoint: s3.us-west-004.backblazeb2.com means us-west-004.",
+      invalid: "Enter it as your bucket's Endpoint shows it, such as us-west-004.",
     },
   },
   {
@@ -77,6 +85,7 @@ export const S3_PROVIDERS: S3Provider[] = [
         "ap-southeast-2",
       ],
       hint: "Shown next to each bucket in the Wasabi console.",
+      invalid: "Enter a Wasabi region such as us-east-1.",
     },
   },
   {
@@ -91,6 +100,7 @@ export const S3_PROVIDERS: S3Provider[] = [
       placeholder: "32 letters and digits",
       suggestions: [],
       hint: "Shown on the R2 overview page. You can also paste the S3 API address from a bucket's settings.",
+      invalid: "Enter the 32-character account ID, or paste the S3 API address.",
     },
   },
   {
@@ -121,6 +131,7 @@ export const S3_PROVIDERS: S3Provider[] = [
         "sa-east-1",
       ],
       hint: "The region your buckets are in, shown in the S3 console. Buckets in other regions can't be read.",
+      invalid: "Enter an AWS region such as us-east-1.",
     },
   },
   {
@@ -147,6 +158,7 @@ export const S3_PROVIDERS: S3Provider[] = [
         "atl1",
       ],
       hint: "The start of your Space's address: nyc3.digitaloceanspaces.com means nyc3.",
+      invalid: "Enter a datacenter such as nyc3.",
     },
   },
   {
@@ -161,6 +173,7 @@ export const S3_PROVIDERS: S3Provider[] = [
       placeholder: "fsn1",
       suggestions: ["fsn1", "nbg1", "hel1"],
       hint: "Falkenstein is fsn1, Nuremberg is nbg1 and Helsinki is hel1.",
+      invalid: "Enter fsn1, nbg1 or hel1.",
     },
   },
   {

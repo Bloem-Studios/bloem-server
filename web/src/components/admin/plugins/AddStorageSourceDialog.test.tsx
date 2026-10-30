@@ -51,7 +51,7 @@ const s3Schema = {
     properties: {
       source_id: { type: "string" },
       source_name: { type: "string" },
-      bucket: { type: "string" },
+      bucket: { type: "string", minLength: 3, maxLength: 63 },
       prefix: { type: "string" },
       region: { type: "string" },
       endpoint: { type: "string" },
@@ -99,6 +99,20 @@ const artifacts: StorageArtifact[] = [
   },
 ];
 const sources: StorageSource[] = [];
+/** The 0.4.0 release, whose schema lets the bucket be empty. */
+const s3Schema040 = {
+  ...s3Schema,
+  json_schema: s3Schema.json_schema.replace('"minLength":3,', ""),
+};
+const artifacts040: StorageArtifact[] = [
+  {
+    ...artifacts[0]!,
+    artifact_key: "s3-0.4.0-linux-amd64-y",
+    version: "0.4.0",
+    config_schema: [s3Schema040 as never],
+  },
+];
+const R2_ACCOUNT = "0123456789abcdef0123456789abcdef";
 
 const ENDPOINT = "https://s3.example.com";
 const ACCESS = "AKIAFAKEACCESS0001";
@@ -131,9 +145,17 @@ function open(props: DialogProps = {}) {
 function fill(label: string, value: string) {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
-function openS3(props: DialogProps = {}) {
+/** Opens the S3 form without choosing a provider. */
+function openS3Form(props: DialogProps = {}) {
   const handle = open(props);
   fireEvent.click(screen.getByRole("button", { name: /^S3$/ }));
+  return handle;
+}
+const chooseProvider = (name: string) => fireEvent.click(screen.getByRole("radio", { name }));
+/** Opens the S3 form on "Other or self-hosted", which asks for the address itself. */
+function openS3(props: DialogProps = {}) {
+  const handle = openS3Form(props);
+  chooseProvider("Other or self-hosted");
   return handle;
 }
 function fillConnection(endpoint = ENDPOINT) {
@@ -240,6 +262,157 @@ describe("AddStorageSourceDialog", () => {
     });
   });
 
+  describe("guided by provider", () => {
+    it("asks where the files are stored before anything else", () => {
+      openS3Form();
+      expect(
+        screen.getByRole("group", { name: "Where are your files stored?" }),
+      ).toBeInTheDocument();
+      for (const name of [
+        "Backblaze B2",
+        "Wasabi",
+        "Cloudflare R2",
+        "Amazon S3",
+        "DigitalOcean Spaces",
+        "Hetzner Object Storage",
+        "Other or self-hosted",
+      ]) {
+        expect(screen.getByRole("radio", { name })).not.toBeChecked();
+      }
+      expect(screen.queryByLabelText("Access key")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Connect" })).not.toBeInTheDocument();
+    });
+
+    it("builds a Backblaze address from the region and uses Backblaze's key names", async () => {
+      listBuckets.mockResolvedValue(["movies"]);
+      openS3Form();
+      chooseProvider("Backblaze B2");
+      expect(screen.queryByLabelText("S3 endpoint")).not.toBeInTheDocument();
+      fill("Region", "us-west-004");
+      fill("keyID", ACCESS);
+      fill("applicationKey", SECRET);
+      click("Connect");
+      await screen.findByText("1 bucket found");
+      expect(listBuckets).toHaveBeenCalledWith({
+        endpoint: "https://s3.us-west-004.backblazeb2.com",
+        region: "us-west-004",
+        accessKey: ACCESS,
+        secretKey: SECRET,
+        sessionToken: "",
+      });
+    });
+
+    it("says where to find the keys", () => {
+      openS3Form();
+      chooseProvider("Cloudflare R2");
+      expect(screen.getByText("Where do I find these?")).toBeInTheDocument();
+      expect(screen.getByText(/Manage API tokens/)).toBeInTheDocument();
+      expect(screen.getByLabelText("Account ID")).toBeInTheDocument();
+    });
+
+    it("explains a region that doesn't look right instead of connecting", () => {
+      openS3Form();
+      chooseProvider("Backblaze B2");
+      fill("Region", "us-west");
+      fill("keyID", ACCESS);
+      fill("applicationKey", SECRET);
+      click("Connect");
+      expect(screen.getByRole("alert")).toHaveTextContent(/Region: .*us-west-004/);
+      expect(listBuckets).not.toHaveBeenCalled();
+    });
+
+    it("picks the provider from pasted details", () => {
+      openS3Form();
+      fireEvent.change(screen.getByLabelText("Paste your connection details"), {
+        target: {
+          value: `Endpoint: https://${R2_ACCOUNT}.r2.cloudflarestorage.com/media\nAccess Key: ${ACCESS}\nSecret Key: ${SECRET}`,
+        },
+      });
+      expect(screen.getByRole("radio", { name: "Cloudflare R2" })).toBeChecked();
+      expect(screen.getByLabelText("Account ID")).toHaveValue(R2_ACCOUNT);
+      expect(screen.getByLabelText("Access Key ID")).toHaveValue(ACCESS);
+    });
+  });
+
+  describe("all buckets", () => {
+    async function connectedB2(
+      buckets: string[],
+      props: DialogProps = { artifacts: artifacts040 },
+    ) {
+      listBuckets.mockResolvedValue(buckets);
+      openS3Form(props);
+      chooseProvider("Backblaze B2");
+      fill("Region", "us-west-004");
+      fill("keyID", ACCESS);
+      fill("applicationKey", SECRET);
+      click("Connect");
+      await screen.findByText(`${buckets.length} buckets found`);
+    }
+
+    it("covers every bucket by default with one source and no bucket", async () => {
+      discover.mockResolvedValue(undefined);
+      await connectedB2(["movies", "shows"]);
+      expect(
+        screen.getByRole("radio", { name: "All buckets these keys can see (recommended)" }),
+      ).toBeChecked();
+      expect(screen.getByText(/movies, shows/)).toBeInTheDocument();
+      click("Add source");
+      await screen.findByText("Added 1 source: Backblaze B2");
+      expect(discover).toHaveBeenCalledTimes(1);
+      const call = discoverCall(0);
+      expect(call.artifactKey).toBe("s3-0.4.0-linux-amd64-y");
+      expect(call.config.connection).toMatchObject({
+        endpoint: "https://s3.us-west-004.backblazeb2.com",
+        region: "us-west-004",
+        source_name: "Backblaze B2",
+        revision_mode: "checked-etag",
+      });
+      expect(call.config.connection).not.toHaveProperty("bucket");
+      expect(call.config.connection).not.toHaveProperty("prefix");
+      expect(screen.getByRole("link", { name: "Create a library from this" })).toHaveAttribute(
+        "href",
+        "/admin/libraries",
+      );
+    });
+
+    it("still adds one source per chosen bucket", async () => {
+      discover.mockResolvedValue(undefined);
+      await connectedB2(["movies", "shows"]);
+      chooseProvider("Choose buckets");
+      fireEvent.click(checkbox("movies"));
+      fireEvent.click(checkbox("shows"));
+      click("Add 2 sources");
+      await screen.findByText(/Added 2 sources/);
+      expect(discoverCall(0).config.connection).toMatchObject({ bucket: "movies" });
+      expect(discoverCall(1).config.connection).toMatchObject({ bucket: "shows" });
+    });
+
+    it("is not offered by a release that needs a bucket", async () => {
+      await connectedB2(["movies", "shows"], {});
+      expect(screen.queryByRole("radio", { name: /All buckets/ })).not.toBeInTheDocument();
+      expect(screen.getByText("Buckets")).toBeInTheDocument();
+    });
+
+    it("takes an empty typed bucket as every bucket, without a prefix", async () => {
+      discover.mockResolvedValue(undefined);
+      openS3({ artifacts: artifacts040 });
+      fillConnection();
+      advanced();
+      click("Type a bucket name instead");
+      expect(screen.getByLabelText("Bucket (optional)")).toHaveValue("");
+      fill("Prefix (optional)", "movies/");
+      click("Add source");
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "A prefix needs a bucket. Leave it empty to use every bucket.",
+      );
+      fill("Prefix (optional)", "");
+      click("Add source");
+      await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
+      expect(discoverCall(0).config.connection).not.toHaveProperty("bucket");
+      expect(discoverCall(0).config.connection.source_name).toBe("s3.example.com");
+    });
+  });
+
   describe("the form", () => {
     it("shows only the endpoint and the two keys until Advanced is opened", () => {
       openS3();
@@ -248,8 +421,8 @@ describe("AddStorageSourceDialog", () => {
       expect(screen.getByLabelText("Secret key")).toHaveAttribute("type", "password");
       for (const hidden of [
         "Region",
-        "Prefix",
-        "Session token",
+        "Prefix (optional)",
+        "Session token (optional)",
         "Source name",
         "Bucket",
         "Revision mode",
@@ -261,10 +434,16 @@ describe("AddStorageSourceDialog", () => {
         "false",
       );
       advanced();
-      for (const shown of ["Region", "Prefix", "Session token", "Source name", "Revision mode"]) {
+      for (const shown of [
+        "Region",
+        "Prefix (optional)",
+        "Session token (optional)",
+        "Source name",
+        "Revision mode",
+      ]) {
         expect(screen.getByLabelText(shown)).toBeInTheDocument();
       }
-      expect(screen.getByLabelText("Session token")).toHaveAttribute("type", "password");
+      expect(screen.getByLabelText("Session token (optional)")).toHaveAttribute("type", "password");
       // Server-managed fields are never asked for, and the bucket is chosen from the list.
       expect(screen.queryByLabelText("Source ID")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("State path")).not.toBeInTheDocument();
@@ -657,7 +836,7 @@ Whitelisted IP: Not configured`;
     it("uses the typed source name, trimmed, and the prefix", async () => {
       await connected(["media"]);
       advanced();
-      fill("Prefix", "movies/");
+      fill("Prefix (optional)", "movies/");
       fill("Source name", " Movies ");
       click("Add source");
       await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
@@ -670,7 +849,7 @@ Whitelisted IP: Not configured`;
     it("defaults a blank name to bucket/prefix when a prefix is set", async () => {
       await connected(["media"]);
       advanced();
-      fill("Prefix", "movies/");
+      fill("Prefix (optional)", "movies/");
       fill("Source name", "   ");
       click("Add source");
       await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
@@ -682,7 +861,7 @@ Whitelisted IP: Not configured`;
       openS3();
       fillConnection();
       advanced();
-      fill("Session token", "TOKEN");
+      fill("Session token (optional)", "TOKEN");
       click("Connect");
       await screen.findByText("Buckets");
       expect(listBuckets).toHaveBeenCalledWith(expect.objectContaining({ sessionToken: "TOKEN" }));
@@ -694,7 +873,7 @@ Whitelisted IP: Not configured`;
     it("adds the trailing slash of a prefix itself and blocks only a leading slash", async () => {
       await connected(["media"]);
       advanced();
-      fill("Prefix", "movies");
+      fill("Prefix (optional)", "movies");
       click("Add source");
       await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
       expect(discoverCall(0).config.connection).toMatchObject({
@@ -706,7 +885,7 @@ Whitelisted IP: Not configured`;
     it("blocks a prefix with a leading slash before calling the API", async () => {
       await connected(["media"]);
       advanced();
-      fill("Prefix", "/movies/");
+      fill("Prefix (optional)", "/movies/");
       click("Add source");
       expect(screen.getByRole("alert")).toHaveTextContent(/must not start with a slash/);
       expect(discover).not.toHaveBeenCalled();
@@ -715,11 +894,11 @@ Whitelisted IP: Not configured`;
     it("opens Advanced to show a prefix problem", async () => {
       await connected(["media"]);
       advanced();
-      fill("Prefix", "/movies/");
+      fill("Prefix (optional)", "/movies/");
       advanced();
-      expect(screen.queryByLabelText("Prefix")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Prefix (optional)")).not.toBeInTheDocument();
       click("Add source");
-      expect(screen.getByLabelText("Prefix")).toBeInTheDocument();
+      expect(screen.getByLabelText("Prefix (optional)")).toBeInTheDocument();
     });
 
     it("asks for the bucket name and the keys when typing the bucket", () => {
@@ -747,7 +926,7 @@ Whitelisted IP: Not configured`;
       await screen.findByText("Buckets");
       expect(screen.queryByText(/already exists/)).not.toBeInTheDocument();
       advanced();
-      fill("Prefix", "movies/");
+      fill("Prefix (optional)", "movies/");
       expect(
         screen.getByText(/A source with this bucket and prefix already exists/),
       ).toBeInTheDocument();
@@ -805,7 +984,7 @@ Whitelisted IP: Not configured`;
       expect(screen.queryByRole("button", { name: "Browse folders" })).not.toBeInTheDocument();
       expect(screen.getByText("Each selected bucket is added from its root.")).toBeInTheDocument();
       advanced();
-      expect(screen.queryByLabelText("Prefix")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Prefix (optional)")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Source name")).not.toBeInTheDocument();
     });
 
@@ -814,7 +993,7 @@ Whitelisted IP: Not configured`;
       await connected(["movies", "television"]);
       fireEvent.click(checkbox("movies"));
       advanced();
-      fill("Prefix", "old/");
+      fill("Prefix (optional)", "old/");
       fill("Source name", "Old name");
       fireEvent.click(checkbox("television"));
       click("Add 2 sources");
@@ -829,10 +1008,10 @@ Whitelisted IP: Not configured`;
       await connected(["movies", "television"]);
       fireEvent.click(checkbox("movies"));
       advanced();
-      fill("Prefix", "old/");
+      fill("Prefix (optional)", "old/");
       fireEvent.click(checkbox("movies"));
       fireEvent.click(checkbox("television"));
-      expect(screen.getByLabelText("Prefix")).toHaveValue("");
+      expect(screen.getByLabelText("Prefix (optional)")).toHaveValue("");
     });
 
     it("warns for each duplicate bucket at its root", async () => {
@@ -971,7 +1150,7 @@ Whitelisted IP: Not configured`;
       expect(screen.queryByRole("region", { name: "Folder browser" })).not.toBeInTheDocument();
       expect(screen.getByText("Folder: movies/")).toBeInTheDocument();
       advanced();
-      expect(screen.getByLabelText("Prefix")).toHaveValue("movies/");
+      expect(screen.getByLabelText("Prefix (optional)")).toHaveValue("movies/");
       click("Add source");
       await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
       expect(discoverCall(0).config.connection).toMatchObject({
@@ -988,7 +1167,7 @@ Whitelisted IP: Not configured`;
         .mockResolvedValueOnce(root);
       await connected(["media"]);
       advanced();
-      fill("Prefix", "something/");
+      fill("Prefix (optional)", "something/");
       click("Browse folders");
       fireEvent.click(await screen.findByRole("button", { name: "movies" }));
       await screen.findByText("No subfolders here.");
@@ -999,7 +1178,7 @@ Whitelisted IP: Not configured`;
       await screen.findByRole("button", { name: "television" });
       expect(screen.queryByRole("button", { name: "Use this folder" })).not.toBeInTheDocument();
       click("Use bucket root");
-      expect(screen.getByLabelText("Prefix")).toHaveValue("");
+      expect(screen.getByLabelText("Prefix (optional)")).toHaveValue("");
       expect(screen.getByText("Folder: bucket root")).toBeInTheDocument();
     });
 
@@ -1056,7 +1235,7 @@ Whitelisted IP: Not configured`;
 
     it("shows a success panel that links to the libraries page", async () => {
       await addTwo();
-      const link = screen.getByRole("link", { name: "Add a library from these" });
+      const link = screen.getByRole("link", { name: "Create a library from these" });
       expect(link).toHaveAttribute("href", "/admin/libraries");
       expect(screen.getByRole("button", { name: "Add another" })).toBeInTheDocument();
     });
@@ -1205,7 +1384,7 @@ Whitelisted IP: Not configured`;
       fill("Access key", ` ${ACCESS}\n`);
       fill("Secret key", `\t${SECRET} `);
       advanced();
-      fill("Session token", " TOKEN ");
+      fill("Session token (optional)", " TOKEN ");
       fill("Region", " us-east-1 ");
       click("Connect");
       await screen.findByText("Buckets");
@@ -1216,7 +1395,7 @@ Whitelisted IP: Not configured`;
         secretKey: SECRET,
         sessionToken: "TOKEN",
       });
-      fill("Prefix", " movies/ ");
+      fill("Prefix (optional)", " movies/ ");
       click("Add source");
       await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
       expect(discoverCall(0).config.connection).toMatchObject({
@@ -1260,9 +1439,9 @@ Whitelisted IP: Not configured`;
       fireEvent.blur(screen.getByLabelText("S3 endpoint"));
       expect(screen.getByLabelText("S3 endpoint")).toHaveValue("https://s3.example.com");
       advanced();
-      fill("Prefix", "movies");
-      fireEvent.blur(screen.getByLabelText("Prefix"));
-      expect(screen.getByLabelText("Prefix")).toHaveValue("movies/");
+      fill("Prefix (optional)", "movies");
+      fireEvent.blur(screen.getByLabelText("Prefix (optional)"));
+      expect(screen.getByLabelText("Prefix (optional)")).toHaveValue("movies/");
     });
   });
 
@@ -1313,7 +1492,7 @@ Whitelisted IP: Not configured`;
         secretKey: SECRET,
       });
       click("Use this folder");
-      expect(screen.getByLabelText("Prefix")).toHaveValue("movies/");
+      expect(screen.getByLabelText("Prefix (optional)")).toHaveValue("movies/");
       click("Add source");
       await waitFor(() => expect(discover).toHaveBeenCalledTimes(1));
       expect(discoverCall(0).config.connection).toMatchObject({
