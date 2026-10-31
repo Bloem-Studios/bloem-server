@@ -1278,6 +1278,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if deps.DB != nil {
 			progressHandler.LibraryLookup = catalog.NewLibraryItemRepository(deps.DB)
 		}
+		if episodeRepo != nil {
+			progressHandler.EpisodeLookup = episodeRepo
+		}
 		collectionHandler = handlers.NewCollectionHandler(deps.UserStoreProvider)
 		if deps.DB != nil {
 			collectionHandler.Executor = &catalog.QueryExecutor{Pool: deps.DB}
@@ -5040,7 +5043,7 @@ func useBaseMiddleware(r chi.Router, deps Dependencies) {
 	// media routes unwrapped so their io.ReaderFrom/sendfile path survives,
 	// and serving validator-bearing v2 responses identity-encoded so a strong
 	// ETag names exactly one representation (apiv2.IdentityEncoded).
-	r.Use(httpstream.CompressWithExclusions(5, skipNativeMediaCompression, apiv2.IdentityEncoded))
+	r.Use(httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded))
 
 	// Activity logging (before auth — captures all requests including failed auth).
 	if deps.ActivityLogWriter != nil {
@@ -5365,6 +5368,7 @@ func llmConfigFromServer(cfg *config.Config) llm.Config {
 	return llm.Config{
 		AuthMode:        cfg.AI.AuthMode,
 		ReasoningEffort: cfg.AI.ReasoningEffort,
+		ServiceTier:     cfg.AI.ServiceTier,
 		BaseURL:         cfg.AI.BaseURL,
 		APIKey:          cfg.AI.APIKey,
 		ChatModel:       cfg.AI.ChatModel,
