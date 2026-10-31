@@ -638,6 +638,16 @@
 # drain spacing, and retention.
 ./internal/catalog TestCatalogItemChangeOutboxDB
 
+# Existing audiobooks take the runtime their active files add up to instead of
+# a metadata provider's runtime for some other edition.
+./migrations TestAudiobookRuntimeFromFilesBackfillPostgres
+
+# An audiobook with duplicate copies keeps its longest active copy's runtime
+# whichever copy a scan writes last.
+./internal/scanner TestAudiobookRuntimeTakesLongestCopyPostgres
+./internal/scanner TestAudiobookRuntimeConcurrentCopiesPostgres
+./internal/scanner TestAudiobookRuntimeConcurrentFileWritesPostgres
+./internal/scanner TestAudiobookRuntimeConcurrentMetadataAndMissingPostgres
 ./internal/worker TestSessionSyncRowJSONMatchesTheSyncedRowDB
 
 # Dashboard egress splits by stream node and API server without adding the
