@@ -2,10 +2,7 @@ package api
 
 import (
 	"context"
-	"log/slog"
 	"sync/atomic"
-
-	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/ambience"
@@ -37,6 +34,11 @@ type BloemDependencies struct {
 	// OnUserProfileSessionsRevoked invalidates sessions bound to the
 	// named profiles of one account.
 	OnUserProfileSessionsRevoked func(ctx context.Context, userID int, profileIDs []string) error
+	// BloemOnUserSessionsRevoked is the account session-revoked hook for
+	// Bloem's own callers that fail closed when invalidation fails (tenant
+	// members, admin resources, profile revocation). Silo's
+	// OnUserSessionsRevoked keeps Silo's type and runs for Silo's callers.
+	BloemOnUserSessionsRevoked func(ctx context.Context, userID int) error
 
 	// AdminContextTokens signs the short-lived administrative context JWTs.
 	// It is separate from normal account-session token validation.
@@ -48,17 +50,4 @@ type BloemDependencies struct {
 	// NativeStorageManagement shares retained domain services and the reader
 	// coordinator. Construction does not witness complete mutation readiness.
 	NativeStorageManagement *handlers.BloemNativeStorageManagementHandler
-}
-
-// Upstream notification hooks have no error result. Keep Bloem's detached
-// invalidation boundary and report a failure after the committed mutation.
-func bloemSessionRevocationNotification(revoke func(context.Context, int) error) func(context.Context, int) {
-	if revoke == nil {
-		return nil
-	}
-	return func(ctx context.Context, userID int) {
-		if err := sessioninvalidation.Run(ctx, func(callCtx context.Context) error { return revoke(callCtx, userID) }); err != nil {
-			slog.ErrorContext(ctx, "session invalidation failed", "user_id", userID, "error", err)
-		}
-	}
 }

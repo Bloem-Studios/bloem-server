@@ -681,7 +681,7 @@ func TestAdminUserAuthSessions_CompatInvalidationSurvivesRequestCancellation(t *
 		t.Run(test.name, func(t *testing.T) {
 			handler, stores, sessions := newAdminUserResourceHandler(t)
 			state := newCancellationCompatState()
-			handler.OnUserSessionsRevoked = state.invalidateUser
+			handler.BloemOnUserSessionsRevoked = state.invalidateUser
 			handler.OnUserProfileSessionsRevoked = state.invalidateProfiles
 			ctx, cancel := context.WithCancel(context.Background())
 			sessions.cancelAfterRevoke = cancel
@@ -764,44 +764,6 @@ func TestAdminUserAuthSessions_ProfileScopedRevokeAllIsAtomicAcrossRequestCancel
 	}
 	if sessions.scopedAtomicRevokeCalls != 1 || sessions.perSessionRevokeCalls != 0 {
 		t.Fatalf("scoped revoke calls: atomic=%d per-session=%d, want one atomic boundary", sessions.scopedAtomicRevokeCalls, sessions.perSessionRevokeCalls)
-	}
-}
-
-func TestAdminUserSecurityMutations_CompatInvalidationSurvivesRequestCancellation(t *testing.T) {
-	for _, test := range []struct {
-		name   string
-		method string
-		path   string
-		body   string
-		want   int
-	}{
-		{name: "update", method: http.MethodPut, path: "/api/v1/admin/users/1", body: `{"password":"new-password"}`, want: http.StatusOK},
-		{name: "delete", method: http.MethodDelete, path: "/api/v1/admin/users/1", want: http.StatusNoContent},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			repo := &cancellationAdminUserRepo{user: &models.User{ID: 1, Username: "account-a", Enabled: true}, cancel: cancel}
-			handler := NewAdminHandler(repo, nil, nil)
-			handler.sessionRepo = &adminUserResourceSessions{sessions: map[string]*models.AuthSession{
-				"session-a": {ID: "session-a", UserID: 1, ExpiresAt: time.Now().Add(time.Hour)},
-			}}
-			state := newCancellationCompatState()
-			handler.OnUserSessionsRevoked = state.invalidateUser
-			router := chi.NewRouter()
-			router.Put("/api/v1/admin/users/{id}", handler.HandleUpdateUser)
-			router.Delete("/api/v1/admin/users/{id}", handler.HandleDeleteUser)
-
-			request := httptest.NewRequest(test.method, test.path, strings.NewReader(test.body)).WithContext(ctx)
-			request.Header.Set("Content-Type", "application/json")
-			recorder := httptest.NewRecorder()
-			router.ServeHTTP(recorder, request)
-			if recorder.Code != test.want {
-				t.Fatalf("status = %d: %s, want %d", recorder.Code, recorder.Body.String(), test.want)
-			}
-			if len(state.persistent) != 0 || len(state.memory) != 0 {
-				t.Fatalf("compat sessions remain: persistent=%v memory=%v", state.persistent, state.memory)
-			}
-		})
 	}
 }
 

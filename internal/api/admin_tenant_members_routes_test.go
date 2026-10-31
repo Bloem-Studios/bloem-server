@@ -52,7 +52,9 @@ func TestAdminTenantMemberRoutesUseProductionAdminBoundary(t *testing.T) {
 	router := newChiRouter(Dependencies{
 		DB: pool, Config: cfg, UserStoreProvider: pgstore.NewPostgresProvider(pool),
 		OwnershipBootstrapper: bootstrap,
-		OnUserSessionsRevoked: func(ctx context.Context, userID int) error { return extensionInvalidationErr },
+		BloemDependencies: BloemDependencies{
+			BloemOnUserSessionsRevoked: func(ctx context.Context, userID int) error { return extensionInvalidationErr },
+		},
 	})
 
 	routes := walkV1Routes(t, router)

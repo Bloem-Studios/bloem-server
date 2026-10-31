@@ -728,9 +728,9 @@ func (h *AdminHandler) HandleRevokeUserAuthSession(w http.ResponseWriter, r *htt
 				return
 			}
 		}
-	} else if h.OnUserSessionsRevoked != nil {
+	} else if h.BloemOnUserSessionsRevoked != nil {
 		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
-			return h.OnUserSessionsRevoked(callbackCtx, resources.user.ID)
+			return h.BloemOnUserSessionsRevoked(callbackCtx, resources.user.ID)
 		}); err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication session was revoked but compatibility-session invalidation failed")
 			return
@@ -780,8 +780,8 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 			}
 			nativeRevoked = true
 			if accountWide {
-				if h.OnUserSessionsRevoked != nil {
-					return h.OnUserSessionsRevoked(invalidationCtx, resources.user.ID)
+				if h.BloemOnUserSessionsRevoked != nil {
+					return h.BloemOnUserSessionsRevoked(invalidationCtx, resources.user.ID)
 				}
 				return nil
 			}
@@ -800,9 +800,9 @@ func (h *AdminHandler) HandleRevokeAllUserAuthSessions(w http.ResponseWriter, r 
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	if h.OnUserSessionsRevoked != nil {
+	if h.BloemOnUserSessionsRevoked != nil {
 		if err := sessioninvalidation.Run(r.Context(), func(callbackCtx context.Context) error {
-			return h.OnUserSessionsRevoked(callbackCtx, resources.user.ID)
+			return h.BloemOnUserSessionsRevoked(callbackCtx, resources.user.ID)
 		}); err != nil {
 			writeError(w, http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
 			return

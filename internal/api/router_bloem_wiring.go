@@ -226,6 +226,7 @@ func wireBloemAdmin(
 	profileHandler *handlers.ProfileHandler,
 ) (*handlers.AdminTenantsHandler, *handlers.AdminTenantMembersHandler) {
 	adminHandler.SetProfileHandler(profileHandler)
+	adminHandler.BloemOnUserSessionsRevoked = deps.BloemOnUserSessionsRevoked
 	adminHandler.HostStatsSource = deps.HostStatsSource
 	if deps.OnUserProfileSessionsRevoked != nil {
 		adminHandler.OnUserProfileSessionsRevoked = deps.OnUserProfileSessionsRevoked
@@ -260,7 +261,7 @@ func wireBloemAdmin(
 		userRepo,
 		auth.NewSessionRepository(deps.DB),
 	)
-	memberService.SetCompatSessionInvalidator(deps.OnUserSessionsRevoked)
+	memberService.SetCompatSessionInvalidator(deps.BloemOnUserSessionsRevoked)
 	adminTenantMembersHandler := handlers.NewAdminTenantMembersHandler(memberService, adminHandler)
 	memberService.SetResourcePurger(adminTenantMembersHandler)
 	adminTenantsHandler := handlers.NewAdminTenantsHandler(tenantOrgStore, memberService)

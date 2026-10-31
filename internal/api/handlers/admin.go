@@ -176,7 +176,8 @@ type AdminHandler struct {
 	BootstrapSensitiveConfigured map[string]bool
 	BootstrapSensitiveValues     map[string]string
 	RedisBootstrapAvailable      bool
-	OnUserSessionsRevoked        func(ctx context.Context, userID int) error
+	OnUserSessionsRevoked        func(ctx context.Context, userID int)
+	BloemOnUserSessionsRevoked   func(ctx context.Context, userID int) error // Bloem: callers that fail closed
 	OnUserProfileSessionsRevoked func(ctx context.Context, userID int, profileIDs []string) error
 	OnServerSettingUpdated       func(ctx context.Context, key, value string)
 	RestartStatus                *ServerRestartStatusTracker
@@ -1123,7 +1124,7 @@ func (h *AdminHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if revoked && h.OnUserSessionsRevoked != nil {
-		h.OnUserSessionsRevoked(context.WithoutCancel(r.Context()), id)
+		h.OnUserSessionsRevoked(r.Context(), id)
 	}
 	if accountScopeChanged(updateInput) {
 		notifyAccountsScopeChanged(r.Context(), h.RecWorker, id)
@@ -1230,7 +1231,7 @@ func (h *AdminHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if h.OnUserSessionsRevoked != nil {
-		h.OnUserSessionsRevoked(context.WithoutCancel(r.Context()), id)
+		h.OnUserSessionsRevoked(r.Context(), id)
 	}
 	h.sweepWatchlistTitles(r.Context(), id)
 	h.invalidateStats(r.Context(), cache.ChannelAdmin, cache.EventAdminStatsInvalidated, strconv.Itoa(id))

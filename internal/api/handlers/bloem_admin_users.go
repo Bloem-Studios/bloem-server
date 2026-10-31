@@ -408,8 +408,8 @@ func (h *AdminHandler) bloemRevokeUserSessions(ctx context.Context, userID int) 
 				return err
 			}
 		}
-		if h.OnUserSessionsRevoked != nil {
-			if err := h.OnUserSessionsRevoked(invalidationCtx, userID); err != nil {
+		if h.BloemOnUserSessionsRevoked != nil {
+			if err := h.BloemOnUserSessionsRevoked(invalidationCtx, userID); err != nil {
 				return err
 			}
 		}

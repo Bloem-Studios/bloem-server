@@ -104,7 +104,7 @@ SELECT $1,$2,'active',$3`, f.orgA, accountID, map[bool]string{true: "admin", fal
 		f.profileInvalidations = append(f.profileInvalidations, profileIDs...)
 		return nil
 	}
-	f.handler.OnUserSessionsRevoked = func(context.Context, int) error {
+	f.handler.BloemOnUserSessionsRevoked = func(context.Context, int) error {
 		f.wholeUserCalls++
 		return nil
 	}

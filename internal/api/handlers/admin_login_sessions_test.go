@@ -27,7 +27,7 @@ func TestRevokeAdminLoginSessionsEndsCompatSessionsOnlyEverywhere(t *testing.T) 
 	h, _ := newScopedKeyAdminHandler(models.RoleUser)
 	h.loginSessions = fakeAdminLoginSessionStore{}
 	var notified []int
-	h.OnUserSessionsRevoked = func(_ context.Context, userID int) error { notified = append(notified, userID); return nil }
+	h.OnUserSessionsRevoked = func(_ context.Context, userID int) { notified = append(notified, userID) }
 	ctx := apimw.SetClaims(context.Background(), jwtAdminClaims())
 
 	one := "00000000-0000-0000-0000-000000000001"

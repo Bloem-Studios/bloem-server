@@ -7,7 +7,6 @@ import (
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/models"
-	"github.com/Silo-Server/silo-server/internal/sessioninvalidation"
 )
 
 // adminLoginSessionStore is the part of auth.SessionRepository the admin
@@ -56,11 +55,7 @@ func (h *AdminHandler) RevokeAdminLoginSessions(ctx context.Context, userID int,
 	// Signing out everywhere also ends the account's Jellyfin-compatible
 	// sessions on every node, as a password reset or disable does.
 	if sessionID == nil && h.OnUserSessionsRevoked != nil {
-		if err := sessioninvalidation.Run(ctx, func(callbackCtx context.Context) error {
-			return h.OnUserSessionsRevoked(callbackCtx, userID)
-		}); err != nil {
-			return 0, apiError(http.StatusInternalServerError, "internal_error", "Authentication sessions were revoked but compatibility-session invalidation failed")
-		}
+		h.OnUserSessionsRevoked(ctx, userID)
 	}
 	return n, nil
 }

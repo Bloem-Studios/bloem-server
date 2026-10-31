@@ -51,8 +51,6 @@ internal/ai/llm/transcribe.go  # verbose_json with top-level words and no segmen
 internal/api/handlers/access_groups_test.go
 internal/api/handlers/admin.go
 internal/api/handlers/admin_access_group_delete_test.go  # Run upstream group-delete callback tests through organization-aware interface
-internal/api/handlers/admin_login_sessions.go  # sign-out-everywhere reports a failed compatibility-session invalidation through Bloem's error-returning hook
-internal/api/handlers/admin_login_sessions_test.go  # the revocation hook returns an error in Bloem
 internal/api/handlers/admin_sections_service.go
 internal/api/handlers/admin_session_revocation_test.go  # exercise upstream session policy against organization-aware group fixture
 internal/api/handlers/admin_users_service.go

@@ -281,7 +281,7 @@ type Dependencies struct {
 	CollectionService      *catalog.LibraryCollectionService // collection service (may be nil)
 	ChapterThumbnailQueuer catalog.ChapterThumbnailQueuer
 	PlaybackRealtimeHub    *playback.RealtimeHub
-	OnUserSessionsRevoked  func(ctx context.Context, userID int) error
+	OnUserSessionsRevoked  func(ctx context.Context, userID int)
 	// OnDownloadService receives the configured download service when the
 	// router builds one, so the Jellyfin-compatible listener serves its
 	// downloads under the same policy and bandwidth limiters. Optional.
@@ -676,7 +676,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			settingsRepo,
 			deps.UserStoreProvider,
 		)
-		authService.OnSessionsRevoked(bloemSessionRevocationNotification(deps.OnUserSessionsRevoked))
+		authService.OnSessionsRevoked(deps.OnUserSessionsRevoked)
 		wireBloemAuthService(authService, profileCredentialService, deps)
 		for _, registration := range deps.AuthProviders {
 			authService.RegisterProvider(registration.Info, registration.Provider)
@@ -712,7 +712,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 				deps.EmailBrand,
 				"",
 			)
-			passwordResetService.OnSessionsRevoked(bloemSessionRevocationNotification(deps.OnUserSessionsRevoked))
+			passwordResetService.OnSessionsRevoked(deps.OnUserSessionsRevoked)
 		}
 		profileTokenService = access.NewProfileTokenService(deps.Config.Auth.JWTSecret, 0)
 		deviceLoginService = auth.NewDeviceLoginService(

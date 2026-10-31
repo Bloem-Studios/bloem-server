@@ -117,7 +117,7 @@ SET status = EXCLUDED.status, legacy_role = EXCLUDED.legacy_role`, organizationI
 
 	handler := NewAdminHandler(users, pool, pgstore.NewPostgresProvider(pool))
 	var wholeAccount []int
-	handler.OnUserSessionsRevoked = func(_ context.Context, accountID int) error {
+	handler.BloemOnUserSessionsRevoked = func(_ context.Context, accountID int) error {
 		wholeAccount = append(wholeAccount, accountID)
 		return nil
 	}

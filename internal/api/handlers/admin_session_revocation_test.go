@@ -55,7 +55,7 @@ func TestHandleUpdateUserSignsOutOnlyForCredentialAndEnabledChanges(t *testing.T
 			repo.user.MaxPlaybackQuality = &quality
 			h.AccessGroups = revocationTestGroups{}
 			var notified []int
-			h.OnUserSessionsRevoked = func(_ context.Context, userID int) error { notified = append(notified, userID); return nil }
+			h.OnUserSessionsRevoked = func(_ context.Context, userID int) { notified = append(notified, userID) }
 
 			rec := bloemRevocationUpdateRequest(t, h, jwtAdminClaims(), tt.body)
 			if rec.Code != http.StatusOK {
@@ -100,7 +100,7 @@ func TestUpdateAdminAccountSignsOutOnlyForCredentialAndEnabledChanges(t *testing
 			current := "1080p"
 			repo.user.MaxPlaybackQuality = &current
 			var notified []int
-			h.OnUserSessionsRevoked = func(_ context.Context, userID int) error { notified = append(notified, userID); return nil }
+			h.OnUserSessionsRevoked = func(_ context.Context, userID int) { notified = append(notified, userID) }
 
 			if _, err := h.UpdateAdminAccount(apimw.SetClaims(context.Background(), jwtAdminClaims()), repo.user.ID, -1, 0, tt.input); err != nil {
 				t.Fatalf("UpdateAdminAccount() error = %v", err)

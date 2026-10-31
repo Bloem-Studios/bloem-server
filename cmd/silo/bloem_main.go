@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +21,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/branding"
+	"github.com/Silo-Server/silo-server/internal/cache"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/config"
 	"github.com/Silo-Server/silo-server/internal/imagecache"
@@ -457,4 +459,23 @@ func bloemImageSources(deps api.Dependencies) []metadata.PluginImageResolverSour
 	}
 	source := metadata.NewStorageCoverSource(deps.NativeStorage)
 	return []metadata.PluginImageResolverSourceRegistration{metadata.StorageCoverRegistration(source)}
+}
+
+// bloemUserSessionsRevoker is Bloem's account session-revoked hook: the same
+// work as Silo's OnUserSessionsRevoked (drop the account's compatibility
+// sessions here, then tell the other replicas), but a failed publish is
+// returned, so Bloem's callers that must fail closed can.
+func bloemUserSessionsRevoker(
+	dropCompatSessions func(userID int),
+	bus interface {
+		Publish(ctx context.Context, channel string, event cache.Event) error
+	},
+) func(ctx context.Context, userID int) error {
+	return func(ctx context.Context, userID int) error {
+		dropCompatSessions(userID)
+		if err := bus.Publish(ctx, cache.ChannelAdmin, cache.Event{Type: cache.EventUserSessionsRevoked, Payload: strconv.Itoa(userID)}); err != nil {
+			return fmt.Errorf("publish session revocation: %w", err)
+		}
+		return nil
+	}
 }

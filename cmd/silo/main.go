@@ -3245,9 +3245,7 @@ func main() {
 			providerAccounts,
 			func(ctx context.Context, userID int) {
 				if deps.OnUserSessionsRevoked != nil {
-					if err := deps.OnUserSessionsRevoked(ctx, userID); err != nil {
-						slog.ErrorContext(ctx, "publish provider sign-in revocation", "user_id", userID, "error", err)
-					}
+					deps.OnUserSessionsRevoked(ctx, userID)
 				}
 			}).WithSecretCipher(dataCipher)
 		authProviderRegistry = auth.NewPluginProviderRegistry(auth.PluginProviderRegistryConfig{
@@ -3791,14 +3789,14 @@ func main() {
 	}); err != nil {
 		slog.Warn("subscribe session revocation failed", "error", err)
 	}
-	deps.OnUserSessionsRevoked = func(ctx context.Context, userID int) error {
+	deps.OnUserSessionsRevoked = func(ctx context.Context, userID int) {
 		dropCompatSessions(userID)
 		if err := eventBus.Publish(ctx, cache.ChannelAdmin, cache.Event{Type: cache.EventUserSessionsRevoked, Payload: strconv.Itoa(userID)}); err != nil {
-			return fmt.Errorf("publish session revocation: %w", err)
+			slog.WarnContext(ctx, "publish session revocation failed", "user_id", userID, "error", err)
 		}
-		return nil
 	}
-	deps.OnUserProfileSessionsRevoked = bloemProfileSessionRevoker(deps.DB, deps.OnUserSessionsRevoked)
+	deps.BloemOnUserSessionsRevoked = bloemUserSessionsRevoker(dropCompatSessions, eventBus)
+	deps.OnUserProfileSessionsRevoked = bloemProfileSessionRevoker(deps.DB, deps.BloemOnUserSessionsRevoked)
 	// Jellyfin-compatible downloads go through the router's download service,
 	// so they meet the same policy and share its bandwidth limiters. It stays
 	// a nil interface when the router builds no service, which refuses them.
