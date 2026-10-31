@@ -4554,6 +4554,22 @@ export interface LibraryLayoutResponse {
 
 export interface HomeSectionItemsResponse {
   section: ResolvedSection;
+  /**
+   * The row was read with an item_limit and the server reported it holds
+   * more cards than `section.items` (has_more; see homeRowLimit).
+   */
+  partial?: boolean;
+  /**
+   * The row was completed after showing this many of its first cards (see
+   * homeRowLimit's completeHomeRow).
+   */
+  shown?: number;
+  /**
+   * When the row was completed, in epoch milliseconds. Home restores its
+   * cached rows' duplicate-filter order by it, since a cache edit rewrites
+   * every row's updated time.
+   */
+  shownAt?: number;
 }
 
 export interface CollectionSectionConfig {
