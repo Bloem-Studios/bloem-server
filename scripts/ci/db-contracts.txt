@@ -295,6 +295,7 @@
 ./internal/requests TestIntegrationKeyStaysWithItsAddressDatabase
 ./internal/requests TestClosingRequestForgetsFollowsDatabase
 ./internal/requests TestDiscoverLayoutDatabase
+./internal/requests TestRoutingFactsMergeDatabase
 ./internal/requests/discoverrows TestDiscoverListSnapshotLeaseDatabase
 
 # Request cleanup, prepared downloads and user-store transactions.
@@ -635,6 +636,7 @@
 # The access-token lifetime moves from the old 1h seed to 8h and keeps a value
 # an administrator chose.
 ./migrations TestAccessTokenExpiryMigrationPostgres
+./migrations TestClientDiagnosticReportsRokuPlatformPostgres
 
 # A stored collection's Jellyfin BoxSet page skips members the viewer can't see
 # without shortening the page or shifting later pages.
