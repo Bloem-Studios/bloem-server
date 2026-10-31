@@ -3,6 +3,24 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 31, 2026 — Silo's session-revoked hook keeps Silo's type
+
+Bloem had changed Silo's `OnUserSessionsRevoked` to return an error, so Silo's
+lines that register and call it could not stand as Silo wrote them.
+`18087a03b` gives the hook Silo's type again. Silo's lines are now verbatim in
+`router.go`, `admin.go`, `admin_login_sessions.go` and `main.go`.
+
+- **Bloem's callers.** The ones that must fail closed when invalidation fails
+  use a Bloem hook, `BloemOnUserSessionsRevoked`: removing a tenant member,
+  admin resource writes and revoking a profile's sessions.
+- **Silo's paths.** Silo's admin user update and delete, sign-out everywhere,
+  password changes and password resets behave as in Silo. They drop the
+  account's compatibility sessions on this server and tell the other replicas,
+  logging a failed notice. The Bloem test that required this to survive a
+  cancelled request is removed.
+- **Seams.** `admin_login_sessions.go` and its test match Silo again, and the
+  seam ledger goes from 305 to 303.
+
 ## October 31, 2026 — Silo integration through fbe0e89ca; a reseller example
 
 `8c99f9c60` merges four Silo fixes after `288f58200`, through `fbe0e89ca`:

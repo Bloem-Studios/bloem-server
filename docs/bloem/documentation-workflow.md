@@ -69,7 +69,7 @@ Keep Silo-owned Markdown unchanged: a Markdown file that also exists in Silo's
 under `overlays/`, usually at the upstream document's path relative to `docs/` (or
 the repository root), that names the upstream section and the
 Bloem replacement or addition. Silo-owned files Bloem does edit are **seams**, each
-declared in `contracts/seams.txt` (305 entries at `81c26179c`) and checked by
+declared in `contracts/seams.txt` (303 entries at `18087a03b`) and checked by
 `make verify-seams`; the ledger must not grow for a documentation refresh. Historical deployment records retain
 their original facts; a current landing page must not present an old record as
 live health.

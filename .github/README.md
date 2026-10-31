@@ -49,7 +49,7 @@ Checked on October 31, 2026, against `main` at `81c26179c`.
 | --- | --- |
 | Bloem `main` | `8c99f9c60`: the merge of Silo through `fbe0e89ca`, on top of `4c3f4f56b` (Silo through `288f58200`) and `8065e5746` (Silo through `07c05cad6`), then documentation. Since October 28 it also adds library preview free play (`38e587805`), AI subtitles for word-only and Chinese or Japanese speech-to-text (`09dab0097`), per-library figures (`6314dcd0a`), guided S3 setup with all-bucket sources (`8f4ba105c`), the upgrade prompt (`c0d629550`) and new arrivals (`b99aa105c`); see the [changelog](../docs/bloem/CHANGELOG.md) |
 | Silo integrated | all of Silo `main` through `fbe0e89ca` (October 31, 2026, 18:27 UTC), merged in `8c99f9c60`; `main` was zero commits behind Silo when checked |
-| Seam ledger | 305 Silo-owned files that Bloem differs in, declared in [`contracts/seams.txt`](../contracts/seams.txt) |
+| Seam ledger | 303 Silo-owned files that Bloem differs in, declared in [`contracts/seams.txt`](../contracts/seams.txt) |
 | Production | `29c23fc2c` since 18:18 UTC on October 31, from an image built locally with the Bloem Image steps before Bloem CI finished. See the [October 31 receipt](../docs/operations/2026-10-31-silo-sync-288f58200-deployment.md) |
 
 The two October 31 Silo merges brought:
@@ -181,7 +181,7 @@ A **seam** is a Silo-owned file, one that also exists in Silo's `main`, that
 Bloem changes. Each one is listed, usually with its reason, in
 [`contracts/seams.txt`](../contracts/seams.txt). `make verify-seams` fails if
 Bloem differs from Silo in any file the ledger does not list, and CI runs it. A
-new entry is a reviewed decision; the count may only go down. It stands at 305.
+new entry is a reviewed decision; the count may only go down. It stands at 303.
 Many seams are a single hook line or a generated artifact that has to differ
 because Bloem registers more routes. Older pages quote larger counts, such as
 407 on October 7 or 852 while Bloem had removed Jellyfin compatibility; those
