@@ -7,14 +7,19 @@ section-by-section overlay. It began as Silo's own operator guide,
 and moved its edition here in `47ea7c889` (2026-09-23), so the Silo file could
 return to upstream verbatim. Silo then deleted its guide in `42b39765b` (#1635,
 2026-09-28) when it moved operator guides out of the server repository, so there
-is no current Silo page to read alongside this one. The Silo-owned sources it
-describes are [`docker-compose.yml`](../../../../../docker-compose.yml) (a Bloem
-seam only for the default image name), Silo's
-[`.env.example`](../../../../../.env.example), and Silo's code; Bloem's own
-template is [`.env.bloem.example`](../../../../../.env.bloem.example).
+is no current Silo page to read alongside this one. Bloem runs on Silo's
+multi-container Compose file,
+[`docker-compose.advanced.yml`](../../../../../docker-compose.advanced.yml), with
+Silo's [`.env.example`](../../../../../.env.example) and Silo's code; Bloem's own
+template is [`.env.bloem.example`](../../../../../.env.bloem.example). Silo's
+default [`docker-compose.yml`](../../../../../docker-compose.yml) does not start
+Bloem; see [Container image selection](#container-image-selection).
 
 Reviewed on 2026-10-27 against Bloem `main` at `e852f92bf`, which contains Silo
-through `3e2d306b2`. Index: [Bloem documentation](../../../README.md).
+through `3e2d306b2`. The Compose file, image selection and hardware acceleration
+sections were reviewed again on 2026-10-31 against `81c26179c` (Silo through
+`288f58200`), and Bloem's image was started with `docker-compose.advanced.yml`.
+Index: [Bloem documentation](../../../README.md).
 
 ---
 title: Deploy Bloem with Docker
@@ -85,9 +90,10 @@ Set the host path to your media:
 MEDIA_ROOT=/path/to/your/media
 ```
 
-Check `SILO_IMAGE` as well: the default `latest` follows `main`, and the
-package may need GitHub access to pull; see
-[Container image selection](#container-image-selection).
+The example already sets `COMPOSE_FILE=docker-compose.advanced.yml`. Keep it:
+Silo's default `docker-compose.yml` starts Silo, not Bloem. Check `SILO_IMAGE`
+as well: the default `latest` follows `main`, and the package may need GitHub
+access to pull; see [Container image selection](#container-image-selection).
 
 Then start the stack:
 
@@ -109,9 +115,21 @@ Design notes: [Secret encryption at rest](../../../../architecture/secret-encryp
 ## Container image selection
 
 `SILO_IMAGE` is the Compose variable that selects the application image; Bloem
-keeps Silo's name for it so upstream Compose files still work. Both
-`docker-compose.yml` and `.env.bloem.example` default it to
-`ghcr.io/bloem-studios/bloem-server:latest`.
+keeps Silo's name for it so upstream Compose files still work.
+`.env.bloem.example` sets it to `ghcr.io/bloem-studios/bloem-server:latest`, and
+sets `COMPOSE_FILE=docker-compose.advanced.yml`, the Compose file that reads it.
+
+> [!WARNING]
+> **Use `docker-compose.advanced.yml` for Bloem.** Since Bloem's October 29 merge
+> (`d562d7628`), `docker-compose.yml` is Silo's file again. It ignores
+> `SILO_IMAGE`, reads `SILO_OMNIBUS_IMAGE`, and starts
+> `ghcr.io/silo-server/silo-server:latest`: Silo's all-in-one image with
+> PostgreSQL and Redis inside, which runs as `PUID` (911 unless set) rather than
+> root (Silo #3319). Bloem publishes no all-in-one image.
+> `docker-compose.advanced.yml` (named `docker-compose.split.yml` before Silo
+> #3319) runs the application, PostgreSQL and Redis in separate containers and
+> takes `SILO_IMAGE`; it defaults to Silo's image too, so keep `SILO_IMAGE` set.
+> Bloem's image ignores the `PUID` and `PGID` the file passes and runs as root.
 
 - Since `04a69c0fe` (2026-10-11) Bloem images are published only by the
   [Bloem Image workflow](../../../../../.github/workflows/bloem-image.yml). It runs
@@ -241,45 +259,48 @@ published on `127.0.0.1` only.
 
 ## Hardware acceleration
 
-The default stack is CPU-only so it starts on hosts without a GPU.
+The default stack is CPU-only so it starts on hosts without a GPU. Silo removed
+its `docker-compose.vaapi.yml` and `docker-compose.nvidia.yml` overlays (Silo
+#3279, merged in `8065e5746`); its Compose files now carry the same settings as
+commented lines in the `silo` service. Uncommenting them edits a Silo file that
+the next `git pull` updates, so put them in a small override file of your own
+instead, for example `compose.gpu.yml`, and add it to `COMPOSE_FILE`:
+
+```dotenv
+COMPOSE_FILE=docker-compose.advanced.yml:compose.gpu.yml
+```
+
+Windows uses `;` instead of `:` between entries in `COMPOSE_FILE`. Validate the
+result with `docker compose config --quiet` before starting it.
 
 ### Intel or AMD VA-API and Intel Quick Sync
 
-On a Linux host with `/dev/dri`, add the VA-API overlay:
+On a Linux host with `/dev/dri`:
 
-```sh
-docker compose \
-  -f docker-compose.yml \
-  -f docker-compose.vaapi.yml \
-  up -d
-```
-
-To make the overlay the default for this installation:
-
-```dotenv
-COMPOSE_FILE=docker-compose.yml:docker-compose.vaapi.yml
+```yaml
+services:
+  silo:
+    devices:
+      - /dev/dri:/dev/dri
 ```
 
 ### NVIDIA NVENC
 
-Install the NVIDIA driver and NVIDIA Container Toolkit first, then use the
-NVIDIA overlay:
+Install the NVIDIA driver and NVIDIA Container Toolkit first. The `video`
+capability mounts the NVENC/NVDEC libraries; without it FFmpeg sees the GPU but
+encodes in software.
 
-```sh
-docker compose \
-  -f docker-compose.yml \
-  -f docker-compose.nvidia.yml \
-  up -d
+```yaml
+services:
+  silo:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${NVIDIA_GPU_COUNT:-1}
+              capabilities: [gpu, compute, utility, video]
 ```
-
-To make it the default for this installation:
-
-```dotenv
-COMPOSE_FILE=docker-compose.yml:docker-compose.nvidia.yml
-NVIDIA_GPU_COUNT=1
-```
-
-Windows uses `;` instead of `:` between entries in `COMPOSE_FILE`.
 
 ## Node metrics
 
@@ -414,7 +435,7 @@ Meilisearch index keeps serving keyword results while its replacement is built.
 ## External PostgreSQL and Redis
 
 > [!IMPORTANT]
-> The default `docker-compose.yml` defines bundled PostgreSQL and Redis services,
+> `docker-compose.advanced.yml` defines bundled PostgreSQL and Redis services,
 > hard-codes the Bloem service's internal connection URLs, and declares health
 > dependencies on both services. Setting `DATABASE_URL` or `REDIS_URL` only in
 > `.env` does not replace that wiring.
@@ -434,7 +455,7 @@ does all of the following:
 Validate the merged configuration before starting it:
 
 ```sh
-docker compose -f docker-compose.yml -f your-override.yml config --quiet
+docker compose -f docker-compose.advanced.yml -f your-override.yml config --quiet
 ```
 
 Running PostgreSQL on a dedicated VM or managed service simplifies upgrades,
@@ -485,7 +506,7 @@ This section began as the tuning section of Silo's former Docker guide. On
 order and external-database sizing below are what the code does, not what the
 old text said.
 
-The bundled [`docker-compose.yml`](../../../../../docker-compose.yml) turns the
+The bundled [`docker-compose.advanced.yml`](../../../../../docker-compose.advanced.yml) turns the
 tuner on. Its `silo` service sets `POSTGRES_TUNE: ${POSTGRES_TUNE:-auto}`, so it
 runs unless `.env` says `POSTGRES_TUNE=off`. A process started without the
 variable, for example from a Compose file of your own, does not tune.
@@ -815,9 +836,8 @@ playback have all been checked.
 
 ## Source References
 
-- [`docker-compose.yml`](../../../../../docker-compose.yml)
-- [`docker-compose.vaapi.yml`](../../../../../docker-compose.vaapi.yml)
-- [`docker-compose.nvidia.yml`](../../../../../docker-compose.nvidia.yml)
+- [`docker-compose.advanced.yml`](../../../../../docker-compose.advanced.yml), which Bloem uses
+- [`docker-compose.yml`](../../../../../docker-compose.yml), Silo's all-in-one stack, which does not start Bloem
 - [`.env.bloem.example`](../../../../../.env.bloem.example)
 - [Release versioning](../../../../release-versioning.md)
 - [October 7 native storage deployment and validation](../../../../operations/2026-10-07-native-storage-deployment.md)

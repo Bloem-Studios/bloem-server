@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="860" viewBox="0 0 1200 860" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What happens when someone presses play</title>
+<desc id="d">Five checks run in order: who is watching, whether the organization is active, whether the profile may see the title, whether a screen is free, and whether there is room to convert the video. Each refusal is shown beside its check.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="859" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What happens when someone presses play</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem runs these checks in a fraction of a second. Any “no” stops the video.</text>
+<rect x="40" y="124" width="640" height="96" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<circle cx="68" cy="154" r="13" fill="#10B981"/>
+<text x="68" y="159" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="92" y="160" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Who is watching?</text>
+<text x="92" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The app has signed in to an account and picked a profile.</text>
+<text x="92" y="205" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem looks up the account's one organization.</text>
+<line x1="360.0" y1="222" x2="360.0" y2="251" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="242" font-size="13" font-weight="700" fill="#047857" text-anchor="start"></text>
+<rect x="40" y="254" width="640" height="96" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="68" cy="284" r="13" fill="#6366F1"/>
+<text x="68" y="289" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="92" y="290" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Is the organization active?</text>
+<text x="92" y="316" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A suspended organization's members are refused.</text>
+<line x1="684" y1="302.0" x2="776" y2="302.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="294.0" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="262" width="380" height="80" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="294" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Refused: the organization</text>
+<text x="800" y="314" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">is suspended.</text>
+<line x1="360.0" y1="352" x2="360.0" y2="381" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="372" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="384" width="640" height="96" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<circle cx="68" cy="414" r="13" fill="#0EA5E9"/>
+<text x="68" y="419" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="92" y="420" font-size="18" font-weight="700" fill="#101827" text-anchor="start">May this profile see this title?</text>
+<text x="92" y="446" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The organization, plan and profile limits</text>
+<text x="92" y="465" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">from “What can this person watch?”</text>
+<line x1="684" y1="432.0" x2="776" y2="432.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="424.0" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="392" width="380" height="80" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="424" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">The title is not shown</text>
+<text x="800" y="444" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">at all.</text>
+<line x1="360.0" y1="482" x2="360.0" y2="511" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="502" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="514" width="640" height="96" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<circle cx="68" cy="544" r="13" fill="#10B981"/>
+<text x="68" y="549" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="92" y="550" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Is a screen free?</text>
+<text x="92" y="576" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The plan sets how many videos the account</text>
+<text x="92" y="595" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">can play at the same time.</text>
+<line x1="684" y1="562.0" x2="776" y2="562.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="554.0" font-size="14" font-weight="700" fill="#B45309" text-anchor="start">No</text>
+<rect x="780" y="522" width="380" height="80" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="800" y="554" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Refused. If switched on, the</text>
+<text x="800" y="574" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">viewer also gets an upgrade</text>
+<text x="800" y="594" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">offer in their inbox.</text>
+<line x1="360.0" y1="612" x2="360.0" y2="641" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="632" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="644" width="640" height="96" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="68" cy="674" r="13" fill="#6366F1"/>
+<text x="68" y="679" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="92" y="680" font-size="18" font-weight="700" fill="#101827" text-anchor="start">If the video needs converting, is there room?</text>
+<text x="92" y="706" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The account's own limit, and for a storefront group,</text>
+<text x="92" y="725" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the group's shared pool of conversions.</text>
+<line x1="684" y1="692.0" x2="776" y2="692.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="684.0" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="652" width="380" height="80" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="684" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Refused until a conversion</text>
+<text x="800" y="704" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">frees up.</text>
+<line x1="360.0" y1="742" x2="360.0" y2="771" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="762" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="210.0" y="774" width="300" height="66" rx="33" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="360.0" y="816" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle">The video plays</text>
+<text x="780" y="796" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">While it plays, Bloem checks library</text>
+<text x="780" y="816" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">access again each time it sends video.</text>
+</svg>

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="790" viewBox="0 0 1200 790" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How an organization starts, runs and ends</title>
+<desc id="d">Five steps from a storefront sale to people watching, an alternative where a platform administrator creates the organization by hand, and the organization's four states.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="789" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How an organization starts, runs and ends</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Direct customers are accounts in the default organization. A reseller gets an organization of its own.</text>
+<rect x="40" y="124" width="204" height="196" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="66" cy="152" r="13" fill="#6366F1"/>
+<text x="66" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="56" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">A reseller buys</text>
+<text x="56" y="215" font-size="16" font-weight="700" fill="#101827" text-anchor="start">a block of seats</text>
+<text x="56" y="242" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">On the storefront</text>
+<text x="56" y="260" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">(Bloem Garden): a club,</text>
+<text x="56" y="278" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">business or reseller</text>
+<text x="56" y="296" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">with its own members.</text>
+<line x1="247" y1="222.0" x2="267" y2="222.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="270" y="124" width="204" height="196" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="296" cy="152" r="13" fill="#6366F1"/>
+<text x="296" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="286" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The storefront asks</text>
+<text x="286" y="215" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Bloem to create it</text>
+<text x="286" y="242" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">With its number of</text>
+<text x="286" y="260" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">seats and shared video</text>
+<text x="286" y="278" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">conversions.</text>
+<rect x="344" y="138" width="116" height="25.5" rx="12.75" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.2"/>
+<text x="402.0" y="155.25" font-size="12.5" font-weight="600" fill="#374151" text-anchor="middle">Getting ready</text>
+<line x1="477" y1="222.0" x2="497" y2="222.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="500" y="124" width="204" height="196" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="526" cy="152" r="13" fill="#6366F1"/>
+<text x="526" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="516" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Bloem gives it</text>
+<text x="516" y="215" font-size="16" font-weight="700" fill="#101827" text-anchor="start">starting libraries</text>
+<text x="516" y="242" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The platform's starting</text>
+<text x="516" y="260" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">set of libraries and</text>
+<text x="516" y="278" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">plugins is granted.</text>
+<line x1="707" y1="222.0" x2="727" y2="222.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="730" y="124" width="204" height="196" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="756" cy="152" r="13" fill="#6366F1"/>
+<text x="756" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="746" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The first admin</text>
+<text x="746" y="215" font-size="16" font-weight="700" fill="#101827" text-anchor="start">account is added</text>
+<text x="746" y="242" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The organization's</text>
+<text x="746" y="260" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">own administrator.</text>
+<rect x="854" y="138" width="66" height="25.5" rx="12.75" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="887.0" y="155.25" font-size="12.5" font-weight="600" fill="#047857" text-anchor="middle">Active</text>
+<line x1="937" y1="222.0" x2="957" y2="222.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="960" y="124" width="204" height="196" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="986" cy="152" r="13" fill="#6366F1"/>
+<text x="986" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="976" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">People are added</text>
+<text x="976" y="215" font-size="16" font-weight="700" fill="#101827" text-anchor="start">and watch</text>
+<text x="976" y="242" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The organization's admin</text>
+<text x="976" y="260" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">adds them. Each takes a</text>
+<text x="976" y="278" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">seat and gets the</text>
+<text x="976" y="296" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">plan's limits.</text>
+<rect x="40" y="352" width="434" height="70" rx="12" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.5" stroke-dasharray="6 5"/>
+<text x="60" y="381" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Or a platform administrator creates an organization by</text>
+<text x="60" y="401" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">hand in the admin console, with its owner. It starts active.</text>
+<path d="M 474 387 L 602 387 L 602 324" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<text x="40" y="474" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Its states</text>
+<rect x="40" y="548" width="180" height="56" rx="28" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="2"/>
+<text x="130.0" y="584" font-size="18" font-weight="700" fill="#374151" text-anchor="middle">Getting ready</text>
+<text x="44" y="636" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Sold, but no admin yet.</text>
+<rect x="300" y="548" width="180" height="56" rx="28" fill="#ECFDF5" stroke="#10B981" stroke-width="2"/>
+<text x="390.0" y="584" font-size="18" font-weight="700" fill="#047857" text-anchor="middle">Active</text>
+<text x="304" y="636" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Members sign in and watch.</text>
+<rect x="700" y="548" width="180" height="56" rx="28" fill="#FFFBEB" stroke="#F59E0B" stroke-width="2"/>
+<text x="790.0" y="584" font-size="18" font-weight="700" fill="#B45309" text-anchor="middle">Suspended</text>
+<text x="704" y="636" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Members are refused until</text>
+<text x="704" y="656" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">it is active again.</text>
+<rect x="980" y="548" width="180" height="56" rx="28" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="2"/>
+<text x="1070.0" y="584" font-size="18" font-weight="700" fill="#374151" text-anchor="middle">Retired</text>
+<text x="984" y="636" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Members removed. Accounts</text>
+<text x="984" y="656" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">with no other home are</text>
+<text x="984" y="676" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">deleted. The record stays.</text>
+<line x1="223" y1="576.0" x2="296" y2="576.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="260" y="564.0" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="middle">first admin</text>
+<path d="M 482 562 C 540 512, 640 512, 696 562" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="590" y="498" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="middle">Too many people for its seats, or stopped</text>
+<text x="590" y="514" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="middle">by an admin or the storefront (e.g. unpaid)</text>
+<path d="M 698 592 C 640 638, 540 638, 486 592" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="592" y="650" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="middle">Back under its seats by itself,</text>
+<text x="592" y="666" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="middle">or lifted by hand</text>
+<line x1="883" y1="576.0" x2="976" y2="576.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="930" y="534" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="middle">storefront ends it</text>
+<text x="930" y="550" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="middle">(from any state)</text>
+<text x="40" y="756" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An organization is never deleted outright. A retired one stays on record as the owner of anything it had.</text>
+</svg>

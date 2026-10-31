@@ -88,20 +88,29 @@ Cinema Dark the only theme (`39a554717`, #1534).
 
 ### What changed most recently
 
-Bloem merged Silo through `cc8514943` on 2026-10-29. For operators and viewers:
+Bloem merged Silo through `07c05cad6` and then `288f58200` on 2026-10-31. For operators and
+viewers:
 
-- **Playback history** records the device, client, stream decisions and why a play ended, and
-  admins are told when a session starts, pauses, resumes and ends (Silo #3184, #3191, #3194).
-- **API keys** can carry the `admin:monitor:read` and `admin:sessions:control` scopes, for an
-  outside monitoring tool and for pausing, stopping or messaging live sessions (Silo #3182).
-- **Multi-episode files** list and play every episode they hold, and seasons have backdrops
-  (Silo #3112, #3224).
-- **Plugin pages** stay signed in while their login session lasts (Silo #3021).
-- **Docker Compose** in the repository now runs Silo's all-in-one image; Bloem publishes no such
-  image, so install Bloem from `ghcr.io/bloem-studios/bloem-server` as before.
+- **Password changes** can sign out the account's other devices (Silo #2925).
+- **Sign-ins last longer:** the access-token default is now 8 hours instead of 1 (Silo #3250).
+- **API usage:** each sign-in session has an hourly request quota, and the dashboard has an API
+  clients card (Silo #3075). Egress on the dashboard is split by proxy node (Silo #3256).
+- **Home rows** load 20 cards at a time (Silo #3276).
+- **Audiobook runtimes** are worked out from the audio files themselves (Silo's migration
+  `20261028150609_audiobook_runtime_from_files`).
+- **Docker:** `docker-compose.yml` is Silo's all-in-one stack and does not start Bloem. Bloem runs
+  on `docker-compose.advanced.yml`, which `.env.bloem.example` now selects. Silo removed the
+  separate GPU overlay files; see [1.6](#16-hardware-transcoding-optional-recommended).
 
-The merge before it (Silo through `564b906b8`, `5fc698915`) let admins lay out the Requests
-Discover tab; see the [changelog](../bloem/CHANGELOG.md).
+Bloem's own changes since October 29:
+
+- library preview free play;
+- per-library figures and a new-arrivals list for storefronts;
+- an upgrade prompt when a plan's stream limit is reached;
+- guided S3 setup with all-bucket sources;
+- AI subtitles for Chinese and Japanese without stray spaces.
+
+See the [changelog](../bloem/CHANGELOG.md) for each one.
 
 ---
 
@@ -188,6 +197,10 @@ MEDIA_ROOT=/path/to/your/media
 Use an absolute path (one that starts with `/`). This folder is mounted read-only *into* the
 container at `/mnt/media`, so Bloem sees your files without copying them.
 
+**Keep the Compose file.** `.env.bloem.example` sets `COMPOSE_FILE=docker-compose.advanced.yml`.
+Leave it: the repository's default `docker-compose.yml` is Silo's all-in-one stack and would start
+Silo, not Bloem.
+
 **Choose the image.** `.env.bloem.example` sets `SILO_IMAGE=ghcr.io/bloem-studios/bloem-server:latest`.
 Bloem's CI publishes each tested `main` commit under its full commit SHA and, since October 27, 2026,
 moves `latest` to the newest one, so `latest` changes whenever `main` does. To know which revision you
@@ -248,11 +261,14 @@ away — is in [Deploy Bloem with Docker → Storage and state](../bloem/overlay
 Without a GPU, transcoding uses the CPU. A modern CPU can manage one or two simultaneous streams
 that need converting; beyond that, playback stutters. A GPU handles many at once.
 
-- **Intel or AMD (VA-API / Quick Sync):** start with `docker compose -f docker-compose.yml -f
-  docker-compose.vaapi.yml up -d` instead of the plain command. The host needs the GPU driver
-  installed and `/dev/dri` present.
-- **NVIDIA (NVENC):** install the NVIDIA driver and the NVIDIA Container Toolkit on the host, then
-  use `docker-compose.nvidia.yml` the same way.
+Give the container the GPU with a small override file of your own, for example `compose.gpu.yml`,
+and add it to `.env`: `COMPOSE_FILE=docker-compose.advanced.yml:compose.gpu.yml`. The
+[Docker guide](../bloem/overlays/wiki/deployment/docker.md#hardware-acceleration) has the file for
+each kind of GPU.
+
+- **Intel or AMD (VA-API / Quick Sync):** the host needs the GPU driver installed and `/dev/dri`
+  present.
+- **NVIDIA (NVENC):** install the NVIDIA driver and the NVIDIA Container Toolkit on the host.
 
 Then open **Playback → Settings** in the admin sidebar and set **Hardware acceleration** to *Auto*
 (the other choices are Intel Quick Sync, VA-API, NVIDIA NVENC, VideoToolbox and Software).
@@ -401,7 +417,9 @@ scopes them to an organisation.
 ### 2.6 Entitlement templates, organisations and policy
 
 This is the part that scales past a household, and it is Bloem's. If you run Bloem for a single
-family you can skip it; the defaults are sensible.
+family you can skip it; the defaults are sensible. For the picture of how the platform,
+organizations, accounts and profiles fit together, read
+[How organizations work](../architecture/bloem-organizations.md).
 
 An **entitlement template** is a reusable, versioned access policy: which libraries, whether
 playback and transcoding are allowed, how many simultaneous streams, how many profiles, whether
@@ -553,7 +571,7 @@ is destructive to those entries. See [Xtream setup and limits](../architecture/x
 > **Docker and LAN discovery.** The default Compose stack runs Bloem on a bridge network, which
 > usually cannot send discovery broadcasts to your LAN, so *Discover on LAN* finds nothing. Either
 > use *Probe URL only* with a reachable, permitted tuner address, or on Linux start with the Live TV
-> override — `docker compose -f docker-compose.yml -f docker-compose.livetv.yml up -d` — which puts
+> override — `COMPOSE_FILE=docker-compose.advanced.yml:docker-compose.livetv.yml` in `.env` — which puts
 > Bloem on the host network, where it listens on port 8080 instead of 8090. It combines with the
 > GPU overrides. On Docker Desktop (Mac/Windows) host networking does not reach your real LAN; use
 > *Probe URL only*.
@@ -808,4 +826,4 @@ When you ask for help, give the image tag you run, the steps that fail, and a fi
 - `web/src/lib/adminNavigation.ts`, `web/src/lib/bloemAdminNavigation.ts` and
   `web/src/lib/adminSettingsSearch.ts` — the admin sidebar and settings pages named above
 - `web/src/pages/setup-wizard/`, `web/src/pages/Admin*.tsx`, `web/src/pages/admin-*/`, `web/src/bloem/`
-- `docker-compose.yml`, `docker-compose.livetv.yml`, `.env.bloem.example`
+- `docker-compose.advanced.yml`, `docker-compose.livetv.yml`, `.env.bloem.example`

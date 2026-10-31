@@ -260,8 +260,9 @@ day.
   just pushed, but only if that commit is still `main`'s head; a late run for
   an older commit leaves `latest` for the newer commit's own run, so `latest`
   never moves backwards. If the newest commit's CI fails, `latest` stays on
-  the last image published while its commit was the head. `docker-compose.yml`
-  defaults `SILO_IMAGE` to `latest`; deployments that must be attributable pin
+  the last image published while its commit was the head. `.env.bloem.example`
+  sets `SILO_IMAGE` to `latest` for `docker-compose.advanced.yml`; deployments
+  that must be attributable pin
   a full-SHA tag
   ([deployment guide](overlays/wiki/deployment/docker.md#container-image-selection)).
 - It does not deploy. Deployment is a separate, manual step, recorded in

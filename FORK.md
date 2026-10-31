@@ -165,12 +165,14 @@ dead-code removals.
 
 ## Current integration boundary
 
-At `5fc698915` (October 28, 2026), Bloem `main` contains all of Silo `main`
-through `564b906b8` (2026-10-28 02:44 UTC), merged in `5fc698915`, and the
-ledger declares **305 seams**. Production runs `9cc80cd33`: the
-[October 27 receipt](docs/operations/2026-10-27-main-deployment.md) records that
-deployment and the ones before it, starting with `422a51fed`, the first
-production image built and published by CI. A source
+At `81c26179c` (October 31, 2026), Bloem `main` contains all of Silo `main`
+through `288f58200` (2026-10-31 17:35 UTC), merged in `4c3f4f56b`, and the
+ledger declares **305 seams**. Four later Silo fixes, through `fbe0e89ca`, were
+not yet merged when this was checked. Production runs `29c23fc2c`: the
+[October 31 receipt](docs/operations/2026-10-31-silo-sync-288f58200-deployment.md)
+records that deployment, and the
+[documentation index](docs/bloem/README.md#deployment-receipts) lists the ones
+before it. A source
 integration is not a deployment, and a deployment is not native-client or
 playback acceptance. Profile-aware playback/download APIs, migration adaptation,
 web branding and bundle allowances stay in owned files. The
@@ -195,7 +197,9 @@ The October 5 merge-reduction pass had reduced the ledger to 390 paths, and a
 later extraction to 387, before native onboarding and the October 7 integration
 added reviewed seams. The October 13–18 removal of Jellyfin and Audiobookshelf
 needed 852 entries; restoring Silo's servers took it to 388, the October 23 merge
-to 347, and the October 25–26 simplifications from 350 to 306. The September
+to 347, and the October 25–26 simplifications from 350 to 306. The October 29
+merge took it to 304, the AI subtitle fixes to 306 (two upstream PR candidates),
+and the October 31 merge to 305. The September
 deployment records are historical evidence too, and no deployment record
 changes the normal merge policy or certifies future builds.
 

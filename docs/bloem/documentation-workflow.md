@@ -12,18 +12,21 @@ and the [documentation index](README.md)).
 
 ## What Silo does
 
-The reviewed Silo server baseline is `3e2d306b2` (October 27, 2026), the Silo
+The reviewed Silo server baseline is `288f58200` (October 31, 2026), the Silo
 revision Bloem `main` integrates. Silo's [`docs/README.md`](../README.md) was last
 changed in `42b39765b` (Silo #1635, September 28, 2026), which moved the operator
-guides out of the server repository; it is unchanged at `3e2d306b2`. It sends
+guides out of the server repository; it is unchanged at `288f58200`. It sends
 people running a server to Silo's user manual and keeps this folder for people
 changing the server. Architecture and invariants live under `docs/architecture/`;
 API references live in `docs/*-api.md`. Go registrations generate OpenAPI and the
 server embeds Swagger UI at `/api/v2/docs` ([api-docs.md](../api-docs.md)). New
-plans are temporary working files. Between the previous baseline `6de6d5e5e` and
-`3e2d306b2`, Silo's only new document is
-[`docs/architecture/non-utf8-paths.md`](../architecture/non-utf8-paths.md), an
-architecture page within that model.
+plans are temporary working files. Between the previous baseline `3e2d306b2` and
+`288f58200`, Silo added five architecture pages within that model:
+[`omnibus-image.md`](../architecture/omnibus-image.md),
+[`playback-lifecycle.md`](../architecture/playback-lifecycle.md),
+[`request-discover-rows.md`](../architecture/request-discover-rows.md),
+[`tcp-congestion.md`](../architecture/tcp-congestion.md) and
+[`tmdb-client.md`](../architecture/tmdb-client.md).
 
 Silo's public manual is a separate repository,
 [`Silo-Server/siloserver.org`](https://github.com/Silo-Server/siloserver.org),
@@ -56,6 +59,7 @@ instructions into a Bloem site. Keep license/provenance notices on reused source
 | Upstream developer/API behavior | Existing Silo reference plus the relevant [Bloem overlay](README.md#overlays-on-upstream-documents) |
 | Native API wire behavior | [Native reference](../bloem-api-reference.md), owned `internal/apiv2/bloem_*document*.go` declarations |
 | Security, tenancy, storage and playback invariants | Bloem-owned files under `docs/architecture/`, listed in the [index](README.md) |
+| Plain-language explanations with pictures | A Bloem page such as [How organizations work](../architecture/bloem-organizations.md), with SVG pictures under `docs/architecture/images/<topic>/` |
 | Generated contract coverage | [API catalogue](api-catalogue.md) |
 | Exact deployment evidence | Dated `docs/operations/` records with revision, checks and limits |
 | Temporary implementation plan | Ignored `docs/superpowers/`; distill durable facts before committing |
@@ -65,10 +69,17 @@ Keep Silo-owned Markdown unchanged: a Markdown file that also exists in Silo's
 under `overlays/`, usually at the upstream document's path relative to `docs/` (or
 the repository root), that names the upstream section and the
 Bloem replacement or addition. Silo-owned files Bloem does edit are **seams**, each
-declared in `contracts/seams.txt` (306 entries at `e852f92bf`) and checked by
+declared in `contracts/seams.txt` (305 entries at `81c26179c`) and checked by
 `make verify-seams`; the ledger must not grow for a documentation refresh. Historical deployment records retain
 their original facts; a current landing page must not present an old record as
 live health.
+
+Pictures are SVG files with a `<title>` and `<desc>`, so they render on GitHub
+and in editors and can be read by screen readers. Draw them from a script, not by
+hand, so a later change can redraw them: the organization pictures come from
+`scripts/bloem/draw-organization-pictures.py` (run it with the output directory,
+`docs/architecture/images/organizations`). Check a redrawn picture by rendering
+it, for example with a headless browser screenshot.
 
 Operator/viewer pages use portable Markdown and frontmatter with `title`,
 `description`, `summary`, `tags`, `audience`, `last_reviewed` and `related`.
@@ -148,7 +159,8 @@ not a substitute for checking documentation accuracy.
 ## October integration checklist
 
 Facts a page about current behavior must not get wrong. Each was re-checked
-against the code at `e852f92bf` (Silo through `3e2d306b2`).
+against the code at `e852f92bf` (Silo through `3e2d306b2`); the last three were
+added on 2026-10-31 at `81c26179c` (Silo through `288f58200`).
 
 - Account policy lives on `users`, as in Silo (`c60b7008e`, migration
   `20261026003000_bloem_account_policy_on_users`). An organization membership
@@ -201,6 +213,19 @@ against the code at `e852f92bf` (Silo through `3e2d306b2`).
   recorded public preview as disabled; no later receipt records enabling it.
   Native preview controls and later showcase presentation remain separate
   follow-up work.
+- `docker-compose.yml` is Silo's all-in-one stack. It ignores `SILO_IMAGE` and
+  starts Silo's image (Silo #3319). Bloem installs use
+  `docker-compose.advanced.yml`, which `.env.bloem.example` selects through
+  `COMPOSE_FILE`. Silo's VA-API and NVIDIA overlay files are gone (Silo #3279):
+  document GPU settings as an operator's own override file.
+- The access-token default is 8 hours (Silo #3250, migration
+  `20261029170809_access_token_expiry_8h`), not 1 hour.
+- Describe organizations with the tiers on
+  [How organizations work](../architecture/bloem-organizations.md): one
+  membership per account, the organization as the hard library ceiling, plans
+  and account settings within it, profiles narrowing further. On 2026-10-31
+  production ran only the default organization; reseller organizations exist in
+  the code but none was in use.
 
 When finishing, state the source revision, changed docs/artifacts, verification
 scope and remaining gaps. A source refresh alone neither deploys a server nor

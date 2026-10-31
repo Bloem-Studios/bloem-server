@@ -78,7 +78,10 @@ a device that is already signed in.
 
 ### Passwords
 
-Change your password under **Settings → Account**. If your administrator supplies
+Change your password under **Settings → Account**. Tick **Sign out of other devices** to end
+every other sign-in at the same time, for example after losing a phone: other browsers and apps
+must sign in again with the new password. The device you are using stays signed in, and API keys
+keep working. If your administrator supplies
 a temporary password, replace it when prompted
 before continuing into the library. For a forgotten local password, use
 **Forgot password?** on the sign-in page when the server offers it, or ask an administrator for a

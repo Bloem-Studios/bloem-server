@@ -11,6 +11,9 @@
 > checks the administrative context's login session against its account.
 > **Status:** current at `e852f92bf`.
 
+For a plain-language introduction with pictures, read
+[How organizations work](bloem-organizations.md) first.
+
 Bloem has one administration shell with two explicit authority contexts. A
 Platform context manages organizations and platform-wide operations. An
 Organization context manages only the selected tenant's people, profiles,

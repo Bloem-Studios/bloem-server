@@ -97,6 +97,7 @@ same path. Read the upstream document together with its overlay.
 
 ### Organizations, accounts and policy
 
+- [How organizations work](../architecture/bloem-organizations.md) — start here: the platform, organizations, accounts and profiles in plain language, with four pictures.
 - [Multitenant administration](../architecture/multitenant-administration.md) — the Platform and Organization administrative contexts and what each manages.
 - [Resource tenancy foundation](../architecture/resource-tenancy-foundation.md) — resource owners and the first resource-isolation boundary.
 - [OPA tenant authorization operations](../architecture/opa-tenant-authorization.md) — how tenant facts, OPA and SQL scope catalog and playback reads.

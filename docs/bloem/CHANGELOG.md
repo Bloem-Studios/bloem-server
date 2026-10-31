@@ -3,6 +3,184 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 31, 2026 — How organizations work; Docker instructions start Bloem again
+
+A documentation refresh.
+
+- **How organizations work.** A new page explains, in plain language, how the
+  platform, organizations, accounts and profiles fit together. It has four
+  pictures:
+  - the tiers;
+  - what a person can watch;
+  - how an organization starts, runs and ends;
+  - what happens when someone presses play.
+
+  See [How organizations work](../architecture/bloem-organizations.md).
+- **Docker.** Since the October 29 merge, `docker-compose.yml` has been Silo's
+  file. It starts Silo's all-in-one image and ignores `SILO_IMAGE`, so the
+  quick start installed Silo, not Bloem.
+  - `.env.bloem.example` now sets `COMPOSE_FILE=docker-compose.advanced.yml`,
+    Silo's multi-container file, which takes `SILO_IMAGE`. Bloem's image was
+    started with it, and it was ready in about 15 seconds.
+  - Silo deleted its GPU overlay files (#3279), so hardware transcoding now goes
+    in an override file of the operator's own.
+  - The front page, the admin guide and the
+    [Docker guide](overlays/wiki/deployment/docker.md) are corrected.
+- **Status pages.** The front page, `FORK.md`, the documentation workflow and
+  this changelog now describe `main` and production as of October 31.
+
+## October 31, 2026 — Silo integration through 288f58200
+
+`4c3f4f56b` merges the four Silo commits after `07c05cad6`, through
+`288f58200` (2026-10-31 17:35 UTC). Silo wins every conflict, and the seam
+ledger stays at 305. There are no migrations. Production has run `29c23fc2c`
+since 18:18 UTC
+([receipt](../operations/2026-10-31-silo-sync-288f58200-deployment.md)).
+
+- **Passwords.** A password change can sign out the account's other devices
+  (#2925). The v2 password capability gains `sign_out_other_sessions`.
+- **Security.** Household writes are rejected once the acting profile's PIN is
+  revoked, checked under the write's transaction lock (#2704). Who may create an
+  API key is checked in the transaction that stores it (#3317).
+- **Docker.** Silo publishes one image, with PostgreSQL and Redis bundled, under
+  its plain tags; its earlier image is tagged `<full SHA>-base` (#3319). Bloem
+  builds from the root `Dockerfile`, which this does not change. `29c23fc2c`
+  says which Silo image to pin for
+  [Silo switching](../architecture/silo-backend-switching.md).
+
+Three files conflicted:
+
+- **`router.go`** registers Silo's session-revoked hook through Bloem's
+  existing adapter, because Bloem's hook returns an error.
+- **`household.go`** takes Silo's `householdManagerAs`. Bloem's direct-profile
+  check sits beside Silo's remote-playback check.
+- **`profiles.go`** checks Silo's `ErrProfileUnverified`, then Bloem's
+  profile-entitlement limit.
+
+Bloem-owned code follows Silo's new signatures:
+
+- Bloem's auth repository interface gains `ReplacePasswordSigningOutOthers`.
+- The server-admin profile writes pass no acting profile, because the admin
+  role authorizes them, not a household PIN.
+
+The client DTOs and contract digest are regenerated.
+
+## October 31, 2026 — Silo integration through 07c05cad6
+
+`8065e5746` merges 68 Silo commits after `cc8514943`, through `07c05cad6`
+(2026-10-31 15:55 UTC). Silo wins every conflict. The seam ledger goes from 306
+to 305, because the partition timezone test now matches Silo.
+
+- **API usage.** Each sign-in session has an hourly request quota, and the
+  dashboard has an API clients card (#3075). Admin egress is split by proxy
+  node (#3256).
+- **Speed.** Home rows read 20 cards at a time (#3276). Responses can be
+  compressed with zstd and brotli (#3268), and every websocket can use
+  permessage-deflate (#3275).
+- **Accounts.** The access-token default is 8 hours (#3250). Account last
+  activity has its own table (#3243).
+- **Audiobooks.** Runtimes are worked out from the audio files.
+- **Security.** Scoped API keys are judged on the path the router serves
+  (#3307). Administrators can no longer set the JWT signing keys (#3309).
+- **Docker.** Silo keeps two Compose files and drops its VA-API and NVIDIA
+  overlays (#3279).
+
+There are seven migrations, all from Silo:
+
+- `20261025174621_add_api_client_usage_hourly`
+- `20261028150609_audiobook_runtime_from_files`
+- `20261029133717_add_user_last_activity`
+- `20261029141825_backfill_user_last_activity`
+- `20261029170809_access_token_expiry_8h`
+- `20261029213945_dashboard_node_egress_samples`
+- `20261031032133_enable_pg_stat_statements`
+
+Production applied them online, beside the running server, in 126 seconds. The
+restart that followed took 52 seconds
+([receipt](../operations/2026-10-31-silo-sync-deployment.md)).
+
+Conflicts kept Silo's lines:
+
+- **`cmd/silo/main.go`** starts the Jellyfin and Audiobookshelf listeners
+  through Silo's `startCompatServer`. Bloem's LAN advertiser starts after them.
+- **`activitylog.CleanupOnce`** is Silo's split. Bloem's advisory lock still
+  guards the whole pass.
+- **Home.** The v2 home layout and section reads take Silo's `item_limit`
+  inside Bloem's promoted-sections wrapper.
+- **Silo's text throughout:** `watch_together.go`, `go.mod` and the partition
+  timezone test.
+
+Silo's new admin wire types join the client coverage allowlist.
+
+## October 30, 2026 — Upgrade prompt and new arrivals
+
+Both serve a storefront's sales tools, and both stay off until a storefront
+turns them on. Production has run `b99aa105c` since 19:49 UTC
+([receipt](../operations/2026-10-30-upgrade-prompt-new-arrivals-deployment.md)).
+
+- **`c0d629550`: the upgrade prompt.**
+  - When a stream is refused because the account's plan is already playing on
+    every screen it allows, the viewer can get an inbox alert with a button,
+    and a push where the profile allows it.
+  - A profile gets the alert at most once a day, and it expires after three
+    days.
+  - A platform administrator sets the wording and the link at
+    `/api/bloem/v1/admin/platform/upgrade-prompt`.
+  - Migration `20261030162617_bloem_upgrade_prompt` adds its one-row table.
+- **`b99aa105c`: new arrivals.** `GET
+  /api/bloem/v1/admin/platform/new-arrivals` lists films and series newly
+  seen in the last 1 to 31 days, for a storefront's weekly email.
+- `23e25924f` explains both sets of types in the client coverage allowlist.
+
+## October 30, 2026 — Guided S3 setup and all-bucket sources
+
+`38d233cf0`..`8f4ba105c` change the web admin only, together with S3 storage
+plugin 0.4.0. Production has run `8f4ba105c` since 15:17 UTC
+([receipt](../operations/2026-10-30-s3-all-buckets-deployment.md)).
+
+- **Guided setup.** Adding an S3 source starts with the provider: Backblaze B2,
+  Wasabi, Cloudflare R2, Amazon S3, DigitalOcean Spaces, Hetzner or Other.
+  The form works out the endpoint and region from that provider's own terms.
+- **All buckets.** A source can leave its bucket empty and cover every bucket
+  its keys can list, and the library folder picker shows them as folders
+  ([native storage](../architecture/bloem-native-storage.md#s3-all-buckets-sources)).
+- No Go code, API contract or migration changed.
+
+## October 29, 2026 — Library figures
+
+`6314dcd0a` adds `GET /api/bloem/v1/admin/platform/library-figures`. It reads
+every library's movies, series, episodes, audiobooks and ebooks in one
+snapshot, for a storefront's selling pages. `6d6fbf1b5` lists its response types
+in the client coverage allowlist. Production has run `6d6fbf1b5` since 15:15 UTC
+([receipt](../operations/2026-10-29-silo-sync-free-play-deployment.md#library-figures-6d6fbf1b5)).
+
+## October 29, 2026 — AI subtitles from word-only and Chinese or Japanese speech-to-text
+
+`f2f94837e` through `09dab0097` change how AI subtitles are built:
+
+- A `verbose_json` response with words but no segments, as NeMo-Speech.cpp
+  returns, is accepted.
+- Chinese and Japanese words are joined without spaces.
+- Cue width is counted in columns.
+- Lines wrap at 16 characters, and a full cue closes after a clause mark.
+
+`b2b64eff1` keeps the tests in Bloem-owned files. The two Silo files these fixes
+change join the seam ledger as upstream PR candidates, taking it from 304 to
+306. Production has run `09dab0097` since 12:16 UTC
+([receipt](../operations/2026-10-29-silo-sync-free-play-deployment.md#ai-subtitles-09dab0097)).
+
+## October 29, 2026 — Library preview free play
+
+`38e587805` lets a preview visitor who confirms an email address through the
+storefront watch video for a metered time. The server charges the allowance on
+segment deliveries and stops playback when it is spent. Free play is off until
+the storefront turns it on. Migration `20261028222252_bloem_preview_free_play`
+adds its settings and tables
+([browse-only content policy](../architecture/bloem-browse-only-content-policy.md)).
+`af8a3781b` pins Silo's two new API key scopes in the scenario scope catalog.
+Production has run it since 07:48 UTC on October 29
+([receipt](../operations/2026-10-29-silo-sync-free-play-deployment.md)).
+
 ## October 29, 2026 — Silo integration through cc8514943
 
 This merge brings in 43 Silo commits after `564b906b8`, through `cc8514943`

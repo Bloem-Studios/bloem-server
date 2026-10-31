@@ -43,36 +43,40 @@ protected-upstream remote setup.
 
 ## Current state
 
-Checked on October 27, 2026, against `main` at `7d6174d00`.
+Checked on October 31, 2026, against `main` at `81c26179c`.
 
 | | |
 | --- | --- |
-| Bloem `main` | `5fc698915`: the merge of Silo through `564b906b8` on top of `aeeea2357` (Silo through `73a6ae6a3`, merged in `7c431d470`, and `golang.org/x/net` v0.62.0). After `276becf4a` it adds the standalone proxy's organization fix (`a6d342390`), a `latest` tag that follows `main` (`6d0adcfe9`), a native OpenAPI checked against every handler (`67429b073`), the handler and status fixes from that review (`7a3b59027`, `bee8a7728`) and documentation; see the [changelog](../docs/bloem/CHANGELOG.md) |
-| Silo integrated | all of Silo `main` through `564b906b8` (October 28, 2026, 02:44 UTC), merged in `5fc698915`; `main` is zero commits behind Silo |
+| Bloem `main` | `4c3f4f56b`: the merge of Silo through `288f58200`, on top of `8065e5746` (Silo through `07c05cad6`), then documentation. Since October 28 it also adds library preview free play (`38e587805`), AI subtitles for word-only and Chinese or Japanese speech-to-text (`09dab0097`), per-library figures (`6314dcd0a`), guided S3 setup with all-bucket sources (`8f4ba105c`), the upgrade prompt (`c0d629550`) and new arrivals (`b99aa105c`); see the [changelog](../docs/bloem/CHANGELOG.md) |
+| Silo integrated | all of Silo `main` through `288f58200` (October 31, 2026, 17:35 UTC), merged in `4c3f4f56b`. Four later Silo fixes, through `fbe0e89ca`, were not yet merged when this was checked |
 | Seam ledger | 305 Silo-owned files that Bloem differs in, declared in [`contracts/seams.txt`](../contracts/seams.txt) |
-| Production | `9cc80cd33` since 07:28 UTC on October 28, from an image built locally with the Bloem Image steps before Bloem CI finished. See the [October 27 receipt](../docs/operations/2026-10-27-main-deployment.md#follow-up-9cc80cd33) |
+| Production | `29c23fc2c` since 18:18 UTC on October 31, from an image built locally with the Bloem Image steps before Bloem CI finished. See the [October 31 receipt](../docs/operations/2026-10-31-silo-sync-288f58200-deployment.md) |
 
-The latest Silo merges brought mostly security hardening. Tokens are bound to
-their session's account, including on Bloem's preview, plugin, tenant-admin and
-native-video paths. v1 progress and stop, and Bloem's durable stop, refuse
-another profile's session. Signed stream and download tokens stay out of logs,
-and account-level downloads check profile access. The plugin cache refuses a
-directory another local user controls, and many inputs are bounded. The same
-merges added AI providers that are connected once and chosen per job, the
-embedding provider chosen from AI Services, playback that starts on an audio
-track the client plays without conversion, and file names that are not valid
-UTF-8. Bloem's own changes on October 26 moved account policy back onto Silo's
-`users` columns and removed music, lifecycle receipts and the presentation worker
-processes (see [What Bloem removed](#what-bloem-removed-and-why)). The
-[integration changelog](../docs/bloem/CHANGELOG.md) records each step with its
-commit.
+The two October 31 Silo merges brought:
+
+- **Security fixes.** Scoped API keys are judged on the path the router serves,
+  and administrators can no longer set the JWT signing keys. Who may create an
+  API key is checked in the transaction that stores it, and household writes
+  are refused once the acting profile's PIN is revoked.
+- **Accounts.** A password change can sign out other devices, and access tokens
+  last 8 hours by default. Each sign-in session has an hourly request quota.
+- **Other changes.** Home rows load 20 cards at a time, responses and
+  websockets are compressed, and audiobook runtimes come from the audio files.
+- **Docker.** Silo's Compose setup is now one all-in-one image. Its
+  `docker-compose.yml` starts Silo, so Bloem's `.env.bloem.example` selects
+  `docker-compose.advanced.yml` (see [Quick start](#quick-start)).
+
+[How organizations work](../docs/architecture/bloem-organizations.md) explains,
+with pictures, how the platform, organizations, accounts and profiles fit
+together. The [integration changelog](../docs/bloem/CHANGELOG.md) records each
+step with its commit.
 
 What this does and does not establish:
 
 - **A source integration is not a deployment.** `main` containing Silo's
   commits says nothing about what a server runs; the dated receipts under
   [`docs/operations/`](../docs/bloem/README.md#deployment-receipts) do.
-- **A deployment is not client or playback acceptance.** The October 27 receipt
+- **A deployment is not client or playback acceptance.** The October 31 receipt
   records health, migrations, logs and active streams after the restart, not a
   test of every client or provider. Bloem's own native clients are unreleased;
   check the [client contract transition](../docs/architecture/bloem-contract-adjudications.md)
@@ -577,9 +581,11 @@ The shortest path to a running server, from the [admin guide](../docs/wiki/admin
 You need Docker with Compose 2.24+, Git and OpenSSL, and a folder of media.
 
 > [!WARNING]
-> **Choose the image first.** The Compose file defaults `SILO_IMAGE` to
-> `ghcr.io/bloem-studios/bloem-server:latest`, which follows `main` since
-> October 27, 2026. On that date the container package was not publicly
+> **Choose the image first.** `.env.bloem.example` selects Silo's
+> multi-container Compose file (`COMPOSE_FILE=docker-compose.advanced.yml`) and
+> sets `SILO_IMAGE` to `ghcr.io/bloem-studios/bloem-server:latest`, which follows
+> `main` since October 27, 2026. Keep both: Silo's default `docker-compose.yml`
+> starts Silo's own all-in-one image, not Bloem. On that date the container package was not publicly
 > pullable, so without access to it, build the image from this checkout. For a
 > server you need to roll back or attribute, pin a full-SHA tag rather than
 > `latest`. See
@@ -620,10 +626,12 @@ reading or go straight to the [admin guide](../docs/wiki/admin-guide.md).
 
 ## Deploy with Docker (recommended)
 
-The easiest way to run Bloem is with Docker Compose 2.24 or newer. The default stack assumes you do
-not already have PostgreSQL and Redis available, so it bundles PostgreSQL, Redis, FFmpeg, and the
-application for a one-command start. `SILO_IMAGE` selects the application image; it keeps Silo's
-name for upstream-configuration compatibility, and its default is
+The easiest way to run Bloem is with Docker Compose 2.24 or newer. Bloem uses Silo's
+multi-container Compose file, `docker-compose.advanced.yml`, which runs PostgreSQL, Redis and the
+application (with FFmpeg) in separate containers for a one-command start. `.env.bloem.example`
+selects that file through `COMPOSE_FILE`; Silo's default `docker-compose.yml` starts Silo's own
+all-in-one image instead. `SILO_IMAGE` selects the application image; it keeps Silo's name for
+upstream-configuration compatibility, and `.env.bloem.example` sets it to
 `ghcr.io/bloem-studios/bloem-server:latest` (see the warning under Quick start).
 
 1. **Create a `.env` file**
@@ -659,43 +667,14 @@ name for upstream-configuration compatibility, and its default is
 
    For existing PostgreSQL or Redis infrastructure, use a Compose override that replaces the service URLs and bundled dependencies. Setting those URLs only in `.env` does not override the default stack. See [external services](../docs/bloem/overlays/wiki/deployment/docker.md#external-postgresql-and-redis).
 
-   ### Optional Intel/AMD VA-API or Intel Quick Sync
+   ### Optional hardware transcoding (VA-API, Quick Sync or NVIDIA)
 
-   The default stack is CPU-only so it starts on hosts without `/dev/dri`. On a Linux host with
-   `/dev/dri`, enable the device overlay:
-
-   ```sh
-   docker compose -f docker-compose.yml -f docker-compose.vaapi.yml up -d
-   ```
-
-   To make that the default for this installation, set:
-
-   ```dotenv
-   COMPOSE_FILE=docker-compose.yml:docker-compose.vaapi.yml
-   ```
-
-   ### Optional NVIDIA/NVENC
-
-   GPU support is kept out of the default compose file so hosts without NVIDIA drivers work unchanged.
-
-   Install the NVIDIA Container Toolkit and use a Docker Compose version with GPU reservation support before enabling this override.
-
-   Use the optional override file when you want NVENC:
-
-   ```sh
-   docker compose -f docker-compose.yml -f docker-compose.nvidia.yml up -d
-   ```
-
-   If you want this controlled from `.env`, set `COMPOSE_FILE`:
-
-   ```dotenv
-   COMPOSE_FILE=docker-compose.yml:docker-compose.nvidia.yml
-   NVIDIA_GPU_COUNT=1
-   ```
-
-   Windows uses `;` instead of `:` between compose files.
-
-   Then `docker compose up -d` will include the NVIDIA override automatically.
+   The default stack is CPU-only so it starts on hosts without a GPU. Silo removed its separate
+   VA-API and NVIDIA Compose overlays; put the device settings in a small override file of your
+   own and add it to `COMPOSE_FILE`, for example
+   `COMPOSE_FILE=docker-compose.advanced.yml:compose.gpu.yml` (Windows separates the files with
+   `;`). The [Docker guide](../docs/bloem/overlays/wiki/deployment/docker.md#hardware-acceleration)
+   has the file for each kind of GPU.
 
 4. **Configure through the admin UI**
 
