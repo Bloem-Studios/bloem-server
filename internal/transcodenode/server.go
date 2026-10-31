@@ -2976,7 +2976,7 @@ func (s *Server) handleSegment(w http.ResponseWriter, r *http.Request) {
 					"session", sessionID,
 					"playback_session_id", sessionID,
 				)
-				segmentLease, err = session.WaitForOpenSegment(name, decision.WaitTimeout)
+				segmentLease, err = session.WaitForOpenSegmentContext(r.Context(), name, decision.WaitTimeout)
 				if errors.Is(err, playback.ErrSegmentNotFound) {
 					slog.InfoContext(r.Context(), "transcode segment wait timeout", "component", "transcodenode",
 						"segment", name,
@@ -3000,7 +3000,8 @@ func (s *Server) handleSegment(w http.ResponseWriter, r *http.Request) {
 					session,
 					segNum,
 				)
-				if restartErr != nil && !errors.Is(restartErr, playback.ErrManifestNotReady) {
+				// A restart skipped because the request ended is not a failure.
+				if restartErr != nil && !errors.Is(restartErr, playback.ErrManifestNotReady) && !errors.Is(restartErr, r.Context().Err()) {
 					slog.ErrorContext(r.Context(), "restart transcode node at missing segment", "component", "transcodenode", "error", restartErr, "segment", name, "session", sessionID, "playback_session_id", sessionID)
 				}
 
@@ -3023,7 +3024,7 @@ func (s *Server) handleSegment(w http.ResponseWriter, r *http.Request) {
 						"playback_session_id", sessionID,
 					)
 
-					segmentLease, err = session.WaitForOpenSegment(name, 30*time.Second)
+					segmentLease, err = session.WaitForOpenSegmentContext(r.Context(), name, 30*time.Second)
 				}
 				if !ok && restartErr == nil && session.IsCopyVideo() {
 					err = playback.ErrSegmentNotFound
@@ -3032,10 +3033,16 @@ func (s *Server) handleSegment(w http.ResponseWriter, r *http.Request) {
 		} else if session.IsRunning() {
 			// Non-numbered segment (e.g., init.mp4 for fMP4 HLS).
 			// Wait briefly — the init segment is written almost immediately.
-			segmentLease, err = session.WaitForOpenSegment(name, 10*time.Second)
+			segmentLease, err = session.WaitForOpenSegmentContext(r.Context(), name, 10*time.Second)
 		}
 	}
 	if err != nil {
+		if r.Context().Err() != nil {
+			// net/http also ends the context of a client that only
+			// half-closed and is still reading. Answer it as a timed-out
+			// wait would: writing nothing reaches it as an empty 200.
+			err = playback.ErrSegmentNotFound
+		}
 		if isToneMapRecipeError(err) {
 			writeToneMapRecipeError(w, err)
 			return
