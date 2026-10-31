@@ -676,6 +676,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			settingsRepo,
 			deps.UserStoreProvider,
 		)
+		authService.OnSessionsRevoked(bloemSessionRevocationNotification(deps.OnUserSessionsRevoked))
 		wireBloemAuthService(authService, profileCredentialService, deps)
 		for _, registration := range deps.AuthProviders {
 			authService.RegisterProvider(registration.Info, registration.Provider)

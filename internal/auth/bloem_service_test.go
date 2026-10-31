@@ -12,6 +12,10 @@ func (r *setupUserRepository) ReplaceTemporaryPassword(ctx context.Context, id i
 	return r.CompareAndSwapPassword(ctx, id, old, next)
 }
 
+func (r *setupUserRepository) ReplacePasswordSigningOutOthers(ctx context.Context, id int, old, next, _ string) error {
+	return r.CompareAndSwapPassword(ctx, id, old, next)
+}
+
 // Setup unit tests model only the owner update; unexpected SQL fails closed.
 type setupTransaction struct{ pgx.Tx }
 

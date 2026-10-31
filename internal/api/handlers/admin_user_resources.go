@@ -248,8 +248,10 @@ func (h *AdminHandler) HandleCreateUserProfile(w http.ResponseWriter, r *http.Re
 	if organizationID := adminResourceOrganization(r.Context()); organizationID != uuid.Nil {
 		profile.OrganizationID = organizationID.String()
 	}
+	// The server-admin role authorizes this write, not a household PIN, so
+	// there is no acting profile whose PIN revision could go stale.
 	if err := profileHandler.createProfileWithSettingsSync(
-		r.Context(), resources.store, resources.user.ID, profile, limit, settingsSync,
+		r.Context(), resources.store, resources.user.ID, profile, limit, settingsSync, nil,
 	); err != nil {
 		if errors.Is(err, errProfileLimitReached) || isProfileEntitlementLimitError(err) {
 			writeError(w, http.StatusUnprocessableEntity, "profile_limit_reached", "This account has reached its profile limit")

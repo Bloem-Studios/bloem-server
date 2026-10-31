@@ -53,6 +53,7 @@ type serviceUserRepository interface {
 	GetByID(ctx context.Context, id int) (*models.User, error)
 	CompareAndSwapPassword(ctx context.Context, id int, expectedHash, newPassword string) error
 	ReplaceTemporaryPassword(ctx context.Context, id int, expectedHash, newPassword, keepSessionID string) error
+	ReplacePasswordSigningOutOthers(ctx context.Context, id int, expectedHash, newPassword, keepSessionID string) error
 }
 
 type serviceSessionRepository interface {

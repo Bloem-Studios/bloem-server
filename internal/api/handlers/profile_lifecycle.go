@@ -19,8 +19,10 @@ func (h *ProfileHandler) updateProfileWithLifecycle(
 	input userstore.UpdateProfileInput,
 	settingsSync []profileSettingSync,
 ) error {
+	// Only server-admin resource writes use this helper. The admin role
+	// authorizes them, not a household PIN, so no acting profile is checked.
 	if err := h.applyProfileUpdateSettingsSync(
-		ctx, store, userID, current.ID, input, settingsSync,
+		ctx, store, userID, current.ID, input, settingsSync, nil,
 	); err != nil {
 		return err
 	}
