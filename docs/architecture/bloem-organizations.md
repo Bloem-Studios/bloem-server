@@ -32,7 +32,8 @@ someone presses play.
   (Bloem Garden) or an administrator manages each of these accounts one by one. Every
   server has exactly one default organization, and accounts from before organizations
   existed live there too. Each new platform library is granted to it automatically.
-- **A reseller organization** is sold through the storefront as a block of **seats**.
+- **A reseller organization** is sold through the storefront as a block of **seats**
+  (see the [reseller example](#example-a-reseller)).
   It suits a club, a business or a reseller that looks after its own members. Each
   person takes one seat. The organization also gets a number of **shared video
   conversions** for all of its members together. It can own libraries of its own.
@@ -85,6 +86,39 @@ When the storefront ends a reseller organization, Bloem **retires** it. Its memb
 are removed, and accounts with no other organization are deleted. Accounts that have
 another organization, or that are platform administrators, are kept. The organization
 itself is never deleted outright: it stays on record as the owner of anything it had.
+
+## Example: a reseller
+
+This example is made up. On 2026-10-31 production had no reseller organizations.
+
+Riverside Club, a football club, resells Bloem to its members. It buys **10 seats**
+and **2 shared video conversions** on the storefront. Early on, eight seats are taken.
+
+![Ten seats with eight members and two free, two shared conversions in use, and the club's libraries and plan](images/organizations/reseller-bought.svg)
+
+- **Seats.** Each member account takes one seat. When all ten are taken, an 11th
+  member is refused until a seat is free.
+- **Shared video conversions.** All members share them. A video that plays without
+  converting doesn't use one. When both are busy, a third member who needs a
+  converted video is refused until one frees up.
+- **What the members can watch.** Members get the platform's starting set of
+  libraries plus the club's own library, all on the club's plan. Riverside Club
+  never sees another organization's people or libraries, and no other organization
+  sees Riverside Club's.
+
+Over a year, the club, the storefront and Bloem each play their part:
+
+![A year in eight steps, each with the organization's state after it](images/organizations/reseller-year.svg)
+
+- **A missed payment** and **too many people for the seats** both suspend the
+  organization, and its members are refused while it is suspended.
+- **They lift differently.** A suspension for non-payment lifts only when the
+  storefront or a platform administrator lifts it. A suspension for too many people
+  lifts by itself once the club is back within its seats. If someone lifts a
+  payment suspension while the club still has too many people, it stays suspended
+  for that reason.
+- **Cancelling retires the organization.** Its members are removed, and accounts
+  with no other organization are deleted.
 
 ## What happens when someone presses play
 

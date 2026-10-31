@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Example: what Riverside Club bought</title>
+<desc id="d">A reseller organization with ten seats, eight taken by member accounts and two free; two shared video conversions, both in use, so a third member's converted video is refused; and its libraries and plan.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="719" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Example: what Riverside Club bought</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A football club resells Bloem to its members. It bought 10 seats and 2 shared video conversions.</text>
+<rect x="40" y="116" width="640" height="360" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="64" y="152" font-size="20" font-weight="700" fill="#101827" text-anchor="start">10 seats</text>
+<text x="64" y="176" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each member account takes one seat.</text>
+<rect x="64" y="200" width="104" height="96" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="116" cy="234" r="16" fill="#10B981"/>
+<text x="116" y="240" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">C</text>
+<text x="116" y="272" font-size="15" font-weight="600" fill="#101827" text-anchor="middle">Coach</text>
+<text x="116" y="289" font-size="11.5" font-weight="normal" fill="#047857" text-anchor="middle">admin</text>
+<rect x="184" y="200" width="104" height="96" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="236" cy="234" r="16" fill="#10B981"/>
+<text x="236" y="240" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">S</text>
+<text x="236" y="272" font-size="15" font-weight="600" fill="#101827" text-anchor="middle">Sam</text>
+<rect x="304" y="200" width="104" height="96" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="356" cy="234" r="16" fill="#10B981"/>
+<text x="356" y="240" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">L</text>
+<text x="356" y="272" font-size="15" font-weight="600" fill="#101827" text-anchor="middle">Lee</text>
+<rect x="424" y="200" width="104" height="96" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="476" cy="234" r="16" fill="#10B981"/>
+<text x="476" y="240" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">A</text>
+<text x="476" y="272" font-size="15" font-weight="600" fill="#101827" text-anchor="middle">Ana</text>
+<rect x="544" y="200" width="104" height="96" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="596" cy="234" r="16" fill="#10B981"/>
+<text x="596" y="240" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">B</text>
+<text x="596" y="272" font-size="15" font-weight="600" fill="#101827" text-anchor="middle">Bo</text>
+<rect x="64" y="312" width="104" height="96" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="116" cy="346" r="16" fill="#10B981"/>
+<text x="116" y="352" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">K</text>
+<text x="116" y="384" font-size="15" font-weight="600" fill="#101827" text-anchor="middle">Kim</text>
+<rect x="184" y="312" width="104" height="96" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="236" cy="346" r="16" fill="#10B981"/>
+<text x="236" y="352" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">M</text>
+<text x="236" y="384" font-size="15" font-weight="600" fill="#101827" text-anchor="middle">Max</text>
+<rect x="304" y="312" width="104" height="96" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="356" cy="346" r="16" fill="#10B981"/>
+<text x="356" y="352" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">N</text>
+<text x="356" y="384" font-size="15" font-weight="600" fill="#101827" text-anchor="middle">Noor</text>
+<rect x="424" y="312" width="104" height="96" rx="12" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.5" stroke-dasharray="6 5"/>
+<text x="476" y="366" font-size="15" font-weight="normal" fill="#6B7280" text-anchor="middle">free</text>
+<rect x="544" y="312" width="104" height="96" rx="12" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.5" stroke-dasharray="6 5"/>
+<text x="596" y="366" font-size="15" font-weight="normal" fill="#6B7280" text-anchor="middle">free</text>
+<rect x="64" y="428" width="592" height="34" rx="10" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+<text x="80" y="450" font-size="14" font-weight="600" fill="#B91C1C" text-anchor="start">An 11th member is refused until a seat is free.</text>
+<rect x="712" y="116" width="448" height="360" rx="16" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="736" y="152" font-size="20" font-weight="700" fill="#101827" text-anchor="start">2 shared video conversions</text>
+<text x="736" y="176" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Shared by every member. A video that plays</text>
+<text x="736" y="195" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">without converting does not use one.</text>
+<rect x="736" y="230" width="400" height="56" rx="12" fill="#FFFFFF" stroke="#14B8A6" stroke-width="1.5"/>
+<text x="756" y="254" font-size="15" font-weight="700" fill="#101827" text-anchor="start">In use: Sam</text>
+<text x="756" y="274" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">converting for an old TV</text>
+<rect x="736" y="300" width="400" height="56" rx="12" fill="#FFFFFF" stroke="#14B8A6" stroke-width="1.5"/>
+<text x="756" y="324" font-size="15" font-weight="700" fill="#101827" text-anchor="start">In use: Lee</text>
+<text x="756" y="344" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">converting on a slow phone connection</text>
+<rect x="736" y="382" width="400" height="74" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="756" y="408" font-size="15" font-weight="700" fill="#101827" text-anchor="start">Ana wants a converted video too</text>
+<text x="756" y="430" font-size="13.5" font-weight="normal" fill="#B91C1C" text-anchor="start">Refused until Sam or Lee stops.</text>
+<rect x="40" y="500" width="1120" height="180" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="64" y="536" font-size="20" font-weight="700" fill="#101827" text-anchor="start">What the members can watch</text>
+<text x="64" y="568" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">From the platform's starting set:</text>
+<rect x="300" y="550" width="71" height="27" rx="13.5" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="335.5" y="568.54" font-size="14" font-weight="600" fill="#101827" text-anchor="middle">Movies</text>
+<rect x="381" y="550" width="71" height="27" rx="13.5" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="416.5" y="568.54" font-size="14" font-weight="600" fill="#101827" text-anchor="middle">Series</text>
+<text x="64" y="610" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Its own library:</text>
+<rect x="300" y="592" width="119" height="27" rx="13.5" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="359.5" y="610.54" font-size="14" font-weight="600" fill="#4338CA" text-anchor="middle">Club matches</text>
+<text x="64" y="652" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Plan for every member:</text>
+<rect x="300" y="634" width="144" height="27" rx="13.5" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.2"/>
+<text x="372.0" y="652.54" font-size="14" font-weight="600" fill="#0F766E" text-anchor="middle">Reseller member</text>
+<text x="620" y="572" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Members never see another organization's people</text>
+<text x="620" y="593" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">or libraries, and other organizations never see</text>
+<text x="620" y="614" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Riverside Club's. The plan sets each member's</text>
+<text x="620" y="635" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">screens, quality and downloads.</text>
+</svg>

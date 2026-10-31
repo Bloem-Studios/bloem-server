@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Draw the four pictures on docs/architecture/bloem-organizations.md as SVG files.
+"""Draw the pictures on docs/architecture/bloem-organizations.md as SVG files.
 
 Usage: python3 scripts/bloem/draw-organization-pictures.py docs/architecture/images/organizations
 """
@@ -324,10 +324,116 @@ def press_play():
     return s
 
 
+def reseller_bought():
+    s = Svg(1200, 720, "Example: what Riverside Club bought",
+            "A reseller organization with ten seats, eight taken by member accounts and two free; two shared "
+            "video conversions, both in use, so a third member's converted video is refused; and its libraries "
+            "and plan.")
+    s.header("Example: what Riverside Club bought",
+             "A football club resells Bloem to its members. It bought 10 seats and 2 shared video conversions.")
+    o, a, f, st, p = TIERS["org"], TIERS["account"], TIERS["profile"], TIERS["stop"], TIERS["platform"]
+
+    # Seats.
+    s.rect(40, 116, 640, 360, o["fill"], o["stroke"], rx=16, sw=1.8)
+    s.text(64, 152, "10 seats", size=20, weight="700")
+    s.text(64, 176, "Each member account takes one seat.", size=14, fill=MUTED)
+    names = [("Coach", "admin"), ("Sam", ""), ("Lee", ""), ("Ana", ""), ("Bo", ""),
+             ("Kim", ""), ("Max", ""), ("Noor", ""), (None, ""), (None, "")]
+    for i, (name, note) in enumerate(names):
+        col, row = i % 5, i // 5
+        x, y = 64 + col * 120, 200 + row * 112
+        if name:
+            s.rect(x, y, 104, 96, a["fill"], a["stroke"], rx=12, sw=1.5)
+            s.add(f'<circle cx="{x + 52}" cy="{y + 34}" r="16" fill="{a["stroke"]}"/>')
+            s.text(x + 52, y + 40, name[0], size=16, weight="700", fill="#FFFFFF", anchor="middle")
+            s.text(x + 52, y + 72, name, size=15, weight="600", anchor="middle")
+            if note:
+                s.text(x + 52, y + 89, note, size=11.5, fill=a["label"], anchor="middle")
+        else:
+            s.rect(x, y, 104, 96, "#FFFFFF", LINE, rx=12, sw=1.5, dash="6 5")
+            s.text(x + 52, y + 54, "free", size=15, fill=SOFT, anchor="middle")
+    s.rect(64, 428, 592, 34, st["fill"], st["stroke"], rx=10, sw=1.2)
+    s.text(80, 450, "An 11th member is refused until a seat is free.", size=14, weight="600", fill=st["label"])
+
+    # Shared conversions.
+    s.rect(712, 116, 448, 360, TIERS["plan"]["fill"], TIERS["plan"]["stroke"], rx=16, sw=1.8)
+    s.text(736, 152, "2 shared video conversions", size=20, weight="700")
+    s.lines(736, 176, ["Shared by every member. A video that plays",
+                       "without converting does not use one."], size=14, gap=19)
+    for i, (who, why) in enumerate([("Sam", "for an old TV"), ("Lee", "on a slow phone connection")]):
+        y = 230 + i * 70
+        s.rect(736, y, 400, 56, "#FFFFFF", TIERS["plan"]["stroke"], rx=12, sw=1.5)
+        s.text(756, y + 24, f"In use: {who}", size=15, weight="700")
+        s.text(756, y + 44, f"converting {why}", size=13.5, fill=MUTED)
+    s.rect(736, 382, 400, 74, st["fill"], st["stroke"], rx=12, sw=1.5)
+    s.text(756, 408, "Ana wants a converted video too", size=15, weight="700")
+    s.lines(756, 430, ["Refused until Sam or Lee stops."], size=13.5, fill=st["label"])
+
+    # Libraries and plan.
+    s.rect(40, 500, 1120, 180, p["fill"], p["stroke"], rx=16, sw=1.8)
+    s.text(64, 536, "What the members can watch", size=20, weight="700")
+    x = 64
+    s.text(64, 568, "From the platform's starting set:", size=14, fill=MUTED)
+    x = 300
+    for name in ["Movies", "Series"]:
+        x += s.badge(x, 550, name, {"fill": "#FFFFFF", "stroke": "#FDBA74", "label": INK}, size=14) + 10
+    s.text(64, 610, "Its own library:", size=14, fill=MUTED)
+    s.badge(300, 592, "Club matches", {"fill": "#FFFFFF", "stroke": o["stroke"], "label": o["label"]}, size=14)
+    s.text(64, 652, "Plan for every member:", size=14, fill=MUTED)
+    s.badge(300, 634, "Reseller member", TIERS["plan"], size=14)
+    s.lines(620, 572, ["Members never see another organization's people",
+                       "or libraries, and other organizations never see",
+                       "Riverside Club's. The plan sets each member's",
+                       "screens, quality and downloads."], size=14, gap=21, fill=INK)
+    return s
+
+
+def reseller_story():
+    s = Svg(1200, 860, "Example: a year with Riverside Club",
+            "A timeline of eight events in a reseller organization's year, each with the organization's state "
+            "after it: bought, first admin, members added and one refused, a missed payment and its fix, a seat "
+            "cut below the number of members and its fix, and cancellation.")
+    s.header("Example: a year with Riverside Club",
+             "What the club, the storefront and Bloem each do, and the organization's state after each step.")
+    g, a, w, o = TIERS["grey"], TIERS["account"], TIERS["warn"], TIERS["org"]
+    events = [
+        ("January 5", "The club buys 10 seats and 2 conversions on the storefront.",
+         "The storefront asks Bloem to create the organization.", "Getting ready", g),
+        ("January 5", "The storefront adds the coach's account as its admin.",
+         "Bloem grants the starting libraries.", "Active", a),
+        ("February", "The coach adds 9 members, filling all 10 seats.",
+         "An 11th member is refused: no seat is free.", "Active", a),
+        ("March 1", "The club's payment fails. The storefront suspends it.",
+         "Members are refused until it is lifted.", "Suspended", w),
+        ("March 3", "The club pays. The storefront lifts the suspension.",
+         "Everyone can watch again.", "Active", a),
+        ("June", "The club changes to 6 seats while it has 10 members.",
+         "Too many people for its seats: suspended straight away.", "Suspended", w),
+        ("June", "The coach removes 4 members.",
+         "Back within its seats, it becomes active again by itself.", "Active", a),
+        ("December", "The club cancels. The storefront ends it.",
+         "Members removed; accounts with no other home deleted.", "Retired", g),
+    ]
+    x_line, y, step = 230, 132, 86
+    s.add(f'<line x1="{x_line}" y1="{y + 10}" x2="{x_line}" y2="{y + step * (len(events) - 1) + 30}" stroke="#E5E7EB" stroke-width="4"/>')
+    for date, what, then, state, color in events:
+        s.text(40, y + 30, date, size=16, weight="700")
+        s.add(f'<circle cx="{x_line}" cy="{y + 25}" r="10" fill="{color["stroke"]}" stroke="#FFFFFF" stroke-width="3"/>')
+        s.rect(258, y, 690, 70, "#FFFFFF", "#E5E7EB", rx=12)
+        s.rect(258, y, 6, 70, color["stroke"], rx=3)
+        s.text(280, y + 28, what, size=15.5, weight="600")
+        s.text(280, y + 52, then, size=14, fill=MUTED)
+        s.rect(970, y + 12, 190, 46, color["fill"], color["stroke"], rx=23, sw=2)
+        s.text(1065, y + 41, state, size=16, weight="700", fill=color["label"], anchor="middle")
+        y += step
+    return s
+
+
 def main():
     out = sys.argv[1]
     os.makedirs(out, exist_ok=True)
-    for name, fn in [("tiers", tiers), ("what-can-i-watch", funnel), ("lifecycle", lifecycle), ("press-play", press_play)]:
+    for name, fn in [("tiers", tiers), ("what-can-i-watch", funnel), ("lifecycle", lifecycle), ("press-play", press_play),
+                     ("reseller-bought", reseller_bought), ("reseller-year", reseller_story)]:
         with open(os.path.join(out, f"{name}.svg"), "w") as fh:
             fh.write(fn().render())
         print(name)

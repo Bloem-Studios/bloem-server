@@ -3,6 +3,28 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 31, 2026 — Silo integration through fbe0e89ca; a reseller example
+
+`8c99f9c60` merges four Silo fixes after `288f58200`, through `fbe0e89ca`:
+
+- upload spools stay private (#3308);
+- stream tokens are refused when the signing secret is empty (#3310);
+- a late admin session restore keeps a sign-out or new sign-in (#3314);
+- a Kindle conversion cache another account controls is refused (#3315).
+
+There are no migrations, and the seam ledger stays at 305.
+
+- **`useAuth.tsx`** conflicted, and it takes Silo's side of both hunks
+  verbatim.
+- **Test fake.** Bloem's shared ebook-converter test fake follows Silo's new
+  interface, which returns the open file.
+- **`household.go`.** `bfb7594d0` restores Silo's remote-playback line there,
+  which the `4c3f4f56b` merge had changed. Bloem's direct-profile check now runs
+  on its own line.
+
+[How organizations work](../architecture/bloem-organizations.md#example-a-reseller)
+gains a worked reseller example with two more pictures.
+
 ## October 31, 2026 — How organizations work; Docker instructions start Bloem again
 
 A documentation refresh.

@@ -166,9 +166,8 @@ dead-code removals.
 ## Current integration boundary
 
 At `81c26179c` (October 31, 2026), Bloem `main` contains all of Silo `main`
-through `288f58200` (2026-10-31 17:35 UTC), merged in `4c3f4f56b`, and the
-ledger declares **305 seams**. Four later Silo fixes, through `fbe0e89ca`, were
-not yet merged when this was checked. Production runs `29c23fc2c`: the
+through `fbe0e89ca` (2026-10-31 18:27 UTC), merged in `8c99f9c60`, and the
+ledger declares **305 seams**. Production runs `29c23fc2c`: the
 [October 31 receipt](docs/operations/2026-10-31-silo-sync-288f58200-deployment.md)
 records that deployment, and the
 [documentation index](docs/bloem/README.md#deployment-receipts) lists the ones

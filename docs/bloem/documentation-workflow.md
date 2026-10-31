@@ -12,10 +12,10 @@ and the [documentation index](README.md)).
 
 ## What Silo does
 
-The reviewed Silo server baseline is `288f58200` (October 31, 2026), the Silo
+The reviewed Silo server baseline is `fbe0e89ca` (October 31, 2026), the Silo
 revision Bloem `main` integrates. Silo's [`docs/README.md`](../README.md) was last
 changed in `42b39765b` (Silo #1635, September 28, 2026), which moved the operator
-guides out of the server repository; it is unchanged at `288f58200`. It sends
+guides out of the server repository; it is unchanged at `fbe0e89ca`. It sends
 people running a server to Silo's user manual and keeps this folder for people
 changing the server. Architecture and invariants live under `docs/architecture/`;
 API references live in `docs/*-api.md`. Go registrations generate OpenAPI and the
