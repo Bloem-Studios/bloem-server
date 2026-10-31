@@ -93,7 +93,10 @@ as in Silo. See [protocol compatibility](bloem-compatibility-removal.md).
   that a later Silo migration changed. For example,
   `20261019181724_hash_api_key_verifiers.sql` replaces the raw `api_keys.api_key`
   column with sha256 verifiers in `key_hash`, which a Silo image from before
-  that migration cannot read.
+  that migration cannot read. From Silo's `c3115d493` (#3319) on, a commit tag
+  names Silo's all-in-one image, which runs Silo as `PUID` (911 unless set)
+  rather than root. Its `<full SHA>-base` tag is the image Silo published
+  before, which runs as root.
 - **Rollback point.** Snapshot the database before the first switch.
 
 ## Checking a change

@@ -763,6 +763,14 @@ working on the same data; only one runs at a time.
    An older one may not read a schema a later Silo migration changed: a Silo image
    from before Silo's `ba2de9827` (#2715) cannot read API keys stored as verifiers.
    See the [Silo version pin](../../../../architecture/silo-backend-switching.md#operating-rules).
+   From Silo's `c3115d493` (build-1875) on, a Silo commit tag, `build-N` and
+   `latest` name the all-in-one image, which bundles PostgreSQL and Redis. It
+   runs Silo as `PUID`/`PGID` (911 when unset) instead of root, re-owns Silo's
+   bind-mounted directories to that account on first start, and will not start
+   with a container `user:`. To keep the runtime Silo had before, pin the same
+   commit's base image, tagged `<full SHA>-base`. Otherwise set `PUID`/`PGID` to
+   an account that can read the media. With Silo's `DATABASE_URL` and
+   `REDIS_URL` set, the bundled services stay off either way.
 3. Give Bloem Silo's `DATABASE_URL` and the same `SECRET_KEY` (encrypted settings
    are unreadable with any other key). Give Bloem its own Redis.
 4. Copy Silo's plugin directory to Bloem's data root, and mount the media at the
