@@ -3,6 +3,20 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## October 31, 2026 — Silo integration through 32a2f63e1
+
+`4edbee99d` merges three Silo commits after `fbe0e89ca`, through `32a2f63e1`:
+
+- the Roku client can upload diagnostics (#3298);
+- series requests are routed by whether the show is still airing (#3324);
+- an expired `/activate` code no longer asks the sign-in question (#3291).
+
+There were no conflicts. The client DTOs and contract digest are regenerated for
+the additive series-status fields. One Silo migration,
+`20261031021616_allow_roku_client_diagnostic_reports`, widens a check
+constraint. Production has run `4edbee99d` since 20:25 UTC
+([receipt](../operations/2026-10-31-silo-sync-32a2f63e1-deployment.md)).
+
 ## October 31, 2026 — Silo's session-revoked hook keeps Silo's type
 
 Bloem had changed Silo's `OnUserSessionsRevoked` to return an error, so Silo's

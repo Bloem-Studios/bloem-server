@@ -28,7 +28,8 @@ not to the current source. The current state is on the
 Dated records of what production ran, how it was deployed and what was checked.
 A receipt is not native-client or playback acceptance.
 
-- [October 31 Silo sync deployment through `288f58200`](../operations/2026-10-31-silo-sync-288f58200-deployment.md) — current: `29c23fc2c` (Silo through `288f58200`: password changes that can sign out other devices, PIN revocation checked on household writes, no migrations, 46 s restart, an image built locally before CI finished).
+- [October 31 Silo sync deployment through `32a2f63e1`](../operations/2026-10-31-silo-sync-32a2f63e1-deployment.md) — current: `4edbee99d` (Silo through `32a2f63e1`, Silo's lines verbatim in the session-revoked hook and household check, 303 seams, one migration, 48 s restart, an image built locally before CI finished).
+- [October 31 Silo sync deployment through `288f58200`](../operations/2026-10-31-silo-sync-288f58200-deployment.md) — historical: `29c23fc2c` (Silo through `288f58200`: password changes that can sign out other devices, PIN revocation checked on household writes, no migrations, 46 s restart, an image built locally before CI finished).
 - [October 31 Silo sync deployment](../operations/2026-10-31-silo-sync-deployment.md) — historical: `8065e5746` (Silo through `07c05cad6`, seven additive migrations applied online beside the live server in 126 s, 52 s restart, an image built locally before CI finished).
 - [October 30 upgrade prompt and new arrivals deployment](../operations/2026-10-30-upgrade-prompt-new-arrivals-deployment.md) — historical: `b99aa105c` (the stream-limit upgrade prompt and the new-arrivals list for storefronts, one migration, an image built locally before CI finished).
 - [October 30 S3 all-buckets deployment](../operations/2026-10-30-s3-all-buckets-deployment.md) — historical: `8f4ba105c` (guided S3 setup and all-bucket sources with S3 plugin 0.4.0, no migrations).
