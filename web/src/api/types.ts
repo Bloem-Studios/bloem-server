@@ -4559,6 +4559,22 @@ export interface LibraryLayoutResponse {
 
 export interface HomeSectionItemsResponse {
   section: ResolvedSection;
+  /**
+   * The row was read with an item_limit and the server reported it holds
+   * more cards than `section.items` (has_more; see homeRowLimit).
+   */
+  partial?: boolean;
+  /**
+   * The row was completed after showing this many of its first cards (see
+   * homeRowLimit's completeHomeRow).
+   */
+  shown?: number;
+  /**
+   * When the row was completed, in epoch milliseconds. Home restores its
+   * cached rows' duplicate-filter order by it, since a cache edit rewrites
+   * every row's updated time.
+   */
+  shownAt?: number;
 }
 
 export interface CollectionSectionConfig {
@@ -4875,6 +4891,8 @@ export interface RateLimitConfig {
   ip_requests_per_minute: number;
   ip_burst: number;
   auth_endpoints: Record<string, RateLimitAuthEndpointConfig>;
+  /** Hourly token bucket per sign-in session; absent from servers that predate it. */
+  session_quota?: RateLimitSessionQuota;
   /** Whether a limiter is running in this process (GET responses only). */
   active?: boolean;
   /** Backend the running limiter uses; may differ from `backend` until restart. */
@@ -4886,6 +4904,8 @@ export interface RateLimitConfig {
    */
   redis_available?: boolean;
 }
+
+export type RateLimitSessionQuota = V2Components["schemas"]["AdminRateLimitSessionQuota"];
 
 export interface RateLimitUpdateResponse {
   status: string;
@@ -5057,6 +5077,23 @@ export interface AdminTimeseriesPoint {
   // and 0 on samples written before the split — "not measured", not "no
   // downloads".
   download_egress_kbps?: number;
+  // `egress_kbps` split by `AdminTimeseries.egress_sources` key, read from the
+  // bucket's peak-egress minute. The parts add up to no more than
+  // `egress_kbps`; the remainder is egress no source accounts for. v2 only
+  // (the `egress_by_source` dashboard capability).
+  egress_by_source?: Record<string, number>;
+}
+
+// One key of `AdminTimeseriesPoint.egress_by_source`: every API process
+// together ("api") or one stream node ("node:<node_id>").
+export interface AdminTimeseriesEgressSource {
+  key: string;
+  kind: "api" | "node";
+  node_id?: string;
+  name: string;
+  // Served over the whole window, integrated from every sampled minute. Rank
+  // sources by this: the per-point split shows only each bucket's peak minute.
+  egress_bytes: number;
 }
 
 // `oldest_sample_at` is null until the sampler has written anything, which is
@@ -5075,6 +5112,8 @@ export interface AdminTimeseries {
   // because older servers do not send it.
   egress_bytes?: number;
   download_egress_bytes?: number;
+  // The API source first, then nodes by name. v2 only.
+  egress_sources?: AdminTimeseriesEgressSource[];
   points: AdminTimeseriesPoint[];
 }
 

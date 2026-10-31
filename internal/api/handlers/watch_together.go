@@ -11,15 +11,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/websocket"
-
 	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/watchtogether"
+	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/websocket"
+
+	"github.com/Silo-Server/silo-server/internal/wsconn"
 )
 
 type WatchTogetherScopeResolver interface {
@@ -893,7 +894,7 @@ func (h *WatchTogetherHandler) serveRoomConnection(parent context.Context, conn 
 	_ = realtimeConn.WritePing()
 
 	for {
-		_, data, err := conn.ReadMessage()
+		_, data, err := wsconn.ReadMessage(conn, wsMaxClientMessageBytes)
 		if err != nil {
 			return
 		}

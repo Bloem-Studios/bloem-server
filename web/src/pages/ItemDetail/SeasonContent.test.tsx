@@ -80,6 +80,10 @@ vi.mock("@/components/MediaItemMenu", () => ({
   },
 }));
 
+vi.mock("@/components/CardPlayOverlay", () => ({
+  default: () => null,
+}));
+
 vi.mock("@/components/CastCarousel", () => ({
   default: () => <div />,
 }));

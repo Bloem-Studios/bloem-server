@@ -134,7 +134,6 @@ internal/config/config.go
 internal/config/db_loader.go
 internal/config/yaml_import.go
 internal/contractledger/ledger_test.go  # upstreamable: the copied-field drift case must pick an api_v1 row on a fork with its own namespace
-internal/database/log_partition_timezone_test.go  # temporary: the test window is in hours so a daylight-saving change cannot push its last row past partman's UTC days; remove once Silo fixes the same
 internal/downloads/artifact_repo.go  # route quota-scoped artifact operations through the admission connection to prevent pool starvation
 internal/downloads/artifact_test.go
 internal/downloads/offline.go

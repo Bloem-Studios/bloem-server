@@ -75,10 +75,12 @@ func TestLogPartitionsMatchPartmanOnNonUTCServer(t *testing.T) {
 				}
 			}
 
-			// The window is in hours: in a zone with daylight saving, Postgres
-			// adds days at wall-clock time, so '8 days' across a fall-back is 8
-			// days and an hour, which runs past partman's last UTC day when the
-			// test starts after 23:00 UTC.
+			// Partman covers whole UTC periods, so both windows are fixed
+			// lengths in hours (8 days and 8 weeks). In this session's zone
+			// '8 days' follows the local calendar and runs 193 hours when
+			// daylight saving ends inside it; in the last UTC hour of a day
+			// (or of a week, for activity_log) that reaches past partman's
+			// last partition.
 			if _, err := pool.Exec(ctx, `
 INSERT INTO operational_logs ("timestamp", level, component, message)
 SELECT ts, 'info', 'test', 'partition coverage'

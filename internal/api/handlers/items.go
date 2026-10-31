@@ -2500,9 +2500,22 @@ type watchedTarget struct {
 	Episode *models.Episode
 }
 
-// lookupWatchedTarget finds a movie, ebook, series, season or episode and
-// checks the viewer's access without loading a season's or series' episodes.
-// Any other item type is not found.
+// seriesID is the series of a season or episode target, named on its
+// user-state events so a client that hasn't cached the item can refresh the
+// series (#796); other targets have none.
+func (t watchedTarget) seriesID() string {
+	switch {
+	case t.Season != nil:
+		return t.Season.SeriesID
+	case t.Episode != nil:
+		return t.Episode.SeriesID
+	}
+	return ""
+}
+
+// lookupWatchedTarget finds a movie, audiobook, ebook, series, season or
+// episode and checks the viewer's access without loading a season's or
+// series' episodes. Any other item type is not found.
 func (h *ItemsHandler) lookupWatchedTarget(ctx context.Context, contentID string, filter catalog.AccessFilter) (watchedTarget, error) {
 	item, err := h.itemRepo.GetByID(ctx, contentID)
 	switch {
@@ -2511,7 +2524,7 @@ func (h *ItemsHandler) lookupWatchedTarget(ctx context.Context, contentID string
 			return watchedTarget{}, err
 		}
 		switch item.Type {
-		case itemTypeMovie, itemTypeEbook, "series":
+		case itemTypeMovie, itemTypeAudiobook, itemTypeEbook, "series":
 			return watchedTarget{Type: item.Type, Item: item}, nil
 		default:
 			return watchedTarget{}, catalog.ErrItemNotFound
@@ -2550,48 +2563,62 @@ func (h *ItemsHandler) lookupWatchedTarget(ctx context.Context, contentID string
 // resolveWatchedTargets checks access to contentID and resolves the leaf
 // targets a watched mark writes. Unwatching a series or season returns no
 // targets: the caller expands it with watchstate.ParentUnwatchTargets, which
-// also reaches watched episodes that no longer have a file.
-func (h *ItemsHandler) resolveWatchedTargets(ctx context.Context, contentID string, played bool, filter catalog.AccessFilter) (string, []watchedLeafTarget, error) {
+// also reaches watched episodes that no longer have a file. It also returns
+// the target's series (watchedTarget.seriesID), for the user-state event.
+func (h *ItemsHandler) resolveWatchedTargets(ctx context.Context, contentID string, played bool, filter catalog.AccessFilter) (string, string, []watchedLeafTarget, error) {
 	target, err := h.lookupWatchedTarget(ctx, contentID, filter)
 	if err != nil {
-		return "", nil, err
+		return "", "", nil, err
 	}
+	seriesID := target.seriesID()
 	switch target.Type {
 	case itemTypeMovie:
-		return itemTypeMovie, []watchedLeafTarget{{
+		return itemTypeMovie, seriesID, []watchedLeafTarget{{
 			ContentID:       target.Item.ContentID,
 			DurationSeconds: h.contentDurationSeconds(ctx, target.Item.ContentID, "", target.Item.Runtime),
+		}}, nil
+	case itemTypeAudiobook:
+		var duration float64
+		if played {
+			duration, err = h.audiobookDurationSeconds(ctx, target.Item.ContentID, target.Item.Runtime, filter)
+			if err != nil {
+				return "", "", nil, err
+			}
+		}
+		return itemTypeAudiobook, seriesID, []watchedLeafTarget{{
+			ContentID:       target.Item.ContentID,
+			DurationSeconds: duration,
 		}}, nil
 	case itemTypeEbook:
 		// Ebooks have no playback duration; read state is keyed off
 		// ebook_reader_progress, so the leaf target only carries the ID.
-		return itemTypeEbook, []watchedLeafTarget{{ContentID: target.Item.ContentID}}, nil
+		return itemTypeEbook, seriesID, []watchedLeafTarget{{ContentID: target.Item.ContentID}}, nil
 	case "series":
 		if h.episodeRepo == nil {
-			return "", nil, catalog.ErrItemNotFound
+			return "", "", nil, catalog.ErrItemNotFound
 		}
 		if !played {
-			return "series", nil, nil
+			return "series", seriesID, nil, nil
 		}
 		episodes, err := h.episodeRepo.ListBySeries(ctx, target.Item.ContentID)
 		if err != nil {
-			return "", nil, err
+			return "", "", nil, err
 		}
-		return "series", h.episodeTargets(ctx, episodes), nil
+		return "series", seriesID, h.episodeTargets(ctx, episodes), nil
 	case "season":
 		if h.episodeRepo == nil {
-			return "", nil, catalog.ErrItemNotFound
+			return "", "", nil, catalog.ErrItemNotFound
 		}
 		if !played {
-			return "season", nil, nil
+			return "season", seriesID, nil, nil
 		}
 		episodes, err := h.episodeRepo.ListBySeasonID(ctx, target.Season.ContentID)
 		if err != nil {
-			return "", nil, err
+			return "", "", nil, err
 		}
-		return "season", h.episodeTargets(ctx, episodes), nil
+		return "season", seriesID, h.episodeTargets(ctx, episodes), nil
 	default:
-		return itemTypeEpisode, []watchedLeafTarget{{
+		return itemTypeEpisode, seriesID, []watchedLeafTarget{{
 			ContentID:       target.Episode.ContentID,
 			DurationSeconds: h.contentDurationSeconds(ctx, "", target.Episode.ContentID, target.Episode.Runtime),
 		}}, nil
@@ -2634,6 +2661,44 @@ func mediaFileDurationSeconds(files []*models.MediaFile, episodeID string, fallb
 		return float64(fallbackRuntimeMinutes * 60)
 	}
 	return 0
+}
+
+// audiobookDurationSeconds is a book's whole length: an audiobook is often
+// split into several files, so its length is the sum of its present files,
+// not the first file's. The scanner can attach several copies of one recording
+// (another folder, format or library) to the same book; each copy is one
+// recording root, and the book counts the longest accessible copy. The catalog runtime is
+// only a fallback for a book whose files report no duration.
+func (h *ItemsHandler) audiobookDurationSeconds(ctx context.Context, contentID string, fallbackRuntimeMinutes int, filter catalog.AccessFilter) (float64, error) {
+	var files []*models.MediaFile
+	if h.fileRepo != nil {
+		var err error
+		if files, err = h.fileRepo.GetByContentID(ctx, contentID); err != nil {
+			return 0, err
+		}
+	}
+	files = catalog.FilterMediaFilesByAccess(files, filter)
+	type copyRoot struct {
+		folderID int
+		root     string
+	}
+	byCopy := map[copyRoot]int{}
+	longest := 0
+	for _, file := range files {
+		if file == nil || file.Duration <= 0 {
+			continue
+		}
+		key := copyRoot{file.MediaFolderID, file.CanonicalRootPath}
+		byCopy[key] += file.Duration
+		longest = max(longest, byCopy[key])
+	}
+	if longest > 0 {
+		return float64(longest), nil
+	}
+	if fallbackRuntimeMinutes > 0 {
+		return float64(fallbackRuntimeMinutes * 60), nil
+	}
+	return 0, nil
 }
 
 func (h *ItemsHandler) contentDurationSeconds(ctx context.Context, contentID, episodeID string, fallbackRuntimeMinutes int) float64 {

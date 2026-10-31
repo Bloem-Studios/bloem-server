@@ -3,6 +3,7 @@ import {
   Fragment,
   memo,
   startTransition,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -26,6 +27,7 @@ import {
   HOME_SECTION_STALE_TIME,
   useHomeLayout,
 } from "@/hooks/queries/sections";
+import { completeHomeRow, homeRowItemLimit, homeRowShownCount } from "@/hooks/queries/homeRowLimit";
 import { planNextHomeSectionBatch } from "./homeSectionQueue";
 import { buildHomeSectionViewModel, type HomeSectionSlot } from "./homeSectionState";
 import { collectCachedHomeSections } from "./homeSectionCache";
@@ -80,6 +82,12 @@ export default function Home({
   const [completedIds, setCompletedIds] = useState<Set<string>>(() =>
     freshCachedHomeSectionIds(queryClient, layout),
   );
+  // Rows that loaded the rest of their cards, in the order they did, each with
+  // how many cards it showed before (see dropCrossSectionDuplicates). Cached
+  // rows bring theirs back, so a return to Home filters as it did before.
+  const [shownCounts, setShownCounts] = useState<ReadonlyMap<string, number>>(() =>
+    cachedShownCounts(queryClient, layout),
+  );
   // Every reset below starts a new load generation. A request only reports
   // back into the generation that started it.
   const loadGenerationRef = useRef(0);
@@ -127,6 +135,12 @@ export default function Home({
     setLoadedSections((current) =>
       mapsHaveSameEntries(current, cachedSections) ? current : cachedSections,
     );
+    const cachedCounts = cachedShownCounts(queryClient, layout);
+    setShownCounts((current) => {
+      let next = current;
+      for (const [sectionId, shown] of cachedCounts) next = withShownCount(next, sectionId, shown);
+      return next;
+    });
     setFailedIds((current) => (current.size === 0 ? current : new Set()));
     setInFlightIds((current) => (current.size === 0 ? current : new Set()));
     const nextCompletedIds = cacheReset
@@ -137,7 +151,8 @@ export default function Home({
     );
 
     return () => {
-      // Cancelling settles each in-flight request with its pre-fetch data, or
+      // Cancelling settles each in-flight request with the data last written
+      // to the cache, which keeps an edit made while it ran (a dismissal), or
       // a CancelledError when there was none. Neither answers the next
       // generation, which re-requests these sections itself.
       loadGenerationRef.current += 1;
@@ -166,11 +181,28 @@ export default function Home({
       return next;
     });
 
+    const featuredIds = new Set(
+      layout.filter((section) => section.featured).map((section) => section.id),
+    );
     nextIds.forEach((sectionId) => {
+      const queryKey = sectionKeys.homeItems(sectionId);
+      const featured = featuredIds.has(sectionId);
       void queryClient
         .fetchQuery<HomeSectionItemsResponse>({
-          queryKey: sectionKeys.homeItems(sectionId),
-          queryFn: ({ signal }) => fetchHomeSectionItems(sectionId, { signal }),
+          queryKey,
+          queryFn: async ({ signal }) => {
+            const cached = queryClient.getQueryData<HomeSectionItemsResponse>(queryKey);
+            const response = await fetchHomeSectionItems(sectionId, {
+              signal,
+              featured,
+              itemLimit: homeRowItemLimit(featured, cached),
+            });
+            // A row the viewer extended comes back whole; the duplicate
+            // filter keeps comparing the cards it showed before.
+            return cached?.shown === undefined || response.partial
+              ? response
+              : { ...response, shown: cached.shown, shownAt: cached.shownAt };
+          },
           staleTime: HOME_SECTION_STALE_TIME,
           gcTime: HOME_SECTION_GC_TIME,
         })
@@ -182,6 +214,8 @@ export default function Home({
             next.set(sectionId, response.section);
             return next;
           });
+          const shown = homeRowShownCount(featured, response);
+          setShownCounts((prev) => withShownCount(prev, sectionId, shown));
           setFailedIds((prev) => {
             if (!prev.has(sectionId)) return prev;
             const next = new Set(prev);
@@ -228,7 +262,7 @@ export default function Home({
     if (hasFirstContent) markCriticalContentLoaded();
   }, [hasFirstContent]);
 
-  const visibleSections = useDedupedSections(layout, loadedSections);
+  const visibleSections = useDedupedSections(layout, loadedSections, shownCounts);
 
   const viewModel = buildHomeSectionViewModel({
     layout,
@@ -251,6 +285,53 @@ export default function Home({
         }),
       );
   };
+
+  // Reads the whole of a row loaded in part, one the server said holds more
+  // cards than it answered (see homeRowResponse), once its carousel nears the
+  // last card, keeping the cards it shows in place. On failure the row keeps
+  // what it has, and scrolling near its end again retries.
+  const completingIdsRef = useRef(new Set<string>());
+  const completeSection = useCallback(
+    (sectionId: string) => {
+      const queryKey = sectionKeys.homeItems(sectionId);
+      const shown = queryClient.getQueryData<HomeSectionItemsResponse>(queryKey);
+      if (!shown?.partial || completingIdsRef.current.has(sectionId)) return;
+      completingIdsRef.current.add(sectionId);
+      const generation = loadGenerationRef.current;
+      void queryClient
+        .fetchQuery<HomeSectionItemsResponse>({
+          queryKey,
+          queryFn: ({ signal }) =>
+            fetchHomeSectionItems(sectionId, { signal }).then((whole) =>
+              completeHomeRow(
+                shown,
+                whole,
+                queryClient.getQueryData<HomeSectionItemsResponse>(queryKey) ?? shown,
+              ),
+            ),
+          staleTime: 0,
+          gcTime: HOME_SECTION_GC_TIME,
+        })
+        .then((response) => {
+          if (loadGenerationRef.current !== generation) return;
+          setLoadedSections((prev) => new Map(prev).set(sectionId, response.section));
+          setShownCounts((prev) => withShownCount(prev, sectionId, response.shown));
+        })
+        .catch(() => undefined)
+        .finally(() => completingIdsRef.current.delete(sectionId));
+    },
+    [queryClient],
+  );
+
+  // A row loaded in part that shows no cards, because the duplicate filter
+  // took every one or the viewer dismissed them, is hidden and has no
+  // carousel to report its end; it reads the rest at once, which may hold
+  // cards to show. A row the server answered empty is never loaded in part.
+  useEffect(() => {
+    for (const [sectionId, section] of visibleSections) {
+      if (section.items.length === 0) completeSection(sectionId);
+    }
+  }, [completeSection, visibleSections]);
 
   const retrySection = (sectionId: string) => {
     queryClient.removeQueries({ queryKey: sectionKeys.homeItems(sectionId) });
@@ -328,6 +409,7 @@ export default function Home({
                 eager={rowIndex < EAGER_HOME_ROW_COUNT}
                 deferFirstCommit={initialCachedSections.has(slot.layout.id)}
                 priority={rowIndex === 0 && !hasHeroSlot}
+                onNearEnd={completeSection}
                 restorationReady={rowRestorationReady}
                 placeholderHeight={rowPlaceholderHeight}
                 restoreDelayMs={Math.min(
@@ -375,6 +457,7 @@ const DeferredHomeSection = memo(function DeferredHomeSection({
   eager,
   deferFirstCommit,
   priority,
+  onNearEnd,
   restorationReady,
   placeholderHeight,
   restoreDelayMs,
@@ -385,6 +468,8 @@ const DeferredHomeSection = memo(function DeferredHomeSection({
   deferFirstCommit: boolean;
   /** The first row, on screen at first paint. */
   priority: boolean;
+  /** Loads the rest of a row loaded in part. */
+  onNearEnd: (sectionId: string) => void;
   restorationReady: boolean;
   placeholderHeight: string;
   restoreDelayMs: number;
@@ -443,7 +528,7 @@ const DeferredHomeSection = memo(function DeferredHomeSection({
     };
   }, [eager, rendered, restorationReady, restoreDelayMs]);
 
-  if (rendered) return <SectionRow section={section} priority={priority} />;
+  if (rendered) return <SectionRow section={section} priority={priority} onNearEnd={onNearEnd} />;
 
   return (
     <div
@@ -490,6 +575,42 @@ function freshCachedHomeSectionIds(
       })
       .map((section) => section.id),
   );
+}
+
+// The cached rows' shownCounts entries, in the order they were completed. A
+// row read whole without a completion counts from its last write, which any
+// cache edit moves. Ties keep layout order.
+function cachedShownCounts(
+  queryClient: QueryClient,
+  layout: ResolvedSectionLayout[],
+): Map<string, number> {
+  const rows = layout.flatMap((section) => {
+    const state = queryClient.getQueryState<HomeSectionItemsResponse>(
+      sectionKeys.homeItems(section.id),
+    );
+    const shown = homeRowShownCount(section.featured, state?.data);
+    if (!state || shown === undefined) return [];
+    return [{ id: section.id, shown, at: state.data?.shownAt ?? state.dataUpdatedAt }];
+  });
+  return new Map(rows.sort((a, b) => a.at - b.at).map((row) => [row.id, row.shown]));
+}
+
+// counts with sectionId's entry set to shown, or removed when shown is
+// undefined. A new entry goes at the end; one it already has keeps its place,
+// so a cache edit that removes shown cards moves the count without
+// reordering the rows.
+function withShownCount(
+  counts: ReadonlyMap<string, number>,
+  sectionId: string,
+  shown: number | undefined,
+): ReadonlyMap<string, number> {
+  if (shown !== undefined) {
+    return counts.get(sectionId) === shown ? counts : new Map(counts).set(sectionId, shown);
+  }
+  if (!counts.has(sectionId)) return counts;
+  const next = new Map(counts);
+  next.delete(sectionId);
+  return next;
 }
 
 function mapsHaveSameEntries<K, V>(left: Map<K, V>, right: Map<K, V>): boolean {

@@ -12,6 +12,7 @@ import (
 	"net/textproto"
 	"net/url"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -206,6 +207,7 @@ type Dependencies struct {
 	AdminJobArtifactSigner        *artworkurl.Signer
 	AdminDiagnosticReads          AdminDiagnosticReadsService
 	AdminDashboardInsights        AdminDashboardInsightsService
+	AdminAPIClients               AdminAPIClientsService
 	AdminNodesRead                AdminNodesReadService
 	AdminNodeCommands             AdminNodeCommandsService
 	AdminNodeDrain                AdminNodeDrainService
@@ -802,6 +804,10 @@ func (b *bufferedWriter) flush() {
 		// so the listener leaves that to the server.
 		b.w.Header().Del("Content-Type")
 		b.body.Reset()
+	} else if b.w.Header().Get("Content-Length") == "" {
+		// The whole body is known, so it goes out unchunked, and the
+		// listener's compressor can leave a body too short to gain identity.
+		b.w.Header().Set("Content-Length", strconv.Itoa(b.body.Len()))
 	}
 	b.w.WriteHeader(b.status)
 	_, _ = b.w.Write(b.body.Bytes())

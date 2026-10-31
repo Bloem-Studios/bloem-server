@@ -25,7 +25,11 @@ raise its owner's shared allowance.
 By default a key is **unscoped** and can reach every route its owner can. A key
 created with `scopes` is an allowlist credential instead: the auth middleware
 admits it only to the routes those scopes name and answers `403 permission_denied`
-everywhere else, including routes added after the key was issued.
+everywhere else, including routes added after the key was issued. A scoped key
+must send the route's plain path: a path that percent-encodes a `/`, a `.`, or
+another character that needs no encoding, or that has a `.` or `..` segment, a
+doubled slash, or a trailing slash, is refused with the same `403`, because the
+router would not read it as the route the allowlist checked.
 
 Scopes only narrow. They never grant, and they never bypass the owner's role
 check. `admin:users` on a key owned by a non-admin account still cannot manage
@@ -161,7 +165,7 @@ answers any owner.
 | Area | Paths under `/api/v2` |
 |---|---|
 | Live sessions | `/admin/sessions`, `/admin/sessions/summary`, `/admin/sessions/capabilities`, `/admin/sessions/command-capabilities`, `/events/capabilities` |
-| History and stats | `/admin/playback-history`, `/admin/playback-history/capabilities`, `/admin/stats/playback-activity`, `/admin/stats/top-activity`, `/admin/stats/downloads` |
+| History and stats | `/admin/playback-history`, `/admin/playback-history/capabilities`, `/admin/stats/timeseries`, `/admin/stats/playback-activity`, `/admin/stats/top-activity`, `/admin/stats/downloads` |
 | Accounts | `/admin/users`, `/admin/users/capabilities`, `/admin/users/{id}`, and `/admin/users/{id}/` `profiles`, `devices`, `ips`, `downloads`, `downloads/summary`, `watch-summary` |
 | Devices and addresses | `/admin/devices`, `/admin/devices/capabilities`, `/admin/ips` |
 | Downloads | `/admin/downloads/entries`, `/admin/downloads/devices`, `/admin/downloads/preparations`, `/admin/downloads/preparations/capabilities` |
