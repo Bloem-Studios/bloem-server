@@ -12,7 +12,7 @@ import (
 // alert: its NotificationItem projects the media fields of a delivery row and
 // has no place for the headline, body, severity, deeplink, call to action,
 // expiry or dismissal that a system.alert or system.announcement row carries
-// (docs/specs/client-engagement.md §A). A client reading the v2 inbox can list
+// (docs/architecture/admin-announcements.md). A client reading the v2 inbox can list
 // an alert it has no way to render.
 //
 // Adding those fields to the v2 projection would mean editing a Silo-owned

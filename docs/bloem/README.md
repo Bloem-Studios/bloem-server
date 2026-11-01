@@ -175,6 +175,7 @@ same path. Read the upstream document together with its overlay.
 - [Leaving Silo's `/api/v1`](../architecture/bloem-leaving-silo-v1.md) — the rule that Bloem adds nothing to Silo's `/api/v1`, what moved off it, and what still calls it.
 - [How Bloem's native API is organized](../architecture/bloem-client-surface.md) — why Bloem-only features live under `/api/bloem/v1`, and the native document set.
 - [How Bloem's SDKs and generated contracts fit together](../architecture/bloem-sdk-compatibility.md) — plugin SDK pins, generated client DTOs and consumer synchronization.
+- [How the client contract generator works](../architecture/bloem-client-contract-generator.md) — the registry, the Kotlin and Swift files the apps copy, the contract digest, and the rules that keep older apps working.
 - [How Bloem runs Silo's Jellyfin and Audiobookshelf servers](../architecture/bloem-compatibility-removal.md) — Silo's Jellyfin and Audiobookshelf servers, their tenant wiring, and the removed companion gateway.
 - [How Pastime tracking was removed](../architecture/bloem-pastime-removal.md) — forward-only cleanup migration and the rule that Pastime returns only as an ordinary plugin.
 - [How remote control works](../architecture/admin-remote-control.md) — invariants for server-issued commands to client apps.
@@ -188,9 +189,6 @@ same path. Read the upstream document together with its overlay.
 - [Bloem native API reference](../bloem-api-reference.md) — the maintained wire reference for Bloem's native extensions.
 - [Playback cards: who calls which route](../playback-overlays-api.md) — campaign CRUD and the save-to-inbox endpoint for playback overlays.
 - [How Bloem announces itself on a home network (`_bloem._tcp`)](../specs/lan-service-advertisement.md) — the opt-in DNS-SD service (`internal/lanadvert`) Bloem's clients browse for.
-- [Admin remote control of clients (S-5)](../specs/admin-remote-control.md) — historical: the working spec; the architecture page above is maintained.
-- [Client DTO generator (R-19)](../specs/client-dto-generator.md) — historical: the design of the generated Kotlin/Swift contracts.
-- [Client engagement spec](../specs/client-engagement.md) — historical: the September design for alerts, promotions and ambience.
 
 ## Operations runbooks
 

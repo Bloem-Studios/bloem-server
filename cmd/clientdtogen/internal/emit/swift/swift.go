@@ -1,5 +1,5 @@
 // Package swift emits the client DTO set as Swift `Codable` value types
-// (docs/specs/client-dto-generator.md §4, §5, §10 C7). It is the second
+// (docs/architecture/bloem-client-contract-generator.md §4, §5, §10 C7). It is the second
 // emitter behind the language-neutral graph; every semantic decision mirrors
 // internal/emit/kotlin unless Swift forces otherwise, and each forced
 // divergence is commented where it is taken.

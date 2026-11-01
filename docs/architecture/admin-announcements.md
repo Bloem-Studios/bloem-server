@@ -100,8 +100,9 @@ every inbox by itself.
 
 The admin API (`GET`/`POST /api/v1/admin/notifications/announcements`,
 `DELETE …/{id}`) and the alert body rules in `internal/notifications/alert_body.go`
-came first, in `06285608c` (2026-09-01), as the S-1 alerts of the
-[client engagement spec](../specs/client-engagement.md#a-alert-notifications-s-1).
+came first, in `06285608c` (2026-09-01), as "S-1" of Bloem's September client
+engagement spec. That spec was removed on 2026-11-01; its rules still in force are on
+this page.
 Those routes are mounted by `mountBloemLegacyAdminV1` in
 `internal/api/router_bloem_wiring.go`. This page and the web authoring screen were
 added in `f66a6ee3b` (2026-09-05). In `03f658ba9` (2026-09-23) the navigation and
@@ -194,6 +195,85 @@ native platform routes; see [leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)
   the existing read/unread controls. Read status is separate from banner dismissal.
   The inbox is Silo's ([notifications](notifications.md)).
 
+### Storage
+
+Migration `20260901120000_system_alert_notifications.sql`:
+
+- `notification_deliveries` gains `body` (jsonb, the alert body; NULL on release
+  rows), `expires_at` (copied from `body.expires_at` by the delivery repository, the
+  only writer, so feeds filter with a plain predicate), `dismissed_at`, and
+  `announcement_id` (foreign key to `notification_announcements`, `ON DELETE SET
+  NULL`). A partial unique index on `(profile_id, announcement_id)` makes a repeated
+  fan-out idempotent. Silo's episode-row check is untouched.
+- `notification_announcements` holds one row per publication: `type`, `body`,
+  `targeting`, `created_by`, `recipient_count`, `created_at`, `withdrawn_at`.
+
+### What viewers' apps receive
+
+- **Two delivery types.** `system.alert` is operational and ignores the profile's
+  master toggle; `system.announcement` is informational and honours
+  `notification_preferences.enabled`. For an announcement the opted-out profiles are
+  dropped before the publication row is stored, so `recipient_count` and a later
+  withdrawal never include them, and no per-profile record of the skip exists.
+- **One row shape everywhere.** The REST inbox, the realtime snapshot and
+  `notification.created` all carry `DeliveryRowPayload`
+  (`internal/notifications/dispatcher.go`), which gains these optional fields on system
+  rows only: `title`, `body`, `severity`, `deeplink`, `image_url`, `dismissible`, `cta`
+  (`{label, url}`), `expires_at`, `dismissed_at`. Release rows omit every one of them,
+  `dismissible` included (it is a pointer for that reason). Generic webhooks carry the
+  same object under `alert`; Discord embeds, web push and APNs derive their title, text
+  and link from it (`BuildNotificationDisplay` categories `system_alert` and
+  `system_announcement`, thread `announcement:{id}`).
+- **Feeds hide expired rows, always.** `GET /notifications` and
+  `GET /notifications/sync` filter expired rows on the server; dismissed rows are
+  filtered too unless `?include_dismissed=1`. The realtime snapshot (`RecentUnread`)
+  and `unread-count` apply both filters, and email and Discord digests skip expired
+  rows. `GET /notifications/{id}` also applies the not-expired rule, so a withdrawn row
+  answers 404.
+- **Dismissing is not reading.** `POST /notifications/{id}/dismiss` answers `204`
+  (repeatable), `404` for an unknown, foreign or expired row, and
+  `409 not_dismissible` when the stored body says `dismissible: false` (every critical
+  alert). It never touches `read_at`, and it sends the realtime event
+  `notification.dismissed` (`{id, profile_id}`). Bloem's handlers are in
+  `internal/api/handlers/bloem_notifications.go` and `bloem_notifications_ext.go`;
+  `/api/v2` lists the same rows (`internal/apiv2/bloem_native_notifications.go`).
+- **Apps discover it.** `GET /notifications/capability` adds `"announcements": true`,
+  `"dismiss": true` and `supported_types`, which lists `episode.available`,
+  `request.fulfilled`, `request.approved`, `request.declined`, `webhook.auto_disabled`,
+  `system.alert` and `system.announcement`. An app that does not see the block keeps
+  the feature dormant, and an app shows an unknown notification type as a plain row.
+- `deeplink` and `cta.url` are written by administrators, so an administrator can send
+  viewers to any address; the server checks the scheme, not the destination.
+
+### Create contract
+
+From `TestAdminAnnouncementsCreateReturnsCreatedWithRecipientCount`
+(`internal/api/handlers/admin_announcements_test.go`). `type` defaults to
+`system.announcement` and `severity` to `info`; `library_id` is a number, `user_ids`
+numbers, `profile_ids` strings.
+
+```json
+POST /api/bloem/v1/admin/platform/announcements
+{
+  "type": "system.alert",
+  "body": {"title": "Maintenance", "body": "Tonight", "severity": "warning",
+           "deeplink": "bloem://settings/status", "image_url": "https://cdn.example/banner.png",
+           "dismissible": true, "cta": {"label": "Status", "url": "https://status.example"},
+           "expires_at": "2030-01-01T00:00:00Z"},
+  "targeting": {"audience": "role", "role": "admin"}
+}
+```
+
+`targeting` is one of `{"audience": "all"}`, `{"audience": "role", "role":
+"admin|user"}`, `{"audience": "organization", "organization_id": "<uuid>"}`,
+`{"audience": "library", "library_id": 5}` or `{"audience": "explicit", "user_ids":
+[1, 2], "profile_ids": ["p1", "p2"]}`.
+
+The answer is `201` with the publication: `id`, `type`, the normalized `body`,
+`targeting`, `created_by` (the author's account ID), `recipient_count`, `created_at`
+and `withdrawn_at` (null until withdrawn). `GET` answers `{"announcements": [...]}`,
+newest first; `DELETE …/{id}` answers `204` and repeats safely.
+
 ### Boundaries
 
 - Basic server announcements do not depend on the storefront. Campaigns, playback
@@ -219,8 +299,6 @@ pnpm --dir web build
 - [How messages and promotions work](bloem-messages-and-promotions.md): the plain
   overview of every way Bloem talks to viewers.
 - [Notifications](notifications.md): Silo's inbox, which announcements arrive in.
-- [Client engagement spec](../specs/client-engagement.md): the original S-1 design
-  (a historical record).
 
 The picture is an SVG file under `images/admin-announcements/`, drawn by
 `scripts/bloem/pictures/admin_announcements.py` through

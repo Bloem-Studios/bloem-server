@@ -354,7 +354,7 @@ integration points through [owned integration adapters](../docs/architecture/blo
   settings bindings and effective settings values let apps consume the server's
   settings contract. Generation writes only this repository; adopting a contract
   is each client's own release. See [settings API](../docs/settings-api.md) and
-  [client DTO generation](../docs/specs/client-dto-generator.md).
+  [how the client contract generator works](../docs/architecture/bloem-client-contract-generator.md).
 - **Explicit identity and compatibility contracts:** server identity and
   capability discovery, support for `X-Bloem-*` device headers alongside the
   Silo headers, Silo Apple v3 playback wire-shape translation, and

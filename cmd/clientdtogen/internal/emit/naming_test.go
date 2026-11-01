@@ -10,7 +10,7 @@ import (
 
 var kotlinKeywords = map[string]bool{"in": true, "is": true, "as": true, "fun": true, "object": true}
 
-// TestCamelCase pins docs/specs/client-dto-generator.md §4.3, including every
+// TestCamelCase pins docs/architecture/bloem-client-contract-generator.md §4.3, including every
 // initialism example and the keyword case.
 func TestCamelCase(t *testing.T) {
 	cases := []struct{ in, want string }{

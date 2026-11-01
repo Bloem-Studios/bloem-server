@@ -160,7 +160,7 @@ func Write(path string, pins Pins) error {
 		"# Pinned by `make client-digest` (cmd/clientdtogen); do not edit by hand.",
 		"#",
 		"# contract: digest of the normalised type graph built from",
-		"# contracts/client/v1/registry.json (docs/specs/client-dto-generator.md §7.2).",
+		"# contracts/client/v1/registry.json (docs/architecture/bloem-client-contract-generator.md §7.2).",
 		"# removals-table: digest of the pre-lock removals table in " + ScopeFile,
 		"# at the time the contract digest was written. A wire-shape change moves",
 		"# the contract digest; before re-pinning, record removals/retypes in that",

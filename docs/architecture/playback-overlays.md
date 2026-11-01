@@ -107,8 +107,10 @@ sees it.
 
 ### History
 
-Promotion cards (`internal/promotions`) arrived in `3ae12d9f2` (2026-09-01), specified
-in the [client engagement spec](../specs/client-engagement.md) as "S-2". Timed playback
+Promotion cards (`internal/promotions`) arrived in `3ae12d9f2` (2026-09-01), as "S-2"
+of Bloem's September client engagement spec (migration `20260901200121_promotions.sql`).
+The spec was removed on 2026-11-01; its rules still in force are in the sections
+below. Timed playback
 overlays and the first version of this page came in `eaa0b3a6b` (2026-09-06); the
 embedded-web authoring and Home placements in `53534d9f0` (2026-09-18). Campaign
 evaluation ran in a bundled worker from `85ba110f2` (2026-10-05) and returned
@@ -175,6 +177,138 @@ lifecycle below.
   before any campaign lookup (`promotions.Service`, "Unknown profile classification
   must never deliver an overlay"). Scheduling, organization membership and audience
   filters still apply.
+
+### Storage
+
+`promotions` (migration `20260901200121_promotions.sql`): `id` (ULID), `organization_id`
+(nullable; foreign key to `organizations`, `ON DELETE CASCADE`; null means
+deployment-wide), `surfaces` (non-empty text array), `placement` (jsonb), `kicker`,
+`headline`, `subtitle`, `image_url`, `image_width` and `image_height` (nullable),
+`deeplink`, `cta` (jsonb `{label, url}`, nullable), `priority`, `starts_at` and
+`ends_at` (checked `starts_at < ends_at`), `targeting` (jsonb, the announcement
+audience shape), `dismissible` (default true), `created_by`, `created_at`,
+`updated_at`. The same migration widens the `user_home_item_dismissals` surface check
+to `promo:<surface>`, so a viewer's "don't show this again" reuses the per-profile
+dismissal store. There are deliberately no timer or forced-wait columns.
+
+### Validation (`promotions.Normalize`)
+
+- `surfaces` is required, from `home`, `detail`, `pre_playback` and `in_playback`,
+  without duplicates.
+- `headline` is required, at most 120 characters; `kicker` at most 40; `subtitle` at
+  most 200.
+- `image_url` is required and must pass `ambience.IsAssetURL`; campaign artwork is
+  uploaded through the seasonal asset route with `kind=campaign_card_16x9`. Declared
+  `image_width` and `image_height` come together, are positive and are 16:9 within
+  ±1% (`IsSixteenByNine`); poster artwork is refused.
+- `deeplink` and `cta.url` follow the announcement link rule (`notifications.IsAppLink`):
+  `https://`, `bloem://` or an app path. A `cta` needs a `label` of at most 40
+  characters.
+- `starts_at` and `ends_at` are required, start before end. `targeting` is checked and
+  canonicalized by `notifications.ValidateTargeting`, the announcement audience rules
+  (default `{"audience": "all"}`).
+- `placement.home_position` is zero or positive; `placement.content_ids` holds at most
+  64 non-empty entries; `placement.detail_slot` names a client-defined slot.
+  `dismissible` defaults to true. Unknown body keys, such as a `wait_seconds`, are
+  ignored: never stored, never echoed.
+
+### Delivery rules (`Service.Active`, `Service.ActiveHome`)
+
+A promotion reaches a viewer when all of these hold:
+
+1. `starts_at <= now < ends_at` on the sections' seasonal clock (`recipes.Clock`);
+2. the requested surface is listed;
+3. it is deployment-wide or belongs to one of the viewer's active organizations;
+4. its audience matches: `role` against the account's role, `organization` against
+   active membership, `library` against the profile's allowed libraries (unrestricted
+   access matches), `explicit` against the listed accounts or profiles;
+5. `placement.content_ids` is empty or holds the request's `content_id` (a promotion
+   with `content_ids` is skipped when no `content_id` is given);
+6. the profile has not dismissed it on that surface.
+
+The order is `priority DESC, starts_at, id`. When the dismissal store fails, delivery
+treats nothing as dismissed and logs it.
+
+### The Home row
+
+- Section type `promoted` (`internal/sections/bloem_fetcher.go`) is never cached,
+  because it is per profile. Its cards ride on `SectionWithItems.Promos`; `Items` stays
+  empty.
+- Delivery is opt-in per request with `promoted=1` on `/home/layout`,
+  `/home/sections` and `/home/sections/{id}/items` (and on `/api/v2` home,
+  `internal/apiv2/bloem_home.go`). Without it no promoted row is delivered and the
+  answers are identical to a server without promotions, because older apps decode
+  `section_type` as a plain string; `/home/sections/system-promoted/items` is then
+  `404 not_found` (`internal/api/handlers/bloem_sections_ext.go`).
+- When the request opts in and the profile has active Home cards,
+  `maybeInjectPromoted` inserts a synthetic row
+  `{"id": "system-promoted", "section_type": "promoted", "title": "Promoted"}` at the
+  first card's `placement.home_position` (default 1, clamped to the layout), unless the
+  administrator's layout already holds a `promoted` section to pin its place. Section
+  create and update refuse `promoted` outside the `home` scope
+  (`validatePromotedScope`). `/home/sections` evaluates `ActiveHome` once per request.
+- On the wire each card is the `promo` variant of the item union:
+  `{"content_id": "<promotion id>", "type": "promo", "title": "<headline>", "genres":
+  [], "keywords": [], "status": "", "promo": <card>}`. Tests:
+  `TestHomeEndpointsDeliverPromotedOnlyWhenOptedIn` (database-backed) and
+  `TestMaybeInjectPromotedRequiresTheOptInParameter`.
+
+### Dismissals and discovery
+
+- Legacy viewer routes: `GET /api/v1/promotions?surface=detail|pre_playback|in_playback&content_id=…`
+  answers `{"surface": "…", "promotions": [<card>, …]}` (`[]` when nothing applies);
+  `surface=home` and unknown surfaces are `400 bad_request`, since Home rides on the
+  section; no service is `503 unavailable`. A dismissal is
+  `PUT /home/dismissals/promo:<surface>/<promotion id>` with `{}`, undone with `DELETE`
+  on the same path (`validHomeSurface` accepts the `promo:` surfaces); dismissals are
+  per profile and per surface. The native equivalents are listed under the API link
+  above.
+- `GET /api/v1/notifications/capability` carries `"promotions": {"surfaces": ["home",
+  "detail", "pre_playback"]}`, plus `playback_overlay` for in-playback cards; a missing
+  key means the feature is off. An app that sees it opts in to the Home row with
+  `promoted=1`.
+
+### Admin routes
+
+The registry routes (native under `/api/bloem/v1/admin/platform/promotions`, legacy
+under `/api/v1/admin/promotions`) share `handlers.AdminPromotionsHandler`:
+`GET` lists `{"promotions": [...], "surfaces": [...]}`, highest priority first; `POST`
+answers `201`; `PUT /{id}` is a full replacement (`200`); `DELETE /{id}` answers `204`
+or `404 not_found`. An `organization_id` naming no organization is `400 bad_request`
+("organization_id does not exist"); other validation errors are `400 bad_request`
+naming the field; no service is `503 unavailable`. Impressions and clicks are not
+recorded.
+
+### Admin promotions contract
+
+From `TestAdminPromotionsCreateReturnsCreatedPromotion`
+(`internal/api/handlers/admin_promotions_test.go`). `placement`, `subtitle`, the image
+size, `deeplink`, `cta`, `priority`, `targeting`, `dismissible` and `organization_id`
+may be left out.
+
+```json
+POST /api/bloem/v1/admin/platform/promotions
+{"surfaces": ["home", "detail", "pre_playback"],
+ "placement": {"home_position": 1, "detail_slot": "below_hero", "content_ids": ["movie-1"]},
+ "kicker": "New this week", "headline": "The Bloem Winter Collection",
+ "subtitle": "Ten films, one long weekend.",
+ "image_url": "https://cdn.example/winter-16x9.jpg", "image_width": 1920, "image_height": 1080,
+ "deeplink": "bloem://collection/winter", "cta": {"label": "Browse", "url": "/collections/winter"},
+ "priority": 5, "starts_at": "2026-11-20T00:00:00Z", "ends_at": "2026-12-01T00:00:00Z",
+ "targeting": {"audience": "all"}, "dismissible": true}
+```
+
+The answer is `201` with the promotion: the same fields plus `id`, `organization_id`,
+`created_by`, `created_at` and `updated_at`.
+
+### Card shape
+
+One card shape on every path, pinned by `TestPromotionsListForwardsSurfaceContentAndViewer`
+and `TestBuildSectionsResponseEmitsPromoItemVariant`: `id`, `kicker`, `headline`,
+`subtitle`, `image_url`, `deeplink`, `cta`, `dismissible` (`subtitle`, `deeplink` and
+`cta` left out when empty), plus the playback fields for `in_playback`. A card carries
+no timer, wait, skip or countdown field (the tests check the key set), so an app always
+keeps **Continue to content** as the default action before playback.
 
 ### Client lifetime rules
 

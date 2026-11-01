@@ -15,7 +15,7 @@ import (
 // order). Registry bookkeeping that does not change a wire shape — adding a
 // package with no new reachable types, or a coverage-allowlist entry — leaves
 // it unchanged; any field, type, direction or vocabulary change alters it
-// (docs/specs/client-dto-generator.md §7.2).
+// (docs/architecture/bloem-client-contract-generator.md §7.2).
 func (g *Graph) Digest() string {
 	keys := make([]string, 0, len(g.types))
 	for key := range g.types {

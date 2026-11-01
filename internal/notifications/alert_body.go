@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 )
 
-// System delivery types (docs/specs/client-engagement.md §A). Both carry a
+// System delivery types (docs/architecture/admin-announcements.md). Both carry a
 // structured AlertBody in notification_deliveries.body instead of the
 // catalog joins the release types use. Clients that predate them render the
 // generic fallback row.

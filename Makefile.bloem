@@ -191,7 +191,7 @@ verify-client-dtos:
 
 # Re-pin contracts/client/v1/digest.txt: the digest of the normalised type
 # graph next to the digest of the pre-lock removals table in
-# docs/architecture/v1-scope.md (docs/specs/client-dto-generator.md §7.2).
+# docs/architecture/v1-scope.md (docs/architecture/bloem-client-contract-generator.md §7.2).
 # The clientdtogen test fails while the pins lag the tree and names the step
 # that is missing, so run this only after a wire-shape change is recorded.
 client-digest:

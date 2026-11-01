@@ -43,7 +43,7 @@ func TestAdminAnnouncementsCreateReturnsCreatedWithRecipientCount(t *testing.T) 
 	svc := &fakeAnnouncementService{}
 	h := &AdminAnnouncementsHandler{service: svc}
 	// This request body is the client contract quoted in
-	// docs/specs/client-engagement.md "Implementation notes (S-1)".
+	// docs/architecture/admin-announcements.md "Create contract".
 	body := `{"type":"system.alert","body":{"title":"Maintenance","body":"Tonight","severity":"warning","deeplink":"bloem://settings/status","image_url":"https://cdn.example/banner.png","dismissible":true,"cta":{"label":"Status","url":"https://status.example"},"expires_at":"2030-01-01T00:00:00Z"},"targeting":{"audience":"role","role":"admin"}}`
 	rec := httptest.NewRecorder()
 	h.HandleCreate(rec, downloadTestRequest(http.MethodPost, "/admin/notifications/announcements", []byte(body), 42, "", ""))

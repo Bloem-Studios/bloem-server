@@ -186,7 +186,7 @@ func wireBloemLiveTV(deps Dependencies) {
 }
 
 // newBloemRemoteControlHandler builds admin remote control, session rail
-// (S-5a, docs/specs/admin-remote-control.md). The sender rides the playback
+// (S-5a, docs/architecture/admin-remote-control.md). The sender rides the playback
 // handler's existing socket path; the audit lives in Postgres when there is
 // one. Built under the same session-manager guard as the socket itself.
 func newBloemRemoteControlHandler(
@@ -393,7 +393,7 @@ func wireBloemNotifications(notificationsHandler *handlers.NotificationsHandler,
 }
 
 // mountBloemPromotionsV1 mounts S-2 detail / pre-playback delivery
-// (docs/specs/client-engagement.md section B.3) in the authenticated group.
+// (docs/architecture/playback-overlays.md) in the authenticated group.
 func mountBloemPromotionsV1(r chi.Router, deps Dependencies) {
 	if deps.Promotions != nil {
 		promotionHandler := handlers.NewPromotionsHandler(deps.Promotions, deps.Notifications)
@@ -447,7 +447,7 @@ func mountBloemLegacyAdminV1(
 		r.Delete("/tenants/{tenant_id}/members/{user_id}/auth-sessions", adminTenantMembersHandler.HandleRevokeAllAuthSessions)
 	}
 	if deps.Notifications != nil {
-		// S-1 admin compose (docs/specs/client-engagement.md §A.5).
+		// S-1 admin compose (docs/architecture/admin-announcements.md).
 		announcementsHandler := handlers.NewAdminAnnouncementsHandler(deps.Notifications)
 		r.Route("/notifications/announcements", func(r chi.Router) {
 			r.Get("/", announcementsHandler.HandleList)
@@ -456,7 +456,7 @@ func mountBloemLegacyAdminV1(
 		})
 	}
 	if ambienceHandler != nil {
-		// S-3 seasonal pack registry (docs/specs/client-engagement.md section C).
+		// S-3 seasonal pack registry (docs/architecture/seasonal-scheduling.md).
 		r.Route("/ambience", func(r chi.Router) {
 			r.Get("/", ambienceHandler.HandleList)
 			r.Post("/", ambienceHandler.HandleCreate)
@@ -470,7 +470,7 @@ func mountBloemLegacyAdminV1(
 		})
 	}
 	if adminPromotionsHandler != nil {
-		// S-2 promotion CRUD (docs/specs/client-engagement.md section B.1).
+		// S-2 promotion CRUD (docs/architecture/playback-overlays.md, "Admin routes").
 		r.Route("/promotions", func(r chi.Router) {
 			r.Get("/", adminPromotionsHandler.HandleList)
 			r.Post("/", adminPromotionsHandler.HandleCreate)

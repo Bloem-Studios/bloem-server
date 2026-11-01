@@ -265,7 +265,7 @@ func TestRefusesConstantNamedKnown(t *testing.T) {
 }
 
 // v2TimelineLines are the hand-written bloem-android-v2 declaration lines for
-// the same struct, quoted from docs/specs/client-dto-generator.md §2.1. None
+// the same struct, quoted from docs/architecture/bloem-client-contract-generator.md §2.1. None
 // may reappear in the generated class: the only shared strings are the wire
 // names inside @SerialName.
 var v2TimelineLines = []string{

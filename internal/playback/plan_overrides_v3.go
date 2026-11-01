@@ -3,7 +3,7 @@ package playback
 import "strings"
 
 // PlanOverridesV3 pins planner inputs on behalf of an admin replan command
-// (docs/specs/admin-remote-control.md §C, S-5a). Overrides never widen what a
+// (docs/architecture/admin-remote-control.md, "The replan command"). Overrides never widen what a
 // client advertised: they narrow the durable start request the planner sees,
 // so every plan they produce is one the client could have negotiated itself.
 //

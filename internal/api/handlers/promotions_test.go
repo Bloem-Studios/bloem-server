@@ -77,7 +77,7 @@ func TestPromotionsListForwardsSurfaceContentAndViewer(t *testing.T) {
 	t.Logf("GET /promotions body: %s", rec.Body.String())
 }
 
-// assertNoTimerFields enforces amendment 3: the server cannot request a
+// assertNoTimerFields enforces the card shape (docs/architecture/playback-overlays.md): the server cannot request a
 // timer or forced wait, so no such key may ever appear on a card.
 func assertNoTimerFields(t *testing.T, raw json.RawMessage) {
 	t.Helper()

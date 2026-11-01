@@ -113,7 +113,7 @@ func TestAdminAmbienceCreateReturnsCreatedPack(t *testing.T) {
 	reg := &fakeAmbienceRegistry{}
 	h := &AmbienceHandler{registry: reg}
 	// This request body is the client contract quoted in
-	// docs/specs/client-engagement.md "Admin ambience contract".
+	// docs/architecture/seasonal-scheduling.md "Admin ambience contract".
 	body := `{"effect_id":"halloween","window":{"starts_at":"2026-10-24T00:00:00Z","ends_at":"2026-11-01T00:00:00Z"},"intensity":0.7,"surfaces":["home","login"],"assets":{"banner_url":"https://cdn.example/halloween/banner.png","sprites":["https://cdn.example/halloween/pumpkin.png"]},"organization_id":null}`
 	rec := httptest.NewRecorder()
 	h.HandleCreate(rec, ambienceRequest(http.MethodPost, "/admin/ambience", body, 42))
@@ -398,7 +398,7 @@ func TestAdminAmbienceStandaloneUploadReturnsPublicURL(t *testing.T) {
 		t.Fatalf("upload: %d %s %v", rec.Code, rec.Body.String(), reg.attached)
 	}
 	// This response is the standalone upload contract quoted in
-	// docs/specs/client-engagement.md "Admin ambience contract", with the
+	// docs/architecture/seasonal-scheduling.md "Admin ambience contract", with the
 	// public path on the native API since uploads left /api/v1.
 	want := `{"asset":{"asset_id":"3f1c2a9e-1d2b-4c3d-8e4f-5a6b7c8d9e0f","kind":"season_banner","ref":"` + checksum[:16] + `.png","url":"/api/bloem/v1/ambience/assets/` + checksum[:16] + `.png","checksum":"` + checksum + `","content_type":"image/png","size_bytes":` + strconv.Itoa(img.Len()) + `},"url":"/api/bloem/v1/ambience/assets/` + checksum[:16] + `.png"}`
 	if strings.TrimSpace(rec.Body.String()) != want {

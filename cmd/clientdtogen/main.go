@@ -2,7 +2,7 @@
 // registry (contracts/client/v1/registry.json) names.
 //
 // It builds the language-neutral type graph and hands it to the emitter
-// selected by -lang (docs/specs/client-dto-generator.md §5, §6.1).
+// selected by -lang (docs/architecture/bloem-client-contract-generator.md §5, §6.1).
 //
 // Usage:
 //

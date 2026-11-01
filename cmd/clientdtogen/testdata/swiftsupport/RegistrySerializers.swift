@@ -1,5 +1,5 @@
 // Stand-ins for the client-owned types the real registry's `serializers`
-// entries name (docs/specs/client-dto-generator.md §9.2). They exist so the
+// entries name (docs/architecture/bloem-client-contract-generator.md §9.2). They exist so the
 // emitter test can type-check the committed contracts/client/v1/swift tree
 // without a client checkout; bloem-apple-v3 writes the real ones.
 //

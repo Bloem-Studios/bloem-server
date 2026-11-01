@@ -30,7 +30,7 @@ type ambienceRegistry interface {
 }
 
 // AmbienceHandler exposes the S-3 seasonal pack registry
-// (docs/specs/client-engagement.md section C): admin CRUD + artwork attach
+// (docs/architecture/seasonal-scheduling.md, "Admin routes"): admin CRUD + artwork attach
 // under /admin/ambience, and the public artwork serving route.
 type AmbienceHandler struct {
 	registry ambienceRegistry

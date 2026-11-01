@@ -1,4 +1,4 @@
-// Package ambience implements S-3 of docs/specs/client-engagement.md: a
+// Package ambience implements seasonal packs (S-3, docs/architecture/seasonal-scheduling.md): a
 // registry of seasonal presentation packs. A pack is a window in time during
 // which clients render an effect (client-drawn effects such as snow, or the
 // generic artwork renderer fed by the pack's banner/sprite assets). The server

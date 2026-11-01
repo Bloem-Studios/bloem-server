@@ -2,7 +2,7 @@
 // the schema it validates registries against.
 //
 // registry.json is the single contract source for the generated client DTOs
-// (docs/specs/client-dto-generator.md §3): it lists, per Go package, the root
+// (docs/architecture/bloem-client-contract-generator.md §3): it lists, per Go package, the root
 // wire types the generator walks transitively, with their direction, dialect
 // and capability gate. registry.schema.json documents and enforces its shape.
 // Loading and semantic validation live in cmd/clientdtogen/internal/registry.

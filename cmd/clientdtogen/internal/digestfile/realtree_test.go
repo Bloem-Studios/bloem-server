@@ -79,7 +79,7 @@ make client-digest; otherwise expect the contract digest to move with it.`,
   pinned    %s
   tree now  %s
 A wire-shape change is a pre-lock contract change: if it removes or retypes a
-wire shape, record it in the %q table of %s (docs/specs/client-dto-generator.md
+wire shape, record it in the %q table of %s (docs/architecture/bloem-client-contract-generator.md
 §7.2), then re-pin both digests with make client-digest.`,
 			ScopeFile, pins.Contract, current, "Breaking removals taken before lock", ScopeFile)
 	}

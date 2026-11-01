@@ -11,8 +11,8 @@ const (
 
 // applyAlertPayload adds the S-1 alert fields to a release/request payload:
 // expiry and dismissal state for every row, and the AlertBody fields for
-// system.alert / system.announcement rows (docs/specs/client-engagement.md
-// §A).
+// system.alert / system.announcement rows (docs/architecture/admin-announcements.md,
+// "What viewers' apps receive").
 func applyAlertPayload(payload DeliveryRowPayload, row DeliveryRow) DeliveryRowPayload {
 	payload.ExpiresAt = row.ExpiresAt
 	payload.DismissedAt = row.DismissedAt

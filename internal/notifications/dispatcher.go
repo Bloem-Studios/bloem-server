@@ -46,7 +46,7 @@ type DeliveryRowPayload struct {
 	CreatedAt       time.Time       `json:"created_at"`
 	ReadAt          *time.Time      `json:"read_at"`
 	// S-1 alert fields: present only on system.alert / system.announcement
-	// rows (docs/specs/client-engagement.md §A). Dismissible is a pointer so
+	// rows (docs/architecture/admin-announcements.md). Dismissible is a pointer so
 	// release rows omit it entirely; a critical alert always carries false.
 	Title       string     `json:"title,omitempty"`
 	Body        string     `json:"body,omitempty"`

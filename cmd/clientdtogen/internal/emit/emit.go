@@ -1,6 +1,6 @@
 // Package emit defines the language-neutral emitter contract the client DTO
 // generator drives: an Emitter turns the type graph into a set of files for
-// one target language (docs/specs/client-dto-generator.md §5, §11 Q8).
+// one target language (docs/architecture/bloem-client-contract-generator.md §5, §11 Q8).
 //
 // Everything a target shares — the property-naming rule (§4.3), the enum
 // constant rule (§4.2), the provenance header facts (§5.2) — lives here so a

@@ -19,7 +19,7 @@ import (
 // ErrCommandNotFound is returned for an unknown command id.
 var ErrCommandNotFound = errors.New("remote command not found")
 
-// Command is one remote_commands row (spec §F).
+// Command is one remote_commands row ("Storage" in docs/architecture/admin-remote-control.md).
 type Command struct {
 	ID              string               `json:"command_id"`
 	Scope           Scope                `json:"scope"`

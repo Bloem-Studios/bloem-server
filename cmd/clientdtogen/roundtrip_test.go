@@ -19,7 +19,7 @@ import (
 )
 
 // The round-trip gate of the generator test strategy
-// (docs/specs/client-dto-generator.md §8): for every playback root, the Go
+// (docs/architecture/bloem-client-contract-generator.md §8): for every playback root, the Go
 // wire type must accept the server's own golden body and re-emit it, and every
 // key in that body — and in the marshaled form of the realtime roots, which
 // have no fixture file — must appear as an @SerialName in the committed

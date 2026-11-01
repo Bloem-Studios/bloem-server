@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Announcement audiences (docs/specs/client-engagement.md §A.5).
+// Announcement audiences (docs/architecture/admin-announcements.md, "Audience rules").
 const (
 	AudienceAll          = "all"
 	AudienceRole         = "role"

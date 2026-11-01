@@ -324,20 +324,20 @@ type capabilityResponse struct {
 	Webhooks    capabilityWebhooks       `json:"webhooks"`
 	Email       capabilityAccountChannel `json:"email"`
 	Discord     capabilityAccountChannel `json:"discord"`
-	// S-1 (docs/specs/client-engagement.md §A.7): clients gate the alert
+	// S-1 (docs/architecture/admin-announcements.md): clients gate the alert
 	// banner, the dismiss action, and type-specific rendering on these.
 	Announcements  bool     `json:"announcements"`
 	SupportedTypes []string `json:"supported_types"`
 	Dismiss        bool     `json:"dismiss"`
-	// S-3 (docs/specs/client-engagement.md section C): the same block as
+	// S-3 (docs/architecture/seasonal-scheduling.md): the same block as
 	// the branding payload. Key present = capability exists, [] = nothing
 	// active, key absent = dormant (registry not wired). Carries the active
 	// packs for this account (deployment-wide + the account's organizations).
 	Ambience *[]ambience.Wire `json:"ambience,omitempty"`
-	// S-2 (docs/specs/client-engagement.md section B.5): key present =
+	// S-2 (docs/architecture/playback-overlays.md): key present =
 	// promotions are delivered on the listed surfaces; absent = dormant.
 	Promotions *capabilityPromotions `json:"promotions,omitempty"`
-	// S-5a (docs/specs/admin-remote-control.md §D): the sender side exists;
+	// S-5a (docs/architecture/admin-remote-control.md): the sender side exists;
 	// clients still only receive per their own advertised list.
 	RemoteControl capabilityRemoteControl `json:"remote_control"`
 }

@@ -41,7 +41,7 @@ type DeviceHandler struct {
 	ProfileTokens *access.ProfileTokenService
 
 	// RemoteCapabilities, when set, drops the device's remote_control block
-	// (docs/specs/admin-remote-control.md §A) when the device is forgotten.
+	// (docs/architecture/admin-remote-control.md, "Rules") when the device is forgotten.
 	RemoteCapabilities remoteCapabilityForgetter
 	// Connections, when set, deletes a device's playback connection rows
 	// with its last registration. Nil (as in tests) leaves them to retention.

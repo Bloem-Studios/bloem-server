@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "registry.schema.json",
   "title": "Client DTO registry",
-  "description": "Root wire types the client DTO generator (cmd/clientdtogen) walks transitively. One entry per Go package; the generator emits one output file per entry. See docs/specs/client-dto-generator.md §3.2.",
+  "description": "Root wire types the client DTO generator (cmd/clientdtogen) walks transitively. One entry per Go package; the generator emits one output file per entry. See docs/architecture/bloem-client-contract-generator.md §3.2.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "packages"],

@@ -1,5 +1,5 @@
 // Package kotlin emits the client DTO set as kotlinx.serialization classes
-// (docs/specs/client-dto-generator.md §4, §5). The output shape is a
+// (docs/architecture/bloem-client-contract-generator.md §4, §5). The output shape is a
 // provenance requirement (§2): every declaration line carries explicit
 // public, every property has @SerialName on its own line, defaults and
 // nullability follow §4.4 by rule, and no generated file contains a fun.

@@ -1,9 +1,9 @@
-// Package promotions implements S-2 of docs/specs/client-engagement.md: admin
+// Package promotions implements promotion cards (S-2, docs/architecture/playback-overlays.md): admin
 // authored promotional cards delivered on the home screen (as a `promoted`
 // section), on item detail pages and before playback. A card is 16:9 artwork
 // with a kicker, a headline and an optional subtitle, deeplink and CTA.
 //
-// Pre-playback contract (amendment 3): the client always keeps "continue to
+// Pre-playback contract ("Card shape" on that page): the client always keeps "continue to
 // content" as the default action. The server cannot request a timer or a
 // forced wait — no such fields exist anywhere in this package or its tables.
 package promotions

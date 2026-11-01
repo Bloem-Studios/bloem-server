@@ -1,5 +1,5 @@
 // Package fixture declares one struct per mapping row of
-// docs/specs/client-dto-generator.md §4.1/§4.4 so the graph tests can assert
+// docs/architecture/bloem-client-contract-generator.md §4.1/§4.4 so the graph tests can assert
 // each row; it is loaded through go/packages, never imported.
 package fixture
 

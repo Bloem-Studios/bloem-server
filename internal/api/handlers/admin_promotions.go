@@ -21,7 +21,7 @@ type promotionRegistry interface {
 }
 
 // AdminPromotionsHandler exposes the S-2 promotion CRUD under
-// /admin/promotions (docs/specs/client-engagement.md section B.1).
+// /admin/promotions (docs/architecture/playback-overlays.md, "Admin routes").
 type AdminPromotionsHandler struct {
 	registry promotionRegistry
 }

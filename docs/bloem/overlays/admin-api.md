@@ -69,7 +69,7 @@ beginning “`level` accepts a comma-separated list, so one request can ask…�
 
 #### `/api/v1/admin/remote` — remote control of playing clients
 
-Server-side control of client apps (`docs/specs/admin-remote-control.md`). These
+Server-side control of client apps ([how remote control works](../../architecture/admin-remote-control.md)). These
 routes mount only when the playback session manager is wired, beside the
 per-session control socket they ride on. A command reaches a client only when
 the device advertised it — through `PUT /api/v1/devices/{device_id}/remote-control`

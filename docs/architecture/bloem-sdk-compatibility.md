@@ -179,7 +179,9 @@ not appear in catalogue responses or generated contracts.
 ### Kotlin and Swift client contracts
 
 `contracts/client/v1/registry.json` selects actual server wire types. The Go graph generator
-(`cmd/clientdtogen`) produces Kotlin and Swift DTOs and a normalized digest; settings bindings
+(`cmd/clientdtogen`, described in
+[how the client contract generator works](bloem-client-contract-generator.md)) produces Kotlin
+and Swift DTOs and a normalized digest; settings bindings
 and native/v2 OpenAPI have their own generators. Anonymous HTTP wrappers must be represented by
 exact wire types before they can be registered. Preserve explicit nulls, omitted fields, JSON
 spelling, opaque identifiers, int64 revisions and scope-specific requests. Do not expose domain

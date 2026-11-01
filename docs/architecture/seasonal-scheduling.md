@@ -101,8 +101,9 @@ and only after they sign in.
 
 ### History
 
-Seasonal ambience is the S-3 "ambience" packs of the
-[client engagement spec](../specs/client-engagement.md#c-ambience--seasonal-effects-s-3).
+Seasonal ambience is "S-3" of Bloem's September client engagement spec, which first
+shipped in `feat/s3-ambience` (migration `20260901192510_ambience_packs.sql`). The spec
+was removed on 2026-11-01; its rules still in force are on this page.
 Annual schedules, migration `20260905090908_ambience_annual_schedule.sql` and the web
 snow renderer arrived in `f764adad8` (2026-09-05). `53534d9f0` (2026-09-18) added the
 embedded web authoring page (`web/src/pages/admin-platform/EngagementPage.tsx`), the
@@ -180,6 +181,94 @@ ambience evaluator runs inside the server rather than as a bundled worker proces
 - Publication or removal is visible on the next client refresh. Scheduled expiry does
   not require another network response. This matters when the storefront or the
   media server becomes unreachable.
+
+### Storage
+
+- `ambience_packs` (migration `20260901192510_ambience_packs.sql`, extended by
+  `20260905090908_ambience_annual_schedule.sql`): `id` (ULID), `effect_id`,
+  `starts_at`, `ends_at`, `intensity` (0.0 to 1.0, checked), `surfaces` (text array,
+  default `{all}`), `assets` (jsonb, `{banner_url?, sprites?}`), `organization_id`
+  (nullable; foreign key to `organizations`, `ON DELETE CASCADE`; null means
+  deployment-wide), `created_by`, `created_at`, `updated_at`, and a check that
+  `starts_at` comes before `ends_at`. One row per season; the server has no
+  per-season logic (`internal/ambience`).
+- `ambience_assets` records standalone uploads by the authoring system's ID:
+  `asset_id`, `kind`, `checksum`, `ref`, `content_type`, `size_bytes`.
+
+### What apps receive
+
+A pack goes out in one shape wherever it appears (`Pack.Wire`):
+
+```json
+{"id": "01J…", "effect_id": "snow",
+ "window": {"starts_at": "RFC3339", "ends_at": "RFC3339"},
+ "intensity": 0.5, "surfaces": ["all"], "assets": {"banner_url": "…", "sprites": ["…"]}}
+```
+
+- A pack is active while `starts_at <= now < ends_at`, evaluated against the sections'
+  seasonal clock (`recipes.Clock`). The window is still sent, so apps honour its
+  bounds locally.
+- The legacy payloads the phone apps read: the `ambience` array on the public
+  `GET /api/v1/theme/branding` holds active deployment-wide packs only, always present
+  and `[]` when none is active, the registry is not wired or it fails (an organization's
+  pack never shows before sign-in). The same array on the authenticated
+  `GET /api/v1/notifications/capability` adds the active packs of every active
+  organization the account is an active member of. There, a present key means the
+  feature exists, `[]` means nothing is active, and a missing key means it is off.
+- **Rendering rules for apps.** Effect names are an open set: an app renders the ones
+  it knows; an unknown `effect_id` with assets gets a generic artwork renderer; an
+  unknown one without assets is ignored. Intensity is a hint, and a local "reduce
+  effects" setting always wins over the server.
+
+### Admin routes
+
+The registry routes (native under `/api/bloem/v1/admin/platform/ambience`, legacy under
+`/api/v1/admin/ambience`) share `handlers.AdminAmbienceHandler`:
+
+- `GET` lists every pack, soonest window first, with `storage_available` and
+  `yearly_scheduling`.
+- `POST` creates a pack (`201`); `PUT /{id}` replaces it with the same body (`200`);
+  `DELETE /{id}` answers `204`, or `404 not_found`. Stored artwork stays in place after
+  a delete, as with branding assets.
+- `POST /assets` stores artwork with no pack, so the authoring side can push it first.
+  The multipart body has `file`, and optionally `asset_id`, `kind`
+  (`campaign_card_16x9`, `season_banner` or `season_sprite`), `checksum` and
+  `content_type`. A `checksum` that does not match the bytes' SHA-256 is
+  `400 bad_request`; the declared `content_type` is ignored, because the bytes are
+  sniffed. `POST /{id}/assets` attaches to a pack, with `slot` `banner` (the default,
+  replacing) or `sprite` (appending). Size, type and idempotency rules are in
+  [upload rules](bloem-campaign-asset-storage.md#upload-rules-storeasset-attachasset).
+- An `organization_id` naming no organization is `400 bad_request`
+  ("organization_id does not exist"). Other validation errors are `400 bad_request`
+  naming the field; no registry is `503 unavailable`.
+
+### Admin ambience contract
+
+From `TestAdminAmbienceCreateReturnsCreatedPack`
+(`internal/api/handlers/admin_ambience_test.go`). `intensity` and `surfaces` may be
+left out (defaults `1.0` and `["all"]`); `organization_id` is a UUID string or null;
+`assets` may be `{}`. Asset URLs the upload routes return are server paths, accepted
+as they are in `assets`.
+
+```json
+POST /api/bloem/v1/admin/platform/ambience
+{"effect_id": "halloween",
+ "window": {"starts_at": "2026-10-24T00:00:00Z", "ends_at": "2026-11-01T00:00:00Z"},
+ "intensity": 0.7, "surfaces": ["home", "login"],
+ "assets": {"banner_url": "https://cdn.example/halloween/banner.png",
+            "sprites": ["https://cdn.example/halloween/pumpkin.png"]},
+ "organization_id": null}
+```
+
+The answer is `201` with the pack: the same fields plus `id`, `created_by` (the
+author's account ID), `created_at` and `updated_at`.
+
+A standalone upload (`TestAdminAmbienceStandaloneUploadReturnsPublicURL`, the multipart
+shape the storefront's `HTTPAssetTransport` sends) answers `201` with
+`{"asset": {"asset_id", "kind", "ref", "url", "checksum", "content_type",
+"size_bytes"}, "url": "/api/bloem/v1/ambience/assets/<ref>"}`. The storefront reads the
+top-level `url` (or `asset.url`). A retry with the same `asset_id` and `checksum`
+answers the same body and stores nothing new.
 
 ### The web layer (`SeasonalLayer.tsx`)
 

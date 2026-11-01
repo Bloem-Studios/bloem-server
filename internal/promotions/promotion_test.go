@@ -114,7 +114,7 @@ func TestTargetingSideFieldsAreCanonicalized(t *testing.T) {
 	}
 }
 
-// The pre-playback contract (amendment 3): the card carries no timer / wait
+// The pre-playback contract (docs/architecture/playback-overlays.md, "Card shape"): the card carries no timer / wait
 // fields; the client always keeps "continue to content" as the default action.
 func TestCardWireShapeHasNoTimerFields(t *testing.T) {
 	n, err := Normalize(validInput())

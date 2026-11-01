@@ -459,7 +459,7 @@ func (h *RemoteControlHandler) HandleListAudit(w http.ResponseWriter, r *http.Re
 }
 
 // HandleAdvertiseDevice handles PUT /devices/{device_id}/remote-control: the
-// capability handshake (spec §A) for the calling profile's device.
+// capability handshake (docs/architecture/admin-remote-control.md, "Rules") for the calling profile's device.
 func (h *RemoteControlHandler) HandleAdvertiseDevice(w http.ResponseWriter, r *http.Request) {
 	userID := apimw.GetUserID(r.Context())
 	profileID := apimw.GetProfileID(r.Context())

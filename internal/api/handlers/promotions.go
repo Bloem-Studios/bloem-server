@@ -23,7 +23,7 @@ type promotionSource interface {
 }
 
 // PromotionsHandler serves S-2 promotion cards for the detail and
-// pre-playback surfaces (docs/specs/client-engagement.md section B.3). Home
+// pre-playback surfaces (docs/architecture/playback-overlays.md). Home
 // cards ride on the `promoted` home section instead.
 type PromotionsHandler struct {
 	source promotionSource

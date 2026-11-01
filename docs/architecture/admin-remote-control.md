@@ -103,9 +103,11 @@ of this page in `3136d0848` (2026-09-02). `internal/remote` and `remote_control.
 Bloem's; Silo's playback control socket (`session_ws.go`, a ledgered seam in
 `contracts/seams.txt`) carries the commands. `5ee7e9455` (2026-09-23) moved Bloem's
 in-body edits of Silo handlers into hooks, including the hello filter in
-`internal/api/handlers/bloem_session_ws_ext.go`. The original spec, now a historical
-snapshot, is [`docs/specs/admin-remote-control.md`](../specs/admin-remote-control.md);
-this page records the rules that must survive it.
+`internal/api/handlers/bloem_session_ws_ext.go`. The September working spec
+(`docs/specs/admin-remote-control.md`) was removed on 2026-11-01; every rule still in
+force is on this page. Migration `20260901200034_remote_commands.sql` still names it
+in its header comment, which stays as written because applied migrations are not
+edited.
 
 The device rail ("S-5b": queued device commands such as `play_media` and `sign_out`) is
 not implemented; a device may already advertise its command names.
@@ -167,10 +169,115 @@ device routes sit in Silo's router (`internal/api/router.go`).
 - **Rate limit.** Each issuer may send 30 commands a minute
   (`remote.DefaultConfig().PerMinute`); beyond that, `429 rate_limited`.
 
+### Commands and payloads
+
+`internal/remote/commands.go` validates every payload before anything is sent: a strict
+decode (`DisallowUnknownFields`, so an unknown field is `400 invalid_payload`) and the
+rules below. The session rail carries these commands; the device-rail names
+(`play_media`, `collect_diagnostics`, `refresh_settings`, `sign_out`) may be advertised
+but are not sent yet.
+
+| Command | Payload | Rules |
+| --- | --- | --- |
+| `pause`, `unpause`, `play_pause` | none | |
+| `seek` | `{position_ms}` | `position_ms` ≥ 0 |
+| `set_volume` | `{level}` | `level` 0..100 |
+| `stop`, `terminate` | `{reason?}` | `terminate` needs a reason (`reason_required`); a reason is at most 500 characters. For both, the server also tears the session down when the command's deadline passes |
+| `set_audio_track`, `set_subtitle_track` | `{track_id}` or `{off: true}` | exactly one of the two; `track_id` at most 128 characters; audio cannot be switched off |
+| `display_message` | `{title, body, severity, timeout_ms?}` | `severity` `info`, `warning` or `error`; `body` required, at most 1,000 characters; `title` at most 120; `timeout_ms` 0..600000 |
+| `replan` | `{overrides, reason}` | admin only; see [the replan command](#the-replan-command) |
+
+Every command row carries `issued_by` and `reason`. `ttl_seconds` belongs to the device
+rail: a non-zero value on a session command is `400 invalid_payload` ("session commands
+are never queued"), not ignored.
+
+### The replan command
+
+`{"name": "replan", "payload": {"overrides": {"transcode": "auto|direct",
+"max_bitrate_kbps": n, "video_codec": "…", "audio_codec": "…", "container": "…"},
+"reason": "…"}}`. `transcode` is required; `max_bitrate_kbps` is 0..1,000,000. A
+`force` override, retired on 2026-10-25 so the planner stays Silo's, is refused as an
+invalid payload.
+
+1. The server pins `playback.PlanOverridesV3` on the session and sends
+   `plan_invalidated` (`reason: admin_replan`, `plan_id` = the current plan) with the
+   command's own `command_id`, through the same negotiation as the copy-safety
+   notifier. The attempt must have negotiated `plan_invalidated_v1` and the socket must
+   be live; otherwise `409 replan_unavailable`.
+2. The client's next `POST /playback/{session_id}/replan` sees its stored start request
+   narrowed by `ApplyPlanOverridesV3` (`internal/playback/plan_overrides_v3.go`): the
+   bandwidth cap is lowered, never raised; `direct` clears the cap, estimate and
+   metered flag and asks for original quality; codec and container pins filter the
+   advertised decode capabilities, so they decide what is directly playable. The
+   transcode recipe stays the server's h264/aac. Below the source's bitrate,
+   `max_bitrate_kbps` still forces a transcode, and Silo lowers Auto quality itself when
+   playback keeps buffering.
+3. The command becomes `done` when a client replan commits (`OnSessionReplanned`,
+   result `{status, plan_id}`). Any replan of the session counts, a seek re-anchor or a
+   recovery included, because every replan after the pin plans with the overrides.
+   `done` keeps the pin; `rejected`, `expired` and `failed` release it; a newer replan
+   replaces it. `Service.OpenReplanOverrides` reads the pin from the newest replan row
+   in `sent | accepted | done`.
+
+### Command contract
+
+`POST /api/v1/admin/remote/sessions/{session_id}/commands` (and the household route)
+takes `{"name": "seek", "payload": {"position_ms": 90000}, "reason": "skip recap"}` and
+answers `201` with the command row, the same shape `GET /admin/remote/commands/{id}`
+and each audit row return:
+
+```json
+{"command_id": "5f1c…", "scope": "session", "session_id": "sess-…", "device_id": "device-1",
+ "user_id": 7, "profile_id": "profile-1", "name": "seek", "payload": {"position_ms": 90000},
+ "issued_by": "user:1", "issuer_kind": "admin", "reason": "skip recap", "state": "sent",
+ "created_at": "…", "sent_at": "…", "expires_at": "…"}
+```
+
+After a result, `result` is `{"status": "completed"}` or `{"status": "rejected"}` (with
+the client's `error`), and for `replan` `{"status": "completed", "plan_id": "…"}`. The
+frame on the control socket is the unchanged playback protocol:
+`{"type": "command", "command_id", "session_id", "name", "reason", "issued_by":
+{"kind": "admin"}, "deadline_ms": 8000, "payload"}`. A replan reaches the client as
+`{"type": "command", "name": "plan_invalidated", "payload": {"reason": "admin_replan",
+"plan_id": "…"}}`.
+
+Errors: `400 invalid_payload | unknown_command | reason_required | bad_request`,
+`403 forbidden | command_not_allowed`, `404 not_found`, `409 session_not_connected |
+replan_unavailable`, `429 rate_limited`.
+
+`PUT /api/v1/devices/{device_id}/remote-control` takes `{"version": 1, "commands":
+[...]}` and answers `200 {"device_id", "version", "commands"}` with the names sorted.
+Names must be ones the server knows, the device-rail names included, so an app can
+announce its full list today. The session's device is `X-Silo-Device-Id` at
+`/playback/start` (else the session claims' `device_id`), recorded as
+`Session.DeviceID`.
+
+### Storage
+
+- `remote_commands`: `id`, `scope` (`session | device`), `target_session_id`,
+  `target_device_id`, `target_user_id`, `target_profile_id`, `tenant_id`, `name`,
+  `payload` (jsonb), `issued_by`, `issuer_kind` (`admin | household`), `reason`,
+  `state`, `result` (jsonb), `error`, and `created_at`, `sent_at`, `acked_at`,
+  `finished_at`, `expires_at`. Indexed on `(target_session_id, state)`,
+  `(target_device_id, state)` and `created_at DESC`.
+- `remote_device_capabilities`: `(user_id, profile_id, device_id)` to `version` and
+  `commands` (jsonb). Kept beside the audit, not on `user_devices`, so Silo's device
+  registry stays untouched.
+
+### Known gaps
+
+- `Service.OpenReplanOverrides`: a newest replan row that passed its TTL but is still
+  `sent` (no deadline fired, for example after a restart) yields no pin instead of
+  falling back to the previous live row.
+- The admin device-forget paths (`admin_user_resources.go`, `admin_tenant_members.go`)
+  do not call `Service.ForgetDevice`, so a stale capability row can linger. Advertising
+  re-checks the device registry, so nothing new can be created from it.
+- `OnSessionEnded` expires every open command, so a client that calls `/playback/stop`
+  before its `result` frame arrives leaves a successful `stop` audited as `expired`.
+
 ### Related pages
 
 - [How apps connect](bloem-apps.md#remote-control): the plain overview.
-- [Admin remote control spec](../specs/admin-remote-control.md) (a historical record).
 
 The picture is an SVG file under `images/admin-remote-control/`, drawn by
 `scripts/bloem/pictures/admin_remote_control.py` through

@@ -1,5 +1,5 @@
 // Reference implementation of the two hand-written types the generated Swift
-// refers to (docs/specs/client-dto-generator.md §9.2, §10 C7). The generator
+// refers to (docs/architecture/bloem-client-contract-generator.md §9.2, §10 C7). The generator
 // never emits them: the client owns them, the way it owns the registry
 // serializers. The Swift emitter test compiles the generated fixture against
 // this file, so a change here that breaks the generated code fails in the

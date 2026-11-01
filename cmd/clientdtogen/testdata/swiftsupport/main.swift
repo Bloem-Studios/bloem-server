@@ -1,4 +1,4 @@
-// The Swift half of the round-trip gate (docs/specs/client-dto-generator.md
+// The Swift half of the round-trip gate (docs/architecture/bloem-client-contract-generator.md
 // §8, §10 C7): it decodes bodies the Go types can produce through the
 // generated fixture structs and checks the §4.4 rules hold at runtime rather
 // than only in the golden text. cmd/clientdtogen/internal/emit/swift compiles

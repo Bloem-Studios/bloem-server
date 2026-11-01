@@ -8,7 +8,7 @@ import (
 	"github.com/Silo-Server/silo-server/cmd/clientdtogen/internal/graph"
 )
 
-// Words splits a Go identifier per docs/specs/client-dto-generator.md §4.3
+// Words splits a Go identifier per docs/architecture/bloem-client-contract-generator.md §4.3
 // step 1: on lower→upper boundaries and on letter↔digit boundaries, with a
 // run of capitals followed by a capital starting a 2+-letter lowercase word
 // read as an initialism ending before the last capital. A single lowercase

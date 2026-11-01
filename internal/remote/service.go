@@ -17,7 +17,7 @@ import (
 
 var (
 	// ErrSessionNotConnected means the session exists but holds no live
-	// control socket: session commands are never queued (spec §B.3).
+	// control socket: session commands are never queued (docs/architecture/admin-remote-control.md, "Rules").
 	ErrSessionNotConnected = errors.New("session_not_connected")
 	// ErrSessionNotFound mirrors playback.ErrSessionNotFound for callers.
 	ErrSessionNotFound = playback.ErrSessionNotFound
@@ -56,14 +56,14 @@ type Sender interface {
 
 // Config tunes the service.
 type Config struct {
-	// PerMinute is the per-issuer command budget (spec §F: 30).
+	// PerMinute is the per-issuer command budget (30; "Rules" in docs/architecture/admin-remote-control.md).
 	PerMinute int
 	// CommandTTL bounds how long a sent command may stay unanswered before
 	// the status endpoint reports it expired.
 	CommandTTL time.Duration
 }
 
-// DefaultConfig is the spec's budget.
+// DefaultConfig is the documented budget.
 func DefaultConfig() Config {
 	return Config{PerMinute: 30, CommandTTL: 60 * time.Second}
 }

@@ -14,7 +14,7 @@ import (
 //
 // Bloem's notification rows carry alert fields Silo has no concept of: a
 // headline, body text, a severity, a deeplink, a call to action, an expiry and
-// a per-viewer dismissal (docs/specs/client-engagement.md §A). They are how a
+// a per-viewer dismissal (docs/architecture/admin-announcements.md). They are how a
 // system.alert or system.announcement row renders at all -- the media fields
 // describe what a row points at, while these are what a row actually says.
 //

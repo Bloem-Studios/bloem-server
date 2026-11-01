@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How the client contract generator works</title>
+<desc id="d">The server's own Go types, chosen by a registry, go through the generator, which writes Kotlin files for Android, Swift files for Apple and a fingerprint of the whole contract. CI checks that the committed files match the code. Each app copies the files from the server version it pins. Four rules keep older apps working with newer servers.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How the client contract generator works</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The server writes the message shapes its apps decode, so nobody copies them by hand.</text>
+<text x="40" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">In the server repository</text>
+<rect x="40" y="156" width="250" height="150" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="58" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Go wire types</text>
+<text x="58" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The structs the server already</text>
+<text x="58" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">sends and accepts, in packages</text>
+<text x="58" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">such as playback.</text>
+<line x1="294" y1="231" x2="326" y2="231" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="330" y="156" width="250" height="150" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="348" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The registry</text>
+<text x="348" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">registry.json names the root</text>
+<text x="348" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">types; everything they contain</text>
+<text x="348" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">follows.</text>
+<line x1="584" y1="231" x2="616" y2="231" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="620" y="156" width="250" height="150" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="638" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The generator</text>
+<text x="638" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">make client-dtos runs</text>
+<text x="638" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">cmd/clientdtogen for each</text>
+<text x="638" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">language.</text>
+<line x1="874" y1="200" x2="906" y2="180" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="874" y1="262" x2="906" y2="282" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="910" y="140" width="250" height="82" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="928" y="172" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Kotlin and Swift files</text>
+<rect x="910" y="240" width="250" height="82" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="928" y="272" font-size="16" font-weight="700" fill="#101827" text-anchor="start">A fingerprint (digest)</text>
+<path d="M1035,326 L1035,372" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="790" y="376" width="370" height="120" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="808" y="408" font-size="17" font-weight="700" fill="#101827" text-anchor="start">CI checks every change</text>
+<text x="808" y="432" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The committed files must match the code; a</text>
+<text x="808" y="452" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">changed shape must also move the digest.</text>
+<text x="40" y="400" font-size="17" font-weight="700" fill="#101827" text-anchor="start">In the apps</text>
+<rect x="40" y="416" width="330" height="120" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="448" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Android copies the Kotlin</text>
+<text x="58" y="472" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">From the one server version it pins, and</text>
+<text x="58" y="492" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">decodes with the generated classes.</text>
+<rect x="400" y="416" width="330" height="120" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="418" y="448" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Apple copies the Swift</text>
+<text x="418" y="472" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The same shapes, the same vocabulary</text>
+<text x="418" y="492" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">names, the same pin.</text>
+<path d="M790,436 L760,436 L760,476 L734,476" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="56" cy="615" r="12" fill="#FA6400"/>
+<text x="56" y="620" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="78" y="620" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Every response field has a default, so an older app reads a newer server.</text>
+<circle cx="636" cy="615" r="12" fill="#FA6400"/>
+<text x="636" y="620" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="658" y="620" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Unknown values in a vocabulary survive decoding.</text>
+<circle cx="56" cy="655" r="12" fill="#FA6400"/>
+<text x="56" y="660" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="78" y="660" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A feature stays dormant until the server advertises it.</text>
+<circle cx="636" cy="655" r="12" fill="#FA6400"/>
+<text x="636" y="660" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="658" y="660" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Generated files hold shapes only; app logic stays hand-written.</text>
+<text x="40" y="588" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Rules that keep apps safe</text>
+</svg>

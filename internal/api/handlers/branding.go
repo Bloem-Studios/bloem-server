@@ -45,7 +45,7 @@ type brandingResponse struct {
 	FaviconURL       string `json:"favicon_url,omitempty"`
 	LoginBgURL       string `json:"login_bg_url,omitempty"`
 	StorageAvailable bool   `json:"storage_available"`
-	// Ambience is the S-3 block (docs/specs/client-engagement.md section C):
+	// Ambience is the S-3 block (docs/architecture/seasonal-scheduling.md):
 	// the deployment-wide seasonal packs active at the server's clock, with
 	// their window bounds so clients also honour them locally. Always present
 	// (empty array when none) — unauthenticated, so org-scoped packs never

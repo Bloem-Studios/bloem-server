@@ -1502,8 +1502,9 @@ profile and PIN authority; opt-out, timing, reduced motion and playback suppress
 | POST | `/api/bloem/v1/admin/platform/ambience/{id}/assets` | Attach multipart artwork |
 
 Bodies/responses reuse `internal/api/handlers/admin_promotions.go`,
-`internal/api/handlers/admin_ambience.go` and their existing registries. The
-[client engagement spec](specs/client-engagement.md) preserves the historical wire examples;
+`internal/api/handlers/admin_ambience.go` and their existing registries. The wire contracts are on
+[how playback cards work](architecture/playback-overlays.md#admin-promotions-contract) and
+[how seasonal packs are scheduled](architecture/seasonal-scheduling.md#admin-ambience-contract);
 current native authority and seasonal audience rules are described here. Native platform authority is mandatory:
 a Platform administrative context or an enabled administrator's unscoped API key (the storefront's
 credential; see [storefront platform routes](#storefront-platform-routes)). Organization

@@ -8,7 +8,7 @@
 // its string-constant vocabulary, and the registry metadata that propagates
 // along the walk (direction, dialect, capability gates). Anything encoding/json
 // would handle in a way the contract cannot state is refused with an error
-// naming the Go type and field rather than guessed (docs/specs/client-dto-generator.md §3.2).
+// naming the Go type and field rather than guessed (docs/architecture/bloem-client-contract-generator.md §3.2).
 //
 // The graph carries no target-language decisions: Kind names the §4.1 mapping
 // row, and nullability/defaults are for the emitter to derive from Nullable,

@@ -1,5 +1,5 @@
 // Package remote implements the sender side of admin remote control
-// (docs/specs/admin-remote-control.md): server-validated command payloads,
+// (docs/architecture/admin-remote-control.md): server-validated command payloads,
 // the per-device capability handshake, the remote_commands audit store, and
 // the session-scoped delivery service that rides the existing playback
 // control socket.
@@ -70,7 +70,7 @@ var (
 	ErrScopeMismatch       = errors.New("command does not apply to this scope")
 )
 
-// sessionCommands is the session-scoped table from spec §C. The value is
+// sessionCommands is the session-scoped table in "Commands and payloads". The value is
 // whether the command needs a payload validator beyond "empty object".
 var sessionCommands = map[playback.CommandName]struct{}{
 	playback.CommandPause:            {},
@@ -87,7 +87,7 @@ var sessionCommands = map[playback.CommandName]struct{}{
 }
 
 // householdSessionCommands is the reduced set household members may send
-// (spec §D). play_media is device-scoped and lands with S-5b.
+// (the page's "Rules"). play_media is device-scoped and lands with S-5b.
 var householdSessionCommands = map[playback.CommandName]struct{}{
 	playback.CommandPause:            {},
 	playback.CommandUnpause:          {},
@@ -154,7 +154,7 @@ const (
 	TranscodeDirect TranscodeMode = "direct"
 )
 
-// ReplanOverrides pins planner inputs for a replan command (spec §C).
+// ReplanOverrides pins planner inputs for a replan command ("The replan command").
 type ReplanOverrides struct {
 	Transcode      TranscodeMode `json:"transcode"`
 	MaxBitrateKbps int           `json:"max_bitrate_kbps,omitempty"`
@@ -221,7 +221,7 @@ func emptyPayload(raw json.RawMessage) error {
 }
 
 // ValidateSessionPayload checks a session-scoped command's payload against
-// the spec table and returns the normalized payload the client receives.
+// the "Commands and payloads" table and returns the normalized payload the client receives.
 // Unknown names and device-only names are rejected here, before any socket
 // or store is touched.
 func ValidateSessionPayload(name playback.CommandName, raw json.RawMessage, reason string) (json.RawMessage, error) {
