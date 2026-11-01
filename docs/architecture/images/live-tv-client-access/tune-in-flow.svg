@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="920" viewBox="0 0 1200 920" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How an app tunes in to a channel</title>
+<desc id="d">A conversation between an app and the Bloem server, top to bottom. The app asks what Live TV this viewer has; lists channels and the guide; starts a session on a channel; fetches the stream, either as a browser-friendly playlist with a signed ticket or as a raw stream with its normal sign-in; checks in every 30 seconds; and releases the session when the viewer leaves.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="919" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How an app tunes in to a channel</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Every route is under /api/bloem/v1/livetv. The server checks the viewer again at each step.</text>
+<rect x="50" y="120" width="240" height="56" rx="12" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.6"/>
+<text x="170" y="155" font-size="18" font-weight="700" fill="#101827" text-anchor="middle">The app</text>
+<rect x="910" y="120" width="240" height="56" rx="12" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.6"/>
+<text x="1030" y="155" font-size="18" font-weight="700" fill="#101827" text-anchor="middle">Bloem server</text>
+<line x1="170" y1="178" x2="170" y2="846" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="4 6"/>
+<line x1="1030" y1="178" x2="1030" y2="846" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="4 6"/>
+<circle cx="36" cy="220" r="12" fill="#DB2777"/>
+<text x="36" y="225" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="190" y="225" font-size="16" font-weight="700" fill="#101827" text-anchor="start">What may this viewer do?</text>
+<text x="600.0" y="252" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" fill="#101827" text-anchor="middle">GET /capability</text>
+<line x1="174" y1="264" x2="1024" y2="264" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1026" y1="280" x2="176" y2="280" stroke="#6B7280" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+<text x="600.0" y="302" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">supported, allowed, available, heartbeat every 30 s</text>
+<circle cx="36" cy="328" r="12" fill="#DB2777"/>
+<text x="36" y="333" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="190" y="333" font-size="16" font-weight="700" fill="#101827" text-anchor="start">What's on?</text>
+<text x="600.0" y="360" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" fill="#101827" text-anchor="middle">GET /channels  ·  GET /guide</text>
+<line x1="174" y1="372" x2="1024" y2="372" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1026" y1="388" x2="176" y2="388" stroke="#6B7280" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+<text x="600.0" y="410" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">only with the Live TV permission</text>
+<circle cx="36" cy="436" r="12" fill="#DB2777"/>
+<text x="36" y="441" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="190" y="441" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Tune in</text>
+<text x="600.0" y="468" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" fill="#101827" text-anchor="middle">POST /channels/{id}/session</text>
+<line x1="174" y1="480" x2="1024" y2="480" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1026" y1="496" x2="176" y2="496" stroke="#6B7280" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+<text x="600.0" y="518" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">takes a free connection, returns the stream's address</text>
+<circle cx="36" cy="544" r="12" fill="#DB2777"/>
+<text x="36" y="549" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="190" y="549" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Watch in a browser</text>
+<text x="600.0" y="576" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" fill="#101827" text-anchor="middle">GET /live-hls/{id}/index.m3u8?st=…</text>
+<line x1="174" y1="588" x2="1024" y2="588" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1026" y1="604" x2="176" y2="604" stroke="#6B7280" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+<text x="600.0" y="626" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">a signed ticket for this stream only</text>
+<circle cx="36" cy="652" r="12" fill="#DB2777"/>
+<text x="36" y="657" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="190" y="657" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Still watching</text>
+<text x="600.0" y="684" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" fill="#101827" text-anchor="middle">POST /sessions/{id}/heartbeat</text>
+<line x1="174" y1="696" x2="1024" y2="696" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1026" y1="712" x2="176" y2="712" stroke="#6B7280" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+<text x="600.0" y="734" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">every 30 seconds, keeps the connection</text>
+<circle cx="36" cy="760" r="12" fill="#DB2777"/>
+<text x="36" y="765" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="190" y="765" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Leave</text>
+<text x="600.0" y="792" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" fill="#101827" text-anchor="middle">DELETE /sessions/{id}</text>
+<line x1="174" y1="804" x2="1024" y2="804" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1026" y1="820" x2="176" y2="820" stroke="#6B7280" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+<text x="600.0" y="842" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">frees the connection, even after access is taken away</text>
+<text x="40" y="864" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A raw MPEG-TS stream (GET /sessions/{id}/stream) uses the app's normal sign-in instead of a ticket. Tickets and stream addresses never carry the account's own</text>
+<text x="40" y="884" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">credentials.</text>
+</svg>

@@ -108,4 +108,62 @@ def sign_in():
     return s
 
 
-PICTURES = [("doors", doors), ("sign-in", sign_in)]
+def own_domain_sign_in():
+    s = Svg(1200, 712, "Signing in on an organization's own domain",
+            "A made-up member of Riverside Club, whose organization has its own domain, tries to sign in at "
+            "three addresses. On the club's domain the sign-in works and the page shows the club's name and "
+            "colours. On another organization's domain it is refused with a message naming the club's address. "
+            "On an address no organization registered, such as the server's IP address, it works. Below, a "
+            "sign-in through the OAuth provider returns to the domain it started on, so each domain must be "
+            "registered at the provider.")
+    s.header("Signing in on an organization's own domain",
+             "A domain decides which name and colours a page shows, never what an account may reach.")
+    o, a, st, g, p = TIERS["org"], TIERS["account"], TIERS["stop"], TIERS["grey"], TIERS["platform"]
+
+    s.rect(40, 124, 1120, 64, "#F9FAFB", "#E5E7EB", rx=12)
+    s.text(60, 162, "sam@riverside.example, a member of Riverside Club, signs in at:", size=16, weight="700")
+    s.text(1140, 162, "This example is made up.", size=13.5, fill=SOFT, anchor="end")
+
+    cases = [
+        (a, True, "watch.riverside.example", "Riverside Club's own domain",
+         "Signed in. The page shows the club's name, logo and colours, and emails link here."),
+        (st, False, "tv.other.example", "Another organization's domain",
+         "Refused (409): “This account signs in at https://watch.riverside.example.”"),
+        (g, True, "The server's IP address", "An address nobody registered",
+         "Signed in. An IP address or a home-network name always works, so an administrator can reach the "
+         "server."),
+    ]
+    x, cw, gap = 40, 360, 20
+    for i, (color, ok, host, label, body) in enumerate(cases):
+        cx = x + i * (cw + gap)
+        s.rect(cx, 212, cw, 176, color["fill"], color["stroke"], rx=16, sw=1.8)
+        (yes_mark if ok else no_mark)(s, cx + 34, 250, r=14)
+        s.text(cx + 58, 256, host, size=16, weight="700")
+        s.text(cx + 22, 290, label.upper(), size=11.5, weight="700", fill=color["label"], spacing="0.8")
+        para(s, cx + 22, 322, body, cw - 44, size=14.5, fill=INK, gap=21)
+
+    para(s, 40, 426, "An organization without a domain signs in at the server's public address. In production "
+         "there is one organization, the default one, and the server's public address is its primary domain.",
+         1120, size=14.5, fill=INK, gap=21)
+
+    # OAuth.
+    oy = 494
+    s.text(40, oy, "Signing in or out through the OAuth provider (Authentik)", size=18, weight="700")
+    steps = [
+        (o, "Start on a domain", "The sign-in page on watch.riverside.example sends the browser to the "
+         "provider."),
+        (p, "The provider", "Checks the password, then sends the browser back to that same domain's callback."),
+        (a, "Finish on the domain", "Where the browser's cookies are. Signing out returns to that domain's "
+         "/login."),
+    ]
+    for i, (color, title, body) in enumerate(steps):
+        cx = 40 + i * 390
+        box(s, cx, oy + 20, 340, 112, color, title, body, size=14, title_size=16)
+        if i < 2:
+            s.arrow(cx + 344, oy + 76, cx + 386, oy + 76)
+    footer(s, "So each domain's two callback addresses, and its /login when provider sign-out is on, must be "
+              "registered at the provider before that domain's members use it.", y=676, fill=INK)
+    return s
+
+
+PICTURES = [("doors", doors), ("sign-in", sign_in), ("own-domain-sign-in", own_domain_sign_in)]

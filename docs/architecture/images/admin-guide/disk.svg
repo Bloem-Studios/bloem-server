@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Where things live, and what to back up</title>
+<desc id="d">Three columns. Your media, mounted read-only and never written by Bloem. Bloem's own data under SILO_DATA_ROOT: the database, Redis, artwork, plugins, prepared downloads and transcode scratch. The .env file with SECRET_KEY, kept away from the server.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="519" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Where things live, and what to back up</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Your media and Bloem's own data are kept apart. Back up three things, and test a restore once.</text>
+<rect x="40" y="124" width="357" height="300" rx="16" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="64" y="162" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Your media</text>
+<text x="64" y="192" font-size="13.5" font-weight="600" fill="#374151" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace">MEDIA_ROOT on the host</text>
+<text x="64" y="232" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Mounted read-only into the</text>
+<text x="64" y="256" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">container at /mnt/media.</text>
+<text x="64" y="280" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Bloem never writes to it.</text>
+<rect x="64" y="378" width="233" height="26" rx="13.0" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.2"/>
+<text x="180.5" y="395.68" font-size="13" font-weight="600" fill="#374151" text-anchor="middle">Back it up as you already do</text>
+<rect x="421" y="124" width="357" height="300" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="445" y="162" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Bloem's own data</text>
+<text x="445" y="192" font-size="13.5" font-weight="600" fill="#C2410C" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace">SILO_DATA_ROOT (default /opt/silo)</text>
+<text x="445" y="232" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">The database (/opt/silo/postgres)</text>
+<text x="445" y="256" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Redis</text>
+<text x="445" y="280" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Downloaded artwork</text>
+<text x="445" y="304" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Plugins and compatibility assets</text>
+<text x="445" y="328" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Prepared downloads</text>
+<text x="445" y="352" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Transcode scratch</text>
+<rect x="445" y="378" width="256" height="26" rx="13.0" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="573.0" y="395.68" font-size="13" font-weight="600" fill="#047857" text-anchor="middle">Back up: pg_dump and the folder</text>
+<rect x="802" y="124" width="357" height="300" rx="16" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="826" y="162" font-size="20" font-weight="700" fill="#101827" text-anchor="start">.env and SECRET_KEY</text>
+<text x="826" y="192" font-size="13.5" font-weight="600" fill="#B45309" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace">Your settings file</text>
+<text x="826" y="232" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">SECRET_KEY encrypts every</text>
+<text x="826" y="256" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">stored credential. A database</text>
+<text x="826" y="280" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">backup holds the encrypted</text>
+<text x="826" y="304" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">values, not the key.</text>
+<rect x="826" y="378" width="218" height="26" rx="13.0" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.2"/>
+<text x="935.0" y="395.68" font-size="13" font-weight="600" fill="#B45309" text-anchor="middle">Keep a copy off the server</text>
+<text x="40" y="462" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Never copy the database folder while it runs: dump it with pg_dump on a schedule. Losing artwork is slow to recover, because the server downloads it again;</text>
+<text x="40" y="482" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">losing SECRET_KEY is not recoverable.</text>
+</svg>

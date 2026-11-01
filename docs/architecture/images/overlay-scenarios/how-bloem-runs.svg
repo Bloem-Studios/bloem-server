@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How Bloem runs Silo's scenario catalogs</title>
+<desc id="d">Silo's catalogs, unchanged and pinned by SHA-256, and Bloem's own rows for routes it adds to Silo's route groups, feed 49 written decisions, each replacing one expected answer with a reason. They run against Bloem's test setup, which recreates the default organization. The scenario executor runs them in its own CI job against an empty database; a pass is the scenario gate for one commit, not device acceptance.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="619" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How Bloem runs Silo's scenario catalogs</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's files stay as they are. Every difference is a written decision.</text>
+<rect x="40" y="128" width="250" height="168" rx="14" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="58" y="160" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's catalogs</text>
+<text x="58" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Recorded requests and the</text>
+<text x="58" y="204" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">answers they must get.</text>
+<text x="58" y="224" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Unchanged, and pinned by</text>
+<text x="58" y="244" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">checksum.</text>
+<rect x="40" y="320" width="250" height="168" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="58" y="352" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's own rows</text>
+<text x="58" y="376" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">For routes Bloem adds to</text>
+<text x="58" y="396" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's route groups, in files</text>
+<text x="58" y="416" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">of its own.</text>
+<line x1="294" y1="212" x2="336" y2="290" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="294" y1="404" x2="336" y2="330" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="340" y="214" width="250" height="192" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="358" y="246" font-size="17" font-weight="700" fill="#101827" text-anchor="start">49 written decisions</text>
+<text x="358" y="270" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each replaces one expected</text>
+<text x="358" y="290" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">answer with Bloem's, and says</text>
+<text x="358" y="310" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">why. A changed Silo catalog</text>
+<text x="358" y="330" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">fails the run.</text>
+<line x1="594" y1="310" x2="626" y2="310" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="630" y="214" width="250" height="192" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="648" y="246" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's test setup</text>
+<text x="648" y="270" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Recreates the default</text>
+<text x="648" y="290" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">organization; the test admin</text>
+<text x="648" y="310" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">is the Owner; real avatar</text>
+<text x="648" y="330" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">storage where a case needs it.</text>
+<line x1="884" y1="310" x2="916" y2="310" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="920" y="214" width="240" height="192" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="938" y="246" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Scenario executor</text>
+<text x="938" y="270" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Its own CI job: up to 45</text>
+<text x="938" y="290" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">minutes, against an empty</text>
+<text x="938" y="310" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">database it owns.</text>
+<line x1="1040" y1="410" x2="1040" y2="444" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="630" y="448" width="530" height="56" rx="28" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="895" y="482" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">A pass is the scenario gate for one commit</text>
+<text x="895" y="530" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">It is not proof that an app works on a device.</text>
+<text x="40" y="588" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Bloem's decisions never edit Silo's catalogs. When Silo changes one, a person reviews the decisions that depend on it.</text>
+</svg>

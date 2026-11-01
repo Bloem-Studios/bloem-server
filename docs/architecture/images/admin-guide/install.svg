@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">From a blank machine to watching</title>
+<desc id="d">Six steps in two rows: get the files, add two secrets, point at your media, start it, run the setup wizard, and invite people. Each step names the section of the guide that explains it.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="599" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">From a blank machine to watching</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Part 1 in six steps. Each one has its own section below.</text>
+<rect x="40" y="124" width="346" height="150" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="124" width="8" height="150" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="152" r="12" fill="#6366F1"/>
+<text x="74" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="96" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Get the files</text>
+<text x="64" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Clone the repository and copy Bloem's</text>
+<text x="64" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">example settings, .env.bloem.example, to</text>
+<text x="64" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">.env.</text>
+<rect x="329" y="138" width="43" height="25" rx="12.5" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="350.5" y="154.82" font-size="12" font-weight="600" fill="#101827" text-anchor="middle">1.3</text>
+<line x1="390" y1="199.0" x2="423" y2="199.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="427" y="124" width="346" height="150" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="427" y="124" width="8" height="150" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="461" cy="152" r="12" fill="#6366F1"/>
+<text x="461" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="483" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Add two secrets</text>
+<text x="451" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A database password, and SECRET_KEY, which</text>
+<text x="451" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">encrypts every credential the server</text>
+<text x="451" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">stores.</text>
+<rect x="716" y="138" width="43" height="25" rx="12.5" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="737.5" y="154.82" font-size="12" font-weight="600" fill="#101827" text-anchor="middle">1.3</text>
+<line x1="777" y1="199.0" x2="810" y2="199.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="814" y="124" width="346" height="150" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="814" y="124" width="8" height="150" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="848" cy="152" r="12" fill="#6366F1"/>
+<text x="848" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="870" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Point at your media</text>
+<text x="838" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Set MEDIA_ROOT to your media folder. Bloem</text>
+<text x="838" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">reads it and never writes to it.</text>
+<rect x="1103" y="138" width="43" height="25" rx="12.5" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="1124.5" y="154.82" font-size="12" font-weight="600" fill="#101827" text-anchor="middle">1.3</text>
+<rect x="40" y="338" width="346" height="150" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="338" width="8" height="150" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="366" r="12" fill="#6366F1"/>
+<text x="74" y="371" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="96" y="372" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Start it</text>
+<text x="64" y="400" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">docker compose up -d starts Bloem,</text>
+<text x="64" y="420" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">PostgreSQL and Redis. The first start takes</text>
+<text x="64" y="440" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">a few minutes.</text>
+<rect x="329" y="352" width="43" height="25" rx="12.5" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="350.5" y="368.82" font-size="12" font-weight="600" fill="#101827" text-anchor="middle">1.3</text>
+<line x1="390" y1="413.0" x2="423" y2="413.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="427" y="338" width="346" height="150" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="427" y="338" width="8" height="150" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="461" cy="366" r="12" fill="#10B981"/>
+<text x="461" y="371" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="483" y="372" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Run the setup wizard</text>
+<text x="451" y="400" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Open port 8090 in a browser. Only the first</text>
+<text x="451" y="420" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">step, the administrator account, is</text>
+<text x="451" y="440" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">required.</text>
+<rect x="716" y="352" width="43" height="25" rx="12.5" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="737.5" y="368.82" font-size="12" font-weight="600" fill="#101827" text-anchor="middle">1.4</text>
+<line x1="777" y1="413.0" x2="810" y2="413.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="814" y="338" width="346" height="150" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="814" y="338" width="8" height="150" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="848" cy="366" r="12" fill="#10B981"/>
+<text x="848" y="371" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="870" y="372" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Invite people</text>
+<text x="838" y="400" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Users → Invitations or Invite Codes. Each</text>
+<text x="838" y="420" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">viewer gets an account with its own</text>
+<text x="838" y="440" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">profiles.</text>
+<rect x="1103" y="352" width="43" height="25" rx="12.5" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="1124.5" y="368.82" font-size="12" font-weight="600" fill="#101827" text-anchor="middle">1.8</text>
+<path d="M 987.0 278 L 987.0 306 L 213.0 306 L 213.0 334" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="566" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A first scan of a large library takes a while. Watch it on Libraries and in Scheduled Tasks.</text>
+</svg>

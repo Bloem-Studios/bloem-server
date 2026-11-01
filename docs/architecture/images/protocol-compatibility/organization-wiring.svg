@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a Jellyfin app stays inside its organization</title>
+<desc id="d">A Jellyfin or Audiobookshelf app connects to Silo's compatibility server on its own port. Silo's server is unchanged; where the Bloem binary builds it, Bloem adds four things: only the organization's libraries, downloads through Bloem's download rules for the profile, no files from storage sources for Jellyfin, and sign-outs that also end compatibility sessions, including those of profiles an organization removes.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="719" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a Jellyfin app stays inside its organization</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's compatibility servers run unchanged. Bloem adds its rules where the server is built.</text>
+<rect x="40" y="132" width="300" height="120" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="58" y="164" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Jellyfin app</text>
+<text x="58" y="188" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Infuse, Findroid, Swiftfin and</text>
+<text x="58" y="208" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">others, on port 8096.</text>
+<rect x="40" y="272" width="300" height="120" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="58" y="304" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Audiobookshelf app</text>
+<text x="58" y="328" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">For listening to audiobooks, on port</text>
+<text x="58" y="348" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">13378.</text>
+<line x1="344" y1="192" x2="396" y2="250" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="344" y1="332" x2="396" y2="280" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="400" y="196" width="300" height="132" rx="14" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="418" y="228" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's compatibility server</text>
+<text x="418" y="252" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Exactly as Silo ships it. Bloem</text>
+<text x="418" y="272" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">differs from Silo in one of its test</text>
+<text x="418" y="292" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">files only.</text>
+<line x1="704" y1="262" x2="756" y2="262" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="760" y="124" width="400" height="512" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="784" y="160" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Bloem's wiring, where it is built</text>
+<circle cx="790" cy="196" r="10" fill="#10B981"/>
+<path d="M785.5,196.2 L789.0,199.8 L795.0,192.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="810" y="201" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Only the organization's libraries</text>
+<text x="810" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A session sees its own organization's</text>
+<text x="810" y="245" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">libraries, nothing more.</text>
+<circle cx="790" cy="294" r="10" fill="#10B981"/>
+<path d="M785.5,294.2 L789.0,297.8 L795.0,290.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="810" y="299" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Downloads by Bloem's rules</text>
+<text x="810" y="324" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A Jellyfin download follows the profile's</text>
+<text x="810" y="343" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">download rules; a session with no organization</text>
+<text x="810" y="362" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">is refused.</text>
+<circle cx="790" cy="411" r="10" fill="#10B981"/>
+<path d="M785.5,411.2 L789.0,414.8 L795.0,407.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="810" y="416" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">No storage-source files</text>
+<text x="810" y="441" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Jellyfin never sees files that live in a</text>
+<text x="810" y="460" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">storage source.</text>
+<circle cx="790" cy="509" r="10" fill="#10B981"/>
+<path d="M785.5,509.2 L789.0,512.8 L795.0,505.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="810" y="514" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Sign-outs reach it</text>
+<text x="810" y="539" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Signing an account out ends its compatibility</text>
+<text x="810" y="558" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">sessions on every server, and removing a</text>
+<text x="810" y="577" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">profile ends that profile's.</text>
+<rect x="40" y="440" width="660" height="196" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="64" y="474" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Not here</text>
+<circle cx="76" cy="508" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M71.5,503.5 L80.5,512.5 M80.5,503.5 L71.5,512.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="96" y="513" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">No Live TV: Bloem's Live TV is only in the web app and Bloem's apps.</text>
+<circle cx="76" cy="548" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M71.5,543.5 L80.5,552.5 M80.5,543.5 L71.5,552.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="96" y="553" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Not on the public port: each protocol has its own.</text>
+<circle cx="76" cy="588" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M71.5,583.5 L80.5,592.5 M80.5,583.5 L71.5,592.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="96" y="593" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">No gateway or companion-app enrollment.</text>
+<text x="40" y="684" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A test fails if any viewer resolver the server builds, including the compatibility servers', skips Bloem's organization check.</text>
+</svg>

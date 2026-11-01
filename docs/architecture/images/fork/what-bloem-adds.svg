@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What Bloem adds to Silo</title>
+<desc id="d">On the left, Silo Server, whose features all stay. On the right, what Bloem adds beside it: organizations, accounts and plans; Live TV and recordings; libraries on storage sources; an API for Bloem's own apps; organization domains and branding; switching between Silo and Bloem. Below, what Bloem added once and took out again.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What Bloem adds to Silo</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem is Silo plus these additions. Each one sits beside Silo's code, not inside it.</text>
+<rect x="40" y="124" width="330" height="372" rx="16" fill="#F0F9FF" stroke="#0284C7" stroke-width="2"/>
+<text x="205" y="164" font-size="22" font-weight="700" fill="#075985" text-anchor="middle">Silo Server</text>
+<text x="64" y="198" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">A self-hosted media server for films,</text>
+<text x="64" y="218" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">series, audiobooks, ebooks, podcasts</text>
+<text x="64" y="238" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">and manga.</text>
+<circle cx="74" cy="285" r="10" fill="#10B981"/>
+<path d="M69.5,285.2 L73.0,288.8 L79.0,281.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="94" y="290" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Its libraries and catalog</text>
+<circle cx="74" cy="323" r="10" fill="#10B981"/>
+<path d="M69.5,323.2 L73.0,326.8 L79.0,319.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="94" y="328" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Its apps and its API</text>
+<circle cx="74" cy="361" r="10" fill="#10B981"/>
+<path d="M69.5,361.2 L73.0,364.8 L79.0,357.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="94" y="366" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Jellyfin and Audiobookshelf apps</text>
+<circle cx="74" cy="399" r="10" fill="#10B981"/>
+<path d="M69.5,399.2 L73.0,402.8 L79.0,395.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="94" y="404" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Its migrations and settings</text>
+<text x="64" y="452" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">All of it stays: Bloem merges Silo's</text>
+<text x="64" y="472" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">work every day.</text>
+<line x1="374" y1="310" x2="404" y2="310" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="389" y="296" font-size="22" font-weight="700" fill="#C2410C" text-anchor="middle">+</text>
+<rect x="410" y="124" width="360" height="116" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="428" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Organizations and plans</text>
+<text x="428" y="180" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Customers kept apart, with accounts, seats</text>
+<text x="428" y="200" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">and plans.</text>
+<rect x="790" y="124" width="360" height="116" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="808" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Live TV and recordings</text>
+<text x="808" y="180" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Tuners, Xtream providers, a guide and a</text>
+<text x="808" y="200" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">recorder.</text>
+<rect x="410" y="252" width="360" height="116" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="428" y="284" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Storage sources</text>
+<text x="428" y="308" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Libraries read from S3 or Bookwarehouse.</text>
+<text x="428" y="328" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Experimental.</text>
+<rect x="790" y="252" width="360" height="116" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="808" y="284" font-size="17" font-weight="700" fill="#101827" text-anchor="start">An API for Bloem's apps</text>
+<text x="808" y="308" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Richer title pages, profile sign-ins,</text>
+<text x="808" y="328" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">server-side search.</text>
+<rect x="410" y="380" width="360" height="116" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="428" y="412" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Domains and branding</text>
+<text x="428" y="436" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Each organization on its own address, name</text>
+<text x="428" y="456" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">and colours.</text>
+<rect x="790" y="380" width="360" height="116" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="808" y="412" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Switching with Silo</text>
+<text x="808" y="436" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">One database, served by Silo or by Bloem,</text>
+<text x="808" y="456" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">one at a time.</text>
+<text x="40" y="552" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Added once, then taken out again</text>
+<rect x="40" y="570" width="249" height="27" rx="13.5" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.2"/>
+<text x="164.5" y="588.54" font-size="14" font-weight="600" fill="#374151" text-anchor="middle">A gateway for companion apps</text>
+<rect x="303" y="570" width="152" height="27" rx="13.5" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.2"/>
+<text x="379.0" y="588.54" font-size="14" font-weight="600" fill="#374151" text-anchor="middle">Pastime tracking</text>
+<rect x="469" y="570" width="144" height="27" rx="13.5" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.2"/>
+<text x="541.0" y="588.54" font-size="14" font-weight="600" fill="#374151" text-anchor="middle">A music catalog</text>
+<rect x="627" y="570" width="217" height="27" rx="13.5" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.2"/>
+<text x="735.5" y="588.54" font-size="14" font-weight="600" fill="#374151" text-anchor="middle">Bundled worker processes</text>
+<text x="40" y="656" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Bloem's name and look are applied when the web app is built, so Silo's source stays as Silo wrote it.</text>
+</svg>

@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="790" viewBox="0 0 1200 790" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Two ways to administer</title>
+<desc id="d">Choose context leads to two sidebars. Platform: the whole server, with Bloem's Platform pages and Silo's Monitor, Manage and Configure groups. An organization: nine pages for that organization only.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="789" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Two ways to administer</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Choose a context first. The sidebar then shows only the pages for that context.</text>
+<rect x="480" y="112" width="240" height="48" rx="24" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="600" y="143" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">Choose context</text>
+<path d="M 480 136 L 350 136 L 350 196" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 720 136 L 930 136 L 930 196" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="200" width="620" height="500" rx="18" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="64" y="236" font-size="14" font-weight="700" fill="#C2410C" text-anchor="start" letter-spacing="1">PLATFORM</text>
+<text x="64" y="262" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">The whole server. For platform administrators.</text>
+<text x="64" y="300" font-size="14" font-weight="700" fill="#6B7280" text-anchor="start">Platform (Bloem's pages)</text>
+<rect x="64" y="312" width="120" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="124.0" y="329.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Organizations</text>
+<rect x="194" y="312" width="180" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="284.0" y="329.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Entitlement Templates</text>
+<rect x="384" y="312" width="218" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="493.0" y="329.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Campaigns &amp; Seasonal Packs</text>
+<rect x="64" y="348" width="135" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="131.5" y="365.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Direct Accounts</text>
+<rect x="209" y="348" width="180" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="299.0" y="365.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Bulk Account Policies</text>
+<text x="64" y="398" font-size="14" font-weight="700" fill="#6B7280" text-anchor="start">Monitor</text>
+<rect x="64" y="410" width="90" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="109.0" y="427.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Dashboard</text>
+<rect x="164" y="410" width="82" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="205.0" y="427.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Activity</text>
+<rect x="256" y="410" width="52" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="282.0" y="427.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Logs</text>
+<text x="64" y="460" font-size="14" font-weight="700" fill="#6B7280" text-anchor="start">Manage</text>
+<rect x="64" y="472" width="90" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="109.0" y="489.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Libraries</text>
+<rect x="164" y="472" width="82" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="205.0" y="489.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Autoscan</text>
+<rect x="256" y="472" width="82" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="297.0" y="489.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Requests</text>
+<rect x="348" y="472" width="75" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="385.5" y="489.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Live TV</text>
+<rect x="433" y="472" width="60" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="463.0" y="489.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Users</text>
+<rect x="503" y="472" width="82" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="544.0" y="489.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Playback</text>
+<rect x="64" y="508" width="90" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="109.0" y="525.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Downloads</text>
+<text x="64" y="558" font-size="14" font-weight="700" fill="#6B7280" text-anchor="start">Configure</text>
+<rect x="64" y="570" width="67" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="97.5" y="587.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Server</text>
+<rect x="141" y="570" width="158" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="220.0" y="587.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Sign-in &amp; Security</text>
+<rect x="309" y="570" width="112" height="26" rx="13.0" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="365.0" y="587.68" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">Integrations</text>
+<rect x="700" y="200" width="460" height="500" rx="18" fill="#EEF2FF" stroke="#6366F1" stroke-width="2"/>
+<text x="724" y="236" font-size="14" font-weight="700" fill="#4338CA" text-anchor="start" letter-spacing="1">AN ORGANIZATION</text>
+<text x="724" y="262" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">One organization only. For its organization</text>
+<text x="724" y="283" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">administrators.</text>
+<rect x="724" y="304" width="412" height="34" rx="8" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="1.2"/>
+<text x="742" y="327" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Overview</text>
+<rect x="724" y="346" width="412" height="34" rx="8" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="1.2"/>
+<text x="742" y="369" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">People</text>
+<rect x="724" y="388" width="412" height="34" rx="8" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="1.2"/>
+<text x="742" y="411" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Policy Cohorts</text>
+<rect x="724" y="430" width="412" height="34" rx="8" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="1.2"/>
+<text x="742" y="453" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Access Groups</text>
+<rect x="724" y="472" width="412" height="34" rx="8" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="1.2"/>
+<text x="742" y="495" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Libraries &amp; Entitlements</text>
+<rect x="724" y="514" width="412" height="34" rx="8" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="1.2"/>
+<text x="742" y="537" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Storage sources</text>
+<rect x="724" y="556" width="412" height="34" rx="8" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="1.2"/>
+<text x="742" y="579" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Invitations</text>
+<rect x="724" y="598" width="412" height="34" rx="8" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="1.2"/>
+<text x="742" y="621" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Policy Decisions</text>
+<rect x="724" y="640" width="412" height="34" rx="8" fill="#FFFFFF" stroke="#C7D2FE" stroke-width="1.2"/>
+<text x="742" y="663" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Activity &amp; Audit</text>
+<text x="40" y="734" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Admin pages also need a selected profile. Being a household's main profile does not make an account a platform administrator, and an organization administrator</text>
+<text x="40" y="754" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">cannot open platform pages.</text>
+</svg>

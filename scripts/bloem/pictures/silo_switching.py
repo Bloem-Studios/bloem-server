@@ -62,7 +62,7 @@ def what_each_sees():
             "Two columns. Shared by both: accounts and passwords, profiles, libraries and the catalog, watch "
             "history, access groups, movie and series requests, and Jellyfin and Audiobookshelf app data. "
             "Bloem's only: organizations beyond the default one, plans, Live TV, storage-source libraries, "
-            "promotions and seasonal packs. Below, the three rules while switching is on.")
+            "promotions and seasonal packs, and organization domains and branding. Below, the three rules while switching is on.")
     s.header("What each server sees",
              "Bloem's extras stay in the database while Silo serves. They wake up again with Bloem.")
     a, g, st = TIERS["account"], TIERS["grey"], TIERS["stop"]
@@ -81,7 +81,8 @@ def what_each_sees():
     s.text(650, 161, "B", size=13, weight="700", fill="#FFFFFF", anchor="middle")
     s.text(672, 162, "Only Bloem uses; kept while Silo serves", size=19, weight="700")
     only = ["Plans (entitlement templates)", "Live TV, guides and recordings", "Libraries on storage sources",
-            "Audiobook and ebook requests", "Promotions, playback cards and seasonal packs"]
+            "Audiobook and ebook requests", "Promotions, playback cards and seasonal packs",
+            "Organization domains and branding"]
     for i, t in enumerate(only):
         y = 200 + i * 42
         s.add(f'<circle cx="652" cy="{y - 5}" r="4" fill="{BLOEM["stroke"]}"/>')

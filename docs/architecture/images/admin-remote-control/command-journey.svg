@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="770" viewBox="0 0 1200 770" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a remote command travels</title>
+<desc id="d">Top: who may send which commands. A household's main profile sends a reduced set to its own account's sessions; an administrator also sends terminate, which needs a reason, and replan. Middle: the path of one command from the sender through the Bloem server to the app's playback connection, refused when the app did not list the command or has no live connection. Bottom: the command's states, from sent to accepted to done or rejected, or expired.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="769" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a remote command travels</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">From the sender, through the server, to the playing app, and the states it can end in.</text>
+<rect x="40" y="124" width="540" height="116" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<text x="58" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">A household's main profile</text>
+<text x="58" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Only its own account's sessions: pause, resume, play or pause, seek,</text>
+<text x="58" y="200" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">stop, volume, audio track, subtitle track, show a message.</text>
+<rect x="620" y="124" width="540" height="116" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="638" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">An administrator</text>
+<text x="638" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Sessions in their organization scope: everything a household can send,</text>
+<text x="638" y="200" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">plus terminate (with a reason the viewer sees) and replan (a better</text>
+<text x="638" y="220" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">playback plan).</text>
+<text x="40" y="290" font-size="18" font-weight="700" fill="#101827" text-anchor="start">The path of one command</text>
+<rect x="40" y="310" width="250" height="96" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6"/>
+<text x="165" y="342" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Sender</text>
+<text x="165" y="366" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">admin console or</text>
+<text x="165" y="384" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">household app</text>
+<rect x="330" y="310" width="250" height="96" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.6"/>
+<text x="455" y="342" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Bloem server</text>
+<text x="455" y="366" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">checks the sender's</text>
+<text x="455" y="384" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">rights and the app's list</text>
+<rect x="620" y="310" width="250" height="96" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.6"/>
+<text x="745" y="342" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Playback connection</text>
+<text x="745" y="366" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">the app's live socket</text>
+<text x="745" y="384" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">for this session</text>
+<rect x="910" y="310" width="250" height="96" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="1035" y="342" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Playing app</text>
+<text x="1035" y="366" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">acts, then answers</text>
+<text x="1035" y="384" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">accepted and done</text>
+<line x1="292" y1="358" x2="328" y2="358" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="582" y1="358" x2="618" y2="358" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="872" y1="358" x2="908" y2="358" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="356" cy="448" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M350.6,442.6 L361.4,453.4 M361.4,442.6 L350.6,453.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="378" y="444" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Not on the app's list of commands:</text>
+<text x="378" y="462" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">recorded as rejected_unsupported</text>
+<text x="378" y="480" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">and never sent.</text>
+<circle cx="646" cy="448" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M640.6,442.6 L651.4,453.4 M651.4,442.6 L640.6,453.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="668" y="444" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">No live connection: 409</text>
+<text x="668" y="462" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">session_not_connected, recorded as</text>
+<text x="668" y="480" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">failed. Never queued.</text>
+<text x="40" y="540" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Its states</text>
+<rect x="40" y="564" width="150" height="46" rx="23" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="115" y="593" font-size="15" font-weight="700" fill="#C2410C" text-anchor="middle">sent</text>
+<rect x="260" y="564" width="150" height="46" rx="23" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="335" y="593" font-size="15" font-weight="700" fill="#047857" text-anchor="middle">accepted</text>
+<rect x="500" y="564" width="150" height="46" rx="23" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="575" y="593" font-size="15" font-weight="700" fill="#047857" text-anchor="middle">done</text>
+<rect x="690" y="564" width="150" height="46" rx="23" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<text x="765" y="593" font-size="15" font-weight="700" fill="#B91C1C" text-anchor="middle">rejected</text>
+<rect x="940" y="564" width="150" height="46" rx="23" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="1015" y="593" font-size="15" font-weight="700" fill="#B45309" text-anchor="middle">expired</text>
+<line x1="194" y1="587" x2="256" y2="587" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="414" y1="587" x2="496" y2="587" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 414 600 C 520 650, 640 650, 700 614" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 120 612 C 300 690, 820 690, 1000 614" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+<text x="560" y="694" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">no answer within 8 seconds, past the 60-second expiry, or the session ended</text>
+<text x="40" y="736" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A finished command never changes again; a late duplicate answer is ignored. Only the session a command was sent to can answer it.</text>
+</svg>

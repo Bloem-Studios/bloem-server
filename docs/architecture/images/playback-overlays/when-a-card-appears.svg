@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="770" viewBox="0 0 1200 770" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">When a playback card may appear</title>
+<desc id="d">A playback timeline with chapter marks. Starting playback, seeking across a chapter and resuming after a pause never show a card. The first time playback runs naturally into a chapter, the card appears; a second chapter in the same app session shows nothing. Below, the card's display time: a 650 millisecond fade in, the visible part, and a one second fade out, 5 to 60 seconds in all.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="769" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">When a playback card may appear</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Only when playback runs on its own into a chapter. At most once per title, per profile, per app session.</text>
+<rect x="60" y="236" width="1080" height="12" rx="6" fill="#E5E7EB" stroke="none" stroke-width="1.5"/>
+<line x1="60" y1="228" x2="60" y2="256" stroke="#101827" stroke-width="2"/>
+<text x="62" y="280" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="start">start</text>
+<line x1="300" y1="228" x2="300" y2="256" stroke="#101827" stroke-width="2"/>
+<text x="300" y="280" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">chapter 2</text>
+<line x1="560" y1="228" x2="560" y2="256" stroke="#101827" stroke-width="2"/>
+<text x="560" y="280" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">chapter 3</text>
+<line x1="820" y1="228" x2="820" y2="256" stroke="#101827" stroke-width="2"/>
+<text x="820" y="280" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">chapter 4</text>
+<line x1="1060" y1="228" x2="1060" y2="256" stroke="#101827" stroke-width="2"/>
+<text x="1060" y="280" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">chapter 5</text>
+<circle cx="64" cy="202" r="14" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M57.7,195.7 L70.3,208.3 M70.3,195.7 L57.7,208.3" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="130" y="156" font-size="14.5" font-weight="700" fill="#101827" text-anchor="middle">Playback starts</text>
+<text x="130" y="300" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">Never at the start,</text>
+<text x="130" y="318" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">even on a chapter.</text>
+<circle cx="300" cy="202" r="14" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M293.7,195.7 L306.3,208.3 M306.3,195.7 L293.7,208.3" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="300" y="156" font-size="14.5" font-weight="700" fill="#101827" text-anchor="middle">A seek lands here</text>
+<text x="300" y="300" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">Jumping across a</text>
+<text x="300" y="318" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">chapter does not count.</text>
+<circle cx="560" cy="202" r="14" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M553.7,195.7 L566.3,208.3 M566.3,195.7 L553.7,208.3" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="560" y="156" font-size="14.5" font-weight="700" fill="#101827" text-anchor="middle">Resumed after pause</text>
+<text x="560" y="300" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">Crossing a chapter</text>
+<text x="560" y="318" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">while paused does not.</text>
+<circle cx="820" cy="202" r="14" fill="#10B981"/>
+<path d="M813.7,202.28 L818.6,207.32 L827.0,197.1" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="820" y="156" font-size="14.5" font-weight="700" fill="#101827" text-anchor="middle">Runs into chapter 4</text>
+<text x="820" y="300" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">The first natural</text>
+<text x="820" y="318" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">crossing: the card shows.</text>
+<circle cx="1060" cy="202" r="14" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M1053.7,195.7 L1066.3,208.3 M1066.3,195.7 L1053.7,208.3" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="1060" y="156" font-size="14.5" font-weight="700" fill="#101827" text-anchor="middle">Runs into chapter 5</text>
+<text x="1060" y="300" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">Already shown for this</text>
+<text x="1060" y="318" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">title in this session.</text>
+<path d="M 230 202 C 250 166, 280 166, 300 186" fill="none" stroke="#6B7280" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#arrow)"/>
+<text x="214" y="206" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="end">seek</text>
+<text x="60" y="420" font-size="18" font-weight="700" fill="#101827" text-anchor="start">How long it stays</text>
+<path d="M 120 590 L 180 470 L 950 470 L 1040 590 Z" fill="#FDF4FF" stroke="#C026D3" stroke-width="2"/>
+<line x1="100" y1="590" x2="1080" y2="590" stroke="#101827" stroke-width="1.5"/>
+<text x="150" y="616" font-size="13" font-weight="normal" fill="#86198F" text-anchor="middle">fade in, 650 ms</text>
+<text x="580.0" y="530" font-size="15" font-weight="600" fill="#86198F" text-anchor="middle">visible: artwork and text float over the picture</text>
+<text x="995" y="616" font-size="13" font-weight="normal" fill="#86198F" text-anchor="middle">fade out, 1 s</text>
+<line x1="120" y1="636" x2="1040" y2="636" stroke="#6B7280" stroke-width="1.5" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<text x="580.0" y="660" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="middle">5 to 60 seconds in all, fades included; 10 seconds unless the campaign sets another time</text>
+<text x="40" y="706" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">It also leaves early when the player's controls open, playback pauses or seeks, the campaign expires or the server stops listing it. It never pauses the video</text>
+<text x="40" y="726" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">or takes the sound.</text>
+</svg>

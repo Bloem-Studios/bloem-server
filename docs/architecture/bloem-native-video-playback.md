@@ -1,26 +1,106 @@
-# Native video playback
+# How stored movies play
 
-> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
-> current for movies, with the corrections noted below. Native video plays
-> movies stored in [native storage](bloem-native-storage.md) locations (Bloem's
-> provider-backed storage, for example S3) through Silo's playback planner and
-> delivery handlers. It is a Bloem addition, introduced in `b781ac3ff`
-> (2026-10-11: playback, the movie scanner and checked-ETag reads; main code in
-> `internal/api/bloem_native_video.go` and
-> `internal/api/handlers/bloem_native_video.go`). Read-ahead followed in
-> `b0b819fc8` (2026-10-11). Native audiobooks followed on 2026-10-12 and are
-> described in [native audio playback](bloem-native-audio-playback.md). The Silo
-> merge `68070f04b` (2026-10-27) binds the login-session recheck to the
-> delegated account; see [Source admission](#source-admission). The plan
-> format is Silo's [playback protocol v3](playback-protocol-v3.md).
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
+> `main` at `b6039036d`. Native video is a Bloem addition: it plays movies kept in
+> [native storage](bloem-native-storage.md) (S3 buckets, for example) through
+> Silo's playback planner and delivery handlers, using Silo's
+> [playback protocol v3](playback-protocol-v3.md). It is current for movies;
+> runtime playback on the phone and TV apps and production cross-server operation
+> are still open acceptance gates. The technical rules are in the
+> [For developers](#for-developers) section.
+
+A movie kept in a storage source plays like any other movie: the app asks for a
+playback plan and gets ordinary addresses. This page covers what the app sees,
+the ways a stored movie can play, what Bloem checks while it plays, and what does
+not work yet.
+
+## What the app sees
+
+The app gets Silo's usual playback plan, on `/api/v1` and `/api/v2` alike. The
+addresses in it point at Bloem. The storage service's address, its keys, its
+headers and Bloem's private tool addresses never appear in a plan, the catalog, a
+saved recipe or a grant to a worker. The web app and Bloem's apps need nothing
+special for stored movies.
+
+## Four ways a stored movie plays
+
+![Four routes from a stored movie to the app: direct play and repackaging on the API server, HLS on the API server, and HLS on a worker; every route reads in checked one-mebibyte blocks](images/native-video-playback/routes.svg)
+
+1. **Direct play.** Bloem sends the file's bytes as they are, in the ranges the
+   player asks for.
+2. **Repackaging.** ffmpeg rewraps the video as MP4 on the fly, without
+   converting it, on the API server.
+3. **HLS on the API server.** ffmpeg cuts or converts the video into short
+   segments on the API server.
+4. **HLS on a worker.** A transcoding worker does the same. It runs its own copy
+   of the storage plugin and keeps checking that the viewer may still watch. The
+   worker's segments reach the app through the API server.
+
+Direct play and repackaging always run on the API server. A delivery policy that
+asks for them only on a worker or only through the standalone proxy is refused.
+
+## What Bloem checks
+
+**Each time the file is opened**, which includes every start, seek, subtitle
+extraction and restart, Bloem checks again:
+
+- the account or API key, the sign-in, the profile and its PIN;
+- the organization membership and the library access;
+- that the source still belongs where it did, the plugin is the same version, the
+  source settings are unchanged, and the catalog still points at this file.
+
+**While the movie plays**, Bloem reads ahead in 1 MiB blocks. Bytes leave the
+server only while the latest check is less than a second old, so a viewer whose
+access is withdrawn stops getting video within about a second.
+
+**When playback stops**, Bloem keeps the file open until ffmpeg and everything
+reading for it has finished, so the storage is never pulled away mid-read.
+
+## Which bytes play
+
+Bloem plays only the exact revision it scanned. By default it requires a storage
+service that keeps every version of a file unchanged. For S3 buckets without
+versions, an administrator can choose a **checked mode**: Bloem then compares the
+file's fingerprint and size before and after each read. That catches most
+changes, but cannot prove the bytes stayed the same between checks.
+
+## What does not work yet
+
+- Jellyfin apps, downloads and converting for offline use.
+- Series from storage, and `.strm` or other remote-address shortcuts.
+- Switching to another file mid-play needs a fresh start.
+- Without Redis, a playback session cannot be picked up by another server.
+
+## Words used in the code
+
+| On this page | In the code and database |
+| --- | --- |
+| Native video | `internal/api/bloem_native_video.go`, `internal/api/handlers/bloem_native_video.go` |
+| Playback plan | Silo's playback protocol v3 plan |
+| Direct play | `original_http` |
+| Repackaging | progressive MP4 remux |
+| HLS on a worker | remote HLS on a transcode node, with a Redis worker grant |
+| Read ahead in blocks | `nativestorage.ReadAhead` |
+| Private tool address | `nativestorage.ToolInput` |
+| Checked mode | `connection.revision_mode: "checked-etag"` |
+| Capability | `native_video_playback`, `native_video_remote_execution` in the native-storage capability document |
+
+## For developers
+
+- **API:** stored movies use Silo's playback routes and
+  [playback protocol v3](playback-protocol-v3.md); there is no separate
+  native-video route. Readiness is reported by the native-storage capability
+  document on the [storage sources API page](../bloem/api/storage.md).
+
+### Contract
 
 Native video uses Silo's ordinary playback plan (protocol v3) and HTTP delivery
-contract, on `/api/v1` and `/api/v2` alike.
-Its catalog identity is an opaque `bloem-storage:` reference. Provider URLs,
-headers, credentials and private tool inputs never become client stream URLs,
-catalog paths, durable recipes or worker grants.
+contract, on `/api/v1` and `/api/v2` alike. Its catalog identity is an opaque
+`bloem-storage:` reference. Provider URLs, headers, credentials and private tool
+inputs never become client stream URLs, catalog paths, durable recipes or worker
+grants.
 
-## Source admission
+### Source admission
 
 Strict admission is the default: the source must supply genuine immutable
 version reads or a separately verified immutable snapshot. An advertised
@@ -42,24 +122,27 @@ checked-mode descriptor advertises `revision_pinned_reads: false`.
 Each open rechecks the current account or API key, login/profile credentials,
 PIN authority, organization membership, library access, source ownership,
 installation generation, encrypted configuration revision and catalog file
-reference. Since `68070f04b` (2026-10-27), the login-session part of that
-recheck (`verifyNativeVideoActor`) passes the delegated account to Silo's
-`SessionRepository.ActiveSession`, which binds a token to its session's
-account (Silo #3140). A login session that belongs to another account no
-longer counts as active. The host retains a sealed source descriptor for the playback
-session. Replanning the same file reauthorizes it without replacing or extending
-that descriptor. Every execution, seek probe, subtitle extraction and restart
-opens fresh authority for the same byte revision.
+reference. The login-session part of that recheck (`verifyNativeVideoActor`)
+goes through `SessionRepository.ActiveSessionRole` (Bloem's wrapper in
+`internal/auth/bloem_session.go`), which passes the delegated account to Silo's
+`SessionRepository.ActiveSession`; that binds a token to its session's account
+(Silo #3140, since the merge `68070f04b`). A login session that belongs to another
+account does not count as active. A delegated API key must still exist with the
+same account, revision and no scopes. The host retains a sealed source descriptor
+for the playback session. Replanning the same file reauthorizes it without
+replacing or extending that descriptor. Every execution, seek probe, subtitle
+extraction and restart opens fresh authority for the same byte revision.
 
-## Publication
+### Publication
 
 Startup constructs `ScanReader` and calls `ConfigureNativeMovies` before
-installing the storage ingestor or starting scan queues. Explicit probe limits
-are 128 MiB of aggregate input reads, 128 KiB chunks, two concurrent reads,
-60 seconds, 4 MiB of JSON and 64 KiB of stderr. The configured trusted ffprobe
-binary probes admitted MOV/MP4 or Matroska/WebM entries. Suffixes only select
-the reviewed demuxer; actual bytes must contain video. Other suffixes are
-skipped, including `.strm`.
+installing the storage ingestor or starting scan queues
+(`cmd/silo/bloem_native_movie_scanner.go`). Explicit probe limits are 128 MiB of
+aggregate input reads, 128 KiB chunks, two concurrent reads, 60 seconds, 4 MiB of
+JSON and 64 KiB of stderr. The configured trusted ffprobe binary probes admitted
+MOV/MP4 (`.mp4`, `.mov`, `.m4v`) or Matroska/WebM (`.mkv`, `.webm`) entries.
+Suffixes only select the reviewed demuxer; actual bytes must contain video. Other
+suffixes are skipped, including `.strm`.
 
 The scanner seals a listed page against its current lease, checkpoint, source
 and resource owners. It probes before the authorized publication transaction,
@@ -67,13 +150,18 @@ then commits files, item associations and revision references together.
 Probe or authority failures do not publish a partial page or reconcile the
 failure as absence. New items retain filename-derived pending metadata;
 existing matched metadata survives a byte-revision update. Filesystem-based
-movie metadata matching is not attached to these opaque references.
+movie metadata matching is not attached to these opaque references; native
+movies are matched through `MetadataService.Process` instead (see
+[native storage](bloem-native-storage.md#movies)).
 
 The API releases movie library attachment only when the scanner readiness flag
-and native playback composition both exist. Its native-storage capability
-document reports this composition. It does not certify any live source.
+and native playback composition both exist (`attachNativeVideoReadiness` in
+`internal/api/bloem_native_storage_capabilities.go`). Its native-storage
+capability document reports this composition (`native_movie_libraries`,
+`native_video_playback`, and `native_video_remote_execution` when worker grants
+and the node recipe store are enabled). It does not certify any live source.
 
-## Execution and ownership
+### Execution and ownership
 
 Direct GET, HEAD and ranges use the authorized revision-bound reader. Progressive
 MP4 remux and local HLS use a supervised private input bridge with fixed
@@ -87,13 +175,19 @@ Software HDR-to-SDR uses the same fresh source and shared tone-map checks.
 Direct play and the input bridge read through `nativestorage.ReadAhead`, never
 one provider range per consumer read. It fetches 1 MiB blocks on aligned
 boundaries, three ahead of a sequential reader, in at most five (direct) or
-six (bridge) retained blocks. Every block fetch passes the source's own
+six (bridge) retained blocks (`nativeVideoDirectReadAhead`,
+`nativeVideoToolReadAhead`). Every block fetch passes the source's own
 per-read authority and pinned-revision checks. Cached bytes are copied out
 only while the latest successful fresh authority check began less than one
 second ago; a stopped or failed source stops delivery at the next read. So a
 revocation that only a fresh check can observe stops delivery within one
 second. Direct play hints a single closed request range so fetches stop at its
-end. The bridge copies 1 MiB chunks and admits four concurrent ranges.
+end. The bridge copies 1 MiB chunks and admits four concurrent ranges, so an
+ffmpeg seek that reconnects before the previous range drains does not exhaust
+its slots; its budget is at least 1 GiB or eight times the file size, over a
+12-hour lifetime. `ReadAheadConfig.Validate` bounds any configuration: blocks of
+64 KiB to 8 MiB, at most eight prefetched blocks, at most 64 MiB cached and an
+authorization window of at most ten seconds.
 
 Session bindings compare their source snapshot and delegation by instant.
 Stores normalize their times to UTC without a monotonic reading, because a
@@ -107,7 +201,7 @@ while the child still consumes it. Replanning local HLS to direct or progressive
 delivery tears down the previous execution and authority on commit; rollback
 preserves the previous route.
 
-## Worker HLS and recovery
+### Worker HLS and recovery
 
 Before a remote HLS start, the API seals a Redis grant for the exact worker,
 transport, playback session, source descriptor and start request. Worker
@@ -118,20 +212,20 @@ the first manifest needs it. Failed preparation revokes the new authority.
 Standalone workers compose their own approved storage runtime and continuously
 revalidate shared grants and delegated viewer/source authority. A worker must
 be able to resolve the retained provider identities against the same selected
-revision under its retained read policy. The control plane does not distribute a provider's private
-identity database. Providers that cannot retain those identities on the
-selected worker cannot use that route. Native direct and progressive remux
-currently use integrated API execution/egress; worker-only or proxy-only
-policies for those transports fail closed. Remote HLS supports the API relay
-route after source authority is established. Native proxy HLS shapes are
+revision under its retained read policy. The control plane does not distribute a
+provider's private identity database. Providers that cannot retain those
+identities on the selected worker cannot use that route. Native direct and
+progressive remux currently use integrated API execution/egress; worker-only or
+proxy-only policies for those transports fail closed. Remote HLS supports the API
+relay route after source authority is established. Native proxy HLS shapes are
 refused before worker preparation; planning may fall back to API relay when
 the delivery policy permits it. A proxy-only policy remains unavailable.
-Generated worker responses retain fresh delegated source
-authority until response cleanup joins. They reauthorize before successful
-headers and every write, including conditional and range responses. Revocation
-after framing aborts the response without appending an error document.
-Worker HLS artifact routes retain their existing GET-only contract and answer
-HEAD with 405; integrated delivery supports HEAD.
+Generated worker responses retain fresh delegated source authority until response
+cleanup joins. They reauthorize before successful headers and every write,
+including conditional and range responses. Revocation after framing aborts the
+response without appending an error document. Worker HLS artifact routes retain
+their existing GET-only contract and answer HEAD with 405; integrated delivery
+supports HEAD.
 
 Recovery reauthorizes before registering a reconstructed session. Redis deny
 checks are fresh and fail closed for native execution; generic filesystem
@@ -141,23 +235,26 @@ session, then revoke worker authority where present. A failed write returns a
 failed stop and preserves the retryable session. Without Redis, bindings stay
 in bounded local memory and cross-process recovery is unavailable.
 
-## Supported surfaces and evidence limits
+### Supported surfaces and evidence limits
 
 The supported contract is native API video playback for admitted catalog
 files. Initial movie scanning accepts MOV/MP4 and Matroska/WebM containers.
 Jellyfin native-file delivery, offline/download conversion, native series
 ingestion, and arbitrary remote URL or `.strm` playback remain unsupported.
-(Native audiobook ingestion was unsupported when this page was written and was
-added on 2026-10-12; see [native audio playback](bloem-native-audio-playback.md).
-Since Silo's Jellyfin server was restored on 2026-10-18, `bloemGuardNativeStorageFiles`
-in `cmd/silo/bloem_compat.go` hides native-storage files from it.) Sidecars belonging to a different original file after an
-alternate-file start need their own host-owned binding; an effective-file
-binding grants no access to that other file. File-switch replans that need the
-new source during preparation remain denied until the host supplies pending
-plan authority; a fresh start is the supported switch boundary. Replacing a
-remote native transport also requires stop and a fresh start, including
-remote-to-remote or remote-to-local HLS replacement. An active HLS A/V replan
-that retains the exact current transport may reuse it without replacement.
+Native audiobooks have their own direct-play path; see
+[native audiobook presentations](bloem-native-audio-playback.md). Silo's Jellyfin
+server runs again since 2026-10-18, and `bloemGuardNativeStorageFiles` in
+`cmd/silo/bloem_compat.go` hides native-storage files from it. The capability
+document keeps `native_video_downloads` and `native_video_jellyfin` false.
+
+Sidecars belonging to a different original file after an alternate-file start
+need their own host-owned binding; an effective-file binding grants no access to
+that other file. File-switch replans that need the new source during preparation
+remain denied until the host supplies pending plan authority; a fresh start is
+the supported switch boundary. Replacing a remote native transport also requires
+stop and a fresh start, including remote-to-remote or remote-to-local HLS
+replacement. An active HLS A/V replan that retains the exact current transport
+may reuse it without replacement.
 
 Web, Apple and Android consume normal HTTP playback plan URLs. Source schemes
 and provider headers are not client contracts. Their URL contracts have been
@@ -165,10 +262,33 @@ reviewed; runtime playback on those clients and production cross-replica
 source operation are separate acceptance gates.
 
 Synthetic-provider acceptance runs the real coordinator, pinned readers,
-planner, handlers and ffmpeg. It verifies direct ranges and decodes remux/HLS output, exercises
-seek, restart, recovery, stop/revocation and joined cancellation, and checks
-HDR conversion to H.264, 8-bit BT.709. Database scan acceptance separately
-checks atomic movie publication. These tests do not certify a live storage
-backend, a production cluster or a Stremio/debrid implementation. The SDK's
-storage byte interface can consume another admitted provider, but it does not
-currently offer on-demand Stremio discovery or verified snapshot lifecycle.
+planner, handlers and ffmpeg. It verifies direct ranges and decodes remux/HLS
+output, exercises seek, restart, recovery, stop/revocation and joined
+cancellation, and checks HDR conversion to H.264, 8-bit BT.709. Database scan
+acceptance separately checks atomic movie publication. These tests do not
+certify a live storage backend, a production cluster or a Stremio/debrid
+implementation. The SDK's storage byte interface can consume another admitted
+provider, but it does not currently offer on-demand Stremio discovery or
+verified snapshot lifecycle.
+
+### History
+
+Native video arrived in `b781ac3ff` (2026-10-11: playback, the movie scanner and
+checked-ETag reads). Read-ahead followed in `b0b819fc8` (2026-10-11), and native
+audiobooks on 2026-10-12. The Silo merge `68070f04b` (2026-10-27) bound the
+login-session recheck to the delegated account.
+
+### Related pages
+
+- [Native storage](bloem-native-storage.md) and
+  [native audiobook presentations](bloem-native-audio-playback.md).
+- [Native tool input](bloem-native-tool-input.md) and
+  [native probe](bloem-native-probe.md).
+- [Playback protocol v3](playback-protocol-v3.md),
+  [restart-resilient playback](restart-resilient-playback.md) and
+  [node failure detection](node-failure-detection.md): Silo's playback contracts.
+- [Delivery boundary enforcement](delivery-boundary-enforcement.md): library
+  access rechecked as bytes leave the server.
+
+The picture is an SVG file under `images/native-video-playback/`, drawn by
+`scripts/bloem/draw-pictures.py`. Redraw it there, not by hand.

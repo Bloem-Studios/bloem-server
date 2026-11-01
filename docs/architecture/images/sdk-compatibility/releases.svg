@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Three things that ship on their own</title>
+<desc id="d">Three panels. The Bloem server pins Silo's public plugin SDK and owns the storage protocol. The Bloem plugin SDK, for plugin authors, carries a byte-identical copy of that protocol. The client contracts are generated from the server's wire types into Kotlin and Swift with a digest, and each app adopts them on purpose. A release of one proves nothing about the others.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Three things that ship on their own</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The server, the plugin SDK and the app contracts each have their own version. One shipping proves nothing about the others.</text>
+<rect x="40" y="130" width="360" height="350" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="62" y="162" font-size="12.5" font-weight="700" fill="#C2410C" text-anchor="start" letter-spacing="1">BLOEM SERVER</text>
+<text x="62" y="190" font-size="18" font-weight="700" fill="#101827" text-anchor="start">This repository</text>
+<text x="62" y="222" font-size="14.5" font-weight="700" fill="#101827" text-anchor="start">Silo's plugin SDK</text>
+<text x="62" y="244" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The public</text>
+<text x="62" y="262" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">github.com/Silo-Server/silo-plugin-sdk, pinned</text>
+<text x="62" y="280" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">at v0.31.0 in go.mod.</text>
+<text x="62" y="312" font-size="14.5" font-weight="700" fill="#101827" text-anchor="start">Storage protocol</text>
+<text x="62" y="334" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">bloem.plugin.v1.StorageProvider:</text>
+<text x="62" y="352" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">proto/bloem/plugin/v1, with generated bindings</text>
+<text x="62" y="370" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">under internal/storageproto.</text>
+<text x="62" y="402" font-size="14.5" font-weight="700" fill="#101827" text-anchor="start">In-process only</text>
+<text x="62" y="424" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Campaigns and seasonal packs are worked out</text>
+<text x="62" y="442" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">inside the server, not by plugins.</text>
+<rect x="420" y="130" width="360" height="350" rx="16" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="442" y="162" font-size="12.5" font-weight="700" fill="#0F766E" text-anchor="start" letter-spacing="1">PLUGIN SDK</text>
+<text x="442" y="190" font-size="18" font-weight="700" fill="#101827" text-anchor="start">For plugin authors</text>
+<text x="442" y="222" font-size="14.5" font-weight="700" fill="#101827" text-anchor="start">Its own releases</text>
+<text x="442" y="244" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem-Studios/bloem-plugin-sdk, v0.27.0. The</text>
+<text x="442" y="262" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">server does not import it.</text>
+<text x="442" y="294" font-size="14.5" font-weight="700" fill="#101827" text-anchor="start">Same storage protocol</text>
+<text x="442" y="316" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">storage_provider.proto is byte for byte the</text>
+<text x="442" y="334" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">server's copy, checked by a test.</text>
+<text x="442" y="366" font-size="14.5" font-weight="700" fill="#101827" text-anchor="start">Real plugin tests</text>
+<text x="442" y="388" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The server's tests download that release and</text>
+<text x="442" y="406" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">run its example storage plugin.</text>
+<rect x="800" y="130" width="360" height="350" rx="16" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="822" y="162" font-size="12.5" font-weight="700" fill="#047857" text-anchor="start" letter-spacing="1">APP CONTRACTS</text>
+<text x="822" y="190" font-size="18" font-weight="700" fill="#101827" text-anchor="start">For Bloem's apps</text>
+<text x="822" y="222" font-size="14.5" font-weight="700" fill="#101827" text-anchor="start">Generated</text>
+<text x="822" y="244" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">registry.json picks the server's wire types; a</text>
+<text x="822" y="262" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">generator writes Kotlin and Swift, and a</text>
+<text x="822" y="280" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">digest.</text>
+<text x="822" y="312" font-size="14.5" font-weight="700" fill="#101827" text-anchor="start">Pinned</text>
+<text x="822" y="334" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">contracts/client/v1/digest.txt. The files</text>
+<text x="822" y="352" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">carry the server revision they came from.</text>
+<text x="822" y="384" font-size="14.5" font-weight="700" fill="#101827" text-anchor="start">Adopted on purpose</text>
+<text x="822" y="406" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Android and Apple check the revision and</text>
+<text x="822" y="424" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">digest before they take a new copy.</text>
+<path d="M240,484 L240,530 L600,530 L600,488" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="420" y="520" font-size="13.5" font-weight="600" fill="#4B5563" text-anchor="middle">The same storage protocol, byte for byte</text>
+<path d="M150,484 L150,590 L980,590 L980,488" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="565" y="580" font-size="13.5" font-weight="600" fill="#4B5563" text-anchor="middle">Generated from the server's wire types</text>
+<text x="40" y="654" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A healthy server or a freshly copied file proves none of the others has shipped. Check each one on its own.</text>
+</svg>

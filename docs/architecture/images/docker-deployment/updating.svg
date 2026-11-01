@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Updating Bloem safely</title>
+<desc id="d">Seven numbered steps: note the running image, dump the database and check the dump, back up .env and SECRET_KEY, read the release notes, pull and start the new image, wait while migrations run before Bloem answers, then check health and ready. A warning says that starting the old image again does not undo migrations.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="519" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Updating Bloem safely</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Prepare a way back first. Then let the new image finish its database changes before you check it.</text>
+<rect x="40" y="120" width="262" height="136" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="120" width="8" height="136" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="148" r="12" fill="#10B981"/>
+<text x="74" y="153" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="96" y="154" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Note the image</text>
+<text x="64" y="182" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">docker compose images silo.</text>
+<text x="64" y="202" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">"latest" will not tell you</text>
+<text x="64" y="222" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">later which one it was.</text>
+<line x1="304" y1="188" x2="324" y2="188" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="326" y="120" width="262" height="136" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="326" y="120" width="8" height="136" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="360" cy="148" r="12" fill="#10B981"/>
+<text x="360" y="153" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="382" y="154" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Dump the database</text>
+<text x="350" y="182" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">pg_dump, then pg_restore --list</text>
+<text x="350" y="202" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">to check the dump can be read.</text>
+<line x1="590" y1="188" x2="610" y2="188" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="612" y="120" width="262" height="136" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="612" y="120" width="8" height="136" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="646" cy="148" r="12" fill="#10B981"/>
+<text x="646" y="153" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="668" y="154" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Back up .env</text>
+<text x="636" y="182" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Above all SECRET_KEY, kept</text>
+<text x="636" y="202" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">apart from the dump.</text>
+<line x1="876" y1="188" x2="896" y2="188" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="898" y="120" width="262" height="136" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="898" y="120" width="8" height="136" rx="4" fill="#F59E0B" stroke="none" stroke-width="1.5"/>
+<circle cx="932" cy="148" r="12" fill="#F59E0B"/>
+<text x="932" y="153" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="954" y="154" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Read the notes</text>
+<text x="922" y="182" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Look for migrations that need a</text>
+<text x="922" y="202" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">stop, extra disk or a longer</text>
+<text x="922" y="222" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">time limit.</text>
+<path d="M1100,260 L1100,274 L171,274 L171,290" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="294" width="262" height="136" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="294" width="8" height="136" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="322" r="12" fill="#FA6400"/>
+<text x="74" y="327" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="96" y="328" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Pull and start</text>
+<text x="64" y="356" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">docker compose pull silo, then</text>
+<text x="64" y="376" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">up -d --no-deps silo.</text>
+<line x1="304" y1="362" x2="324" y2="362" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="326" y="294" width="262" height="136" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="326" y="294" width="8" height="136" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<circle cx="360" cy="322" r="12" fill="#FA6400"/>
+<text x="360" y="327" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="382" y="328" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Let migrations finish</text>
+<text x="350" y="356" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem changes the database</text>
+<text x="350" y="376" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">before it answers. Do not</text>
+<text x="350" y="396" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">restart it meanwhile.</text>
+<line x1="590" y1="362" x2="610" y2="362" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="612" y="294" width="262" height="136" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="612" y="294" width="8" height="136" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="646" cy="322" r="12" fill="#10B981"/>
+<text x="646" y="327" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<text x="668" y="328" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Check it</text>
+<text x="636" y="356" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">/api/v1/health says it runs;</text>
+<text x="636" y="376" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">/api/v1/ready says its database</text>
+<text x="636" y="396" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">and storage answer.</text>
+<rect x="898" y="294" width="262" height="136" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<text x="916" y="326" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">No undo</text>
+<text x="916" y="350" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Starting the old image again</text>
+<text x="916" y="370" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">does not reverse migrations.</text>
+<text x="916" y="390" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Plan any way back before you</text>
+<text x="916" y="410" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">update.</text>
+<text x="40" y="476" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Migrations stop after 20 minutes by default. For a very large library, raise SILO_MIGRATE_TIMEOUT and the health check's start period together.</text>
+</svg>

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="690" viewBox="0 0 1200 690" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What the Pastime removal dropped and kept</title>
+<desc id="d">Left, what the removal dropped: the triggers Bloem had put on Silo's tables, their functions, and Bloem's managed-tracking, companion and list tables. Right, what it kept: watch-sync connections and everything under them, collections a list binding published, now manual, and every profile's favorites, watchlist, ratings, progress and history. Below, the way back: an ordinary plugin on Silo's watch sync.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="689" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What the Pastime removal dropped and kept</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's private machinery went. Everything that belongs to people and to Silo stayed.</text>
+<rect x="40" y="124" width="540" height="400" rx="16" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<circle cx="70" cy="160" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M64.6,154.6 L75.4,165.4 M75.4,154.6 L64.6,165.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="92" y="166" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Dropped</text>
+<text x="64" y="216" font-size="16" font-weight="700" fill="#101827" text-anchor="start">17 triggers</text>
+<text x="64" y="240" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">15 on tables Silo writes, 2 on organizations and memberships.</text>
+<text x="64" y="294" font-size="16" font-weight="700" fill="#101827" text-anchor="start">14 functions</text>
+<text x="64" y="318" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">The code those triggers ran.</text>
+<text x="64" y="372" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Bloem's own tables</text>
+<text x="64" y="396" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Managed tracking, companion and list tables, with their sequences.</text>
+<text x="64" y="450" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The broker</text>
+<text x="64" y="474" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">The private service a Pastime plugin called on the host.</text>
+<rect x="620" y="124" width="540" height="400" rx="16" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<circle cx="650" cy="160" r="12" fill="#10B981"/>
+<path d="M644.6,160.24 L648.8,164.56 L656.0,155.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="672" y="166" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Kept</text>
+<text x="644" y="216" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Watch-sync connections</text>
+<text x="644" y="240" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Every connection, and every row under it.</text>
+<text x="644" y="294" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Published collections</text>
+<text x="644" y="318" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">They keep their items and become ordinary manual collections.</text>
+<text x="644" y="372" font-size="16" font-weight="700" fill="#101827" text-anchor="start">What people did</text>
+<text x="644" y="396" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Favorites, watchlists, ratings, progress and history.</text>
+<text x="644" y="450" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The old migrations</text>
+<text x="644" y="474" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Unchanged and still runnable, so history stays readable.</text>
+<rect x="40" y="548" width="1120" height="112" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="548" width="8" height="112" rx="4" fill="#0284C7" stroke="none" stroke-width="1.5"/>
+<text x="66" y="584" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The way back</text>
+<text x="66" y="612" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Pastime may return only as an ordinary plugin on Silo's public watch sync, with the same plugin and capability IDs so its connections carry over.</text>
+<text x="66" y="632" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Until then its installation stays disabled, not uninstalled.</text>
+</svg>

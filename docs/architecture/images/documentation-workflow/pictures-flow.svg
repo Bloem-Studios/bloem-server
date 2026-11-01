@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a picture is made</title>
+<desc id="d">Five steps from left to right: a drawing module in scripts/bloem/pictures uses the shared kit; draw-pictures.py writes its SVG files under docs/architecture/images; you look at a screenshot and go back to the module to fix anything that overlaps; the page links the SVG with alt text. Below: CI redraws every picture and fails when a committed file differs.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="559" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a picture is made</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Pictures are drawn by code, so the next change can redraw them.</text>
+<rect x="40" y="132" width="200" height="200" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<circle cx="66" cy="160" r="12" fill="#FA6400"/>
+<text x="66" y="165" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="86" y="166" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Write a module</text>
+<text x="56" y="198" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#6B7280" text-anchor="start">scripts/bloem/pictures/</text>
+<text x="56" y="218" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#101827" text-anchor="start">foo_bar.py</text>
+<text x="56" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Named after the page.</text>
+<text x="56" y="271" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Lists its pictures in</text>
+<text x="56" y="290" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">PICTURES and uses</text>
+<text x="56" y="309" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">kit.py.</text>
+<line x1="243" y1="232.0" x2="267" y2="232.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="270" y="132" width="200" height="200" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<circle cx="296" cy="160" r="12" fill="#9CA3AF"/>
+<text x="296" y="165" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="316" y="166" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Draw</text>
+<text x="286" y="198" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#6B7280" text-anchor="start">draw-pictures.py</text>
+<text x="286" y="218" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#101827" text-anchor="start">foo-bar</text>
+<text x="286" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Runs your module and</text>
+<text x="286" y="271" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">writes one SVG file per</text>
+<text x="286" y="290" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">picture.</text>
+<line x1="473" y1="232.0" x2="497" y2="232.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="500" y="132" width="200" height="200" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="526" cy="160" r="12" fill="#6366F1"/>
+<text x="526" y="165" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="546" y="166" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">SVG files</text>
+<text x="516" y="198" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#6B7280" text-anchor="start">images/foo-bar/</text>
+<text x="516" y="218" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#101827" text-anchor="start">name.svg</text>
+<text x="516" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each has a title and a</text>
+<text x="516" y="271" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">description for screen</text>
+<text x="516" y="290" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">readers.</text>
+<line x1="703" y1="232.0" x2="727" y2="232.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="730" y="132" width="200" height="200" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<circle cx="756" cy="160" r="12" fill="#F59E0B"/>
+<text x="756" y="165" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="776" y="166" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Look at it</text>
+<text x="746" y="198" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#6B7280" text-anchor="start">headless browser</text>
+<text x="746" y="218" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#101827" text-anchor="start">screenshot</text>
+<text x="746" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Text that overlaps,</text>
+<text x="746" y="271" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">touches a border or runs</text>
+<text x="746" y="290" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">off: fix it and draw</text>
+<text x="746" y="309" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">again.</text>
+<line x1="933" y1="232.0" x2="957" y2="232.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="960" y="132" width="200" height="200" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<circle cx="986" cy="160" r="12" fill="#10B981"/>
+<text x="986" y="165" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="1006" y="166" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Link it</text>
+<text x="976" y="198" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#6B7280" text-anchor="start">![alt text](</text>
+<text x="976" y="218" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#101827" text-anchor="start">images/…svg)</text>
+<text x="976" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The alt text says what</text>
+<text x="976" y="271" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the picture shows.</text>
+<path d="M830.0,334 L830.0,378 L140.0,378 L140.0,338" fill="none" stroke="#F59E0B" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<text x="485.0" y="370" font-size="14" font-weight="700" fill="#B45309" text-anchor="middle">Fix it in the module, never in the SVG</text>
+<rect x="40" y="420" width="1120" height="96" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.6"/>
+<text x="64" y="454" font-size="17" font-weight="700" fill="#0F766E" text-anchor="start">In CI</text>
+<text x="64" y="482" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">make verify-bloem-api-catalogue runs draw-pictures.py --check, which redraws every picture and fails when a committed SVG differs from what its</text>
+<text x="64" y="502" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">module draws.</text>
+</svg>

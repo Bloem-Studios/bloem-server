@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="676" viewBox="0 0 1200 676" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Who calls what for playback cards</title>
+<desc id="d">Left: the storefront and the web admin console write campaigns into one registry on the Bloem server through the native platform routes. Right: the web app reads the cards from Bloem's native routes and the Android apps from the old Silo /api/v1 routes; Bloem's Apple apps and Jellyfin apps show no playback cards.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="675" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Who calls what for playback cards</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Two ways to write a campaign, one registry, and the routes a viewer's app reads.</text>
+<rect x="40" y="132" width="320" height="110" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="164" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The storefront</text>
+<text x="58" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem Garden, a separate application,</text>
+<text x="58" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">with a platform administrator's API key.</text>
+<rect x="40" y="266" width="320" height="110" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="298" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The web admin console</text>
+<text x="58" y="322" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Campaigns &amp; seasonal packs, in the</text>
+<text x="58" y="342" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Platform administrative context.</text>
+<line x1="364" y1="187" x2="436" y2="236" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="364" y1="321" x2="436" y2="268" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="440" y="132" width="320" height="400" rx="18" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="600" y="166" font-size="19" font-weight="700" fill="#101827" text-anchor="middle">Bloem server</text>
+<text x="600" y="196" font-size="11.5" font-weight="normal" fill="#6B7280" text-anchor="middle">writes: /api/bloem/v1/admin/platform/promotions</text>
+<rect x="466" y="210" width="268" height="112" rx="12" fill="#FFFFFF" stroke="#C026D3" stroke-width="1.6"/>
+<text x="600" y="240" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Campaign registry</text>
+<text x="600" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">One store for every surface. A</text>
+<text x="600" y="285" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">later save overwrites an earlier</text>
+<text x="600" y="304" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">one.</text>
+<rect x="466" y="338" width="268" height="140" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="600" y="366" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">Checks per request</text>
+<text x="600" y="392" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">signed in, profile chosen,</text>
+<text x="600" y="411" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">PIN checked if it has one,</text>
+<text x="600" y="430" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">adult profile only,</text>
+<text x="600" y="449" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">audience and dates match</text>
+<text x="600" y="506" font-size="11.5" font-weight="normal" fill="#6B7280" text-anchor="middle">reads: /api/bloem/v1/promotions</text>
+<rect x="840" y="132" width="320" height="104" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="858" y="164" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The web app</text>
+<text x="858" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Native routes: list the cards for the</text>
+<text x="858" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">title, save one to the inbox.</text>
+<line x1="764" y1="214" x2="836" y2="190" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="840" y="252" width="320" height="104" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="858" y="284" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Android TV and phones</text>
+<text x="858" y="308" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Still on Silo's /api/v1 routes for the</text>
+<text x="858" y="328" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">same cards, until they move.</text>
+<line x1="764" y1="300" x2="836" y2="304" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="840" y="372" width="320" height="72" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="858" y="404" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's Apple apps</text>
+<text x="858" y="428" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Never ask for playback cards yet.</text>
+<rect x="840" y="460" width="320" height="72" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="858" y="492" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Jellyfin apps</text>
+<text x="858" y="516" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Have no playback cards.</text>
+<text x="40" y="580" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">The phone apps read GET /api/v1/promotions and POST /api/v1/promotions/{id}/save, which stay mounted for them. The web app and the storefront call none of</text>
+<text x="40" y="600" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Silo's /api/v1.</text>
+<text x="40" y="638" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">An app learns that the server has playback cards from playback_overlays_v1 in /api/bloem/v1/capabilities.</text>
+</svg>

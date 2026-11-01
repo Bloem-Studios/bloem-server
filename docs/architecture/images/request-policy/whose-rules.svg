@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Whose request rules apply</title>
+<desc id="d">A movie or series request is checked against the signed-in account, the chosen profile and the profile's organization together, in one moment. The answer then comes from the account's own setting if it has one, else the profile's group in that organization, else the server's defaults. All of an account's profiles share one count.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Whose request rules apply</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem checks who is asking, then reads the rules in a fixed order. The first one set wins.</text>
+<text x="40" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">1. Check who is asking, all at once</text>
+<rect x="40" y="156" width="520" height="300" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="60" y="176" width="480" height="68" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="88" cy="210" r="11" fill="#10B981"/>
+<path d="M83.05,210.22 L86.9,214.18 L93.5,206.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="112" y="205" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The account</text>
+<text x="112" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Signed in and switched on.</text>
+<rect x="60" y="258" width="480" height="68" rx="12" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.5"/>
+<circle cx="88" cy="292" r="11" fill="#0EA5E9"/>
+<path d="M83.05,292.22 L86.9,296.18 L93.5,288.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="112" y="287" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The profile</text>
+<text x="112" y="310" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Chosen in the app, and belongs to this account.</text>
+<rect x="60" y="340" width="480" height="68" rx="12" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="88" cy="374" r="11" fill="#6366F1"/>
+<path d="M83.05,374.22 L86.9,378.18 L93.5,370.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="112" y="369" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The organization</text>
+<text x="112" y="392" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The profile's organization, and it is active.</text>
+<circle cx="82" cy="432" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M77.5,427.5 L86.5,436.5 M86.5,427.5 L77.5,436.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="102" y="437" font-size="14" font-weight="600" fill="#B91C1C" text-anchor="start">Anything changed since sign-in? Refused.</text>
+<line x1="564" y1="300" x2="636" y2="300" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="640" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">2. Read the rules, first one set wins</text>
+<rect x="640" y="156" width="520" height="80" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<circle cx="668" cy="196" r="13" fill="#10B981"/>
+<text x="668" y="201" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="694" y="190" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The account's own setting</text>
+<text x="694" y="214" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">For example, this account may ask for 20 a month.</text>
+<line x1="900" y1="238" x2="900" y2="264" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="914" y="256" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="start">if not set</text>
+<rect x="640" y="266" width="520" height="80" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.6"/>
+<circle cx="668" cy="306" r="13" fill="#14B8A6"/>
+<text x="668" y="311" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="694" y="300" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The profile's group</text>
+<text x="694" y="324" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Usually its plan, in that organization.</text>
+<line x1="900" y1="348" x2="900" y2="374" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="914" y="366" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="start">if not set</text>
+<rect x="640" y="376" width="520" height="80" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6"/>
+<circle cx="668" cy="416" r="13" fill="#9CA3AF"/>
+<text x="668" y="421" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="694" y="410" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The server's defaults</text>
+<text x="694" y="434" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Used when nothing above is set.</text>
+<rect x="40" y="488" width="1120" height="150" rx="16" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.6"/>
+<text x="64" y="524" font-size="17" font-weight="700" fill="#101827" text-anchor="start">3. One count per account</text>
+<text x="64" y="552" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Every profile on the account draws from the same count. Switching profiles</text>
+<text x="64" y="572" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">never resets it. Organization administrators are not held to their group's</text>
+<text x="64" y="592" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">limits, but a setting on their own account still applies.</text>
+<circle cx="760" cy="530" r="24" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="2"/>
+<text x="760" y="535" font-size="13" font-weight="700" fill="#0369A1" text-anchor="middle">Ana</text>
+<line x1="760" y1="556" x2="760" y2="584" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="860" cy="530" r="24" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="2"/>
+<text x="860" y="535" font-size="13" font-weight="700" fill="#0369A1" text-anchor="middle">Ben</text>
+<line x1="860" y1="556" x2="860" y2="584" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="960" cy="530" r="24" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="2"/>
+<text x="960" y="535" font-size="13" font-weight="700" fill="#0369A1" text-anchor="middle">Kids</text>
+<line x1="960" y1="556" x2="960" y2="584" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="720" y="588" width="280" height="38" rx="10" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="1.6"/>
+<text x="860" y="613" font-size="14" font-weight="700" fill="#101827" text-anchor="middle">One count: 7 of 20 used this month</text>
+<text x="40" y="672" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Audiobook and ebook requests follow the same order, but each kind keeps its own count.</text>
+</svg>

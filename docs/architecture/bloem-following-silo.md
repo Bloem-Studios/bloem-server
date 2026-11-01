@@ -1,10 +1,10 @@
 # How Bloem keeps up with Silo
 
-> **Provenance and status.** Bloem page, written on 2026-10-31 and checked against
-> `main` at `c83c424b7`. Bloem is a tracking fork of Silo Server. This page
-> explains in plain language how Bloem takes in Silo's work and keeps its own
-> apart. The policy itself is in [FORK.md](../../FORK.md), and the automation in
-> [Bloem CI](../bloem/ci.md).
+> **Provenance and status.** Bloem page, written on 2026-10-31, updated on 2026-11-01
+> and checked against `main` at `b6039036d`. Bloem is a tracking fork of Silo Server.
+> This page explains in plain language how Bloem takes in Silo's work and keeps its
+> own apart. The policy itself is in [how Bloem forks Silo](../../FORK.md), and the
+> automation in [Bloem CI](../bloem/ci.md).
 
 Bloem is Silo plus Bloem's additions. Silo's developers change Silo every day,
 and Bloem takes those changes in rather than copying them by hand. This only
@@ -28,6 +28,9 @@ in the database. The restart usually takes about a minute: database migrations
 run, then the new version serves. Each deploy gets a dated receipt under
 `docs/operations/`.
 
+On 1 November 2026 Bloem's `main` had all of Silo's work through `63ef34b23`, merged
+that morning, and production ran `59616c4af`.
+
 ## When Silo and Bloem change the same lines
 
 ![A real fix: Bloem's check folded into Silo's line, then Silo's line restored with Bloem's check beside it](images/following-silo/silo-wins.svg)
@@ -44,10 +47,12 @@ Bloem keeps its own work in three places:
 - **Overlays:** where a Silo document needs a Bloem note, a separate Bloem page
   carries it, and Silo's document stays as Silo wrote it.
 - **The seam list,** `contracts/seams.txt`: the Silo files Bloem still edits,
-  each with its reason. On 31 October 2026 it held 303. The number may only go
-  down.
+  each with its reason. On 1 November 2026 it held 304. The number may only go
+  down, and adding one is a reviewed decision: the 304th, on 1 November, keeps a
+  sign-in or sign-out through the sign-in provider on the organization's domain it
+  started on.
 
-## Words used here
+## Words used in the code
 
 | On this page | In the repository |
 | --- | --- |
@@ -61,8 +66,10 @@ Bloem keeps its own work in three places:
 
 ## For developers
 
-- [FORK.md](../../FORK.md): the merge policy, seams and overlays, and what Bloem
-  adds and removed.
+- [How Bloem forks Silo](../../FORK.md): the merge policy, seams and overlays, and
+  what Bloem adds and removed.
+- [Bloem's adapters over Silo](bloem-upstream-adapters.md): how Bloem changes Silo's
+  behavior without editing Silo's files.
 - [Bloem CI](../bloem/ci.md): every job, the daily sync and its merge gate, and
   the image.
 - [BLOEM_AGENTS.md](../../BLOEM_AGENTS.md): the rules for changing Bloem,

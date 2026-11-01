@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Finding a Bloem server on a home network</title>
+<desc id="d">Three steps. An administrator switches the announcement on and restarts the server. The server announces _bloem._tcp on the local network with a small card of facts: its ID, name, address scheme and API versions. A Bloem app on the same network sees the card, then asks the server's identity route, which alone decides whether the app connects. Silo's own _silo._tcp announcement is separate and has its own switch.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="679" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Finding a Bloem server on a home network</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">An optional hint for Bloem's apps. The server's identity route still decides.</text>
+<rect x="40" y="132" width="340" height="134" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="164" font-size="17" font-weight="700" fill="#101827" text-anchor="start">1. Switch it on</text>
+<text x="58" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">An administrator sets</text>
+<text x="58" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">lan.advertisement_enabled and restarts the</text>
+<text x="58" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">server. It is off by default and has no</text>
+<text x="58" y="248" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">switch in the web app.</text>
+<line x1="384" y1="199" x2="426" y2="199" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="430" y="132" width="340" height="134" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="448" y="164" font-size="17" font-weight="700" fill="#101827" text-anchor="start">2. The server announces</text>
+<text x="448" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">On the local network, as _bloem._tcp on the</text>
+<text x="448" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">port the API listens on, with a small card</text>
+<text x="448" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">of facts.</text>
+<line x1="774" y1="199" x2="816" y2="199" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="820" y="132" width="340" height="134" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="838" y="164" font-size="17" font-weight="700" fill="#101827" text-anchor="start">3. A Bloem app finds it</text>
+<text x="838" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">It reads the card, then asks the server who</text>
+<text x="838" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">it is before offering to connect.</text>
+<rect x="430" y="304" width="340" height="250" rx="14" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.6"/>
+<text x="450" y="336" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The card (TXT record)</text>
+<text x="450" y="368" font-size="14" font-weight="700" fill="#C2410C" text-anchor="start">txtvers</text>
+<text x="560" y="368" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">1</text>
+<text x="450" y="398" font-size="14" font-weight="700" fill="#C2410C" text-anchor="start">id</text>
+<text x="560" y="398" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">the server's ID</text>
+<text x="450" y="428" font-size="14" font-weight="700" fill="#C2410C" text-anchor="start">name</text>
+<text x="560" y="428" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">its display name</text>
+<text x="450" y="458" font-size="14" font-weight="700" fill="#C2410C" text-anchor="start">scheme</text>
+<text x="560" y="458" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">http</text>
+<text x="450" y="488" font-size="14" font-weight="700" fill="#C2410C" text-anchor="start">api</text>
+<text x="560" y="488" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">1</text>
+<text x="450" y="518" font-size="14" font-weight="700" fill="#C2410C" text-anchor="start">bloem</text>
+<text x="560" y="518" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">v1</text>
+<rect x="820" y="304" width="340" height="250" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="840" y="336" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The identity check decides</text>
+<text x="840" y="364" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The app asks /api/bloem/v1/server/identity</text>
+<text x="840" y="384" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">at the address it found. Only that answer</text>
+<text x="840" y="404" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">decides whether to connect.</text>
+<text x="840" y="454" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The card can only make an app skip a</text>
+<text x="840" y="474" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">server, for example one that speaks no</text>
+<text x="840" y="494" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem API the app knows. It never makes a</text>
+<text x="840" y="514" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">server trusted.</text>
+<line x1="774" y1="429" x2="816" y2="429" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="304" width="340" height="250" rx="14" fill="#F9FAFB" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="336" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Not the same as Silo's</text>
+<text x="60" y="364" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo announces _silo._tcp with its own</text>
+<text x="60" y="384" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">switch, Show on the local network</text>
+<text x="60" y="404" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">(server.lan_discovery). That switch does</text>
+<text x="60" y="424" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">not publish _bloem._tcp, and this setting</text>
+<text x="60" y="444" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">does not publish _silo._tcp.</text>
+<text x="40" y="620" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Where the network cannot carry it (a Docker bridge network, most containers), the server logs one line and stays quiet. Apps then fall back to typing the</text>
+<text x="40" y="640" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">address.</text>
+</svg>

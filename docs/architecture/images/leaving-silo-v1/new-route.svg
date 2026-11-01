@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Where a new route goes</title>
+<desc id="d">A decision. If Silo's /api/v2 already has what Bloem needs, Bloem's apps call it. If not, Bloem adds a typed route under /api/bloem/v1, declared in OpenAPI and detected through a feature token. Nothing new is ever added to Silo's /api/v1, and no Silo file is changed.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="559" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Where a new route goes</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem sits on top of Silo: it uses Silo's API where it can and adds its own beside it.</text>
+<rect x="40" y="150" width="300" height="120" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="182" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem needs a route</text>
+<text x="58" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">For the storefront, the web app or</text>
+<text x="58" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's apps.</text>
+<line x1="344" y1="210" x2="396" y2="210" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M500,140 L604,210 L500,280 L396,210 Z" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="500" y="204" font-size="14.5" font-weight="700" fill="#101827" text-anchor="middle">Does Silo's</text>
+<text x="500" y="223" font-size="14.5" font-weight="700" fill="#101827" text-anchor="middle">/api/v2 have it?</text>
+<line x1="608" y1="210" x2="676" y2="210" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="642" y="200" font-size="13" font-weight="700" fill="#047857" text-anchor="middle">Yes</text>
+<rect x="680" y="150" width="480" height="120" rx="14" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="698" y="182" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Call Silo's /api/v2</text>
+<text x="698" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">With Silo's own rules, such as If-Match on account writes.</text>
+<path d="M500,284 L500,330" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="512" y="314" font-size="13" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="300" y="334" width="860" height="120" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="318" y="366" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Add a route under /api/bloem/v1</text>
+<text x="318" y="390" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Typed and declared in OpenAPI, so it appears in the API by topic. Clients find it through a feature token in</text>
+<text x="318" y="410" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">/api/bloem/v1/capabilities. It reuses only what Silo's own /api/v2 uses.</text>
+<rect x="40" y="334" width="236" height="120" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<circle cx="70" cy="368" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M64.6,362.6 L75.4,373.4 M75.4,362.6 L64.6,373.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="92" y="374" font-size="17" font-weight="700" fill="#B91C1C" text-anchor="start">Never</text>
+<text x="60" y="404" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A new route on Silo's</text>
+<text x="60" y="423" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/api/v1, or an edit to a</text>
+<text x="60" y="442" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Silo file.</text>
+<text x="40" y="510" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Bloem's own API stays at v1. Its number is Bloem's, not Silo's: it grows by adding fields and routes.</text>
+</svg>

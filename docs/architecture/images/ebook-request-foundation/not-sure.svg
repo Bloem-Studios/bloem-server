@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="716" viewBox="0 0 1200 716" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">When Bloem is not sure an order reached Bookwarehouse</title>
+<desc id="d">Bloem hands an order to Bookwarehouse. If it is not sure the order arrived, it only asks Bookwarehouse what happened and never sends it again. If it knows nothing was sent, it sends again later. After five failures the request stops as failed, and an administrator's retry checks or sends again accordingly.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="715" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">When Bloem is not sure an order arrived</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bookwarehouse cannot tell a repeated order from a new one, so Bloem never guesses.</text>
+<rect x="400" y="120" width="400" height="70" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="600" y="162" font-size="17" font-weight="700" fill="#101827" text-anchor="middle">Bloem hands an order to Bookwarehouse</text>
+<path d="M520,194 C520,230 300,220 300,252" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M680,194 C680,230 900,220 900,252" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="256" width="520" height="262" rx="16" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="64" y="292" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Not sure it arrived</text>
+<text x="64" y="320" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A timeout, or Bloem restarted at the wrong moment.</text>
+<text x="64" y="372" font-size="12.5" font-weight="700" fill="#B45309" text-anchor="start" letter-spacing="1">Bloem</text>
+<text x="64" y="396" font-size="15.5" font-weight="600" fill="#101827" text-anchor="start">Only asks Bookwarehouse what happened. Never sends again.</text>
+<rect x="56" y="432" width="488" height="70" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="70" y="452" font-size="11" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="1">THE REQUESTER SEES</text>
+<text x="70" y="474" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Submission outcome is unknown; checking the backend without</text>
+<text x="70" y="492" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">submitting again.</text>
+<rect x="640" y="256" width="520" height="262" rx="16" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="664" y="292" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Sure nothing was sent</text>
+<text x="664" y="320" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bookwarehouse refused before taking it, or the plugin was not</text>
+<text x="664" y="340" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">running.</text>
+<text x="664" y="372" font-size="12.5" font-weight="700" fill="#047857" text-anchor="start" letter-spacing="1">Bloem</text>
+<text x="664" y="396" font-size="15.5" font-weight="600" fill="#101827" text-anchor="start">Sends the order again later.</text>
+<rect x="656" y="432" width="488" height="70" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="670" y="452" font-size="11" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="1">THE REQUESTER SEES</text>
+<text x="670" y="474" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">The submission did not reach the backend; it will be submitted</text>
+<text x="670" y="492" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">again.</text>
+<path d="M300,522 C300,548 380,546 420,560" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M900,522 C900,548 820,546 780,560" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="240" y="564" width="720" height="96" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.6"/>
+<text x="600" y="598" font-size="17" font-weight="700" fill="#101827" text-anchor="middle">After five failures the request stops as failed</text>
+<text x="600" y="626" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">An administrator's retry checks the existing order if one might have arrived,</text>
+<text x="600" y="646" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">or sends again if nothing was ever sent.</text>
+<text x="40" y="696" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Uncertain checks wait 30 seconds at first, doubling up to 15 minutes.</text>
+</svg>

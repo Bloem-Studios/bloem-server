@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="690" viewBox="0 0 1200 690" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Who decides what</title>
+<desc id="d">Four steps inside one Bloem server. The host loads only the campaigns or seasonal packs this viewer is allowed to see and fixes one moment in time. The evaluator, a pure function, picks what to show from those facts alone. The host checks every answer against what it loaded and rebuilds the result from its own copy. If the evaluator fails, the page shows nothing extra and carries on. Below, before and after 26 October 2026: two worker processes, then in-process.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="689" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Who decides what</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The server decides who may see something; the evaluator only picks what to show.</text>
+<rect x="40" y="124" width="1120" height="290" rx="18" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="64" y="156" font-size="13" font-weight="700" fill="#C2410C" text-anchor="start" letter-spacing="1">ONE BLOEM SERVER</text>
+<rect x="64" y="176" width="252" height="140" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="82" y="208" font-size="16" font-weight="700" fill="#101827" text-anchor="start">1. Load what is allowed</text>
+<text x="82" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Only this organization's and</text>
+<text x="82" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">this viewer's candidates. One</text>
+<text x="82" y="272" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">moment in time for the whole</text>
+<text x="82" y="292" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">request.</text>
+<line x1="318" y1="246" x2="336" y2="246" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="338" y="176" width="252" height="140" rx="14" fill="#FDF4FF" stroke="#C026D3" stroke-width="1.8"/>
+<text x="356" y="208" font-size="16" font-weight="700" fill="#101827" text-anchor="start">2. Evaluator picks</text>
+<text x="356" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A pure function: dates, yearly</text>
+<text x="356" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">windows, order. It gets plain</text>
+<text x="356" y="272" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">facts, never the database,</text>
+<text x="356" y="292" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">keys or settings.</text>
+<line x1="592" y1="246" x2="610" y2="246" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="612" y="176" width="252" height="140" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="630" y="208" font-size="16" font-weight="700" fill="#101827" text-anchor="start">3. Check the answer</text>
+<text x="630" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Every returned ID must be one</text>
+<text x="630" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the host loaded, in its order.</text>
+<text x="630" y="272" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Content is rebuilt from the</text>
+<text x="630" y="292" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">host's copy.</text>
+<line x1="866" y1="246" x2="884" y2="246" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="886" y="176" width="252" height="140" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="904" y="208" font-size="16" font-weight="700" fill="#101827" text-anchor="start">4. Show it</text>
+<text x="904" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Home rows, title pages, the</text>
+<text x="904" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">player and seasonal effects.</text>
+<circle cx="78" cy="364" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M72.6,358.6 L83.4,369.4 M83.4,358.6 L72.6,369.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="100" y="358" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">If the evaluator fails, campaigns or seasonal effects are left out. Browsing, sign-in and playback carry on, and the host never logs what the</text>
+<text x="100" y="378" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">evaluator was given.</text>
+<text x="40" y="456" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Where the evaluator runs</text>
+<rect x="40" y="476" width="540" height="148" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="508" font-size="17" font-weight="700" fill="#101827" text-anchor="start">5 October to 26 October 2026</text>
+<text x="58" y="532" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Two bundled worker processes behind a JSON-over-stdio bridge. They ran</text>
+<text x="58" y="552" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">only Bloem's own reviewed code, with no sandbox or resource limits, so</text>
+<text x="58" y="572" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the extra process added start-up time and new ways to fail without</text>
+<text x="58" y="592" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">isolating anything.</text>
+<rect x="620" y="476" width="540" height="148" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="638" y="508" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Since 26 October 2026</text>
+<text x="638" y="532" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Inside the server, as plain Go code: promotions.Engine and</text>
+<text x="638" y="552" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">ambience.Engine. Tests can swap in another evaluator to watch it or make</text>
+<text x="638" y="572" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">it fail.</text>
+<line x1="584" y1="550" x2="616" y2="550" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="660" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Membership, profile and PIN, library access, dismissals and artwork access always stay with the host.</text>
+</svg>

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">One progress upload, two ways to report it</title>
+<desc id="d">The same three progress entries sent to the two sync routes. Silo's /api/v1 route answers ok for each stored or skipped entry. Bloem's route answers updated for a stored entry, ignored for one that was accepted but not stored, and error for a bad entry. Both store exactly the same rows.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="559" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">One progress upload, two ways to report it</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Both routes store the same rows by the same rules. Only the answer differs.</text>
+<text x="40" y="150" font-size="17" font-weight="700" fill="#101827" text-anchor="start">An app sends three saved positions</text>
+<rect x="40" y="170" width="300" height="88" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="206" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Film A at 45 min</text>
+<text x="60" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">newer than what is stored</text>
+<rect x="40" y="274" width="300" height="88" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="310" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Film B at 10 s</text>
+<text x="60" y="334" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">below the resume floor</text>
+<rect x="40" y="378" width="300" height="88" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="414" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Film C, no item ID</text>
+<text x="60" y="438" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">a bad entry</text>
+<text x="380" y="150" font-size="17" font-weight="700" fill="#101827" text-anchor="start">POST /api/v1/sync/progress</text>
+<text x="380" y="128" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="start">Silo's route</text>
+<rect x="380" y="170" width="380" height="88" rx="12" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.5"/>
+<text x="400" y="208" font-size="18" font-weight="700" fill="#374151" text-anchor="start">ok</text>
+<text x="400" y="232" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Stored.</text>
+<rect x="380" y="274" width="380" height="88" rx="12" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.5"/>
+<text x="400" y="312" font-size="18" font-weight="700" fill="#374151" text-anchor="start">ok</text>
+<text x="400" y="336" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Looks stored, but was not.</text>
+<rect x="380" y="378" width="380" height="88" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="400" y="416" font-size="18" font-weight="700" fill="#B91C1C" text-anchor="start">error</text>
+<text x="400" y="440" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Rejected.</text>
+<text x="780" y="150" font-size="17" font-weight="700" fill="#101827" text-anchor="start">POST /api/bloem/v1/sync/progress</text>
+<text x="780" y="128" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="start">Bloem's route</text>
+<rect x="780" y="170" width="380" height="88" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<text x="800" y="208" font-size="18" font-weight="700" fill="#047857" text-anchor="start">updated</text>
+<text x="800" y="232" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Stored.</text>
+<rect x="780" y="274" width="380" height="88" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="800" y="312" font-size="18" font-weight="700" fill="#B45309" text-anchor="start">ignored</text>
+<text x="800" y="336" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Accepted, not stored. Do not retry.</text>
+<rect x="780" y="378" width="380" height="88" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="416" font-size="18" font-weight="700" fill="#B91C1C" text-anchor="start">error</text>
+<text x="800" y="440" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Rejected.</text>
+<text x="40" y="516" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Silo's apps read “ok”, so Silo's route keeps it. Bloem's route is advertised as progress_sync_v1.</text>
+</svg>

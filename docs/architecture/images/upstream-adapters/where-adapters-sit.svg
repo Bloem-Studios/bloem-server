@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Where Bloem's adapters sit</title>
+<desc id="d">Ten places where Bloem wraps Silo: migrations, playback limits, downloads, playback admission, access groups, sign-in and invitations, live sockets, recommendations, the web build, and the SQLite user store. Each keeps Silo's own call shape.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Where Bloem's adapters sit</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Each one keeps Silo's call shape, so Silo's callers and tests run through it unchanged.</text>
+<rect x="40" y="124" width="550" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="124" width="8" height="90" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<text x="66" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Migrations</text>
+<text x="66" y="186" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">BloemFS adapts a few old Silo migrations as they are read.</text>
+<rect x="610" y="124" width="550" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="124" width="8" height="90" rx="4" fill="#0EA5E9" stroke="none" stroke-width="1.5"/>
+<text x="636" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Playback limits</text>
+<text x="636" y="186" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A profile-aware limit provider beside Silo's account-only one.</text>
+<rect x="40" y="226" width="550" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="226" width="8" height="90" rx="4" fill="#0EA5E9" stroke="none" stroke-width="1.5"/>
+<text x="66" y="260" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Downloads</text>
+<text x="66" y="288" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's download code reads the request's profile from the context.</text>
+<rect x="610" y="226" width="550" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="226" width="8" height="90" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<text x="636" y="260" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Playback admission</text>
+<text x="636" y="288" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A wrapper puts the request's trusted organization facts in first.</text>
+<rect x="40" y="328" width="550" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="328" width="8" height="90" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<text x="66" y="362" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Access groups</text>
+<text x="66" y="390" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Groups belong to an organization, and resolve per profile.</text>
+<rect x="610" y="328" width="550" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="328" width="8" height="90" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<text x="636" y="362" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Sign-in and invitations</text>
+<text x="636" y="390" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Creating an account also links it to its one organization.</text>
+<rect x="40" y="430" width="550" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="430" width="8" height="90" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<text x="66" y="464" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Live sockets</text>
+<text x="66" y="492" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's handshake, with Bloem's organization check in Silo's hook.</text>
+<rect x="610" y="430" width="550" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="430" width="8" height="90" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<text x="636" y="464" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Recommendations</text>
+<text x="636" y="492" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Wrapped in the same organization-aware viewer resolver as the rest.</text>
+<rect x="40" y="532" width="550" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="532" width="8" height="90" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<text x="66" y="566" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The web build</text>
+<text x="66" y="594" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's name, icons and preview mode are applied at build time.</text>
+<rect x="610" y="532" width="550" height="90" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="532" width="8" height="90" rx="4" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<text x="636" y="566" font-size="17" font-weight="700" fill="#101827" text-anchor="start">SQLite user store</text>
+<text x="636" y="594" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A repair step inside Silo's migration, with no version of its own.</text>
+<text x="40" y="664" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">None of them grants access. They add Bloem's organization and profile checks; the host still decides identity, PINs, libraries and limits.</text>
+</svg>

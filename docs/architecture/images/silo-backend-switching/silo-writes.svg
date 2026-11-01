@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What happens to Silo's writes while switching is on</title>
+<desc id="d">Six things Silo can write, and what the database does with each while Silo switching is on. A new profile is placed in the default organization; a new account gets a membership when its transaction commits; an account moved to another group takes its profiles with it; a missing device is stored as empty. A second organization and a profile with its own sign-in are refused.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="779" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What happens to Silo's writes while switching is on</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Database rules fit Silo's writes into Bloem's model, and refuse what Silo could not honor.</text>
+<text x="40" y="136" font-size="17" font-weight="700" fill="#075985" text-anchor="start">Silo writes</text>
+<text x="500" y="136" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The database</text>
+<rect x="40" y="152" width="400" height="82" rx="12" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.5"/>
+<text x="60" y="198" font-size="15.5" font-weight="600" fill="#101827" text-anchor="start">A new profile, with no organization</text>
+<line x1="444" y1="193" x2="494" y2="193" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="500" y="152" width="660" height="82" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="530" cy="193" r="12" fill="#10B981"/>
+<path d="M524.6,193.24 L528.8,197.56 L536.0,188.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="556" y="188" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Placed in the default organization, with the account's membership and the</text>
+<text x="556" y="208" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">account's access group.</text>
+<rect x="40" y="248" width="400" height="82" rx="12" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.5"/>
+<text x="60" y="294" font-size="15.5" font-weight="600" fill="#101827" text-anchor="start">A new account</text>
+<line x1="444" y1="289" x2="494" y2="289" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="500" y="248" width="660" height="82" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="530" cy="289" r="12" fill="#10B981"/>
+<path d="M524.6,289.24 L528.8,293.56 L536.0,284.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="556" y="294" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Gets its membership in the default organization when the transaction commits.</text>
+<rect x="40" y="344" width="400" height="82" rx="12" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.5"/>
+<text x="60" y="390" font-size="15.5" font-weight="600" fill="#101827" text-anchor="start">An account moved to another group</text>
+<line x1="444" y1="385" x2="494" y2="385" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="500" y="344" width="660" height="82" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="530" cy="385" r="12" fill="#10B981"/>
+<path d="M524.6,385.24 L528.8,389.56 L536.0,380.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="556" y="380" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">The account's profiles on the old group move with it. Its role stays in step</text>
+<text x="556" y="400" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">both ways.</text>
+<rect x="40" y="440" width="400" height="82" rx="12" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.5"/>
+<text x="60" y="486" font-size="15.5" font-weight="600" fill="#101827" text-anchor="start">A sign-in with no device</text>
+<line x1="444" y1="481" x2="494" y2="481" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="500" y="440" width="660" height="82" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="530" cy="481" r="12" fill="#10B981"/>
+<path d="M524.6,481.24 L528.8,485.56 L536.0,476.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="556" y="486" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">The missing device is stored as an empty value instead of NULL.</text>
+<rect x="40" y="536" width="400" height="82" rx="12" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.5"/>
+<text x="60" y="582" font-size="15.5" font-weight="600" fill="#101827" text-anchor="start">A second organization</text>
+<line x1="444" y1="577" x2="494" y2="577" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="500" y="536" width="660" height="82" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<circle cx="530" cy="577" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M524.6,571.6 L535.4,582.4 M535.4,571.6 L524.6,582.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="556" y="582" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Refused: Silo has no organizations, so it could not keep two apart.</text>
+<rect x="40" y="632" width="400" height="82" rx="12" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.5"/>
+<text x="60" y="678" font-size="15.5" font-weight="600" fill="#101827" text-anchor="start">A profile with its own sign-in</text>
+<line x1="444" y1="673" x2="494" y2="673" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="500" y="632" width="660" height="82" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<circle cx="530" cy="673" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M524.6,667.6 L535.4,678.4 M535.4,667.6 L524.6,678.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="556" y="678" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Refused: Silo would treat that sign-in as the whole account.</text>
+<text x="40" y="724" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The empty-device rule always applies. The others work only while public.bloem_silo_switching is on; switching it off lifts them, and Silo must not serve the</text>
+<text x="40" y="744" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">database again.</text>
+</svg>

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="730" viewBox="0 0 1200 730" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Giving an organization its own address</title>
+<desc id="d">Four steps: DNS and a certificate, a route at a trusted proxy, the sign-in provider's addresses for the domain, and registering the domain in the Domains panel. Below them, the three addresses to register at the provider, and what visitors on the domain get: its own look, its own email links and its own sign-in. A made-up domain is used.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="729" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Giving an organization its own address</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Four steps. Then visitors on that address see the organization's own name, logo and colours.</text>
+<rect x="40" y="124" width="260" height="136" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="124" width="8" height="136" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="152" r="12" fill="#6366F1"/>
+<text x="74" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="96" y="158" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">DNS, certificate</text>
+<text x="64" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Point the domain at your proxy</text>
+<text x="64" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">and issue a certificate for</text>
+<text x="64" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">it.</text>
+<line x1="303" y1="192.0" x2="323" y2="192.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="326" y="124" width="260" height="136" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="326" y="124" width="8" height="136" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="360" cy="152" r="12" fill="#6366F1"/>
+<text x="360" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="382" y="158" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Proxy route</text>
+<text x="350" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A trusted proxy sends the</text>
+<text x="350" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">domain to Bloem and passes on</text>
+<text x="350" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the visitor's host.</text>
+<line x1="589" y1="192.0" x2="609" y2="192.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="612" y="124" width="260" height="136" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="612" y="124" width="8" height="136" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="646" cy="152" r="12" fill="#6366F1"/>
+<text x="646" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="668" y="158" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Sign-in provider</text>
+<text x="636" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Only for sign-in through</text>
+<text x="636" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Authentik: register the</text>
+<text x="636" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">domain's addresses below.</text>
+<line x1="875" y1="192.0" x2="895" y2="192.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="898" y="124" width="260" height="136" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="898" y="124" width="8" height="136" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="932" cy="152" r="12" fill="#6366F1"/>
+<text x="932" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="954" y="158" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Register it</text>
+<text x="922" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Platform → Organizations → the</text>
+<text x="922" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">organization → Domains → Add</text>
+<text x="922" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">domain.</text>
+<rect x="40" y="290" width="1120" height="160" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.5"/>
+<text x="64" y="324" font-size="17" font-weight="700" fill="#101827" text-anchor="start">At the provider, for each domain</text>
+<text x="360" y="324" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Made-up domain: watch.riverside.example</text>
+<text x="64" y="362" font-size="14" font-weight="700" fill="#374151" text-anchor="start">Redirect URI</text>
+<text x="196" y="362" font-size="14" font-weight="normal" fill="#101827" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace">https://watch.riverside.example/api/v1/auth/oauth/&lt;installation&gt;/callback</text>
+<text x="64" y="394" font-size="14" font-weight="700" fill="#374151" text-anchor="start">Redirect URI</text>
+<text x="196" y="394" font-size="14" font-weight="normal" fill="#101827" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace">https://watch.riverside.example/api/v2/auth/oauth/&lt;installation&gt;/callback</text>
+<text x="64" y="426" font-size="14" font-weight="700" fill="#374151" text-anchor="start">Post-logout</text>
+<text x="196" y="426" font-size="14" font-weight="normal" fill="#101827" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace">https://watch.riverside.example/login</text>
+<text x="560" y="426" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">(when signing out at the provider is on)</text>
+<text x="40" y="494" font-size="19" font-weight="700" fill="#101827" text-anchor="start">What visitors on the domain get</text>
+<rect x="40" y="510" width="357" height="136" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="542" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Its own look</text>
+<text x="58" y="566" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Name, login subtitle, accent colour and</text>
+<text x="58" y="586" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">images from the Branding panel. An empty</text>
+<text x="58" y="606" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">field shows Bloem's default, never another</text>
+<text x="58" y="626" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">brand.</text>
+<rect x="421" y="510" width="357" height="136" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="439" y="542" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Its own email links</text>
+<text x="439" y="566" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Invitation and password-reset emails link to</text>
+<text x="439" y="586" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the primary domain and carry the</text>
+<text x="439" y="606" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">organization's name.</text>
+<rect x="802" y="510" width="357" height="136" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<text x="820" y="542" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Its own sign-in</text>
+<text x="820" y="566" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">An account of another organization is refused</text>
+<text x="820" y="586" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">there and told the address where it signs in.</text>
+<text x="40" y="690" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A domain decides what visitors see, never what an account can reach. An organization without a domain signs in at the server's public address.</text>
+</svg>

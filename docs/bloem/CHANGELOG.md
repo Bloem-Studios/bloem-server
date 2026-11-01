@@ -3,6 +3,35 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 1, 2026 — every Bloem page in one style
+
+Every current Bloem page now reads like
+[How organizations work](../architecture/bloem-organizations.md): plain language and
+pictures first, a made-up example where it helps, "Who can change what" and "Words
+used in the code" tables, and a "For developers" section that keeps every technical
+rule. [Writing Bloem documentation](documentation-workflow.md) makes that shape the
+rule for new and changed pages.
+
+- **Scope.** 86 Bloem pages: the architecture pages, the guides, the Docker
+  installation guide, the operations runbooks, the overlays on Silo documents,
+  `FORK.md`, the CI and documentation-workflow pages and the native API reference.
+  Silo's own files, dated receipts and historical records are unchanged.
+- **Pictures.** 93 new pictures, one drawing module per page in
+  `scripts/bloem/pictures/`. `scripts/bloem/draw-pictures.py` now finds the modules
+  itself, so adding a page's pictures needs no other edit.
+- **Facts.** Each page was checked against the code at `b6039036d`, and about 130
+  stale statements were corrected. Examples: retirement keeps an account only when it
+  owns another organization, owns the platform or is a platform administrator; the
+  storefront's routes are `/api/bloem/v1/admin/platform/...`; ebook requests are for
+  the default organization only; the plugin SDK pin is `v0.31.0`; the entitlement
+  template screens' current labels; the PostgreSQL restart warning lists only settings
+  still pending.
+- **Today's changes** are in every page they touch: organization domains and
+  branding, provider sign-in and sign-out on an organization's domain, the public
+  seasonal route, and sign-ins ended after an organization revokes them.
+- `docker-compose.livetv.yml`'s usage comment now names
+  `docker-compose.advanced.yml`, since `docker-compose.yml` is Silo's all-in-one file.
+
 ## November 1, 2026 — organization domains and branding
 
 Each organization can have its own domains, name, logo and colours

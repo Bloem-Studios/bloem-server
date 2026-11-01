@@ -1,50 +1,176 @@
-# Bloem Server — fork provenance
+# How Bloem forks Silo
+
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
+> `main` at `b6039036d`. This is Bloem's fork policy and provenance; Silo has no such
+> file. Every rule, command and number is in the [For developers](#for-developers)
+> section.
+
+Bloem Server is Silo Server with Bloem's additions. This page walks through what that
+means, how Bloem takes in Silo's work every day, where Bloem keeps its own work, what
+it adds and what it took out again, and where things stand today.
+
+## What Bloem is
+
+**Silo Server** is a self-hosted media server for films, series, audiobooks, ebooks,
+podcasts and manga, made by the Silo-Server project and licensed under AGPL-3.0.
+Bloem is a **fork** of it: a copy of Silo's code that adds its own features. Bloem
+keeps Silo's licence and every copyright notice.
+
+Bloem started on 13 August 2026 under the working name Vondel Server and was renamed
+Bloem on 24 August 2026, so older commit messages still say "Vondel". Silo's own
+description of itself, the root `README.md`, stays exactly as Silo wrote it. Bloem's
+front page is [`.github/README.md`](.github/README.md), which GitHub shows instead.
+
+## A tracking fork, not a copy
+
+![Left, the hard fork Bloem tried first: a new first commit, 1,178 renamed files and every Silo change copied by hand. Right, the tracking fork Bloem is: one shared history, with Silo's work merged in again and again](docs/architecture/images/fork/tracking-fork.svg)
+
+Bloem is a **tracking fork**: its history is Silo's history, with Bloem's own commits
+on top. When Silo changes something, Bloem **merges** it in, an ordinary Git step that
+brings both histories together. Nobody copies Silo's changes by hand.
+
+Bloem tried the other way first. A **hard fork** started a new history and renamed
+Silo's module path in 1,178 files. After that, every Silo change was a conflict. On
+13 August 2026 Bloem went back to Silo's real history, and the module path stays
+Silo's own. Renaming it could still happen any day; getting the ability to merge back
+could not.
+
+A daily job merges Silo's work into Bloem. When it merges cleanly and every check
+passes, it lands by itself; when it doesn't, a person resolves it.
+[How Bloem keeps up with Silo](docs/architecture/bloem-following-silo.md) explains the
+daily routine with pictures.
+
+## When Silo and Bloem change the same lines
+
+**Silo wins.** In code both projects share, Bloem takes Silo's side of every conflict
+it can work around, then puts its own change back in the smallest way it can, in a
+file of its own. A Silo line that Bloem keeps changed conflicts again at the next
+merge, and Silo changes every day. Taking Silo's version also brings Silo's own fixes
+and tests.
+
+Bloem's own apps are not released yet, so keeping them on an older shape of the API
+is no reason to keep Bloem's code different from Silo's.
+
+## Where Bloem keeps its own work
+
+- **Its own files.** Bloem's code is in files named `bloem_*` and in whole packages
+  Silo doesn't have, such as Live TV.
+- **Seams.** A **seam** is a Silo file that Bloem still changes, usually by one hook
+  line that calls Bloem's code. Every seam is listed, with its reason, in
+  `contracts/seams.txt`. On 1 November 2026 the list held 304. The number may only go
+  down, and adding one is a reviewed decision.
+- **Overlays.** Where a Silo document needs a Bloem note, a separate Bloem page, an
+  **overlay**, carries it, and Silo's document stays as Silo wrote it.
+- **The name and the look.** The web app is given Bloem's name and artwork when it is
+  built, so Silo's web source can stay as Silo wrote it.
+
+## What Bloem adds
+
+![Silo Server on the left, whose features all stay; on the right, six Bloem additions: organizations and plans, Live TV and recordings, storage sources, an API for Bloem's apps, domains and branding, and switching with Silo; below, four things Bloem added once and took out again](docs/architecture/images/fork/what-bloem-adds.svg)
+
+- **Organizations and plans.** One server serves several customers, each kept apart,
+  with accounts, profiles, seats and plans
+  ([how organizations work](docs/architecture/bloem-organizations.md)).
+- **Domains and branding.** Each organization can be served on its own addresses,
+  with its own name, logo and colours
+  ([organization domains and branding](docs/architecture/bloem-organization-domains.md)).
+- **Live TV.** Tuners, Xtream providers, a programme guide and recordings
+  ([how Live TV works](docs/architecture/bloem-live-tv.md)).
+- **Storage sources.** Libraries read from S3 or Bookwarehouse as well as folders.
+  This is still experimental.
+- **An API for Bloem's own apps,** with richer title pages, profile sign-ins and
+  server-side search.
+- **Switching with Silo.** A Silo installation can try Bloem on the same database and
+  go back ([switching between Silo and Bloem](docs/architecture/bloem-silo-switching-explained.md)).
+
+Bloem's apps, `bloem-apple` and `bloem-android`, are not forks of Silo's apps. They
+are written from scratch against the server's documented interfaces.
+
+## What Bloem took out again
+
+Bloem has removed some of its own additions, where Silo now covers the need or where
+the addition no longer paid for what it cost at each merge: a gateway for companion
+apps, Pastime tracking, a music catalog, separate worker processes for presentation
+rules, its own records for retrying administrative actions, its own tickets for live
+sockets, a deployment switch for header-authenticated media, and keeping account
+settings on organization memberships. The
+[table under For developers](#what-bloem-removed) says when and why.
+
+## Where things stand
+
+On 1 November 2026, Bloem's `main` has all of Silo's work through `63ef34b23`, from
+that morning, and the seam list holds 304 files. Production runs `59616c4af`.
+Production has one organization, the default one, with the server's public address
+registered as its primary domain.
+
+## Who can change what
+
+| Who | What they decide |
+| --- | --- |
+| The owner | When to deploy, and whether a new seam may be added. |
+| A Bloem maintainer | Resolving a merge that conflicted, and pushing a merge after the full checks pass. |
+| The daily sync | Merging Silo's `main` into a new branch every day. It lands the merge itself only when it is clean and Bloem CI passed. |
+| Silo's maintainers | Whether a change Bloem offers is taken into Silo. Bloem never pushes to Silo directly; it offers changes through a separate fork and a pull request. |
+
+## Words used in the code
+
+| On this page | In the repository |
+| --- | --- |
+| Silo's work | `upstream/main`, from the `upstream` remote |
+| Tracking fork | `main` shares Silo's history and merges `upstream/main` with `--no-ff` |
+| Module path | `github.com/Silo-Server/silo-server` in `go.mod` |
+| The daily sync | `.github/workflows/upstream-sync.yml`, landed by `upstream-sync-merge.yml` |
+| Seam, seam list | a Silo-owned file Bloem differs in; `contracts/seams.txt`, checked by `make verify-seams` |
+| Overlay | a Bloem page under `docs/bloem/overlays/` |
+| The name and the look | `web/bloem-brand-plugin.ts`, and Bloem's artwork in `assets/` |
+| Live TV's origin | Prairie Server, listed in `docs/livetv/prairie-source-manifest.tsv` |
+
+## For developers
+
+- **API:** Bloem's own routes are under `/api/bloem/v1`, described by topic in
+  [the native API](docs/bloem/api/README.md). Bloem adds nothing to Silo's `/api/v1`;
+  the web app and the storefront call none of it
+  ([leaving Silo's `/api/v1`](docs/architecture/bloem-leaving-silo-v1.md)).
+
+### This is a TRACKING fork, deliberately
 
 Bloem Server is a fork of [Silo Server](https://github.com/Silo-Server/silo-server),
-AGPL-3.0, whose licence and copyright notices are preserved throughout. Silo is a
-self-hosted media server (films, series, audiobooks, ebooks, podcasts and manga)
-developed by the Silo-Server project; its own description is the root
-[`README.md`](README.md), which stays exactly as Silo wrote it. Bloem's front page
-is [`.github/README.md`](.github/README.md), which GitHub shows in place of the
-root file.
+AGPL-3.0, whose licence and copyright notices are preserved throughout. Its own
+description is the root [`README.md`](README.md), which stays exactly as Silo wrote
+it; Bloem's front page is [`.github/README.md`](.github/README.md). The fork started
+on August 13, 2026 (`a51326741`) under the working name Vondel Server and was renamed
+Bloem on August 24, 2026 (`b25394bc8`).
 
-The fork started on August 13, 2026 (`a51326741`) under the working name Vondel
-Server and was renamed Bloem on August 24, 2026 (`b25394bc8`); older commit
-messages still say "Vondel".
-
-## This is a TRACKING fork, deliberately
-
-`main` shares real history with upstream, so every upstream release can be
-merged rather than ported by hand. Git remotes are local configuration and are
-not copied by `git clone`; add the protected upstream remote in each maintainer
-checkout:
+`main` shares real history with upstream, so every upstream release can be merged
+rather than ported by hand. Git remotes are local configuration and are not copied by
+`git clone`; add the protected upstream remote in each maintainer checkout:
 
 ```sh
 git remote add upstream https://github.com/Silo-Server/silo-server.git
 git remote set-url --push upstream DISABLED
 ```
 
-An earlier attempt imported the tree as a zero-parent root commit with the Go
-module path renamed to `github.com/Bloem-Studios/bloem-server`. That is a hard
-fork, and it cost more than it bought: the rename touched 1,178 files, which
-makes every future upstream change a conflict, while the features Bloem adds —
-Live TV chief among them — are additive packages that merge cleanly without it.
-`a51326741` replaced it with Silo's real history. Its commit message names a
-`hard-fork-archive` branch for the earlier history; no such branch is published
-in this repository (checked October 27, 2026).
+An earlier attempt imported the tree as a zero-parent root commit with the Go module
+path renamed to `github.com/Bloem-Studios/bloem-server`. That is a hard fork, and it
+cost more than it bought: the rename touched 1,178 files, which makes every future
+upstream change a conflict, while the features Bloem adds (Live TV chief among them)
+are additive packages that merge cleanly without it. `a51326741` replaced it with
+Silo's real history. Its commit message names a `hard-fork-archive` branch for the
+earlier history; no such branch is published in this repository (checked October 27,
+2026).
 
-**The module path stays `github.com/Silo-Server/silo-server`.** It is the price
-of merge-ability and it is worth paying. Renaming is a one-way door available at
-any time; staying merge-able is not recoverable once lost.
+**The module path stays `github.com/Silo-Server/silo-server`.** It is the price of
+merge-ability and it is worth paying. Renaming is a one-way door available at any
+time; staying merge-able is not recoverable once lost.
 
-Maintainer checkouts deliberately set `upstream`'s push URL to an invalid
-value. Nothing from this repository is pushed directly to Silo-Server;
-upstream contributions use a separate fork and pull request.
+Maintainer checkouts deliberately set `upstream`'s push URL to an invalid value.
+Nothing from this repository is pushed directly to Silo-Server; upstream contributions
+use a separate fork and pull request.
 
-## Taking upstream changes
+### Taking upstream changes
 
-Update the tracked fork with a normal merge so both projects' ancestry remains
-visible and future merges can reuse Git's conflict resolutions:
+Update the tracked fork with a normal merge so both projects' ancestry remains visible
+and future merges can reuse Git's conflict resolutions:
 
 ```sh
 git fetch --prune upstream
@@ -54,100 +180,113 @@ git merge --no-ff upstream/main
 ```
 
 **Silo wins.** In shared code, take Silo's side of every conflict Bloem can adapt
-around, then reapply the smallest Bloem delta in Bloem-owned files. Bloem's
-native clients are unreleased, so keeping them on an older wire shape is not a
-reason to keep a Bloem difference ([agent rules](BLOEM_AGENTS.md#shared-implementation-follows-silo)).
-Every Silo line Bloem keeps edited conflicts again on the next merge, and Silo
-moves daily; adopting Silo's implementation also brings Silo's fixes and tests.
+around, then reapply the smallest Bloem delta in Bloem-owned files. Bloem's native
+clients are unreleased, so keeping them on an older wire shape is not a reason to keep
+a Bloem difference ([agent rules](BLOEM_AGENTS.md#shared-implementation-follows-silo)).
+Every Silo line Bloem keeps edited conflicts again on the next merge, and Silo moves
+daily; adopting Silo's implementation also brings Silo's fixes and tests.
 
 Run the complete verification suite before pushing the merge to `origin`: the
-[validation checks](.github/CONTRIBUTING.md#validate-your-change), including the
-web bundle budget and CI's changed-line lint for merges. The daily
-`Upstream sync` workflow (`.github/workflows/upstream-sync.yml`, 05:20 UTC)
-performs this merge on an `upstream-sync/<date>-<sha>` branch and opens a pull
-request; `upstream-sync-merge.yml` merges it only when Bloem CI passed on that
-exact head and the head is the untouched, conflict-free merge of a `main` commit
-with a Silo commit. A conflicted merge is pushed as a draft pull request with
-the conflict markers committed, for a person to resolve. See
-[CI](docs/bloem/ci.md#upstream-sync-merges). For an urgent isolated fix,
-cherry-pick the exact upstream commit onto a Bloem topic branch instead; the
-next full upstream merge will recognize that patch. Never force-push shared
-Bloem branches or squash imported upstream history.
+[validation checks](.github/CONTRIBUTING.md#validate-your-change), including the web
+bundle budget and CI's changed-line lint for merges. The daily `Upstream sync` workflow
+(`.github/workflows/upstream-sync.yml`, 05:20 UTC) performs this merge on an
+`upstream-sync/<date>-<sha>` branch and opens a pull request; `upstream-sync-merge.yml`
+merges it only when Bloem CI passed on that exact head and the head is the untouched,
+conflict-free merge of a `main` commit with a Silo commit. A conflicted merge is pushed
+as a draft pull request with the conflict markers committed, for a person to resolve.
+See [CI](docs/bloem/ci.md#upstream-sync-merges). For an urgent isolated fix,
+cherry-pick the exact upstream commit onto a Bloem topic branch instead; the next full
+upstream merge will recognize that patch. Never force-push shared Bloem branches or
+squash imported upstream history.
 
-Bloem changes should remain focused downstream commits. Prefer additive
-packages, migrations, routes, and build-time branding over broad rewrites of
-upstream-owned files. When a merge conflict is unavoidable, preserve Silo's
-public compatibility surface and reapply the smallest Bloem delta.
+Bloem changes should remain focused downstream commits. Prefer additive packages,
+migrations, routes, and build-time branding over broad rewrites of upstream-owned
+files. When a merge conflict is unavoidable, preserve Silo's public compatibility
+surface and reapply the smallest Bloem delta.
 
-## Seams and overlays
+### Seams and overlays
 
-A **seam** is a Silo-owned file (one that also exists in `upstream/main`) that
-Bloem modifies, deletes or type-changes. Each one is declared, usually with a
-one-line reason, in [`contracts/seams.txt`](contracts/seams.txt).
-`make verify-seams` (`scripts/verify-seams.sh`) fails when Bloem differs from
-Silo in a file the ledger does not list; it compares with the upstream tip, the
-last merged upstream commit and an in-progress merge's incoming commit, so it is
-safe to run mid-merge. The count may only go down, and adding an entry is a
-reviewed decision.
+A **seam** is a Silo-owned file (one that also exists in `upstream/main`) that Bloem
+modifies, deletes or type-changes. Each one is declared, usually with a one-line
+reason, in [`contracts/seams.txt`](contracts/seams.txt). `make verify-seams`
+(`scripts/verify-seams.sh`) fails when Bloem differs from Silo in a file the ledger
+does not list; it compares with the upstream tip, the last merged upstream commit and
+an in-progress merge's incoming commit, so it is safe to run mid-merge. The count may
+only go down, and adding an entry is a reviewed decision.
 
 An **overlay** is the documentation equivalent: a Bloem-owned file under
-[`docs/bloem/overlays/`](docs/bloem/overlays/) that records, section by section,
-what Bloem adds to or replaces in the Silo document of the same path, so the
-Silo document itself stays Silo's. The [documentation index](docs/bloem/README.md)
-lists every overlay.
+[`docs/bloem/overlays/`](docs/bloem/overlays/) that records, section by section, what
+Bloem adds to or replaces in the Silo document of the same path, so the Silo document
+itself stays Silo's. The [documentation index](docs/bloem/README.md) lists every
+overlay.
 
-## What Bloem adds
+### What Bloem adds, in detail
 
-- A tenant and identity foundation under `/api/bloem/v1`, while `/api/v1` remains
-  the Silo-compatible surface. The shipped boundary includes organization
-  lifecycle and membership management (with an admin UI for people and
-  security administration), organization-scoped profile groups, a separate
-  administrative-context session system, and OPA-bounded visibility of
-  organization-owned or explicitly entitled media folders; see
-  [the operator runbook](docs/architecture/opa-tenant-authorization.md). Since
-  October 26, 2026 (`c60b7008e`) account policy lives on Silo's `users` columns
-  and a membership only links an account to its one organization.
-- [Silo backend switching](docs/architecture/silo-backend-switching.md): a
-  database limited to one organization can be served by Silo or Bloem, one at a
-  time.
+- A tenant and identity foundation under `/api/bloem/v1`, while `/api/v1` remains the
+  Silo-compatible surface. The shipped boundary includes organization lifecycle and
+  membership management (with an admin UI for people and security administration),
+  organization-scoped profile groups, a separate administrative-context session
+  system, and OPA-bounded visibility of organization-owned or explicitly entitled media
+  folders; see [the operator runbook](docs/architecture/opa-tenant-authorization.md).
+  Since October 26, 2026 (`c60b7008e`) account policy lives on Silo's `users` columns
+  and a membership only links an account to its one organization. A sign-in that
+  started before its organization revoked the account is ended with
+  `401 session_invalid` (`session_expired` on `/api/v2`), so the client signs in again
+  (`25129bcbd`, November 1, 2026).
+- [Organization domains and branding](docs/architecture/bloem-organization-domains.md)
+  (`internal/orgdomains`, migration `20261101055208_bloem_organization_domains`,
+  capability `organization_domains_v1`, November 1, 2026): an organization can be
+  served on its own domains with its own name, logo and colours, managed through
+  `/api/bloem/v1/admin/platform/tenants/{id}/domains` and `/branding`. Emails link to
+  its primary domain; a sign-in on another organization's domain is refused with
+  `409 wrong_organization_domain`, naming where to sign in; an organization without a domain
+  signs in at the server's public address; a sign-in or sign-out through the OAuth
+  provider stays on the domain it started on. A domain decides presentation, never
+  access.
+- Bloem adds nothing to Silo's `/api/v1`. The storefront (October 31, 2026) and the web
+  app (November 1, 2026) call none of it; the web app's signed-out seasonal layer reads
+  `GET /api/bloem/v1/ambience/public`. The `/api/v1` routes stay mounted for the phone
+  apps ([leaving Silo's `/api/v1`](docs/architecture/bloem-leaving-silo-v1.md)).
+- [Silo backend switching](docs/architecture/silo-backend-switching.md): a database
+  limited to one organization can be served by Silo or Bloem, one at a time.
 - Direct-profile login for supported native routes, plus household credential
-  management. Browser direct-profile login and shared-device profile pairing
-  remain unsupported; account-device activation is a separate protocol.
-- A native client API surface built for Bloem's own Android/Apple clients:
-  richer Watch documents (cast/crew, chapter and skip-intro markers, file
-  editions, server-side search, poster resolution), a person-detail
-  endpoint, and a batch-resolved similar-items endpoint. Verified by client
-  contract conformance tests (`internal/clientcontract`) and an install/scan
-  acceptance test suite (`internal/acceptance`).
+  management. Browser direct-profile login and shared-device profile pairing remain
+  unsupported; account-device activation is a separate protocol.
+- A native client API surface built for Bloem's own Android/Apple clients: richer Watch
+  documents (cast/crew, chapter and skip-intro markers, file editions, server-side
+  search, poster resolution), a person-detail endpoint, and a batch-resolved
+  similar-items endpoint. Verified by client contract conformance tests
+  (`internal/clientcontract`) and an install/scan acceptance test suite
+  (`internal/acceptance`).
 - [Native storage](docs/architecture/bloem-native-storage.md): ebook, movie and
-  audiobook libraries that read from storage plugins (S3, Bookwarehouse)
-  alongside filesystem paths. It remains experimental.
+  audiobook libraries that read from storage plugins (S3, Bookwarehouse) alongside
+  filesystem paths. It remains experimental.
 - A separately maintained plugin SDK, catalog and first-party plugin set.
 - Product identity: Bloem naming in user-facing copy.
 - Embedded-web organization workflows, household profile-credential management,
   platform campaign/seasonal authoring and native Live TV/DVR controls. The
-  [coverage matrix](docs/architecture/bloem-web-feature-coverage.md) records the
-  shared seams, tested behavior and remaining limits; the
+  [coverage matrix](docs/architecture/bloem-web-feature-coverage.md) records the shared
+  seams, tested behavior and remaining limits; the
   [completion handoff](docs/architecture/bloem-web-completion-handoff.md) is the
   historical September record of that work.
-- Encrypted Xtream live-provider consumption and provider-bound XMLTV, with
-  shared physical-connection budgets and server-owned encoder input. This is
-  Bloem's addition to the Prairie-derived subsystem, not a Silo feature or a
-  general remote-URL player. See [Xtream scope](docs/architecture/xtream-live-tv.md).
+- Encrypted Xtream live-provider consumption and provider-bound XMLTV, with shared
+  physical-connection budgets and server-owned encoder input. This is Bloem's addition
+  to the Prairie-derived subsystem, not a Silo feature or a general remote-URL player.
+  See [Xtream scope](docs/architecture/xtream-live-tv.md).
 - Explicit [downstream contract adjudications](docs/architecture/bloem-contract-adjudications.md)
-  that preserve SHA-pinned upstream scenario and route snapshots while testing
-  reviewed Bloem behavior. They do not weaken production authorization or
-  reintroduce credential disclosure.
+  that preserve SHA-pinned upstream scenario and route snapshots while testing reviewed
+  Bloem behavior. They do not weaken production authorization or reintroduce credential
+  disclosure.
 
-Plugin authorization and adult-scene policy are separate increments.
-Live TV, OTA/DVR, and EPG are supplied by an attributed AGPL adaptation of the
-Prairie Server subsystem pinned in `docs/livetv/prairie-source-manifest.tsv`.
+Plugin authorization and adult-scene policy are separate increments. Live TV, OTA/DVR,
+and EPG are supplied by an attributed AGPL adaptation of the Prairie Server subsystem
+pinned in `docs/livetv/prairie-source-manifest.tsv`.
 
-## What Bloem removed
+### What Bloem removed
 
-Bloem has removed several of its own additions where Silo now covers the need or
-where the addition no longer earned its merge cost. Each removal is
-forward-only; the linked pages record what stays in the database.
+Bloem has removed several of its own additions where Silo now covers the need or where
+the addition no longer earned its merge cost. Each removal is forward-only; the linked
+pages record what stays in the database.
 
 | Removed | When | Why, and where it is recorded |
 | --- | --- | --- |
@@ -163,86 +302,107 @@ forward-only; the linked pages record what stays in the database.
 The [integration changelog](docs/bloem/CHANGELOG.md) has the full list, including
 dead-code removals.
 
-## Current integration boundary
+### Current integration boundary
 
-At `81c26179c` (October 31, 2026), Bloem `main` contains all of Silo `main`
-through `32a2f63e1` (2026-10-31 19:48 UTC), merged in `4edbee99d`, and the
-ledger declares **303 seams**. Production runs `4edbee99d`: the
-[October 31 receipt](docs/operations/2026-10-31-silo-sync-32a2f63e1-deployment.md)
+At `b6039036d` (November 1, 2026), Bloem `main` contains all of Silo `main` through
+`63ef34b23` (2026-11-01 04:45 UTC), merged in `f14332386`, and the ledger declares
+**304 seams**. Production runs `59616c4af`: the
+[November 1 receipt](docs/operations/2026-11-01-provider-sign-out-deployment.md)
 records that deployment, and the
-[documentation index](docs/bloem/README.md#deployment-receipts) lists the ones
-before it. A source
-integration is not a deployment, and a deployment is not native-client or
-playback acceptance. Profile-aware playback/download APIs, migration adaptation,
-web branding and bundle allowances stay in owned files. The
+[documentation index](docs/bloem/README.md#deployment-receipts) lists the ones before
+it. A source integration is not a deployment, and a deployment is not native-client or
+playback acceptance. Profile-aware playback/download APIs, migration adaptation, web
+branding and bundle allowances stay in owned files. The
 [adapter guide](docs/architecture/bloem-upstream-adapters.md) records the durable
 contracts; the [changelog](docs/bloem/CHANGELOG.md) records each integration.
 
 Use the Bloem binary for migration status and execution. Its `migrations.BloemFS`
 adapter rewrites historical migrations a fresh database still replays before
-`20261026003000_bloem_account_policy_on_users` moves account policy back onto
-`users`, where Silo keeps it.
+`20261026003000_bloem_account_policy_on_users` moves account policy back onto `users`,
+where Silo keeps it.
 
 A Silo database taken over by Bloem can stay switchable: with
-`public.bloem_silo_switching` enabled, either binary can serve it, one at a
-time. Upstream merges that add Silo writes to tables Bloem constrains need a
-switching test and a passing `make silo-switch-check`; see
+`public.bloem_silo_switching` enabled, either binary can serve it, one at a time.
+Upstream merges that add Silo writes to tables Bloem constrains need a switching test
+and a passing `make silo-switch-check`; see
 [Silo backend switching](docs/architecture/silo-backend-switching.md).
 
-History, kept as history: on October 7, 2026 production ran Bloem `c87b44545`,
-with Silo through `74158b4a8` and 407 declared seams
-([October 7 record](docs/operations/2026-10-07-native-storage-deployment.md)).
-The October 5 merge-reduction pass had reduced the ledger to 390 paths, and a
-later extraction to 387, before native onboarding and the October 7 integration
-added reviewed seams. The October 13–18 removal of Jellyfin and Audiobookshelf
-needed 852 entries; restoring Silo's servers took it to 388, the October 23 merge
-to 347, and the October 25–26 simplifications from 350 to 306. The October 29
-merge took it to 304, the AI subtitle fixes to 306 (two upstream PR candidates),
-the October 31 merge to 305, and keeping Silo's session-revoked hook type to
-303. The September
-deployment records are historical evidence too, and no deployment record
-changes the normal merge policy or certifies future builds.
+History, kept as history: on October 31, 2026, at `81c26179c`, Bloem `main` had Silo
+through `32a2f63e1` (2026-10-31 19:48 UTC), merged in `4edbee99d`, with 303 seams, and
+production ran `4edbee99d`
+([October 31 receipt](docs/operations/2026-10-31-silo-sync-32a2f63e1-deployment.md)).
+On October 7, 2026 production ran Bloem `c87b44545`, with
+Silo through `74158b4a8` and 407 declared seams
+([October 7 record](docs/operations/2026-10-07-native-storage-deployment.md)). The
+October 5 merge-reduction pass had reduced the ledger to 390 paths, and a later
+extraction to 387, before native onboarding and the October 7 integration added
+reviewed seams. The October 13–18 removal of Jellyfin and Audiobookshelf needed 852
+entries; restoring Silo's servers took it to 388, the October 23 merge to 347, and the
+October 25–26 simplifications from 350 to 306. The October 29 merge took it to 304,
+the AI subtitle fixes to 306 (two upstream PR candidates), the October 31 merge to
+305, and keeping Silo's session-revoked hook type to 303. The November 1 merge of Silo
+through `63ef34b23` kept it at 303, and organization domains took it to 304 with
+`internal/auth/oauth_handler.go`, which keeps a provider sign-in and sign-out on the
+organization domain it started on. The September deployment records are historical
+evidence too, and no deployment record changes the normal merge policy or certifies
+future builds.
 
-## Ongoing merge cost
+### Ongoing merge cost
 
-The seam ledger is the merge cost: 306 Silo-owned files differ at `e852f92bf`,
-most by a hook line or a generated artifact (the route inventory, OpenAPI and
-migration ledger necessarily differ because Bloem registers more routes).
+The seam ledger is the merge cost: 304 Silo-owned files differ at `b6039036d`, most by
+a hook line or a generated artifact (the route inventory, OpenAPI and migration ledger
+necessarily differ because Bloem registers more routes).
 
-User-facing prose is rebranded at bundle time by `web/bloem-brand-plugin.ts`,
-so upstream web source remains mergeable. Bloem's public icons, wordmark and repository artwork in
-`assets/` are owned visual assets; the Silo paths it replaces with Bloem art
-(`assets/icon.png` and the icons under `web/public/`) are declared seams. The build adapter supplies the PWA manifest
-names, service-worker default notification name and built-in component image
-paths in development and production output while their shared source stays
-identical to upstream. Silo's reserved visual assets must not ship in a modified
-distribution.
-`assets/`, `assets/brand/` and `web/public/` each carry a `NOTICE` recording that
-the brand assets are original Bloem work rather than derivatives of Silo's visual
-identity. Compatibility identifiers, module paths, environment variables, and
-protocol fields retain their Silo names.
+User-facing prose is rebranded at bundle time by `web/bloem-brand-plugin.ts`, so
+upstream web source remains mergeable. Bloem's public icons, wordmark and repository
+artwork in `assets/` are owned visual assets; the Silo paths it replaces with Bloem art
+(`assets/icon.png` and the icons under `web/public/`) are declared seams. The build
+adapter supplies the PWA manifest names, service-worker default notification name and
+built-in component image paths in development and production output while their shared
+source stays identical to upstream. Silo's reserved visual assets must not ship in a
+modified distribution. `assets/`, `assets/brand/` and `web/public/` each carry a
+`NOTICE` recording that the brand assets are original Bloem work rather than
+derivatives of Silo's visual identity. Compatibility identifiers, module paths,
+environment variables, and protocol fields retain their Silo names.
 
-Clients are NOT forks. `bloem-apple` and `bloem-android` are clean-room
-projects built from documented server interfaces — see
+Clients are NOT forks. `bloem-apple` and `bloem-android` are clean-room projects built
+from documented server interfaces; see
 `docs/superpowers/specs/2026-08-12-bloem-clean-room-clients-design.md`.
 
-## Where Bloem's documentation lives
+### Where Bloem's documentation lives
 
 Silo-owned files stay as close to upstream as possible. Bloem's own material is in
-Bloem-owned files indexed at [docs/bloem/README.md](docs/bloem/README.md): the Bloem front
-page ([.github/README.md](.github/README.md)), contribution rules
+Bloem-owned files indexed at [docs/bloem/README.md](docs/bloem/README.md): the Bloem
+front page ([.github/README.md](.github/README.md)), contribution rules
 ([.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)), agent overrides
-([BLOEM_AGENTS.md](BLOEM_AGENTS.md)), and per-document overlays under `docs/bloem/overlays/`
-that record what Bloem adds to or replaces in an upstream document of the same path.
+([BLOEM_AGENTS.md](BLOEM_AGENTS.md)), and per-document overlays under
+`docs/bloem/overlays/` that record what Bloem adds to or replaces in an upstream
+document of the same path.
 
-## Prairie Server Live TV
+### Prairie Server Live TV
 
-Bloem's server-side and web Live TV, OTA tuner, guide, streaming, and DVR
-subsystem is adapted from [Prairie Server](https://github.com/Prairie-Server/prairie-server)
-at commit `095ecd22fbea3384a905eb9049386015db3ff4d8`, licensed under
-AGPL-3.0. Bloem preserves the applicable license and identifies every imported
-or adapted source blob in `docs/livetv/prairie-source-manifest.tsv`.
+Bloem's server-side and web Live TV, OTA tuner, guide, streaming, and DVR subsystem is
+adapted from [Prairie Server](https://github.com/Prairie-Server/prairie-server) at
+commit `095ecd22fbea3384a905eb9049386015db3ff4d8`, licensed under AGPL-3.0. Bloem
+preserves the applicable license and identifies every imported or adapted source blob
+in `docs/livetv/prairie-source-manifest.tsv`.
 
-The adaptation changes product/module identity, migration ordering, and shared
-Bloem integration points. It does not import Prairie native-client source,
-assets, layouts, or tests.
+The adaptation changes product/module identity, migration ordering, and shared Bloem
+integration points. It does not import Prairie native-client source, assets, layouts,
+or tests.
+
+### Related pages
+
+- [How Bloem keeps up with Silo](docs/architecture/bloem-following-silo.md): the daily
+  sync and "Silo wins", with pictures.
+- [Bloem CI](docs/bloem/ci.md): every job, the daily sync and its merge gate, and the
+  image.
+- [Bloem's adapters over Silo](docs/architecture/bloem-upstream-adapters.md): how Bloem
+  changes Silo's behavior without editing Silo's files.
+- [BLOEM_AGENTS.md](BLOEM_AGENTS.md): the rules for changing Bloem, including Silo
+  switching and upstream contributions.
+- [Integration changelog](docs/bloem/CHANGELOG.md): every Silo merge and Bloem change,
+  with commits and seam counts.
+
+The pictures are SVG files under `docs/architecture/images/fork/`, drawn by
+`scripts/bloem/draw-pictures.py`. Redraw them there, not by hand.

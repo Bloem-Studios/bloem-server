@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Signing in at the wrong address</title>
+<desc id="d">Sam, a Riverside Club member, signs in at Harbour Hotel's address. Bloem sees that the address belongs to Harbour Hotel and Sam's account to Riverside Club, and refuses before any sign-in exists, naming Riverside Club's address. Sam signs in there. A panel lists the cases that are never refused.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="649" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Signing in at the wrong address</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The refusal comes before any sign-in exists, and says where to go instead.</text>
+<rect x="40" y="124" width="262" height="180" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<circle cx="66" cy="152" r="13" fill="#14B8A6"/>
+<text x="66" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="58" y="196" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Sam signs in at</text>
+<text x="58" y="218" font-size="14.5" font-weight="700" fill="#101827" text-anchor="start">tv.harbour.example</text>
+<text x="58" y="248" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Sam is a member of Riverside</text>
+<text x="58" y="267" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Club. This is Harbour Hotel's</text>
+<text x="58" y="286" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">address.</text>
+<line x1="304" y1="214.0" x2="324" y2="214.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="326" y="124" width="262" height="180" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="352" cy="152" r="13" fill="#6366F1"/>
+<text x="352" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="344" y="196" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Bloem compares</text>
+<text x="344" y="218" font-size="16" font-weight="700" fill="#101827" text-anchor="start">two organizations</text>
+<text x="344" y="248" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The address is Harbour Hotel's.</text>
+<text x="344" y="267" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Sam's account is Riverside</text>
+<text x="344" y="286" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Club's. They differ.</text>
+<line x1="590" y1="214.0" x2="610" y2="214.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="612" y="124" width="262" height="180" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<circle cx="638" cy="152" r="13" fill="#EF4444"/>
+<text x="638" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="630" y="196" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Refused, with</text>
+<text x="630" y="218" font-size="16" font-weight="700" fill="#101827" text-anchor="start">the right address</text>
+<text x="630" y="248" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">“This account signs in at</text>
+<text x="630" y="267" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">https://watch.riverside.example.”</text>
+<line x1="876" y1="214.0" x2="896" y2="214.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="898" y="124" width="262" height="180" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<circle cx="924" cy="152" r="13" fill="#10B981"/>
+<text x="924" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="916" y="196" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Sam signs in at</text>
+<text x="916" y="218" font-size="14.5" font-weight="700" fill="#101827" text-anchor="start">watch.riverside.example</text>
+<text x="916" y="248" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The sign-in works, in Riverside</text>
+<text x="916" y="267" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Club's own branding.</text>
+<circle cx="850" cy="152" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M844.6,146.6 L855.4,157.4 M855.4,146.6 L844.6,157.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<circle cx="1136" cy="152" r="12" fill="#10B981"/>
+<path d="M1130.6,152.24 L1134.8,156.56 L1142.0,147.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="40" y="344" font-size="13" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="0.5">The answer, for developers</text>
+<rect x="40" y="356" width="1120" height="48" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="386" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">409 wrong_organization_domain  ·  /api/v2 renders it as conflict, and the sign-in page shows the message</text>
+<text x="40" y="450" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Never refused</text>
+<circle cx="56" cy="484" r="11" fill="#10B981"/>
+<path d="M51.05,484.22 L54.9,488.18 L61.5,480.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="80" y="489" font-size="15" font-weight="700" fill="#101827" text-anchor="start">An address no organization registered,</text>
+<text x="80" y="510" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">such as the server's IP address or a home-network name, so an administrator can always get in.</text>
+<circle cx="56" cy="546" r="11" fill="#10B981"/>
+<path d="M51.05,546.22 L54.9,550.18 L61.5,542.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="80" y="551" font-size="15" font-weight="700" fill="#101827" text-anchor="start">An organization without an address of its own,</text>
+<text x="80" y="572" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">at the server's public address: that is where it signs in, even when the default organization registered it.</text>
+<circle cx="56" cy="608" r="11" fill="#10B981"/>
+<path d="M51.05,608.22 L54.9,612.18 L61.5,604.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="80" y="613" font-size="15" font-weight="700" fill="#101827" text-anchor="start">An administrator acting as someone else</text>
+<text x="80" y="634" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">(impersonation). That is not a sign-in.</text>
+</svg>

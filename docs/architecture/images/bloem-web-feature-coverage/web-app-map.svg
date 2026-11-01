@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What the web app has, and what it calls</title>
+<desc id="d">The web app built into Bloem Server, in three parts: what viewers use, what an organization administrator uses, and what a platform administrator uses. Silo's screens are kept; Bloem adds its own. Below, the two APIs it calls: Silo's /api/v2 for everything Silo has and Bloem's /api/bloem/v1 for Bloem's features. It calls none of Silo's /api/v1.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="799" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What the web app has, and what it calls</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's web app with Bloem's screens added. Grey items are Silo's, kept as Silo ships them.</text>
+<rect x="40" y="124" width="360" height="400" rx="16" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="60" y="160" font-size="18" font-weight="700" fill="#101827" text-anchor="start">For viewers</text>
+<rect x="58" y="180" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2"/>
+<text x="74" y="206" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Home with campaign cards</text>
+<rect x="58" y="228" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2"/>
+<text x="74" y="254" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Seasonal effects</text>
+<rect x="58" y="276" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2"/>
+<text x="74" y="302" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Live TV, guide, recordings</text>
+<rect x="58" y="324" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2"/>
+<text x="74" y="350" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Playback cards in the player</text>
+<rect x="58" y="372" width="324" height="40" rx="10" fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="74" y="398" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Inbox and announcements</text>
+<rect x="58" y="420" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2"/>
+<text x="74" y="446" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Profile sign-ins</text>
+<rect x="58" y="468" width="324" height="40" rx="10" fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="74" y="494" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Catalog, player, profiles, requests</text>
+<rect x="420" y="124" width="360" height="400" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="440" y="160" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Organization administrator</text>
+<rect x="438" y="180" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="454" y="206" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">People and their plans</text>
+<rect x="438" y="228" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="454" y="254" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Access groups</text>
+<rect x="438" y="276" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="454" y="302" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Invitations</text>
+<rect x="438" y="324" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="454" y="350" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Library grants</text>
+<rect x="438" y="372" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="454" y="398" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Activity</text>
+<rect x="438" y="420" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="454" y="446" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Policy decisions</text>
+<rect x="800" y="124" width="360" height="400" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="820" y="160" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Platform administrator</text>
+<rect x="818" y="180" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.2"/>
+<text x="834" y="206" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Organizations, domains, branding</text>
+<rect x="818" y="228" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.2"/>
+<text x="834" y="254" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Plans (entitlement templates)</text>
+<rect x="818" y="276" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.2"/>
+<text x="834" y="302" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Campaigns &amp; seasonal packs</text>
+<rect x="818" y="324" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.2"/>
+<text x="834" y="350" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Announcements</text>
+<rect x="818" y="372" width="324" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.2"/>
+<text x="834" y="398" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Live TV sources</text>
+<rect x="818" y="420" width="324" height="40" rx="10" fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="834" y="446" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's server settings</text>
+<rect x="40" y="568" width="540" height="120" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="602" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's /api/v2</text>
+<text x="60" y="630" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Everything Silo has: accounts, libraries, the catalog, playback,</text>
+<text x="60" y="650" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">settings. Through Silo's own web code.</text>
+<rect x="620" y="568" width="540" height="120" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="640" y="602" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's /api/bloem/v1</text>
+<text x="640" y="630" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's features: organizations, plans, Live TV, campaigns, seasonal</text>
+<text x="640" y="650" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">packs, announcements, profile sign-ins.</text>
+<circle cx="64" cy="726" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M58.6,720.6 L69.4,731.4 M69.4,720.6 L58.6,731.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="86" y="731" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Silo's /api/v1: not called at all since 2026-11-01. Bloem's phone apps still use some of it.</text>
+<text x="40" y="770" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each feature's status, evidence and limits are in the tables on this page.</text>
+</svg>

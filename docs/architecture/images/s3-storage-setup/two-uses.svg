@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="590" viewBox="0 0 1200 590" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Two different uses of S3</title>
+<desc id="d">On the left, Silo's Assets store: artwork and branding, organization logos, and campaign and seasonal pictures under ambience/. It is on the server's disk or in an S3 bucket, and Bloem writes to it and serves from it. On the right, storage sources: S3 buckets holding a library's movies, ebooks and audiobooks, which Bloem only reads, through a storage plugin. They are set up in different places.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="589" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Two different uses of S3</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">They are set up in different places, and can use different buckets.</text>
+<rect x="40" y="128" width="540" height="360" rx="18" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="64" y="166" font-size="20" font-weight="700" fill="#101827" text-anchor="start">The Assets store</text>
+<text x="64" y="192" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's. This overlay is about it.</text>
+<rect x="64" y="218" width="492" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.2"/>
+<text x="82" y="244" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Catalog artwork and branding</text>
+<rect x="64" y="270" width="492" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.2"/>
+<text x="82" y="296" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">An organization's logo and branding pictures</text>
+<rect x="64" y="322" width="492" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.2"/>
+<text x="82" y="348" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Campaign and seasonal pictures</text>
+<circle cx="78" cy="393" r="10" fill="#10B981"/>
+<path d="M73.5,393.2 L77.0,396.8 L83.0,389.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="98" y="398" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">On the server's disk, or an S3 bucket</text>
+<circle cx="78" cy="423" r="10" fill="#10B981"/>
+<path d="M73.5,423.2 L77.0,426.8 L83.0,419.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="98" y="428" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Bloem writes to it and serves from it</text>
+<circle cx="78" cy="453" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M73.5,448.5 L82.5,457.5 M82.5,448.5 L73.5,457.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="98" y="458" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Not the private avatar store</text>
+<rect x="620" y="128" width="540" height="360" rx="18" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="2"/>
+<text x="644" y="166" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Storage sources</text>
+<text x="644" y="192" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's. Set up with the libraries.</text>
+<rect x="644" y="218" width="492" height="40" rx="10" fill="#FFFFFF" stroke="#8B5CF6" stroke-width="1.2"/>
+<text x="662" y="244" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Movies</text>
+<rect x="644" y="270" width="492" height="40" rx="10" fill="#FFFFFF" stroke="#8B5CF6" stroke-width="1.2"/>
+<text x="662" y="296" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Ebooks</text>
+<rect x="644" y="322" width="492" height="40" rx="10" fill="#FFFFFF" stroke="#8B5CF6" stroke-width="1.2"/>
+<text x="662" y="348" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Audiobooks</text>
+<circle cx="658" cy="393" r="10" fill="#10B981"/>
+<path d="M653.5,393.2 L657.0,396.8 L663.0,389.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="678" y="398" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">S3 buckets, or the Bookwarehouse service</text>
+<circle cx="658" cy="423" r="10" fill="#10B981"/>
+<path d="M653.5,423.2 L657.0,426.8 L663.0,419.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="678" y="428" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Read only, through a storage plugin</text>
+<circle cx="658" cy="453" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M653.5,448.5 L662.5,457.5 M662.5,448.5 L653.5,457.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="678" y="458" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Bloem never writes to them</text>
+<text x="40" y="528" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Changing the Assets store is locked once it has its first file: move it with Silo's managed transition. Storage sources can be added and removed without</text>
+<text x="40" y="548" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">touching it.</text>
+</svg>

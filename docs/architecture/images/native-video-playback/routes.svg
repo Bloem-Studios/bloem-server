@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Four ways a stored movie plays</title>
+<desc id="d">On the left, the storage source and its plugin. In the middle, the API server reads the movie in checked one-mebibyte blocks and plays it by direct play, by repackaging it as MP4, or as HLS segments; a worker can also make the HLS segments with its own copy of the plugin, and they reach the app through the API server. On the right, the app gets ordinary playback addresses. Bytes leave only while the latest access check is less than a second old.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Four ways a stored movie plays</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Every route reads the same pinned revision, and every route keeps checking the viewer.</text>
+<rect x="40" y="150" width="230" height="140" rx="14" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.8"/>
+<text x="58" y="182" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Storage source</text>
+<text x="58" y="206" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A bucket or book service,</text>
+<text x="58" y="226" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">read through its approved</text>
+<text x="58" y="246" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">plugin.</text>
+<rect x="330" y="128" width="520" height="380" rx="18" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="354" y="164" font-size="19" font-weight="700" fill="#101827" text-anchor="start">API server</text>
+<rect x="354" y="182" width="472" height="64" rx="12" fill="#FFFFFF" stroke="#14B8A6" stroke-width="1.5"/>
+<text x="374" y="210" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Read ahead in 1 MiB blocks</text>
+<text x="374" y="233" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bytes leave only while the last check is under a second old.</text>
+<line x1="274" y1="214" x2="350" y2="214" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="354" y="268" width="472" height="62" rx="12" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.4"/>
+<circle cx="380" cy="299" r="13" fill="#FA6400"/>
+<text x="380" y="304" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="404" y="295" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Direct play</text>
+<text x="404" y="317" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The bytes as they are, in ranges.</text>
+<line x1="830" y1="299" x2="896" y2="299" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="354" y="342" width="472" height="62" rx="12" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.4"/>
+<circle cx="380" cy="373" r="13" fill="#FA6400"/>
+<text x="380" y="378" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="404" y="369" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Repackaging</text>
+<text x="404" y="391" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">ffmpeg rewraps the video as MP4.</text>
+<line x1="830" y1="373" x2="896" y2="373" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="354" y="416" width="472" height="62" rx="12" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.4"/>
+<circle cx="380" cy="447" r="13" fill="#FA6400"/>
+<text x="380" y="452" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="404" y="443" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">HLS here</text>
+<text x="404" y="465" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">ffmpeg makes short segments.</text>
+<line x1="830" y1="447" x2="896" y2="447" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="330" y="540" width="520" height="112" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="348" y="572" font-size="17" font-weight="700" fill="#101827" text-anchor="start">4. HLS on a worker</text>
+<text x="348" y="596" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Runs its own copy of the plugin and keeps checking the viewer. Its</text>
+<text x="348" y="616" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">segments go to the app through the API server.</text>
+<path d="M 155 294 L 155 604 L 326 604" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 590 536 L 590 512" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="604" y="528" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="start">relayed</text>
+<rect x="900" y="254" width="260" height="222" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="918" y="286" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The app</text>
+<text x="918" y="310" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Gets Silo's usual playback</text>
+<text x="918" y="330" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">plan with ordinary addresses</text>
+<text x="918" y="350" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">on Bloem. Never a storage</text>
+<text x="918" y="370" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">address, key or header.</text>
+<rect x="900" y="500" width="260" height="168" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="920" y="530" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Not yet</text>
+<circle cx="932" cy="559" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M927.5,554.5 L936.5,563.5 M936.5,554.5 L927.5,563.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="952" y="564" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Jellyfin apps</text>
+<circle cx="932" cy="587" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M927.5,582.5 L936.5,591.5 M936.5,582.5 L927.5,591.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="952" y="592" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Downloads</text>
+<circle cx="932" cy="615" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M927.5,610.5 L936.5,619.5 M936.5,610.5 L927.5,619.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="952" y="620" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Series from storage</text>
+<circle cx="932" cy="643" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M927.5,638.5 L936.5,647.5 M936.5,638.5 L927.5,647.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="952" y="648" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">.strm shortcuts</text>
+</svg>

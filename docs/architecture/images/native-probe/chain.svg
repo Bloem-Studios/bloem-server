@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a scan looks inside a stored file</title>
+<desc id="d">Five stages from left to right: the storage plugin supplies bytes; the scan reader opens only a file the scan has just listed and checks access before and after each read; a private bridge on the same machine serves that one file within a byte budget; ffprobe reads only the chosen format; Bloem checks its answer before the scan adds the title to the catalog.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="559" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a scan looks inside a stored file</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">ffprobe never sees a path or a storage address, only a private address for one file.</text>
+<rect x="40" y="128" width="204" height="220" rx="14" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.5"/>
+<circle cx="66" cy="156" r="13" fill="#8B5CF6"/>
+<text x="66" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="56" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Storage plugin</text>
+<text x="56" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Supplies the exact bytes</text>
+<text x="56" y="249" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">asked for, pinned to the</text>
+<text x="56" y="268" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">listed revision.</text>
+<line x1="247" y1="238.0" x2="266" y2="238.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="269" y="128" width="204" height="220" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="295" cy="156" r="13" fill="#6366F1"/>
+<text x="295" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="285" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Scan reader</text>
+<text x="285" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Opens only a file the</text>
+<text x="285" y="249" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">scan has just listed.</text>
+<text x="285" y="268" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Checks access before and</text>
+<text x="285" y="287" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">after each read.</text>
+<line x1="476" y1="238.0" x2="495" y2="238.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="498" y="128" width="204" height="220" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.5"/>
+<circle cx="524" cy="156" r="13" fill="#14B8A6"/>
+<text x="524" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="514" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Private bridge</text>
+<text x="514" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">An address on this</text>
+<text x="514" y="249" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">machine with a secret in</text>
+<text x="514" y="268" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">it. One file, within a</text>
+<text x="514" y="287" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">byte budget.</text>
+<line x1="705" y1="238.0" x2="724" y2="238.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="727" y="128" width="204" height="220" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.5"/>
+<circle cx="753" cy="156" r="13" fill="#9CA3AF"/>
+<text x="753" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="743" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">ffprobe</text>
+<text x="743" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Reads only the chosen</text>
+<text x="743" y="249" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">format, from the bridge.</text>
+<text x="743" y="268" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">No proxies, no report</text>
+<text x="743" y="287" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">files.</text>
+<line x1="934" y1="238.0" x2="953" y2="238.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="956" y="128" width="204" height="220" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="982" cy="156" r="13" fill="#10B981"/>
+<text x="982" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="972" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Catalog</text>
+<text x="972" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem checks the answer:</text>
+<text x="972" y="249" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">one document, with a</text>
+<text x="972" y="268" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">format and at least one</text>
+<text x="972" y="287" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">stream.</text>
+<rect x="40" y="384" width="1120" height="128" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="62" y="418" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Limits for one probe</text>
+<text x="62" y="462" font-size="24" font-weight="700" fill="#4338CA" text-anchor="start">128 MiB</text>
+<text x="62" y="488" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">read from the storage</text>
+<text x="334" y="462" font-size="24" font-weight="700" fill="#4338CA" text-anchor="start">60 s</text>
+<text x="334" y="488" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">to finish</text>
+<text x="606" y="462" font-size="24" font-weight="700" fill="#4338CA" text-anchor="start">2</text>
+<text x="606" y="488" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">reads at once</text>
+<text x="878" y="462" font-size="24" font-weight="700" fill="#4338CA" text-anchor="start">4 MiB</text>
+<text x="878" y="488" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">for ffprobe's answer</text>
+</svg>

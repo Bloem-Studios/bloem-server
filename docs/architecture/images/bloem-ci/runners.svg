@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Where a Bloem CI job runs</title>
+<desc id="d">Three questions in order. Are the disposable runners switched on (BLOEM_SELF_HOSTED is true)? If not, the job runs on GitHub's ubuntu-24.04. Is it a run on main (a push, the Monday run or a manual run)? If so, a disposable runner. Is it a pull request whose author is listed in BLOEM_CI_MEMBERS? If so, a disposable runner; if not, GitHub's ubuntu-24.04.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Where a Bloem CI job runs</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Three questions, in order. The runner controller applies the same rule from its own settings.</text>
+<rect x="40" y="124" width="640" height="100" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<circle cx="68" cy="154" r="13" fill="#14B8A6"/>
+<text x="68" y="159" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="92" y="160" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Are the disposable runners switched on?</text>
+<text x="92" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The repository variable BLOEM_SELF_HOSTED</text>
+<text x="92" y="207" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">is true.</text>
+<line x1="684" y1="174.0" x2="816" y2="174.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="166.0" font-size="14" font-weight="700" fill="#374151" text-anchor="start">No</text>
+<rect x="820" y="138" width="340" height="72" rx="12" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6"/>
+<text x="990" y="180.0" font-size="17" font-weight="700" fill="#101827" text-anchor="middle">GitHub's ubuntu-24.04</text>
+<line x1="360.0" y1="226" x2="360.0" y2="261" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="249" font-size="13" font-weight="700" fill="#4B5563" text-anchor="start">Yes</text>
+<rect x="40" y="264" width="640" height="100" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<circle cx="68" cy="294" r="13" fill="#14B8A6"/>
+<text x="68" y="299" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="92" y="300" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Is it a run on main?</text>
+<text x="92" y="328" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A push to main, the Monday run, or a</text>
+<text x="92" y="347" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">manual run on main.</text>
+<line x1="684" y1="314.0" x2="816" y2="314.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="306.0" font-size="14" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="820" y="278" width="340" height="72" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="990" y="320.0" font-size="17" font-weight="700" fill="#101827" text-anchor="middle">A disposable runner</text>
+<line x1="360.0" y1="366" x2="360.0" y2="401" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="389" font-size="13" font-weight="700" fill="#4B5563" text-anchor="start">No</text>
+<rect x="40" y="404" width="640" height="100" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<circle cx="68" cy="434" r="13" fill="#14B8A6"/>
+<text x="68" y="439" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="92" y="440" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Is it a pull request from a listed member?</text>
+<text x="92" y="468" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The author's login is in the repository</text>
+<text x="92" y="487" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">variable BLOEM_CI_MEMBERS.</text>
+<line x1="684" y1="454.0" x2="816" y2="454.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="446.0" font-size="14" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="820" y="418" width="340" height="72" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="990" y="460.0" font-size="17" font-weight="700" fill="#101827" text-anchor="middle">A disposable runner</text>
+<line x1="360.0" y1="506" x2="360.0" y2="540" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="529" font-size="13" font-weight="700" fill="#4B5563" text-anchor="start">No</text>
+<rect x="190.0" y="544" width="340" height="56" rx="28" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6"/>
+<text x="360.0" y="578" font-size="17" font-weight="700" fill="#101827" text-anchor="middle">GitHub's ubuntu-24.04</text>
+<text x="40" y="640" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A disposable runner takes one job, carrying its run's bloem-run-&lt;id&gt;-&lt;attempt&gt; and bloem-job-&lt;job id&gt; labels, then is thrown away. The cache prune always runs</text>
+<text x="40" y="660" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">on GitHub's ubuntu-24.04.</text>
+</svg>

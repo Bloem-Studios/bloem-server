@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="806" viewBox="0 0 1200 806" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What Bloem adds to signing in</title>
+<desc id="d">Four panels. One: a profile with its own email and password signs straight into that profile, and the session reaches only a short list of routes. Two: signing in on another organization's domain is refused with 409 wrong_organization_domain, naming the address to use. Three: a sign-in through the provider starts and finishes on the same organization domain, and sign-out returns to that domain's login page. Four: a sign-in that started before its organization revoked the account is ended with 401 session_invalid, and the app asks the person to sign in again.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="805" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What Bloem adds to signing in</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's sign-in, plus profiles with their own sign-in and organizations with their own addresses.</text>
+<rect x="40" y="120" width="550" height="284" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="120" width="8" height="284" rx="4" fill="#0EA5E9" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="150" r="12" fill="#0EA5E9"/>
+<text x="74" y="155" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="96" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">A profile with its own sign-in</text>
+<text x="68" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The household's main profile gives one profile an email and password</text>
+<text x="68" y="205" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">of its own.</text>
+<rect x="68" y="242" width="190" height="34" rx="10" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.4"/>
+<text x="163.0" y="264" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">profile's email</text>
+<rect x="68" y="284" width="190" height="34" rx="10" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.4"/>
+<text x="163.0" y="306" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">profile's password</text>
+<line x1="264" y1="278" x2="318" y2="278" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="322" y="242" width="238" height="76" rx="12" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.6"/>
+<text x="441" y="274" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">Straight into</text>
+<text x="441" y="296" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">that one profile</text>
+<text x="68" y="356" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The session reaches only a short list of routes.</text>
+<rect x="610" y="120" width="550" height="284" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="120" width="8" height="284" rx="4" fill="#EF4444" stroke="none" stroke-width="1.5"/>
+<circle cx="644" cy="150" r="12" fill="#EF4444"/>
+<text x="644" y="155" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="666" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Signing in on another organization's domain</text>
+<text x="638" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Sam's account belongs to Riverside Club. Sam signs in on another</text>
+<text x="638" y="205" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">club's address.</text>
+<rect x="638" y="242" width="210" height="34" rx="10" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.4"/>
+<text x="743.0" y="264" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.0" fill="#101827" text-anchor="middle">harbour.example</text>
+<line x1="854" y1="259" x2="894" y2="259" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="898" y="232" width="234" height="104" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.6"/>
+<circle cx="922" cy="258" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M916.6,252.6 L927.4,263.4 M927.4,252.6 L916.6,263.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="944" y="263" font-size="15" font-weight="700" fill="#B91C1C" text-anchor="start">Refused, 409</text>
+<text x="916" y="292" font-size="13" font-weight="normal" fill="#101827" text-anchor="start">“This account signs in at</text>
+<text x="916" y="310" font-size="13" font-weight="normal" fill="#101827" text-anchor="start">https://riverside.example.”</text>
+<text x="638" y="366" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">An organization without a domain signs in at the server's public</text>
+<text x="638" y="385" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">address.</text>
+<rect x="40" y="430" width="550" height="284" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="430" width="8" height="284" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="460" r="12" fill="#6366F1"/>
+<text x="74" y="465" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="96" y="466" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Through the sign-in provider</text>
+<rect x="68" y="500" width="160" height="34" rx="10" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.4"/>
+<text x="148.0" y="522" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#101827" text-anchor="middle">riverside.example</text>
+<text x="148.0" y="556" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">starts</text>
+<line x1="231" y1="517" x2="252" y2="517" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="256" y="500" width="120" height="34" rx="10" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.4"/>
+<text x="316.0" y="522" font-size="13" font-weight="600" fill="#101827" text-anchor="middle">provider</text>
+<text x="316.0" y="556" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">Authentik</text>
+<line x1="379" y1="517" x2="400" y2="517" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="404" y="500" width="160" height="34" rx="10" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.4"/>
+<text x="484.0" y="522" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#101827" text-anchor="middle">riverside.example</text>
+<text x="484.0" y="556" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">finishes</text>
+<text x="68" y="598" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The provider sends the browser back to the same domain, where its</text>
+<text x="68" y="617" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">cookies are. Sign-out returns to that domain's login page.</text>
+<text x="68" y="660" font-size="14" font-weight="normal" fill="#4338CA" text-anchor="start">So each domain's two callbacks and its /login are registered at the</text>
+<text x="68" y="679" font-size="14" font-weight="normal" fill="#4338CA" text-anchor="start">provider.</text>
+<rect x="610" y="430" width="550" height="284" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="430" width="8" height="284" rx="4" fill="#F59E0B" stroke="none" stroke-width="1.5"/>
+<circle cx="644" cy="460" r="12" fill="#F59E0B"/>
+<text x="644" y="465" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="666" y="466" font-size="17" font-weight="700" fill="#101827" text-anchor="start">A sign-in its organization revoked</text>
+<rect x="638" y="494" width="120" height="34" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.3"/>
+<text x="698" y="516" font-size="13.5" font-weight="700" fill="#101827" text-anchor="middle">Monday</text>
+<text x="772" y="516" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Sam signs in on the web app.</text>
+<rect x="638" y="542" width="120" height="34" rx="10" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.3"/>
+<text x="698" y="564" font-size="13.5" font-weight="700" fill="#101827" text-anchor="middle">Tuesday</text>
+<text x="772" y="564" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Riverside Club revokes Sam's account.</text>
+<rect x="638" y="590" width="120" height="34" rx="10" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.3"/>
+<text x="698" y="612" font-size="13.5" font-weight="700" fill="#101827" text-anchor="middle">Next request</text>
+<text x="772" y="612" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">401 session_invalid: the session ends.</text>
+<rect x="638" y="638" width="120" height="34" rx="10" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.3"/>
+<text x="698" y="660" font-size="13.5" font-weight="700" fill="#101827" text-anchor="middle">Then</text>
+<text x="772" y="660" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The app asks Sam to sign in again.</text>
+<text x="40" y="752" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The club names and addresses are made up. Every refusal happens before a session exists, except the last, which ends one. A domain decides how Bloem looks,</text>
+<text x="40" y="772" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">never what someone may see.</text>
+</svg>

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="576" viewBox="0 0 1200 576" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">A Live TV request on the wrong server</title>
+<desc id="d">The app's request goes through the load balancer to API server B. Server B checks the sign-in, the Live TV permission, the account and the profile, then passes the request on once to API server A, which opened the channel and runs its encoder. A checks again and answers through B. If A is gone, B answers 503 with Retry-After 2 and the app opens a new Live TV session.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="575" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">A Live TV request on the wrong server</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The server that opened the channel runs its encoder. Any other server passes requests on to it, once.</text>
+<rect x="40" y="160" width="200" height="112" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="192" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The app</text>
+<text x="58" y="216" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Asks for the next part</text>
+<text x="58" y="236" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">of the channel.</text>
+<line x1="244" y1="216" x2="296" y2="216" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="300" y="160" width="200" height="112" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="318" y="192" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Load balancer</text>
+<text x="318" y="216" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Sends it to any API</text>
+<text x="318" y="236" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">server.</text>
+<line x1="504" y1="216" x2="556" y2="216" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="560" y="128" width="260" height="176" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="580" y="162" font-size="17" font-weight="700" fill="#101827" text-anchor="start">API server B</text>
+<text x="580" y="190" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Checks the sign-in, the Live TV</text>
+<text x="580" y="209" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">permission, the account and the</text>
+<text x="580" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">profile.</text>
+<text x="580" y="284" font-size="14" font-weight="600" fill="#C2410C" text-anchor="start">Not the owner: passes it on.</text>
+<line x1="824" y1="216" x2="876" y2="216" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="850" y="204" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">once</text>
+<rect x="880" y="128" width="280" height="176" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="900" y="162" font-size="17" font-weight="700" fill="#101827" text-anchor="start">API server A</text>
+<text x="900" y="190" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Opened the channel and runs its</text>
+<text x="900" y="209" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">encoder. Checks again, then</text>
+<text x="900" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">answers through B.</text>
+<text x="900" y="284" font-size="14" font-weight="600" fill="#C2410C" text-anchor="start">Its address: its own NODE_URL</text>
+<rect x="560" y="344" width="600" height="128" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="582" y="378" font-size="16" font-weight="700" fill="#B91C1C" text-anchor="start">If server A is gone</text>
+<text x="582" y="406" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">B answers 503, “try again in 2 seconds”. Bloem never starts a second</text>
+<text x="582" y="426" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">encoder: the app opens a new Live TV session, and the clean-up releases the</text>
+<text x="582" y="446" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">dead server's tuner connection.</text>
+<path d="M 690 308 L 690 340" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="344" width="460" height="128" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="62" y="378" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Good to know</text>
+<text x="62" y="406" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">A request is passed on at most once. Passing on is</text>
+<text x="62" y="426" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">routing, not a backup encoder.</text>
+<text x="40" y="530" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Each API server sets NODE_URL to its own address that the other servers can reach, never the shared load-balanced one.</text>
+</svg>

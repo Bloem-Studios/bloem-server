@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Where plans live in the admin console</title>
+<desc id="d">Two columns of admin pages. In the Platform context: Entitlement Templates, Direct Accounts, Bulk Account Policies, and an organization's Tenant entitlement panel. In the Organization context: People with Apply policy, and Policy Cohorts. Every change is previewed first and confirmed within ten minutes.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="599" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Where plans live in the admin console</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Pick the administrative context first. The pages differ by who you are acting as.</text>
+<rect x="40" y="124" width="640" height="400" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="64" y="160" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Platform context</text>
+<text x="64" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A platform administrator</text>
+<rect x="60" y="204" width="600" height="66" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="78" y="230" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Entitlement Templates</text>
+<text x="644" y="230" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="end">/admin/platform/entitlement-templates</text>
+<text x="78" y="254" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Create, revise, clone and archive plans; history.</text>
+<rect x="60" y="282" width="600" height="66" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="78" y="308" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Direct Accounts</text>
+<text x="644" y="308" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="end">/admin/platform/direct-accounts</text>
+<text x="78" y="332" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Put one direct account on an exact revision.</text>
+<rect x="60" y="360" width="600" height="66" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="78" y="386" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Bulk Account Policies</text>
+<text x="644" y="386" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="end">/admin/platform/direct-accounts/bulk</text>
+<text x="78" y="410" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Move a reviewed list of direct accounts in one job.</text>
+<rect x="60" y="438" width="600" height="66" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="78" y="464" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Organizations → Tenant entitlement</text>
+<text x="644" y="464" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="end">/admin/platform/organizations</text>
+<text x="78" y="488" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">An organization's plan, and its history.</text>
+<rect x="700" y="124" width="460" height="400" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="724" y="160" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Organization context</text>
+<text x="724" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">An organization administrator</text>
+<rect x="720" y="204" width="420" height="66" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="738" y="230" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">People → Apply policy</text>
+<text x="1124" y="230" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="end">/admin/organization/people</text>
+<text x="738" y="254" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Move selected people in one job.</text>
+<rect x="720" y="282" width="420" height="66" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="738" y="308" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Policy Cohorts</text>
+<text x="1124" y="308" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="end">/admin/organization/policy-cohorts</text>
+<text x="738" y="332" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Each policy revision in use, and who is on it.</text>
+<text x="40" y="566" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Every change is previewed first and confirmed within ten minutes. If anything changed in between, preview again.</text>
+</svg>

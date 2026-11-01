@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Access is checked again at every exit</title>
+<desc id="d">In the middle, one question: which libraries may this account reach right now? It is worked out fresh from the database: the organization's libraries, narrowed by the plan and the profile. Four exits ask it before anything leaves the server: video and subtitles, managed downloads, the standalone proxy, and notifications. A player using a stream token gets the same check.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="679" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Access is checked again at every exit</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Before a segment, subtitle, link or notification leaves, Bloem asks the same question again.</text>
+<rect x="400" y="236" width="400" height="250" rx="18" fill="#FFFFFF" stroke="#6366F1" stroke-width="2"/>
+<text x="600.0" y="274" font-size="18" font-weight="700" fill="#101827" text-anchor="middle">Which libraries may this</text>
+<text x="600.0" y="298" font-size="18" font-weight="700" fill="#101827" text-anchor="middle">account reach right now?</text>
+<rect x="440.0" y="324" width="320" height="36" rx="10" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.4"/>
+<text x="600.0" y="348" font-size="14.5" font-weight="600" fill="#4338CA" text-anchor="middle">The organization's libraries</text>
+<rect x="460.0" y="370" width="280" height="36" rx="10" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.4"/>
+<text x="600.0" y="394" font-size="14.5" font-weight="600" fill="#0F766E" text-anchor="middle">narrowed by the plan</text>
+<rect x="480.0" y="416" width="240" height="36" rx="10" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.4"/>
+<text x="600.0" y="440" font-size="14.5" font-weight="600" fill="#0369A1" text-anchor="middle">and by the profile</text>
+<text x="600.0" y="472" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">Fresh from the database, every time.</text>
+<rect x="40" y="128" width="320" height="140" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="160" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Video and subtitles</text>
+<text x="58" y="184" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">File bytes, subtitles, fonts, HLS</text>
+<text x="58" y="204" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">playlists and segments, restart</text>
+<text x="58" y="224" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">recipes.</text>
+<circle cx="336" cy="154" r="11" fill="#10B981"/>
+<path d="M331.05,154.22 L334.9,158.18 L341.5,150.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="840" y="128" width="320" height="140" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="858" y="160" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Managed downloads</text>
+<text x="858" y="184" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">The subtitles that go with a download.</text>
+<circle cx="1136" cy="154" r="11" fill="#10B981"/>
+<path d="M1131.05,154.22 L1134.9,158.18 L1141.5,150.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="40" y="470" width="320" height="140" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="502" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Standalone proxy</text>
+<text x="58" y="526" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Signed recipes, media grants and</text>
+<text x="58" y="546" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">download links. Never stored files.</text>
+<circle cx="336" cy="496" r="11" fill="#10B981"/>
+<path d="M331.05,496.22 L334.9,500.18 L341.5,492.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="840" y="470" width="320" height="140" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="858" y="502" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Notifications</text>
+<text x="858" y="526" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Choosing who gets one, and sending one</text>
+<text x="858" y="546" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">that waited in the queue.</text>
+<circle cx="1136" cy="496" r="11" fill="#10B981"/>
+<path d="M1131.05,496.22 L1134.9,500.18 L1141.5,492.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 364 198 L 396 260" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 836 198 L 804 260" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 364 540 L 396 470" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 836 540 L 804 470" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="400" y="128" width="400" height="80" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.5"/>
+<text x="420" y="158" font-size="15" font-weight="700" fill="#101827" text-anchor="start">A player with a stream token</text>
+<text x="420" y="182" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem reads the account and profile from it.</text>
+<line x1="600" y1="210" x2="600" y2="232" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="646" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">No answer means no, never “no limit”. Not allowed answers 404; cannot check right now answers 503.</text>
+</svg>

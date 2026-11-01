@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="781" viewBox="0 0 1200 781" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">The parts of Bloem's native API</title>
+<desc id="d">Four bands, one for each kind of credential. Public routes need nothing. Viewer routes need an account sign-in and a chosen profile. A few routes need the account sign-in alone. Administration needs an administrator pass, or an administrator's API key on the storefront's platform routes.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="780" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">The parts of Bloem's native API</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Everything under /api/bloem/v1, grouped by what a caller must show to use it.</text>
+<rect x="40" y="120" width="1120" height="120" rx="16" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6"/>
+<text x="64" y="158" font-size="19" font-weight="700" fill="#374151" text-anchor="start">Public</text>
+<text x="64" y="184" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Nothing: a client asks before it signs</text>
+<text x="64" y="203" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">in.</text>
+<rect x="360" y="142" width="124" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="422.0" y="160.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/capabilities</text>
+<rect x="494" y="142" width="147" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="567.5" y="160.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/server/identity</text>
+<rect x="651" y="142" width="147" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="724.5" y="160.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/ambience/public</text>
+<rect x="808" y="142" width="194" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="905.0" y="160.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/ambience/assets/{ref}</text>
+<rect x="360" y="178.5" width="155" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="437.5" y="196.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/preview/sessions</text>
+<rect x="525" y="178.5" width="139" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="594.5" y="196.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/preview/status</text>
+<rect x="40" y="256" width="1120" height="141.5" rx="16" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="64" y="294" font-size="19" font-weight="700" fill="#047857" text-anchor="start">Viewer</text>
+<text x="64" y="320" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An account sign-in and X-Profile-Id,</text>
+<text x="64" y="339" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">with the PIN proof when needed.</text>
+<rect x="360" y="278" width="108" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="414.0" y="296.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/watch/home</text>
+<rect x="478" y="278" width="155" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="555.5" y="296.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/watch/items/{id}</text>
+<rect x="643" y="278" width="124" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="705.0" y="296.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/watch/search</text>
+<rect x="777" y="278" width="132" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="843.0" y="296.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/sync/progress</text>
+<rect x="919" y="278" width="124" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="981.0" y="296.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/persons/{id}</text>
+<rect x="360" y="314.5" width="265" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="492.5" y="332.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/catalog/items/{id}/collections</text>
+<rect x="635" y="314.5" width="132" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="701.0" y="332.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/notifications</text>
+<rect x="777" y="314.5" width="108" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="831.0" y="332.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/livetv/...</text>
+<rect x="895" y="314.5" width="92" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="941.0" y="332.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/ambience</text>
+<rect x="997" y="314.5" width="108" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="1051.0" y="332.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/promotions</text>
+<rect x="360" y="351.0" width="132" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="426.0" y="369.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/book-requests</text>
+<rect x="502" y="351.0" width="139" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="571.5" y="369.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/ebook-requests</text>
+<rect x="40" y="413.5" width="1120" height="120" rx="16" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.6"/>
+<text x="64" y="451.5" font-size="19" font-weight="700" fill="#0369A1" text-anchor="start">Account only</text>
+<text x="64" y="477.5" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An account sign-in, no administrator</text>
+<text x="64" y="496.5" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">pass.</text>
+<rect x="360" y="435.5" width="132" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="426.0" y="453.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/organizations</text>
+<rect x="502" y="435.5" width="132" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="568.0" y="453.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/admin/session</text>
+<rect x="644" y="435.5" width="218" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="753.0" y="453.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/profile-credentials/{id}</text>
+<rect x="40" y="549.5" width="1120" height="141.5" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.6"/>
+<text x="64" y="587.5" font-size="19" font-weight="700" fill="#4338CA" text-anchor="start">Administration</text>
+<text x="64" y="613.5" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An administrator pass from</text>
+<text x="64" y="632.5" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/session; some platform routes</text>
+<text x="64" y="651.5" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">also take an administrator's API key.</text>
+<rect x="360" y="571.5" width="202" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="461.0" y="589.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/admin/organization/...</text>
+<rect x="572" y="571.5" width="280" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="712.0" y="589.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/admin/platform/organizations/...</text>
+<rect x="862" y="571.5" width="233" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="978.5" y="589.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/admin/platform/tenants/...</text>
+<rect x="360" y="608.0" width="241" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="480.5" y="626.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/admin/platform/accounts/...</text>
+<rect x="611" y="608.0" width="343" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="782.5" y="626.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/admin/platform/entitlement-templates/...</text>
+<rect x="360" y="644.5" width="233" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="476.5" y="662.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/admin/platform/preview/...</text>
+<rect x="603" y="644.5" width="288" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.2"/>
+<text x="747.0" y="662.61" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">/admin/platform/native-storage/...</text>
+<text x="40" y="737.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Profile sign-ins reach only the book request routes here. A route that is not built on this server answers 404; capabilities say what this build can do.</text>
+</svg>

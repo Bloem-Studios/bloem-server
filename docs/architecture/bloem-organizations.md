@@ -1,9 +1,9 @@
 # How organizations work
 
-> **Provenance and status.** Bloem page, written on 2026-10-31 and checked against
-> `main` at `81c26179c`. Organizations are a Bloem addition: Silo has one set of
-> accounts per server. This page explains the model in plain language. The
-> technical pages linked at the end hold the invariants.
+> **Provenance and status.** Bloem page, written on 2026-10-31, updated on
+> 2026-11-01 and checked against `main` at `b6039036d`. Organizations are a Bloem
+> addition: Silo has one set of accounts per server. This page explains the model in
+> plain language. The technical pages linked at the end hold the invariants.
 
 Bloem is built in four tiers. Each tier lives inside the one above it, and each one
 can only narrow what the tier above it allows. This page walks through who is who,
@@ -39,8 +39,19 @@ someone presses play.
   conversions** for all of its members together. It can own libraries of its own.
 
 A platform administrator can also create an organization by hand in the admin
-console. In production on 2026-10-31, the default organization is the only one,
+console. In production on 2026-11-01, the default organization is the only one,
 and every account is in it.
+
+### Its own address and look
+
+An organization can have web addresses of its own, its **domains**, and its own
+name, logo and colours. On its domains the sign-in page and the web app show its
+branding, and its emails link to its **primary domain**. An account that signs in on
+another organization's domain is told where to sign in instead. A domain changes
+only what people see, never what they can reach. The default organization uses the
+server's own branding, and in production the server's public address is registered
+as its primary domain. See
+[how organization domains and branding work](bloem-organization-domains.md).
 
 ## What can someone watch?
 
@@ -83,9 +94,10 @@ lifts only when someone lifts it. While an organization is suspended, its member
 refused.
 
 When the storefront ends a reseller organization, Bloem **retires** it. Its members
-are removed, and accounts with no other organization are deleted. Accounts that have
-another organization, or that are platform administrators, are kept. The organization
-itself is never deleted outright: it stays on record as the owner of anything it had.
+are removed, and accounts with nothing else to hold them are deleted. Accounts that
+own another organization, or that are platform administrators, are kept. The
+organization itself is never deleted outright: it stays on record as the owner of
+anything it had ([lifecycle safety](bloem-lifecycle-safety.md)).
 
 ## Example: a reseller
 
@@ -125,7 +137,8 @@ Over a year, the club, the storefront and Bloem each play their part:
 ![Five checks before a video plays, each with the refusal shown beside it](images/organizations/press-play.svg)
 
 1. **Who is watching?** The app has signed in and picked a profile. Bloem looks up the
-   account's organization.
+   account's organization. A sign-in from before the organization revoked the account
+   is ended, and the app asks the person to sign in again.
 2. **Is the organization active?** A suspended organization's members are refused.
 3. **May this profile see this title?** This is the funnel above. A title the profile
    may not see is not shown at all.
@@ -143,9 +156,9 @@ not only when the title is listed.
 
 | Who | What they manage |
 | --- | --- |
-| Platform administrator | Every organization: create, suspend, reactivate, transfer ownership. Platform libraries and which organization gets them. Plans (entitlement templates). |
+| Platform administrator | Every organization: create, suspend, reactivate, transfer ownership, its domains and branding. Platform libraries and which organization gets them. Plans (entitlement templates). |
 | Organization administrator | Their own organization only: people, profiles, groups, invitations, its own libraries, and grants already made to it. |
-| The storefront (Bloem Garden) | Creating and retiring reseller organizations, their seats and conversions. Putting an account on a plan. It uses a platform administrator's API key. |
+| The storefront (Bloem Garden) | Creating and retiring reseller organizations, their seats, conversions, domains and branding. Putting an account on a plan. It uses a platform administrator's API key. |
 | An account's main profile | The household's profiles: who they are, PINs, age limits and libraries. |
 
 An account with the `admin` role is a platform administrator. An organization
@@ -163,7 +176,7 @@ it.
 | Platform | the one `platform` row in `resource_owners` |
 | Organization | `organizations` (a "tenant" in `internal/tenancy`) |
 | Default organization | the organization with `is_default` |
-| Reseller organization | an organization with an `external_service_id`, created through the tenants API (`/api/v1/admin/tenants`) |
+| Reseller organization | an organization with an `external_service_id`, created through the tenants API (`/api/bloem/v1/admin/platform/tenants`; the legacy `/api/v1/admin/tenants` still answers) |
 | Seats | `organizations.slots`; each seat is one `organization_memberships` row |
 | Shared video conversions | `organizations.transcodes`, a pool shared by every member |
 | Getting ready, active, suspended | `organizations.status`: `initializing`, `active`, `suspended`, with `suspension_reason` `quota` or `admin` |
@@ -174,26 +187,33 @@ it.
 | Plan | an entitlement template, applied to an access group (`access_groups.managed_template_key`) |
 | Account settings | the policy columns on Silo's `users` row, which override the plan's values |
 | Profile limits | `user_profiles`: PIN, child flag, age limit and library restrictions |
+| Domains, primary domain | `bloem_organization_domains`, with one `is_primary` row per organization (`internal/orgdomains`) |
+| Its own branding | `bloem_organization_branding`, the organization's own `branding.*` values |
 
 ## For developers
 
 - **API:** [organizations and administration](../bloem/api/organizations.md):
   administrative contexts, organization administration, the platform's
   organization lifecycle, and the storefront's reseller organizations
-  (`/api/bloem/v1/admin/platform/tenants`), member accounts and account
-  create and update. Plans are on the [plans and preview](../bloem/api/plans.md)
-  page. The storefront left Silo's `/api/v1` on 2026-10-31
+  (`/api/bloem/v1/admin/platform/tenants`), their domains and branding
+  (`/api/bloem/v1/admin/platform/tenants/{id}/domains` and `/branding`, capability
+  `organization_domains_v1`), member accounts and account create and update. Plans
+  are on the [plans and preview](../bloem/api/plans.md) page. The storefront left
+  Silo's `/api/v1` on 2026-10-31 and the web app on 2026-11-01
   ([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)).
 
 Technical pages:
 
-- [Multitenant administration](multitenant-administration.md): the Platform and
-  Organization admin contexts, and how Silo clients resolve an organization.
-- [Resource tenancy foundation](resource-tenancy-foundation.md): resource owners,
-  grants and the starting set.
-- [OPA tenant authorization](opa-tenant-authorization.md): how tenant facts, the
-  policy engine and SQL scope reads.
-- [Lifecycle safety](bloem-lifecycle-safety.md): retiring an organization.
+- [How multitenant administration works](multitenant-administration.md): the
+  Platform and Organization admin contexts, and how Silo clients resolve an
+  organization.
+- [How library ownership and grants work](resource-tenancy-foundation.md): resource
+  owners, grants and the starting set.
+- [How tenant authorization works](opa-tenant-authorization.md): how tenant facts,
+  the policy engine and SQL scope reads.
+- [How retiring an organization and deleting a library stay safe](bloem-lifecycle-safety.md).
+- [How organization domains and branding work](bloem-organization-domains.md): each
+  organization's own addresses, branding and email links, and the sign-in check.
 - [Delivery boundary enforcement](delivery-boundary-enforcement.md): access rechecked
   when video and rows leave the server.
 - [How plans work](bloem-plans.md) and the [entitlement templates guide](../wiki/admin/entitlement-templates.md).

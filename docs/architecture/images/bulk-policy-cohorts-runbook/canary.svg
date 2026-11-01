@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Releasing bulk policy changes with one test account</title>
+<desc id="d">Two rows of steps. Prepare: freeze the reviewed build, check the way back, deploy and check the build. Then the canary loop on one test account: record its state, apply one plan, check its playback and downloads, put it back, and compare with the recorded state. The release goes wider only when the account is back where it started and every check passed.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="599" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Releasing bulk policy changes with one test account</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Change one account, check it, put it back exactly. Only then use the feature more widely.</text>
+<text x="40" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Prepare</text>
+<rect x="40" y="156" width="356" height="132" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="156" width="8" height="132" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="184" r="12" fill="#FA6400"/>
+<text x="74" y="189" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="96" y="190" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Freeze the build</text>
+<text x="64" y="218" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">One reviewed commit, every test suite</text>
+<text x="64" y="238" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">passed, a database backup, an image tied to</text>
+<text x="64" y="258" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">it.</text>
+<line x1="398" y1="222" x2="420" y2="222" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="422" y="156" width="356" height="132" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="422" y="156" width="8" height="132" rx="4" fill="#F59E0B" stroke="none" stroke-width="1.5"/>
+<circle cx="456" cy="184" r="12" fill="#F59E0B"/>
+<text x="456" y="189" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="478" y="190" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Check the way back</text>
+<text x="446" y="218" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">No job running, and whether a derived cohort</text>
+<text x="446" y="238" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">already blocks a schema rollback.</text>
+<line x1="780" y1="222" x2="802" y2="222" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="804" y="156" width="356" height="132" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="804" y="156" width="8" height="132" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<circle cx="838" cy="184" r="12" fill="#FA6400"/>
+<text x="838" y="189" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="860" y="190" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Deploy and check</text>
+<text x="828" y="218" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Health and ready answer, and the server</text>
+<text x="828" y="238" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">reports the reviewed commit.</text>
+<text x="40" y="334" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The canary loop, on one test account</text>
+<rect x="40" y="350" width="206" height="168" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="350" width="8" height="168" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="378" r="12" fill="#6366F1"/>
+<text x="74" y="383" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="96" y="384" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Record</text>
+<text x="64" y="412" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Its group, cohort,</text>
+<text x="64" y="432" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">profiles and a digest</text>
+<text x="64" y="452" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">of its policy.</text>
+<line x1="248" y1="434" x2="266" y2="434" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="268" y="350" width="206" height="168" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="268" y="350" width="8" height="168" rx="4" fill="#14B8A6" stroke="none" stroke-width="1.5"/>
+<circle cx="302" cy="378" r="12" fill="#14B8A6"/>
+<text x="302" y="383" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="324" y="384" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Apply</text>
+<text x="292" y="412" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">One exact plan</text>
+<text x="292" y="432" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">revision, after a</text>
+<text x="292" y="452" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">preview that shows 1</text>
+<text x="292" y="472" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">matched, 0 left out.</text>
+<line x1="476" y1="434" x2="494" y2="434" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="496" y="350" width="206" height="168" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="496" y="350" width="8" height="168" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="530" cy="378" r="12" fill="#10B981"/>
+<text x="530" y="383" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="552" y="384" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Check</text>
+<text x="520" y="412" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Read it back, play a</text>
+<text x="520" y="432" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">title, try a download,</text>
+<text x="520" y="452" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">read the audit.</text>
+<line x1="704" y1="434" x2="722" y2="434" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="724" y="350" width="206" height="168" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="724" y="350" width="8" height="168" rx="4" fill="#14B8A6" stroke="none" stroke-width="1.5"/>
+<circle cx="758" cy="378" r="12" fill="#14B8A6"/>
+<text x="758" y="383" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<text x="780" y="384" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Put it back</text>
+<text x="748" y="412" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A new preview to the</text>
+<text x="748" y="432" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">exact earlier cohort,</text>
+<text x="748" y="452" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">with a new key.</text>
+<line x1="932" y1="434" x2="950" y2="434" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="952" y="350" width="206" height="168" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="952" y="350" width="8" height="168" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="986" cy="378" r="12" fill="#10B981"/>
+<text x="986" y="383" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">8</text>
+<text x="1008" y="384" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Compare</text>
+<text x="976" y="412" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Same policy digest and</text>
+<text x="976" y="432" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">profiles as recorded.</text>
+<text x="40" y="560" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Stop at any failed check. Go wider only when every suite passed on this exact build, both jobs finished as expected and the account is back where it started.</text>
+</svg>

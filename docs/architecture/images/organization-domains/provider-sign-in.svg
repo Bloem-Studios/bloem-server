@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="870" viewBox="0 0 1200 870" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Signing in with the provider stays on the address</title>
+<desc id="d">A sequence between the browser on Riverside Club's address, the Bloem server and the sign-in provider (Authentik). Bloem asks the provider to return to that address's callback; the provider returns there; the sign-in finishes on that address where the browser's cookies are; a sign-out returns to that address's login page. A box lists the three addresses to register at the provider for each domain.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="869" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Signing in with the provider stays on the address</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A sign-in or sign-out through Authentik ends on the address where it started.</text>
+<rect x="60" y="120" width="300" height="62" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="210" y="148" font-size="17" font-weight="700" fill="#101827" text-anchor="middle">Browser</text>
+<text x="210" y="169" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">on watch.riverside.example</text>
+<line x1="210" y1="184" x2="210" y2="640" stroke="#E5E7EB" stroke-width="3"/>
+<rect x="450" y="120" width="300" height="62" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="600" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="middle">Bloem server</text>
+<line x1="600" y1="184" x2="600" y2="640" stroke="#E5E7EB" stroke-width="3"/>
+<rect x="840" y="120" width="300" height="62" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="990" y="148" font-size="17" font-weight="700" fill="#101827" text-anchor="middle">Sign-in provider</text>
+<text x="990" y="169" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">Authentik</text>
+<line x1="990" y1="184" x2="990" y2="640" stroke="#E5E7EB" stroke-width="3"/>
+<line x1="214" y1="232" x2="596" y2="232" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="240" cy="214" r="12" fill="#101827"/>
+<text x="240" y="219" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="415.0" y="219" font-size="14.5" font-weight="600" fill="#101827" text-anchor="middle">“Sign in with Authentik”</text>
+<line x1="596" y1="300" x2="214" y2="300" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="240" cy="282" r="12" fill="#101827"/>
+<text x="240" y="287" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="415.0" y="287" font-size="14.5" font-weight="600" fill="#101827" text-anchor="middle">Off to Authentik, with a return address</text>
+<text x="415.0" y="321" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">watch.riverside.example/…/callback</text>
+<line x1="214" y1="352" x2="986" y2="352" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="805" y="342" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">(the browser follows)</text>
+<line x1="986" y1="420" x2="214" y2="420" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="240" cy="402" r="12" fill="#101827"/>
+<text x="240" y="407" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="805" y="407" font-size="14.5" font-weight="600" fill="#101827" text-anchor="middle">Sam is checked; back to that callback</text>
+<text x="805" y="441" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">on watch.riverside.example</text>
+<line x1="214" y1="488" x2="596" y2="488" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="240" cy="470" r="12" fill="#101827"/>
+<text x="240" y="475" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="415.0" y="475" font-size="14.5" font-weight="600" fill="#101827" text-anchor="middle">The callback reaches Bloem</text>
+<text x="415.0" y="509" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">Bloem finishes on that address's page, where the cookies are</text>
+<rect x="60" y="530" width="300" height="34" rx="17" fill="#ECFDF5" stroke="#10B981" stroke-width="1.4"/>
+<text x="210" y="552" font-size="14" font-weight="700" fill="#047857" text-anchor="middle">Signed in, on the same address</text>
+<line x1="986" y1="610" x2="214" y2="610" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<circle cx="240" cy="592" r="12" fill="#101827"/>
+<text x="240" y="597" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="805" y="597" font-size="14.5" font-weight="600" fill="#101827" text-anchor="middle">Signing out: Authentik sends the browser back to</text>
+<text x="805" y="631" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="middle">watch.riverside.example/login</text>
+<rect x="40" y="670" width="1120" height="168" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="670" width="8" height="168" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<text x="66" y="702" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Register these at the provider for each address</text>
+<text x="66" y="732" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">https://&lt;address&gt;/api/v1/auth/oauth/&lt;installation&gt;/callback</text>
+<text x="66" y="756" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">https://&lt;address&gt;/api/v2/auth/oauth/&lt;installation&gt;/callback</text>
+<text x="66" y="780" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">https://&lt;address&gt;/login   (post-logout redirect, when provider sign-out is on)</text>
+<text x="66" y="820" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Apps on phones and TVs, and any address no organization registered, keep using the server's public address.</text>
+</svg>

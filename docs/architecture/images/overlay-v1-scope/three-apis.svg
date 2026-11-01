@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Bloem's three APIs, and who calls them</title>
+<desc id="d">Three columns. Silo's /api/v1 is frozen and Silo will retire it; Bloem keeps a few reviewed additions there, such as a profile's own sign-in, and adds nothing new. Silo's /api/v2 is Silo's stable API. /api/bloem/v1 is Bloem's own API for organizations, plans, Live TV and more, with its own version. Below, who calls what: since November 1, 2026 the web app and the storefront call only /api/v2 and /api/bloem/v1; the phone apps still call some /api/v1 routes; Silo's own apps use Silo's APIs.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="649" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Bloem's three APIs, and who calls them</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's two, and Bloem's own. New Bloem features go only in Bloem's own.</text>
+<rect x="40" y="120" width="360" height="200" rx="16" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="64" y="160" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" font-weight="700" fill="#101827" text-anchor="start">/api/v1</text>
+<text x="64" y="188" font-size="16" font-weight="700" fill="#374151" text-anchor="start">Silo's frozen API</text>
+<text x="64" y="220" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Silo will retire it. Bloem keeps a few</text>
+<text x="64" y="240" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">routes it added earlier, such as a</text>
+<text x="64" y="260" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">profile's own sign-in, and never drops one</text>
+<text x="64" y="280" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">of Silo's. Nothing new goes here.</text>
+<rect x="260" y="136" width="116" height="25.5" rx="12.75" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.2"/>
+<text x="318.0" y="153.25" font-size="12.5" font-weight="600" fill="#374151" text-anchor="middle">Being retired</text>
+<rect x="420" y="120" width="360" height="200" rx="16" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="444" y="160" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" font-weight="700" fill="#101827" text-anchor="start">/api/v2</text>
+<text x="444" y="188" font-size="16" font-weight="700" fill="#075985" text-anchor="start">Silo's stable API</text>
+<text x="444" y="220" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Everything Silo has: libraries, playback,</text>
+<text x="444" y="240" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">accounts, settings. Bloem's apps use it for</text>
+<text x="444" y="260" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">all of that.</text>
+<rect x="690" y="136" width="66" height="25.5" rx="12.75" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.2"/>
+<text x="723.0" y="153.25" font-size="12.5" font-weight="600" fill="#075985" text-anchor="middle">Silo's</text>
+<rect x="800" y="120" width="360" height="200" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="824" y="160" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" font-weight="700" fill="#101827" text-anchor="start">/api/bloem/v1</text>
+<text x="824" y="188" font-size="16" font-weight="700" fill="#C2410C" text-anchor="start">Bloem's own API</text>
+<text x="824" y="220" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Organizations, plans, the storefront, Live</text>
+<text x="824" y="240" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">TV, messages and more. Its version is</text>
+<text x="824" y="260" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's; it grows by adding fields and</text>
+<text x="824" y="280" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">routes.</text>
+<rect x="1063" y="136" width="73" height="25.5" rx="12.75" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.2"/>
+<text x="1099.5" y="153.25" font-size="12.5" font-weight="600" fill="#C2410C" text-anchor="middle">Bloem's</text>
+<text x="40" y="364" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Who calls what</text>
+<rect x="40" y="382" width="1120" height="58" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="382" width="8" height="58" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<text x="66" y="417" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The web app and the storefront</text>
+<text x="400" y="417" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Only /api/v2 and /api/bloem/v1, since November 1, 2026.</text>
+<rect x="40" y="452" width="1120" height="58" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="452" width="8" height="58" rx="4" fill="#F59E0B" stroke="none" stroke-width="1.5"/>
+<text x="66" y="487" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Bloem's phone apps</text>
+<text x="400" y="487" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">/api/v2 and /api/bloem/v1, and still some /api/v1 routes.</text>
+<rect x="40" y="522" width="1120" height="58" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="522" width="8" height="58" rx="4" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<text x="66" y="557" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Silo's own apps</text>
+<text x="400" y="557" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Silo's APIs, as they do with Silo. None of Bloem's own API.</text>
+<text x="40" y="616" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Jellyfin and Audiobookshelf apps use their own entrances on their own ports, not these APIs.</text>
+</svg>

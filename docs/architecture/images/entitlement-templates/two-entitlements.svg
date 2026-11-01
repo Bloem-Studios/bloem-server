@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="612" viewBox="0 0 1200 612" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Two things called an entitlement</title>
+<desc id="d">Three columns. The platform owns four libraries. Library grants give an organization two of them, and the organization also owns a library of its own. The plan, a policy entitlement template, picks from the organization's three libraries and sets screens, conversions, quality, downloads and requests. It cannot permit the platform library the organization was not granted.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="611" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Two things called an entitlement</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A library grant decides what an organization may use. A plan decides what each member may do inside it.</text>
+<rect x="40" y="124" width="320" height="366" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="60" y="160" font-size="19" font-weight="700" fill="#101827" text-anchor="start">The platform</text>
+<text x="60" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Its libraries</text>
+<rect x="60" y="206" width="280" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.4"/>
+<text x="76" y="232" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Movies</text>
+<rect x="60" y="262" width="280" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.4"/>
+<text x="76" y="288" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Series</text>
+<rect x="60" y="318" width="280" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.4"/>
+<text x="76" y="344" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Audiobooks</text>
+<rect x="60" y="374" width="280" height="40" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.4"/>
+<text x="76" y="400" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Ebooks</text>
+<rect x="440" y="124" width="320" height="366" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="460" y="160" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Riverside Club</text>
+<text x="460" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">What it may use</text>
+<rect x="460" y="206" width="280" height="40" rx="10" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.4"/>
+<text x="476" y="232" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Movies</text>
+<text x="726" y="232" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="end">granted</text>
+<rect x="460" y="262" width="280" height="40" rx="10" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.4"/>
+<text x="476" y="288" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Series</text>
+<text x="726" y="288" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="end">granted</text>
+<rect x="460" y="318" width="280" height="40" rx="10" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.4"/>
+<text x="476" y="344" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Club films</text>
+<text x="726" y="344" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="end">its own</text>
+<rect x="460" y="374" width="280" height="40" rx="10" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="476" y="400" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Audiobooks</text>
+<text x="726" y="400" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="end">not granted</text>
+<line x1="344" y1="226" x2="456" y2="226" stroke="#FA6400" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="344" y1="282" x2="456" y2="282" stroke="#FA6400" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="400" y="249" font-size="13" font-weight="700" fill="#C2410C" text-anchor="middle">library</text>
+<text x="400" y="265" font-size="13" font-weight="700" fill="#C2410C" text-anchor="middle">grants</text>
+<rect x="840" y="124" width="320" height="366" rx="16" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="860" y="160" font-size="19" font-weight="700" fill="#101827" text-anchor="start">The plan</text>
+<text x="860" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Standard, revision 3</text>
+<rect x="860" y="206" width="280" height="128" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="876" y="230" font-size="11.5" font-weight="700" fill="#0F766E" text-anchor="start" letter-spacing="1">LIBRARIES</text>
+<text x="876" y="256" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">All libraries, which means:</text>
+<circle cx="886" cy="282" r="9" fill="#10B981"/>
+<path d="M881.95,282.18 L885.1,285.42 L890.5,278.85" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="902" y="287" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Movies, Series, Club films</text>
+<circle cx="886" cy="312" r="9" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M881.95,307.95 L890.05,316.05 M890.05,307.95 L881.95,316.05" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="902" y="317" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Audiobooks: never</text>
+<rect x="860" y="346" width="280" height="124" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="876" y="370" font-size="11.5" font-weight="700" fill="#0F766E" text-anchor="start" letter-spacing="1">WHAT EACH MEMBER MAY DO</text>
+<text x="876" y="396" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">3 screens at once</text>
+<text x="876" y="416" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">1 video conversion</text>
+<text x="876" y="436" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Up to 1080p</text>
+<text x="876" y="456" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Downloads and requests</text>
+<line x1="764" y1="306" x2="836" y2="306" stroke="#6366F1" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="510" width="1120" height="72" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="64" y="540" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">A plan can never reach past the organization's libraries. To let Riverside Club's members listen to audiobooks, a platform administrator first</text>
+<text x="64" y="560" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">grants the library to the club; the plan's “All libraries” then includes it.</text>
+</svg>

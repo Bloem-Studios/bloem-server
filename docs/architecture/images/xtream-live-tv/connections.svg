@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Sharing a provider's connections</title>
+<desc id="d">A made-up provider allows two connections at once. Two Bloem servers share them through the database: one viewer watches on server A, a recording runs on server B. Each physical stream holds a lease that lasts 60 seconds and is renewed every 15. A third viewer is refused until one ends. A lease that can't be renewed stops its stream.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="649" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Sharing a provider's connections</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Every stream from the provider holds a lease in the database, on whichever server opened it.</text>
+<text x="40" y="140" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">This example is made up: a provider that allows two connections at once.</text>
+<rect x="40" y="166" width="330" height="90" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="58" y="198" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem server A</text>
+<text x="58" y="222" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A viewer watching a channel</text>
+<line x1="374" y1="211" x2="446" y2="211" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="276" width="330" height="90" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="58" y="308" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem server B</text>
+<text x="58" y="332" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A recording of a programme</text>
+<line x1="374" y1="321" x2="446" y2="321" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="386" width="330" height="90" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<text x="58" y="418" font-size="17" font-weight="700" fill="#101827" text-anchor="start">A third viewer</text>
+<text x="58" y="444" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Refused: both connections are in use.</text>
+<line x1="374" y1="431" x2="446" y2="431" stroke="#EF4444" stroke-width="2" stroke-dasharray="6 5"/>
+<circle cx="410" cy="431" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M405.05,426.05 L414.95,435.95 M414.95,426.05 L405.05,435.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="450" y="156" width="320" height="324" rx="16" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6"/>
+<text x="610" y="190" font-size="18" font-weight="700" fill="#101827" text-anchor="middle">The database</text>
+<rect x="470" y="208" width="280" height="96" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.4"/>
+<text x="490" y="240" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Lease 1 of 2</text>
+<text x="490" y="266" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Lasts 60 s, renewed every 15 s,</text>
+<text x="490" y="286" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">with an unguessable ID</text>
+<rect x="470" y="320" width="280" height="96" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.4"/>
+<text x="490" y="352" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Lease 2 of 2</text>
+<text x="490" y="378" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Lasts 60 s, renewed every 15 s,</text>
+<text x="490" y="398" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">with an unguessable ID</text>
+<text x="610" y="456" font-size="14" font-weight="600" fill="#B91C1C" text-anchor="middle">No lease free for a third</text>
+<line x1="774" y1="300" x2="846" y2="300" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="850" y="236" width="310" height="128" rx="14" fill="#FDF2F8" stroke="#DB2777" stroke-width="1.8"/>
+<text x="868" y="268" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The provider</text>
+<text x="868" y="292" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Two streams open: one for each lease.</text>
+<circle cx="52" cy="511" r="4" fill="#6B7280"/>
+<text x="66" y="516" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Watching, the browser-friendly stream and recordings all share the same connections.</text>
+<circle cx="52" cy="541" r="4" fill="#6B7280"/>
+<text x="66" y="546" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">A lease that can't be renewed stops its stream. An expired lease can't come back or end its successor's.</text>
+<circle cx="52" cy="571" r="4" fill="#6B7280"/>
+<text x="66" y="576" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Bloem counts only its own streams, not ones other apps opened on the same provider account.</text>
+<text x="40" y="618" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">If the server holding a stream dies, the viewer opens a new one. Leases limit how many streams start; they don't move a stream to another server.</text>
+</svg>

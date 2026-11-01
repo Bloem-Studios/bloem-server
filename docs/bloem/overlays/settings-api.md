@@ -1,45 +1,106 @@
 # Bloem overlay: Canonical Settings API
 
-**What this overlays.** Silo's [`docs/settings-api.md`](../../settings-api.md).
-Bloem adds a tenancy note to “Collections use the `{items}` envelope” and a
-paragraph to the bridge's “Request identity headers”. It replaces nothing.
-Bloem serves Silo's settings contract, the `/api/v2` settings operations and the
-frozen `/api/v1` settings bridge, including the bridge's headers, scopes, write
-mirror, atomic shortcuts and device registry, as Silo documents them. An
-*overlay* is a Bloem-owned page that records Bloem's additions to, or
-replacements of, sections of a Silo-owned document. The Silo file stays exactly
-as Silo wrote it. See the [documentation workflow](../documentation-workflow.md).
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
+> adds to Silo's [`docs/settings-api.md`](../../settings-api.md), which stays exactly
+> as Silo wrote it. Bloem replaces nothing there. The additions are in the
+> [For developers](#for-developers) section.
 
-**Why Bloem differs.** Bloem is multi-tenant, with accounts in *organizations*,
-so it records how Silo's server-wide administrator defaults behave across
-organizations. Bloem also has *direct-profile sessions*, which sign in straight
-to one household profile with that profile's own credential. Their
-default-deny route allowlist dates from `16baf5558` (2026-08-14). Bloem first noted its settings
-differences in the Silo file in August 2026 and moved them here in `47ea7c889`
-(2026-09-23). Until `b017bfe84` (2026-10-26) this page also described Bloem's
-Idempotency-Key lifecycle receipts on the settings admin routes. That system
-is gone, and Silo's `settings_values.go` and `settings_values_admin.go` are
-Silo's bytes again.
+Silo's settings page explains how apps read and change settings: the server's,
+an account's, a profile's and a device's. Bloem serves Silo's settings contract as
+Silo documents it: the `/api/v2` settings operations, and the frozen `/api/v1`
+settings bridge with its headers, scopes, write mirror, atomic shortcuts and device
+registry. Bloem adds three notes, because Bloem has **organizations** and
+**profiles with a sign-in of their own**.
 
-**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
-`e852f92bf` (`internal/api/direct_profile_routes.go`). Since the previous review
-(Silo `6de6d5e5e`), Silo changed the document once, in `93585220e` (#3136,
-2026-10-26): the stored values one `resolveEffectiveSettings` or
-`listSettingValues` response returns are bounded at 16 MiB. That applies to
-Bloem unchanged.
+## What Bloem changes
 
-Index: [Bloem documentation](../README.md).
+- **An administrator's default applies everywhere.** Silo lets an administrator
+  set a default value for some settings. On Bloem that default is the server's,
+  and it applies in every organization alike. There is no per-organization
+  default.
+- **A profile's own sign-in reaches only some settings.** A session signed in
+  straight to one profile can read and change that profile's settings, but not
+  the account-wide ones.
+- **Each organization's domain shows its own brand.** On an organization's own
+  domain, the public branding Silo serves before sign-in (name, logo, colours)
+  is that organization's. Silo's own branding settings stay the server's.
+
+## Words used in the code
+
+| On this page | In the code and API |
+| --- | --- |
+| An administrator's default | a server setting `defaults.<key>`, for definitions marked `admin_default` |
+| A profile's own sign-in | a direct-profile session from `POST /api/v1/auth/profile-login` |
+| Its allowed routes | the default-deny allowlist in `internal/api/direct_profile_routes.go` |
+| An organization's brand | `bloem_organization_branding`, served through `orgdomains.SettingsOverlay` |
+
+## For developers
+
+### Where this overlay came from
+
+Bloem's direct-profile sessions sign in straight to one household profile with
+that profile's own credential; their default-deny route allowlist dates from
+`16baf5558` (2026-08-14). Bloem first noted its settings differences in the Silo
+file in August 2026 and moved them here in `47ea7c889` (2026-09-23). Until
+`b017bfe84` (2026-10-26) this page also described Bloem's Idempotency-Key lifecycle
+receipts on the settings admin routes. That system is gone, and Silo's
+`settings_values.go` and `settings_values_admin.go` are Silo's bytes again.
+
+It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+`e852f92bf` (`internal/api/direct_profile_routes.go`), when Silo's `93585220e`
+(#3136, 2026-10-26) had bounded the stored values one `resolveEffectiveSettings`
+or `listSettingValues` response returns at 16 MiB; that applies to Bloem
+unchanged. From `3e2d306b2` through `63ef34b23` Silo changed the document once more,
+in `33cf0ed11` (#3142, 2026-10-27), which retires the media card caption choice;
+that applies to Bloem unchanged too. This rewrite added the organization branding
+note (organization domains and branding, from `b95a3dda9`, 2026-11-01).
+
+### Section by section
 
 ---
 
-**Location:** section “Collections use the `{items}` envelope”, after the paragraph beginning “A definition marked `admin_default`…”. **Bloem uses Silo's behavior, with this tenancy note:**
+**Location:** section “Collections use the `{items}` envelope”, after the paragraph
+beginning “A definition marked `admin_default`…”. **Bloem uses Silo's behavior,
+with this tenancy note:**
 
 An administrator default is a server setting (`defaults.<key>`), not an
 organization setting. Bloem's tenant-aware viewer resolvers apply the same value
 for every organization, and the `scope: "default"` event reaches subscribed
 viewers in every organization. There is no per-organization administrator default.
 
-**Location:** section “Bridge: the frozen `/api/v1` settings routes”, subsection “Request identity headers”, after the paragraph beginning “Authenticated settings routes use the active account and profile…”. **Bloem adds:**
+---
+
+**Location:** section “Public branding”, after the paragraph beginning “The web
+client has one theme, Cinema Dark.”. **Bloem adds:**
+
+#### Organization branding on organization domains
+
+Silo's branding service reads its settings through `orgdomains.SettingsOverlay`
+(`branding.NewService` in `cmd/silo/main.go`). On an organization's own domain,
+or for a request authenticated in that organization, the keys in
+`branding.PresentationSettingKeys()` (server name, login subtitle, accent colour,
+default theme and the asset references) answer that organization's values from
+`bloem_organization_branding`. That covers `GET /api/v2/theme/branding`, the
+frozen v1 `/theme/branding`, `/api/v2/branding/assets/{kind}`, the page shell and
+web app manifest, and the brand in emails. An unset value is Silo's built-in
+default there, never the server's: the server's branding is the default
+organization's brand. For the default organization, or no organization, every
+key is the server's.
+
+A write goes to an organization only when its context carries
+`WithBrandingWrite`, as the platform routes
+`/api/bloem/v1/admin/platform/tenants/{id}/branding` do (`PUT|DELETE
+…/branding/assets/{kind}` for assets); those routes refuse the default
+organization with `409 default_organization`. Every other write, including Silo's
+own branding settings and asset uploads made on an organization's domain, is the
+server's. See [organization domains](../../architecture/bloem-organization-domains.md).
+
+---
+
+**Location:** section “Bridge: the frozen `/api/v1` settings routes”, subsection
+“Request identity headers”, after the paragraph beginning “Authenticated settings
+routes use the active account and profile…”. **Bloem adds:**
 
 A Bloem direct-profile session (`POST /api/v1/auth/profile-login`) is bound to
 its token's profile; naming another profile answers `403`. Its default-deny
@@ -48,3 +109,14 @@ explicit-value and `nav.shortcuts/item` routes, but not the account-wide
 `/settings/` list or `/settings/{key}`. An explicit-value request at
 `scope=account` answers `403 forbidden`. The session reaches no `/api/v2`
 settings operation.
+
+### Related pages
+
+- [Settings contract overlay](architecture/settings-contract.md): the Kotlin and
+  Swift bindings Bloem commits.
+- [Authentication overlay](auth-api.md): direct-profile sessions and sign-in on
+  organization domains.
+- [Organization domains](../../architecture/bloem-organization-domains.md).
+- [Writing Bloem documentation](../documentation-workflow.md#overlays): how an
+  overlay is written and kept up to date.
+- Index: [Bloem documentation](../README.md).

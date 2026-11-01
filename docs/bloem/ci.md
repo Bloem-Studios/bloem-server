@@ -1,10 +1,124 @@
-# Bloem CI
+# How Bloem CI works
 
-This page describes the GitHub Actions workflows that test Bloem Server, publish
-its image and keep it merged with Silo. It reflects `main` at `e852f92bf`
-(October 27, 2026; the last code change is `276becf4a`). Everything here is
-Bloem's own, except Silo's `ci.yml`, which is described only where it affects
-Bloem. Commands assume the repository root is the cwd.
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`. Bloem's CI, image
+> and upstream-sync workflows are Bloem additions; Silo's own `ci.yml` stays as Silo
+> wrote it apart from one line. The technical rules are in the
+> [For developers](#for-developers) section.
+
+Every change to Bloem Server is checked before it can be trusted, every passing
+commit on `main` gets a server image, and Silo's work comes in every day. This page
+walks through what runs and when, which machines run it, how Silo's changes land,
+and what to do when a run fails.
+
+## What runs, and when
+
+![Two flows. Every change: a pull request, a push to main, the Monday run or a manual run starts Bloem CI; a passing push to main starts Bloem Image, which publishes an image tagged with the commit and moves latest when that commit is still main's newest. Every day: the upstream sync merges Silo into a branch and opens a pull request, Bloem CI checks it, and the merge gate lands it on main](../architecture/images/bloem-ci/workflows.svg)
+
+Bloem has four workflows of its own:
+
+1. **Bloem CI** checks a change. It runs on every pull request, on every push to
+   `main`, every Monday morning, and when someone starts it by hand. Its jobs run
+   side by side: Go tests, lint, contract checks, database checks, the web build
+   and the web tests. A newer run for the same branch cancels an older one.
+2. **Bloem Image** builds the **server image**, the package a server runs. It starts
+   only after Bloem CI passes on a push to `main`, and tags the image with that
+   commit. It also moves the `latest` tag, but only while that commit is still the
+   newest on `main`.
+3. **Upstream sync** runs every morning. It merges Silo's latest work into a new
+   branch and opens a pull request.
+4. **Upstream sync merge** lands that pull request on `main` once Bloem CI has passed
+   on exactly the merge it tested.
+
+None of them deploys anything. A person starts each deployment, and a dated record
+in [`docs/operations/`](../operations/) says what was deployed and how.
+
+## Where the jobs run
+
+![Three questions decide where a Bloem CI job runs: whether self-hosted runners are switched on, whether the run is on main, and whether a pull request comes from a listed member. A yes on main or from a member goes to a disposable runner; anything else runs on GitHub's ubuntu-24.04](../architecture/images/bloem-ci/runners.svg)
+
+A job runs on one of two kinds of machine:
+
+- **GitHub's runners**, the standard `ubuntu-24.04` machines GitHub provides.
+- **Disposable runners**, Bloem's own private machines. Each one runs a single job
+  and is then thrown away, so nothing from one job can reach the next.
+
+Bloem's own runners take the runs on `main` and the pull requests of listed
+members, once a repository setting switches them on. Every other run, such as a
+pull request from someone else, uses GitHub's runners. The machines that start
+the disposable runners apply the same rule from their own settings, so the two
+must change together.
+
+## How Silo's work comes in
+
+![The daily sync and five checks before a sync pull request merges itself: Bloem CI passed, the branch comes from this repository, it is the one open non-draft sync pull request, its head is the exact commit CI tested, and that commit is the untouched merge of Bloem's main and Silo's main. Any no leaves the pull request for a person](../architecture/images/bloem-ci/merge-gate.svg)
+
+Bloem is a **tracking fork**: it takes in Silo's work every day instead of copying
+it by hand ([how Bloem keeps up with Silo](../architecture/bloem-following-silo.md)).
+
+1. Every morning the sync checks whether Silo's `main` has anything Bloem lacks.
+2. If it has, the sync merges it on a new branch and opens a pull request.
+3. **A clean merge** is an ordinary pull request. Bloem CI checks it, and the merge
+   gate lands it if all five checks in the picture pass.
+4. **A merge with conflicts** opens as a **draft** pull request, with the conflicts
+   left in. It never lands by itself. A person resolves each conflict on Silo's
+   side, puts Bloem's change on its own lines, and merges it by hand once Bloem CI
+   passes.
+
+Nothing in the sync writes to `main` directly or rewrites history.
+
+## When a run fails
+
+- **A failure that has nothing to do with the change**, such as a runner that
+  stopped mid-job, is re-run with GitHub's **Re-run failed jobs**. The jobs that
+  passed keep their results; the failed ones run again on fresh machines.
+- **A test that fails again, or fails often,** is a bug. Fix it rather than re-run
+  it.
+- **A cancelled run is not a pass.** When two pushes to `main` follow each other
+  quickly, the second cancels the first run, and only the second commit gets an
+  image.
+
+## Example: two pushes in quick succession
+
+This example is made up.
+
+1. At 10:00 Ana pushes a fix to `main`. Bloem CI starts on a disposable runner.
+2. At 10:04 she pushes a typo fix. A new Bloem CI run starts for `main`, and the
+   10:00 run is cancelled.
+3. At 10:30 the second run passes. Bloem Image builds an image tagged with the
+   second commit and moves `latest` to it, because that commit is still the newest
+   on `main`.
+4. The 10:00 commit gets no image of its own. Its changes are in the 10:04 image,
+   which contains both commits.
+
+## Who can change what
+
+| Who | What they manage |
+| --- | --- |
+| A repository administrator | The repository variables that switch on and route to the disposable runners (`BLOEM_SELF_HOSTED`, `BLOEM_CI_MEMBERS`), and the secrets for the sync token and Discord (`UPSTREAM_SYNC_TOKEN`, `DISCORD_WEBHOOK_URL`). |
+| Anyone with push access | Bloem's workflow files and scripts, re-runs, and merging a resolved sync pull request by hand. |
+| The runner controller, outside this repository | Starting a fresh disposable runner for each job. Its own settings are the authority for routing. |
+| Silo | Its own workflow files, which Bloem keeps exactly as Silo wrote them except one line of `ci.yml`. |
+
+## Words used in the code
+
+| On this page | In the code and repository |
+| --- | --- |
+| Bloem CI | `.github/workflows/bloem-ci.yml`, workflow name "Bloem CI" |
+| Bloem Image | `.github/workflows/bloem-image.yml`, workflow name "Bloem Image" |
+| Upstream sync | `.github/workflows/upstream-sync.yml` |
+| Upstream sync merge, the merge gate | `.github/workflows/upstream-sync-merge.yml` and `scripts/verify-upstream-sync-merge.sh` |
+| Disposable runner | a self-hosted runner with the labels `bloem-linux`, `bloem-run-<run id>-<attempt>` and `bloem-job-<job id>` |
+| GitHub's runners | `ubuntu-24.04` (Bloem CI) and `ubuntu-latest` (the other three workflows) |
+| Server image | `ghcr.io/bloem-studios/bloem-server:<full commit SHA>`, and `latest` |
+| The web bundle | the `frontend-dist-<sha>` artifact from the Web (build) job |
+| Seam | a Silo file Bloem edits, listed in `contracts/seams.txt` and checked by `make verify-seams` |
+| Changed-line lint | `scripts/bloem-lint-changed-ci.sh` |
+
+## For developers
+
+Commands assume the repository root is the cwd. Everything here is Bloem's own,
+except Silo's `ci.yml`, which is described only where it affects Bloem.
 
 Terms used below:
 
@@ -13,13 +127,13 @@ Terms used below:
   out of Silo's files where it can
   ([FORK.md](../../FORK.md#this-is-a-tracking-fork-deliberately)).
 - A **seam** is a Silo-owned file that Bloem has changed. Each one is listed in
-  the seam ledger, [`contracts/seams.txt`](../../contracts/seams.txt) (305
-  entries at `5fc698915`), and `make verify-seams` fails on a change the
+  the seam ledger, [`contracts/seams.txt`](../../contracts/seams.txt) (304
+  entries at `b6039036d`), and `make verify-seams` fails on a change the
   ledger does not list.
 - A **disposable runner** is a private self-hosted runner that runs one job
   and is not reused. See [Where jobs run](#where-jobs-run).
 
-## Workflows
+### Workflows
 
 | Workflow | File | Runs on | What it does | Origin |
 |---|---|---|---|---|
@@ -29,14 +143,20 @@ Terms used below:
 | Upstream sync merge | `upstream-sync-merge.yml` | Any Bloem CI run completing | Merges a sync pull request whose exact head passed Bloem CI | Bloem, 2026-08-26 (`af2be39f1`) |
 | CI | `ci.yml` | As in Silo | Nothing on Bloem: its one job runs only in Silo's repository ([below](#silos-ciyml)) | Silo's file; a one-line seam |
 
-The other files in `.github/workflows/` are Silo's and byte-identical to
-Silo's `main` at `cc8514943`. None of them tests or publishes Bloem. Silo's
-`docker.yml` publishes only after a successful "CI" run, and on Bloem every
-"CI" run concludes `skipped`, so Silo's image job is skipped too. The
-reusable `trusted-linux-build.yml` runs only in Silo's repository, and
-`macos.yml` and `release.yml` run only when started by hand.
+The other files in `.github/workflows/` are Silo's and byte-identical to Silo's
+`main` at `63ef34b23`. None of them tests or publishes Bloem:
 
-## Silo's `ci.yml`
+- Silo's `docker.yml` ("Docker Image") publishes only after a successful "CI"
+  run, and on Bloem every "CI" run concludes `skipped`, so Silo's image job is
+  skipped too.
+- The reusable `trusted-linux-build.yml` and `omnibus-build.yml`, which build
+  Silo's images, run only in Silo's repository.
+- `macos.yml` and `release.yml` run only when started by hand.
+- `claude.yml`, `discord-commits.yml` (with `reusable-discord-commits.yml`) and
+  `v1-proposal-labeler.yml` react to comments, issues and pushes; they build and
+  test nothing.
+
+### Silo's `ci.yml`
 
 Bloem's CI is its own workflow, `.github/workflows/bloem-ci.yml`
 ("Bloem CI"). Silo's `.github/workflows/ci.yml` stays as Silo wrote it, with
@@ -51,7 +171,7 @@ every upstream CI change. `dcbd1c525` moved them unchanged into
 `bloem-ci.yml`. Bloem Image and the upstream sync merge wait on "Bloem CI" by
 name.
 
-## Triggers and cancellation
+### Triggers and cancellation
 
 Bloem CI runs on every pull request, on pushes to `main` and to `apiv2` (the
 API v2 integration branch), every Monday at 04:23 UTC, and by hand.
@@ -64,9 +184,11 @@ documentation pushes to `main` in quick succession were cancelled this way,
 and only the last commit got an image.
 
 No job `needs` another, so all of them start together. Every matrix uses
-`fail-fast: false`, so one failing shard does not cancel the others.
+`fail-fast: false`, so one failing shard does not cancel the others. The
+workflow's token is read-only (`contents: read`); only "Prune old Go caches"
+gets `actions: write`, to delete caches.
 
-## Where jobs run
+### Where jobs run
 
 Bloem CI's jobs carry the same runner routing as Silo's
 `trusted-linux-ci.yml`. It was added on October 26, 2026 (`90e15fcfd`).
@@ -124,7 +246,7 @@ Bloem Image, Upstream sync and Upstream sync merge run on GitHub's
 `ubuntu-latest`. Before `90e15fcfd`, Bloem CI also ran on `ubuntu-latest`;
 `ubuntu-24.04` replaced it to match Silo ([changelog](CHANGELOG.md)).
 
-## Jobs
+### Jobs
 
 "Bloem CI" has the jobs Bloem's copy of `ci.yml` ran (only the workflow
 name and concurrency group changed), with the slowest jobs split across
@@ -136,14 +258,19 @@ runners on October 26, 2026 (`52369dbad`, `5e6f9e407`):
 | Tenant identity (disposable PostgreSQL) | Tenant, access-group and profile-tenancy migrations and stores, race-checked resourcetenancy, access and policy, the v1 tenancy and OPA acceptance suites, and the multitenant administration release gate. |
 | Tenant stores race (1-4/4, disposable PostgreSQL) | `internal/tenancy` under the race detector, its tests split four ways. |
 | Native authentication (1-3/3, disposable PostgreSQL) | `internal/auth` with and without the race detector, its tests split three ways, and its vet (shard 1). |
-| Go lint | gofmt, `go vet ./...`, govulncheck, changed-line lint (`scripts/bloem-lint-changed-ci.sh`) and the full-tree router recovery lint. |
-| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, migration ledger, scenario catalogs, offline routes, the API v2 OpenAPI, contract diff and fixtures, and the seam ledger. |
+| Go lint | gofmt, `go vet ./...`, govulncheck, changed-line lint (`scripts/bloem-lint-changed-ci.sh`) and the full-tree router recovery lint (`make lint-router-recovery`). |
+| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, migration ledger, scenario catalogs, offline routes, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, and the seam ledger. |
 | Go test (1-4/4) | `make test-go` on a database `cmd/bloem-testdb` prepared, its packages split four ways, four at a time per database. |
 | Go database pins | The database pins (`make test-db-pins`) and the upstream database regression gates. |
 | Go database regressions | Watch Party and history-import race tests and the mixed library location pins. |
 | Scenario executor | `make test-scenarios`, with a 45-minute job timeout. |
 | Web (build, checks) | ESLint and format, typecheck and build, the launch bundle budget, the web settings binding and v2 types, and `make verify-local-paths`, which first runs the upstream sync merge helper's tests. On a push to `main` or `apiv2`, the build part uploads `frontend-dist-<sha>`, which Bloem Image publishes. |
 | Web test (1-4/4) | Vitest in four shards. |
+
+Go lint builds golangci-lint from source at the pinned `GOLANGCI_LINT_VERSION`
+(`v2.12.2` at `b6039036d`), because a released binary refuses a Go newer than
+the one it was built with. It caches the binary and reuses it only when it was
+built with the current toolchain.
 
 Changed-line lint reports only findings on lines that changed in the push or
 pull request and that differ from Silo's copy of the file, so Silo's own lint
@@ -163,8 +290,12 @@ The Go contract checks job byte-compares the Bloem native OpenAPI artifact
 (`make verify-bloem-api-catalogue`) with a fresh generation. Both became CI
 steps on October 27, 2026; before that the catalogue could fall behind the
 OpenAPI artifacts without failing anything, and on that date it had.
+`make verify-bloem-api-catalogue` also checks the per-topic API pages
+(`scripts/bloem/api-topic-docs.py --check`) and the explainer pictures
+(`scripts/bloem/draw-pictures.py --check`); see
+[writing Bloem documentation](documentation-workflow.md#pictures).
 
-## Failures and re-runs
+### Failures and re-runs
 
 Nothing in the workflows retries a failed test or job. When a job fails for a
 reason that has nothing to do with the change, such as a flaky test or a lost
@@ -173,9 +304,8 @@ runner, the run is re-run with GitHub's **Re-run failed jobs**
 The failed jobs run again, and the jobs that passed keep their attempt-1
 results. Because the self-hosted labels include the attempt number, re-run
 jobs on self-hosted runners ask for `bloem-run-<run id>-2` and get new
-runners. When the
-attempt completes, Bloem Image and Upstream sync merge fire again and act on
-the run's new conclusion.
+runners. When the attempt completes, Bloem Image and Upstream sync merge fire
+again and act on the run's new conclusion.
 
 A re-run does not rebuild the web bundle unless the Web (build) job is re-run
 too. The `frontend-dist-<sha>` artifact is kept for one day
@@ -202,14 +332,15 @@ again, or fails often, is a bug to fix. Recent examples:
   2026-11-01 fall-back that is eight days and an hour. On a run that started
   after 23:00 UTC, the last hourly row fell past partman's last UTC partition
   and into the default partition. Bloem CI failed it at 23:20 UTC, while
-  Silo's CI had passed the same commit earlier that day. `48513c1bd` makes the
+  Silo's CI had passed the same commit earlier that day. `48513c1bd` made the
   windows hour-based (`interval '192 hours'` and `'1344 hours'`), which
-  PostgreSQL adds as absolute time. Partitioning itself is unchanged. This is a
-  Bloem edit to a Silo test file, so the seam ledger lists it as temporary,
-  to be dropped once Silo fixes its copy. At `3e2d306b2`, Silo's copy still
-  uses `interval '8 days'`.
+  PostgreSQL adds as absolute time; partitioning itself is unchanged. That was
+  a temporary Bloem edit to a Silo test file. Silo has since made the same fix
+  (`cd64d10cc`, #3258, October 31), so
+  `internal/database/log_partition_timezone_test.go` is Silo's bytes again and
+  no longer a seam.
 
-## Bloem Image
+### Bloem Image
 
 `.github/workflows/bloem-image.yml` ("Bloem Image") publishes the production
 image for a commit that passed Bloem CI on `main`. It was added on October 11,
@@ -221,10 +352,12 @@ workflow published ([receipt](../operations/2026-10-27-main-deployment.md#build)
 `publish`, runs only in `Bloem-Studios/bloem-server`, and only when the CI
 run concluded `success`, was started by a `push` (not the schedule, a manual
 run or a pull request), and came from this repository. Any other completion on
-`main` shows as a skipped Bloem Image run. It can also be started by hand on `main`.
-It then looks up a successful Bloem CI push run on `main` for that commit and
-stops if there is none. Runs queue in the group `bloem-image-main` and are
-never cancelled.
+`main` shows as a skipped Bloem Image run. It can also be started by hand on
+`main`. It then looks up a successful Bloem CI push run on `main` for that
+commit and stops if there is none. Runs queue in the group `bloem-image-main`
+and are never cancelled. The workflow token has no permissions by default; the
+job gets `contents: read`, `actions: read` and `packages: write`, and a
+90-minute timeout.
 
 **Steps.**
 
@@ -242,6 +375,8 @@ never cancelled.
    - build arguments `BUILD_REVISION=<sha>`, `BUILD_DIRTY=false` and
      `BUILD_DATE`, which the Dockerfile links into `internal/buildinfo`, so
      the server's system info reports the revision.
+5. Point `latest` at that image, but only if the commit is still `main`'s head
+   (added in `6d0adcfe9`, 2026-10-27).
 
 **How the web bundle gets in.** Silo's `Dockerfile`, which Bloem does not
 change, has a `frontend_dist` stage. By default that stage holds the bundle
@@ -255,22 +390,28 @@ day.
 
 **What it does not do.**
 
-- It publishes no `build-<n>` or short-SHA tag and no arm64 image. Its last
-  step, added in `6d0adcfe9` (2026-10-27), points `latest` at the image it
-  just pushed, but only if that commit is still `main`'s head; a late run for
-  an older commit leaves `latest` for the newer commit's own run, so `latest`
-  never moves backwards. If the newest commit's CI fails, `latest` stays on
-  the last image published while its commit was the head. `.env.bloem.example`
-  sets `SILO_IMAGE` to `latest` for `docker-compose.advanced.yml`; deployments
-  that must be attributable pin
-  a full-SHA tag
+- It publishes no `build-<n>` or short-SHA tag and no arm64 image. A late run
+  for an older commit leaves `latest` for the newer commit's own run, so
+  `latest` never moves backwards. If the newest commit's CI fails, `latest`
+  stays on the last image published while its commit was the head.
+  `.env.bloem.example` sets `SILO_IMAGE` to `latest` for
+  `docker-compose.advanced.yml`; deployments that must be attributable pin a
+  full-SHA tag
   ([deployment guide](overlays/wiki/deployment/docker.md#container-image-selection)).
+- It builds Bloem's server image only. It does not build Silo's all-in-one
+  image, which bundles PostgreSQL, Redis and Meilisearch.
 - It does not deploy. Deployment is a separate, manual step, recorded in
-  [`docs/operations/`](../operations/).
+  [`docs/operations/`](../operations/). Production ran images this workflow
+  published from October 27, 2026. `9cc80cd33` on the morning of October 28, the
+  native scan redesign of October 28 and 29, and every deployment from October 29
+  through November 1 used a local build at the owner's request instead: an image
+  built from a `git archive` of the exact commit with Bloem Image's build
+  arguments, without waiting for Bloem CI. Each record says which way its image
+  was built ([release versioning overlay](overlays/release-versioning.md#bloem-deployment-records)).
 - The image's Go build stage uses the Dockerfile's floating `golang:1.26` tag
   (Silo's choice), not the exact patch `go.mod` names, which the CI jobs use.
 
-## Tools on the Go runners
+### Tools on the Go runners
 
 `scripts/ci/bloem-install-test-tools.sh` installs what the Go jobs need
 beyond libvips. Go test, Go database pins and Go database regressions call it
@@ -300,7 +441,8 @@ FFmpeg is Jellyfin's build, the family the runtime image ships. CI pins
   Dockerfile's version.
 - This is a production bug, not only a CI gap: the shipped image runs
   FFmpeg 8, so rotated video gets wrong trickplay tiles in production until
-  the parser is fixed.
+  the parser is fixed. At `63ef34b23`, Silo's parser still reads only the
+  FFmpeg 7 spelling.
 - `TestBloemCIFFmpegPinTracksTheDisplayMatrixParse` in `internal/mediasample`
   (`568ae5299`) ties the pin to that reason. While the parser misses FFmpeg
   8's spelling, the test skips and names the bug. Once the parser reads both
@@ -318,25 +460,26 @@ including the HDR software tone-map acceptance test. Its fixture tags frames
 through `setparams`, because FFmpeg 8 ignores `-color_trc` and related options
 when the frames carry their own color properties.
 
-## Go patch
+### Go patch
 
 Silo's setup action (`.github/actions/setup-go`) installs the newest Go 1.26
 patch. Bloem's lint, contract-check, test and scenario jobs then install
 exactly the patch `go.mod` names (step `Use the Go patch go.mod requires`;
-`go 1.26.10` at `e852f92bf`; added `d72f5884f`, October 9, 2026). The tenant
-and native authentication jobs install that patch directly. A security
-release therefore takes effect when `go.mod` moves, not when runner images
-catch up. `go tool govulncheck` reads the standard library of that patch, so a
-new standard-library advisory fails the Go lint job until `go.mod` names the
-fixed patch.
+`go 1.26.10` at `b6039036d`; added `d72f5884f`, October 9, 2026). The tenant
+and native authentication jobs install that patch directly
+(`actions/setup-go` with `go-version-file: go.mod`). A security release
+therefore takes effect when `go.mod` moves, not when runner images catch up.
+`go tool govulncheck` reads the standard library of that patch, so a new
+standard-library advisory fails the Go lint job until `go.mod` names the fixed
+patch.
 
-## Upstream sync merges
+### Upstream sync merges
 
 Two Bloem workflows, added on August 26, 2026 (`af2be39f1`), merge Silo into
 Bloem without anyone having to notice that Silo moved. Bloem CI is the gate:
 nothing reaches `main` unless Bloem CI passed on the exact merge.
 
-### The daily sync: `upstream-sync.yml`
+#### The daily sync: `upstream-sync.yml`
 
 It runs daily at 05:20 UTC. GitHub can start scheduled runs hours late; from
 October 23 to 26, 2026 they started between about 09:30 and 11:15 UTC. It can
@@ -366,7 +509,7 @@ without pushing or opening anything. Runs queue in the group `upstream-sync`.
 
 Nothing in it force-pushes or writes to `main`.
 
-### The merge gate: `upstream-sync-merge.yml`
+#### The merge gate: `upstream-sync-merge.yml`
 
 It runs whenever a Bloem CI run completes, re-run attempts included. It acts
 only if that run was for a pull request on a branch named `upstream-sync/*`.
@@ -398,7 +541,7 @@ for CI only when `main` has branch protection with required checks, and that
 protection would also block direct pushes to `main`, which is how this
 repository is normally worked.
 
-### The sync token
+#### The sync token
 
 Both workflows push and merge with the `UPSTREAM_SYNC_TOKEN` repository
 secret, a personal access token with contents, pull requests and workflows
@@ -422,15 +565,19 @@ A sync pull request is opened by the token's account. It runs on self-hosted
 runners only if that login is in `BLOEM_CI_MEMBERS`
 ([Where jobs run](#where-jobs-run)).
 
-## PostgreSQL version
+### PostgreSQL version
 
-Every PostgreSQL service in `bloem-ci.yml` runs the image `docker-compose.yml`
-deploys (`pgvector/pgvector:pg18`), and `TestCIPostgresServicesMatchTheDeploymentMajor`
-in `internal/api` keeps them equal (`9f7a9a3ee`, October 14, 2026). PostgreSQL
+Every PostgreSQL service in `bloem-ci.yml` runs `pgvector/pgvector:pg18`, the
+major production runs. `TestCIPostgresServicesMatchTheDeploymentMajor` in
+`internal/api` keeps them equal (`9f7a9a3ee`, October 14, 2026): it reads
+`ARG PG_MAJOR=` from `omnibus/Dockerfile`, the PostgreSQL major Silo's
+all-in-one image bundles, and requires every CI service to run
+`pgvector/pgvector:pg<major>` (18 at `63ef34b23`). Bloem's own
+`docker-compose.advanced.yml` runs `pgvector/pgvector:pg18` as well. PostgreSQL
 18 reports an `ON DELETE RESTRICT` violation as SQLSTATE 23001, where 17
 reports 23503, so a 17 service hides behavior production has.
 
-## Mixed library location pins
+### Mixed library location pins
 
 `scripts/ci/bloem-library-locations.txt` lists the required mixed-location and
 native audiobook regressions. `make test-bloem-library-locations` runs them
@@ -451,7 +598,7 @@ Locally, create a disposable database with that prefix and run
 `go run ./cmd/bloem-testdb` against it. Then run the target with both URLs
 set.
 
-## Tests that read the workflow
+### Tests that read the workflow
 
 Go tests in `internal/api` parse `bloem-ci.yml`, so some workflow edits fail
 Go test:
@@ -463,3 +610,19 @@ Go test:
   stores shard passes the matrix's shard count to `go-test-shard.sh`.
 - `TestCIChangedLineLintNeedsNoRepositoryCredential`: changed-line lint works
   from the credential-free checkout.
+
+Related pages:
+
+- [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md): the
+  daily sync and the rule that Silo wins every conflict.
+- [FORK.md](../../FORK.md): fork provenance and merge policy.
+- [Docker deployment guide](overlays/wiki/deployment/docker.md): choosing and
+  pinning an image.
+- [Release versioning overlay](overlays/release-versioning.md): Bloem's image
+  tags, releases and deployment records.
+- [Developing Bloem Server](overlays/DEVELOPMENT.md): local test databases and
+  the checks to run before pushing.
+
+The pictures are SVG files under `docs/architecture/images/bloem-ci/`, drawn by
+`scripts/bloem/pictures/bloem_ci.py` through `scripts/bloem/draw-pictures.py`.
+Redraw them there, not by hand.

@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a folder of tracks becomes one audiobook</title>
+<desc id="d">Four steps from left to right: Bloem lists the whole folder of tracks; learns each track from the listing or by looking inside it once, keeping the answer; keeps the tracks waiting until the whole folder is listed; then publishes one audiobook with its tracks as parts in order. Below: a track that cannot be read holds back only its own book, and the book plays by direct play, one track at a time.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="659" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a folder of tracks becomes one audiobook</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Each folder that holds tracks is one book. Nothing is published until the whole folder is in.</text>
+<rect x="40" y="128" width="250" height="260" rx="14" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.5"/>
+<circle cx="66" cy="156" r="13" fill="#8B5CF6"/>
+<text x="66" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="56" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">List the folder</text>
+<text x="56" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Always in full.</text>
+<rect x="56" y="250" width="218" height="30" rx="8" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="1.2"/>
+<text x="70" y="270" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Track 1</text>
+<rect x="56" y="290" width="218" height="30" rx="8" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="1.2"/>
+<text x="70" y="310" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Track 2</text>
+<rect x="56" y="330" width="218" height="30" rx="8" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="1.2"/>
+<text x="70" y="350" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Track 3</text>
+<line x1="294" y1="258" x2="318" y2="258" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="322" y="128" width="270" height="260" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="348" cy="156" r="13" fill="#6366F1"/>
+<text x="348" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="338" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Learn each track</text>
+<text x="338" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">From the listing, when it gives</text>
+<text x="338" y="249" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the format and length. Otherwise</text>
+<text x="338" y="268" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem looks inside once and keeps</text>
+<text x="338" y="287" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the answer for next time.</text>
+<line x1="596" y1="258" x2="620" y2="258" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="624" y="128" width="250" height="260" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.5"/>
+<circle cx="650" cy="156" r="13" fill="#14B8A6"/>
+<text x="650" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="640" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Wait</text>
+<text x="640" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The tracks wait until every</text>
+<text x="640" y="249" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">page of the folder is listed.</text>
+<text x="640" y="268" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A scan that stops keeps them.</text>
+<line x1="878" y1="258" x2="902" y2="258" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="906" y="128" width="254" height="260" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="932" cy="156" r="13" fill="#10B981"/>
+<text x="932" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="922" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">One audiobook</text>
+<text x="922" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Parts in disc and track order.</text>
+<rect x="922" y="250" width="222" height="30" rx="8" fill="#FFFFFF" stroke="#6EE7B7" stroke-width="1.2"/>
+<text x="936" y="270" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Part 1</text>
+<rect x="922" y="290" width="222" height="30" rx="8" fill="#FFFFFF" stroke="#6EE7B7" stroke-width="1.2"/>
+<text x="936" y="310" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Part 2</text>
+<rect x="922" y="330" width="222" height="30" rx="8" fill="#FFFFFF" stroke="#6EE7B7" stroke-width="1.2"/>
+<text x="936" y="350" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Part 3</text>
+<rect x="40" y="420" width="552" height="196" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="62" y="454" font-size="16" font-weight="700" fill="#B45309" text-anchor="start">When a track cannot be read</text>
+<text x="62" y="482" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Only its own book is held back. The scan goes on, and a later scan</text>
+<text x="62" y="502" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">lists that book again.</text>
+<text x="62" y="548" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">If 32 books in a row have a track Bloem cannot read, the storage looks</text>
+<text x="62" y="568" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">gone: the scan stops and tries again later.</text>
+<rect x="624" y="420" width="536" height="196" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="646" y="454" font-size="16" font-weight="700" fill="#101827" text-anchor="start">How it plays</text>
+<circle cx="658" cy="487" r="10" fill="#10B981"/>
+<path d="M653.5,487.2 L657.0,490.8 L663.0,483.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="678" y="492" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Direct play, one track at a time</text>
+<circle cx="658" cy="519" r="10" fill="#10B981"/>
+<path d="M653.5,519.2 L657.0,522.8 L663.0,515.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="678" y="524" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">The app picks the track and start position</text>
+<circle cx="658" cy="551" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M653.5,546.5 L662.5,555.5 M662.5,546.5 L653.5,555.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="678" y="556" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">No converting or repackaging</text>
+<circle cx="658" cy="583" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M653.5,578.5 L662.5,587.5 M662.5,578.5 L653.5,587.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="678" y="588" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Not in Jellyfin or Audiobookshelf apps</text>
+</svg>

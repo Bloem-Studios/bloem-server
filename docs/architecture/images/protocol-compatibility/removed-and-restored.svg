@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="590" viewBox="0 0 1200 590" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Removed, then restored as Silo ships it</title>
+<desc id="d">A timeline. Before 13 October 2026 Bloem ran Jellyfin and Audiobookshelf compatibility with additions of its own: a gateway on the public port, companion-app enrollment and Live TV through Jellyfin. On 13 October Bloem removed both protocols, which needed 852 seams. On 18 October it brought back Silo's own servers, unchanged, on their own ports 8096 and 13378, and the seam list fell to 388. Bloem's own additions stayed out.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="589" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Removed, then restored as Silo ships it</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem now runs Silo's Jellyfin and Audiobookshelf servers unchanged, on their own ports.</text>
+<line x1="80" y1="170" x2="1120" y2="170" stroke="#9CA3AF" stroke-width="3"/>
+<circle cx="200" cy="170" r="11" fill="#9CA3AF"/>
+<text x="200" y="146" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Before 13 October</text>
+<circle cx="600" cy="170" r="11" fill="#EF4444"/>
+<text x="600" y="146" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">13 October 2026</text>
+<circle cx="1000" cy="170" r="11" fill="#10B981"/>
+<text x="1000" y="146" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">18 October 2026</text>
+<rect x="40" y="204" width="340" height="180" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="236" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's own version</text>
+<text x="58" y="260" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's compatibility code, plus three</text>
+<text x="58" y="280" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem additions: a gateway that served</text>
+<text x="58" y="300" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">both protocols on the public port,</text>
+<text x="58" y="320" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">enrollment for companion apps, and Live</text>
+<text x="58" y="340" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">TV through Jellyfin apps.</text>
+<rect x="430" y="204" width="340" height="180" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<text x="448" y="236" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Both protocols removed</text>
+<text x="448" y="260" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem took out Jellyfin and</text>
+<text x="448" y="280" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Audiobookshelf compatibility. Silo's</text>
+<text x="448" y="300" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">tables and settings stayed in the</text>
+<text x="448" y="320" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">database. Deleting Silo's code needed 852</text>
+<text x="448" y="340" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">seams, and every merge fought them.</text>
+<rect x="820" y="204" width="340" height="180" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="838" y="236" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's servers back</text>
+<text x="838" y="260" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's own Jellyfin and Audiobookshelf</text>
+<text x="838" y="280" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">servers, exactly as Silo ships them, each</text>
+<text x="838" y="300" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">on its own port. Bloem adds only the</text>
+<text x="838" y="320" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">organization wiring. The seam list fell</text>
+<text x="838" y="340" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">to 388.</text>
+<line x1="384" y1="294" x2="426" y2="294" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="774" y1="294" x2="816" y2="294" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="436" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Stayed out after 18 October</text>
+<circle cx="52" cy="470" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M47.05,465.05 L56.95,474.95 M56.95,465.05 L47.05,474.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="72" y="475" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">The gateway on the public port</text>
+<circle cx="422" cy="470" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M417.05,465.05 L426.95,474.95 M426.95,465.05 L417.05,474.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="442" y="475" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Companion-app enrollment</text>
+<circle cx="792" cy="470" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M787.05,465.05 L796.95,474.95 M796.95,465.05 L787.05,474.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="812" y="475" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Live TV through Jellyfin apps</text>
+<text x="40" y="546" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Jellyfin apps use port 8096 and Audiobookshelf apps port 13378 (JF_PORT and ABS_PORT move them). Neither is served on the public port.</text>
+</svg>

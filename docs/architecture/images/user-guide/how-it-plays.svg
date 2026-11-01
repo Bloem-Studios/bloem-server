@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a video reaches your screen</title>
+<desc id="d">The file on the server meets one question: can your device play it as it is, over this connection? Yes: it is sent unchanged (direct play). No: the server converts it as it plays (transcoding). Quality set to Auto picks the best the connection can carry.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="519" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a video reaches your screen</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The server decides for you each time you press play.</text>
+<rect x="40" y="170" width="260" height="130" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="58" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The file</text>
+<text x="58" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">One film or episode, saved in</text>
+<text x="58" y="246" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">whatever format it came in.</text>
+<line x1="304" y1="235" x2="356" y2="235" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="360" y="160" width="340" height="150" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="530" y="226" font-size="18" font-weight="700" fill="#101827" text-anchor="middle">Can your device play it as it</text>
+<text x="530" y="251" font-size="18" font-weight="700" fill="#101827" text-anchor="middle">is, over this connection?</text>
+<path d="M 704 210 L 740 210 L 740 182 L 776 182" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="712" y="196" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<path d="M 704 262 L 740 262 L 740 318 L 776 318" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="712" y="286" font-size="13" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="124" width="380" height="116" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="798" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Sent as it is</text>
+<text x="798" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Direct play: full quality, and little work for</text>
+<text x="798" y="200" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the server.</text>
+<rect x="780" y="260" width="380" height="130" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="798" y="292" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Converted as it plays</text>
+<text x="798" y="316" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Transcoding: for an unusual format or a</text>
+<text x="798" y="336" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">connection too slow for the original. Nothing for</text>
+<text x="798" y="356" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">you to do.</text>
+<rect x="40" y="420" width="1120" height="60" rx="12" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.5"/>
+<text x="60" y="455" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Quality → Auto picks the best your connection can carry. A film that looks softer away from home is the conversion adapting to the connection.</text>
+</svg>

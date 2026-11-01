@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Deleting an access group</title>
+<desc id="d">Before: the Teens group holds two profiles and one account. After deletion in Bloem, all three move to the organization's default group in one step and take its limits. In Silo, the account would be left in no group, which reads as no restrictions, so deleting a group would widen what it can reach.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="599" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Deleting an access group</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Its people move to the organization's default group. Deleting never widens access.</text>
+<text x="40" y="140" font-size="15" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="0.5">Before</text>
+<rect x="40" y="152" width="300" height="200" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="62" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Group: Teens</text>
+<rect x="62" y="208" width="256" height="36" rx="10" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="1.3"/>
+<text x="78" y="232" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Lee (profile)</text>
+<rect x="62" y="252" width="256" height="36" rx="10" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="1.3"/>
+<text x="78" y="276" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Sam's Kids (profile)</text>
+<rect x="62" y="296" width="256" height="36" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.3"/>
+<text x="78" y="320" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">sam@riverside.example</text>
+<line x1="346" y1="252" x2="410" y2="252" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="378" y="238" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">delete</text>
+<text x="420" y="140" font-size="15" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="0.5">In Bloem</text>
+<rect x="420" y="152" width="340" height="200" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="442" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Default group</text>
+<rect x="442" y="208" width="296" height="36" rx="10" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="1.3"/>
+<text x="458" y="232" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Lee (profile)</text>
+<rect x="442" y="252" width="296" height="36" rx="10" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="1.3"/>
+<text x="458" y="276" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">Sam's Kids (profile)</text>
+<rect x="442" y="296" width="296" height="36" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.3"/>
+<text x="458" y="320" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">sam@riverside.example</text>
+<circle cx="736" cy="176" r="12" fill="#10B981"/>
+<path d="M730.6,176.24 L734.8,180.56 L742.0,171.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="420" y="386" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">All three move in one step, with the default</text>
+<text x="420" y="406" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">group's limits. The default group itself cannot</text>
+<text x="420" y="426" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">be deleted.</text>
+<text x="820" y="140" font-size="15" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="0.5">In Silo, for comparison</text>
+<rect x="820" y="152" width="340" height="200" rx="16" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8" stroke-dasharray="6 5"/>
+<text x="842" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">No group</text>
+<rect x="842" y="208" width="296" height="36" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.3"/>
+<text x="858" y="232" font-size="14.5" font-weight="600" fill="#101827" text-anchor="start">sam@riverside.example</text>
+<circle cx="1136" cy="176" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M1130.6,170.6 L1141.4,181.4 M1141.4,170.6 L1130.6,181.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="820" y="386" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Silo leaves the group's accounts in no group,</text>
+<text x="820" y="406" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">which reads as “no restrictions”: deleting the</text>
+<text x="820" y="426" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">group would widen what they can reach.</text>
+<rect x="40" y="476" width="1120" height="84" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="64" y="508" font-size="17" font-weight="700" fill="#B91C1C" text-anchor="start">An administrative delete must never be a privilege grant.</text>
+<text x="64" y="536" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Bloem keeps this even though it differs from Silo. A merge from Silo must not undo it.</text>
+</svg>

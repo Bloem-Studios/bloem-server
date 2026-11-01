@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Two ways to invite someone</title>
+<desc id="d">Left: Silo's administrator invitation routes work only in the default organization; they can send the link by email or hand back a link, and only the server Owner may invite an administrator. Right: the organization console works in its own organization, invites ordinary users only, sends no email, and shows a one-time link that the administrator passes on. Bottom: both keep one live invitation per address in each organization; a new one replaces the old link, and an address that already has an account is refused.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="639" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Two ways to invite someone</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Every invitation belongs to one organization. Which routes made it decides which one.</text>
+<rect x="40" y="120" width="545" height="360" rx="16" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="64" y="156" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Silo's administrator routes</text>
+<text x="64" y="182" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#6B7280" text-anchor="start">/api/v2/admin/invitations (and /api/v1)</text>
+<rect x="64" y="198" width="210" height="26" rx="13.0" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.2"/>
+<text x="169.0" y="215.68" font-size="13" font-weight="600" fill="#075985" text-anchor="middle">Default organization only</text>
+<circle cx="76" cy="257" r="10" fill="#10B981"/>
+<path d="M71.5,257.2 L75.0,260.8 L81.0,253.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="96" y="262" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Lists, sends, resends, revokes and deletes the default</text>
+<text x="96" y="282" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">organization's invitations.</text>
+<circle cx="76" cy="311" r="10" fill="#10B981"/>
+<path d="M71.5,311.2 L75.0,314.8 L81.0,307.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="96" y="316" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Can email the link, or hand back a link to share.</text>
+<circle cx="76" cy="345" r="10" fill="#10B981"/>
+<path d="M71.5,345.2 L75.0,348.8 L81.0,341.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="96" y="350" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Can invite an administrator, but only the server Owner may.</text>
+<circle cx="76" cy="379" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M71.5,374.5 L80.5,383.5 M80.5,374.5 L71.5,383.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="96" y="384" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Does not see invitations made in an organization's console.</text>
+<rect x="615" y="120" width="545" height="360" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="639" y="156" font-size="19" font-weight="700" fill="#101827" text-anchor="start">The organization console</text>
+<text x="639" y="182" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#6B7280" text-anchor="start">/api/bloem/v1/admin/organization/invitations</text>
+<rect x="639" y="198" width="173" height="26" rx="13.0" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="725.5" y="215.68" font-size="13" font-weight="600" fill="#4338CA" text-anchor="middle">Its own organization</text>
+<circle cx="651" cy="257" r="10" fill="#10B981"/>
+<path d="M646.5,257.2 L650.0,260.8 L656.0,253.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="671" y="262" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Invites ordinary users only, never an administrator.</text>
+<circle cx="651" cy="291" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M646.5,286.5 L655.5,295.5 M655.5,286.5 L646.5,295.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="671" y="296" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Sends no email, even when the server can send mail.</text>
+<circle cx="651" cy="325" r="10" fill="#10B981"/>
+<path d="M646.5,325.2 L650.0,328.8 L656.0,321.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="671" y="330" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Shows a one-time link once; the administrator passes it on.</text>
+<circle cx="651" cy="359" r="10" fill="#10B981"/>
+<path d="M646.5,359.2 L650.0,362.8 L656.0,355.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="671" y="364" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Keeps the link out of the browser's caches and storage.</text>
+<text x="64" y="452" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">The new account joins</text>
+<rect x="232" y="433" width="203" height="26" rx="13.0" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.2"/>
+<text x="333.5" y="450.68" font-size="13" font-weight="600" fill="#075985" text-anchor="middle">the default organization</text>
+<text x="639" y="452" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">The new account joins</text>
+<rect x="807" y="433" width="218" height="26" rx="13.0" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="916.0" y="450.68" font-size="13" font-weight="600" fill="#4338CA" text-anchor="middle">the console's organization</text>
+<rect x="40" y="500" width="1120" height="100" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6"/>
+<text x="64" y="532" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Both</text>
+<text x="64" y="560" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">One live invitation per address in each organization: a new invitation or a resend replaces the old link, so a forwarded copy stops working. An</text>
+<text x="64" y="580" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">address that already has an account anywhere on the server is refused.</text>
+</svg>

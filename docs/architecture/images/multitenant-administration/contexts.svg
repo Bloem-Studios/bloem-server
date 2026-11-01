@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="752" viewBox="0 0 1200 752" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Two contexts in one admin console</title>
+<desc id="d">Four steps: an administrator signs in, chooses the Platform or one Organization context, gets a pass that lasts at most 15 minutes and is tied to that sign-in, and every request checks the pass again. Below, what each context manages, and the changes that end a pass.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="751" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Two contexts in one admin console</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">An administrator chooses which hat to wear. The console never mixes them.</text>
+<rect x="40" y="124" width="262" height="132" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="124" width="8" height="132" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="152" r="12" fill="#10B981"/>
+<text x="74" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="96" y="158" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Sign in</text>
+<text x="64" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">With the account's email and</text>
+<text x="64" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">password, as anywhere in Bloem.</text>
+<line x1="304" y1="190.0" x2="324" y2="190.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="326" y="124" width="262" height="132" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="326" y="124" width="8" height="132" rx="4" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<circle cx="360" cy="152" r="12" fill="#9CA3AF"/>
+<text x="360" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="382" y="158" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Choose a context</text>
+<text x="350" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Platform, or one organization</text>
+<text x="350" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the account administers.</text>
+<line x1="590" y1="190.0" x2="610" y2="190.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="612" y="124" width="262" height="132" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="612" y="124" width="8" height="132" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="646" cy="152" r="12" fill="#6366F1"/>
+<text x="646" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="668" y="158" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Get a pass</text>
+<text x="636" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">It names the context, lasts at</text>
+<text x="636" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">most 15 minutes and is tied to</text>
+<text x="636" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">that sign-in.</text>
+<line x1="876" y1="190.0" x2="896" y2="190.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="898" y="124" width="262" height="132" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="898" y="124" width="8" height="132" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<circle cx="932" cy="152" r="12" fill="#FA6400"/>
+<text x="932" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="954" y="158" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Every request checks</text>
+<text x="922" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The sign-in, the account, the</text>
+<text x="922" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">organization and the</text>
+<text x="922" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">membership, again.</text>
+<rect x="40" y="288" width="548" height="272" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="64" y="324" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Platform context</text>
+<text x="64" y="348" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">For platform administrators (the admin role).</text>
+<circle cx="74" cy="382" r="10" fill="#FA6400"/>
+<path d="M69.5,382.2 L73.0,385.8 L79.0,378.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="94" y="387" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Create, rename, suspend and reactivate organizations</text>
+<circle cx="74" cy="428" r="10" fill="#FA6400"/>
+<path d="M69.5,428.2 L73.0,431.8 L79.0,424.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="94" y="433" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Memberships, and ownership transfers (with a password)</text>
+<circle cx="74" cy="474" r="10" fill="#FA6400"/>
+<path d="M69.5,474.2 L73.0,477.8 L79.0,470.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="94" y="479" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Platform libraries and the grants made to each organization</text>
+<circle cx="74" cy="520" r="10" fill="#FA6400"/>
+<path d="M69.5,520.2 L73.0,523.8 L79.0,516.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="94" y="525" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Plans, reseller organizations, domains and branding</text>
+<rect x="612" y="288" width="548" height="272" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="636" y="324" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Organization context</text>
+<text x="636" y="348" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">For one organization's administrators. Only that organization.</text>
+<circle cx="646" cy="382" r="10" fill="#6366F1"/>
+<path d="M641.5,382.2 L645.0,385.8 L651.0,378.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="666" y="387" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">People, their profiles and access groups</text>
+<circle cx="646" cy="428" r="10" fill="#6366F1"/>
+<path d="M641.5,428.2 L645.0,431.8 L651.0,424.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="666" y="433" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Its own libraries, and grants already made to it</text>
+<circle cx="646" cy="474" r="10" fill="#6366F1"/>
+<path d="M641.5,474.2 L645.0,477.8 L651.0,470.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="666" y="479" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Invitations, recorded activity and policy explanations</text>
+<circle cx="646" cy="520" r="10" fill="#6366F1"/>
+<path d="M641.5,520.2 L645.0,523.8 L651.0,516.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="666" y="525" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Bulk changes, with exact counts of what changed</text>
+<rect x="40" y="584" width="1120" height="128" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="64" y="616" font-size="17" font-weight="700" fill="#B91C1C" text-anchor="start">A pass stops working at once when</text>
+<circle cx="74" cy="643" r="9" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M69.95,638.95 L78.05,647.05 M78.05,638.95 L69.95,647.05" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="94" y="648" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">the sign-in ends, expires or is revoked</text>
+<circle cx="634" cy="643" r="9" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M629.95,638.95 L638.05,647.05 M638.05,638.95 L629.95,647.05" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="654" y="648" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">the organization or membership is suspended</text>
+<circle cx="74" cy="677" r="9" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M69.95,672.95 L78.05,681.05 M78.05,672.95 L69.95,681.05" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="94" y="682" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">the account is disabled or replaced</text>
+<circle cx="634" cy="677" r="9" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M629.95,672.95 L638.05,681.05 M638.05,672.95 L629.95,681.05" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="654" y="682" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">ownership changes, or a revision moves on</text>
+</svg>

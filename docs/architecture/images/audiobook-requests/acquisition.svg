@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How an approved audiobook is fetched</title>
+<desc id="d">Five steps: the request is approved, Bloem hands it to the audiobook service, the service searches and downloads, Bloem checks on it every five minutes, and after the library scan Bloem matches the book. Six cards below show what can hold a request up and what happens then.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="749" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How an approved audiobook is fetched</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem keeps the request and its count. The audiobook service does the searching and downloading.</text>
+<rect x="40" y="128" width="204" height="236" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<circle cx="66" cy="156" r="13" fill="#F59E0B"/>
+<text x="66" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="56" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Approve</text>
+<text x="56" y="231" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Automatically, or by an</text>
+<text x="56" y="249" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">administrator of the</text>
+<text x="56" y="267" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">organization.</text>
+<line x1="247" y1="246.0" x2="266" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="269" y="128" width="204" height="236" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="295" cy="156" r="13" fill="#6366F1"/>
+<text x="295" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="285" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Hand over</text>
+<text x="285" y="231" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem notes the hand-over</text>
+<text x="285" y="249" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">first, then passes the</text>
+<text x="285" y="267" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">request on. It never</text>
+<text x="285" y="285" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">sends the same request</text>
+<text x="285" y="303" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">twice.</text>
+<line x1="476" y1="246.0" x2="495" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="498" y="128" width="204" height="236" rx="14" fill="#FFF7ED" stroke="#EA580C" stroke-width="1.5"/>
+<circle cx="524" cy="156" r="13" fill="#EA580C"/>
+<text x="524" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="514" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Search and download</text>
+<text x="514" y="231" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The service finds a</text>
+<text x="514" y="249" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">release, can ask an AI</text>
+<text x="514" y="267" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">model to check it, and</text>
+<text x="514" y="285" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">starts the download</text>
+<text x="514" y="303" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">client.</text>
+<line x1="705" y1="246.0" x2="724" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="727" y="128" width="204" height="236" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.5"/>
+<circle cx="753" cy="156" r="13" fill="#9CA3AF"/>
+<text x="753" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="743" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Check on it</text>
+<text x="743" y="231" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Every five minutes Bloem</text>
+<text x="743" y="249" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">asks the service how the</text>
+<text x="743" y="267" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">download is going.</text>
+<line x1="934" y1="246.0" x2="953" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="956" y="128" width="204" height="236" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="982" cy="156" r="13" fill="#10B981"/>
+<text x="982" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="972" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Match in the</text>
+<text x="972" y="223" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">library</text>
+<text x="972" y="252" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">After the library scan,</text>
+<text x="972" y="270" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem matches the book by</text>
+<text x="972" y="288" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">its ISBN or ASIN, or as</text>
+<text x="972" y="306" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">the one new book in the</text>
+<text x="972" y="324" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">download folder.</text>
+<text x="40" y="412" font-size="18" font-weight="700" fill="#101827" text-anchor="start">What can hold it up</text>
+<rect x="40" y="432" width="360" height="122" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="432" width="6" height="122" rx="3" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<text x="64" y="464" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Nothing suitable found</text>
+<text x="64" y="490" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Searched again every six hours. It stops</text>
+<text x="64" y="509" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">after seven days.</text>
+<rect x="420" y="432" width="360" height="122" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="420" y="432" width="6" height="122" rx="3" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<text x="444" y="464" font-size="16" font-weight="700" fill="#101827" text-anchor="start">A source is down</text>
+<text x="444" y="490" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Tried again after 30 minutes.</text>
+<rect x="800" y="432" width="360" height="122" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="800" y="432" width="6" height="122" rx="3" fill="#F59E0B" stroke="none" stroke-width="1.5"/>
+<text x="824" y="464" font-size="16" font-weight="700" fill="#101827" text-anchor="start">A person needs to look</text>
+<text x="824" y="490" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Held for an administrator, who approves</text>
+<text x="824" y="509" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">another candidate or accepts the download.</text>
+<rect x="40" y="570" width="360" height="122" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="570" width="6" height="122" rx="3" fill="#F59E0B" stroke="none" stroke-width="1.5"/>
+<text x="64" y="602" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The download client is offline</text>
+<text x="64" y="628" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The request keeps waiting and is never</text>
+<text x="64" y="647" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">reported lost. After an hour it shows as</text>
+<text x="64" y="666" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">unreachable.</text>
+<rect x="420" y="570" width="360" height="122" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="420" y="570" width="6" height="122" rx="3" fill="#EF4444" stroke="none" stroke-width="1.5"/>
+<text x="444" y="602" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The download has gone</text>
+<text x="444" y="628" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">After five uncertain checks it is reported</text>
+<text x="444" y="647" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">lost. A retry starts a new search.</text>
+<rect x="800" y="570" width="360" height="122" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="800" y="570" width="6" height="122" rx="3" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<text x="824" y="602" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Withdrawn in Bloem</text>
+<text x="824" y="628" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The request ends in Bloem. A download that</text>
+<text x="824" y="647" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">already started is not cancelled.</text>
+<text x="40" y="722" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Without a connected service, an approved request waits for an administrator to add the book by hand.</text>
+</svg>

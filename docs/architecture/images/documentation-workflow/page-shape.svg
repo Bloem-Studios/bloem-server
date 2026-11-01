@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="884" viewBox="0 0 1200 884" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">The shape of a Bloem page</title>
+<desc id="d">A page drawn as eight stacked parts: the title, the provenance note, one paragraph on what the page walks through, the plain sections with pictures, a made-up example, the who-can-change-what table, the words-used-in-the-code table, and the For developers section. Brackets on the right group them: the opening, the plain part for every reader, the bridge to the code, and everything technical.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="883" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">The shape of a Bloem page</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The same eight parts, in the same order, on every page. Plain first, technical last.</text>
+<rect x="40" y="120" width="640" height="724" rx="16" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.5"/>
+<rect x="60" y="140" width="600" height="50" rx="10" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.4"/>
+<circle cx="86" cy="165.0" r="12" fill="#9CA3AF"/>
+<text x="86" y="170.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="110" y="171.0" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Title</text>
+<text x="644" y="170.0" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="end">“How X works”</text>
+<rect x="60" y="204" width="600" height="58" rx="10" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.4"/>
+<circle cx="86" cy="233.0" r="12" fill="#9CA3AF"/>
+<text x="86" y="238.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="110" y="239.0" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Provenance and status</text>
+<text x="644" y="238.0" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="end">Date, commit, Bloem or Silo</text>
+<rect x="60" y="276" width="600" height="50" rx="10" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.4"/>
+<circle cx="86" cy="301.0" r="12" fill="#9CA3AF"/>
+<text x="86" y="306.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="110" y="307.0" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">What this page walks through</text>
+<text x="644" y="306.0" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="end">One short paragraph</text>
+<rect x="60" y="340" width="600" height="150" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.4"/>
+<circle cx="86" cy="369.0" r="12" fill="#10B981"/>
+<text x="86" y="374.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="110" y="375.0" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Plain sections, with pictures</text>
+<text x="644" y="374.0" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="end">Short sentences, bold new terms</text>
+<rect x="110" y="404" width="220" height="70" rx="8" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="220" y="444" font-size="13.5" font-weight="600" fill="#047857" text-anchor="middle">a picture</text>
+<text x="352" y="432" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Where a picture explains</text>
+<text x="352" y="451" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">better than words.</text>
+<rect x="60" y="504" width="600" height="56" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.4"/>
+<circle cx="86" cy="532.0" r="12" fill="#10B981"/>
+<text x="86" y="537.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="110" y="538.0" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">A made-up example</text>
+<text x="644" y="537.0" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="end">“This example is made up.”</text>
+<rect x="60" y="574" width="600" height="56" rx="10" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.4"/>
+<circle cx="86" cy="602.0" r="12" fill="#14B8A6"/>
+<text x="86" y="607.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="110" y="608.0" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Who can change what</text>
+<text x="644" y="607.0" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="end">When roles are involved</text>
+<rect x="60" y="644" width="600" height="56" rx="10" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.4"/>
+<circle cx="86" cy="672.0" r="12" fill="#14B8A6"/>
+<text x="86" y="677.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+<text x="110" y="678.0" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Words used in the code</text>
+<text x="644" y="677.0" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="end">Plain words → the code's words</text>
+<rect x="60" y="714" width="600" height="110" rx="10" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.4"/>
+<circle cx="86" cy="743.0" r="12" fill="#6366F1"/>
+<text x="86" y="748.0" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">8</text>
+<text x="110" y="749.0" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">For developers</text>
+<text x="644" y="748.0" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="end">Every rule, setting and test name</text>
+<text x="110" y="788" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">API links, then the technical rules, then the</text>
+<text x="110" y="807" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">related technical pages.</text>
+<path d="M700,144 L716,144 L716,322 L700,322" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linejoin="round"/>
+<line x1="716" y1="233.0" x2="734" y2="233.0" stroke="#9CA3AF" stroke-width="2.5"/>
+<text x="748" y="229.0" font-size="17" font-weight="700" fill="#374151" text-anchor="start">The opening</text>
+<text x="748" y="253.0" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">What this is, where it came from, what follows.</text>
+<path d="M700,344 L716,344 L716,556 L700,556" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linejoin="round"/>
+<line x1="716" y1="450.0" x2="734" y2="450.0" stroke="#10B981" stroke-width="2.5"/>
+<text x="748" y="446.0" font-size="17" font-weight="700" fill="#047857" text-anchor="start">For every reader</text>
+<text x="748" y="470.0" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">No code needed. Pictures carry the hard parts.</text>
+<path d="M700,578 L716,578 L716,696 L700,696" fill="none" stroke="#14B8A6" stroke-width="2.5" stroke-linejoin="round"/>
+<line x1="716" y1="637.0" x2="734" y2="637.0" stroke="#14B8A6" stroke-width="2.5"/>
+<text x="748" y="633.0" font-size="17" font-weight="700" fill="#0F766E" text-anchor="start">The bridge</text>
+<text x="748" y="657.0" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">From the page's plain words to the code's words.</text>
+<path d="M700,718 L716,718 L716,820 L700,820" fill="none" stroke="#6366F1" stroke-width="2.5" stroke-linejoin="round"/>
+<line x1="716" y1="769.0" x2="734" y2="769.0" stroke="#6366F1" stroke-width="2.5"/>
+<text x="748" y="765.0" font-size="17" font-weight="700" fill="#4338CA" text-anchor="start">For people who change the code</text>
+<text x="748" y="789.0" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Loses nothing the old page said that is still true.</text>
+</svg>

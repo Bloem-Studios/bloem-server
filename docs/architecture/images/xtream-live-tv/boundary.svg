@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What Bloem asks an Xtream provider for</title>
+<desc id="d">Bloem keeps the provider's username and password encrypted and makes only four fixed requests: sign in with player_api.php, list live channels with get_live_streams, fetch the guide with xmltv.php, and open one live .ts stream. It refuses redirects, films and series, the provider's own stream and artwork addresses, and local or cloud-metadata addresses. Inside Bloem, the video encoder reads a pipe, never an address with the password in it.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="759" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What Bloem asks an Xtream provider for</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Four fixed requests, live channels only. The password never leaves the server's own requests.</text>
+<rect x="40" y="124" width="360" height="420" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="220" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="middle">Bloem server</text>
+<rect x="60" y="180" width="320" height="108" rx="12" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.4"/>
+<text x="78" y="210" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Encrypted account</text>
+<text x="78" y="236" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Username and password, encrypted</text>
+<text x="78" y="255" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">together with the server's secret key.</text>
+<rect x="60" y="298" width="320" height="108" rx="12" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.4"/>
+<text x="78" y="328" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Channels</text>
+<text x="78" y="354" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each keeps a reference only the server</text>
+<text x="78" y="373" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">can use.</text>
+<rect x="60" y="416" width="320" height="108" rx="12" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.4"/>
+<text x="78" y="446" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Video encoder</text>
+<text x="78" y="472" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Reads a pipe that Bloem feeds, never the</text>
+<text x="78" y="491" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">provider's address.</text>
+<text x="440" y="146" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The only requests</text>
+<rect x="440" y="162" width="320" height="70" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<text x="460" y="192" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" font-weight="600" fill="#101827">player_api.php</text>
+<text x="460" y="216" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">sign in</text>
+<line x1="404" y1="197" x2="436" y2="197" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="764" y1="197" x2="796" y2="197" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="440" y="244" width="320" height="70" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<text x="460" y="274" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" font-weight="600" fill="#101827">get_live_streams</text>
+<text x="460" y="298" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the live channel list</text>
+<line x1="404" y1="279" x2="436" y2="279" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="764" y1="279" x2="796" y2="279" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="440" y="326" width="320" height="70" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<text x="460" y="356" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" font-weight="600" fill="#101827">xmltv.php</text>
+<text x="460" y="380" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the programme guide</text>
+<line x1="404" y1="361" x2="436" y2="361" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="764" y1="361" x2="796" y2="361" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="440" y="408" width="320" height="70" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<text x="460" y="438" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" font-weight="600" fill="#101827">a live .ts stream</text>
+<text x="460" y="462" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">one channel, as it airs</text>
+<line x1="404" y1="443" x2="436" y2="443" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="764" y1="443" x2="796" y2="443" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="800" y="124" width="360" height="420" rx="16" fill="#FDF2F8" stroke="#DB2777" stroke-width="2"/>
+<text x="980" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="middle">Xtream provider</text>
+<text x="822" y="196" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">A paid IPTV service on the internet. It</text>
+<text x="822" y="216" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">sees the username and password in Bloem's</text>
+<text x="822" y="236" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">requests, as it must. Prefer HTTPS: over</text>
+<text x="822" y="256" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">plain HTTP they travel unencrypted.</text>
+<text x="822" y="330" font-size="15" font-weight="700" fill="#101827" text-anchor="start">Bloem takes from it:</text>
+<circle cx="834" cy="360" r="10" fill="#10B981"/>
+<path d="M829.5,360.2 L833.0,363.8 L839.0,356.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="852" y="365" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">live channels</text>
+<circle cx="834" cy="394" r="10" fill="#10B981"/>
+<path d="M829.5,394.2 L833.0,397.8 L839.0,390.5" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="852" y="399" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">its guide</text>
+<circle cx="834" cy="428" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M829.5,423.5 L838.5,432.5 M838.5,423.5 L829.5,432.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="852" y="433" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">films and series</text>
+<circle cx="834" cy="462" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M829.5,457.5 L838.5,466.5 M838.5,457.5 L829.5,466.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="852" y="467" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">its stream and artwork addresses</text>
+<text x="40" y="590" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Always refused</text>
+<rect x="40" y="606" width="360" height="56" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.4"/>
+<circle cx="66" cy="634" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M61.5,629.5 L70.5,638.5 M70.5,629.5 L61.5,638.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="86" y="639" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Any redirect, even on the same host</text>
+<rect x="420" y="606" width="360" height="56" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.4"/>
+<circle cx="446" cy="634" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M441.5,629.5 L450.5,638.5 M450.5,629.5 L441.5,638.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="466" y="639" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Local and cloud-metadata addresses</text>
+<rect x="800" y="606" width="360" height="56" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.4"/>
+<circle cx="826" cy="634" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M821.5,629.5 L830.5,638.5 M830.5,629.5 L821.5,638.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="846" y="639" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Playlists, text or JSON instead of video</text>
+<text x="40" y="716" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The password appears in no public answer, stored channel address, log or encoder command.</text>
+</svg>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a Bloem commit reaches production</title>
+<desc id="d">A commit on main either passes Bloem CI, after which Bloem Image publishes an image tagged with the full commit SHA and moves latest while the commit is still main's newest, or, when the owner asks, is built locally from a git archive of the exact commit with the same build arguments. Either way production runs the image as bloem-server:release-short-sha, and a dated record names the commit, the Silo revision and the image digest. Below: Silo's own tags, build-N, latest and the full SHA, belong to Silo's all-in-one image and are not published for Bloem.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="659" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a Bloem commit reaches production</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">One image per commit, named by the commit. A dated record says what ran.</text>
+<rect x="40" y="170" width="200" height="190" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">A commit on main</text>
+<text x="58" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The source an image is</text>
+<text x="58" y="246" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">built from, with the</text>
+<text x="58" y="266" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo revision it</text>
+<text x="58" y="286" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">includes.</text>
+<line x1="244" y1="230" x2="296" y2="200" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="300" y="124" width="260" height="140" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="318" y="156" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Bloem CI, then Bloem Image</text>
+<text x="318" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Only after CI passes on a push</text>
+<text x="318" y="200" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">to main.</text>
+<line x1="564" y1="194" x2="600" y2="194" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="604" y="124" width="300" height="140" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="624" y="156" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Published</text>
+<text x="624" y="184" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#101827" text-anchor="start">bloem-server:&lt;full SHA&gt;</text>
+<text x="624" y="206" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#101827" text-anchor="start">bloem-server:latest</text>
+<text x="624" y="236" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">latest: only while the commit</text>
+<text x="624" y="254" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">is still main's newest</text>
+<line x1="244" y1="310" x2="296" y2="340" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="300" y="290" width="604" height="112" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="318" y="322" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Built locally, when the owner asks</text>
+<text x="318" y="346" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">From a git archive of the exact commit, with Bloem Image's build arguments,</text>
+<text x="318" y="366" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">without waiting for CI. Most deployments since October 28 were built this way.</text>
+<path d="M908,194 L924,194 L924,256 L940,256" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M908,346 L924,346 L924,300 L940,300" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="944" y="214" width="216" height="136" rx="16" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="1052" y="248" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">Production</text>
+<text x="1052" y="280" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E5E7EB" text-anchor="middle">bloem-server:</text>
+<text x="1052" y="300" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E5E7EB" text-anchor="middle">release-&lt;short SHA&gt;</text>
+<line x1="1052" y1="354" x2="1052" y2="446" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="904" y="450" width="256" height="92" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.6"/>
+<text x="924" y="480" font-size="16" font-weight="700" fill="#101827" text-anchor="start">A dated record</text>
+<text x="924" y="504" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Commit, Silo revision,</text>
+<text x="924" y="522" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">image digest, checks.</text>
+<rect x="40" y="470" width="820" height="104" rx="14" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.6"/>
+<circle cx="70" cy="506" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M64.6,500.6 L75.4,511.4 M75.4,500.6 L64.6,511.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="94" y="512" font-size="16" font-weight="700" fill="#075985" text-anchor="start">Not published for Bloem</text>
+<text x="64" y="542" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's tags build-N, latest and the full SHA name Silo's all-in-one image, with PostgreSQL, Redis and</text>
+<text x="64" y="561" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Meilisearch inside. Bloem's image is the server alone.</text>
+<text x="40" y="622" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Bloem has one prerelease, v0.1.0-bloem.20261011.1. Releases are not how a deployment is identified: its commit is.</text>
+</svg>

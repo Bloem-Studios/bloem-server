@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What a Bloem installation runs</title>
+<desc id="d">People and apps reach a reverse proxy that holds the HTTPS certificates. The proxy passes them to the Bloem container, which has a main address on port 8090 and separate ports for Jellyfin apps (8096) and Audiobookshelf apps (13378). Bloem uses PostgreSQL, Redis, an optional Meilisearch, the media folder read-only and a data folder on the host.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="739" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What a Bloem installation runs</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">One Compose file starts Bloem, PostgreSQL and Redis. Only the reverse proxy faces the internet.</text>
+<rect x="40" y="150" width="220" height="300" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="184" font-size="17" font-weight="700" fill="#101827" text-anchor="start">People and apps</text>
+<text x="60" y="216" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Web browser</text>
+<text x="60" y="246" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Bloem's apps</text>
+<text x="60" y="276" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Silo's apps</text>
+<text x="60" y="306" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Jellyfin apps</text>
+<text x="60" y="336" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Audiobookshelf apps</text>
+<text x="60" y="376" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Over the internet or the</text>
+<text x="60" y="395" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">home network.</text>
+<line x1="264" y1="300" x2="296" y2="300" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="300" y="206" width="220" height="188" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="318" y="238" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Reverse proxy</text>
+<text x="318" y="262" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Holds the HTTPS</text>
+<text x="318" y="282" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">certificates. Passes on</text>
+<text x="318" y="302" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the domain each visitor</text>
+<text x="318" y="322" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">asked for. Listed as a</text>
+<text x="318" y="342" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">trusted proxy in Bloem.</text>
+<line x1="524" y1="300" x2="556" y2="300" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="560" y="130" width="300" height="494" rx="18" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="710" y="166" font-size="20" font-weight="700" fill="#101827" text-anchor="middle">Bloem container</text>
+<text x="710" y="190" font-size="13.5" font-weight="normal" fill="#6B7280" text-anchor="middle">MODE integrated</text>
+<rect x="584" y="212" width="252" height="72" rx="12" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.6"/>
+<text x="710" y="242" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Main address</text>
+<text x="710" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">port 8090: web app and APIs</text>
+<rect x="584" y="300" width="252" height="72" rx="12" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.6"/>
+<text x="710" y="330" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Jellyfin apps</text>
+<text x="710" y="354" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">port 8096, when allowed</text>
+<rect x="584" y="388" width="252" height="72" rx="12" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.6"/>
+<text x="710" y="418" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Audiobookshelf apps</text>
+<text x="710" y="442" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="middle">port 13378, when allowed</text>
+<text x="584" y="492" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Inside: the API, the web app,</text>
+<text x="584" y="512" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">scanners, background workers and</text>
+<text x="584" y="532" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">FFmpeg for video conversion.</text>
+<rect x="900" y="130" width="260" height="96" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="918" y="160" font-size="16" font-weight="700" fill="#101827" text-anchor="start">PostgreSQL 18</text>
+<text x="918" y="184" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Everything that must last. Host</text>
+<text x="918" y="202" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">port on 127.0.0.1 only.</text>
+<line x1="864" y1="178.0" x2="896" y2="178.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="900" y="238" width="260" height="96" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="918" y="268" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Redis</text>
+<text x="918" y="292" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Coordination and caches. Host</text>
+<text x="918" y="310" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">port on 127.0.0.1 only.</text>
+<line x1="864" y1="286.0" x2="896" y2="286.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="900" y="346" width="260" height="78" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="918" y="376" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Meilisearch</text>
+<text x="918" y="400" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Optional search engine.</text>
+<line x1="864" y1="385.0" x2="896" y2="385.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="900" y="436" width="260" height="78" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.6"/>
+<text x="918" y="466" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Media folder</text>
+<text x="918" y="490" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Read-only inside the container.</text>
+<line x1="864" y1="475.0" x2="896" y2="475.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="900" y="526" width="260" height="96" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.6"/>
+<text x="918" y="556" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Data folder</text>
+<text x="918" y="580" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Under /opt/silo unless you choose</text>
+<text x="918" y="598" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">another place.</text>
+<line x1="864" y1="574.0" x2="896" y2="574.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="690" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Keep SECRET_KEY secret and back it up apart from the database. It unlocks every password and key Bloem stores; without it they cannot be recovered.</text>
+</svg>

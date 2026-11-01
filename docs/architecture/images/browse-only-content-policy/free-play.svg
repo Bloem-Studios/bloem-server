@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Free play: how the seconds are counted</title>
+<desc id="d">Three timelines. While watching, each piece of video charges the seconds since the piece before. After a ten-minute pause, the next piece charges at most 20 seconds. With two tabs on one allowance, pieces from both tabs are charged once by the clock. A bar shows an allowance running down to zero, when the video stops.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="659" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Free play: how the seconds are counted</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Each piece of video charges the time since the piece before, never more than 20 seconds.</text>
+<rect x="40" y="124" width="360" height="250" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Watching</text>
+<text x="60" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Pieces arrive every 6 seconds; each charges</text>
+<text x="60" y="203" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">6.</text>
+<line x1="60" y1="284" x2="380" y2="284" stroke="#D1D5DB" stroke-width="2"/>
+<text x="380" y="310" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="end">time</text>
+<rect x="76" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<rect x="120" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="133" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+6</text>
+<rect x="164" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="177" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+6</text>
+<rect x="208" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="221" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+6</text>
+<rect x="252" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="265" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+6</text>
+<rect x="296" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="309" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+6</text>
+<rect x="340" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="353" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+6</text>
+<rect x="60" y="328" width="87" height="25.5" rx="12.75" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="103.5" y="345.25" font-size="12.5" font-weight="600" fill="#047857" text-anchor="middle">real time</text>
+<rect x="420" y="124" width="360" height="250" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="440" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Paused for ten minutes</text>
+<text x="440" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The first piece after the pause charges 20,</text>
+<text x="440" y="203" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">not 600.</text>
+<line x1="440" y1="284" x2="760" y2="284" stroke="#D1D5DB" stroke-width="2"/>
+<text x="760" y="310" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="end">time</text>
+<rect x="456" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<rect x="500" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="526" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+6</text>
+<rect x="540" y="264" width="140" height="18" rx="4" fill="#F9FAFB" stroke="#D1D5DB" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="610" y="277" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="middle">paused</text>
+<rect x="694" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<rect x="726" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="707" y="254" font-size="12" font-weight="700" fill="#B45309" text-anchor="middle">+20</text>
+<text x="739" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+6</text>
+<rect x="440" y="328" width="152" height="25.5" rx="12.75" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.2"/>
+<text x="516.0" y="345.25" font-size="12.5" font-weight="600" fill="#B45309" text-anchor="middle">at most 20 seconds</text>
+<rect x="800" y="124" width="360" height="250" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="820" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Two tabs, one allowance</text>
+<text x="820" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Pieces from both tabs are charged by the</text>
+<text x="820" y="203" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">clock, once.</text>
+<line x1="820" y1="284" x2="1140" y2="284" stroke="#D1D5DB" stroke-width="2"/>
+<text x="1140" y="310" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="end">time</text>
+<rect x="836" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<rect x="880" y="262" width="26" height="22" rx="4" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="893" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+3</text>
+<rect x="924" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="937" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+3</text>
+<rect x="968" y="262" width="26" height="22" rx="4" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="981" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+3</text>
+<rect x="1012" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="1025" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+3</text>
+<rect x="1056" y="262" width="26" height="22" rx="4" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="1069" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+3</text>
+<rect x="1100" y="262" width="26" height="22" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="1113" y="254" font-size="12" font-weight="600" fill="#047857" text-anchor="middle">+3</text>
+<text x="836" y="310" font-size="12" font-weight="normal" fill="#6B7280" text-anchor="start">tab 1 and tab 2</text>
+<rect x="820" y="328" width="87" height="25.5" rx="12.75" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="863.5" y="345.25" font-size="12.5" font-weight="600" fill="#047857" text-anchor="middle">paid once</text>
+<text x="40" y="418" font-size="18" font-weight="700" fill="#101827" text-anchor="start">One allowance, running down</text>
+<rect x="40" y="440" width="1120" height="40" rx="10" fill="#F3F4F6" stroke="#D1D5DB" stroke-width="1.2"/>
+<rect x="40" y="440" width="672.0" height="40" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="58" y="466" font-size="14.5" font-weight="700" fill="#047857" text-anchor="start">Used: 18 minutes</text>
+<text x="1142" y="466" font-size="14.5" font-weight="700" fill="#101827" text-anchor="end">Left: 12 minutes of 30</text>
+<rect x="40" y="504" width="360" height="104" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="504" width="6" height="104" rx="3" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<text x="62" y="534" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Set once</text>
+<text x="62" y="560" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The storefront signs an allowance of one minute</text>
+<text x="62" y="578" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">to four hours. A later link cannot add time.</text>
+<rect x="420" y="504" width="360" height="104" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="420" y="504" width="6" height="104" rx="3" fill="#F59E0B" stroke="none" stroke-width="1.5"/>
+<text x="442" y="534" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Shown to the visitor</text>
+<text x="442" y="560" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The web app shows what is left and checks every</text>
+<text x="442" y="578" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">30 seconds.</text>
+<rect x="800" y="504" width="360" height="104" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="800" y="504" width="6" height="104" rx="3" fill="#EF4444" stroke="none" stroke-width="1.5"/>
+<text x="822" y="534" font-size="16" font-weight="700" fill="#101827" text-anchor="start">At zero</text>
+<text x="822" y="560" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The video stops and the dialog says the free</text>
+<text x="822" y="578" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">time has ended.</text>
+<text x="40" y="640" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Free play is off until a platform administrator switches it on. By default 20 allowances can stream at once.</text>
+</svg>

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Two ways Bloem changes what Silo does</title>
+<desc id="d">Left, the preferred way: an adapter, a Bloem-owned wrapper with the same shape as Silo's code, sits between Silo's caller and Silo's unchanged code, and no Silo file changes. Right, when there is no other way: a seam, one hook line in a Silo file that calls Bloem's code in a file of its own. Every seam is listed in contracts/seams.txt, and the list may only get shorter.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="719" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Two ways Bloem changes what Silo does</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem prefers a wrapper around Silo's code. When it must touch a Silo file, it adds one hook line.</text>
+<rect x="40" y="124" width="540" height="500" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="70" cy="160" r="12" fill="#10B981"/>
+<path d="M64.6,160.24 L68.8,164.56 L76.0,155.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="92" y="166" font-size="20" font-weight="700" fill="#101827" text-anchor="start">An adapter</text>
+<text x="64" y="194" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Preferred. No Silo file changes.</text>
+<rect x="64" y="220" width="492" height="82" rx="14" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="82" y="252" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's caller</text>
+<text x="82" y="276" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Calls the function it always called.</text>
+<line x1="310" y1="304" x2="310" y2="336" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="64" y="340" width="492" height="104" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="82" y="372" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's wrapper, in a bloem_* file</text>
+<text x="82" y="396" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Same name and shape as Silo's. Adds Bloem's check, such as the</text>
+<text x="82" y="416" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">viewer's organization, then calls Silo.</text>
+<line x1="310" y1="446" x2="310" y2="478" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="64" y="482" width="492" height="82" rx="14" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="82" y="514" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's code</text>
+<text x="82" y="538" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Exactly as Silo wrote it.</text>
+<text x="64" y="598" font-size="13.5" font-weight="normal" fill="#6B7280" text-anchor="start">Example: migrations.BloemFS wraps Silo's migration files.</text>
+<rect x="620" y="124" width="540" height="500" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="650" cy="160" r="12" fill="#F59E0B"/>
+<text x="650" y="165" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">!</text>
+<text x="672" y="166" font-size="20" font-weight="700" fill="#101827" text-anchor="start">A seam</text>
+<text x="644" y="194" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Only when no wrapper can do it.</text>
+<text x="644" y="230" font-size="14" font-weight="700" fill="#075985" text-anchor="start">internal/access/group_store.go, a Silo file</text>
+<rect x="644" y="242" width="492" height="170" rx="12" fill="#0F172A" stroke="none" stroke-width="1.5"/>
+<text x="664" y="272" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" fill="#7DD3FC" xml:space="preserve">func groupPolicyForUser(ctx, db, userID) {</text>
+<text x="664" y="298" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" fill="#FDBA74" xml:space="preserve">    // Bloem: groups are organization-owned</text>
+<text x="664" y="324" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" fill="#FDBA74" xml:space="preserve">    return bloemAccountGroupPolicy(</text>
+<text x="664" y="350" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" fill="#FDBA74" xml:space="preserve">        ctx, db, userID)</text>
+<text x="664" y="376" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13.5" fill="#7DD3FC" xml:space="preserve">}</text>
+<line x1="890" y1="416" x2="890" y2="448" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="644" y="452" width="492" height="82" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="662" y="484" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's code, in a bloem_* file</text>
+<text x="662" y="508" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Everything the hook needs lives here.</text>
+<rect x="644" y="552" width="14" height="14" rx="3" fill="#FDBA74" stroke="none" stroke-width="1.5"/>
+<text x="666" y="564" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's hook</text>
+<rect x="790" y="552" width="14" height="14" rx="3" fill="#7DD3FC" stroke="none" stroke-width="1.5"/>
+<text x="812" y="564" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's lines, exactly</text>
+<text x="644" y="598" font-size="13.5" font-weight="normal" fill="#6B7280" text-anchor="start">Listed in contracts/seams.txt: 304 on 1 November 2026.</text>
+<text x="40" y="676" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Each seam conflicts again whenever Silo changes that file. The seam list may only get shorter, and adding a seam is a reviewed decision.</text>
+</svg>

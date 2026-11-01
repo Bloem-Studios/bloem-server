@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="636" viewBox="0 0 1200 636" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">An ebook request, from ISBN to book</title>
+<desc id="d">Six steps: a profile in the default organization asks by ISBN, an administrator approves, Bloem hands the request to Bookwarehouse through a connection linked to a library, Bookwarehouse prepares it while Bloem checks every five minutes, the request waits for the library scan, and it is done when an EPUB or PDF with that ISBN appears in the linked library. Below, what completes a request and what never does.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="635" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">An ebook request, from ISBN to book</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Off until a platform administrator switches it on. Only the default organization can ask.</text>
+<rect x="40" y="128" width="170" height="226" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.5"/>
+<circle cx="66" cy="156" r="13" fill="#0EA5E9"/>
+<text x="66" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="56" y="202" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Ask</text>
+<text x="56" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">A profile in the</text>
+<text x="56" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">default</text>
+<text x="56" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">organization gives</text>
+<text x="56" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">an ISBN.</text>
+<line x1="212" y1="241.0" x2="228" y2="241.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="230" y="128" width="170" height="226" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<circle cx="256" cy="156" r="13" fill="#F59E0B"/>
+<text x="256" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="246" y="202" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Approve</text>
+<text x="246" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Automatically, or</text>
+<text x="246" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">by an administrator</text>
+<text x="246" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">of the default</text>
+<text x="246" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">organization.</text>
+<line x1="402" y1="241.0" x2="418" y2="241.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="420" y="128" width="170" height="226" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="446" cy="156" r="13" fill="#6366F1"/>
+<text x="446" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="436" y="202" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Hand over</text>
+<text x="436" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem sends it to</text>
+<text x="436" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bookwarehouse</text>
+<text x="436" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">through a</text>
+<text x="436" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">connection linked</text>
+<text x="436" y="302" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">to one library. No</text>
+<text x="436" y="320" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">connection: it</text>
+<text x="436" y="338" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">waits.</text>
+<line x1="592" y1="241.0" x2="608" y2="241.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="610" y="128" width="170" height="226" rx="14" fill="#FFF7ED" stroke="#EA580C" stroke-width="1.5"/>
+<circle cx="636" cy="156" r="13" fill="#EA580C"/>
+<text x="636" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="626" y="202" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Prepare</text>
+<text x="626" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bookwarehouse works</text>
+<text x="626" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">on the order. Bloem</text>
+<text x="626" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">asks how it is</text>
+<text x="626" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">going every five</text>
+<text x="626" y="302" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">minutes.</text>
+<line x1="782" y1="241.0" x2="798" y2="241.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="800" y="128" width="170" height="226" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.5"/>
+<circle cx="826" cy="156" r="13" fill="#9CA3AF"/>
+<text x="826" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="816" y="202" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Wait for the scan</text>
+<text x="816" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bookwarehouse says</text>
+<text x="816" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">it is done. The</text>
+<text x="816" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">request waits for</text>
+<text x="816" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">the library scan.</text>
+<line x1="972" y1="241.0" x2="988" y2="241.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="990" y="128" width="170" height="226" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="1016" cy="156" r="13" fill="#10B981"/>
+<text x="1016" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="1006" y="202" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Done</text>
+<text x="1006" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">An EPUB or PDF with</text>
+<text x="1006" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">that ISBN is in the</text>
+<text x="1006" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">linked library. The</text>
+<text x="1006" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">requester gets a</text>
+<text x="1006" y="302" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">notice.</text>
+<rect x="40" y="388" width="520" height="196" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<circle cx="70" cy="422" r="13" fill="#10B981"/>
+<path d="M64.15,422.26 L68.7,426.94 L76.5,417.45" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="94" y="428" font-size="17" font-weight="700" fill="#101827" text-anchor="start">This completes the request</text>
+<text x="64" y="466" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">An ebook with the same ISBN,</text>
+<text x="64" y="490" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">an EPUB or PDF file,</text>
+<text x="64" y="514" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">in the linked library,</text>
+<text x="64" y="538" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">read from that library's Bookwarehouse store.</text>
+<rect x="600" y="388" width="560" height="196" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="626" y="428" font-size="17" font-weight="700" fill="#101827" text-anchor="start">These never do</text>
+<circle cx="638" cy="457" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M633.5,452.5 L642.5,461.5 M642.5,452.5 L633.5,461.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="660" y="462" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">A similar title</text>
+<circle cx="638" cy="487" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M633.5,482.5 L642.5,491.5 M642.5,482.5 L633.5,491.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="660" y="492" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">An audiobook with the same ISBN</text>
+<circle cx="638" cy="517" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M633.5,512.5 L642.5,521.5 M642.5,512.5 L633.5,521.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="660" y="522" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">A book in another library</text>
+<circle cx="638" cy="547" r="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M633.5,542.5 L642.5,551.5 M642.5,542.5 L633.5,551.5" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="660" y="552" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Marking it fulfilled by hand</text>
+<text x="40" y="616" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Withdrawing a request, or switching the lane off, only affects Bloem. Bookwarehouse may finish work it already started.</text>
+</svg>

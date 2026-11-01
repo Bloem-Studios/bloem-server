@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">The tool input bridge</title>
+<desc id="d">A trusted tool such as ffprobe or ffmpeg reads from a private address on the same machine. The bridge waits for a free slot, checks access, counts each piece against a byte budget, reads it pinned to the file's revision and checks again before handing it over. It reads from one file Bloem has already opened and checked. Other machines, the public API, logs and responses never see the address.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="639" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">The tool input bridge</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A private address for one stored file, served to one trusted tool on the same machine.</text>
+<rect x="40" y="128" width="250" height="150" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="160" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The tool</text>
+<text x="58" y="184" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">ffprobe or ffmpeg, started by</text>
+<text x="58" y="204" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem. It asks for the whole</text>
+<text x="58" y="224" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">file or one range.</text>
+<line x1="294" y1="203" x2="350" y2="203" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="322" y="190" font-size="12" font-weight="normal" fill="#101827" text-anchor="start"></text>
+<rect x="354" y="128" width="470" height="330" rx="16" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="378" y="162" font-size="18" font-weight="700" fill="#101827" text-anchor="start">The bridge</text>
+<text x="378" y="188" font-size="14" font-weight="normal" fill="#0F766E" text-anchor="start">http://127.0.0.1:&lt;port&gt;/&lt;secret&gt;</text>
+<circle cx="392" cy="228" r="12" fill="#14B8A6"/>
+<text x="392" y="233" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="416" y="233" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Wait for a free slot</text>
+<circle cx="392" cy="272" r="12" fill="#14B8A6"/>
+<text x="392" y="277" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="416" y="277" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Check the file may still be read</text>
+<circle cx="392" cy="316" r="12" fill="#14B8A6"/>
+<text x="392" y="321" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="416" y="321" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Count the piece against the budget</text>
+<circle cx="392" cy="360" r="12" fill="#14B8A6"/>
+<text x="392" y="365" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="416" y="365" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Read the piece, pinned to its revision</text>
+<circle cx="392" cy="404" r="12" fill="#14B8A6"/>
+<text x="392" y="409" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="416" y="409" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Check again, then hand it over</text>
+<line x1="828" y1="203" x2="884" y2="203" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="888" y="128" width="272" height="150" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="906" y="160" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The opened file</text>
+<text x="906" y="184" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Opened and checked by Bloem</text>
+<text x="906" y="204" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">before the bridge started.</text>
+<line x1="1024" y1="282" x2="1024" y2="318" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="888" y="322" width="272" height="136" rx="14" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.8"/>
+<text x="906" y="354" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Storage plugin</text>
+<text x="906" y="378" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Supplies the bytes from the</text>
+<text x="906" y="398" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">bucket or book service.</text>
+<text x="40" y="508" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Never</text>
+<circle cx="54" cy="552" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M48.6,546.6 L59.4,557.4 M59.4,546.6 L48.6,557.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="78" y="550" font-size="15" font-weight="700" fill="#101827" text-anchor="start">Other machines</text>
+<text x="78" y="574" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">It listens on this machine only.</text>
+<circle cx="434" cy="552" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M428.6,546.6 L439.4,557.4 M439.4,546.6 L428.6,557.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="458" y="550" font-size="15" font-weight="700" fill="#101827" text-anchor="start">The public API</text>
+<text x="458" y="574" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The bridge is not part of it.</text>
+<circle cx="814" cy="552" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M808.6,546.6 L819.4,557.4 M819.4,546.6 L808.6,557.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="838" y="550" font-size="15" font-weight="700" fill="#101827" text-anchor="start">Logs and replies</text>
+<text x="838" y="574" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The address is never written down.</text>
+</svg>

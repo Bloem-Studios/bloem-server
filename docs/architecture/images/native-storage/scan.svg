@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a storage scan works</title>
+<desc id="d">Four steps: check that the source is still allowed and ask the plugin to describe it; start the scan journal or pick up where it stopped; list up to 512 files at a time, skip what a folder scan would skip and add each page to the catalog; finish by working out what is gone and tidying up. A failed scan resumes from its journal.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="599" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a storage scan works</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem keeps a journal of every page it lists, so a scan that stops can pick up where it left off.</text>
+<rect x="40" y="128" width="258" height="216" rx="14" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.5"/>
+<circle cx="68" cy="158" r="13" fill="#8B5CF6"/>
+<text x="68" y="163" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="58" y="206" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Check first</text>
+<text x="58" y="236" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Is the source switched on and</text>
+<text x="58" y="256" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">still allowed for this</text>
+<text x="58" y="276" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">library? Bloem starts the</text>
+<text x="58" y="296" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">plugin and asks it to describe</text>
+<text x="58" y="316" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">the source.</text>
+<line x1="301" y1="236.0" x2="324" y2="236.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="327" y="128" width="258" height="216" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="355" cy="158" r="13" fill="#6366F1"/>
+<text x="355" y="163" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="345" y="206" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Start or resume</text>
+<text x="345" y="236" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem opens the scan journal.</text>
+<text x="345" y="256" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A scan that stopped part-way</text>
+<text x="345" y="276" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">carries on from the last page</text>
+<text x="345" y="296" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">it finished.</text>
+<line x1="588" y1="236.0" x2="611" y2="236.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="614" y="128" width="258" height="216" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="642" cy="158" r="13" fill="#6366F1"/>
+<text x="642" y="163" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="632" y="206" font-size="18" font-weight="700" fill="#101827" text-anchor="start">A page at a time</text>
+<text x="632" y="236" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Up to 512 files a page.</text>
+<text x="632" y="256" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Samples, extras and system</text>
+<text x="632" y="276" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">folders are skipped. Each page</text>
+<text x="632" y="296" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">joins the catalog in one go.</text>
+<line x1="875" y1="236.0" x2="898" y2="236.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="901" y="128" width="258" height="216" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="929" cy="158" r="13" fill="#10B981"/>
+<text x="929" y="163" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="919" y="206" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Finish</text>
+<text x="919" y="236" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">When every folder is listed,</text>
+<text x="919" y="256" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem works out what is gone,</text>
+<text x="919" y="276" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">marks it missing and tidies</text>
+<text x="919" y="296" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">up.</text>
+<path d="M 832 348 C 832 388, 654 388, 654 352" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="743.0" y="402" font-size="13.5" font-weight="normal" fill="#6B7280" text-anchor="middle">next page</text>
+<rect x="40" y="416" width="1120" height="140" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="62" y="450" font-size="17" font-weight="700" fill="#B45309" text-anchor="start">When something goes wrong</text>
+<circle cx="70" cy="475" r="4" fill="#6B7280"/>
+<text x="84" y="480" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">A page that fails because the storage was briefly unavailable is listed again after 1, 2 and 4 seconds.</text>
+<circle cx="70" cy="501" r="4" fill="#6B7280"/>
+<text x="84" y="506" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">A scan that still fails tries again by itself, up to five times, waiting a little longer each time.</text>
+<circle cx="70" cy="527" r="4" fill="#6B7280"/>
+<text x="84" y="532" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">If one source fails, the library's other folders and sources are still scanned.</text>
+</svg>

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What Bloem checks on every request</title>
+<desc id="d">Four checks run in order before Bloem answers: whose sign-in it is, which organization, which profile, and what that profile may see. Each refusal is shown beside its check. Anything missing, stale or unclear counts as no.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="799" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What Bloem checks on every request</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Checked again on every request, not only at sign-in. Any “no” stops the answer.</text>
+<rect x="40" y="124" width="660" height="100" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<circle cx="68" cy="154" r="13" fill="#10B981"/>
+<text x="68" y="159" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="92" y="160" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Whose sign-in is this?</text>
+<text x="92" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The sign-in must still be live and belong to the account its token names.</text>
+<line x1="704" y1="174.0" x2="776" y2="174.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="720" y="166.0" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="136" width="380" height="76" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="179.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Refused. The app asks to sign in again.</text>
+<line x1="370.0" y1="226" x2="370.0" y2="253" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="382.0" y="246" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="256" width="660" height="100" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="68" cy="286" r="13" fill="#6366F1"/>
+<text x="68" y="291" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="92" y="292" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Which organization?</text>
+<text x="92" y="320" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The account's one organization, never one named in a header or by the web address.</text>
+<text x="92" y="340" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">It must be active, with the membership unchanged.</text>
+<line x1="704" y1="306.0" x2="776" y2="306.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="720" y="298.0" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="268" width="380" height="76" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="300.5" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Refused, without saying whether the</text>
+<text x="800" y="321.5" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">organization exists.</text>
+<line x1="370.0" y1="358" x2="370.0" y2="385" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="382.0" y="378" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="388" width="660" height="100" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<circle cx="68" cy="418" r="13" fill="#0EA5E9"/>
+<text x="68" y="423" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="92" y="424" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Which profile?</text>
+<text x="92" y="452" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">It belongs to this account and organization, and its PIN was entered.</text>
+<line x1="704" y1="438.0" x2="776" y2="438.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="720" y="430.0" font-size="14" font-weight="700" fill="#B45309" text-anchor="start">No</text>
+<rect x="780" y="400" width="380" height="76" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="800" y="432.5" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Refused. A sign-in older than the</text>
+<text x="800" y="453.5" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">organization's revocation is ended.</text>
+<line x1="370.0" y1="490" x2="370.0" y2="517" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="382.0" y="510" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="520" width="660" height="100" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="68" cy="550" r="13" fill="#6366F1"/>
+<text x="68" y="555" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="92" y="556" font-size="18" font-weight="700" fill="#101827" text-anchor="start">What may it see?</text>
+<text x="92" y="584" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Libraries the organization owns or was granted, narrowed by the plan and the</text>
+<text x="92" y="604" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">profile, before the catalog is searched.</text>
+<line x1="704" y1="570.0" x2="776" y2="570.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="720" y="562.0" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="532" width="380" height="76" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="575.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Hidden titles are not shown at all.</text>
+<line x1="370.0" y1="622" x2="370.0" y2="649" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="382.0" y="642" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="220.0" y="652" width="300" height="62" rx="31" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="370.0" y="692" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle">Bloem answers</text>
+<text x="40" y="760" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Anything missing, stale or unclear counts as no. A web address changes how Bloem looks, never what an account can reach.</text>
+</svg>

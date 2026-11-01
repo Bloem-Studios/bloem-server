@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="690" viewBox="0 0 1200 690" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Serving an organization on its own domain</title>
+<desc id="d">Five numbered steps: point DNS at the reverse proxy, issue a certificate, forward the host through a trusted proxy, register the domain on the organization, and register the sign-in provider's callbacks if the organization signs in through Authentik. Below, what a domain decides (name, logo, colours, email links, where to sign in) and what it never decides (who belongs where and what they may watch), with an example of a refused sign-in.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="689" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Serving an organization on its own domain</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Five steps, in this order. A domain changes what people see, never what they may watch.</text>
+<rect x="40" y="124" width="208" height="156" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="124" width="8" height="156" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="152" r="12" fill="#6366F1"/>
+<text x="74" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="96" y="158" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">DNS</text>
+<text x="64" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Point the domain at</text>
+<text x="64" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">your reverse proxy.</text>
+<line x1="250" y1="202" x2="266" y2="202" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="268" y="124" width="208" height="156" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="268" y="124" width="8" height="156" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="302" cy="152" r="12" fill="#6366F1"/>
+<text x="302" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="324" y="158" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Certificate</text>
+<text x="292" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Issue an HTTPS</text>
+<text x="292" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">certificate for the</text>
+<text x="292" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">domain at the proxy.</text>
+<line x1="478" y1="202" x2="494" y2="202" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="496" y="124" width="208" height="156" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="496" y="124" width="8" height="156" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="530" cy="152" r="12" fill="#6366F1"/>
+<text x="530" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="552" y="158" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Forward the host</text>
+<text x="520" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The proxy passes the</text>
+<text x="520" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">domain on to Bloem. Its</text>
+<text x="520" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">address is a trusted</text>
+<text x="520" y="246" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">proxy.</text>
+<line x1="706" y1="202" x2="722" y2="202" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="724" y="124" width="208" height="156" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="724" y="124" width="8" height="156" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<circle cx="758" cy="152" r="12" fill="#FA6400"/>
+<text x="758" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="780" y="158" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Register it</text>
+<text x="748" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A platform</text>
+<text x="748" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">administrator adds it</text>
+<text x="748" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">under Organizations, or</text>
+<text x="748" y="246" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the storefront does.</text>
+<line x1="934" y1="202" x2="950" y2="202" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="952" y="124" width="208" height="156" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="952" y="124" width="8" height="156" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="986" cy="152" r="12" fill="#10B981"/>
+<text x="986" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="1008" y="158" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Provider callbacks</text>
+<text x="976" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Only for Authentik</text>
+<text x="976" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">sign-in: the domain's</text>
+<text x="976" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">two callbacks and its</text>
+<text x="976" y="246" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">/login.</text>
+<rect x="40" y="312" width="540" height="184" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="64" y="348" font-size="18" font-weight="700" fill="#101827" text-anchor="start">What a domain decides</text>
+<circle cx="78" cy="384" r="11" fill="#10B981"/>
+<path d="M73.05,384.22 L76.9,388.18 L83.5,380.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="102" y="389" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">The organization's name, logo and colours</text>
+<circle cx="78" cy="426" r="11" fill="#10B981"/>
+<path d="M73.05,426.22 L76.9,430.18 L83.5,422.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="102" y="431" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">The address in its emails (its primary domain)</text>
+<circle cx="78" cy="468" r="11" fill="#10B981"/>
+<path d="M73.05,468.22 L76.9,472.18 L83.5,464.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="102" y="473" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Which address the sign-in page sends people to</text>
+<rect x="620" y="312" width="540" height="184" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="644" y="348" font-size="18" font-weight="700" fill="#101827" text-anchor="start">What it never decides</text>
+<circle cx="658" cy="384" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M653.05,379.05 L662.95,388.95 M662.95,379.05 L653.05,388.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="682" y="389" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Which organization an account belongs to</text>
+<circle cx="658" cy="426" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M653.05,421.05 L662.95,430.95 M662.95,421.05 L653.05,430.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="682" y="431" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Which libraries a profile may see</text>
+<circle cx="658" cy="468" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M653.05,463.05 L662.95,472.95 M662.95,463.05 L653.05,472.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="682" y="473" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Whether a plan may play, download or convert</text>
+<rect x="40" y="528" width="1120" height="100" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.6"/>
+<text x="64" y="560" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Signing in on another organization's domain</text>
+<text x="64" y="588" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Sam's account belongs to Riverside Club. Sam opens watch.harbour.example, which belongs to another organization, and signs in. Bloem refuses before</text>
+<text x="64" y="608" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">any session exists and says: "This account signs in at https://watch.riverside.example."</text>
+<text x="40" y="660" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">An organization without a domain signs in at the server's public address. This example is made up.</text>
+</svg>

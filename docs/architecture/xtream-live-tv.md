@@ -1,33 +1,129 @@
-# Xtream live TV providers
+# How Xtream Live TV providers work
 
-> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
-> current, with the corrections noted below. Silo has no Live TV. Bloem's Live
-> TV subsystem (`internal/livetv`: HDHomeRun tuners, guides, streaming and DVR)
-> is an attributed AGPL adaptation of Prairie Server, integrated in `ef2d38171`
-> (2026-08-13); see [FORK.md](../../FORK.md#prairie-server-live-tv). Xtream
-> providers are a later Bloem addition to it. They were added in `23ee4c1ac`
-> (2026-09-19) with migration `20260919133349_bloem_xtream_sources.sql`, in
-> Bloem-owned files (`internal/livetv/bloem_xtream_*.go`) plus the route
-> `POST /tuners/xtream` in `internal/api/router_livetv.go`. This page followed
-> in `cc4b2ed98` the same day. `5a05c52aa` (2026-09-23) changed guide sync so
-> that one invalid programme no longer fails the whole sync (see
-> [Guide and rescan behavior](#guide-and-rescan-behavior)). On 2026-10-13 Bloem
-> removed its Live TV delivery through the Jellyfin compatibility surface, and it
-> did not come back when Silo's Jellyfin server was restored on 2026-10-18 (see
-> [protocol compatibility](bloem-compatibility-removal.md)). Cross-replica lease
-> behavior is summarized in [cluster media](bloem-cluster-media.md#xtream-physical-connections).
-> An "Xtream" provider is an IPTV service that speaks the Xtream Codes
-> `player_api.php` protocol.
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
+> `main` at `b6039036d`. Silo has no Live TV. Bloem's Live TV is an attributed
+> adaptation of Prairie Server, and Xtream providers are Bloem's own addition to it.
+> Every route, limit and invariant is in the [For developers](#for-developers)
+> section.
 
-Bloem consumes authenticated Xtream **live channels** and the provider's XMLTV
-programme guide. It does not expose an Xtream server API, import VOD or series,
-or accept arbitrary remote media URLs. HDHomeRun-compatible tuners remain supported.
+An **Xtream provider** is a paid IPTV service on the internet that speaks the Xtream
+Codes protocol. Bloem can use one as a source of live channels, next to tuners on the
+local network. This page walks through what Bloem asks a provider for, how it keeps the
+provider's password safe, how several viewers share the provider's connections, and how
+its programme guide is kept up to date.
 
-## Setup and capability
+## What Bloem takes, and what it never does
+
+![Bloem keeps the account encrypted and makes four fixed requests: sign in, the live channel list, the guide and one live stream. It refuses redirects, films and series, the provider's own addresses, and local or cloud-metadata addresses](images/xtream-live-tv/boundary.svg)
+
+Bloem takes a provider's **live channels** and its **programme guide**, and nothing
+else:
+
+- **No films or series.** Bloem doesn't import a provider's on-demand catalog.
+- **No addresses from the provider.** Bloem asks for each live stream itself, at a fixed
+  address, and ignores any other stream or artwork address the provider suggests.
+- **No redirects.** If the provider answers "look elsewhere", Bloem refuses.
+- **No pasted web addresses.** Bloem never plays a stream someone types in. It is not an
+  Xtream server for other apps either.
+
+## Keeping the password safe
+
+A platform administrator adds a provider with its address, a username and a password.
+Bloem checks the account with the provider and loads its live channel list before it
+saves anything. Then it stores the username and password **encrypted** with the
+server's secret key, tied to that provider and that address.
+
+The password goes only into Bloem's own requests to the provider. It never appears in
+what the apps see, in the stored channel list, in logs, or in the command that converts
+the video. The video converter reads the stream from a **pipe** that Bloem feeds, not
+from the provider's address. Prefer a provider address that starts with `https://`: over
+plain `http://` the password travels unencrypted.
+
+## Sharing the provider's connections
+
+![A made-up provider allowing two connections; two Bloem servers each hold one lease in the database, and a third viewer is refused](images/xtream-live-tv/connections.svg)
+
+A provider lets an account open only so many streams at once. Bloem uses one connection
+unless the administrator chose more, up to 64, and never more than the provider says it
+allows. Watching, the browser-friendly stream and recordings all share the same
+connections.
+
+Each open stream holds a **lease** in the database, whichever Bloem server opened it, so
+several servers never open more than the provider allows. A lease lasts 60 seconds and
+is renewed every 15. A stream whose lease can't be renewed stops. If the server holding
+a stream dies, the viewer opens a new stream; it doesn't move to another server.
+
+## Keeping the guide up to date
+
+An administrator attaches the provider's guide by picking the saved provider, without
+typing the password again, then presses **Sync**. Bloem keeps the programmes from six
+hours ago to two days ahead, for the provider's enabled channels.
+
+A single broken programme in the guide is skipped and counted, not allowed to fail the
+whole sync. A guide that is broken as a whole fails, and the previous guide stays. A
+**rescan** of the channel list keeps each channel's settings; a channel that disappears
+is switched off, not deleted.
+
+## Example: two connections, three screens
+
+This example is made up.
+
+The platform administrator of a small Bloem server adds an Xtream provider whose
+subscription allows two streams at once, and sets Bloem to use two connections. The
+living-room TV plays a news channel, and a recording of the evening match is running.
+When a tablet tries to tune in, Bloem refuses: both connections are in use. When the
+match ends, its lease is released and the tablet can tune in.
+
+## Who can change what
+
+| Who | What they manage |
+| --- | --- |
+| Platform administrator, with the main profile selected and any PIN entered | Adding and removing providers, attaching a provider's guide, syncing and rescanning. |
+| Viewer with the Live TV permission | Watching the provider's channels and recording them, within the shared connections. |
+| An app holding a stream ticket | Only the stream it was given. It can't add providers or change guides. |
+
+## Words used in the code
+
+| On this page | In the code and database |
+| --- | --- |
+| Xtream provider | a Live TV tuner of type `xtream` (`internal/livetv/bloem_xtream_*.go`) |
+| Adding a provider | `POST /api/bloem/v1/livetv/tuners/xtream` |
+| Encrypted account | the `SECRET_KEY` cipher, bound to the tuner ID and canonical base URL |
+| Connections | `max_connections`, the tuner's connection budget |
+| Lease | a durable connection lease, 60 s expiry and 15 s renewal (`internal/livetv/bloem_xtream_store.go`) |
+| The provider's guide | a guide source of type `xtream` with `config.tuner_id` |
+| Feature check | `xtream_supported` in `GET /api/bloem/v1/livetv/capability` |
+
+## For developers
+
+- **API:** [Live TV](../bloem/api/live-tv.md), including
+  `POST /api/bloem/v1/livetv/tuners/xtream` and the guide-source routes.
+
+History: Bloem's Live TV subsystem (`internal/livetv`: HDHomeRun tuners, guides,
+streaming and DVR) is an attributed AGPL adaptation of Prairie Server, integrated in
+`ef2d38171` (2026-08-13); see [FORK.md](../../FORK.md#prairie-server-live-tv). Xtream
+providers were added in `23ee4c1ac` (2026-09-19) with migration
+`20260919133349_bloem_xtream_sources.sql`, in Bloem-owned files
+(`internal/livetv/bloem_xtream_*.go`) plus the route `POST /tuners/xtream` in
+`internal/api/router_livetv.go`. This page followed in `cc4b2ed98` the same day.
+`5a05c52aa` (2026-09-23) changed guide sync so that one invalid programme no longer
+fails the whole sync (see [Guide and rescan behavior](#guide-and-rescan-behavior)). On
+2026-10-13 Bloem removed its Live TV delivery through the Jellyfin compatibility
+surface, and it did not come back when Silo's Jellyfin server was restored on
+2026-10-18 (see [protocol compatibility](bloem-compatibility-removal.md)).
+Cross-replica lease behavior is summarized in
+[cluster media](bloem-cluster-media.md#xtream-physical-connections). An "Xtream"
+provider is an IPTV service that speaks the Xtream Codes `player_api.php` protocol.
+
+Bloem consumes authenticated Xtream **live channels** and the provider's XMLTV programme
+guide. It does not expose an Xtream server API, import VOD or series, or accept
+arbitrary remote media URLs. HDHomeRun-compatible tuners remain supported.
+
+### Setup and capability
 
 `GET /api/bloem/v1/livetv/capability` adds `xtream_supported`. This reports installed
-protocol support, not working credentials, encryption readiness, playback success
-or a viewer grant. Existing `allowed` and `available` retain their meanings.
+protocol support, not working credentials, encryption readiness, playback success or a
+viewer grant. Existing `allowed` and `available` retain their meanings.
 
 An acting administrator with the account's selected primary profile and any required
 PIN verification creates a provider with:
@@ -37,134 +133,155 @@ POST /api/bloem/v1/livetv/tuners/xtream
 Content-Type: application/json
 ```
 
-The JSON fields are `url`, `username`, `password`, optional public `name`, and
-optional `max_connections` (1–64; omitted or zero uses one). Do not embed credentials
-in `url`. Success is `201` with the ordinary redacted tuner DTO; `type` is `xtream`
-and `model` carries the public name. The separate endpoint prevents an older
-server from interpreting this request as unauthenticated HDHomeRun setup. Generic
-`POST /livetv/tuners` refuses the Xtream kind.
+The JSON fields are `url`, `username`, `password`, optional public `name`, and optional
+`max_connections` (1–64; omitted or zero uses one). The body is limited to 32 KiB, and
+a `name` longer than 128 characters or containing control characters is refused (an
+empty one becomes "Xtream"). Do not embed credentials in `url`. Success is `201` with
+the ordinary redacted tuner DTO; `type` is `xtream` and `model` carries the public name.
+The separate endpoint prevents an older server from interpreting this request as
+unauthenticated HDHomeRun setup. Generic `POST /livetv/tuners` refuses the Xtream kind
+(`400 invalid_argument`), and refuses provider credentials for any other kind.
+Administrative-context tokens do not replace the profile/PIN gate, and direct-profile
+sessions are not admitted. Creation is not replay-safe: after an uncertain response,
+read `/livetv/tuners` and review the saved providers before trying again.
 
-Creation authenticates the account and imports a nonempty live lineup before
-atomically saving the tuner, channels and encrypted credentials. The local budget
-is clamped to a positive maximum reported by the provider. Provider-unlimited does
-not remove Bloem's local budget. The same username at the same canonical base URL
-cannot be configured twice; aliases for the same external account are not detected.
-There is a server-wide limit of 64 configured Xtream providers.
+Creation authenticates the account and imports a nonempty live lineup before atomically
+saving the tuner, channels and encrypted credentials. The local budget is clamped to a
+positive maximum reported by the provider. Provider-unlimited does not remove Bloem's
+local budget. The same username at the same canonical base URL cannot be configured
+twice; aliases for the same external account are not detected. There is a server-wide
+limit of 64 configured Xtream providers.
 
-The embedded Tuners form keeps credentials outside React state, query/mutation
-caches and browser storage. Submission clears the inputs immediately. Requests
-capture account, origin, profile and PIN authority, do not queue or automatically
-retry, and abort on unmount or authority changes. An uncertain result blocks another
-creation across component remounts until an explicit provider reload succeeds.
-This is reconciliation, not exactly-once execution across tabs or page reloads.
+The embedded Tuners form (`web/src/components/livetv/XtreamProviderForm.tsx`) keeps
+credentials outside React state, query/mutation caches and browser storage. Submission
+clears the inputs immediately. Requests capture account, origin, profile and PIN
+authority, do not queue or automatically retry, and abort on unmount or authority
+changes. An uncertain result blocks another creation across component remounts until an
+explicit provider reload succeeds. This is reconciliation, not exactly-once execution
+across tabs or page reloads.
 
-## Credentials and network boundary
+### Credentials and network boundary
 
 - The existing `SECRET_KEY` cipher encrypts both credentials together. Authenticated
   encryption binds the envelope to the tuner ID and canonical base URL. Missing
   encryption wiring fails closed before contacting the provider.
 - Only fixed `player_api.php`, `get_live_streams`, `xmltv.php` and live `.ts` requests
-  are made. All redirects are refused, including redirects to another path on the
-  same host. Provider `direct_source` and artwork URLs are not adopted.
+  are made. All redirects are refused, including redirects to another path on the same
+  host. Provider `direct_source` and artwork URLs are not adopted.
 - Validation and dial-time checks reject loopback, unspecified addresses and the
   reviewed cloud metadata destinations while retaining ordinary LAN tuner support.
-- Credentials necessarily appear in the provider's authenticated HTTP requests,
-  but not in public DTOs, stored channel URLs, application diagnostics or FFmpeg
-  arguments. Prefer HTTPS: an HTTP provider receives credentials without TLS.
-- Channels retain opaque server-only source references. Raw native delivery,
-  HLS and DVR resolve credentials server-side under their
-  existing viewer, profile, session and ownership checks. A delivery ticket does
-  not authorize provider administration.
+- Credentials necessarily appear in the provider's authenticated HTTP requests, but not
+  in public DTOs, stored channel URLs, application diagnostics or FFmpeg arguments.
+  Prefer HTTPS: an HTTP provider receives credentials without TLS.
+- Channels retain opaque server-only source references. Raw native delivery, HLS and
+  DVR resolve credentials server-side under their existing viewer, profile, session and
+  ownership checks. A delivery ticket does not authorize provider administration.
 - Playback requires direct MPEG-TS. The server checks the initial TS packet framing;
   this is not a codec/decoding guarantee. Playlist, text and JSON responses are
-  refused. FFmpeg receives `-protocol_whitelist pipe -f mpegts -i pipe:0`, never an
-  authenticated network URL. IPTV does not assume an OTA MPEG-2 hardware decoder.
+  refused. FFmpeg receives `-protocol_whitelist pipe -f mpegts -i pipe:0`
+  (`internal/playback/bloem_live_input.go`), never an authenticated network URL. IPTV
+  does not assume an OTA MPEG-2 hardware decoder.
 
 Each physical upstream stream claims a durable, unpredictable-ID-fenced connection
 lease. Raw proxying, HLS encoders and recordings share the provider budget across
-replicas. Leases expire after 60 seconds and renew every 15 seconds with bounded
-DB operations and conservative local expiry checks. Failed renewal stops that
-input; an expired owner cannot revive or release its replacement's lease. This
-bounds Bloem's admissions, not a provider's accounting of disconnected TCP sessions
-or connections opened by other applications. It does not provide seamless failover.
+replicas. Leases expire after 60 seconds and renew every 15 seconds with bounded DB
+operations and conservative local expiry checks. Failed renewal stops that input; an
+expired owner cannot revive or release its replacement's lease. This bounds Bloem's
+admissions, not a provider's accounting of disconnected TCP sessions or connections
+opened by other applications. It does not provide seamless failover.
 
-The process input copier is server-owned. Encoder exit can be reaped while an
-upstream read is blocked; cancellation and cleanup close the source and wait for
-the copier. HLS startup observes the requesting context through readiness, then
-uses its existing session-owned lifetime. DVR retains its recording context and
-scheduled stop.
+The process input copier is server-owned. Encoder exit can be reaped while an upstream
+read is blocked; cancellation and cleanup close the source and wait for the copier. HLS
+startup observes the requesting context through readiness, then uses its existing
+session-owned lifetime. DVR retains its recording context and scheduled stop.
 
-## Guide and rescan behavior
+### Guide and rescan behavior
 
 Add a guide through the existing guide-source endpoint with `type: "xtream"` and
-`config: {"tuner_id": "<configured-provider-id>"}`. Only that provider ID is stored
-in public guide configuration. The Guide tab selects existing providers and never
-asks for another password or an arbitrary guide URL. Use **Sync** after creation.
-One Xtream guide per provider and the existing maximum of three enabled guide
-sources are enforced transactionally across replicas. The guide form captures
-profile/PIN authority and confirms creation with a fresh source read. A lost response
-or failed readback blocks further creation across remounts until an explicit reload
-succeeds; background refreshes do not clear that guard.
+`config: {"tuner_id": "<configured-provider-id>"}`. Only that provider ID is stored in
+public guide configuration. The Guide tab selects existing providers and never asks for
+another password or an arbitrary guide URL. Use **Sync** after creation. One Xtream
+guide per provider and the existing maximum of three enabled guide sources
+(`MaxGuideSources`) are enforced transactionally across replicas. The guide form
+captures profile/PIN authority and confirms creation with a fresh source read. A lost
+response or failed readback blocks further creation across remounts until an explicit
+reload succeeds; background refreshes do not clear that guard.
 
 XMLTV is limited to 64 MiB, one million input programme entries and 250,000 retained
-programmes. Import keeps overlapping listings from six hours ago through the next
-48 hours, restricted to enabled channels of the selected provider. Channel EPG IDs
-match first; the provider stream ID is the fallback. Programme timestamps require
-seconds, with an optional numeric timezone (UTC when omitted). `xmltv_ns` episode
-numbers become one-based. Artwork URLs are ignored. Simple external DTD declarations
-are accepted without fetching them; internal entity declarations are refused.
+programmes. Import keeps overlapping listings from six hours ago through the next 48
+hours, restricted to enabled channels of the selected provider. Channel EPG IDs match
+first; the provider stream ID is the fallback. Programme timestamps require seconds,
+with an optional numeric timezone (UTC when omitted). `xmltv_ns` episode numbers become
+one-based. Artwork URLs are ignored. Simple external DTD declarations are accepted
+without fetching them; internal entity declarations are refused.
 
-Only structural problems fail a sync: a response that is not XMLTV, a malformed
-or oversized document, entity declarations or a hard limit. Since `5a05c52aa`
-(2026-09-23), an individual programme with an invalid timestamp or duration, a
-missing title, oversized metadata or a conflicting duplicate identity is skipped
-and counted, and each sync logs one summary warning that gives only the counts.
-A feed in which every programme is invalid still fails, with the skip counts in
-`last_error`. The XMLTV download has no whole-request timeout; the two-minute
-sync deadline and the 64 MiB limit bound it. Source
-MVCC ownership fences overlapping refreshes, configuration changes (including ABA)
-and late status updates without holding a database connection during downloads.
-Publication rechecks and locks the captured channel mappings. Guide rows and the
-ready status commit together. Stable source/channel/start identities and in-place
-updates preserve ordinary recording links and captured schedules; a malformed or
-stale refresh does not erase the previous guide.
+Only structural problems fail a sync: a response that is not XMLTV, a malformed or
+oversized document, entity declarations or a hard limit. Since `5a05c52aa`
+(2026-09-23), an individual programme with an invalid timestamp or duration, a missing
+title, oversized metadata or a conflicting duplicate identity is skipped and counted,
+and each sync logs one summary warning that gives only the counts. A feed in which
+every programme is invalid still fails, with the skip counts in `last_error`. The XMLTV
+download has no whole-request timeout; the two-minute sync deadline and the 64 MiB
+limit bound it. Source MVCC ownership fences overlapping refreshes, configuration
+changes (including ABA) and late status updates without holding a database connection
+during downloads. Publication rechecks and locks the captured channel mappings. Guide
+rows and the ready status commit together. Stable source/channel/start identities and
+in-place updates preserve ordinary recording links and captured schedules; a malformed
+or stale refresh does not erase the previous guide.
 
 Rescans retain stable channel IDs, overrides and mappings. Missing channels are
-disabled rather than cascade-deleted; returning channels stay disabled for review.
-An empty rescan reports failure and keeps the old lineup. A lower reported provider
-limit reduces admission capacity; it does not forcibly terminate existing recordings.
+disabled rather than cascade-deleted; returning channels stay disabled for review. An
+empty rescan reports failure and keeps the old lineup. A lower reported provider limit
+reduces admission capacity; it does not forcibly terminate existing recordings.
 
-Provider removal refuses active physical leases and requires confirmation in the
-web UI. It deletes encrypted credentials, linked guide configuration, channels and
-their DVR entries. It does **not** delete recorded files. Credential/base-URL edits
-and connection-budget increases are not exposed: removing and re-adding a provider
-is destructive to those database entries. Deleting/recreating guide sources or
-using overlapping sources retains the inherited recurring-DVR duplicate-scheduling
+Provider removal refuses active physical leases and requires confirmation in the web
+UI. It deletes encrypted credentials, linked guide configuration, channels and their
+DVR entries. It does **not** delete recorded files. Credential/base-URL edits and
+connection-budget increases are not exposed: removing and re-adding a provider is
+destructive to those database entries. Deleting/recreating guide sources or using
+overlapping sources retains the inherited recurring-DVR duplicate-scheduling
 limitations; normal refresh stability does not resolve every DVR lifecycle case.
 Automatic recording import and enforced `keep_last` remain unsupported.
 
-## Deployment and acceptance
+### Deployment and acceptance
 
-Commit `418a18b7d` was deployed on September 19, 2026, with both the policy-array
-and Xtream migrations applied after a scoped restored-backup rehearsal. Health,
-readiness and unauthenticated login smoke checks passed. No provider was configured;
-these checks do not establish provider or decoded-media acceptance. The
+Commit `418a18b7d` was deployed on September 19, 2026, with both the policy-array and
+Xtream migrations applied after a scoped restored-backup rehearsal. Health, readiness
+and unauthenticated login smoke checks passed. No provider was configured; these checks
+do not establish provider or decoded-media acceptance. The
 [deployment record](../operations/2026-09-19-xtream-deployment.md) records the exact
 revision, preserved-data checks, rollback limits and explicitly approved scenario
 CI-timeout exception. That CI run remains failed.
 
 Migration `20260919133349_bloem_xtream_sources.sql` adds the credential and lease
-tables. Upgrade the complete API/worker fleet before configuring providers; older
-nodes do not understand these protected sources. Back up the existing encryption
-key with the protected configuration: retaining the database alone is insufficient.
-Image rollback retains additive schema and data. Do not administer Xtream sources
-through older binaries. Explicit schema Down requires quiesced writers and refuses
-any remaining Xtream tuner, guide, credential or lease state, including expired
-leases and orphan guide configuration.
+tables. Upgrade the complete API/worker fleet before configuring providers; older nodes
+do not understand these protected sources. Back up the existing encryption key with the
+protected configuration: retaining the database alone is insufficient. Image rollback
+retains additive schema and data. Do not administer Xtream sources through older
+binaries. Explicit schema Down requires quiesced writers and refuses any remaining
+Xtream tuner, guide, credential or lease state, including expired leases and orphan
+guide configuration.
 
 Automated coverage includes protocol fixtures, real disposable PostgreSQL storage,
 connection/guide admission across pools, source and channel publication fencing,
 recording-link preservation, migration round trips/refusal, credential/guide-form
-reconciliation, mounted native authority gates and fixture-encoder cleanup. This is not real-provider, physical-tuner,
-Safari, decoded-media or multi-replica owner-loss acceptance. Apple/Android provider
-administration is a client follow-up, not an implemented part of this server change.
+reconciliation, mounted native authority gates and fixture-encoder cleanup. This is not
+real-provider, physical-tuner, Safari, decoded-media or multi-replica owner-loss
+acceptance. Apple/Android provider administration is a client follow-up, not an
+implemented part of this server change.
+
+### Related pages
+
+- [How Live TV works](bloem-live-tv.md): sources, tuning in and recordings, in plain
+  language.
+- [Live TV client access](live-tv-client-access.md): the permission, the capability and
+  how apps tune in.
+- [Live TV tuner discovery](../livetv-tuner-discovery.md): HDHomeRun and Dispatcharr
+  tuners on the local network.
+- [Media ownership across API replicas](bloem-cluster-media.md#xtream-physical-connections):
+  leases across servers.
+- [Security foundation](bloem-security-foundation.md#native-live-tv-and-xtream-authority):
+  Live TV and Xtream authority.
+
+The pictures are SVG files under `images/xtream-live-tv/`, drawn by
+`scripts/bloem/draw-pictures.py`. Redraw them there, not by hand.

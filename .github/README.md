@@ -41,6 +41,27 @@ protected-upstream remote setup.
 > and the operator steps in the
 > [Docker guide](../docs/bloem/overlays/wiki/deployment/docker.md#switching-between-silo-and-bloem).
 
+## How Bloem works, in plain language
+
+Start with the overview pages. They explain each area in plain words and pictures,
+with a made-up example, and end with a "For developers" section for people changing
+the code. Every current Bloem page follows the same shape.
+
+- [How organizations work](../docs/architecture/bloem-organizations.md): the platform,
+  organizations, accounts and profiles, and what someone can watch.
+- [How organization domains and branding work](../docs/architecture/bloem-organization-domains.md):
+  an organization on its own web addresses, under its own name and colours.
+- [How plans, previews and upgrades work](../docs/architecture/bloem-plans.md)
+- [How Live TV works](../docs/architecture/bloem-live-tv.md)
+- [How storage sources work](../docs/architecture/bloem-storage-sources.md)
+- [How requests work](../docs/architecture/bloem-requests.md)
+- [How messages and promotions work](../docs/architecture/bloem-messages-and-promotions.md)
+- [How apps connect](../docs/architecture/bloem-apps.md)
+- [Switching between Silo and Bloem](../docs/architecture/bloem-silo-switching-explained.md)
+  and [how Bloem keeps up with Silo](../docs/architecture/bloem-following-silo.md)
+
+Every other page is listed by area in the [documentation index](../docs/bloem/README.md).
+
 ## Current state
 
 Checked on November 1, 2026, against `main` at `59616c4af`.
@@ -215,8 +236,8 @@ itself: <https://github.com/sponsors/quick104>.
 
 ## What Bloem adds on top of Silo
 
-The overview below describes Bloem's additions at `e852f92bf`, alongside Silo
-through `3e2d306b2`. The
+The overview below describes Bloem's additions at `b6039036d`, alongside Silo
+through `63ef34b23`. The
 [web coverage matrix](../docs/architecture/bloem-web-feature-coverage.md) separates
 implemented workflows from bounded acceptance evidence. Upstream features remain
 credited to Silo; a server endpoint does not imply support in every client.
@@ -234,6 +255,13 @@ integration points through [owned integration adapters](../docs/architecture/blo
   [multitenant administration](../docs/architecture/multitenant-administration.md),
   [resource ownership](../docs/architecture/resource-tenancy-foundation.md) and
   [tenant authorization](../docs/architecture/opa-tenant-authorization.md).
+- **Organization domains and branding:** each organization can be served on its
+  own domains, under its own name, logo and colours, and its invitation and
+  password-reset emails link to its primary domain. Signing in on another
+  organization's domain is refused with the address to use instead, and a
+  sign-in or sign-out through the OAuth provider stays on the domain it started
+  on. A domain changes what people see, never what they can reach. See
+  [organization domains and branding](../docs/architecture/bloem-organization-domains.md).
 - **One organization per account:** an account's policy lives on Silo's own
   `users` columns, and its membership links it to exactly one organization
   (since `c60b7008e`, October 26, 2026). Tenant-aware enforcement covers
@@ -492,11 +520,13 @@ See [Bloem CI](../docs/bloem/ci.md) for the job list and tool pins.
 Bloem's production deployments follow the same pattern, recorded in
 dated receipts under [`docs/operations/`](../docs/bloem/README.md#deployment-receipts):
 
-1. **Image.** Since October 27, 2026, production runs the image Bloem Image
-   published for the commit; earlier releases were built locally from a
-   `git archive` of the source. The image is loaded on the application host
-   under a release tag and its runtime configuration is compared with the
-   running release.
+1. **Image.** Production runs an image built for the exact commit: the one
+   Bloem Image publishes, or, when the owner asks to deploy before CI finishes
+   (most releases since October 28, 2026), one built locally from a
+   `git archive` of the commit with the same build arguments and labels. The
+   image is loaded on the application host and both transcode nodes under a
+   release tag, its binary checksum is compared on each, and its runtime
+   configuration is compared with the running release.
 2. **Restore point.** Before the restart: a container snapshot, a named database
    restore point with its WAL segment archived, and dumps of the tables the
    migrations change. For the October 26 Stage A release, whose migrations
@@ -710,10 +740,10 @@ want its search provider:
 | `search` | `docker compose --profile search up -d` | Add the optional Meilisearch service |
 
 Before starting the `search` profile, set `MEILI_MASTER_KEY` in `.env` to the output of
-`openssl rand -hex 32`. After Bloem starts, choose Meilisearch under **Admin > Settings > Search**,
+`openssl rand -hex 32`. After Bloem starts, choose Meilisearch under **Configure → Server → Search**,
 set the URL to `http://meilisearch:7700`, enter the same key as the API key, test the connection,
-and save. Restart Bloem, then rebuild the catalog search index from the same page. Bloem continues
-to use PostgreSQL full-text search until you select Meilisearch.
+and save. Restart Bloem: it builds the catalog search index in the background and keeps
+using PostgreSQL full-text search until you select Meilisearch.
 
 ### Distributed Examples
 
@@ -876,7 +906,7 @@ If you prefer running Bloem without Docker:
 - [Bloem documentation index](../docs/bloem/README.md) — every Bloem-owned document, including Bloem editions of and overlays on upstream Silo documents, with historical pages marked.
 - [FORK.md](../FORK.md) — provenance, the "Silo wins" rule, seams and overlays, what Bloem adds and removed; [TRADEMARK.md](../TRADEMARK.md) and [LICENSE](../LICENSE).
 - [Integration changelog](../docs/bloem/CHANGELOG.md) and [upstream adapters](../docs/architecture/bloem-upstream-adapters.md) — what each merge brought in and where Bloem keeps its extensions.
-- [October 27 deployment receipt](../docs/operations/2026-10-27-main-deployment.md) — the revision production runs, its image, migrations, checks and limits.
+- [Deployment receipts](../docs/bloem/README.md#deployment-receipts) — the revision production runs, its image, migrations, checks and limits, newest first.
 - [Bloem CI](../docs/bloem/ci.md) — jobs, the daily upstream sync, the image gate and runner placement.
 - [Admin guide](../docs/wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback and transcoding, access policy, Live TV, maintenance and troubleshooting.
 - [User guide](../docs/wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests, notifications, and connecting native clients.

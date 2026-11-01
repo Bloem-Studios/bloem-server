@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How Bloem tests against Silo's contract</title>
+<desc id="d">Silo's frozen scenario files stay exactly as Silo wrote them. Bloem's own rows are added to the end of the matching catalog when it loads. Then 49 reviewed decisions replace the answers Bloem deliberately gives differently, and the scenario gate runs every case. If a pinned original changes, loading stops until someone reviews it again.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="679" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How Bloem tests against Silo's contract</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's test files stay Silo's. Bloem adds its rows and its reviewed differences when they load.</text>
+<rect x="40" y="130" width="300" height="150" rx="14" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="58" y="162" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's scenario files</text>
+<text x="58" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Requests and the answers Silo</text>
+<text x="58" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">expects. Frozen, byte for byte</text>
+<text x="58" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's.</text>
+<rect x="40" y="300" width="300" height="150" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="58" y="332" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's own rows</text>
+<text x="58" y="356" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">For routes Bloem adds to a Silo</text>
+<text x="58" y="376" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">group: profile sign-in, remote</text>
+<text x="58" y="396" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">control and household commands.</text>
+<path d="M344,205 L392,205 L392,280 L420,280" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M344,375 L392,375 L392,300 L420,300" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="424" y="220" width="220" height="140" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="442" y="252" font-size="17" font-weight="700" fill="#101827" text-anchor="start">One catalog</text>
+<text x="442" y="276" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's rows go at the end</text>
+<text x="442" y="296" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">of the Silo catalog they</text>
+<text x="442" y="316" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">extend.</text>
+<line x1="648" y1="290" x2="696" y2="290" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="700" y="200" width="220" height="180" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="718" y="232" font-size="17" font-weight="700" fill="#101827" text-anchor="start">49 reviewed decisions</text>
+<text x="718" y="256" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each replaces one answer</text>
+<text x="718" y="276" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem gives on purpose,</text>
+<text x="718" y="296" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">with its reason. Six Silo</text>
+<text x="718" y="316" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">files are pinned by</text>
+<text x="718" y="336" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">checksum.</text>
+<line x1="924" y1="290" x2="972" y2="290" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="976" y="220" width="184" height="140" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="994" y="252" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Scenario gate</text>
+<text x="994" y="276" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Runs every case, 86</text>
+<text x="994" y="296" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">transport leaves in</text>
+<text x="994" y="316" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the focused packet.</text>
+<path d="M810,384 L810,452" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="640" y="456" width="520" height="100" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<text x="660" y="488" font-size="16" font-weight="700" fill="#B91C1C" text-anchor="start">A pinned original changed?</text>
+<text x="660" y="514" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Loading stops. The decision is reviewed again before the gate can</text>
+<text x="660" y="533" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">pass.</text>
+<rect x="40" y="470" width="560" height="86" rx="14" fill="#F9FAFB" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="500" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Only expected answers change. Requests, accounts, fixtures and the order</text>
+<text x="60" y="520" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">of steps stay exactly as Silo wrote them.</text>
+<text x="40" y="626" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A decision never loosens a security rule to make a test pass: no secret is shown again, no hidden profile is listed.</text>
+</svg>

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a server gets its first owner</title>
+<desc id="d">Two panels. Left: on a new server, five steps run in one transaction, all or nothing: the account, its membership of the default organization, an optional profile, ownership, and the sign-in. Right: on a server upgraded from Silo, one enabled administrator becomes the owner by itself; with several, ownership waits until an operator picks one.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="719" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a server gets its first owner</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The first owner runs the platform and the default organization. Nobody can win that by racing.</text>
+<rect x="40" y="120" width="560" height="560" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="64" y="156" font-size="19" font-weight="700" fill="#101827" text-anchor="start">A new server</text>
+<text x="64" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The first person to finish setup.</text>
+<rect x="64" y="200" width="512" height="400" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text x="84" y="228" font-size="12.5" font-weight="700" fill="#C2410C" text-anchor="start" letter-spacing="1">ONE TRANSACTION: ALL OR NOTHING</text>
+<circle cx="100" cy="268" r="13" fill="#10B981"/>
+<text x="100" y="273" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="126" y="266" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Create the account</text>
+<text x="126" y="286" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">An administrator account.</text>
+<circle cx="100" cy="338" r="13" fill="#6366F1"/>
+<text x="100" y="343" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="126" y="336" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Make it a member</text>
+<text x="126" y="356" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Of the default organization.</text>
+<circle cx="100" cy="408" r="13" fill="#0EA5E9"/>
+<text x="100" y="413" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="126" y="406" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Add its first profile</text>
+<text x="126" y="426" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">If one was asked for.</text>
+<circle cx="100" cy="478" r="13" fill="#FA6400"/>
+<text x="100" y="483" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="126" y="476" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Make it the owner</text>
+<text x="126" y="496" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Of the platform and the default organization, now active.</text>
+<circle cx="100" cy="548" r="13" fill="#10B981"/>
+<text x="100" y="553" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="126" y="546" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Sign it in</text>
+<text x="126" y="566" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">A sign-in session and its tokens.</text>
+<text x="64" y="630" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A second person finishing setup at the same moment waits, then finds</text>
+<text x="64" y="650" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">setup already done.</text>
+<rect x="620" y="120" width="540" height="560" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="644" y="156" font-size="19" font-weight="700" fill="#101827" text-anchor="start">A server upgraded from Silo</text>
+<text x="644" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Its accounts already exist.</text>
+<rect x="644" y="204" width="492" height="128" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="662" y="236" font-size="17" font-weight="700" fill="#101827" text-anchor="start">One enabled administrator</text>
+<text x="662" y="260" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Becomes the owner of the platform and the default organization by</text>
+<text x="662" y="280" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">itself. Every account joins the default organization and keeps</text>
+<text x="662" y="300" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">its profiles and libraries.</text>
+<rect x="644" y="352" width="492" height="150" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="662" y="384" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Several enabled administrators</text>
+<text x="662" y="408" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem does not guess. Ownership waits and the default</text>
+<text x="662" y="428" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">organization stays getting ready. Apps can still sign in and pick</text>
+<text x="662" y="448" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">profiles; organization administration waits.</text>
+<line x1="890" y1="506" x2="890" y2="536" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="644" y="540" width="492" height="72" rx="12" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.4"/>
+<text x="664" y="570" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An operator checks who is who, then picks one in a short</text>
+<text x="664" y="590" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">database transaction.</text>
+</svg>

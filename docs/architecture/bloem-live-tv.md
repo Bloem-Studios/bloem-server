@@ -1,7 +1,8 @@
 # How Live TV works
 
-> **Provenance and status.** Bloem page, written on 2026-10-31 and checked against
-> `main` at `c83c424b7`. Silo has no Live TV and lists it as a non-goal; Bloem
+> **Provenance and status.** Bloem page, written on 2026-10-31, updated on 2026-11-01
+> and checked against `main` at `b6039036d`. Silo has no Live TV and lists it as a
+> non-goal; Bloem
 > maintains it (see [BLOEM_AGENTS.md](../../BLOEM_AGENTS.md)). The tuner, guide and
 > recording code is an attributed adaptation of Prairie Server, and Xtream
 > providers are Bloem's own addition. This page explains Live TV in plain
@@ -105,14 +106,14 @@ Good to know:
 - **API:** [Live TV](../bloem/api/live-tv.md): every route under
   `/api/bloem/v1/livetv`, with its credentials, fields and error codes.
 
-Technical pages:
+Technical pages, each with pictures of its own:
 
-- [Live TV client access](live-tv-client-access.md): the permission, capability
-  discovery and how apps tune in.
-- [Xtream live TV providers](xtream-live-tv.md): encrypted provider accounts,
-  connection limits and guide limits.
-- [Live TV tuner discovery](../livetv-tuner-discovery.md): finding HDHomeRun and
-  Dispatcharr tuners.
+- [How apps reach Live TV](live-tv-client-access.md): the two permissions, capability
+  discovery, how apps tune in and let go, and the routes' error codes.
+- [How Xtream Live TV providers work](xtream-live-tv.md): encrypted provider accounts,
+  the four fixed requests, shared connection leases and guide limits.
+- [How Live TV finds tuners](../livetv-tuner-discovery.md): finding HDHomeRun and
+  Dispatcharr tuners, and discovery from Docker.
 - [Media ownership across API replicas](bloem-cluster-media.md): which server owns
   a Live TV session.
 - [Admin guide, Live TV](../wiki/admin-guide.md#210-live-tv): setting it up.

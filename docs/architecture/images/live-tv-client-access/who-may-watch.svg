@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="480" viewBox="0 0 1200 480" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Who may watch Live TV</title>
+<desc id="d">Two permissions are needed. The Live TV permission is separate from library access and not on by default; an access group or plan can still forbid it, and an admin account's main profile always has it. The playback permission comes from the plan; a browse-only plan or a preview visitor never plays. Without the Live TV permission, the app shows no Live TV.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="479" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Who may watch Live TV</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Two separate permissions, both checked again every time video is sent.</text>
+<rect x="40" y="124" width="540" height="160" rx="14" fill="#FDF2F8" stroke="#DB2777" stroke-width="1.8"/>
+<text x="58" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The Live TV permission</text>
+<text x="58" y="180" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">Separate from movie, series and book libraries, and not on by</text>
+<text x="58" y="201" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">default. An administrator turns it on for an account; an access</text>
+<text x="58" y="222" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">group or plan can still forbid it. An admin account's main profile</text>
+<text x="58" y="243" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">always has it. Other profiles need it explicitly.</text>
+<rect x="620" y="124" width="540" height="160" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="638" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Permission to play video</text>
+<text x="638" y="180" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">Comes from the account's plan. A browse-only plan, or a storefront</text>
+<text x="638" y="201" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">preview visitor, never plays Live TV, even with the Live TV</text>
+<text x="638" y="222" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">permission.</text>
+<rect x="40" y="310" width="1120" height="130" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="74" cy="346" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M68.6,340.6 L79.4,351.4 M79.4,340.6 L68.6,351.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="100" y="352" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Without the Live TV permission, the capability answers allowed: false and the app shows no Live TV at all. Without playback, tuning in is</text>
+<text x="100" y="373" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">refused.</text>
+<circle cx="74" cy="406" r="12" fill="#10B981"/>
+<path d="M68.6,406.24 L72.8,410.56 L80.0,401.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="100" y="412" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">A viewer can always end their own session, even after either permission is taken away.</text>
+</svg>

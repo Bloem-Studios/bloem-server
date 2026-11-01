@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="716" viewBox="0 0 1200 716" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Where campaign and seasonal artwork goes</title>
+<desc id="d">An administrator uploads a picture. Bloem checks that it is a PNG, JPEG, WebP or GIF of at most 8 MiB and names it after its content. It is stored in the first store available: the catalog Assets store on local disk or S3, else the public S3 bucket. With neither, uploads are refused but a web address can still be typed in. Anyone can then fetch the picture from the public artwork route.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="715" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Where campaign and seasonal artwork goes</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">One upload path for campaign cards, seasonal banners and seasonal sprites.</text>
+<rect x="40" y="132" width="300" height="116" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="164" font-size="17" font-weight="700" fill="#101827" text-anchor="start">1. Upload</text>
+<text x="58" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A platform administrator or the</text>
+<text x="58" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">storefront uploads a picture for a</text>
+<text x="58" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">campaign card, a banner or a sprite.</text>
+<line x1="344" y1="190" x2="396" y2="190" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="400" y="132" width="340" height="116" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="418" y="164" font-size="17" font-weight="700" fill="#101827" text-anchor="start">2. Check and name</text>
+<text x="418" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem reads the bytes, not the label: PNG,</text>
+<text x="418" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">JPEG, WebP or GIF, at most 8 MiB. The name</text>
+<text x="418" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">comes from its content.</text>
+<line x1="744" y1="190" x2="796" y2="190" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="800" y="132" width="360" height="116" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="818" y="164" font-size="17" font-weight="700" fill="#101827" text-anchor="start">3. Store</text>
+<text x="818" y="188" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">In the first store the server has, under the</text>
+<text x="818" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">folder ambience/ (below).</text>
+<text x="40" y="296" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Which store</text>
+<rect x="40" y="314" width="700" height="92" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="74" cy="360" r="14" fill="#10B981"/>
+<path d="M67.7,360.28 L72.6,365.32 L81.0,355.1" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="104" y="348" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The catalog Assets store</text>
+<text x="104" y="372" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's store for catalog artwork and branding: local disk or S3 (there, the public bucket).</text>
+<text x="104" y="390" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Used whenever it is set up.</text>
+<rect x="40" y="418" width="700" height="92" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<circle cx="74" cy="464" r="14" fill="#10B981"/>
+<path d="M67.7,464.28 L72.6,469.32 L81.0,459.1" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="104" y="452" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The public S3 bucket</text>
+<text x="104" y="476" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Only when no Assets store is set up.</text>
+<rect x="40" y="522" width="700" height="92" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<circle cx="74" cy="568" r="14" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M67.7,561.7 L80.3,574.3 M80.3,561.7 L67.7,574.3" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="104" y="556" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Neither</text>
+<text x="104" y="580" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Uploads are refused (503) and the list says storage is unavailable. A web address starting</text>
+<text x="104" y="598" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">https:// can still be typed in instead.</text>
+<rect x="780" y="314" width="380" height="300" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="800" y="348" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Showing it</text>
+<text x="800" y="378" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Apps fetch the picture from the public artwork</text>
+<text x="800" y="398" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">route, with no sign-in, because seasonal artwork</text>
+<text x="800" y="418" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">can appear on the sign-in page.</text>
+<text x="800" y="466" font-size="13" font-weight="600" fill="#C2410C" text-anchor="start">/api/bloem/v1/ambience/assets/{ref}</text>
+<text x="800" y="488" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="start">/api/v1/ambience/assets/{ref} (older links)</text>
+<text x="800" y="522" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The name never changes for the same bytes, so</text>
+<text x="800" y="542" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">browsers keep a copy for a year.</text>
+<text x="40" y="680" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A campaign or pack can be saved without an upload: saving one never proves its picture was uploaded.</text>
+</svg>

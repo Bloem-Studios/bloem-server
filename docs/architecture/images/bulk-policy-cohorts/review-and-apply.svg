@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Changing many accounts' plans at once</title>
+<desc id="d">Six numbered steps: pick the accounts, which freezes the list; choose one change; read the preview; confirm within 15 minutes; Bloem runs the change in batches and checks each account again; then read the accounts back. Below, the four kinds of change.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="599" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Changing many accounts' plans at once</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Pick, choose, preview, confirm. Bloem then applies exactly what you reviewed, and nothing else.</text>
+<rect x="40" y="120" width="168" height="210" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="120" width="8" height="210" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="148" r="12" fill="#6366F1"/>
+<text x="74" y="153" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="96" y="154" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Pick</text>
+<text x="64" y="182" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Up to 10,000</text>
+<text x="64" y="202" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">accounts. The</text>
+<text x="64" y="222" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">list is frozen:</text>
+<text x="64" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">later matches are</text>
+<text x="64" y="262" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">not added.</text>
+<line x1="210" y1="228" x2="228" y2="228" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="230" y="120" width="168" height="210" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="230" y="120" width="8" height="210" rx="4" fill="#14B8A6" stroke="none" stroke-width="1.5"/>
+<circle cx="264" cy="148" r="12" fill="#14B8A6"/>
+<text x="264" y="153" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="286" y="154" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Choose</text>
+<text x="254" y="182" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Exactly one</text>
+<text x="254" y="202" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">change. Nothing</text>
+<text x="254" y="222" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">is chosen for</text>
+<text x="254" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">you.</text>
+<line x1="400" y1="228" x2="418" y2="228" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="420" y="120" width="168" height="210" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="420" y="120" width="8" height="210" rx="4" fill="#14B8A6" stroke="none" stroke-width="1.5"/>
+<circle cx="454" cy="148" r="12" fill="#14B8A6"/>
+<text x="454" y="153" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="476" y="154" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Preview</text>
+<text x="444" y="182" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Who changes,</text>
+<text x="444" y="202" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">every field that</text>
+<text x="444" y="222" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">changes, and</text>
+<text x="444" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">which profiles</text>
+<text x="444" y="262" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">move.</text>
+<line x1="590" y1="228" x2="608" y2="228" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="610" y="120" width="168" height="210" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="120" width="8" height="210" rx="4" fill="#F59E0B" stroke="none" stroke-width="1.5"/>
+<circle cx="644" cy="148" r="12" fill="#F59E0B"/>
+<text x="644" y="153" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="666" y="154" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Confirm</text>
+<text x="634" y="182" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Within 15</text>
+<text x="634" y="202" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">minutes, and only</text>
+<text x="634" y="222" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">if nothing</text>
+<text x="634" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">changed</text>
+<text x="634" y="262" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">meanwhile.</text>
+<line x1="780" y1="228" x2="798" y2="228" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="800" y="120" width="168" height="210" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="800" y="120" width="8" height="210" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="834" cy="148" r="12" fill="#10B981"/>
+<text x="834" y="153" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="856" y="154" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Apply</text>
+<text x="824" y="182" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem works in</text>
+<text x="824" y="202" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">batches and</text>
+<text x="824" y="222" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">checks each</text>
+<text x="824" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">account again. A</text>
+<text x="824" y="262" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">changed one is</text>
+<text x="824" y="282" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">skipped.</text>
+<line x1="970" y1="228" x2="988" y2="228" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="990" y="120" width="168" height="210" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="990" y="120" width="8" height="210" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<circle cx="1024" cy="148" r="12" fill="#10B981"/>
+<text x="1024" y="153" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="1046" y="154" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Check</text>
+<text x="1014" y="182" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Read the accounts</text>
+<text x="1014" y="202" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">again. Don't</text>
+<text x="1014" y="222" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">trust the first</text>
+<text x="1014" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">answer alone.</text>
+<text x="40" y="384" font-size="18" font-weight="700" fill="#101827" text-anchor="start">The four kinds of change</text>
+<rect x="40" y="402" width="262" height="110" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="58" y="434" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Move to an existing cohort</text>
+<text x="58" y="458" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A policy this organization</text>
+<text x="58" y="478" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">already uses.</text>
+<rect x="326" y="402" width="262" height="110" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="344" y="434" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Apply a plan revision</text>
+<text x="344" y="458" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">One exact revision of an enabled</text>
+<text x="344" y="478" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">plan.</text>
+<rect x="612" y="402" width="262" height="110" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="630" y="434" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Derive a new policy</text>
+<text x="630" y="458" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">An existing cohort with a few</text>
+<text x="630" y="478" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">stated changes.</text>
+<rect x="898" y="402" width="262" height="110" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="916" y="434" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Restore the default</text>
+<text x="916" y="458" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The organization's protected</text>
+<text x="916" y="478" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">default policy.</text>
+<text x="40" y="556" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A cohort never changes once made. Accounts that match the same filter later are not changed: this is a one-off move, not a rule.</text>
+</svg>

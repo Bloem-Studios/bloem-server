@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">One server, several addresses</title>
+<desc id="d">Four browser windows reach one Bloem server: the server's public address shows the default organization's branding, two organizations' own addresses show their own names, logos and colours, and an unregistered address such as an IP address shows the server's branding. Inside the server, a list maps each registered address to its organization, which picks the branding and the address emails link to.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="759" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">One server, several addresses</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Each organization can have addresses of its own, with its own name, logo and colours.</text>
+<rect x="40" y="124" width="420" height="106" rx="12" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.5"/>
+<path d="M41,156 L459,156" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="58" cy="140" r="4.5" fill="#F87171"/>
+<circle cx="72" cy="140" r="4.5" fill="#FBBF24"/>
+<circle cx="86" cy="140" r="4.5" fill="#34D399"/>
+<rect x="106" y="130" width="338" height="20" rx="10" fill="#F3F4F6" stroke="none" stroke-width="0"/>
+<text x="118" y="145" font-size="13" font-weight="600" fill="#101827" text-anchor="start">bloem.example</text>
+<circle cx="74" cy="190" r="17" fill="#FA6400"/>
+<text x="74" y="196" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">B</text>
+<text x="102" y="187" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Bloem</text>
+<text x="102" y="207" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">the server's public address</text>
+<rect x="356" y="176" width="88" height="30" rx="8" fill="#FA6400" stroke="none" stroke-width="0"/>
+<text x="400" y="196" font-size="13.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">Sign in</text>
+<line x1="466" y1="177" x2="524" y2="177" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="254" width="420" height="106" rx="12" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.5"/>
+<path d="M41,286 L459,286" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="58" cy="270" r="4.5" fill="#F87171"/>
+<circle cx="72" cy="270" r="4.5" fill="#FBBF24"/>
+<circle cx="86" cy="270" r="4.5" fill="#34D399"/>
+<rect x="106" y="260" width="338" height="20" rx="10" fill="#F3F4F6" stroke="none" stroke-width="0"/>
+<text x="118" y="275" font-size="13" font-weight="600" fill="#101827" text-anchor="start">watch.riverside.example</text>
+<circle cx="74" cy="320" r="17" fill="#6366F1"/>
+<text x="74" y="326" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">R</text>
+<text x="102" y="317" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Riverside Club TV</text>
+<text x="102" y="337" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">Riverside Club's own address</text>
+<rect x="356" y="306" width="88" height="30" rx="8" fill="#6366F1" stroke="none" stroke-width="0"/>
+<text x="400" y="326" font-size="13.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">Sign in</text>
+<line x1="466" y1="307" x2="524" y2="307" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="384" width="420" height="106" rx="12" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.5"/>
+<path d="M41,416 L459,416" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="58" cy="400" r="4.5" fill="#F87171"/>
+<circle cx="72" cy="400" r="4.5" fill="#FBBF24"/>
+<circle cx="86" cy="400" r="4.5" fill="#34D399"/>
+<rect x="106" y="390" width="338" height="20" rx="10" fill="#F3F4F6" stroke="none" stroke-width="0"/>
+<text x="118" y="405" font-size="13" font-weight="600" fill="#101827" text-anchor="start">tv.harbour.example</text>
+<circle cx="74" cy="450" r="17" fill="#14B8A6"/>
+<text x="74" y="456" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">H</text>
+<text x="102" y="447" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Harbour Hotel</text>
+<text x="102" y="467" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">Harbour Hotel's own address</text>
+<rect x="356" y="436" width="88" height="30" rx="8" fill="#14B8A6" stroke="none" stroke-width="0"/>
+<text x="400" y="456" font-size="13.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">Sign in</text>
+<line x1="466" y1="437" x2="524" y2="437" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="514" width="420" height="106" rx="12" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.5" stroke-dasharray="6 5"/>
+<path d="M41,546 L459,546" stroke="#E5E7EB" stroke-width="1.5"/>
+<circle cx="58" cy="530" r="4.5" fill="#F87171"/>
+<circle cx="72" cy="530" r="4.5" fill="#FBBF24"/>
+<circle cx="86" cy="530" r="4.5" fill="#34D399"/>
+<rect x="106" y="520" width="338" height="20" rx="10" fill="#F3F4F6" stroke="none" stroke-width="0"/>
+<text x="118" y="535" font-size="13" font-weight="600" fill="#101827" text-anchor="start">an IP address or network name</text>
+<text x="58" y="576" font-size="15" font-weight="700" fill="#101827" text-anchor="start">Any other address</text>
+<text x="58" y="596" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">one that no organization registered</text>
+<line x1="466" y1="567" x2="524" y2="567" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<rect x="530" y="116" width="630" height="520" rx="18" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="554" y="150" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Bloem server</text>
+<text x="554" y="174" font-size="15" font-weight="700" fill="#C2410C" text-anchor="start">1. Which organization is this address for?</text>
+<text x="554" y="204" font-size="12.5" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="0.5">Address</text>
+<text x="776" y="204" font-size="12.5" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="0.5">Organization</text>
+<text x="930" y="204" font-size="12.5" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="0.5">Shows</text>
+<rect x="546" y="214" width="598" height="40" rx="8" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
+<rect x="546" y="214" width="6" height="40" rx="3" fill="#FA6400" stroke="none" stroke-width="0"/>
+<text x="562" y="240" font-size="14" font-weight="600" fill="#101827" text-anchor="start">bloem.example</text>
+<text x="776" y="240" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Default</text>
+<text x="930" y="240" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the server's brand</text>
+<rect x="1069" y="222" width="67" height="24" rx="12.0" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.2"/>
+<text x="1102.5" y="237.96" font-size="11" font-weight="600" fill="#101827" text-anchor="middle">primary</text>
+<rect x="546" y="262" width="598" height="40" rx="8" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
+<rect x="546" y="262" width="6" height="40" rx="3" fill="#6366F1" stroke="none" stroke-width="0"/>
+<text x="562" y="288" font-size="14" font-weight="600" fill="#101827" text-anchor="start">watch.riverside.example</text>
+<text x="776" y="288" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Riverside Club</text>
+<text x="930" y="288" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">its own brand</text>
+<rect x="1069" y="270" width="67" height="24" rx="12.0" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.2"/>
+<text x="1102.5" y="285.96" font-size="11" font-weight="600" fill="#101827" text-anchor="middle">primary</text>
+<rect x="546" y="310" width="598" height="40" rx="8" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
+<rect x="546" y="310" width="6" height="40" rx="3" fill="#6366F1" stroke="none" stroke-width="0"/>
+<text x="562" y="336" font-size="14" font-weight="600" fill="#101827" text-anchor="start">riverside.example</text>
+<text x="776" y="336" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Riverside Club</text>
+<text x="930" y="336" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">its own brand</text>
+<rect x="546" y="358" width="598" height="40" rx="8" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1"/>
+<rect x="546" y="358" width="6" height="40" rx="3" fill="#14B8A6" stroke="none" stroke-width="0"/>
+<text x="562" y="384" font-size="14" font-weight="600" fill="#101827" text-anchor="start">tv.harbour.example</text>
+<text x="776" y="384" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Harbour Hotel</text>
+<text x="930" y="384" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">its own brand</text>
+<rect x="1069" y="366" width="67" height="24" rx="12.0" fill="#FFFFFF" stroke="#14B8A6" stroke-width="1.2"/>
+<text x="1102.5" y="381.96" font-size="11" font-weight="600" fill="#101827" text-anchor="middle">primary</text>
+<rect x="546" y="406" width="598" height="40" rx="8" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="6 5"/>
+<text x="562" y="432" font-size="14" font-weight="600" fill="#6B7280" text-anchor="start">anything else</text>
+<text x="776" y="432" font-size="14" font-weight="normal" fill="#6B7280" text-anchor="start">none</text>
+<text x="930" y="432" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the server's brand</text>
+<text x="554" y="486" font-size="15" font-weight="700" fill="#C2410C" text-anchor="start">2. That organization's look and links</text>
+<text x="554" y="512" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Its name, logos, browser icon, accent colour, sign-in subtitle and background, and</text>
+<text x="554" y="532" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">default theme. Its invitation and password-reset emails link to its primary</text>
+<text x="554" y="552" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">address. A value it has not set is Bloem's built-in default, never the server's</text>
+<text x="554" y="572" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">brand.</text>
+<text x="554" y="612" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="start">Each server keeps this list in memory and reads it again within 30 seconds of a change.</text>
+<rect x="40" y="660" width="1120" height="64" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.6"/>
+<text x="64" y="688" font-size="16" font-weight="700" fill="#101827" text-anchor="start">An address decides what people see, never what they can reach.</text>
+<text x="64" y="710" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">An account only ever reaches its own organization, whichever address it uses.</text>
+</svg>

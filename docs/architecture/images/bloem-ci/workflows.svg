@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What runs, and when</title>
+<desc id="d">Top, every change: a pull request, a push to main, the Monday run or a manual run starts Bloem CI. When Bloem CI passes on a push to main, Bloem Image builds the server image tagged with that commit, and moves latest if the commit is still main's newest. Deploying is a separate step a person starts. Bottom, every day: the upstream sync merges Silo's main into a branch and opens a pull request; Bloem CI checks it; the merge gate lands it on main. A sync with conflicts opens as a draft that a person resolves.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="739" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What runs, and when</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Four Bloem workflows. Bloem CI is the gate for everything that reaches main.</text>
+<text x="40" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Every change</text>
+<rect x="40" y="160" width="200" height="38" rx="19" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<text x="140" y="185" font-size="14.5" font-weight="600" fill="#101827" text-anchor="middle">Pull request</text>
+<line x1="240" y1="179" x2="262" y2="179" stroke="#9CA3AF" stroke-width="2"/>
+<rect x="40" y="210" width="200" height="38" rx="19" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<text x="140" y="235" font-size="14.5" font-weight="600" fill="#101827" text-anchor="middle">Push to main</text>
+<line x1="240" y1="229" x2="262" y2="229" stroke="#9CA3AF" stroke-width="2"/>
+<rect x="40" y="260" width="200" height="38" rx="19" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<text x="140" y="285" font-size="14.5" font-weight="600" fill="#101827" text-anchor="middle">Monday, 04:23 UTC</text>
+<line x1="240" y1="279" x2="262" y2="279" stroke="#9CA3AF" stroke-width="2"/>
+<rect x="40" y="310" width="200" height="38" rx="19" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.4"/>
+<text x="140" y="335" font-size="14.5" font-weight="600" fill="#101827" text-anchor="middle">Started by hand</text>
+<line x1="240" y1="329" x2="262" y2="329" stroke="#9CA3AF" stroke-width="2"/>
+<line x1="262" y1="179" x2="262" y2="329" stroke="#9CA3AF" stroke-width="2"/>
+<line x1="262" y1="254.0" x2="286" y2="254.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="290" y="160" width="240" height="190" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="308" y="192" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem CI</text>
+<text x="308" y="216" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Go tests, lint, contract</text>
+<text x="308" y="236" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">checks, database checks, and</text>
+<text x="308" y="256" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">the web build and tests,</text>
+<text x="308" y="276" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">side by side.</text>
+<rect x="308" y="306" width="174" height="25.5" rx="12.75" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.2"/>
+<text x="395.0" y="323.25" font-size="12.5" font-weight="600" fill="#0F766E" text-anchor="middle">up to 24 jobs at once</text>
+<line x1="534" y1="254.0" x2="636" y2="254.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="585" y="224.0" font-size="12.5" font-weight="normal" fill="#4B5563" text-anchor="middle">passed, on a</text>
+<text x="585" y="240.0" font-size="12.5" font-weight="normal" fill="#4B5563" text-anchor="middle">push to main</text>
+<rect x="640" y="160" width="240" height="190" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="658" y="192" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem Image</text>
+<text x="658" y="216" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Builds the server image for</text>
+<text x="658" y="236" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">exactly that commit, with</text>
+<text x="658" y="256" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">the web bundle CI built.</text>
+<line x1="884" y1="254.0" x2="916" y2="254.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="920" y="160" width="240" height="190" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="940" y="192" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The image</text>
+<text x="940" y="222" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#101827" text-anchor="start">bloem-server:</text>
+<text x="940" y="242" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#101827" text-anchor="start">&lt;full commit SHA&gt;</text>
+<text x="940" y="274" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">latest moves to it only</text>
+<text x="940" y="293" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">while that commit is still</text>
+<text x="940" y="312" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">main's newest.</text>
+<rect x="640" y="370" width="520" height="48" rx="12" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.4" stroke-dasharray="6 5"/>
+<text x="660" y="400" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Deploying is a separate step a person starts.</text>
+<text x="40" y="468" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Every day</text>
+<rect x="40" y="484" width="210" height="116" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="516" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Upstream sync</text>
+<text x="58" y="540" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">05:20 UTC: merges Silo's</text>
+<text x="58" y="560" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">main into a new branch.</text>
+<line x1="253" y1="542.0" x2="279" y2="542.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="282" y="484" width="210" height="116" rx="14" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="300" y="516" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Pull request</text>
+<text x="300" y="540" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Opened for that branch.</text>
+<line x1="495" y1="542.0" x2="521" y2="542.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="524" y="484" width="190" height="116" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="542" y="516" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Bloem CI</text>
+<text x="542" y="540" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The same checks as</text>
+<text x="542" y="560" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">above.</text>
+<line x1="717" y1="542.0" x2="743" y2="542.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="746" y="484" width="210" height="116" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="764" y="516" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Merge gate</text>
+<text x="764" y="540" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Five checks on the exact</text>
+<text x="764" y="560" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">commit CI tested.</text>
+<line x1="959" y1="542.0" x2="985" y2="542.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="988" y="484" width="172" height="116" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="1006" y="516" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">main</text>
+<text x="1006" y="540" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Merged, never</text>
+<text x="1006" y="560" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">squashed.</text>
+<path d="M387.0,602 L387.0,634" fill="none" stroke="#F59E0B" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="638" width="760" height="64" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="60" y="666" font-size="15" font-weight="700" fill="#B45309" text-anchor="start">Conflicts?</text>
+<text x="60" y="688" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A draft pull request. A person resolves it on Silo's side and merges it by hand.</text>
+</svg>

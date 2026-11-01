@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="730" viewBox="0 0 1200 730" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Where Bloem's /api/v1 routes moved</title>
+<desc id="d">Six rows, one for each area Bloem added to Silo's /api/v1: tenants, tenant members, announcements, campaigns, seasonal packs and remote control. Each row shows the old path and its replacement under /api/bloem/v1. Remote control has no replacement yet.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="729" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Where Bloem's /api/v1 routes moved</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The old routes stay mounted, unchanged, until their last callers move. Then Silo retires /api/v1.</text>
+<text x="40" y="140" font-size="14" font-weight="700" fill="#6B7280" text-anchor="start">Area</text>
+<text x="250" y="140" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">Old, on Silo's /api/v1</text>
+<text x="700" y="140" font-size="14" font-weight="700" fill="#C2410C" text-anchor="start">Now, on Bloem's /api/bloem/v1</text>
+<rect x="40" y="156" width="1120" height="64" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="186.0" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Tenants</text>
+<text x="60" y="206.0" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">7 routes</text>
+<rect x="240" y="164" width="410" height="48" rx="10" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+<text x="256" y="193.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/tenants/...</text>
+<line x1="654" y1="188.0" x2="686" y2="188.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="690" y="164" width="450" height="48" rx="10" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.2"/>
+<text x="706" y="193.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/platform/tenants/...</text>
+<rect x="40" y="232" width="1120" height="64" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="262.0" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Tenant members</text>
+<text x="60" y="282.0" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">17 routes</text>
+<rect x="240" y="240" width="410" height="48" rx="10" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+<text x="256" y="269.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/tenants/{id}/members/...</text>
+<line x1="654" y1="264.0" x2="686" y2="264.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="690" y="240" width="450" height="48" rx="10" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.2"/>
+<text x="706" y="269.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/platform/tenants/{id}/members/...</text>
+<rect x="40" y="308" width="1120" height="64" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="338.0" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Announcements</text>
+<text x="60" y="358.0" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">3 routes</text>
+<rect x="240" y="316" width="410" height="48" rx="10" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+<text x="256" y="345.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/notifications/announcements</text>
+<line x1="654" y1="340.0" x2="686" y2="340.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="690" y="316" width="450" height="48" rx="10" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.2"/>
+<text x="706" y="345.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/platform/announcements</text>
+<rect x="40" y="384" width="1120" height="80" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="422.0" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Campaigns</text>
+<text x="60" y="442.0" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">6 routes</text>
+<rect x="240" y="392" width="410" height="64" rx="10" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+<text x="256" y="419.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/promotions/...</text>
+<text x="256" y="439.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/promotions, /promotions/{id}/save</text>
+<line x1="654" y1="424.0" x2="686" y2="424.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="690" y="392" width="450" height="64" rx="10" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.2"/>
+<text x="706" y="419.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/platform/promotions/...</text>
+<text x="706" y="439.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/promotions/...</text>
+<rect x="40" y="476" width="1120" height="80" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="514.0" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Seasonal packs</text>
+<text x="60" y="534.0" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">7 routes</text>
+<rect x="240" y="484" width="410" height="64" rx="10" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+<text x="256" y="511.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/ambience/...</text>
+<text x="256" y="531.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/ambience/assets/{ref}</text>
+<line x1="654" y1="516.0" x2="686" y2="516.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="690" y="484" width="450" height="64" rx="10" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.2"/>
+<text x="706" y="511.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/platform/ambience/...</text>
+<text x="706" y="531.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/ambience/assets/{ref}</text>
+<rect x="40" y="568" width="1120" height="80" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="60" y="606.0" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Remote control</text>
+<text x="60" y="626.0" font-size="13" font-weight="normal" fill="#4B5563" text-anchor="start">6 routes</text>
+<rect x="240" y="576" width="410" height="64" rx="10" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+<text x="256" y="603.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/admin/remote/..., /devices/{id}/remote-control,</text>
+<text x="256" y="623.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">/profiles/household/sessions/...</text>
+<line x1="654" y1="608.0" x2="686" y2="608.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="690" y="576" width="450" height="64" rx="10" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="6 5"/>
+<circle cx="716" cy="608.0" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M710.6,602.6 L721.4,613.4 M721.4,602.6 L710.6,613.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="740" y="613.0" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">None yet: built when the phone apps move</text>
+<text x="40" y="694" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Paths are shortened: each old path starts with /api/v1, each new one with /api/bloem/v1.</text>
+</svg>

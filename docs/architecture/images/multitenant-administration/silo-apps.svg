@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How an app built for Silo finds its organization</title>
+<desc id="d">Apps built for Silo know nothing about organizations. Before a profile is picked and after, Bloem answers from the account's one organization. An account with no membership gets the default organization's answer from before organizations existed.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="639" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How an app built for Silo finds its organization</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The app only knows an account and, later, a profile. Bloem works out the rest.</text>
+<text x="40" y="142" font-size="17" font-weight="700" fill="#101827" text-anchor="start">An account in an organization</text>
+<rect x="40" y="160" width="300" height="112" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="192" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Before picking a profile</text>
+<text x="58" y="216" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The app browses with the account</text>
+<text x="58" y="236" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">alone.</text>
+<rect x="40" y="292" width="300" height="112" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<text x="58" y="324" font-size="16" font-weight="700" fill="#101827" text-anchor="start">After picking a profile</text>
+<text x="58" y="348" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The app now names the profile too.</text>
+<line x1="344" y1="216" x2="470" y2="260" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="344" y1="348" x2="470" y2="304" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="474" y="222" width="330" height="120" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="2"/>
+<text x="639" y="262" font-size="18" font-weight="700" fill="#101827" text-anchor="middle">The account's one</text>
+<text x="639" y="286" font-size="18" font-weight="700" fill="#101827" text-anchor="middle">organization</text>
+<text x="639" y="314" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">Same answer both times</text>
+<line x1="808" y1="282" x2="866" y2="282" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="870" y="214" width="290" height="136" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="888" y="246" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Its libraries only</text>
+<text x="888" y="270" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Never a mix of two organizations,</text>
+<text x="888" y="290" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">and never an empty answer that looks</text>
+<text x="888" y="310" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">like a locked-out user.</text>
+<text x="40" y="466" font-size="17" font-weight="700" fill="#101827" text-anchor="start">An account with no membership</text>
+<rect x="40" y="484" width="300" height="96" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="58" y="516" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Account alone</text>
+<text x="58" y="540" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">No organization holds it.</text>
+<line x1="344" y1="532" x2="470" y2="532" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="474" y="484" width="330" height="96" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="639" y="524" font-size="17" font-weight="700" fill="#101827" text-anchor="middle">The default organization</text>
+<text x="639" y="550" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">as before organizations existed</text>
+<text x="40" y="616" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Picking a profile never moves an account to another organization.</text>
+</svg>

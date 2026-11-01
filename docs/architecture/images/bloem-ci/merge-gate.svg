@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="966" viewBox="0 0 1200 966" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">When a sync merges itself</title>
+<desc id="d">Every morning the sync merges Silo's main into a branch and opens a pull request. Five checks then run in order on the commit Bloem CI tested: Bloem CI passed; the branch comes from this repository; it is the one open sync pull request and not a draft; its head is the exact commit CI tested; and that commit is the untouched merge of Bloem's main and Silo's main. Any no leaves the pull request for a person. If all pass, it merges into main as a merge commit, never squashed.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="965" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">When a sync merges itself</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Five checks on the exact commit Bloem CI tested. Any “no” leaves the pull request for a person.</text>
+<rect x="40" y="116" width="1120" height="70" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6"/>
+<text x="64" y="146" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Every morning</text>
+<text x="64" y="170" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The sync merges Silo's main into upstream-sync/&lt;date&gt;-&lt;sha&gt; and opens a pull request. Bloem CI then runs on it.</text>
+<rect x="40" y="220" width="640" height="96" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="68" cy="250" r="13" fill="#6366F1"/>
+<text x="68" y="255" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="92" y="256" font-size="17.5" font-weight="700" fill="#101827" text-anchor="start">Did Bloem CI pass?</text>
+<text x="92" y="282" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Re-runs count: the gate looks again after each one.</text>
+<line x1="684" y1="268.0" x2="776" y2="268.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="260.0" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="230" width="380" height="76" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="274.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Nothing merges.</text>
+<line x1="360.0" y1="318" x2="360.0" y2="345" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="337" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="348" width="640" height="96" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="68" cy="378" r="13" fill="#6366F1"/>
+<text x="68" y="383" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="92" y="384" font-size="17.5" font-weight="700" fill="#101827" text-anchor="start">Is the branch from this repository?</text>
+<text x="92" y="410" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A pull request from a fork never merges itself.</text>
+<line x1="684" y1="396.0" x2="776" y2="396.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="388.0" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="358" width="380" height="76" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="402.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Nothing merges.</text>
+<line x1="360.0" y1="446" x2="360.0" y2="473" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="465" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="476" width="640" height="96" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="68" cy="506" r="13" fill="#6366F1"/>
+<text x="68" y="511" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="92" y="512" font-size="17.5" font-weight="700" fill="#101827" text-anchor="start">Is it the one open sync pull request, not a draft?</text>
+<text x="92" y="538" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A sync with conflicts opens as a draft.</text>
+<line x1="684" y1="524.0" x2="776" y2="524.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="516.0" font-size="14" font-weight="700" fill="#B45309" text-anchor="start">No</text>
+<rect x="780" y="486" width="380" height="76" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="800" y="520.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">A person resolves it on Silo's</text>
+<text x="800" y="540.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">side and merges by hand.</text>
+<line x1="360.0" y1="574" x2="360.0" y2="601" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="593" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="604" width="640" height="96" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="68" cy="634" r="13" fill="#6366F1"/>
+<text x="68" y="639" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="92" y="640" font-size="17.5" font-weight="700" fill="#101827" text-anchor="start">Is its head the commit CI tested?</text>
+<text x="92" y="666" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Nothing pushed since the run.</text>
+<line x1="684" y1="652.0" x2="776" y2="652.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="644.0" font-size="14" font-weight="700" fill="#B45309" text-anchor="start">No</text>
+<rect x="780" y="614" width="380" height="76" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="800" y="658.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Left for a person.</text>
+<line x1="360.0" y1="702" x2="360.0" y2="729" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="721" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="732" width="640" height="96" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="68" cy="762" r="13" fill="#6366F1"/>
+<text x="68" y="767" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="92" y="768" font-size="17.5" font-weight="700" fill="#101827" text-anchor="start">Is it the untouched merge?</text>
+<text x="92" y="794" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's main and Silo's main as its parents, and</text>
+<text x="92" y="813" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">exactly the tree git merge-tree rebuilds.</text>
+<line x1="684" y1="780.0" x2="776" y2="780.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="772.0" font-size="14" font-weight="700" fill="#B45309" text-anchor="start">No</text>
+<rect x="780" y="742" width="380" height="76" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="800" y="776.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">A hand fix or an extra commit:</text>
+<text x="800" y="796.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">left for a person.</text>
+<line x1="360.0" y1="830" x2="360.0" y2="857" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="849" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="170.0" y="860" width="380" height="62" rx="31" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="360.0" y="899" font-size="20" font-weight="700" fill="#FFFFFF" text-anchor="middle">Merged into main</text>
+<text x="780" y="882" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A merge commit, never a squash, so the</text>
+<text x="780" y="902" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">next sync sees Silo's commits as merged.</text>
+</svg>

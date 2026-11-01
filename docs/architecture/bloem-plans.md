@@ -1,10 +1,11 @@
 # How plans, previews and upgrades work
 
-> **Provenance and status.** Bloem page, written on 2026-10-31 and checked against
-> `main` at `c83c424b7`. Plans (entitlement templates), the storefront preview and
-> the upgrade prompt are Bloem additions. Silo has the per-account settings and
-> access groups that plans are built on. This page explains them in plain
-> language; the technical pages and the API are linked at the end.
+> **Provenance and status.** Bloem page, written on 2026-10-31, updated on
+> 2026-11-01 and checked against `main` at `b6039036d`. Plans (entitlement
+> templates), the storefront preview and the upgrade prompt are Bloem additions.
+> Silo has the per-account settings and access groups that plans are built on.
+> This page explains them in plain language; the technical pages and the API are
+> in the [For developers](#for-developers) section.
 
 A **plan** decides what an account gets: which libraries, how many screens at
 once, video conversions, picture quality, downloads and requests. This page
@@ -45,6 +46,10 @@ its name.
 4. **Each profile's limits.** The household's main profile sets PINs, kids
    profiles, age limits and a chosen set of libraries.
 
+An organization's own web address changes only how Bloem looks: its name, logo
+and colours. It never changes what a plan allows
+([how organization domains work](bloem-organization-domains.md)).
+
 ## Changing a plan safely
 
 ![Revisions 1 to 4 of a plan, accounts staying on revision 3, and four steps to move them](images/plans/revisions.svg)
@@ -56,8 +61,10 @@ revision they have until someone moves them:
 2. **Choose who and which revision:** one account, one organization, or a
    reviewed group of up to 10,000 accounts (a **policy cohort**).
 3. **Preview.** Bloem shows what will change, and for whom.
-4. **Confirm within ten minutes.** The confirmation is tied to that preview; if
-   anything changed in between, preview again.
+4. **Confirm in time.** For one account or one organization, within ten minutes
+   of the preview; for a policy cohort, within 15 minutes of picking the accounts.
+   The confirmation is tied to that preview; if anything changed in between,
+   preview again.
 
 To undo a change, make another revision with the old values and move the
 accounts to it.
@@ -70,8 +77,9 @@ The storefront (Bloem Garden) can let people look around before they buy:
 
 1. **Click Preview.** The storefront hands the visitor a one-time link that works
    for one minute.
-2. **A guest session.** Bloem opens it on a separate preview address. It ends
-   after two hours, or after 20 minutes without use.
+2. **A guest session.** Bloem opens it on a separate preview address, which can
+   never be the server's public address. It ends after two hours, or after 20
+   minutes without use.
 3. **Look around.** The chosen libraries, descriptions, seasons and episodes.
    Nothing plays, downloads or saves.
 4. **Free play, if switched on.** The storefront confirms an email address and
@@ -102,18 +110,21 @@ the link are the administrator's.
 | --- | --- |
 | Platform administrator | Plans and their revisions, applying them to direct accounts and organizations, bulk moves, the preview's settings and libraries, the upgrade prompt. |
 | Organization administrator | Moving their own organization's people between plans and cohorts, with the same preview and confirmation. |
-| The storefront | Putting accounts and organizations on a plan, preview launch links and free-play allowances, using a platform administrator's API key. |
+| The storefront | Creating accounts and reseller organizations on a plan, moving an account to another plan, preview launch links and free-play allowances, using a platform administrator's API key. |
 
 ## Words used in the code
 
 | On this page | In the code and database |
 | --- | --- |
 | Plan | entitlement template (`internal/entitlements`) |
+| Browse-only, Viewer, Standard, Premium, Reseller Member | the template keys `browse-only`, `viewer`, `standard`, `premium`, `reseller-member` |
+| Preview plan | the protected `bloem-preview` template |
 | Revision | `entitlement_template_revisions` |
 | Account's plan | the template on the account's access group (`access_groups.managed_template_key`) |
 | Account's own settings | the policy columns on Silo's `users` row |
 | Policy cohort, bulk move | entitlement cohorts and bulk policy jobs |
 | Preview, guest session | preview principal and `preview_guest` sessions (`internal/preview`) |
+| Preview address | the preview host in the preview settings |
 | Free play | play grants (`bloem_preview_play_grants`) |
 | Upgrade prompt | `GET`/`PUT /api/bloem/v1/admin/platform/upgrade-prompt` |
 
@@ -124,13 +135,16 @@ the link are the administrator's.
   [messages](../bloem/api/messages.md) (the upgrade prompt). The storefront puts a
   new account on a plan with `POST /api/bloem/v1/admin/platform/accounts`, and an
   organization with `POST /api/bloem/v1/admin/platform/tenants`
-  ([organizations API](../bloem/api/organizations.md)).
+  ([organizations API](../bloem/api/organizations.md)). The storefront calls
+  none of Silo's `/api/v1` ([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)).
 - [Entitlement templates guide](../wiki/admin/entitlement-templates.md) and
-  [operations](../operations/entitlement-templates.md).
+  [managing entitlement templates](../operations/entitlement-templates.md): the
+  built-in plans, policy fields, key rules, confirmation and audit.
 - [Bulk policy cohorts](../operations/bulk-policy-cohorts.md) and the
   [release runbook](../operations/bulk-policy-cohorts-runbook.md).
-- [Browse-only content policy](bloem-browse-only-content-policy.md): preview
-  principals, guest sessions and free play.
+- [How browse-only access and the preview work](bloem-browse-only-content-policy.md):
+  the delivery checks, preview principals, guest sessions, preview administration
+  and free play.
 
 The pictures are SVG files under `images/plans/`, drawn by
 `scripts/bloem/draw-pictures.py`. Redraw them there, not by hand.

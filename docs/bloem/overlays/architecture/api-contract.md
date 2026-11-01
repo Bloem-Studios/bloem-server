@@ -1,33 +1,63 @@
 # Bloem overlay: Native API contract: Huma and `/api/v2`
 
-**What this overlays.** Silo's
-[`docs/architecture/api-contract.md`](../../../architecture/api-contract.md). Bloem
-replaces one sentence of the section “Migration ledger”, adds a paragraph after
-it, and adds a closing section on Bloem's separate native contract. An
-*overlay* is a Bloem-owned page that records Bloem's additions to, or
-replacements of, sections of a Silo-owned document. The Silo file stays
-exactly as Silo wrote it. See the
-[documentation workflow](../../documentation-workflow.md).
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
+> adds to or replaces in Silo's
+> [`docs/architecture/api-contract.md`](../../../architecture/api-contract.md),
+> which stays exactly as Silo wrote it. The section-by-section changes are in the
+> [For developers](#for-developers) section.
 
-**Why Bloem differs.** Bloem adds routes to Silo's route groups, and its own
-middleware changes the chain of almost every route, so its route inventory
-moves on most merges. To keep the hand-curated migration ledger
-(`contracts/api/v2/migration.json`) in step without hand edits, Bloem added
-`make migration-ledger` (`scripts/apiv2-ledger/refresh_ledger.py`, in
-`23b23f531`, 2026-09-16). Bloem also publishes a second contract,
-`/api/bloem/v1`, which Silo's document does not cover. Bloem first documented
-these in the Silo file in September 2026 (`0f00b3eae`, 2026-09-01) and moved
-the text here in `47ea7c889` (2026-09-23).
+Silo's page sets the rules for Silo's stable API, `/api/v2`, and for the
+**migration ledger**, the file that records what happens to every older route as
+it moves to `/api/v2`. Bloem follows those rules. It differs in two places: it
+keeps the ledger up to date with a generator, and it publishes a second API of its
+own, `/api/bloem/v1`, which Silo's page does not cover.
 
-**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+## What Bloem changes
+
+- **The ledger's bookkeeping is generated.** Bloem adds routes to Silo's route
+  groups, so almost every Silo merge shifts the route list. A generator copies the
+  facts the route list already holds into the ledger. The decisions in the ledger
+  are still made by people.
+- **Bloem's own API is separate.** Features Silo does not have live under
+  `/api/bloem/v1`, with their own API description. Bloem adds nothing to Silo's
+  `/api/v1`, and where Silo's `/api/v2` lacks something, Bloem adds a route of its
+  own rather than changing Silo's.
+- **A generated description is not proof.** Matching API descriptions show what
+  the contract says, not that a route is switched on, that it works against a real
+  server, or that an app uses it.
+
+## Words used in the code
+
+| On this page | In the code and repository |
+| --- | --- |
+| Migration ledger | `contracts/api/v2/migration.json`, checked by `make verify-migration-ledger` |
+| Route list | `contracts/api/v2/route-inventory.json`, from `make route-inventory` |
+| The ledger generator | `make migration-ledger` (`scripts/apiv2-ledger/refresh_ledger.py`) |
+| Bloem's API description | `contracts/api/bloem/v1/openapi.json` |
+| Feature detection | `feature_tokens` in `GET /api/bloem/v1/capabilities` |
+
+## For developers
+
+### Where this overlay came from
+
+Bloem's own middleware changes the chain of almost every route, so its route
+inventory moves on most merges. To keep the hand-curated migration ledger in step
+without hand edits, Bloem added `make migration-ledger`
+(`scripts/apiv2-ledger/refresh_ledger.py`, in `23b23f531`, 2026-09-16). Bloem first
+documented these in the Silo file in September 2026 (`0f00b3eae`, 2026-09-01) and
+moved the text here in `47ea7c889` (2026-09-23).
+
+It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
 `e852f92bf` (`Makefile`, `Makefile.bloem`, `scripts/apiv2-ledger/`,
-`contracts/api/bloem/v1/openapi.json`). Silo has not changed this document since
-the previous review (Silo `6de6d5e5e`). The earlier edition of this overlay
+`contracts/api/bloem/v1/openapi.json`). The earlier edition of this overlay
 replaced Silo's whole description of the ledger tooling. Silo's section
-assignment and consumer-evidence scripts still run in Bloem, so the
-replacement is now narrowed to the one sentence that differs.
+assignment and consumer-evidence scripts still run in Bloem, so the replacement is
+narrowed to the one sentence that differs. From `3e2d306b2` through `63ef34b23`
+Silo changed the document six times (#3055, #3169, #3193, #3021, #3279, #3276);
+none touches the migration ledger section, and all apply to Bloem as written.
 
-Index: [Bloem documentation](../../README.md).
+### Section by section
 
 ---
 
@@ -49,7 +79,8 @@ so a hand-maintained file goes red on a change that contains no decision. `make 
 the current inventory by key, refreshing only the copied fields and the row order, seeding an
 entry for each new route, and reassigning sections. Every curated field and every committed call
 site is preserved verbatim, and re-running on an unchanged inventory rewrites the file byte for
-byte, which is what `make verify-migration-ledger` checks before it runs the Go gate. A seeded row
+byte, which is what `make verify-migration-ledger` checks (`refresh_ledger.py --check`, then the
+section check) before it runs the Go gate. A seeded row
 arrives `proposed` with no owner and no `v2` target: it is a placeholder for a decision, not a
 decision, and the section PR still has to make it. Refreshing consumer evidence is a separate
 operation and is not part of this target -- it needs the sibling client trees at a named commit
@@ -59,7 +90,7 @@ operation and is not part of this target -- it needs the sibling client trees at
 
 **Location:** end of the document. **Bloem adds:**
 
-## Bloem native storage and generated contracts
+#### Bloem native storage and generated contracts
 
 Bloem keeps `/api/v2` separate from `/api/bloem/v1`. Native-storage
 administration is a Bloem-owned protected platform/organization surface. Its route and wire
@@ -88,3 +119,24 @@ production server, or a native client uses it. Feature detection remains
 required. The public plugin SDK version, private `StorageProvider` wire schema
 and native-client API artifacts are separate compatibility surfaces; see
 [protocol ownership](../../../architecture/bloem-native-storage.md#protocol).
+
+#### Bloem and Silo's `/api/v1` retirement
+
+Silo will retire `/api/v1` (the `410 Gone` tombstone with `client_upgrade_required`
+described above), and when it does, every Bloem route mounted beside it goes too.
+So Bloem adds nothing to Silo's `/api/v1`. Bloem's callers use Silo's `/api/v2` for
+what Silo has and `/api/bloem/v1` for Bloem's own features; where Silo's `/api/v2`
+lacks something Bloem needs, Bloem adds a native route rather than calling
+`/api/v1`. Since 2026-11-01 the web app and the storefront call none of Silo's
+`/api/v1`; the phone apps still do. `/api/bloem/v1` keeps its own version: it grows
+by adding fields and routes, which clients detect through `feature_tokens` in
+`GET /api/bloem/v1/capabilities`, and does not move to a `v2` to match Silo. See
+[leaving Silo's `/api/v1`](../../../architecture/bloem-leaving-silo-v1.md).
+
+### Related pages
+
+- [v1 scope overlay](v1-scope.md): Bloem's Silo-compatible `/api/v1` and its
+  retired additions.
+- [Writing Bloem documentation](../../documentation-workflow.md#api-and-swagger-sources):
+  which source generates which contract.
+- Index: [Bloem documentation](../../README.md).

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Retiring an organization</title>
+<desc id="d">The storefront ends Riverside Club. In one step, Bloem removes each member: Sam's account, which has nothing else, is deleted; the coach's account, which has the admin role, and Kim's account, which owns another organization, are kept without the membership. The organization is suspended and kept on record. If any removal fails, nothing changes. Afterwards, the kept accounts' things in the organization are cleaned up.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="719" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Retiring an organization</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Every member is removed in one step. Only accounts with nothing else to hold them are deleted.</text>
+<rect x="40" y="124" width="300" height="120" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="156" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">The storefront ends it</text>
+<text x="58" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Riverside Club cancels, and the</text>
+<text x="58" y="200" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">storefront asks Bloem to retire the</text>
+<text x="58" y="220" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">organization.</text>
+<line x1="344" y1="184" x2="396" y2="184" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="400" y="116" width="760" height="404" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="424" y="150" font-size="18" font-weight="700" fill="#101827" text-anchor="start">One step, all or nothing</text>
+<text x="424" y="174" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem locks the organization first, then removes each member as it would one by one.</text>
+<rect x="424" y="196" width="712" height="60" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="444" y="222" font-size="15" font-weight="700" fill="#101827" text-anchor="start">sam@riverside.example</text>
+<text x="444" y="243" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Has nothing else</text>
+<rect x="985" y="213" width="135" height="26" rx="13.0" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+<text x="1052.5" y="230.68" font-size="13" font-weight="600" fill="#B91C1C" text-anchor="middle">Account deleted</text>
+<rect x="424" y="268" width="712" height="60" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="444" y="294" font-size="15" font-weight="700" fill="#101827" text-anchor="start">coach@riverside.example</text>
+<text x="444" y="315" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Has the admin role</text>
+<rect x="917" y="285" width="203" height="26" rx="13.0" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="1018.5" y="302.68" font-size="13" font-weight="600" fill="#047857" text-anchor="middle">Kept, membership removed</text>
+<rect x="424" y="340" width="712" height="60" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="444" y="366" font-size="15" font-weight="700" fill="#101827" text-anchor="start">kim@riverside.example</text>
+<text x="444" y="387" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Owns another organization</text>
+<rect x="917" y="357" width="203" height="26" rx="13.0" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="1018.5" y="374.68" font-size="13" font-weight="600" fill="#047857" text-anchor="middle">Kept, membership removed</text>
+<rect x="424" y="416" width="712" height="72" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.4"/>
+<text x="444" y="444" font-size="15" font-weight="700" fill="#101827" text-anchor="start">Then the organization is retired</text>
+<text x="444" y="467" font-size="13.5" font-weight="normal" fill="#101827" text-anchor="start">Suspended, its storefront link cleared. The record stays as the owner of what it had.</text>
+<rect x="40" y="276" width="300" height="160" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<circle cx="66" cy="306" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M61.05,301.05 L70.95,310.95 M70.95,301.05 L61.05,310.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="88" y="312" font-size="16" font-weight="700" fill="#B91C1C" text-anchor="start">If one removal fails</text>
+<text x="60" y="340" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Everything is undone: every member,</text>
+<text x="60" y="360" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">every ownership change and the</text>
+<text x="60" y="380" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">organization stay as they were.</text>
+<line x1="780" y1="524" x2="780" y2="556" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="400" y="560" width="760" height="108" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="418" y="592" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Afterwards</text>
+<text x="418" y="616" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Whatever the kept accounts still had in Riverside Club is cleaned up. This finishes even if the request</text>
+<text x="418" y="636" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">that started it is cancelled.</text>
+<text x="40" y="694" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An organization is never deleted outright.</text>
+</svg>

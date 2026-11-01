@@ -1,11 +1,12 @@
 # How apps connect
 
-> **Provenance and status.** Bloem page, written on 2026-10-31 and checked against
-> `main` at `c83c424b7`. Silo's API and its Jellyfin and Audiobookshelf servers run
-> in Bloem as Silo ships them. Bloem adds its own API, `/api/bloem/v1`, for its own
-> apps, scopes every entrance to an organization, and adds profile sign-ins and
-> remote control. This page explains it in plain language; the technical pages and
-> the API are linked at the end.
+> **Provenance and status.** Bloem page, written on 2026-10-31, brought up to date on
+> 2026-11-01 and checked against `main` at `b6039036d`. Silo's API and its Jellyfin
+> and Audiobookshelf servers run in Bloem as Silo ships them. Bloem adds its own API,
+> `/api/bloem/v1`, for its own apps, scopes every entrance to an organization, and
+> adds organization domains, profile sign-ins and remote control. This page explains
+> it in plain language; the technical rules are in the
+> [For developers](#for-developers) section and the pages it links.
 
 ## Which apps connect, and where
 
@@ -24,7 +25,9 @@ A Bloem server has three entrances:
 Silo's apps work with Bloem as they do with Silo. They see everything Silo has
 and none of Bloem's extras, because Bloem never changes what Silo's API means.
 Bloem's own apps use the extras: Live TV, profile sign-ins, richer title pages
-and server-side search.
+and server-side search. The web app uses only Silo's `/api/v2` and Bloem's
+`/api/bloem/v1`; Bloem's phone apps still use some of Silo's `/api/v1`, which Silo
+plans to retire.
 
 Whichever entrance an app uses, a session sees only its own organization's
 libraries, with its plan's and profile's limits. Apps find the server by its
@@ -52,6 +55,38 @@ Every way in ends in one profile of one account:
 administrator decides whether Jellyfin and Audiobookshelf apps may connect at
 all; both are allowed by default.
 
+**When a sign-in stops working.** If an organization ends its members' sign-ins,
+for example when an administrator revokes all of an account's sessions, an app that
+was already signed in is told its sign-in has ended the next time it asks for a
+profile, and asks the viewer to sign in again.
+
+## Signing in on an organization's own domain
+
+![A made-up club member signs in on the club's domain, on another organization's domain where it is refused, and on an unregistered address; below, a sign-in through the OAuth provider returning to the domain it started on](images/apps/own-domain-sign-in.svg)
+
+Each organization can be served on its own **domains**, its own web addresses, with
+its own name, logo and colours. Its emails link to its **primary domain**.
+
+- **On its own domain**, a member signs in as usual, and the pages show the
+  organization's name and colours.
+- **On another organization's domain**, the sign-in is refused, and the message says
+  where to sign in instead.
+- **An organization without a domain** signs in at the server's public address.
+- **An address nobody registered**, such as the server's IP address, always lets
+  people sign in, so an administrator can still reach the server.
+- **Through the OAuth provider (Authentik)**, a sign-in or sign-out stays on the domain
+  it started on. So each domain's callback addresses, and its `/login` page for
+  sign-out, must be registered at the provider.
+
+A domain decides only how pages look and where links point, never what an account
+can reach: that always comes from the account's organization, and a refusal on the
+wrong domain only sends the person to their own. In
+production there is one organization, the default one, and the server's public
+address is registered as its primary domain.
+
+Bloem's phone and TV apps keep using the server's public address for their device
+sign-in page.
+
 ## Remote control
 
 Bloem lets an administrator, or a household's main profile, control a playing
@@ -65,7 +100,8 @@ also end a session, with a reason.
 
 | Who | What they manage |
 | --- | --- |
-| Platform administrator | Whether Jellyfin and Audiobookshelf apps may connect, their addresses, local network announcement, remote control of any session in scope. |
+| Platform administrator | Whether Jellyfin and Audiobookshelf apps may connect, their addresses, local network announcement, remote control of any session in scope. Each organization's domains and branding. |
+| The storefront (Bloem Garden) | An organization's domains and branding, with a platform administrator's API key. |
 | An account's main profile | Profile sign-ins, and remote control of the household's own sessions. |
 | Viewer | Which apps they sign in to. |
 
@@ -78,6 +114,9 @@ also end a session, with a reason.
 | Jellyfin entrance | Silo's `internal/jellycompat`, port `JF_PORT` |
 | Audiobookshelf entrance | Silo's `internal/audiobooks/abs`, port `ABS_PORT` |
 | Profile sign-in | profile credentials (`/api/bloem/v1/profile-credentials/{id}`) and direct-profile sessions |
+| Organization domains and branding | `internal/orgdomains`, table `bloem_organization_domains`, routes `/api/bloem/v1/admin/platform/tenants/{id}/domains` and `/branding`, capability `organization_domains_v1` |
+| Refused on another organization's domain | `409 wrong_organization_domain` |
+| A sign-in that has ended | `401` with reason `session_invalid` (`session_expired` on `/api/v2`) |
 | Local network announcement | `_bloem._tcp` (`internal/lanadvert`), setting `lan.advertisement_enabled` |
 | Remote control | `internal/remote` |
 
@@ -85,9 +124,20 @@ also end a session, with a reason.
 
 - **API:** [apps and clients](../bloem/api/apps.md): capabilities, server
   identity, Watch documents, progress sync, people, item collections and profile
-  credentials. Remote control and profile sign-in are still on
-  [Silo's `/api/v1`](../bloem/api/v1-routes.md#remote-control), to move
-  ([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)).
+  credentials. Domains and branding are on the
+  [organizations API](../bloem/api/organizations.md) page. Remote control and profile
+  sign-in are still on [Silo's `/api/v1`](../bloem/api/v1-routes.md#remote-control), to
+  move ([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)).
+- [Organization domains and branding](bloem-organization-domains.md): host
+  resolution, the sign-in check (`409 wrong_organization_domain`, "This account signs
+  in at https://<primary domain>."), the OAuth callbacks and post-logout `/login` each
+  domain must register at the provider, and the limits (device sign-in at `/activate`
+  and `/api/v2/system/identity` stay on the public URL). Migration
+  `20261101055208_bloem_organization_domains`.
+- [Security foundation](bloem-security-foundation.md): a session that predates its
+  organization's revocation is ended by the viewer-access gate with `401`
+  `session_invalid` (`session_expired` on `/api/v2`), so its refresh is refused and the
+  client signs in again (`internal/api/bloem_org_session_revocation.go`).
 - [Bloem native client surface](bloem-client-surface.md): why Bloem-only features
   live under `/api/bloem/v1`, and the golden check that keeps `/api/v1` Silo's.
 - [SDK compatibility and contract generation](bloem-sdk-compatibility.md): the
@@ -98,4 +148,5 @@ also end a session, with a reason.
   [LAN service advertisement](../specs/lan-service-advertisement.md).
 
 The pictures are SVG files under `images/apps/`, drawn by
-`scripts/bloem/draw-pictures.py`. Redraw them there, not by hand.
+`scripts/bloem/pictures/apps.py` through `scripts/bloem/draw-pictures.py`. Redraw
+them there, not by hand.

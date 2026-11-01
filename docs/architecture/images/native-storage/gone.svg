@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">When a file disappears</title>
+<desc id="d">A made-up example over three scans. Monday's listing has three files, A, B and C. Tuesday's complete listing leaves out C, so Bloem only suspects it has gone and keeps it. Wednesday's complete listing leaves it out again, so Bloem marks C missing. A file the source reports as removed is marked missing at once.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="519" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">When a file disappears</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A file that is only left out of a listing is marked missing after a second complete scan.</text>
+<rect x="40" y="128" width="350" height="300" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="62" y="166" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Monday</text>
+<text x="62" y="192" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Lists A, B, C</text>
+<rect x="62" y="216" width="90" height="72" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="107" y="260" font-size="22" font-weight="700" fill="#047857" text-anchor="middle">A</text>
+<rect x="166" y="216" width="90" height="72" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="211" y="260" font-size="22" font-weight="700" fill="#047857" text-anchor="middle">B</text>
+<rect x="270" y="216" width="90" height="72" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="315" y="260" font-size="22" font-weight="700" fill="#047857" text-anchor="middle">C</text>
+<text x="62" y="354" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">All three are in the catalog.</text>
+<line x1="394" y1="278.0" x2="421" y2="278.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="425" y="128" width="350" height="300" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="447" y="166" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Tuesday</text>
+<text x="447" y="192" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Lists A, B</text>
+<rect x="447" y="216" width="90" height="72" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="492" y="260" font-size="22" font-weight="700" fill="#047857" text-anchor="middle">A</text>
+<rect x="551" y="216" width="90" height="72" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="596" y="260" font-size="22" font-weight="700" fill="#047857" text-anchor="middle">B</text>
+<rect x="655" y="216" width="90" height="72" rx="10" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.6"/>
+<text x="700" y="260" font-size="22" font-weight="700" fill="#B45309" text-anchor="middle">C</text>
+<text x="700" y="314" font-size="13" font-weight="600" fill="#B45309" text-anchor="middle">suspected</text>
+<text x="447" y="354" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">C is left out. Bloem suspects it has gone,</text>
+<text x="447" y="374" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">but keeps it: the listing may have missed</text>
+<text x="447" y="394" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">it.</text>
+<line x1="779" y1="278.0" x2="806" y2="278.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="810" y="128" width="350" height="300" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="832" y="166" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Wednesday</text>
+<text x="832" y="192" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Lists A, B</text>
+<rect x="832" y="216" width="90" height="72" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="877" y="260" font-size="22" font-weight="700" fill="#047857" text-anchor="middle">A</text>
+<rect x="936" y="216" width="90" height="72" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
+<text x="981" y="260" font-size="22" font-weight="700" fill="#047857" text-anchor="middle">B</text>
+<rect x="1040" y="216" width="90" height="72" rx="10" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.6"/>
+<text x="1085" y="260" font-size="22" font-weight="700" fill="#B91C1C" text-anchor="middle">C</text>
+<text x="1085" y="314" font-size="13" font-weight="600" fill="#B91C1C" text-anchor="middle">missing</text>
+<text x="832" y="354" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">C is left out again. Bloem marks it</text>
+<text x="832" y="374" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">missing, then clears it with the library's</text>
+<text x="832" y="394" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">grace period.</text>
+<text x="40" y="478" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">When the source reports a file as removed, Bloem marks it missing at once. A file that comes back before it is cleared is restored.</text>
+</svg>

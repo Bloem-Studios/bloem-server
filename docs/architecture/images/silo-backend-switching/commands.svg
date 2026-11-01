@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Switching on, checking and switching off</title>
+<desc id="d">Three commands. silo silo-switching status reports whether the database is switchable. enable refuses unless there is exactly one organization and no profile has its own sign-in, then gives every account its default-organization membership, matches membership roles to the account's role, and sets the flag. disable clears the flag; after that, Silo must not serve the database.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="619" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Switching on, checking and switching off</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">One flag in the database, set and cleared with the Bloem binary.</text>
+<rect x="40" y="128" width="340" height="130" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="160" font-size="16" font-weight="700" fill="#101827" text-anchor="start">silo silo-switching status</text>
+<text x="58" y="184" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Reports whether the database is</text>
+<text x="58" y="204" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">switchable. Changes nothing.</text>
+<rect x="420" y="128" width="360" height="410" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="440" y="160" font-size="16" font-weight="700" fill="#101827" text-anchor="start">silo silo-switching enable</text>
+<circle cx="456" cy="196" r="12" fill="#10B981"/>
+<text x="456" y="201" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="478" y="201" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Exactly one organization?</text>
+<circle cx="456" cy="241" r="12" fill="#10B981"/>
+<text x="456" y="246" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="478" y="246" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">No profile with its own sign-in?</text>
+<rect x="440" y="272" width="320" height="40" rx="10" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+<text x="456" y="297" font-size="14" font-weight="600" fill="#B91C1C" text-anchor="start">If not: refused, nothing changes.</text>
+<circle cx="456" cy="342" r="12" fill="#10B981"/>
+<text x="456" y="347" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="478" y="347" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Give every account its</text>
+<text x="478" y="366" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">default-organization membership.</text>
+<circle cx="456" cy="406" r="12" fill="#10B981"/>
+<text x="456" y="411" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="478" y="411" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Match membership roles to users.role.</text>
+<circle cx="456" cy="451" r="12" fill="#10B981"/>
+<text x="456" y="456" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="478" y="456" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Set the flag.</text>
+<text x="440" y="496" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Safe to run again: it only fills in what is</text>
+<text x="440" y="515" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">missing.</text>
+<rect x="820" y="128" width="340" height="170" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="838" y="160" font-size="16" font-weight="700" fill="#101827" text-anchor="start">silo silo-switching disable</text>
+<text x="838" y="184" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Clears the flag and lifts the rules. From</text>
+<text x="838" y="204" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">then on, Silo must not serve the</text>
+<text x="838" y="224" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">database: Bloem may add what Silo cannot</text>
+<text x="838" y="244" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">read.</text>
+<text x="40" y="584" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Every switching rule reads the flag through public.bloem_silo_switching_enabled().</text>
+</svg>

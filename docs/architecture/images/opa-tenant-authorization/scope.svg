@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="624" viewBox="0 0 1200 624" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What an organization's people can reach</title>
+<desc id="d">Libraries the organization owns plus platform libraries with an active grant form the upper bound. Missing, suspended or revoked grants and other organizations' libraries are left out. The policy then narrows the bound by account, group, profile, disabled libraries and custom rules, and no rule can add a library outside it.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="623" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What an organization's people can reach</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">An upper bound from the database, narrowed by policy. A rule can never add to it.</text>
+<rect x="40" y="120" width="540" height="420" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="64" y="156" font-size="18" font-weight="700" fill="#101827" text-anchor="start">1. The upper bound</text>
+<text x="64" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">One database query, for one organization.</text>
+<circle cx="78" cy="232" r="11" fill="#10B981"/>
+<path d="M73.05,232.22 L76.9,236.18 L83.5,228.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="100" y="214" width="456" height="36" rx="10" fill="#FFFFFF" stroke="#6366F1" stroke-width="1.4"/>
+<text x="116" y="238" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Libraries it owns</text>
+<circle cx="78" cy="280" r="11" fill="#10B981"/>
+<path d="M73.05,280.22 L76.9,284.18 L83.5,276.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="100" y="262" width="456" height="36" rx="10" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.4"/>
+<text x="116" y="286" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Platform libraries with an active grant</text>
+<text x="64" y="330" font-size="12.5" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="1">Left out</text>
+<circle cx="78" cy="362" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M73.05,357.05 L82.95,366.95 M82.95,357.05 L73.05,366.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="100" y="344" width="456" height="36" rx="10" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="6 5"/>
+<text x="116" y="368" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">A platform library with no grant</text>
+<circle cx="78" cy="410" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M73.05,405.05 L82.95,414.95 M82.95,405.05 L73.05,414.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="100" y="392" width="456" height="36" rx="10" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="6 5"/>
+<text x="116" y="416" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">A suspended or revoked grant</text>
+<circle cx="78" cy="458" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M73.05,453.05 L82.95,462.95 M82.95,453.05 L73.05,462.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="100" y="440" width="456" height="36" rx="10" fill="#FFFFFF" stroke="#9CA3AF" stroke-width="1.2" stroke-dasharray="6 5"/>
+<text x="116" y="464" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">Another organization's library, always</text>
+<line x1="586" y1="330" x2="640" y2="330" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="646" y="120" width="514" height="420" rx="16" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="670" y="156" font-size="18" font-weight="700" fill="#101827" text-anchor="start">2. Narrowed by policy</text>
+<text x="670" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each of these can only take libraries away.</text>
+<rect x="670" y="214" width="466" height="36" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2"/>
+<text x="686" y="238" font-size="15" font-weight="600" fill="#101827" text-anchor="start">The account's own settings</text>
+<rect x="670" y="262" width="466" height="36" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2"/>
+<text x="686" y="286" font-size="15" font-weight="600" fill="#101827" text-anchor="start">The profile's access group</text>
+<rect x="670" y="310" width="466" height="36" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2"/>
+<text x="686" y="334" font-size="15" font-weight="600" fill="#101827" text-anchor="start">The profile's limits</text>
+<rect x="670" y="358" width="466" height="36" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2"/>
+<text x="686" y="382" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Libraries switched off</text>
+<rect x="670" y="406" width="466" height="36" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1.2"/>
+<text x="686" y="430" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Custom rules</text>
+<rect x="670" y="462" width="466" height="50" rx="25" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="903" y="494" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">What the person can reach</text>
+<text x="40" y="584" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Owning nothing and holding no grant means reaching nothing: platform ownership alone is not access.</text>
+</svg>

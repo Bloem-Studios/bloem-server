@@ -2,8 +2,9 @@
 """Draw the explainer pictures under docs/architecture/images/ as SVG files.
 
 Each page's pictures are drawn by one module in scripts/bloem/pictures/ and land
-in docs/architecture/images/<page>/. Redraw them here when what they show
-changes, never by hand.
+in docs/architecture/images/<page>/, where <page> is the module name with dashes
+for underscores (live_tv.py draws images/live-tv/). kit.py holds the shared
+drawing helpers. Redraw them here when what they show changes, never by hand.
 
 Usage (from the repository root):
   python3 scripts/bloem/draw-pictures.py            # every page
@@ -20,17 +21,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "pic
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 IMAGES = os.path.join(ROOT, "docs", "architecture", "images")
 
-# Image directory -> drawing module.
+PICTURE_MODULES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pictures")
+
+# Image directory -> drawing module: every module in pictures/ except kit.py.
 PAGES = {
-    "organizations": "organizations",
-    "live-tv": "live_tv",
-    "plans": "plans",
-    "storage": "storage",
-    "requests": "requests",
-    "messages": "messages",
-    "apps": "apps",
-    "silo-switching": "silo_switching",
-    "following-silo": "following_silo",
+    name[:-3].replace("_", "-"): name[:-3]
+    for name in sorted(os.listdir(PICTURE_MODULES))
+    if name.endswith(".py") and name != "kit.py" and not name.startswith("_")
 }
 
 

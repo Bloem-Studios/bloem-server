@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Two messages you may see at sign-in</title>
+<desc id="d">A made-up example in two rows. First: Sam's account belongs to Riverside Club; Sam signs in on Hillside's address, is told the account signs in at Riverside's address, and signs in there. Second: an organization ends an older sign-in; the app returns to the sign-in page and Sam signs in again.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="629" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Two messages you may see at sign-in</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Both mean the same thing: sign in again, in the right place. This example is made up.</text>
+<text x="40" y="144" font-size="17" font-weight="700" fill="#101827" text-anchor="start">1. You signed in at another organization's address</text>
+<rect x="40" y="160" width="346" height="150" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="58" y="192" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Sam opens watch.hillside.example</text>
+<text x="58" y="216" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Sam's account belongs to Riverside Club.</text>
+<text x="58" y="236" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Hillside is another organization on the same</text>
+<text x="58" y="256" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">server.</text>
+<line x1="390" y1="235" x2="423" y2="235" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="427" y="160" width="346" height="150" rx="14" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.5"/>
+<text x="447" y="192" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Hillside's sign-in page</text>
+<rect x="447" y="208" width="306" height="82" rx="10" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+<text x="463" y="234" font-size="14" font-weight="600" fill="#B91C1C" text-anchor="start">This account signs in at</text>
+<text x="463" y="254" font-size="14" font-weight="600" fill="#B91C1C" text-anchor="start">https://watch.riverside.example.</text>
+<line x1="777" y1="235" x2="810" y2="235" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="814" y="160" width="346" height="150" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="832" y="192" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Sam opens that address</text>
+<text x="832" y="216" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Riverside Club's own address, in its own</text>
+<text x="832" y="236" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">colours. The same email and password work</text>
+<text x="832" y="256" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">there.</text>
+<text x="40" y="374" font-size="17" font-weight="700" fill="#101827" text-anchor="start">2. Your organization ended an older sign-in</text>
+<rect x="40" y="390" width="346" height="150" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="58" y="422" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Your access changed</text>
+<text x="58" y="446" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">For example, your organization's</text>
+<text x="58" y="466" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">administrator signed everyone out or changed</text>
+<text x="58" y="486" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">your access.</text>
+<line x1="390" y1="465" x2="423" y2="465" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="427" y="390" width="346" height="150" rx="14" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.5"/>
+<text x="447" y="422" font-size="16" font-weight="700" fill="#101827" text-anchor="start">The app</text>
+<rect x="447" y="438" width="306" height="82" rx="10" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.2"/>
+<text x="463" y="464" font-size="14" font-weight="600" fill="#B45309" text-anchor="start">Your profiles stop loading, and the</text>
+<text x="463" y="484" font-size="14" font-weight="600" fill="#B45309" text-anchor="start">app takes you to the sign-in page.</text>
+<line x1="777" y1="465" x2="810" y2="465" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="814" y="390" width="346" height="150" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="832" y="422" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Sign in again</text>
+<text x="832" y="446" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">With your email and password. If that fails</text>
+<text x="832" y="466" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">too, ask your organization's administrator.</text>
+<text x="40" y="594" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An organization without an address of its own signs in at the server's public address. An address only changes what you see, never what you can watch.</text>
+</svg>

@@ -1,9 +1,10 @@
 # Switching between Silo and Bloem
 
-> **Provenance and status.** Bloem page, written on 2026-10-31 and checked against
-> `main` at `c83c424b7`. Silo switching is a Bloem addition: Silo knows nothing
-> about it. On 2026-10-31 both switch checks passed with Silo `32a2f63e1` and Bloem
-> `4edbee99d`. This page explains it in plain language; the technical page,
+> **Provenance and status.** Bloem page, written on 2026-10-31, updated on 2026-11-01
+> and checked against `main` at `b6039036d`. Silo switching is a Bloem addition: Silo
+> knows nothing about it. On 2026-10-31 both switch checks passed with Silo
+> `32a2f63e1` and Bloem `4edbee99d`; no later run is recorded. This page explains it in
+> plain language; the technical page,
 > [Silo backend switching](silo-backend-switching.md), holds the commands and
 > invariants.
 
@@ -42,7 +43,8 @@ Jellyfin and Audiobookshelf app data.
 
 Bloem's extras stay in the database while Silo serves, untouched, and work again
 when Bloem serves: plans, Live TV and recordings, libraries on storage sources,
-audiobook and ebook requests, campaigns and seasonal packs.
+audiobook and ebook requests, campaigns and seasonal packs, and organization domains
+and branding. While Silo serves, every address shows the server's own name and look.
 
 While switching is on, three rules keep the database inside what Silo can
 handle:
@@ -52,6 +54,10 @@ handle:
   account, so none is allowed.
 - **Silo's writes fit in.** A new account or profile that Silo creates lands in
   the default organization, in the right group.
+
+Because of the first rule, only the default organization can have
+[its own domains](bloem-organization-domains.md) while switching is on. A second
+organization, with or without a domain, means switching off first.
 
 Switching off (`silo silo-switching disable`) lifts the rules; after that, Silo
 must not serve the database again.
@@ -81,10 +87,21 @@ the one before wrote and write something for the next one to read.
 | The person running the server | Which server runs, the snapshot, switching on and off. |
 | Platform administrator | Nothing extra. While switching is on, Bloem refuses a second organization or a profile sign-in. |
 
+## Words used in the code
+
+| On this page | In the code and database |
+| --- | --- |
+| Silo switching | the flag `public.bloem_silo_switching` |
+| Switching on, off | `silo silo-switching enable`, `silo silo-switching disable` |
+| The three rules | database triggers that refuse `bloem_silo_switching_single_organization` and `bloem_silo_switching_direct_profile_login`, and place Silo's writes in the default organization |
+| Silo's all-in-one container | Silo's omnibus image, built from `omnibus/` |
+| The switch check | `make silo-switch-check`, `make silo-switch-check-all-in-one` |
+
 ## For developers
 
 - [Silo backend switching](silo-backend-switching.md): the commands, the database
-  rules, the all-in-one procedure, and the database tests.
+  rules and what they do with each of Silo's writes, the all-in-one procedure, and the
+  database tests.
 - `make silo-switch-check SILO_IMAGE=<Silo base image by digest> BLOEM_IMAGE=<tag>`
   and `make silo-switch-check-all-in-one SILO_IMAGE=<Silo all-in-one image by digest> BLOEM_IMAGE=<tag>`
   run the switch end to end (`scripts/bloem/silo-switch-check*.sh`, driven by

@@ -1,25 +1,52 @@
 # Bloem overlay: Invitations and server-driven onboarding
 
-**What this overlays.** Silo's
-[`docs/architecture/invitations-onboarding.md`](../../../architecture/invitations-onboarding.md).
-It adds to the opening section and the sections “Token model” and “Lifecycle
-invariants”, and it replaces two bullets of “Lifecycle invariants” and one
-paragraph of “Accounts vs household profiles”. Everything else in the Silo
-document applies to Bloem as written. That includes link invitations without an
-address, Owner-only `admin` invitations, recorded delivery and the onboarding
-tour. An *overlay* is a Bloem-owned page that records Bloem's additions to, or
-replacements of, sections of a Silo-owned document. The Silo file stays exactly
-as Silo wrote it. See the [documentation workflow](../../documentation-workflow.md).
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
+> adds to or replaces in Silo's
+> [`docs/architecture/invitations-onboarding.md`](../../../architecture/invitations-onboarding.md),
+> which stays exactly as Silo wrote it. The section-by-section changes are in the
+> [For developers](#for-developers) section.
 
-**Why Bloem differs.** Bloem is multi-tenant: every account belongs to an
-*organization* (a tenant), and each invitation carries an `organization_id`.
+Silo's page explains how an invitation becomes an account and how a new person is
+shown around the app. Everything there applies to Bloem: link invitations without
+an address, Owner-only administrator invitations, recorded delivery and the
+onboarding tour. Bloem changes only what organizations and profile sign-ins touch.
+
+![Two ways to invite someone: Silo's administrator routes in the default organization, which can email the link, and the organization console in its own organization, which sends no email and shows a one-time link. Both keep one live invitation per address in each organization](../../../architecture/images/overlay-invitations/two-paths.svg)
+
+## What Bloem changes
+
+- **Every invitation belongs to one organization.** Silo's administrator routes
+  work in the **default organization**. An **organization administrator** invites
+  people into their own organization from the organization console, without email.
+- **One live invitation per address, in each organization.** Sending a new
+  invitation to an address replaces the old link for that organization, so a
+  forwarded copy of the old link stops working.
+- **The organization must be active.** Accepting an invitation into an
+  organization that is not active is refused.
+- **A profile's own sign-in is not a second account.** Someone who needs their own
+  password still gets a second invitation and a second account.
+
+## Words used in the code
+
+| On this page | In the code and database |
+| --- | --- |
+| Which organization an invitation belongs to | `invitations.organization_id` |
+| One live invitation per address in each organization | partial unique index `invitations_one_pending_idx` on `(organization_id, email)` |
+| The organization console's routes | `/api/bloem/v1/admin/organization/invitations` |
+| The one-time link | `claim_token` |
+| A profile store that cannot join the transaction | `ErrTransactionalProfileUnavailable` |
+
+## For developers
+
+### Where this overlay came from
+
 Bloem added organization-scoped invitations and the organization console's
 invitation routes in August 2026 (for example `463afb680`, 2026-08-13, which made
-the one-pending-invitation index per organization). Bloem also has optional
-direct-profile credentials. Bloem's text moved out of the Silo file into this
-overlay in `47ea7c889` (2026-09-23).
+the one-pending-invitation index per organization). Bloem's text moved out of the
+Silo file into this overlay in `47ea7c889` (2026-09-23).
 
-**Reviewed** on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
+It was reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at
 `e852f92bf` (`internal/invitations`, `internal/auth/bloem_account_provisioner.go`,
 `internal/api/handlers/bloem_admin_organization.go`). Since this overlay was
 written (against Silo `8e5ae2f46`), Silo changed the document twice:
@@ -28,9 +55,9 @@ written (against Silo `8e5ae2f46`), Silo changed the document twice:
 which have no address until accept, and records delivery. Both apply to Bloem.
 The earlier edition of this overlay replaced whole Silo sections with
 September text that predated those changes; it now records only Bloem's real
-differences.
+differences. Silo has not changed the document again through `63ef34b23`.
 
-Index: [Bloem documentation](../../README.md).
+### Section by section
 
 ---
 
@@ -92,3 +119,16 @@ creates a second account. Bloem's optional direct-profile credentials stay
 owned by the account and only work on their supported routes. They do not
 create another account or enable browser direct-profile login; see the
 [authentication overlay](../auth-api.md).
+
+### Related pages
+
+- [Invitation API overlay](../invitations-api.md): the scope of Silo's routes on
+  Bloem, the organization console's routes, and email links on organization
+  domains.
+- [How organizations work](../../../architecture/bloem-organizations.md).
+- [Writing Bloem documentation](../../documentation-workflow.md#overlays): how an
+  overlay is written and kept up to date.
+- Index: [Bloem documentation](../../README.md).
+
+The picture is drawn by `scripts/bloem/pictures/overlay_invitations.py` into
+`docs/architecture/images/overlay-invitations/`. Redraw it there, not by hand.

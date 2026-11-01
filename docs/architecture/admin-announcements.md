@@ -1,38 +1,227 @@
-# Server admin announcements
+# How announcements work
 
-> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
-> current. This is a Bloem addition; Silo has no announcement authoring. The
-> admin API (`GET`/`POST /api/v1/admin/notifications/announcements`,
-> `DELETE …/{id}`) and the alert body rules in `internal/notifications/alert_body.go`
-> came first, in `06285608c` (2026-09-01), as the S-1 alerts of the
-> [client engagement spec](../specs/client-engagement.md#a-alert-notifications-s-1).
-> The routes are mounted by `mountBloemLegacyAdminV1` in
-> `internal/api/router_bloem_wiring.go`. This page and the web authoring screen
-> (`web/src/pages/admin-settings/AnnouncementsAdminSettings.tsx`) were added in
-> `f66a6ee3b` (2026-09-05). In `03f658ba9` (2026-09-23) the navigation and
-> search entries moved into `web/src/lib/bloemAdminNavigation.ts`, so Silo's
-> settings layout needs only a small, ledgered edit. Announcements arrive in the
-> notification inbox that Silo owns ([notifications](notifications.md)); the
-> inbox page `web/src/pages/Notifications.tsx` is a recorded seam (a Bloem edit
-> to a Silo file, listed in `contracts/seams.txt`). "Garden" below means
-> bloem-garden, a separate Bloem campaign-authoring service whose admin
-> contracts are in the same spec.
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
+> `main` at `b6039036d`. Announcements are a Bloem addition: Silo has the
+> notification inbox but no way to write a message to it. This page explains them in
+> plain language; the technical rules are in the [For developers](#for-developers)
+> section.
 
-The server web UI exposes announcement authoring at `/admin/settings/announcements` through the existing admin settings navigation and search. Garden is not required to publish a server announcement.
+An **announcement** is a message a platform administrator sends to viewers' inboxes:
+a planned outage, new films, a change to the service. This page walks through how one
+is written and sent, who receives it, what viewers see, and how it is taken back.
 
-The page uses the existing admin-only `/api/v1/admin/notifications/announcements` API. It lists publication records, previews a new message before POST, and confirms withdrawal before DELETE. Publishing immediately resolves the audience and fans out to recipient inboxes; there is no draft persistence, scheduled start, or edit-published operation. Withdrawal retains the publication record.
+## Writing and sending one
 
-Audiences are all viewers, account role, organization, library access, or explicit users/profiles. Explicit user targeting includes all profiles of each selected account. The current composer accepts IDs for organization, library, and explicit recipients. The backend remains authoritative for audience resolution and authorization.
+![Four steps from writing to withdrawing, the five audiences, and an inbox with an information, a warning and a critical message](images/admin-announcements/publish-and-withdraw.svg)
 
-Messages support information, warning, and critical severity, optional links and artwork, an action, and expiry. Critical messages cannot be dismissed by viewers. The preview shows the audience, expiry, dismissal policy, and supplied link addresses. Publishing errors preserve the draft. POST and DELETE use the API client's non-retrying transport policy.
+A platform administrator writes announcements in the web admin console under
+**Settings → Integrations → Announcements**, in the **Platform administrative
+context**: the admin console's mode for running the whole server rather than one
+organization.
 
-The web notification inbox renders announcement titles, full messages, and severity using the existing read/unread controls. Read status is separate from banner dismissal. Basic server announcements do not depend on Garden. Rich campaign authoring, playback overlays, and seasonal effects can remain Garden features.
+1. **Write it.** A title, a message and a **severity**: information, warning or
+   critical. Optionally a link, a picture, an **action button** (a label and where it
+   leads) and an **expiry time**, after which the message disappears by itself.
+2. **Choose who receives it** (below).
+3. **Preview and publish.** The preview shows the audience, the expiry, whether
+   viewers can dismiss it, and every link it contains. Publishing delivers the
+   message to every matching profile at once. If publishing fails, the draft stays
+   on screen so nothing is lost.
+4. **Withdraw it** when it is no longer true. Copies nobody has read disappear;
+   copies already read expire. The record of what was published stays in the list.
 
-This authoring page does not implement viewer banners, player overlays, campaign rendering, or seasonal effects. Viewer clients must interpret the structured announcement body separately; authoring support alone does not establish end-to-end presentation support.
+There are no saved drafts, no start time in the future and no editing after
+publishing. To change a message, withdraw it and publish a new one.
 
-Focused validation:
+The storefront (Bloem Garden) can publish announcements too, but it is not needed:
+Bloem stores and delivers them itself.
+
+## Who receives it
+
+An announcement goes to one **audience**:
+
+- **Everyone:** every enabled account, in every organization.
+- **An account role:** administrators, or ordinary users.
+- **One organization:** its members.
+- **Everyone who can see a library:** each profile allowed to see it.
+- **Chosen people:** named accounts, which means all of their profiles, and named
+  profiles.
+
+Bloem delivers to each **profile**, the person using an account, not to the account
+as a whole. Disabled accounts never receive anything. A profile whose owner switched
+the inbox off does not get ordinary announcements. The admin console asks for
+organizations, libraries and people by their ID numbers.
+
+## What viewers see
+
+The message arrives in the inbox with its title, the full text and its severity.
+Viewers mark it read or unread as they do any other inbox message, and can dismiss
+it, except a **critical** message, which stays until it expires or is withdrawn.
+
+## Example: a maintenance night
+
+This example is made up. On a Friday, a platform administrator plans maintenance for
+Sunday night. They write "Maintenance on Sunday night", choose **warning**, pick
+**Everyone**, and set it to expire on Monday morning. The preview says it goes to
+every viewer, can be dismissed and expires on Monday at 08:00. They publish, and the
+console reports how many profiles received it. On Monday morning it disappears from
+every inbox by itself.
+
+## Who can change what
+
+| Who | What they manage |
+| --- | --- |
+| Platform administrator | Writing, publishing and withdrawing announcements, in the Platform context. |
+| The storefront (Bloem Garden) | The same, with a platform administrator's API key. |
+| Organization administrator | Nothing: they cannot publish announcements. |
+| Viewer | Reading, marking read and dismissing (not critical messages). |
+
+## Words used in the code
+
+| On this page | In the code and database |
+| --- | --- |
+| Announcement | a publication record (`notifications.Announcement`, `internal/notifications/announcement_service.go`) and one inbox delivery per profile, type `system.announcement` (or `system.alert`) |
+| Message body, severity, action button, expiry | `AlertBody`: `title`, `body`, `severity` (`info`, `warning`, `critical`), `dismissible`, `deeplink`, `image_url`, `cta`, `expires_at` (`internal/notifications/alert_body.go`) |
+| Audience | `AnnouncementTargeting.audience`: `all`, `role`, `organization`, `library`, `explicit` (`internal/notifications/announcement_targeting.go`) |
+| Withdraw | `DELETE …/announcements/{id}`, `AnnouncementService.Withdraw` |
+| The settings page | `web/src/pages/admin-settings/AnnouncementsAdminSettings.tsx`, at `/admin/settings/announcements` |
+| Platform administrative context | an admin-context token with scope `platform` |
+
+## For developers
+
+- **API:** [messages and promotions](../bloem/api/messages.md):
+  `GET`, `POST /api/bloem/v1/admin/platform/announcements` and
+  `DELETE /api/bloem/v1/admin/platform/announcements/{id}`, with the `Announcement`,
+  `AnnouncementInput` and `AlertBody` schemas. The old routes,
+  `GET`/`POST /api/v1/admin/notifications/announcements` and `DELETE …/{id}`, are
+  listed on [Bloem's routes on Silo's `/api/v1`](../bloem/api/v1-routes.md#announcements).
+
+### History
+
+The admin API (`GET`/`POST /api/v1/admin/notifications/announcements`,
+`DELETE …/{id}`) and the alert body rules in `internal/notifications/alert_body.go`
+came first, in `06285608c` (2026-09-01), as the S-1 alerts of the
+[client engagement spec](../specs/client-engagement.md#a-alert-notifications-s-1).
+Those routes are mounted by `mountBloemLegacyAdminV1` in
+`internal/api/router_bloem_wiring.go`. This page and the web authoring screen were
+added in `f66a6ee3b` (2026-09-05). In `03f658ba9` (2026-09-23) the navigation and
+search entries moved into `web/src/lib/bloemAdminNavigation.ts`
+(`withBloemSettingsNavigation`, `withBloemAdminSettings`), so Silo's settings layout
+(`web/src/pages/admin-settings/AdminSettingsLayout.tsx`) needs only a small, ledgered
+edit. On 2026-10-31 (`3eb77be33`) the storefront and the settings page moved to the
+native platform routes; see [leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md).
+
+### Routes and authority
+
+- The native routes are mounted by `mountBloemPlatformStorefront`
+  (`internal/api/router_bloem_storefront.go`) under `/api/bloem/v1`. They take a
+  Platform administrative context or an enabled administrator's unscoped API key
+  (`bloemEitherPlatformCredential`), then `RequireBloemPlatformAdmin` rechecks on every
+  request that the account is still an enabled `admin`. Organization contexts, scoped
+  keys and ordinary sessions get `403 insufficient_platform_authority`; when the check
+  cannot run, `503 tenant_unavailable`.
+- The legacy `/api/v1/admin/notifications/announcements` routes stay mounted in the
+  acting-admin group. The current storefront and web app no longer call them; they stay
+  for one release, for an older storefront release, then go.
+- Both mounts use `handlers.AdminAnnouncementsHandler`
+  (`internal/api/handlers/admin_announcements.go`). The author recorded on the
+  publication is the Platform context's account, or the request's user
+  (`engagementActorID`).
+- Errors: `400 bad_request` (invalid body or an `ErrAnnouncementInvalid` /
+  `ErrAlertBodyInvalid` rule), `404 not_found` (withdrawing an unknown ID),
+  `422 no_recipients` (the audience matches nobody), `503 unavailable` (no announcement
+  service), `500 internal_error`. The request body is capped at 64 KiB.
+
+### Body rules (`NormalizeAlertBody`)
+
+- Title at most 120 characters, body at most 2,000, action label at most 40, any URL
+  at most 2,048. Text is trimmed.
+- `severity` is `info` (the default when empty), `warning` or `critical`. A
+  `critical` body is always stored with `dismissible: false`, whatever the author sent:
+  clients rely on a critical alert never arriving dismissible.
+- `deeplink` and `cta.url` accept `https://` URLs, `bloem://` app deep links and
+  app-relative paths (`/item/abc`); `javascript:`, `data:`, protocol-relative `//` and
+  every other scheme are refused. `image_url` must be `https://`.
+- `cta` needs both `label` and `url`; an empty pair is dropped.
+- `expires_at` must be in the future and is stored in UTC.
+- `type` is `system.announcement` (the default) or `system.alert`.
+
+### Audience rules (`validateTargeting`, `resolveAnnouncementRecipients`)
+
+- `role` must be `admin` or `user`; `organization_id` must be a UUID; `library_id` must
+  be positive; `explicit` needs `user_ids` or `profile_ids`. Side fields outside their
+  audience are dropped, not stored.
+- Recipients are distinct (account, profile) pairs; disabled accounts are skipped. A
+  named account (`user_ids`) includes all of its profiles. `library` keeps only the
+  profiles allowed to see that library.
+- A `system.announcement` honours each profile's master inbox toggle; a `system.alert`
+  always lands (an outage notice is not opt-out). The web composer always sends
+  `system.announcement`.
+- The backend is the authority on audience resolution and authorization; the composer
+  only checks that IDs are well formed.
+
+### Publishing and withdrawal
+
+- `AnnouncementService.Create` resolves the audience at once and commits the
+  publication row, every inbox row and every outbox attempt in one transaction
+  (`dispatchOperationalBatch`, `internal/notifications/bloem_operational_dispatch.go`);
+  realtime `notification.created` events follow per recipient. The response carries
+  `recipient_count`.
+- There is no draft persistence, scheduled start or edit-published operation.
+- `Withdraw` deletes unread inbox rows (their pending outbox attempts cascade away,
+  cancelling undelivered pushes), expires read rows so no feed shows them again, and
+  sends each affected profile a `notification.withdrawn` realtime event. It is
+  idempotent and keeps the publication record; `List` includes withdrawn ones.
+
+### The web settings page
+
+- `AnnouncementsAdminSettings.tsx` renders only in the Platform context; otherwise it
+  says "Select the platform context to publish announcements." It calls
+  `/platform/announcements` through `adminV2Api` (`web/src/api/adminV2Client.ts`, prefix
+  `/api/bloem/v1/admin`), with the context's captured authority and generation in the
+  query key.
+- It lists publication records, previews a new message before `POST`, and confirms a
+  withdrawal before `DELETE`. `POST` and `DELETE` use the non-retrying transport policy
+  (`"none"`); the list uses `"safe"`.
+- The preview shows the audience, expiry, dismissal policy and the supplied link
+  addresses. Publishing errors preserve the draft. Unsaved input is reported to the
+  layout (`useReportUnsavedChanges`).
+- Client-side checks: links must be `https:` or `bloem:` without credentials, images
+  `https:`; an action needs both label and link; an expiry must be in the future;
+  account IDs must be positive integers.
+- The web notification inbox (`web/src/pages/Notifications.tsx`, a recorded seam in
+  `contracts/seams.txt`) renders announcement titles, full messages and severity with
+  the existing read/unread controls. Read status is separate from banner dismissal.
+  The inbox is Silo's ([notifications](notifications.md)).
+
+### Boundaries
+
+- Basic server announcements do not depend on the storefront. Campaigns, playback
+  cards and seasonal effects are authored separately, in the storefront or the web
+  console's **Campaigns & seasonal packs** page
+  ([how messages and promotions work](bloem-messages-and-promotions.md)).
+- This authoring page does not implement viewer banners, player overlays, campaign
+  rendering or seasonal effects. Viewer clients interpret the structured announcement
+  body themselves; authoring support alone does not establish end-to-end presentation
+  support.
+
+### Focused validation
+
+Commands assume the repository root is the cwd.
 
 ```sh
 pnpm --dir web test src/pages/admin-settings/AnnouncementsAdminSettings.test.tsx src/pages/admin-settings/AdminSettingsLayout.test.tsx
 pnpm --dir web build
 ```
+
+### Related pages
+
+- [How messages and promotions work](bloem-messages-and-promotions.md): the plain
+  overview of every way Bloem talks to viewers.
+- [Notifications](notifications.md): Silo's inbox, which announcements arrive in.
+- [Client engagement spec](../specs/client-engagement.md): the original S-1 design
+  (a historical record).
+
+The picture is an SVG file under `images/admin-announcements/`, drawn by
+`scripts/bloem/pictures/admin_announcements.py` through
+`scripts/bloem/draw-pictures.py`. Redraw it there, not by hand.

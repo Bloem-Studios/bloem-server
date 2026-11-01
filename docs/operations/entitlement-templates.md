@@ -1,179 +1,284 @@
-# Entitlement templates
+# Managing entitlement templates
 
-Entitlement templates are immutable, revisioned policy definitions managed by
-a **platform administrator**. They let an operator apply the same access policy
-to an organization or to one directly managed account without manually editing
-access groups and profiles.
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
+> `main` at `b6039036d`. Entitlement templates (Bloem's plans) are a Bloem
+> addition: Silo has access groups (`internal/access`) but no templates. This page
+> is the procedure for a platform administrator; it is a source check, not a
+> record of a production apply. The technical rules are in the
+> [For developers](#for-developers) section.
 
-For retroactive changes to a reviewed set of existing accounts, templates are
-materialized as immutable organization policy cohorts and applied through a
-durable bulk job. See [Bulk policy cohorts](bulk-policy-cohorts.md). For release,
-migration, and bounded-canary procedures, see the
+An **entitlement template** is a plan: a named policy for what an account may do,
+kept as a series of **revisions** that never change once saved. This page walks
+through the two things Bloem calls an entitlement, the plans Bloem starts with,
+where to find everything in the admin console, and how to create, change and
+apply a plan safely, one account, one organization or many accounts at a time.
+The plain explanation of plans is [how plans work](../architecture/bloem-plans.md).
+
+## Two things called an entitlement
+
+![A library grant lets an organization use a platform library; a plan sets what each member may do, inside the libraries the organization already has](../architecture/images/entitlement-templates/two-entitlements.svg)
+
+Bloem uses the word "entitlement" for two different controls:
+
+- **A plan (policy entitlement template)** says what members may do: play, how
+  many screens and video conversions, downloads, requests, permissions, picture
+  quality, and which libraries.
+- **A library grant (organization library entitlement)** lets an organization
+  use a library that belongs to the platform. It is managed with the
+  organization's libraries.
+
+A plan can never reach past the libraries an organization has. Its library choice
+is an extra limit inside what the organization owns or was granted. (Riverside
+Club in the picture is a made-up organization.)
+
+## The plans Bloem starts with
+
+Every installation, new or upgraded, has these enabled revision-1 plans. All of
+them start on **All libraries**, so they follow every library the account can
+reach, now and later.
+
+| Key | Plays | Screens | Profiles | Conversions | Downloads | Converted downloads | Quality | Requests |
+| --- | --- | ---: | ---: | ---: | --- | --- | --- | --- |
+| `browse-only` | No | 0 | 0 | 0 | No | No | — | No |
+| `viewer` | Yes | 1 | 5 | 0 | Yes | No | 1080p | Yes |
+| `standard` | Yes | 3 | 5 | 1 | Yes | Yes | 1080p | Yes |
+| `premium` | Yes | 4 | 5 | 2 | Yes | Yes | 2160p | Yes |
+| `reseller-member` | Yes | 3 | 5 | 1 | Yes | Yes | 1080p | Yes |
+| `bloem-preview` | No | 0 | 0 | 0 | No | No | — | No |
+
+These are starting points, not fixed products. Revise them, or clone one under a
+new key, to match what you sell. Two are protected:
+
+- **`browse-only`** can never be changed to play video, and cannot be archived.
+- **`bloem-preview`** is the storefront preview's plan
+  ([how browse-only access and the preview work](../architecture/bloem-browse-only-content-policy.md)).
+  It grants no permissions at all, where the others grant every permission. Only
+  its libraries can change. It cannot be archived or switched off, no group of
+  accounts can be built from it, and no other plan can take its key.
+
+## Where to find it
+
+![The admin console's Platform pages for plans, direct accounts, bulk moves and organizations, and the Organization pages for people and policy cohorts](../architecture/images/entitlement-templates/where.svg)
+
+Choose the **Platform** administrative context, then:
+
+- **Entitlement Templates** (`/admin/platform/entitlement-templates`): the plans
+  and their history.
+- **Direct Accounts** (`/admin/platform/direct-accounts`): one direct account at a
+  time.
+- **Bulk Account Policies** (`/admin/platform/direct-accounts/bulk`): a reviewed
+  list of direct accounts.
+- **Organizations**, then an organization, then **Tenant entitlement**: the
+  organization's plan.
+
+An organization administrator works in the **Organization** context: **People**,
+then **Apply policy**, and **Policy Cohorts** for the history.
+
+## Create, revise, clone and archive
+
+1. Open **Entitlement Templates** and select **New template**.
+2. Choose a stable lowercase key, a display name, whether it is enabled, and the
+   policy.
+3. Save. This makes revision 1.
+4. To change a plan, create a **new revision**. Earlier revisions stay as they
+   were and are listed in **Revision history**.
+5. **Clone** when the new policy is a different product or purpose. The clone
+   starts switched off, so you can review it before anyone uses it.
+6. **Archive** only when nobody should choose the key any more. Accounts already
+   on it keep their policy.
+
+To roll back, pick an older revision in **Revision history** and select
+**Restore as new revision**. Bloem never edits or deletes past revisions.
+
+## Put an organization on a plan
+
+1. Open **Platform → Organizations** and select the organization.
+2. In **Tenant entitlement**, pick an enabled plan and an exact revision.
+3. Run the **preview** (dry run). Check the old and new plan and revision, the
+   policy, which profiles move, the libraries, and the organization's seats and
+   conversions.
+4. **Confirm within ten minutes.** The confirmation belongs to you, this
+   organization, this exact revision and the state you previewed.
+
+Applying changes only Bloem's managed default group and the profiles on it.
+Groups the organization made itself are left alone.
+
+## Put one direct account on a plan
+
+Open **Platform → Direct Accounts**, load the account by its number, and use the
+same preview-then-confirm steps. Bloem creates or updates that account's own
+managed group in the default organization. No other account or custom group
+changes.
+
+## Move many accounts at once
+
+Don't repeat the one-account steps in a loop. A bulk move takes one fixed
+selection, one reviewed preview and one job that finishes the whole change:
+
+- An organization administrator selects people under **Organization → People**,
+  chooses **Apply policy**, and can see the history under **Policy Cohorts**.
+- A platform administrator uses **Platform → Bulk Account Policies** for a list
+  of direct account numbers.
+- Moving people to an exact plan revision reuses that revision's group for the
+  organization. Changing a few fields for a selection makes a separate group for
+  them; it doesn't change the plan or anyone else.
+- **Restore the managed default** puts accounts back on the protected default.
+  It never leaves an account without a policy.
+
+The preview shows who is on what now, exactly where each account will come from,
+each field that changes, who already matches, and which profiles will move or
+stay. Its confirmation expires, and any real change to the selection, the
+command, who you are, where you are working or the policies makes it invalid.
+
+Details: [bulk policy cohorts](bulk-policy-cohorts.md) and the
 [bulk policy release runbook](bulk-policy-cohorts-runbook.md).
 
-Open **Admin → Platform → Entitlement Templates** at
-`/admin/platform/entitlement-templates`. Direct-account assignment is at
-`/admin/platform/direct-accounts`; organization assignment is on the Platform
-organization detail page under **Tenant entitlement**.
+## When something goes wrong
 
-## Origin and current state
+- **"Stale confirmation" or "target changed".** Don't send the old confirmation
+  again. Reload, preview again, review, and confirm the new preview.
+- **A built-in plan is missing after an upgrade.** Check that migration
+  `20260821210000_enable_builtin_entitlement_templates` ran and that you are in
+  the Platform context.
+- **A bulk job's answer was lost.** Read the job first. Send the exact same
+  command with the same key again only if no job came back. A different
+  selection, command or scope needs a new key and a new preview.
+- **Keeping records.** The per-account reason codes for skipped or failed
+  accounts are safe to keep in an operations record. Confirmation and selection
+  tokens are not.
 
-Entitlement templates are Bloem's. Silo has access groups (`internal/access`)
-but no templates: the `internal/entitlements` package, the
-`/api/bloem/v1/admin/platform/entitlement-templates` routes and these admin
-pages exist only in Bloem.
+## Example: four screens on Standard
 
-- **Added August 21, 2026.** The commits are `3ec1650d7` (templates, under
-  Bloem's earlier working name Vondel, renamed in `b25394bc8`), `917696305`
-  and `3d4339757` (server-wide enforcement). The migrations are
-  `20260821170000_entitlement_templates` and
-  `20260821210000_enable_builtin_entitlement_templates`. This page was added
-  in `dbe8323d7`.
-- **Changed since then:**
-  - `811fb4d29` (September 2) moved the routes to `/api/bloem/v1`.
-  - `f4abe0645` (October 13) lets a storefront API key list templates and
-    preview and apply one to a single account ([API clients](#api-clients)).
-  - `25062b4df` and `21fae6837` (October 14–15) seeded the protected
-    `bloem-preview` template, and `22e4a4b05` refuses loosening it.
-  - `c60b7008e` (October 26) moved account policy back onto `users`, where
-    Silo keeps it.
-  - `b017bfe84` (October 26) removed Bloem's general Idempotency-Key replay.
-    Entitlement applies keep their own idempotency key.
-- **Current at `e852f92bf`.** The routes, built-in templates, key format,
-  confirmation lifetime, clone and archive rules and page labels on this page
-  were checked against the source. That is a source check, not a record of a
-  production apply.
+This example is made up.
 
-## Do not confuse the two entitlement systems
+An installation wants Standard to allow four screens. The platform administrator:
 
-Bloem Server uses the word “entitlement” for two related but different
-controls:
+1. Opens **Standard** and creates revision 2 with four screens. Revision 1 stays.
+2. Opens **Bulk Account Policies**, pastes the list of direct accounts on
+   Standard revision 1, and chooses revision 2.
+3. Reads the preview: 120 accounts change from three screens to four, and 4
+   accounts are already on revision 2.
+4. Confirms within 15 minutes of pasting the list (a bulk move's confirmation
+   expires with its selection), and follows the job until it finishes.
 
-- A **policy entitlement template** defines what members may do: playback,
-  streams, profiles, transcodes, downloads, requests, permissions, quality,
-  and the libraries permitted by the managed access group.
-- An **organization library entitlement** grants an organization access to a
-  platform-owned library. It is managed under the organization library API and
-  has its own `security_revision`.
+A week later the change proves too generous. The administrator saves revision 1's
+values as revision 3 and moves the same accounts to it.
 
-A policy template cannot grant an organization a platform library it does not
-otherwise own or hold a live library entitlement for. Its library selection is
-an additional ceiling over libraries already available to the organization.
+## Who can change what
 
-## Built-in starting points
+| Who | What they manage |
+| --- | --- |
+| Platform administrator | Creating, revising, cloning and archiving plans. Applying them to organizations and to direct accounts, alone or in bulk. Reading an organization's plan history. |
+| Organization administrator | Moving their own organization's people between revisions and cohorts, with the same preview and confirmation. |
+| The storefront (Bloem Garden) | Listing plans and putting one account on a plan, with a platform administrator's API key; also creating accounts and reseller organizations on a plan. |
 
-Fresh and upgraded installations provide these enabled revision-1 templates.
-All use `library_ids: null`, so they follow all currently available and future
-libraries unless revised. The first five come from the August 21, 2026
-migrations; `bloem-preview` comes from
-`20261014120000_bloem_preview_template` (October 14, 2026).
+## Words used in the code
 
-| Key               | Playback | Streams | Profiles | Transcodes | Downloads | Transcoded downloads | Quality | Requests |
-| ----------------- | -------- | ------: | -------: | ---------: | --------- | -------------------- | ------- | -------- |
-| `browse-only`     | No       |       0 |        0 |          0 | No        | No                   | —       | No       |
-| `viewer`          | Yes      |       1 |        5 |          0 | Yes       | No                   | 1080p   | Yes      |
-| `standard`        | Yes      |       3 |        5 |          1 | Yes       | Yes                  | 1080p   | Yes      |
-| `premium`         | Yes      |       4 |        5 |          2 | Yes       | Yes                  | 2160p   | Yes      |
-| `reseller-member` | Yes      |       3 |        5 |          1 | Yes       | Yes                  | 1080p   | Yes      |
-| `bloem-preview`   | No       |       0 |        0 |          0 | No        | No                   | —       | No       |
+| On this page | In the code and database |
+| --- | --- |
+| Plan | entitlement template (`internal/entitlements`) |
+| Revision | `entitlement_template_revisions` |
+| Library grant | an organization library entitlement (`organization_entitlements`), with its own `security_revision` |
+| Managed default group | the access group a template is materialized on (`access_groups.managed_template_key`) |
+| All libraries | `library_ids: null` |
+| Preview, confirm | dry-run and apply, with a `confirmation_token` and an `idempotency_key` |
+| Group for a selection | organization policy cohort (derived cohort) |
+| Bulk move | bulk policy job |
 
-The built-ins are starting points, not hard-coded commercial plans. Revise
-them or clone them under a new stable key to match the service being offered.
-`browse-only` is protected: a revision under that key cannot enable playback,
-and it cannot be archived. `bloem-preview` is the policy of browse-only preview
-accounts ([browse-only policy](../architecture/bloem-browse-only-content-policy.md)).
-It also has an explicit empty permission set, where the others permit every
-permission. It is protected more strictly: it cannot be archived or disabled,
-a revision may change only its libraries, and no derived cohort can be made
-from it. Its key is reserved: creating a template with it is refused, and the
-migration refuses to run if an existing template already uses it.
+## For developers
 
-## Policy fields
+- **API:** [plans and preview](../bloem/api/plans.md) (templates, per-account and
+  bulk policy) and [organizations and administration](../bloem/api/organizations.md)
+  (organization applies and audit, account create and update, reseller
+  organizations). The older
+  [native `/api/bloem/v1` reference](../bloem-api-reference.md#entitlement-template-administration)
+  also lists the routes and wire shapes.
 
-| Field                                  | Meaning                                                                                                                                                                                 |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Libraries                              | **All libraries** stores `library_ids: null` and dynamically includes libraries made available later. Selecting individual libraries stores their positive numeric IDs as an allowlist. |
-| Playback allowed                       | Master gate for starting playback. Turning it off also requires streams, transcodes, and both download controls to remain off.                                                          |
-| Maximum streams                        | Concurrent playback ceiling.                                                                                                                                                            |
-| Maximum profiles                       | Profile ceiling materialized on the managed group. For managed templates, `0` means primary-profile-only rather than unlimited.                                                         |
-| Transcode allowed / maximum transcodes | Whether transcoding may be used and its concurrent ceiling.                                                                                                                             |
-| Original downloads                     | Allows downloading the original media file.                                                                                                                                             |
-| Transcoded downloads                   | Separately allows preparing/downloading a converted copy; it does not imply original-download access.                                                                                   |
-| Maximum playback quality               | Quality ceiling such as `1080p` or `2160p`.                                                                                                                                             |
-| Requests allowed                       | Whether members may submit media requests.                                                                                                                                              |
-| Allowed permissions                    | `null` permits every access-group permission; an explicit array is an allowlist.                                                                                                        |
+### Policy fields
+
+| Field | Meaning |
+| --- | --- |
+| Libraries | **All libraries** stores `library_ids: null` and dynamically includes libraries made available later. Selecting individual libraries stores their positive numeric IDs as an allowlist. |
+| Playback allowed | Master gate for starting playback. Turning it off also requires streams, transcodes, and both download controls to stay off. |
+| Maximum streams | Concurrent playback ceiling. |
+| Maximum profiles | Profile ceiling materialized on the managed group. For managed templates, `0` means primary-profile-only rather than unlimited. |
+| Transcode allowed / maximum transcodes | Whether transcoding may be used and its concurrent ceiling. |
+| Original downloads | Allows downloading the original media file. |
+| Transcoded downloads | Separately allows preparing/downloading a converted copy; it does not imply original-download access. |
+| Maximum playback quality | Quality ceiling such as `1080p` or `2160p`. |
+| Requests allowed | Whether members may submit media requests. |
+| Allowed permissions | `null` permits every access-group permission; an explicit array is an allowlist. |
 
 Enforcement is server-side. Playback and compatibility entry points fail
 closed when playback is disabled, download routes check the relevant download
 gate, profile creation observes the managed profile ceiling, and policy changes
 invalidate the affected authorization state.
 
-## Create, revise, clone, and archive
+### Keys, revisions and protection
 
-1. Open **Entitlement templates** and select **Create template**.
-2. Choose a stable lowercase key (`a-z`, digits, and hyphens, starting with a
-   letter or digit, at most 128 characters), display name, enabled state, and
-   policy.
-3. Save. Creation produces revision 1.
-4. To change a template, create a **new revision**. Existing revisions remain
-   immutable and visible in History.
-5. **Clone** when the new policy represents a different commercial or
-   operational concept. The clone starts disabled so it can be reviewed before
-   use.
-6. **Archive** only when the key must no longer be selected. Applied policy is
-   not silently removed from existing targets.
+- A key is lowercase `a-z`, digits and hyphens, starts with a letter or digit,
+  and is at most 128 characters (`^[a-z0-9][a-z0-9-]{0,127}$`,
+  `templateKeyPattern` in `internal/entitlements/template_store.go`).
+- Creation produces revision 1; every change is a new immutable revision.
+  Rollback creates a new latest revision from an older one. A clone starts
+  disabled. Archiving does not silently remove applied policy from existing
+  targets.
+- The built-ins come from `20260821170000_entitlement_templates` and
+  `20260821210000_enable_builtin_entitlement_templates` (2026-08-21);
+  `bloem-preview` comes from `20261014120000_bloem_preview_template`
+  (2026-10-14).
+- `browse-only`: a revision under that key cannot enable playback, and it cannot
+  be archived.
+- `bloem-preview`: an explicit empty permission set; cannot be archived or
+  disabled; a revision may change only its libraries; no derived cohort can be
+  made from it. Its key is reserved: creating a template with it is refused, and
+  the migration refuses to run if an existing template already uses it.
 
-Rollback is also immutable: choose an older revision in History and create a
-new latest revision from it. Bloem never edits or deletes historical policy.
+### Applying
 
-## Apply to an organization
+- Dry-run, then apply with the returned `confirmation_token` and a stable
+  `idempotency_key`. The signed confirmation lasts ten minutes
+  (`entitlementConfirmationTTL` in `internal/api/handlers/entitlement_templates.go`)
+  and is bound to the actor, target, exact template revision and previewed state.
+- Repeating the same idempotency key returns the stored result; reusing it for
+  another template or revision is rejected. Entitlement applies keep this key of
+  their own; Bloem's general Idempotency-Key replay was removed in `b017bfe84`.
+- An organization apply updates only Bloem's managed default group and its
+  assigned profiles; custom groups are preserved. A direct-account apply creates
+  or updates the account's managed template group inside the default
+  organization; other accounts and custom groups are not changed.
+- The canonical direct-account routes are
+  `/api/bloem/v1/admin/platform/accounts/{account_id}/entitlement` (with
+  `/dry-run` and `/apply`). The equivalent
+  `/api/bloem/v1/admin/platform/users/{user_id}/entitlement` routes remain as
+  compatibility aliases.
+- Organization routes:
+  `/api/bloem/v1/admin/platform/organizations/{id}/entitlement` (with
+  `/dry-run`, `/apply` and `/audit`).
 
-1. Open **Platform → Organizations** and select the organization.
-2. In **Tenant entitlement**, select an enabled template and exact revision.
-3. Run the dry-run preview. Review the previous and proposed key/revision,
-   policy, profile movement, library selection, and tenant-wide slot/transcode
-   summary.
-4. Confirm within ten minutes. The signed confirmation is bound to the actor,
-   target, exact template revision, and previewed state.
+### Bulk jobs
 
-Apply updates only Bloem's managed default group and its assigned profiles.
-Custom groups are preserved. Repeating the same idempotency key returns the
-stored result; reusing it for another template or revision is rejected.
-
-## Apply to a direct account
-
-Open **Platform → Direct accounts**, load the numeric account ID, and use the
-same preview-then-confirm flow. The server creates or updates the account's
-managed template group inside the default organization. Other accounts and
-custom groups are not changed.
-
-The canonical API uses `/platform/accounts/{account_id}`. The equivalent
-`/platform/users/{user_id}` routes remain available as compatibility aliases.
-
-## Apply to a reviewed cohort of accounts
-
-Do not repeat the single-account apply endpoint in a loop. Use the bulk policy
-workflow so one immutable selection, one reviewed preview, and one durable job
-cover the entire operation.
-
-- Organization administrators select people under **Admin → Organization →
-  People**, choose **Apply policy**, and may inspect immutable history under
-  **Policy Cohorts**.
-- Platform administrators use **Admin → Platform → Bulk Account Policies** for
-  an explicit list of directly managed Server account IDs.
-- Applying an exact template revision reuses the corresponding organization
-  cohort. A selection-specific patch creates a distinct derived cohort; it does
-  not revise the source template or change unselected accounts.
-- “Restore default” assigns the protected managed default. It never removes an
-  account's policy or leaves the account without an enforceable access group.
+Applying an exact template revision reuses the corresponding organization
+cohort. A selection-specific patch creates a distinct derived cohort; it does not
+revise the source template or change unselected accounts. "Restore the managed
+default" (command `restore_default_entitlement`) assigns the protected managed
+default. It never removes an account's policy or
+leaves the account without an enforceable access group.
 
 The bulk preview reports current cohort distribution, exact target provenance,
 field-level differences, already-compliant accounts, inherited profiles that
-will move, and custom profiles that will remain or move. The signed confirmation
+will move, and custom profiles that will stay or move. The signed confirmation
 expires and is invalidated by any material selection, command, actor, route
 scope, or policy-state change.
 
-## Audit and reconciliation
+Poll a bulk job's policy-specific status route to a terminal state. Retry a
+transport failure by reading the job first, then resubmitting the exact same
+command with the same idempotency key only when no job was returned. A
+different selection, command, or operation scope requires a new key and a new
+preview. Per-account skipped/failed reason codes are safe to keep in an
+operations record; confirmation and selection tokens are not.
+
+### Audit
 
 Template creation, revision, rollback-as-new-revision, clone, archive, and
 successful application produce durable audit events. Organization entitlement
@@ -183,28 +288,53 @@ history is available from its detail panel and from:
 GET /api/bloem/v1/admin/platform/organizations/{id}/entitlement/audit
 ```
 
-If an apply reports stale confirmation or changed target state, do not resend
-the old token. Reload the target, run a new dry-run, review it, and confirm the
-new preview. If an expected built-in template is missing after an upgrade,
-verify that migration `20260821210000_enable_builtin_entitlement_templates`
-was applied and that the platform-admin context is active.
+### API clients
 
-For a bulk job, poll its policy-specific status route to a terminal state.
-Retry a transport failure by reading the job first, then resubmitting the exact
-same command with the same idempotency key only when no job was returned. A
-different selection, command, or operation scope requires a new key and a new
-preview. Per-account skipped/failed reason codes are safe to retain in an
-operations record; confirmation and selection tokens are not.
+API automation uses a platform-scoped admin-context token, performs a dry-run,
+and submits the returned `confirmation_token` plus a stable `idempotency_key` to
+apply. An API key owned by an enabled platform administrator, unscoped or
+carrying `admin:entitlements:accounts`, may also list the template catalog and
+dry-run and apply a template to one account, as a storefront does. Those routes
+are `GET` and `POST` on `/api/bloem/v1/admin/platform/entitlement-templates`, and
+`POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run`
+and `/apply`; this arrived in `f4abe0645` (2026-10-13). The create route shares
+the catalog path, but its handler still requires an admin session. A refused key
+gets 403 `insufficient_platform_authority`.
+Revising, cloning and archiving templates, and the organization dry-run and
+apply routes, also need an admin session.
 
-## API clients
+An enabled administrator's unscoped API key can also put an account on an exact
+plan revision while creating or updating it
+(`POST /api/bloem/v1/admin/platform/accounts` and
+`PUT /api/bloem/v1/admin/platform/accounts/{account_id}` with
+`entitlement_template_key` and `entitlement_template_revision`; 422
+`entitlement_template_unavailable` when that revision cannot be applied), and
+put a new reseller organization on a plan
+(`POST /api/bloem/v1/admin/platform/tenants`). The storefront uses these
+native routes and calls none of Silo's `/api/v1`
+([leaving Silo's `/api/v1`](../architecture/bloem-leaving-silo-v1.md)).
 
-API automation must use a platform-scoped admin-context token, perform a
-dry-run, and submit the returned `confirmation_token` plus a stable
-`idempotency_key` to apply. Since `f4abe0645` (October 13, 2026), an API key
-owned by an enabled platform administrator, unscoped or carrying
-`admin:entitlements:accounts`, may also list the template catalog and dry-run
-and apply a template to one account, as a storefront does. Creating,
-revising, cloning and archiving templates, and organization applies, still
-need an admin session. See the
-[native `/api/bloem/v1` reference](../bloem-api-reference.md#entitlement-template-administration)
-for exact routes and wire shapes.
+### History
+
+Templates were added on 2026-08-21: `3ec1650d7` (under Bloem's earlier working
+name Vondel, renamed in `b25394bc8`), `917696305` and `3d4339757` (server-wide
+enforcement). This page was added in `dbe8323d7`. `811fb4d29` (2026-09-02) moved
+the routes to `/api/bloem/v1`. `f4abe0645` (2026-10-13) let a storefront API key
+list templates and preview and apply one to a single account. `25062b4df` and
+`21fae6837` (2026-10-14 and 15) seeded the protected `bloem-preview` template,
+and `22e4a4b05` refuses loosening it. `c60b7008e` (2026-10-26) moved account
+policy back onto `users`, where Silo keeps it.
+
+Related pages:
+
+- [How plans work](../architecture/bloem-plans.md).
+- [Entitlement templates guide](../wiki/admin/entitlement-templates.md): the short
+  admin guide.
+- [Bulk policy cohorts](bulk-policy-cohorts.md) and the
+  [release runbook](bulk-policy-cohorts-runbook.md).
+- [How organizations work](../architecture/bloem-organizations.md) and
+  [resource tenancy foundation](../architecture/resource-tenancy-foundation.md):
+  library grants.
+
+The pictures are SVG files under `docs/architecture/images/entitlement-templates/`,
+drawn by `scripts/bloem/draw-pictures.py`. Redraw them there, not by hand.

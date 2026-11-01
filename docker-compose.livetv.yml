@@ -5,10 +5,10 @@
 # so "Discover on LAN" works. Dispatcharr URL probing works without this file.
 #
 # Usage:
-#   docker compose -f docker-compose.yml -f docker-compose.livetv.yml up -d
+#   docker compose -f docker-compose.advanced.yml -f docker-compose.livetv.yml up -d
 #
 # Or in .env (Linux/macOS):
-#   COMPOSE_FILE=docker-compose.yml:docker-compose.livetv.yml
+#   COMPOSE_FILE=docker-compose.advanced.yml:docker-compose.livetv.yml
 #
 # Notes:
 # - Linux only. Docker Desktop (macOS/Windows) host networking is not a real

@@ -8,29 +8,35 @@ and most of `docs/`, is Silo's and stays as Silo wrote it. Bloem's material
 lives in the Bloem-owned files listed here; where Bloem differs from a Silo
 document, an **overlay** records the difference. The code is the source of truth.
 
+Every current Bloem page is written the same way, after
+[How organizations work](../architecture/bloem-organizations.md): plain language and
+pictures first, a made-up example where it helps, a "Words used in the code" table, and
+a "For developers" section that holds every technical rule.
+[Writing Bloem documentation](documentation-workflow.md) sets out that shape.
+
 Pages marked *historical* are dated records: their facts are true to their date,
-not to the current source. The current state is on the
-[front page](../../.github/README.md#current-state).
+not to the current source, and they keep the form they were written in. The current
+state is on the [front page](../../.github/README.md#current-state).
 
 ## Start here
 
 - [Bloem Server front page](../../.github/README.md) — what Bloem is, where it comes from, current state, quick start. GitHub shows it in place of the root `README.md`, which is Silo's.
-- [Fork provenance](../../FORK.md) — tracking-fork policy, the "Silo wins" rule, seams and overlays, what Bloem adds and removed, the current integration boundary.
+- [How Bloem forks Silo](../../FORK.md) — tracking-fork policy, the "Silo wins" rule, seams and overlays, what Bloem adds and removed, the current integration boundary.
 - [Agent instructions](../../BLOEM_AGENTS.md) — Bloem's overrides of Silo's `AGENTS.md` / `CLAUDE.md`; they take precedence where the two differ.
 - [Contributing to Bloem](../../.github/CONTRIBUTING.md) — repository ownership, AI disclosure and the validation commands; the root `CONTRIBUTING.md` is Silo's.
 - [Integration changelog](CHANGELOG.md) — every Silo integration and Bloem change, newest first, with commits and seam counts.
-- [Documentation workflow](documentation-workflow.md) — Silo's manual/reference model, where each kind of Bloem change is documented, regeneration and verification commands.
-- [Bloem CI](ci.md) — the Bloem CI jobs, the daily upstream sync, the published image's gate, runner placement and tool pins.
+- [Writing Bloem documentation](documentation-workflow.md) — Silo's manual/reference model, where each kind of Bloem change is documented, regeneration and verification commands.
+- [How Bloem CI works](ci.md) — the Bloem CI jobs, the daily upstream sync, the published image's gate, runner placement and tool pins.
 - [API catalogue](api-catalogue.md) — generated list of typed `/api/v2` and `/api/bloem/v1` operations and native documentation gaps.
 - [API by topic](api/README.md) — every typed `/api/bloem/v1` operation, generated from the OpenAPI contract, one page per topic, with credentials, fields and error codes; plus the hand-written page for Bloem's remaining [`/api/v1` routes](api/v1-routes.md).
 
-## How Bloem works, in plain language
+## How Bloem works: start here
 
-Pages with pictures for readers who don't work on the code. Each ends with a "For developers"
-section that links its API page and technical pages.
+The overview pages, one per area, for readers who don't work on the code. Each links the
+more detailed pages of its area, and ends with a "For developers" section.
 
 - [How organizations work](../architecture/bloem-organizations.md) — the platform, organizations, accounts and profiles; what someone can watch; a reseller's year.
-- [Organization domains and branding](../architecture/bloem-organization-domains.md) — each organization on its own domains, with its own branding and email links; refusing a sign-in on another organization's domain.
+- [How organization domains and branding work](../architecture/bloem-organization-domains.md) — each organization on its own domains, with its own branding and email links; refusing a sign-in on another organization's domain.
 - [How plans, previews and upgrades work](../architecture/bloem-plans.md) — the built-in plans, how a plan combines with an account and its profiles, changing a plan safely, the storefront preview, the upgrade prompt.
 - [How Live TV works](../architecture/bloem-live-tv.md) — sources, tuning in, recordings.
 - [How storage sources work](../architecture/bloem-storage-sources.md) — libraries read from S3 and Bookwarehouse.
@@ -81,8 +87,8 @@ All historical; the [changelog](CHANGELOG.md) carries every later integration.
 For these, Bloem's text differs throughout; read the Bloem edition instead of the upstream file.
 
 - [docs/non-goals.md](overlays/non-goals.md) (upstream: [docs/non-goals.md](../non-goals.md)) — Live TV in scope, remote-URL ingestion still out.
-- [Docker deployment](overlays/wiki/deployment/docker.md) — maintained Bloem installation and operations guide; the former upstream wiki page was removed.
-- [Operator and viewer index](overlays/wiki/index.md) — Bloem's guide index, alongside the current [Silo reference index](../README.md).
+- [Installing and running Bloem with Docker](overlays/wiki/deployment/docker.md) — maintained Bloem installation and operations guide; the former upstream wiki page was removed.
+- [Bloem guides for operators and viewers](overlays/wiki/index.md) — Bloem's guide index, alongside the current [Silo reference index](../README.md).
 
 ## Overlays on upstream documents
 
@@ -107,79 +113,79 @@ same path. Read the upstream document together with its overlay.
 - [docs/libraries-api.md](overlays/libraries-api.md) — overlay on [docs/libraries-api.md](../libraries-api.md)
 - [docs/realtime-api.md](overlays/realtime-api.md) — overlay on [docs/realtime-api.md](../realtime-api.md)
 - [docs/release-versioning.md](overlays/release-versioning.md) — overlay on [docs/release-versioning.md](../release-versioning.md)
-- [S3 storage notes](overlays/s3-storage-setup.md) — maintained additions to the current [blob-storage architecture](../architecture/blob-storage.md).
+- [Bloem S3 storage notes](overlays/s3-storage-setup.md) — maintained additions to the current [blob-storage architecture](../architecture/blob-storage.md).
 - [docs/settings-api.md](overlays/settings-api.md) — overlay on [docs/settings-api.md](../settings-api.md)
-- [Artwork storage](overlays/wiki/admin/artwork-storage.md) — Bloem campaign/seasonal storage alongside the current [blob-storage architecture](../architecture/blob-storage.md).
+- [Bloem artwork storage](overlays/wiki/admin/artwork-storage.md) — Bloem campaign/seasonal storage alongside the current [blob-storage architecture](../architecture/blob-storage.md).
 
 ## Guides (wiki)
 
-- [Bloem Server Admin Guide](../wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback, access policy, Live TV, maintenance.
-- [Entitlement Templates](../wiki/admin/entitlement-templates.md) — operator guide to revisioned access-policy templates.
-- [Bloem User Guide](../wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests.
+- [Bloem Server admin guide](../wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback, access policy, Live TV, maintenance.
+- [Entitlement templates](../wiki/admin/entitlement-templates.md) — operator guide to revisioned access-policy templates.
+- [Bloem user guide](../wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests.
 
-## Architecture and invariants
+## Every page, by area
 
 ### Organizations, accounts and policy
 
 - [How organizations work](../architecture/bloem-organizations.md) — start here: the platform, organizations, accounts and profiles in plain language, with six pictures.
-- [Multitenant administration](../architecture/multitenant-administration.md) — the Platform and Organization administrative contexts and what each manages.
-- [Resource tenancy foundation](../architecture/resource-tenancy-foundation.md) — resource owners and the first resource-isolation boundary.
-- [OPA tenant authorization operations](../architecture/opa-tenant-authorization.md) — how tenant facts, OPA and SQL scope catalog and playback reads.
-- [Silo backend switching](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the flag, its invariants, the all-in-one procedure, and `make silo-switch-check` and `make silo-switch-check-all-in-one`.
-- [Bloem request policy](../architecture/bloem-request-policy.md) — verified profile quotas, scoped administrative usage and group limits on Silo's request service.
-- [Bloem lifecycle safety](../architecture/bloem-lifecycle-safety.md) — atomic tenant retirement and library deletion.
-- [Bloem native API security foundation](../architecture/bloem-security-foundation.md) — the `/api/bloem/v1` discovery and administration boundary beside Silo's `/api/v1` login.
-- [Bloem contract adjudications](../architecture/bloem-contract-adjudications.md) — reviewed, pinned replacements for Silo scenario expectations Bloem deliberately differs from.
-- [Upstream integration adapters](../architecture/bloem-upstream-adapters.md) — migration filesystem, profile-aware interfaces and embedded-web boundaries over Silo's code.
+- [How multitenant administration works](../architecture/multitenant-administration.md) — the Platform and Organization administrative contexts and what each manages.
+- [How library ownership and grants work](../architecture/resource-tenancy-foundation.md) — resource owners and the first resource-isolation boundary.
+- [How tenant authorization works](../architecture/opa-tenant-authorization.md) — how tenant facts, OPA and SQL scope catalog and playback reads.
+- [How Silo backend switching works](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the flag, its invariants, the all-in-one procedure, and `make silo-switch-check` and `make silo-switch-check-all-in-one`.
+- [How request rules apply to organizations and profiles](../architecture/bloem-request-policy.md) — verified profile quotas, scoped administrative usage and group limits on Silo's request service.
+- [How retiring an organization and deleting a library stay safe](../architecture/bloem-lifecycle-safety.md) — atomic tenant retirement and library deletion.
+- [How Bloem's security foundation works](../architecture/bloem-security-foundation.md) — the `/api/bloem/v1` discovery and administration boundary beside Silo's `/api/v1` login.
+- [How Bloem's contract adjudications work](../architecture/bloem-contract-adjudications.md) — reviewed, pinned replacements for Silo scenario expectations Bloem deliberately differs from.
+- [How Bloem's adapters over Silo work](../architecture/bloem-upstream-adapters.md) — migration filesystem, profile-aware interfaces and embedded-web boundaries over Silo's code.
 
 ### Native storage and media delivery
 
-- [Native storage](../architecture/bloem-native-storage.md) — experimental storage-source (S3, Bookwarehouse) ebook, movie and audiobook libraries: locations, scanning, covers and reading.
-- [Native audiobook presentations](../architecture/bloem-native-audio-playback.md) — complete-book publication and pinned direct audio playback.
-- [Native video playback](../architecture/bloem-native-video-playback.md) — source admission, movie publication, execution ownership, worker HLS and supported surfaces.
-- [Native tool input](../architecture/bloem-native-tool-input.md) — bounded pinned reads for trusted local tools, child lifetime and host admission.
-- [Native scan reader](../architecture/bloem-native-scan-reader.md) — sealed scan pages, pinned entry reads and current scan authority.
-- [Native probe](../architecture/bloem-native-probe.md) — trusted ffprobe input, shared read budgets and process cleanup.
-- [Bloem media ownership across API replicas](../architecture/bloem-cluster-media.md) — which node owns Live TV and native media sessions, on Silo's playback attempts and heartbeats.
-- [Delivery boundary enforcement](../architecture/delivery-boundary-enforcement.md) — library access rechecked where bytes or rows leave the server.
+- [How native storage works](../architecture/bloem-native-storage.md) — experimental storage-source (S3, Bookwarehouse) ebook, movie and audiobook libraries: locations, scanning, covers and reading.
+- [How stored audiobooks play](../architecture/bloem-native-audio-playback.md) — complete-book publication and pinned direct audio playback.
+- [How stored movies play](../architecture/bloem-native-video-playback.md) — source admission, movie publication, execution ownership, worker HLS and supported surfaces.
+- [How a trusted tool reads a stored file](../architecture/bloem-native-tool-input.md) — bounded pinned reads for trusted local tools, child lifetime and host admission.
+- [How a scan reads a stored file](../architecture/bloem-native-scan-reader.md) — sealed scan pages, pinned entry reads and current scan authority.
+- [How Bloem looks inside a stored file](../architecture/bloem-native-probe.md) — trusted ffprobe input, shared read budgets and process cleanup.
+- [How playback works across several API servers](../architecture/bloem-cluster-media.md) — which node owns Live TV and native media sessions, on Silo's playback attempts and heartbeats.
+- [How access is checked as content leaves the server](../architecture/delivery-boundary-enforcement.md) — library access rechecked where bytes or rows leave the server.
 - [Native client subtitle delivery](../architecture/native-subtitle-delivery.md) — subtitle artifact and timeline contract adopted from Silo `658be10eb`.
 - [Storage source management UI design](../architecture/bloem-storage-source-management-ui-design.md) — historical: the October 15 design for adding and managing S3 and Bookwarehouse sources in the web admin.
 - [Storage source management UI plan](../architecture/bloem-storage-source-management-ui-plan.md) — historical: the October 15 implementation plan for that design.
 
 ### Requests and preview
 
-- [Audiobook requests](../architecture/bloem-audiobook-requests.md) — request authority, independent quotas, identifier matching and notification scope.
-- [Ebook requests](../architecture/bloem-ebook-request-foundation.md) — default-off web/admin requests, Bookwarehouse fulfillment, durable recovery and linked-library completion.
-- [Browse-only content policy](../architecture/bloem-browse-only-content-policy.md) — protected preview principals, signed guest sessions, catalogue hygiene and native content-delivery boundaries.
+- [How audiobook requests work](../architecture/bloem-audiobook-requests.md) — request authority, independent quotas, identifier matching and notification scope.
+- [How ebook requests work](../architecture/bloem-ebook-request-foundation.md) — default-off web/admin requests, Bookwarehouse fulfillment, durable recovery and linked-library completion.
+- [How browse-only access and the preview work](../architecture/bloem-browse-only-content-policy.md) — protected preview principals, signed guest sessions, catalogue hygiene and native content-delivery boundaries.
 
 ### Announcements, promotions and seasonal presentation
 
-- [Server admin announcements](../architecture/admin-announcements.md) — admin-authored messages, targeting and inbox rules.
-- [Playback overlays](../architecture/playback-overlays.md) — chapter-triggered campaign cards during playback.
-- [Seasonal scheduling](../architecture/seasonal-scheduling.md) — annual ambience schedules evaluated in the selected timezone.
-- [Campaign and seasonal asset storage](../architecture/bloem-campaign-asset-storage.md) — campaign and seasonal uploads use the catalog Assets store (local or S3); public S3 is only a fallback.
-- [Presentation evaluators](../architecture/bloem-presentation-evaluators.md) — in-process promotions and ambience evaluation, host authority and section extension boundaries.
+- [How announcements work](../architecture/admin-announcements.md) — admin-authored messages, targeting and inbox rules.
+- [How playback cards work](../architecture/playback-overlays.md) — chapter-triggered campaign cards during playback.
+- [How seasonal packs are scheduled](../architecture/seasonal-scheduling.md) — annual ambience schedules evaluated in the selected timezone.
+- [Where campaign and seasonal artwork is stored](../architecture/bloem-campaign-asset-storage.md) — campaign and seasonal uploads use the catalog Assets store (local or S3); public S3 is only a fallback.
+- [How Bloem picks which campaigns and seasonal packs to show](../architecture/bloem-presentation-evaluators.md) — in-process promotions and ambience evaluation, host authority and section extension boundaries.
 
 ### Live TV
 
-- [Xtream live TV providers](../architecture/xtream-live-tv.md) — encrypted provider accounts, live channels, XMLTV, connection limits; no VOD or remote URLs.
-- [Live TV client access](../architecture/live-tv-client-access.md) — the `watch_live_tv` permission, capability discovery and tuner-session handling.
-- [Live TV tuner discovery](../livetv-tuner-discovery.md) — HDHomeRun and Dispatcharr discovery and probing.
+- [How Xtream Live TV providers work](../architecture/xtream-live-tv.md) — encrypted provider accounts, live channels, XMLTV, connection limits; no VOD or remote URLs.
+- [How apps reach Live TV](../architecture/live-tv-client-access.md) — the `watch_live_tv` permission, capability discovery and tuner-session handling.
+- [How Live TV finds tuners](../livetv-tuner-discovery.md) — HDHomeRun and Dispatcharr discovery and probing.
 - [prairie-source-manifest.tsv](../livetv/prairie-source-manifest.tsv) — every Prairie Server source blob the Live TV subsystem imports or adapts.
 
 ### Clients, protocols and compatibility
 
 - [Leaving Silo's `/api/v1`](../architecture/bloem-leaving-silo-v1.md) — the rule that Bloem adds nothing to Silo's `/api/v1`, what moved off it, and what still calls it.
-- [Bloem native client surface](../architecture/bloem-client-surface.md) — why Bloem-only features live under `/api/bloem/v1`, and the native document set.
-- [SDK compatibility and contract generation](../architecture/bloem-sdk-compatibility.md) — plugin SDK pins, generated client DTOs and consumer synchronization.
-- [Protocol compatibility](../architecture/bloem-compatibility-removal.md) — Silo's Jellyfin and Audiobookshelf servers, their tenant wiring, and the removed companion gateway.
-- [Pastime managed-tracking removal](../architecture/bloem-pastime-removal.md) — forward-only cleanup migration and the rule that Pastime returns only as an ordinary plugin.
-- [Admin remote control of clients](../architecture/admin-remote-control.md) — invariants for server-issued commands to client apps.
+- [How Bloem's native API is organized](../architecture/bloem-client-surface.md) — why Bloem-only features live under `/api/bloem/v1`, and the native document set.
+- [How Bloem's SDKs and generated contracts fit together](../architecture/bloem-sdk-compatibility.md) — plugin SDK pins, generated client DTOs and consumer synchronization.
+- [How Bloem runs Silo's Jellyfin and Audiobookshelf servers](../architecture/bloem-compatibility-removal.md) — Silo's Jellyfin and Audiobookshelf servers, their tenant wiring, and the removed companion gateway.
+- [How Pastime tracking was removed](../architecture/bloem-pastime-removal.md) — forward-only cleanup migration and the rule that Pastime returns only as an ordinary plugin.
+- [How remote control works](../architecture/admin-remote-control.md) — invariants for server-issued commands to client apps.
 - [Header-authenticated media client rollout](../architecture/header-authenticated-media-rollout.md) — historical: superseded on October 9, when the deployment gate was removed.
 
 ### Embedded web
 
-- [Bloem Server web feature coverage](../architecture/bloem-web-feature-coverage.md) — Bloem features in Silo's web app: implemented screens, authority boundaries, verification and limits.
+- [What the web app covers](../architecture/bloem-web-feature-coverage.md) — Bloem features in Silo's web app: implemented screens, authority boundaries, verification and limits.
 - [Embedded-web completion handoff](../architecture/bloem-web-completion-handoff.md) — historical: the September 18–19 web batch and its remaining acceptance work.
 
 ### Historical evaluations and plans
@@ -191,9 +197,9 @@ same path. Read the upstream document together with its overlay.
 
 ## API references and specs
 
-- [Bloem Server — Native /api/bloem/v1 Reference](../bloem-api-reference.md) — the maintained wire reference for Bloem's native extensions.
-- [Playback overlays API](../playback-overlays-api.md) — campaign CRUD and the save-to-inbox endpoint for playback overlays.
-- [LAN service advertisement (`_bloem._tcp`)](../specs/lan-service-advertisement.md) — the opt-in DNS-SD service (`internal/lanadvert`) Bloem's clients browse for.
+- [Bloem native API reference](../bloem-api-reference.md) — the maintained wire reference for Bloem's native extensions.
+- [Playback cards: who calls which route](../playback-overlays-api.md) — campaign CRUD and the save-to-inbox endpoint for playback overlays.
+- [How Bloem announces itself on a home network (`_bloem._tcp`)](../specs/lan-service-advertisement.md) — the opt-in DNS-SD service (`internal/lanadvert`) Bloem's clients browse for.
 - [Bloem private plugin inventory](../plugin-fork-inventory.md) — historical snapshot of Bloem's plugin forks, with later dated notes.
 - [Admin remote control of clients (S-5)](../specs/admin-remote-control.md) — historical: the working spec; the architecture page above is maintained.
 - [api-v2 fork readiness](../specs/api-v2-fork-readiness.md) — historical: September preparation for Silo's `/api/v2` route-inventory gates.
@@ -202,15 +208,15 @@ same path. Read the upstream document together with its overlay.
 
 ## Operations runbooks
 
-- [Entitlement templates](../operations/entitlement-templates.md) — platform-administrator operation of revisioned policy templates.
-- [Bulk policy cohorts](../operations/bulk-policy-cohorts.md) — reviewed policy changes for up to 10,000 snapshotted accounts.
-- [Bulk policy cohorts release and canary runbook](../operations/bulk-policy-cohorts-runbook.md) — releasing the cohort capability and validating it with one test account.
+- [Managing entitlement templates](../operations/entitlement-templates.md) — platform-administrator operation of revisioned policy templates.
+- [How bulk policy changes work](../operations/bulk-policy-cohorts.md) — reviewed policy changes for up to 10,000 snapshotted accounts.
+- [Releasing bulk policy changes: the canary runbook](../operations/bulk-policy-cohorts-runbook.md) — releasing the cohort capability and validating it with one test account.
 - [Header-authenticated media rollout handoff](../operations/header-authenticated-media-rollout-handoff.md) — historical: the August 24 handoff; the gate it describes was removed on October 9.
 
 ## Other Bloem-owned files
 
-- [Audiobook and podcast support](../../internal/audiobooks/README.md) — package notes for Silo's audiobook code and its Audiobookshelf-compatible server in Bloem.
-- [Bloem brand asset set](../../assets/brand/README.md) — vector sources, palette and where the rendered icons live.
+- [How audiobooks and podcasts work in Bloem](../../internal/audiobooks/README.md) — package notes for Silo's audiobook code and its Audiobookshelf-compatible server in Bloem.
+- [Bloem's brand assets](../../assets/brand/README.md) — vector sources, palette and where the rendered icons live.
 
 ## Upstream documents that still carry Bloem edits
 

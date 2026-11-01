@@ -1,10 +1,10 @@
 # How messages and promotions work
 
-> **Provenance and status.** Bloem page, written on 2026-10-31 and checked against
-> `main` at `c83c424b7`. Silo has the notification inbox. Bloem adds announcements,
-> campaigns, playback cards, seasonal packs and the upgrade prompt. This page
-> explains them in plain language; the technical pages and the API are linked at
-> the end.
+> **Provenance and status.** Bloem page, written on 2026-10-31, brought up to date on
+> 2026-11-01 and checked against `main` at `b6039036d`. Silo has the notification
+> inbox. Bloem adds announcements, campaigns, playback cards, seasonal packs and the
+> upgrade prompt. This page explains them in plain language; the technical rules are
+> in the [For developers](#for-developers) section and the pages it links.
 
 ## Five ways Bloem talks to viewers
 
@@ -64,7 +64,12 @@ across New Year, such as 1 December to 7 January.
 - Effects hide while a video plays, calm down when the device asks for reduced
   motion, and each device can switch them off.
 - The sign-in page shows only packs for everyone. After sign-in, viewers also
-  see their own organization's packs.
+  see their own organization's packs
+  ([how seasonal packs are scheduled](seasonal-scheduling.md)).
+
+Uploaded pictures for campaigns and seasonal packs are kept in the same store as
+the catalog's artwork, on local disk or S3
+([where campaign and seasonal artwork is stored](bloem-campaign-asset-storage.md)).
 
 ## Who can change what
 
@@ -82,6 +87,8 @@ across New Year, such as 1 December to 7 January.
 | Campaign, promotion card | a promotion (`internal/promotions`), on surfaces `home`, `detail`, `pre_playback` or `in_playback` |
 | Playback card | a promotion on `in_playback`, with `playback_style` `card` or `pip` |
 | Seasonal pack | an ambience pack (`internal/ambience`) |
+| Packs on the sign-in page | `GET /api/bloem/v1/ambience/public` (public, packs for everyone) |
+| Packs after sign-in | `GET /api/bloem/v1/ambience` (`seasonal_viewer_v1`) |
 
 ## For developers
 
@@ -89,14 +96,19 @@ across New Year, such as 1 December to 7 January.
   inbox, announcements, seasonal packs and their artwork, campaigns, the upgrade
   prompt and the `playback_overlays_v1` capability. The viewer's campaign cards,
   hiding one and saving one to the inbox are under `/api/bloem/v1/promotions`
-  (`promotions_viewer_v1`); the phone apps still use the
-  [old `/api/v1` routes](../bloem/api/v1-routes.md#campaigns)
+  (`promotions_viewer_v1`). Signed-out pages read the packs for everyone from the
+  public `GET /api/bloem/v1/ambience/public`; signed-in Home reads
+  `GET /api/bloem/v1/ambience`. The web app and the storefront call none of Silo's
+  `/api/v1`. The phone apps still use the
+  [old `/api/v1` routes](../bloem/api/v1-routes.md#campaigns), including the `ambience`
+  block of `GET /api/v1/theme/branding`
   ([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)).
-- [Server admin announcements](admin-announcements.md),
-  [playback overlays](playback-overlays.md) and
-  [seasonal scheduling](seasonal-scheduling.md).
-- [Presentation evaluators](bloem-presentation-evaluators.md) and
-  [campaign and seasonal asset storage](bloem-campaign-asset-storage.md).
+- [How announcements work](admin-announcements.md),
+  [how playback cards work](playback-overlays.md) (with the
+  [routes map](../playback-overlays-api.md)) and
+  [how seasonal packs are scheduled](seasonal-scheduling.md).
+- [How Bloem picks which campaigns and seasonal packs to show](bloem-presentation-evaluators.md)
+  and [where campaign and seasonal artwork is stored](bloem-campaign-asset-storage.md).
 
 The pictures are SVG files under `images/messages/`, drawn by
 `scripts/bloem/draw-pictures.py`. Redraw them there, not by hand.

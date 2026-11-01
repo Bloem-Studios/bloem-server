@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="790" viewBox="0 0 1200 790" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">From draft to inbox</title>
+<desc id="d">Four numbered steps: write the message, choose who receives it, preview and publish, and later withdraw it. Below them, the five audiences an announcement can have, and an inbox card showing the three severities, where a critical message has no dismiss button.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="789" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">From draft to inbox</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A platform administrator writes, checks and publishes. Bloem delivers at once and can take it back.</text>
+<rect x="40" y="124" width="262" height="176" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="124" width="8" height="176" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="74" cy="152" r="12" fill="#6366F1"/>
+<text x="74" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="96" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Write it</text>
+<text x="64" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A title and a message, a</text>
+<text x="64" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">severity, and if wanted a link,</text>
+<text x="64" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">a picture, an action button and</text>
+<text x="64" y="246" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">an expiry time.</text>
+<line x1="305" y1="212.0" x2="323" y2="212.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="326" y="124" width="262" height="176" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="326" y="124" width="8" height="176" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="360" cy="152" r="12" fill="#6366F1"/>
+<text x="360" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="382" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Choose who</text>
+<text x="350" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Everyone, one account role, one</text>
+<text x="350" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">organization, everyone who can</text>
+<text x="350" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">see a library, or chosen</text>
+<text x="350" y="246" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">accounts and profiles.</text>
+<line x1="591" y1="212.0" x2="609" y2="212.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="612" y="124" width="262" height="176" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="612" y="124" width="8" height="176" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="646" cy="152" r="12" fill="#6366F1"/>
+<text x="646" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="668" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Preview, publish</text>
+<text x="636" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The preview shows the audience,</text>
+<text x="636" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the expiry and whether it can</text>
+<text x="636" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">be dismissed. Publishing</text>
+<text x="636" y="246" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">delivers it to every profile at</text>
+<text x="636" y="266" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">once.</text>
+<line x1="877" y1="212.0" x2="895" y2="212.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="898" y="124" width="262" height="176" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="898" y="124" width="8" height="176" rx="4" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<circle cx="932" cy="152" r="12" fill="#9CA3AF"/>
+<text x="932" y="157" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="954" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Withdraw it</text>
+<text x="922" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Unread copies disappear and</text>
+<text x="922" y="206" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">read ones expire. The record of</text>
+<text x="922" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">what was published stays in the</text>
+<text x="922" y="246" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">list.</text>
+<text x="40" y="334" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">There are no saved drafts, no start time in the future and no editing after publishing. To change a message, withdraw it and publish a new one.</text>
+<text x="40" y="392" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Who receives it</text>
+<rect x="40" y="414" width="640" height="48" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="414" width="6" height="48" rx="3" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<text x="62" y="444" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Everyone</text>
+<text x="214" y="444" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">every enabled account, in every organization</text>
+<rect x="40" y="472" width="640" height="48" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="472" width="6" height="48" rx="3" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<text x="62" y="502" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Account role</text>
+<text x="214" y="502" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">administrators, or ordinary users</text>
+<rect x="40" y="530" width="640" height="48" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="530" width="6" height="48" rx="3" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<text x="62" y="560" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Organization</text>
+<text x="214" y="560" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">the members of one organization</text>
+<rect x="40" y="588" width="640" height="48" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="588" width="6" height="48" rx="3" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<text x="62" y="618" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Library</text>
+<text x="214" y="618" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">each profile that may see that library</text>
+<rect x="40" y="646" width="640" height="48" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="646" width="6" height="48" rx="3" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<text x="62" y="676" font-size="15.5" font-weight="700" fill="#101827" text-anchor="start">Chosen people</text>
+<text x="214" y="676" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">named accounts (all their profiles) or profiles</text>
+<text x="40" y="722" font-size="13.5" font-weight="normal" fill="#6B7280" text-anchor="start">Disabled accounts never receive anything.</text>
+<rect x="720" y="376" width="440" height="330" rx="16" fill="#F9FAFB" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="742" y="412" font-size="17" font-weight="700" fill="#101827" text-anchor="start">In the viewer's inbox</text>
+<rect x="740" y="434" width="400" height="76" rx="12" fill="#FFFFFF" stroke="#0EA5E9" stroke-width="1.5"/>
+<rect x="756" y="446" width="95" height="24.5" rx="12.25" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.2"/>
+<text x="803.5" y="462.39" font-size="11.5" font-weight="600" fill="#0369A1" text-anchor="middle">INFORMATION</text>
+<text x="756" y="494" font-size="15" font-weight="600" fill="#101827" text-anchor="start">New films this weekend</text>
+<text x="1120" y="464" font-size="16" font-weight="normal" fill="#6B7280" text-anchor="end">✕</text>
+<rect x="740" y="522" width="400" height="76" rx="12" fill="#FFFFFF" stroke="#F59E0B" stroke-width="1.5"/>
+<rect x="756" y="534" width="69" height="24.5" rx="12.25" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.2"/>
+<text x="790.5" y="550.39" font-size="11.5" font-weight="600" fill="#B45309" text-anchor="middle">WARNING</text>
+<text x="756" y="582" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Maintenance on Sunday night</text>
+<text x="1120" y="552" font-size="16" font-weight="normal" fill="#6B7280" text-anchor="end">✕</text>
+<rect x="740" y="610" width="400" height="76" rx="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.5"/>
+<rect x="756" y="622" width="75" height="24.5" rx="12.25" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.2"/>
+<text x="793.5" y="638.39" font-size="11.5" font-weight="600" fill="#B91C1C" text-anchor="middle">CRITICAL</text>
+<text x="756" y="670" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Streaming is down in some regions</text>
+<text x="1120" y="640" font-size="12.5" font-weight="600" fill="#B91C1C" text-anchor="end">cannot be dismissed</text>
+<text x="40" y="752" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Bloem stores announcements itself; the storefront is not needed to publish one. Organization administrators cannot publish them.</text>
+</svg>
