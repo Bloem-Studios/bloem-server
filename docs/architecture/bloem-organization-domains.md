@@ -37,9 +37,10 @@ nothing on the request. It must not run `clientip.Middleware`: that rewrites
 proxy's forwarded host. The organization is stored with `WithRequestOrganization`.
 
 `orgdomains.Directory` holds every registered domain and organization branding value in
-memory. It reloads after `DirectoryTTL` (30 seconds), and at once after a write on the same
-node. Other nodes see a write within 30 seconds. A failed reload keeps serving the previous
-map.
+memory. After `DirectoryTTL` (30 seconds) it keeps serving the old map while one background
+read replaces it, so a slow database never holds requests up. After a write on the same node
+it reads again in the next request, so the write shows at once. Other nodes see a write
+within about 30 seconds. A failed read keeps serving the previous map.
 
 ## Branding and email links
 
@@ -117,7 +118,12 @@ remaining domain primary.
   (`internal/auth/oauth_handler.go`). An Authentik sign-in refused on another
   organization's domain gets the OAuth handler's generic failure, not the address message.
 - **Phone and TV apps:** the device sign-in page (`/activate`) and the server address the
-  apps are told (`/api/v2/system/identity`) stay on the server's public URL.
+  apps are told (`/api/v2/system/identity`) stay on the server's public URL. A device-code
+  sign-in creates its session through the device login service, so the domain check does
+  not see it.
+- **Invitations from the platform:** an invitation follows the inviting administrator's
+  organization. One a platform administrator sends into another organization links to the
+  default domain.
 - **Jellyfin and email sender:** the Jellyfin address and the email sender are server-wide.
 - **Page shell cache:** it keeps one rendered page keyed by branding. With several brands
   it re-renders when the brand changes, which is correct but slower.

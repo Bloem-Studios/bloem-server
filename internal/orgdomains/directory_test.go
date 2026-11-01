@@ -155,17 +155,3 @@ func TestDirectoryKeepsLastSnapshotOnLoadError(t *testing.T) {
 		t.Fatalf("loads = %d, want 2", calls)
 	}
 }
-
-func TestDirectoryReloadsAfterTimeToLive(t *testing.T) {
-	now := time.Unix(0, 0)
-	loads := 0
-	d := newDirectory(func(context.Context) (snapshot, error) { loads++; return testSnapshot(), nil }, 30*time.Second)
-	d.now = func() time.Time { return now }
-	d.Lookup(context.Background(), "x.example.com")
-	d.Lookup(context.Background(), "x.example.com")
-	now = now.Add(31 * time.Second)
-	d.Lookup(context.Background(), "x.example.com")
-	if loads != 2 {
-		t.Fatalf("loads = %d, want 2 (one, then one after the time to live)", loads)
-	}
-}

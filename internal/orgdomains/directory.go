@@ -24,12 +24,13 @@ const loadTimeout = 5 * time.Second
 // Directory is the in-memory map of registered domains and organization
 // branding values. A nil *Directory maps nothing.
 type Directory struct {
-	load  func(context.Context) (snapshot, error)
-	ttl   time.Duration
-	now   func() time.Time
-	mu    sync.Mutex
-	cur   atomic.Pointer[loadedSnapshot]
-	stale atomic.Bool
+	load       func(context.Context) (snapshot, error)
+	ttl        time.Duration
+	now        func() time.Time
+	mu         sync.Mutex
+	cur        atomic.Pointer[loadedSnapshot]
+	stale      atomic.Bool
+	refreshing atomic.Bool
 }
 
 type loadedSnapshot struct {
@@ -49,18 +50,41 @@ func (d *Directory) fresh(cur *loadedSnapshot) bool {
 	return cur != nil && !d.stale.Load() && d.now().Sub(cur.at) < d.ttl
 }
 
-// snapshot is the current map, read again when it is older than the time to
-// live or invalidated. A failed read keeps serving the previous map.
+// snapshot is the current map. A map older than the time to live is still
+// served while one background read replaces it, so a slow database never
+// holds requests up. The first read, and the read after a local write
+// (Invalidate), happen in the request, so the write is visible at once. A
+// failed read keeps serving the previous map.
 func (d *Directory) snapshot(ctx context.Context) snapshot {
-	if cur := d.cur.Load(); d.fresh(cur) {
+	cur := d.cur.Load()
+	if cur != nil && !d.stale.Load() {
+		if d.now().Sub(cur.at) >= d.ttl && d.refreshing.CompareAndSwap(false, true) {
+			// The read outlives the request that noticed the expiry, so it
+			// keeps the request's values but not its cancellation.
+			bg := context.WithoutCancel(ctx)
+			go func() {
+				defer d.refreshing.Store(false)
+				d.mu.Lock()
+				defer d.mu.Unlock()
+				if latest := d.cur.Load(); !d.fresh(latest) {
+					d.reload(bg, latest)
+				}
+			}()
+		}
 		return cur.snap
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	cur := d.cur.Load()
+	cur = d.cur.Load()
 	if d.fresh(cur) {
 		return cur.snap
 	}
+	return d.reload(ctx, cur)
+}
+
+// reload reads the map and stores it; on failure it stores cur's map again.
+// The caller holds d.mu.
+func (d *Directory) reload(ctx context.Context, cur *loadedSnapshot) snapshot {
 	d.stale.Store(false)
 	loadCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), loadTimeout)
 	defer cancel()
