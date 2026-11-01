@@ -47,10 +47,10 @@ Checked on October 31, 2026, against `main` at `81c26179c`.
 
 | | |
 | --- | --- |
-| Bloem `main` | `4edbee99d`: the merge of Silo through `32a2f63e1`, on top of `8c99f9c60` (Silo through `fbe0e89ca`), `4c3f4f56b` (Silo through `288f58200`) and `8065e5746` (Silo through `07c05cad6`), then documentation. Since October 28 it also adds library preview free play (`38e587805`), AI subtitles for word-only and Chinese or Japanese speech-to-text (`09dab0097`), per-library figures (`6314dcd0a`), guided S3 setup with all-bucket sources (`8f4ba105c`), the upgrade prompt (`c0d629550`) and new arrivals (`b99aa105c`); see the [changelog](../docs/bloem/CHANGELOG.md) |
+| Bloem `main` | `e5cd1eb6a`: the storefront and the web app off Silo's `/api/v1` (`3eb77be33`, `e5cd1eb6a`) and documentation, on `4edbee99d`, the merge of Silo through `32a2f63e1`, on top of `8c99f9c60` (Silo through `fbe0e89ca`), `4c3f4f56b` (Silo through `288f58200`) and `8065e5746` (Silo through `07c05cad6`), then documentation. Since October 28 it also adds library preview free play (`38e587805`), AI subtitles for word-only and Chinese or Japanese speech-to-text (`09dab0097`), per-library figures (`6314dcd0a`), guided S3 setup with all-bucket sources (`8f4ba105c`), the upgrade prompt (`c0d629550`) and new arrivals (`b99aa105c`); see the [changelog](../docs/bloem/CHANGELOG.md) |
 | Silo integrated | all of Silo `main` through `32a2f63e1` (October 31, 2026, 19:48 UTC), merged in `4edbee99d`; `main` was zero commits behind Silo when checked |
 | Seam ledger | 303 Silo-owned files that Bloem differs in, declared in [`contracts/seams.txt`](../contracts/seams.txt) |
-| Production | `4edbee99d` since 20:25 UTC on October 31, from an image built locally with the Bloem Image steps before Bloem CI finished. See the [October 31 receipt](../docs/operations/2026-10-31-silo-sync-32a2f63e1-deployment.md) |
+| Production | `e5cd1eb6a` since 01:34 UTC on November 1, from an image built locally with the Bloem Image steps before Bloem CI finished. See the [November 1 receipt](../docs/operations/2026-11-01-off-silo-v1-deployment.md) |
 
 The two October 31 Silo merges brought:
 
