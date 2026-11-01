@@ -18,7 +18,8 @@ Each organization can have its own domains, name, logo and colours
 - **Emails.** Invitation and password-reset emails link to the organization's primary
   domain and carry its name.
 - **Sign-in.** Signing in on another organization's domain is refused with
-  `409 wrong_organization_domain`, naming the account's own address.
+  `409 wrong_organization_domain`, naming the account's own address. An organization
+  without a domain still signs in at the server's public address.
 - **Authentik.** A web sign-in through the provider stays on the organization domain it
   started on; each domain's callback must be registered with the provider. This adds one
   seam, `internal/auth/oauth_handler.go` (303 to 304), approved by the owner.
