@@ -76,9 +76,23 @@ type LibraryHandler struct {
 	// Trickplay, when set, queues or removes seek previews right after a
 	// library's trickplay setting changes on this node.
 	Trickplay libraryTrickplayReconciler
+	// BoxSets, when set, looks up the TMDB collections of a library's
+	// movies right after box sets are turned on for it.
+	BoxSets libraryBoxSetSyncer
 	// StorageLocations, when set, lets a new ebook library use a storage
 	// source as its location instead of filesystem paths.
 	StorageLocations libraryStorageLocations
+}
+
+// libraryBoxSetSyncer starts the box set sync task.
+type libraryBoxSetSyncer interface {
+	SyncBoxSetsSoon()
+}
+
+func (h *LibraryHandler) syncBoxSets() {
+	if h.BoxSets != nil {
+		h.BoxSets.SyncBoxSetsSoon()
+	}
 }
 
 // libraryStorageLocations attaches a storage source to a library inside the
@@ -234,6 +248,10 @@ type createLibraryRequest struct {
 	RealtimeMonitoring *bool `json:"-"`
 	// TrickplayEnabled is set only by the v2 createLibrary operation.
 	TrickplayEnabled bool `json:"-"`
+	// The box set settings are set only by the v2 createLibrary operation.
+	BoxSetsEnabled  bool  `json:"-"`
+	BoxSetMinMovies int   `json:"-"`
+	BoxSetsInSearch *bool `json:"-"`
 	// StorageSource is set only by the v2 createLibrary operation: the
 	// storage source an ebook library reads its books from, instead of paths.
 	StorageSource *uuid.UUID `json:"-"`
@@ -257,6 +275,10 @@ type updateLibraryRequest struct {
 	RealtimeMonitoring *bool `json:"-"`
 	// TrickplayEnabled is set only by the v2 updateLibrary operation.
 	TrickplayEnabled *bool `json:"-"`
+	// The box set settings are set only by the v2 updateLibrary operation.
+	BoxSetsEnabled  *bool `json:"-"`
+	BoxSetMinMovies *int  `json:"-"`
+	BoxSetsInSearch *bool `json:"-"`
 }
 
 // affectsTrickplay reports whether the update can change which of the
@@ -320,6 +342,10 @@ type libraryResponse struct {
 	// view only.
 	TrickplayEnabled   bool `json:"-"`
 	TrickplaySupported bool `json:"-"`
+	// The box set settings are read by the v2 library view only.
+	BoxSetsEnabled  bool `json:"-"`
+	BoxSetMinMovies int  `json:"-"`
+	BoxSetsInSearch bool `json:"-"`
 	// StorageSource is read by the v2 library view only.
 	StorageSource *uuid.UUID `json:"-"`
 }
@@ -463,6 +489,9 @@ func toLibraryResponse(f *models.MediaFolder) libraryResponse {
 		ScanWarningAt:              f.ScanWarningAt,
 		RealtimeMonitoring:         f.RealtimeMonitoring,
 		TrickplayEnabled:           f.TrickplayEnabled,
+		BoxSetsEnabled:             f.BoxSetsEnabled,
+		BoxSetMinMovies:            f.BoxSetMinMovies,
+		BoxSetsInSearch:            f.BoxSetsInSearch,
 		StorageSource:              f.StorageSourceKey,
 	}
 }

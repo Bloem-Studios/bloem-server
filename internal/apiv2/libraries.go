@@ -37,6 +37,9 @@ type Library struct {
 	IntroDetectionEnabled      bool     `json:"intro_detection_enabled" example:"false"`
 	TrickplayEnabled           bool     `json:"trickplay_enabled" doc:"Generate seek-bar preview images for the library's video files" example:"false"`
 	TrickplaySupported         bool     `json:"trickplay_supported" doc:"Whether the server can produce seek-bar previews (public asset storage is configured)" example:"true"`
+	BoxSetsEnabled             bool     `json:"box_sets_enabled" doc:"Browse the movies TMDB lists in one collection (a franchise such as Harry Potter) as one box set; movie and mixed libraries only" example:"false"`
+	BoxSetMinMovies            int      `json:"box_set_min_movies" doc:"The fewest of a collection's movies the library must hold for them to form a box set" example:"2"`
+	BoxSetsInSearch            bool     `json:"box_sets_in_search" doc:"List matching box sets of this library in search, ahead of their movies" example:"true"`
 	TrailerKinds               []string `json:"trailer_kinds" doc:"Remote video kinds fetched during metadata refresh; empty disables them" example:"[\"trailer\"]"`
 	RealtimeMonitoring         bool     `json:"realtime_monitoring" doc:"Scan automatically when files in the library's folders change. Takes effect only while the server-wide scanner.realtime_monitoring setting is on." example:"true"`
 	SortOrder                  int      `json:"sort_order" doc:"Position among libraries, lowest first" example:"0"`
@@ -58,6 +61,9 @@ type LibraryCreate struct {
 	ChapterThumbnailsEnabled bool     `json:"chapter_thumbnails_enabled,omitempty" doc:"Requires public asset storage" example:"false"`
 	IntroDetectionEnabled    bool     `json:"intro_detection_enabled,omitempty" example:"false"`
 	TrickplayEnabled         bool     `json:"trickplay_enabled,omitempty" doc:"Generate seek-bar preview images; requires public asset storage" example:"false"`
+	BoxSetsEnabled           bool     `json:"box_sets_enabled,omitempty" doc:"Group movies of one TMDB collection into a box set; movie and mixed libraries only" example:"false"`
+	BoxSetMinMovies          int      `json:"box_set_min_movies,omitempty" minimum:"2" maximum:"10" doc:"The fewest of a collection's movies that form a box set; default 2" example:"2"`
+	BoxSetsInSearch          *bool    `json:"box_sets_in_search,omitempty" doc:"List matching box sets in search; omitted means true" example:"true"`
 	TrailerKinds             []string `json:"trailer_kinds,omitempty" doc:"Remote video kinds to fetch; omitted applies the default (every provider kind), empty disables them" example:"[\"trailer\"]"`
 	RealtimeMonitoring       *bool    `json:"realtime_monitoring,omitempty" doc:"Scan automatically when files in the library's folders change; omitted means true. Takes effect only while the server-wide scanner.realtime_monitoring setting is on." example:"true"`
 }
@@ -74,6 +80,9 @@ type LibraryUpdate struct {
 	ChapterThumbnailsEnabled *bool     `json:"chapter_thumbnails_enabled,omitempty" nullable:"false" example:"false"`
 	IntroDetectionEnabled    *bool     `json:"intro_detection_enabled,omitempty" nullable:"false" example:"false"`
 	TrickplayEnabled         *bool     `json:"trickplay_enabled,omitempty" nullable:"false" doc:"Generate seek-bar preview images; turning it off deletes the library's previews" example:"false"`
+	BoxSetsEnabled           *bool     `json:"box_sets_enabled,omitempty" nullable:"false" doc:"Group movies of one TMDB collection into a box set; movie and mixed libraries only. Turning it on looks up the collections of the library's movies in the background" example:"true"`
+	BoxSetMinMovies          *int      `json:"box_set_min_movies,omitempty" nullable:"false" minimum:"2" maximum:"10" doc:"The fewest of a collection's movies that form a box set" example:"2"`
+	BoxSetsInSearch          *bool     `json:"box_sets_in_search,omitempty" nullable:"false" doc:"List matching box sets in search" example:"true"`
 	TrailerKinds             *[]string `json:"trailer_kinds,omitempty" nullable:"false" doc:"Replaces the allow-list; empty disables remote videos" example:"[\"trailer\"]"`
 	RealtimeMonitoring       *bool     `json:"realtime_monitoring,omitempty" nullable:"false" doc:"Scan automatically when files in the library's folders change. Takes effect only while the server-wide scanner.realtime_monitoring setting is on." example:"true"`
 }
@@ -1104,6 +1113,9 @@ func (reg *Registry) createLibrary(ctx context.Context, in *LibraryCreateInput) 
 		TrailerKinds:             in.Body.TrailerKinds,
 		RealtimeMonitoring:       in.Body.RealtimeMonitoring,
 		TrickplayEnabled:         in.Body.TrickplayEnabled,
+		BoxSetsEnabled:           in.Body.BoxSetsEnabled,
+		BoxSetMinMovies:          in.Body.BoxSetMinMovies,
+		BoxSetsInSearch:          in.Body.BoxSetsInSearch,
 	})
 	if err != nil {
 		return nil, libraryProblem(err)
@@ -1140,6 +1152,9 @@ func (reg *Registry) updateLibrary(ctx context.Context, in *LibraryUpdateInput) 
 		TrailerKinds:             in.Body.TrailerKinds,
 		RealtimeMonitoring:       in.Body.RealtimeMonitoring,
 		TrickplayEnabled:         in.Body.TrickplayEnabled,
+		BoxSetsEnabled:           in.Body.BoxSetsEnabled,
+		BoxSetMinMovies:          in.Body.BoxSetMinMovies,
+		BoxSetsInSearch:          in.Body.BoxSetsInSearch,
 	})
 	if err != nil {
 		return nil, libraryProblem(err)
@@ -1566,6 +1581,9 @@ func libraryOf(v handlers.LibraryView) Library {
 		IntroDetectionEnabled:      v.IntroDetectionEnabled,
 		TrickplayEnabled:           v.TrickplayEnabled,
 		TrickplaySupported:         v.TrickplaySupported,
+		BoxSetsEnabled:             v.BoxSetsEnabled,
+		BoxSetMinMovies:            v.BoxSetMinMovies,
+		BoxSetsInSearch:            v.BoxSetsInSearch,
 		TrailerKinds:               NonNil(v.TrailerKinds),
 		RealtimeMonitoring:         v.RealtimeMonitoring,
 		SortOrder:                  v.SortOrder,

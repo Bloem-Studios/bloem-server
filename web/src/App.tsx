@@ -100,6 +100,7 @@ const LibraryPage = lazy(importLibraryPage);
 const ItemDetail = lazy(importItemDetail);
 const EbookReader = lazy(() => import("@/pages/EbookReader"));
 const PersonDetail = lazy(importPersonDetail);
+const BoxSetPage = lazy(() => import("@/pages/BoxSetPage"));
 const Collections = lazy(importCollections);
 const CollectionEditorPage = lazy(() => import("@/pages/CollectionEditorPage"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
@@ -641,6 +642,7 @@ function AppRoutes() {
                             element={withItemCampaigns(audiobookItemRoute(<ItemDetail />))}
                           />
                           <Route path="/person/:id" element={<PersonDetail />} />
+                          <Route path="/box-sets/:id" element={<BoxSetPage />} />
                           <Route path="/rooms" element={<WatchPartyHub />} />
                           <Route path="/rooms/:roomId" element={<WatchTogetherRoomPage />} />
                           <Route
