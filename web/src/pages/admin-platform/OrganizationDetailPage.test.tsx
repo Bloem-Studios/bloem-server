@@ -201,6 +201,8 @@ describe("OrganizationDetailPage", () => {
       const entitlement = entitlementRead(path);
       if (entitlement) return entitlement as never;
       if (String(path).endsWith("/memberships")) return { memberships } as never;
+      // The domains and branding panels read their own routes.
+      if (String(path).includes("/platform/tenants/")) return { domains: [] } as never;
       if (String(path).endsWith("/suspend"))
         throw new AdminV2ClientError(409, "authorization_state_changed", "stale");
       detailLoads += 1;

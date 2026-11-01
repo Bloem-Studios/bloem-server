@@ -4,6 +4,8 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Plus, ShieldCheck, Users } from "
 import { Link, useParams } from "react-router";
 import { OrganizationLifecyclePanel } from "@/components/admin/organizations/OrganizationLifecyclePanel";
 import { OrganizationEntitlementPanel } from "./OrganizationEntitlementPanel";
+import { OrganizationBrandingPanel } from "./OrganizationBrandingPanel";
+import { OrganizationDomainsPanel } from "./OrganizationDomainsPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -398,6 +400,8 @@ export default function OrganizationDetailPage() {
         }}
       />
       <OrganizationEntitlementPanel organizationID={current.id} />
+      <OrganizationDomainsPanel organizationID={current.id} />
+      <OrganizationBrandingPanel organizationID={current.id} />
       <AddMembershipDialog
         organization={current}
         open={addMemberOpen}
