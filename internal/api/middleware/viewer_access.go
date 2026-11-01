@@ -83,6 +83,9 @@ func (m *ViewerAccessMiddleware) RequireViewerAccess(next http.Handler) http.Han
 
 		scope, err := m.resolver.Resolve(r.Context(), input)
 		if err != nil {
+			if refuseSessionRevokedByOrganization(w, err) {
+				return
+			}
 			switch {
 			case errors.Is(err, access.ErrProfileUnverified):
 				w.Header().Set("Content-Type", "application/json")

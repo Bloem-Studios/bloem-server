@@ -211,6 +211,18 @@ direct-profile sessions retain self-logout. v1 invitation acceptance hides unkno
 expired, revoked and consumed invitations behind `404 not_found`; a pending invitation's
 duplicate-account conflict remains `409 already_used`.
 
+An account-login session that started before its organization revoked the account
+can no longer select that organization's profiles. The trigger on
+`organization_memberships` records the revocation time whenever `security_revision`
+rises and status and role stay the same. That covers an administrator's "revoke all
+sessions", initial ownership activation and some access edits. An account belongs to
+one organization, so such a session cannot load any profile. The viewer-access gate
+ends the session and answers `401` with reason `session_invalid`, which `/api/v2`
+answers as `session_expired`. Its refresh is then refused because the session is
+revoked, and the client signs in again. Callers that resolve a viewer outside the
+gate still see `access.ErrProfileNotFound`, because the refusal wraps it. See
+`internal/api/bloem_org_session_revocation.go`.
+
 ## Upgrade behavior
 
 An upgrade with exactly one enabled legacy administrator automatically assigns

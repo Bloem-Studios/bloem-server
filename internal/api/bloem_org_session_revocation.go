@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -15,18 +16,26 @@ import (
 //
 // An organization-scoped session revoke bumps the membership's
 // security_revision, which stales every token carrying that revision. An
-// account-login session (auth_sessions.profile_id IS NULL) carries none, and
-// when the account belongs to another organization as well it is deliberately
-// left alive — one tenant's administrator must not sign the member out of
-// another tenant. Such a session picks its profile per request with
-// X-Profile-Id, so without this check it could keep selecting the revoking
-// organization's profiles. The revocation time per (account, organization) is
-// recorded by the migration 20260923160000_bloem_org_session_revocations.
+// account-login session (auth_sessions.profile_id IS NULL) carries none and
+// picks its profile per request with X-Profile-Id, so without this check it
+// could keep selecting the revoking organization's profiles. The trigger from
+// migration 20260923160000_bloem_org_session_revocations records the
+// revocation time per (account, organization). It records one for every bump
+// that leaves status and role unchanged, not only for an administrator's
+// "revoke all sessions", which also ends the account's sessions itself.
+// Initial ownership activation and some access edits record one as well.
 //
-// A refused profile answers access.ErrProfileNotFound, the same as a profile
-// the session cannot see. Only sessions are checked: an API key has no
-// auth_sessions row, and a direct-profile session is bound to its profile and
-// revision already.
+// A refused session is ended, and the refusal is
+// apimw.ErrSessionRevokedByOrganization. An account belongs to one
+// organization (organization_memberships_one_per_account), so the session can
+// select none of its profiles again. Ending it makes its next request and its
+// refresh fail like any revoked session, and the client signs in again. The
+// viewer-access gate answers the refusal itself with 401 session_invalid.
+// Before this, it answered 404 "Profile not found", and clients kept
+// refreshing a session that could never load a profile. The error wraps
+// access.ErrProfileNotFound, so other callers still refuse the profile. Only
+// sessions are checked: an API key has no auth_sessions row, and a
+// direct-profile session is already bound to its profile and revision.
 type bloemOrgRevocationViewer struct {
 	inner apimw.ViewerResolver
 	pool  *pgxpool.Pool
@@ -48,7 +57,10 @@ func (v bloemOrgRevocationViewer) Resolve(ctx context.Context, input access.Reso
 			return access.Scope{}, err
 		}
 		if revoked {
-			return access.Scope{}, access.ErrProfileNotFound
+			if err := endRevokedSession(ctx, v.pool, input.SessionID, input.UserID); err != nil {
+				return access.Scope{}, err
+			}
+			return access.Scope{}, apimw.ErrSessionRevokedByOrganization
 		}
 	}
 	scope, err := v.inner.Resolve(ctx, input)
@@ -80,4 +92,21 @@ func sessionProfileOrganizationRevoked(ctx context.Context, pool *pgxpool.Pool, 
 		return false, fmt.Errorf("check organization session revocation: %w", err)
 	}
 	return revoked, nil
+}
+
+// endRevokedSession ends a session that its profile's organization revoked.
+// A session another request already ended is left as it is, and the caller
+// still refuses it.
+func endRevokedSession(ctx context.Context, pool *pgxpool.Pool, sessionID string, accountID int) error {
+	tag, err := pool.Exec(ctx, `
+		UPDATE auth_sessions SET revoked_at = now()
+		WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL`, sessionID, accountID)
+	if err != nil {
+		return fmt.Errorf("end session revoked by organization: %w", err)
+	}
+	if tag.RowsAffected() > 0 {
+		slog.InfoContext(ctx, "ended a session that started before its organization revoked the account",
+			"user_id", accountID, "session_id", sessionID)
+	}
+	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/access"
+	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/migrations"
 )
@@ -69,6 +70,16 @@ func (f orgRevocationFixture) revoke(t *testing.T, org uuid.UUID) {
 	}
 }
 
+func (f orgRevocationFixture) sessionRevoked(t *testing.T, sessionID string) bool {
+	t.Helper()
+	var revoked bool
+	if err := f.pool.QueryRow(context.Background(), `
+		SELECT revoked_at IS NOT NULL FROM auth_sessions WHERE id = $1 AND user_id = $2`, sessionID, f.account).Scan(&revoked); err != nil {
+		t.Fatalf("read session %s: %v", sessionID, err)
+	}
+	return revoked
+}
+
 func (f orgRevocationFixture) resolve(t *testing.T, sessionID, profileID string) (int, error) {
 	t.Helper()
 	inner := &countingViewerResolver{}
@@ -96,8 +107,17 @@ func TestOrgSessionRevocation(t *testing.T) {
 		f.revoke(t, f.revokedOrg)
 
 		calls, err := f.resolve(t, session, f.id("revoked-profile"))
-		if !errors.Is(err, access.ErrProfileNotFound) || calls != 0 {
-			t.Fatalf("revoked organization's profile: err=%v calls=%d, want ErrProfileNotFound before viewer resolution", err, calls)
+		if !errors.Is(err, apimw.ErrSessionRevokedByOrganization) || !errors.Is(err, access.ErrProfileNotFound) || calls != 0 {
+			t.Fatalf("revoked organization's profile: err=%v calls=%d, want ErrSessionRevokedByOrganization before viewer resolution", err, calls)
+		}
+		// The session can never select the profile again, so it is ended: its
+		// next request and its refresh are refused, and the client signs in.
+		if !f.sessionRevoked(t, session) {
+			t.Fatal("the refused session is still active, want it ended")
+		}
+		// A request racing the one that ended the session is refused too.
+		if calls, err := f.resolve(t, session, f.id("revoked-profile")); !errors.Is(err, apimw.ErrSessionRevokedByOrganization) || calls != 0 {
+			t.Fatalf("second request on the ended session: err=%v calls=%d", err, calls)
 		}
 		// A profile-less request selects nothing and is not checked.
 		if calls, err := f.resolve(t, session, ""); err != nil || calls != 1 {
@@ -115,6 +135,9 @@ func TestOrgSessionRevocation(t *testing.T) {
 		}
 		if calls, err := f.resolve(t, f.id("fresh-login"), f.id("revoked-profile")); err != nil || calls != 1 {
 			t.Fatalf("session created after the revocation: err=%v calls=%d, want the profile selectable", err, calls)
+		}
+		if f.sessionRevoked(t, f.id("fresh-login")) {
+			t.Fatal("a session created after the revocation was ended")
 		}
 	})
 

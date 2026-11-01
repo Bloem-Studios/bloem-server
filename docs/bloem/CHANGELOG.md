@@ -3,6 +3,18 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 1, 2026 — an old sign-in is told to sign in again
+
+When an organization revokes an account, a sign-in from before the revocation can no
+longer load any of the account's profiles. The server used to answer each profile
+request with `404 not_found` "Profile not found" and leave the sign-in alive. The web
+app kept refreshing it and showed a broken home page with no prompt to sign in. Now
+the server ends that sign-in and answers `401 session_invalid` (`session_expired` on
+`/api/v2`). The refresh is refused, and the app asks the user to sign in again
+([security foundation](../architecture/bloem-security-foundation.md)). Initial
+ownership activation and some access edits also record a revocation, so they now
+sign the account out instead of breaking its pages.
+
 ## November 1, 2026 — the web app leaves Silo's `/api/v1`
 
 The web app no longer calls Silo's `/api/v1`
