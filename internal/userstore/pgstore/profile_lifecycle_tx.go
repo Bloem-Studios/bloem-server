@@ -18,10 +18,6 @@ func (s *PostgresUserStore) WithProfileLifecycleTransaction(ctx context.Context,
 	return fn(&preferenceSettingsTx{exec: tx, userID: s.userID})
 }
 
-func (tx *preferenceSettingsTx) GetProfile(ctx context.Context, id string) (*userstore.Profile, error) {
-	return getProfile(ctx, tx.exec, tx.userID, id)
-}
-
 func (tx *preferenceSettingsTx) DeleteProfile(ctx context.Context, id string) error {
-	return deleteProfile(ctx, tx.exec, tx.userID, id)
+	return deleteProfile(ctx, tx.exec, tx.userID, id, nil)
 }

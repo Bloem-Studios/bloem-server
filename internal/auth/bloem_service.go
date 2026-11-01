@@ -7,9 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/Silo-Server/silo-server/internal/auditmutation"
+	"github.com/Silo-Server/silo-server/internal/models"
 )
 
 // bloemServiceDeps holds Bloem's tenancy collaborators on Service.
@@ -69,6 +71,8 @@ type serviceSessionRepository interface {
 	GetByID(ctx context.Context, id string) (*models.AuthSession, error)
 	ListByUser(ctx context.Context, userID int) ([]*models.AuthSession, error)
 	Revoke(ctx context.Context, id string) error
+	revokeChecked(ctx context.Context, id string, check func(*models.AuthSession) error,
+		audit func(pgx.Tx, *models.AuthSession) (*auditmutation.Entry, error)) error
 	ExtendExpiresAt(ctx context.Context, id string, expiresAt time.Time) error
 }
 

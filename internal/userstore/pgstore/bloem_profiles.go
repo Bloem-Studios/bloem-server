@@ -29,7 +29,7 @@ func (s *PostgresUserStore) ListProfilesInTransaction(ctx context.Context, tx pg
 
 // DeleteProfileInTransaction deletes a profile through a caller-owned transaction.
 func (s *PostgresUserStore) DeleteProfileInTransaction(ctx context.Context, tx pgx.Tx, id string) error {
-	return deleteProfile(ctx, tx, s.userID, id)
+	return deleteProfile(ctx, tx, s.userID, id, nil)
 }
 
 // resolveProfileTenancy stamps a new profile with its organization and access

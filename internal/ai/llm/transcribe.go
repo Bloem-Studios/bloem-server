@@ -205,10 +205,10 @@ func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc
 		func(respBody []byte) error {
 			var parsed transcriptionResponse
 			if err := json.Unmarshal(respBody, &parsed); err != nil {
-				return fmt.Errorf("decode transcription response: %w", err)
+				return fmt.Errorf("decode transcription response: %w: %w", ErrUnusableResponse, err)
 			}
 			if parsed.Error != nil && parsed.Error.Message != "" {
-				return fmt.Errorf("transcription API error: %s", parsed.Error.Message)
+				return &HTTPError{StatusCode: http.StatusBadGateway, message: "transcription API error: " + parsed.Error.Message}
 			}
 			out := &Transcription{Language: parsed.Language}
 			words := wordsFromJSON(parsed.Words)
@@ -221,7 +221,7 @@ func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc
 						continue
 					}
 					if s.Start == nil || s.End == nil || *s.Start < 0 || *s.End <= *s.Start {
-						return &permanentError{err: fmt.Errorf("transcription endpoint returned missing or invalid segment timestamps (model %q)", cfg.ASRModel)}
+						return &permanentError{err: fmt.Errorf("transcription endpoint returned missing or invalid segment timestamps (model %q): %w", cfg.ASRModel, ErrUnusableResponse)}
 					}
 					out.Segments = append(out.Segments, TranscriptionSegment{
 						Start: *s.Start, End: *s.End, Text: s.Text, Words: wordsFromJSON(s.Words),
@@ -232,10 +232,10 @@ func (c *Client) Transcribe(ctx context.Context, req TranscribeRequest) (*Transc
 				out.Segments = segmentsFromWords(words)
 			default:
 				return &permanentError{err: fmt.Errorf(
-					"transcription endpoint did not return verbose_json segments or words (model %q); a verbose_json-capable Whisper endpoint is required", cfg.ASRModel)}
+					"transcription endpoint did not return verbose_json segments or words (model %q); a verbose_json-capable Whisper endpoint is required: %w", cfg.ASRModel, ErrUnusableResponse)}
 			}
 			if len(out.Segments) == 0 && strings.TrimSpace(parsed.Text) != "" {
-				return &permanentError{err: fmt.Errorf("transcription endpoint returned text without timed segments (model %q)", cfg.ASRModel)}
+				return &permanentError{err: fmt.Errorf("transcription endpoint returned text without timed segments (model %q): %w", cfg.ASRModel, ErrUnusableResponse)}
 			}
 			result = out
 			return nil
