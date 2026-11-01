@@ -3,6 +3,25 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 1, 2026 — organization domains and branding
+
+Each organization can have its own domains, name, logo and colours
+([organization domains and branding](../architecture/bloem-organization-domains.md)):
+
+- **Domains.** The platform administrator, or the storefront with its API key, registers
+  domains to an organization; one is primary. Routes:
+  `/api/bloem/v1/admin/platform/tenants/{id}/domains`. Capability:
+  `organization_domains_v1`.
+- **Branding.** An organization's name, login subtitle, colours and images, set through
+  `…/tenants/{id}/branding`, are shown on its domains. An unset value is Bloem's default
+  there, never the default organization's brand.
+- **Emails.** Invitation and password-reset emails link to the organization's primary
+  domain and carry its name.
+- **Sign-in.** Signing in on another organization's domain is refused with
+  `409 wrong_organization_domain`, naming the account's own address.
+- A domain never decides what an account can reach. Authentik on each domain, the phone
+  apps and Garden's domain registration come later.
+
 ## November 1, 2026 — an old sign-in is told to sign in again
 
 When an organization revokes an account, a sign-in from before the revocation can no

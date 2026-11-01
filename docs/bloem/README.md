@@ -30,6 +30,7 @@ Pages with pictures for readers who don't work on the code. Each ends with a "Fo
 section that links its API page and technical pages.
 
 - [How organizations work](../architecture/bloem-organizations.md) — the platform, organizations, accounts and profiles; what someone can watch; a reseller's year.
+- [Organization domains and branding](../architecture/bloem-organization-domains.md) — each organization on its own domains, with its own branding and email links; refusing a sign-in on another organization's domain.
 - [How plans, previews and upgrades work](../architecture/bloem-plans.md) — the built-in plans, how a plan combines with an account and its profiles, changing a plan safely, the storefront preview, the upgrade prompt.
 - [How Live TV works](../architecture/bloem-live-tv.md) — sources, tuning in, recordings.
 - [How storage sources work](../architecture/bloem-storage-sources.md) — libraries read from S3 and Bookwarehouse.

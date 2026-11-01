@@ -223,6 +223,11 @@ revoked, and the client signs in again. Callers that resolve a viewer outside th
 gate still see `access.ErrProfileNotFound`, because the refusal wraps it. See
 `internal/api/bloem_org_session_revocation.go`.
 
+A sign-in on a domain registered to another organization is refused before a session
+exists (`409 wrong_organization_domain`), and the refusal names the account's own address.
+A domain never grants or narrows access. It only chooses presentation and link addresses
+([organization domains and branding](bloem-organization-domains.md)).
+
 ## Upgrade behavior
 
 An upgrade with exactly one enabled legacy administrator automatically assigns
