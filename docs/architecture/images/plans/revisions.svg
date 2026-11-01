@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Changing a plan safely</title>
+<desc id="d">A plan's revisions in a row, from revision 1 to a new revision 4, with accounts staying on revision 3 until moved. Four steps move them: create the revision, choose it, preview the change and confirm within ten minutes.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="639" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Changing a plan safely</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A change never rewrites a plan. It adds a revision, and accounts move only when you say so.</text>
+<text x="40" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Standard</text>
+<rect x="160" y="116" width="200" height="72" rx="12" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6"/>
+<text x="260" y="146" font-size="15.5" font-weight="700" fill="#374151" text-anchor="middle">Revision 1</text>
+<text x="260" y="170" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">2 screens</text>
+<line x1="364" y1="152" x2="376" y2="152" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="380" y="116" width="200" height="72" rx="12" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.6"/>
+<text x="480" y="146" font-size="15.5" font-weight="700" fill="#374151" text-anchor="middle">Revision 2</text>
+<text x="480" y="170" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">3 screens</text>
+<line x1="584" y1="152" x2="596" y2="152" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="600" y="116" width="200" height="72" rx="12" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.6"/>
+<text x="700" y="146" font-size="15.5" font-weight="700" fill="#0F766E" text-anchor="middle">Revision 3</text>
+<text x="700" y="170" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">3 screens, 4K</text>
+<line x1="804" y1="152" x2="856" y2="152" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="860" y="116" width="200" height="72" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.6" stroke-dasharray="6 5"/>
+<text x="960" y="146" font-size="15.5" font-weight="700" fill="#B45309" text-anchor="middle">Revision 4 (new)</text>
+<text x="960" y="170" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">4 screens, 4K</text>
+<rect x="612" y="204" width="225" height="25.5" rx="12.75" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="724.5" y="221.25" font-size="12.5" font-weight="600" fill="#047857" text-anchor="middle">On revision 3: Jansen family</text>
+<rect x="612" y="238" width="239" height="25.5" rx="12.75" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="731.5" y="255.25" font-size="12.5" font-weight="600" fill="#047857" text-anchor="middle">On revision 3: De Vries family</text>
+<rect x="612" y="272" width="232" height="25.5" rx="12.75" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="728.0" y="289.25" font-size="12.5" font-weight="600" fill="#047857" text-anchor="middle">On revision 3: Riverside Club</text>
+<text x="860" y="226" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Nobody is on it yet.</text>
+<rect x="40" y="330" width="256" height="196" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.5"/>
+<circle cx="66" cy="358" r="13" fill="#14B8A6"/>
+<text x="66" y="363" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="56" y="400" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Create a new revision</text>
+<text x="56" y="448" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Change the screens, quality or</text>
+<text x="56" y="466" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">anything else. Revisions 1 to 3</text>
+<text x="56" y="484" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">stay exactly as they were.</text>
+<line x1="299" y1="428.0" x2="325" y2="428.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="328" y="330" width="256" height="196" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.5"/>
+<circle cx="354" cy="358" r="13" fill="#14B8A6"/>
+<text x="354" y="363" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="344" y="400" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Choose who and which</text>
+<text x="344" y="421" font-size="16" font-weight="700" fill="#101827" text-anchor="start">revision</text>
+<text x="344" y="448" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">One account, one organization, or</text>
+<text x="344" y="466" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">a reviewed group of up to 10,000</text>
+<text x="344" y="484" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">accounts, and the exact revision</text>
+<text x="344" y="502" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">to move them to.</text>
+<line x1="587" y1="428.0" x2="613" y2="428.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="616" y="330" width="256" height="196" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.5"/>
+<circle cx="642" cy="358" r="13" fill="#14B8A6"/>
+<text x="642" y="363" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="632" y="400" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Preview</text>
+<text x="632" y="448" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem shows what will change, and</text>
+<text x="632" y="466" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">for whom, before anything does.</text>
+<line x1="875" y1="428.0" x2="901" y2="428.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="904" y="330" width="256" height="196" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.5"/>
+<circle cx="930" cy="358" r="13" fill="#14B8A6"/>
+<text x="930" y="363" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="920" y="400" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Confirm within ten</text>
+<text x="920" y="421" font-size="16" font-weight="700" fill="#101827" text-anchor="start">minutes</text>
+<text x="920" y="448" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The confirmation is tied to the</text>
+<text x="920" y="466" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">preview. If anything changed in</text>
+<text x="920" y="484" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">between, preview again.</text>
+<text x="40" y="590" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">To undo a change, make another new revision with the old values and move the accounts to it. The history of every revision stays.</text>
+</svg>

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How Bloem keeps up with Silo</title>
+<desc id="d">Every day a sync merges Silo's latest work into a branch. A clean merge that passes Bloem's checks joins Bloem's main by itself; a conflict waits for a person, who takes Silo's side. From main, an image is built and deployed when the owner asks.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="759" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How Bloem keeps up with Silo</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem is a tracking fork: it takes in Silo's work every day instead of copying it by hand.</text>
+<text x="40" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Every day</text>
+<rect x="40" y="156" width="200" height="120" rx="14" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="58" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's main</text>
+<text x="58" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The Silo project's</text>
+<text x="58" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">latest work.</text>
+<line x1="244" y1="216" x2="276" y2="216" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="280" y="156" width="220" height="120" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="298" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The daily sync</text>
+<text x="298" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">At 05:20 UTC it merges</text>
+<text x="298" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo into a new branch.</text>
+<line x1="504" y1="216" x2="540" y2="216" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M620,150 L700,216 L620,282 L540,216 Z" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="620" y="212" font-size="14" font-weight="700" fill="#101827" text-anchor="middle">Did it merge</text>
+<text x="620" y="230" font-size="14" font-weight="700" fill="#101827" text-anchor="middle">cleanly?</text>
+<line x1="704" y1="216" x2="756" y2="216" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="728" y="206" font-size="13" font-weight="700" fill="#047857" text-anchor="middle">Yes</text>
+<rect x="760" y="156" width="180" height="120" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="778" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem CI</text>
+<text x="778" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Builds and runs</text>
+<text x="778" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">every test.</text>
+<line x1="944" y1="216" x2="976" y2="216" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="980" y="156" width="180" height="120" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="998" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's main</text>
+<text x="998" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Merged by itself</text>
+<text x="998" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">when CI passes.</text>
+<path d="M620,286 L620,346" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="632" y="322" font-size="13" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="470" y="350" width="300" height="150" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="488" y="382" font-size="17" font-weight="700" fill="#101827" text-anchor="start">A person resolves it</text>
+<text x="488" y="406" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each conflict takes Silo's side, word</text>
+<text x="488" y="426" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">for word. Bloem's change goes on its</text>
+<text x="488" y="446" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">own line or in its own file. Then CI</text>
+<text x="488" y="466" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">again.</text>
+<path d="M774,425 L850,425 L850,280" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="560" font-size="17" font-weight="700" fill="#101827" text-anchor="start">When the owner says deploy</text>
+<rect x="40" y="576" width="262" height="140" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="608" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Bloem's main</text>
+<text x="58" y="632" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Everything merged and checked.</text>
+<line x1="306" y1="646" x2="322" y2="646" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="326" y="576" width="262" height="140" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="344" y="608" font-size="16" font-weight="700" fill="#101827" text-anchor="start">An image</text>
+<text x="344" y="632" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The server, the web app and its</text>
+<text x="344" y="652" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">tools, labelled with the exact</text>
+<text x="344" y="672" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">commit.</text>
+<line x1="592" y1="646" x2="608" y2="646" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="612" y="576" width="262" height="140" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="630" y="608" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Safety first</text>
+<text x="630" y="632" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A snapshot of the server and a</text>
+<text x="630" y="652" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">restore point in the database.</text>
+<line x1="878" y1="646" x2="894" y2="646" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="898" y="576" width="262" height="140" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="916" y="608" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Restart</text>
+<text x="916" y="632" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Usually about a minute offline.</text>
+<text x="916" y="652" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Migrations run, then the new</text>
+<text x="916" y="672" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">version serves.</text>
+</svg>

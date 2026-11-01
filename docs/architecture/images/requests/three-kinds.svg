@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Three kinds of request</title>
+<desc id="d">Three columns: movies and series, handled by Silo's request service; audiobooks, Bloem's own lane; and ebooks, Bloem's own lane that is off by default. Each lists who can ask, what they give, where the title comes from and when the request is done.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Three kinds of request</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Viewers ask for something the library does not have yet. Each kind has its own queue and its own count.</text>
+<rect x="40" y="124" width="360" height="500" rx="16" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="60" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Movies and series</text>
+<text x="60" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's request service, with Bloem's</text>
+<text x="60" y="205" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">organization and profile checks added.</text>
+<rect x="56" y="238" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="72" y="264" font-size="11.5" font-weight="700" fill="#0F766E" text-anchor="start" letter-spacing="1">WHO CAN ASK</text>
+<text x="72" y="288" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Any profile whose plan allows requests.</text>
+<rect x="56" y="332" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="72" y="358" font-size="11.5" font-weight="700" fill="#0F766E" text-anchor="start" letter-spacing="1">THEY GIVE</text>
+<text x="72" y="382" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A title, found on TMDB. For a series,</text>
+<text x="72" y="401" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">which seasons.</text>
+<rect x="56" y="426" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="72" y="452" font-size="11.5" font-weight="700" fill="#0F766E" text-anchor="start" letter-spacing="1">IT COMES FROM</text>
+<text x="72" y="476" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A connected service such as Radarr or</text>
+<text x="72" y="495" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Sonarr, chosen by routing rules.</text>
+<rect x="56" y="520" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="72" y="546" font-size="11.5" font-weight="700" fill="#0F766E" text-anchor="start" letter-spacing="1">DONE WHEN</text>
+<text x="72" y="570" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The title arrives in a library.</text>
+<rect x="420" y="124" width="360" height="500" rx="16" fill="#FFF7ED" stroke="#EA580C" stroke-width="1.8"/>
+<text x="440" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Audiobooks</text>
+<text x="440" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's own queue beside Silo's.</text>
+<rect x="436" y="238" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="452" y="264" font-size="11.5" font-weight="700" fill="#9A3412" text-anchor="start" letter-spacing="1">WHO CAN ASK</text>
+<text x="452" y="288" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Profiles in any organization, when its</text>
+<text x="452" y="307" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">plan allows requests.</text>
+<rect x="436" y="332" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="452" y="358" font-size="11.5" font-weight="700" fill="#9A3412" text-anchor="start" letter-spacing="1">THEY GIVE</text>
+<text x="452" y="382" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An ISBN or ASIN, or a title and author.</text>
+<rect x="436" y="426" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="452" y="452" font-size="11.5" font-weight="700" fill="#9A3412" text-anchor="start" letter-spacing="1">IT COMES FROM</text>
+<text x="452" y="476" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An audiobook service, if one is connected.</text>
+<text x="452" y="495" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Otherwise an administrator adds it.</text>
+<rect x="436" y="520" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="452" y="546" font-size="11.5" font-weight="700" fill="#9A3412" text-anchor="start" letter-spacing="1">DONE WHEN</text>
+<text x="452" y="570" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A book with the same ISBN or ASIN appears</text>
+<text x="452" y="589" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">in the organization's catalog.</text>
+<rect x="800" y="124" width="360" height="500" rx="16" fill="#FFF7ED" stroke="#EA580C" stroke-width="1.8"/>
+<text x="820" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Ebooks</text>
+<text x="820" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's own queue. Off until a platform</text>
+<text x="820" y="205" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">administrator switches it on.</text>
+<rect x="816" y="238" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="832" y="264" font-size="11.5" font-weight="700" fill="#9A3412" text-anchor="start" letter-spacing="1">WHO CAN ASK</text>
+<text x="832" y="288" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Profiles in the default organization only.</text>
+<rect x="816" y="332" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="832" y="358" font-size="11.5" font-weight="700" fill="#9A3412" text-anchor="start" letter-spacing="1">THEY GIVE</text>
+<text x="832" y="382" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An ISBN. Nothing else is accepted.</text>
+<rect x="816" y="426" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="832" y="452" font-size="11.5" font-weight="700" fill="#9A3412" text-anchor="start" letter-spacing="1">IT COMES FROM</text>
+<text x="832" y="476" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Bookwarehouse, into a library linked to</text>
+<text x="832" y="495" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">it.</text>
+<rect x="816" y="520" width="328" height="86" rx="10" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="832" y="546" font-size="11.5" font-weight="700" fill="#9A3412" text-anchor="start" letter-spacing="1">DONE WHEN</text>
+<text x="832" y="570" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An EPUB or PDF with that ISBN appears in</text>
+<text x="832" y="589" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">that library.</text>
+<text x="40" y="666" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Each kind is counted separately against the request limits. Requests from all of an account's profiles share one count.</text>
+</svg>

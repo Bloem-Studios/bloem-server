@@ -6,13 +6,22 @@
 # the tree (or in the sibling client repositories).
 export PYTHONDONTWRITEBYTECODE := 1
 
-.PHONY: bloem-api-catalogue verify-bloem-api-catalogue
+.PHONY: bloem-api-catalogue verify-bloem-api-catalogue bloem-docs
 bloem-api-catalogue:
 	python3 scripts/bloem-api-catalogue.py
+
+# The generated documentation: the per-topic API pages under docs/bloem/api/
+# (from the native OpenAPI document) and the explainer pictures under
+# docs/architecture/images/. verify-bloem-api-catalogue checks both in CI.
+bloem-docs:
+	python3 scripts/bloem/api-topic-docs.py
+	python3 scripts/bloem/draw-pictures.py
 
 verify-bloem-api-catalogue:
 	python3 scripts/bloem-api-catalogue_test.py
 	python3 scripts/bloem-api-catalogue.py --check
+	python3 scripts/bloem/api-topic-docs.py --check
+	python3 scripts/bloem/draw-pictures.py --check
 
 # Keep the scenario executor in its dedicated test-scenarios target. -e keeps a
 # package that fails to load in the list (web/ before embed-stub has run, as

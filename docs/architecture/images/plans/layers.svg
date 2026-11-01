@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a plan, an account and a profile combine</title>
+<desc id="d">Four layers, each narrowing the one above: what the organization may use, the account's plan, settings an administrator changed on one account, and the profile's own limits. An example account on the right shows the result.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="799" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a plan, an account and a profile combine</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Each layer can only narrow the one above it. The example on the right follows one family.</text>
+<text x="820" y="112" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Example: the Jansen family</text>
+<rect x="40" y="124" width="700" height="118" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<circle cx="68" cy="156" r="13" fill="#6366F1"/>
+<text x="68" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="92" y="162" font-size="18" font-weight="700" fill="#101827" text-anchor="start">The organization's libraries</text>
+<text x="92" y="190" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">What the organization owns or was granted. Nothing below can reach past it.</text>
+<line x1="744" y1="183.0" x2="812" y2="183.0" stroke="#E5E7EB" stroke-width="2" stroke-dasharray="4 5"/>
+<rect x="816" y="134" width="344" height="98" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="816" y="134" width="6" height="98" rx="3" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<text x="838" y="188.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Movies, Series and Audiobooks.</text>
+<line x1="390" y1="244" x2="390" y2="261" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="264" width="700" height="118" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<circle cx="68" cy="296" r="13" fill="#14B8A6"/>
+<text x="68" y="301" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="92" y="302" font-size="18" font-weight="700" fill="#101827" text-anchor="start">The account's plan</text>
+<text x="92" y="330" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A plan (exactly one revision of it) on the account's group: libraries, screens,</text>
+<text x="92" y="350" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">conversions, quality, downloads and requests.</text>
+<line x1="744" y1="323.0" x2="812" y2="323.0" stroke="#E5E7EB" stroke-width="2" stroke-dasharray="4 5"/>
+<rect x="816" y="274" width="344" height="98" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="816" y="274" width="6" height="98" rx="3" fill="#14B8A6" stroke="none" stroke-width="1.5"/>
+<text x="838" y="318.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Standard, revision 3: every library, 3</text>
+<text x="838" y="338.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">screens, 1080p, downloads.</text>
+<line x1="390" y1="384" x2="390" y2="401" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="404" width="700" height="118" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<circle cx="68" cy="436" r="13" fill="#10B981"/>
+<text x="68" y="441" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="92" y="442" font-size="18" font-weight="700" fill="#101827" text-anchor="start">This account's own settings</text>
+<text x="92" y="470" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">An administrator can change a value for one account. That value replaces the plan's,</text>
+<text x="92" y="490" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">still within the organization's libraries.</text>
+<line x1="744" y1="463.0" x2="812" y2="463.0" stroke="#E5E7EB" stroke-width="2" stroke-dasharray="4 5"/>
+<rect x="816" y="414" width="344" height="98" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="816" y="414" width="6" height="98" rx="3" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<text x="838" y="458.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Screens raised to 4 for this account</text>
+<text x="838" y="478.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">only.</text>
+<line x1="390" y1="524" x2="390" y2="541" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="544" width="700" height="118" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<circle cx="68" cy="576" r="13" fill="#0EA5E9"/>
+<text x="68" y="581" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="92" y="582" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Each profile's limits</text>
+<text x="92" y="610" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">The household's main profile sets PINs, kids profiles, age limits and a chosen set of</text>
+<text x="92" y="630" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">libraries.</text>
+<line x1="744" y1="603.0" x2="812" y2="603.0" stroke="#E5E7EB" stroke-width="2" stroke-dasharray="4 5"/>
+<rect x="816" y="554" width="344" height="98" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="816" y="554" width="6" height="98" rx="3" fill="#0EA5E9" stroke="none" stroke-width="1.5"/>
+<text x="838" y="608.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Kids profile: ages 7 and up, Movies only.</text>
+<rect x="40" y="688" width="1120" height="92" rx="16" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="64" y="724" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="start">Result for the Kids profile</text>
+<text x="64" y="752" font-size="15" font-weight="normal" fill="#E5E7EB" text-anchor="start">Movies only, ages 7 and up. The whole account can play on up to 4 screens at once, in up to 1080p, and download.</text>
+</svg>

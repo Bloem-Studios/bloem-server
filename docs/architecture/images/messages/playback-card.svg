@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">A playback card</title>
+<desc id="d">A video frame with a card floating in the lower corner, and a timeline under it showing the chapters. The card appears when playback naturally crosses a chapter and fades away after its set time. The rules are listed on the right.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="759" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">A playback card</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A campaign can show one short card while a film or episode plays.</text>
+<rect x="40" y="124" width="680" height="384" rx="14" fill="#0B1220" stroke="none" stroke-width="1.5"/>
+<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E3A5F"/><stop offset="1" stop-color="#0B1220"/></linearGradient></defs>
+<rect x="52" y="136" width="656" height="360" rx="8" fill="url(#sky)" stroke="none" stroke-width="1.5"/>
+<path d="M52,420 C180,360 300,400 420,370 C540,340 620,380 708,350 L708,496 L52,496 Z" fill="#14243B"/>
+<circle cx="600" cy="200" r="34" fill="#F8FAFC" opacity="0.18"/>
+<rect x="412" y="372" width="76" height="100" rx="8" fill="#C026D3" stroke="none" stroke-width="1.5"/>
+<text x="450" y="428" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">ART</text>
+<g style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6))">
+<text x="502" y="396" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="start">New season, Friday</text>
+<text x="502" y="420" font-size="14" font-weight="normal" fill="#E5E7EB" text-anchor="start">Watch the first episode</text>
+<text x="502" y="440" font-size="14" font-weight="normal" fill="#E5E7EB" text-anchor="start">a day early.</text>
+</g>
+<rect x="502" y="450" width="112" height="26" rx="13" fill="#FFFFFF" stroke="none" stroke-width="1.5"/>
+<text x="558" y="468" font-size="12.5" font-weight="700" fill="#101827" text-anchor="middle">Save to inbox</text>
+<text x="40" y="568" font-size="14" font-weight="700" fill="#4B5563" text-anchor="start">Playback</text>
+<rect x="40" y="586" width="680" height="10" rx="5" fill="#E5E7EB" stroke="none" stroke-width="1.5"/>
+<rect x="40" y="586" width="300" height="10" rx="5" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<line x1="40" y1="580" x2="40" y2="602" stroke="#101827" stroke-width="2"/>
+<text x="44" y="622" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="start">start</text>
+<line x1="190" y1="580" x2="190" y2="602" stroke="#101827" stroke-width="2"/>
+<text x="190" y="622" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="middle">chapter 2</text>
+<line x1="340" y1="580" x2="340" y2="602" stroke="#101827" stroke-width="2"/>
+<text x="340" y="622" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="middle">chapter 3</text>
+<line x1="520" y1="580" x2="520" y2="602" stroke="#101827" stroke-width="2"/>
+<text x="520" y="622" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="middle">chapter 4</text>
+<rect x="340" y="584" width="70" height="14" rx="7" fill="#C026D3" stroke="none" stroke-width="1.5"/>
+<path d="M375,580 L375,556" stroke="#C026D3" stroke-width="2" stroke-dasharray="4 4"/>
+<text x="384" y="564" font-size="12.5" font-weight="normal" fill="#86198F" text-anchor="start">card shows for 10 s by default (5 to 60)</text>
+<text x="40" y="660" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">It appears only when playback runs naturally into a chapter: not right after starting, seeking or</text>
+<text x="40" y="680" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">resuming. A title with no chapters never shows one.</text>
+<text x="760" y="140" font-size="18" font-weight="700" fill="#101827" text-anchor="start">The rules</text>
+<circle cx="772" cy="176" r="4" fill="#6B7280"/>
+<text x="786" y="181" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Never pauses the video, takes the sound or demands a</text>
+<text x="786" y="201" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">click.</text>
+<circle cx="772" cy="237" r="4" fill="#6B7280"/>
+<text x="786" y="242" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Only for adults' profiles. A kids profile, or one</text>
+<text x="786" y="262" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Bloem cannot classify, never sees one.</text>
+<circle cx="772" cy="298" r="4" fill="#6B7280"/>
+<text x="786" y="303" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">At most one per title for each profile in each app</text>
+<text x="786" y="323" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">session.</text>
+<circle cx="772" cy="359" r="4" fill="#6B7280"/>
+<text x="786" y="364" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Hidden while the player's controls are open, and kept</text>
+<text x="786" y="384" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">clear of the subtitles.</text>
+<circle cx="772" cy="420" r="4" fill="#6B7280"/>
+<text x="786" y="425" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">“Save to inbox” keeps the offer, and pushes it to the</text>
+<text x="786" y="445" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">profile's devices when push is set up. It expires</text>
+<text x="786" y="465" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">with the campaign.</text>
+<circle cx="772" cy="501" r="4" fill="#6B7280"/>
+<text x="786" y="506" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">On Android TV, Android phones and the web app.</text>
+<text x="786" y="526" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Bloem's Apple apps do not show them yet.</text>
+</svg>

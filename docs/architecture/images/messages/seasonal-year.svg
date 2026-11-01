@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">A seasonal calendar</title>
+<desc id="d">A year from January to December with two seasonal windows: winter snow from 1 December to 7 January every year, which crosses New Year, and a one-off spring banner. Notes explain time zones, missing dates and what happens when the storefront is offline.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="659" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">A seasonal calendar</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Seasonal packs switch themselves on and off. A window can repeat every year.</text>
+<rect x="42.0" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="86.66666666666666" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">Jan</text>
+<rect x="135.33333333333331" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="179.99999999999997" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">Feb</text>
+<rect x="228.66666666666666" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="273.3333333333333" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">Mar</text>
+<rect x="322.0" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="366.6666666666667" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">Apr</text>
+<rect x="415.3333333333333" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="460.0" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">May</text>
+<rect x="508.66666666666663" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="553.3333333333333" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">Jun</text>
+<rect x="602.0" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="646.6666666666666" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">Jul</text>
+<rect x="695.3333333333333" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="739.9999999999999" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">Aug</text>
+<rect x="788.6666666666666" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="833.3333333333333" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">Sep</text>
+<rect x="882.0" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="926.6666666666666" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">Oct</text>
+<rect x="975.3333333333333" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="1019.9999999999999" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">Nov</text>
+<rect x="1068.6666666666665" y="150" width="89.33333333333333" height="40" rx="8" fill="#F3F4F6" stroke="none" stroke-width="1.5"/>
+<text x="1113.3333333333333" y="176" font-size="14" font-weight="600" fill="#4B5563" text-anchor="middle">Dec</text>
+<rect x="1066.6666666666665" y="214" width="93.33333333333348" height="40" rx="10" fill="#3B82F6" stroke="#3B82F6" stroke-width="1.6"/>
+<rect x="40.0" y="214" width="18.064516129032256" height="40" rx="10" fill="#3B82F6" stroke="#3B82F6" stroke-width="1.6"/>
+<text x="1054.6666666666665" y="240" font-size="14" font-weight="700" fill="#1D4ED8" text-anchor="end">Winter snow, 1 December to 7 January, every year</text>
+<rect x="283.8709677419355" y="278" width="95.2401433691756" height="40" rx="10" fill="#14B8A6" stroke="#14B8A6" stroke-width="1.6"/>
+<text x="391.1111111111111" y="304" font-size="14" font-weight="700" fill="#0F766E" text-anchor="start">Spring banner, 20 March to 20 April, this year only</text>
+<rect x="40" y="372" width="550" height="114" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="372" width="6" height="114" rx="3" fill="#3B82F6" stroke="none" stroke-width="1.5"/>
+<text x="64" y="404" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Its own time zone</text>
+<text x="64" y="430" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each window keeps its local date and time in the zone it was set in, so</text>
+<text x="64" y="449" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">“1 December, 00:00, Amsterdam” starts at Amsterdam's midnight every</text>
+<text x="64" y="468" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">year.</text>
+<rect x="610" y="372" width="550" height="114" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="372" width="6" height="114" rx="3" fill="#3B82F6" stroke="none" stroke-width="1.5"/>
+<text x="634" y="404" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Dates that do not exist</text>
+<text x="634" y="430" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A yearly window set on 29 February is skipped in years without one, and</text>
+<text x="634" y="449" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">so is a time that a clock change skips.</text>
+<rect x="40" y="502" width="550" height="114" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="502" width="6" height="114" rx="3" fill="#3B82F6" stroke="none" stroke-width="1.5"/>
+<text x="64" y="534" font-size="16" font-weight="700" fill="#101827" text-anchor="start">It runs on Bloem</text>
+<text x="64" y="560" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The calendar lives on the Bloem server. Seasons start and stop on time</text>
+<text x="64" y="579" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">even when the storefront is offline.</text>
+<rect x="610" y="502" width="550" height="114" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="502" width="6" height="114" rx="3" fill="#3B82F6" stroke="none" stroke-width="1.5"/>
+<text x="634" y="534" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Viewers stay in control</text>
+<text x="634" y="560" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Hidden while a video plays, calm when the device asks for reduced</text>
+<text x="634" y="579" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">motion, and each device can switch it off.</text>
+</svg>

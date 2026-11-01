@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Two ways Silo is installed</title>
+<desc id="d">Left: Silo with its own PostgreSQL and Redis containers; switching swaps the Silo container for a Bloem container on the same database. Right: Silo's all-in-one container with everything in one /config folder; switching swaps the image for Bloem built on the same all-in-one layer.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Two ways Silo is installed</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Both can switch to Bloem and back. Checked on 31 October 2026 with Silo 32a2f63e1 and Bloem 4edbee99d.</text>
+<rect x="40" y="124" width="540" height="448" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="64" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Separate containers</text>
+<text x="64" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo's earlier Compose layout</text>
+<rect x="620" y="124" width="540" height="448" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="644" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Silo's all-in-one container</text>
+<text x="644" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">What Silo's image is now</text>
+<rect x="64" y="212" width="220" height="92" rx="12" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="174" y="252" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Silo container</text>
+<text x="174" y="276" font-size="13.5" font-weight="normal" fill="#075985" text-anchor="middle">swap this →</text>
+<rect x="336" y="212" width="220" height="92" rx="12" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8" stroke-dasharray="6 5"/>
+<text x="446" y="252" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Bloem container</text>
+<text x="446" y="276" font-size="13.5" font-weight="normal" fill="#C2410C" text-anchor="middle">Bloem's usual image</text>
+<path d="M115.0,350 L115.0,430 A85.0,14 0 0 0 285.0,430 L285.0,350 Z" fill="#F3F4F6" stroke="#6B7280" stroke-width="1.8"/>
+<ellipse cx="200" cy="350" rx="85.0" ry="14" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.8"/>
+<text x="200" y="398.0" font-size="17" font-weight="700" fill="#101827" text-anchor="middle">PostgreSQL</text>
+<rect x="330" y="350" width="170" height="94" rx="12" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.5"/>
+<text x="415" y="392" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Redis</text>
+<text x="415" y="414" font-size="12.5" font-weight="normal" fill="#4B5563" text-anchor="middle">emptied at each switch</text>
+<line x1="174" y1="306" x2="196" y2="334" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="446" y1="306" x2="240" y2="334" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<text x="64" y="494" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Stop Silo, start Bloem with the same database address and secret key.</text>
+<text x="64" y="548" font-size="13.5" font-weight="600" fill="#6B7280" text-anchor="start">make silo-switch-check</text>
+<rect x="644" y="212" width="492" height="236" rx="14" fill="#F9FAFB" stroke="#6B7280" stroke-width="1.6"/>
+<text x="664" y="240" font-size="14" font-weight="700" fill="#374151" text-anchor="start">/config folder</text>
+<rect x="664" y="256" width="452" height="46" rx="10" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.5"/>
+<text x="684" y="285" font-size="15" font-weight="700" fill="#101827" text-anchor="start">silo</text>
+<text x="790" y="285" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the server's files</text>
+<rect x="664" y="314" width="452" height="46" rx="10" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.5"/>
+<text x="684" y="343" font-size="15" font-weight="700" fill="#101827" text-anchor="start">postgres</text>
+<text x="790" y="343" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the database</text>
+<rect x="664" y="372" width="452" height="46" rx="10" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.5"/>
+<text x="684" y="401" font-size="15" font-weight="700" fill="#101827" text-anchor="start">redis</text>
+<text x="790" y="401" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the cache: empty it at each switch</text>
+<rect x="644" y="462" width="230" height="64" rx="12" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
+<text x="759" y="500" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">Silo's all-in-one</text>
+<line x1="878" y1="494" x2="902" y2="494" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="906" y="462" width="230" height="64" rx="12" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8" stroke-dasharray="6 5"/>
+<text x="1021" y="488" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">Bloem in the same</text>
+<text x="1021" y="508" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">all-in-one layer</text>
+<text x="644" y="548" font-size="13.5" font-weight="600" fill="#6B7280" text-anchor="start">make silo-switch-check-all-in-one</text>
+<text x="40" y="630" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Bloem does not publish an all-in-one image. Build one from the Bloem image you run, with Silo's own all-in-one recipe, which Bloem carries unchanged.</text>
+</svg>

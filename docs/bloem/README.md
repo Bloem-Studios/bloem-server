@@ -22,6 +22,24 @@ not to the current source. The current state is on the
 - [Documentation workflow](documentation-workflow.md) — Silo's manual/reference model, where each kind of Bloem change is documented, regeneration and verification commands.
 - [Bloem CI](ci.md) — the Bloem CI jobs, the daily upstream sync, the published image's gate, runner placement and tool pins.
 - [API catalogue](api-catalogue.md) — generated list of typed `/api/v2` and `/api/bloem/v1` operations and native documentation gaps.
+- [API by topic](api/README.md) — every typed `/api/bloem/v1` operation, generated from the OpenAPI contract, one page per topic, with credentials, fields and error codes; plus the hand-written page for Bloem's remaining [`/api/v1` routes](api/v1-routes.md).
+
+## How Bloem works, in plain language
+
+Pages with pictures for readers who don't work on the code. Each ends with a "For developers"
+section that links its API page and technical pages.
+
+- [How organizations work](../architecture/bloem-organizations.md) — the platform, organizations, accounts and profiles; what someone can watch; a reseller's year.
+- [How plans, previews and upgrades work](../architecture/bloem-plans.md) — the built-in plans, how a plan combines with an account and its profiles, changing a plan safely, the storefront preview, the upgrade prompt.
+- [How Live TV works](../architecture/bloem-live-tv.md) — sources, tuning in, recordings.
+- [How storage sources work](../architecture/bloem-storage-sources.md) — libraries read from S3 and Bookwarehouse.
+- [How requests work](../architecture/bloem-requests.md) — movie and series, audiobook and ebook requests.
+- [How messages and promotions work](../architecture/bloem-messages-and-promotions.md) — announcements, campaign and playback cards, seasonal packs.
+- [How apps connect](../architecture/bloem-apps.md) — the three entrances, signing in, remote control.
+- [Switching between Silo and Bloem](../architecture/bloem-silo-switching-explained.md) — one database, two servers taking turns, both install layouts.
+- [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md) — the daily sync, "Silo wins", where Bloem keeps its own work.
+
+The pictures are drawn by `scripts/bloem/draw-pictures.py`.
 
 ## Deployment receipts
 
@@ -98,11 +116,11 @@ same path. Read the upstream document together with its overlay.
 
 ### Organizations, accounts and policy
 
-- [How organizations work](../architecture/bloem-organizations.md) — start here: the platform, organizations, accounts and profiles in plain language, with four pictures.
+- [How organizations work](../architecture/bloem-organizations.md) — start here: the platform, organizations, accounts and profiles in plain language, with six pictures.
 - [Multitenant administration](../architecture/multitenant-administration.md) — the Platform and Organization administrative contexts and what each manages.
 - [Resource tenancy foundation](../architecture/resource-tenancy-foundation.md) — resource owners and the first resource-isolation boundary.
 - [OPA tenant authorization operations](../architecture/opa-tenant-authorization.md) — how tenant facts, OPA and SQL scope catalog and playback reads.
-- [Silo backend switching](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the flag, its invariants and `make silo-switch-check`.
+- [Silo backend switching](../architecture/silo-backend-switching.md) — Silo and Bloem taking turns on one database: the flag, its invariants, the all-in-one procedure, and `make silo-switch-check` and `make silo-switch-check-all-in-one`.
 - [Bloem request policy](../architecture/bloem-request-policy.md) — verified profile quotas, scoped administrative usage and group limits on Silo's request service.
 - [Bloem lifecycle safety](../architecture/bloem-lifecycle-safety.md) — atomic tenant retirement and library deletion.
 - [Bloem native API security foundation](../architecture/bloem-security-foundation.md) — the `/api/bloem/v1` discovery and administration boundary beside Silo's `/api/v1` login.
@@ -146,6 +164,7 @@ same path. Read the upstream document together with its overlay.
 
 ### Clients, protocols and compatibility
 
+- [Leaving Silo's `/api/v1`](../architecture/bloem-leaving-silo-v1.md) — the rule that Bloem adds nothing to Silo's `/api/v1`, what moved off it, and what still calls it.
 - [Bloem native client surface](../architecture/bloem-client-surface.md) — why Bloem-only features live under `/api/bloem/v1`, and the native document set.
 - [SDK compatibility and contract generation](../architecture/bloem-sdk-compatibility.md) — plugin SDK pins, generated client DTOs and consumer synchronization.
 - [Protocol compatibility](../architecture/bloem-compatibility-removal.md) — Silo's Jellyfin and Audiobookshelf servers, their tenant wiring, and the removed companion gateway.

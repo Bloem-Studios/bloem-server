@@ -126,12 +126,21 @@ Keep `SYNC_CLIENTS` unset or `0`; copying to sibling clients is a separate actio
 GOWORK=off make apiv2-openapi bloem-openapi route-inventory
 GOWORK=off make apiv2-web-types settings-bindings
 python3 scripts/bloem-api-catalogue.py
+make bloem-docs
 GOWORK=off make verify-apiv2-openapi verify-bloem-openapi verify-apiv2-web-types
 GOWORK=off make verify-settings-bindings-all verify-client-digest verify-client-dtos verify-client-coverage
 GOWORK=off make verify-route-inventory verify-migration-ledger verify-apiv2-contract
 make verify-bloem-api-catalogue
 make verify-local-paths verify-seams
 ```
+
+`make bloem-docs` regenerates the two kinds of generated documentation: the
+[API by topic](api/README.md) pages from the native OpenAPI document
+(`scripts/bloem/api-topic-docs.py`; a new path must match a topic in its `TOPICS`
+table), and the explainer pictures under `docs/architecture/images/`
+(`scripts/bloem/draw-pictures.py`, one module per page in `scripts/bloem/pictures/`).
+`make verify-bloem-api-catalogue`, which CI runs, fails when either is out of date.
+The `/api/v1` routes page and the explainer pages are written by hand.
 
 When Go wire types or registered roots change, also run `make client-dtos`.
 Run `make client-digest` only after reviewing and recording a genuine graph change.

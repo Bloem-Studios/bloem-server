@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What each server sees</title>
+<desc id="d">Two columns. Shared by both: accounts and passwords, profiles, libraries and the catalog, watch history, access groups, movie and series requests, and Jellyfin and Audiobookshelf app data. Bloem's only: organizations beyond the default one, plans, Live TV, storage-source libraries, promotions and seasonal packs. Below, the three rules while switching is on.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="719" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What each server sees</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's extras stay in the database while Silo serves. They wake up again with Bloem.</text>
+<rect x="40" y="124" width="540" height="356" rx="16" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<circle cx="70" cy="156" r="12" fill="#10B981"/>
+<path d="M64.6,156.24 L68.8,160.56 L76.0,151.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="92" y="162" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Both use, and both change</text>
+<circle cx="72" cy="195" r="4" fill="#10B981"/>
+<text x="88" y="200" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">Accounts, passwords and sessions</text>
+<circle cx="72" cy="237" r="4" fill="#10B981"/>
+<text x="88" y="242" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">Profiles and their PINs</text>
+<circle cx="72" cy="279" r="4" fill="#10B981"/>
+<text x="88" y="284" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">Libraries and the catalog</text>
+<circle cx="72" cy="321" r="4" fill="#10B981"/>
+<text x="88" y="326" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">What everyone watched, and how far</text>
+<circle cx="72" cy="363" r="4" fill="#10B981"/>
+<text x="88" y="368" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">Access groups and account settings</text>
+<circle cx="72" cy="405" r="4" fill="#10B981"/>
+<text x="88" y="410" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">Movie and series requests</text>
+<circle cx="72" cy="447" r="4" fill="#10B981"/>
+<text x="88" y="452" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">Jellyfin and Audiobookshelf app data</text>
+<rect x="620" y="124" width="540" height="356" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<circle cx="650" cy="156" r="12" fill="#FA6400"/>
+<text x="650" y="161" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">B</text>
+<text x="672" y="162" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Only Bloem uses; kept while Silo serves</text>
+<circle cx="652" cy="195" r="4" fill="#FA6400"/>
+<text x="668" y="200" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">Plans (entitlement templates)</text>
+<circle cx="652" cy="237" r="4" fill="#FA6400"/>
+<text x="668" y="242" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">Live TV, guides and recordings</text>
+<circle cx="652" cy="279" r="4" fill="#FA6400"/>
+<text x="668" y="284" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">Libraries on storage sources</text>
+<circle cx="652" cy="321" r="4" fill="#FA6400"/>
+<text x="668" y="326" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">Audiobook and ebook requests</text>
+<circle cx="652" cy="363" r="4" fill="#FA6400"/>
+<text x="668" y="368" font-size="15.5" font-weight="normal" fill="#101827" text-anchor="start">Promotions, playback cards and seasonal packs</text>
+<text x="40" y="524" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Three rules while switching is on</text>
+<rect x="40" y="544" width="360" height="120" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="544" width="6" height="120" rx="3" fill="#0284C7" stroke="none" stroke-width="1.5"/>
+<text x="64" y="576" font-size="16" font-weight="700" fill="#101827" text-anchor="start">One organization</text>
+<text x="64" y="602" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo has no organizations, so a second one is</text>
+<text x="64" y="621" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">refused.</text>
+<rect x="420" y="544" width="360" height="120" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="420" y="544" width="6" height="120" rx="3" fill="#0284C7" stroke="none" stroke-width="1.5"/>
+<text x="444" y="576" font-size="16" font-weight="700" fill="#101827" text-anchor="start">No profile sign-ins</text>
+<text x="444" y="602" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo would treat a profile's own sign-in as</text>
+<text x="444" y="621" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the whole account, so none is allowed.</text>
+<rect x="800" y="544" width="360" height="120" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="800" y="544" width="6" height="120" rx="3" fill="#0284C7" stroke="none" stroke-width="1.5"/>
+<text x="824" y="576" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Silo's writes fit in</text>
+<text x="824" y="602" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A new account or profile Silo creates lands</text>
+<text x="824" y="621" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">in the default organization.</text>
+</svg>

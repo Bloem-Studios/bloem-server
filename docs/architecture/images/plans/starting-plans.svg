@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">The plans Bloem starts with</title>
+<desc id="d">A table of the five built-in plans as shipped: Browse-only, Viewer, Standard, Premium and Reseller Member, with whether each plays video, how many screens, video conversions, the best quality, downloads and requests. A sixth, protected Preview plan serves storefront previews.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="639" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">The plans Bloem starts with</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">As shipped. Each installation can revise these or make its own.</text>
+<rect x="40" y="124" width="1120" height="56" rx="12" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.4"/>
+<text x="404.0" y="159" font-size="16" font-weight="700" fill="#0F766E" text-anchor="middle">Browse-only</text>
+<text x="572.0" y="159" font-size="16" font-weight="700" fill="#0F766E" text-anchor="middle">Viewer</text>
+<text x="740.0" y="159" font-size="16" font-weight="700" fill="#0F766E" text-anchor="middle">Standard</text>
+<text x="908.0" y="159" font-size="16" font-weight="700" fill="#0F766E" text-anchor="middle">Premium</text>
+<text x="1076.0" y="159" font-size="16" font-weight="700" fill="#0F766E" text-anchor="middle">Reseller Member</text>
+<text x="58" y="216.0" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Plays video</text>
+<circle cx="404.0" cy="211.0" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M399.05,206.05 L408.95,215.95 M408.95,206.05 L399.05,215.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<circle cx="572.0" cy="211.0" r="11" fill="#10B981"/>
+<path d="M567.05,211.22 L570.9,215.18 L577.5,207.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="740.0" cy="211.0" r="11" fill="#10B981"/>
+<path d="M735.05,211.22 L738.9,215.18 L745.5,207.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="908.0" cy="211.0" r="11" fill="#10B981"/>
+<path d="M903.05,211.22 L906.9,215.18 L913.5,207.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="1076.0" cy="211.0" r="11" fill="#10B981"/>
+<path d="M1071.05,211.22 L1074.9,215.18 L1081.5,207.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="40" y="242" width="1120" height="62" rx="0" fill="#F9FAFB" stroke="none" stroke-width="1.5"/>
+<text x="58" y="278.0" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Screens at once</text>
+<text x="404.0" y="278.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">–</text>
+<text x="572.0" y="278.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">1</text>
+<text x="740.0" y="278.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">3</text>
+<text x="908.0" y="278.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">4</text>
+<text x="1076.0" y="278.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">3</text>
+<text x="58" y="340.0" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Video conversions at once</text>
+<text x="404.0" y="340.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">–</text>
+<text x="572.0" y="340.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">none</text>
+<text x="740.0" y="340.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">1</text>
+<text x="908.0" y="340.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">2</text>
+<text x="1076.0" y="340.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">1</text>
+<rect x="40" y="366" width="1120" height="62" rx="0" fill="#F9FAFB" stroke="none" stroke-width="1.5"/>
+<text x="58" y="402.0" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Best picture quality</text>
+<text x="404.0" y="402.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">–</text>
+<text x="572.0" y="402.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">1080p</text>
+<text x="740.0" y="402.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">1080p</text>
+<text x="908.0" y="402.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">4K</text>
+<text x="1076.0" y="402.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">1080p</text>
+<text x="58" y="464.0" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Downloads</text>
+<circle cx="404.0" cy="459.0" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M399.05,454.05 L408.95,463.95 M408.95,454.05 L399.05,463.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="572.0" y="464.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">originals</text>
+<text x="740.0" y="455.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">originals and</text>
+<text x="740.0" y="473.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">converted</text>
+<text x="908.0" y="455.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">originals and</text>
+<text x="908.0" y="473.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">converted</text>
+<text x="1076.0" y="455.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">originals and</text>
+<text x="1076.0" y="473.0" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="middle">converted</text>
+<rect x="40" y="490" width="1120" height="62" rx="0" fill="#F9FAFB" stroke="none" stroke-width="1.5"/>
+<text x="58" y="526.0" font-size="15" font-weight="600" fill="#101827" text-anchor="start">Requests</text>
+<circle cx="404.0" cy="521.0" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M399.05,516.05 L408.95,525.95 M408.95,516.05 L399.05,525.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<circle cx="572.0" cy="521.0" r="11" fill="#10B981"/>
+<path d="M567.05,521.22 L570.9,525.18 L577.5,517.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="740.0" cy="521.0" r="11" fill="#10B981"/>
+<path d="M735.05,521.22 L738.9,525.18 L745.5,517.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="908.0" cy="521.0" r="11" fill="#10B981"/>
+<path d="M903.05,521.22 L906.9,525.18 L913.5,517.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="1076.0" cy="521.0" r="11" fill="#10B981"/>
+<path d="M1071.05,521.22 L1074.9,525.18 L1081.5,517.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="40" y1="552" x2="1160" y2="552" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="40" y="578" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A sixth plan, Preview, is protected: it serves the storefront's preview visitors, can never be loosened, and is described below. Browse-only can never be</text>
+<text x="40" y="598" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">changed to play video.</text>
+</svg>

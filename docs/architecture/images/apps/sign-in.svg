@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How people sign in</title>
+<desc id="d">Two rows. Bloem's apps, Silo's apps and the web app: email and password, then pick a profile, then the profile's PIN if it has one. Jellyfin and Audiobookshelf apps: one username made of the account and the profile, and the password with the PIN added.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="659" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How people sign in</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Every way in ends in one profile of one account. Settings → Connect Apps shows what to type.</text>
+<text x="40" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's apps, Silo's apps and the web app</text>
+<rect x="40" y="156" width="268" height="104" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="188" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Email and password</text>
+<text x="58" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The account's sign-in.</text>
+<line x1="312" y1="208" x2="336" y2="208" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="340" y="156" width="268" height="104" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<text x="358" y="188" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Pick a profile</text>
+<text x="358" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Who is watching: Anna, Tom, Kids.</text>
+<line x1="612" y1="208" x2="636" y2="208" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="640" y="156" width="268" height="104" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<text x="658" y="188" font-size="16" font-weight="700" fill="#101827" text-anchor="start">PIN, if the profile has one</text>
+<text x="658" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A code that keeps the profile</text>
+<text x="658" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">private.</text>
+<line x1="912" y1="208" x2="936" y2="208" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="940" y="166" width="220" height="84" rx="42" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="1050" y="214" font-size="19" font-weight="700" fill="#FFFFFF" text-anchor="middle">Watching</text>
+<text x="40" y="298" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A profile can also have a sign-in of its own, set up by the household's main profile under Settings → Profiles. Apps that support it then sign straight into</text>
+<text x="40" y="318" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">that one profile. The browser always signs in to the account.</text>
+<text x="40" y="378" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Jellyfin and Audiobookshelf apps</text>
+<rect x="40" y="394" width="560" height="150" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="62" y="428" font-size="13" font-weight="700" fill="#4338CA" text-anchor="start" letter-spacing="1">Username</text>
+<rect x="62" y="438" width="240" height="40" rx="8" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.5"/>
+<text x="78" y="464" font-size="16" font-weight="600" fill="#101827" text-anchor="start">sam#Kids</text>
+<text x="320" y="428" font-size="13" font-weight="700" fill="#4338CA" text-anchor="start" letter-spacing="1">Password</text>
+<rect x="320" y="438" width="258" height="40" rx="8" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.5"/>
+<text x="336" y="464" font-size="16" font-weight="600" fill="#101827" text-anchor="start">account password#1234</text>
+<text x="62" y="508" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The account, a #, and the profile's name. A PIN goes after the password,</text>
+<text x="62" y="526" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">after another #.</text>
+<line x1="604" y1="469" x2="656" y2="469" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="660" y="412" width="260" height="114" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<text x="790" y="456" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Straight into</text>
+<text x="790" y="480" font-size="16" font-weight="700" fill="#101827" text-anchor="middle">Sam's Kids profile</text>
+<text x="790" y="504" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">with its limits</text>
+<line x1="924" y1="469" x2="976" y2="469" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="980" y="427" width="180" height="84" rx="42" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="1070" y="475" font-size="19" font-weight="700" fill="#FFFFFF" text-anchor="middle">Watching</text>
+<text x="40" y="610" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An administrator decides whether Jellyfin and Audiobookshelf apps may connect at all. Both are allowed by default.</text>
+</svg>

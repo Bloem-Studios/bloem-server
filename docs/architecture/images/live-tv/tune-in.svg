@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">What happens when someone tunes in</title>
+<desc id="d">Four checks before a channel plays: who is watching, whether the viewer has the Live TV permission, whether they may play video at all, and whether one of the source's connections is free. Each refusal is shown beside its check.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="819" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">What happens when someone tunes in</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Live TV has its own permission, and each source can only carry so many streams at once.</text>
+<rect x="40" y="124" width="640" height="112" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<circle cx="68" cy="154" r="13" fill="#10B981"/>
+<text x="68" y="159" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="92" y="160" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Who is watching?</text>
+<text x="92" y="186" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The app has signed in and picked a profile in an active organization, as for any</text>
+<text x="92" y="205" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">video.</text>
+<line x1="360.0" y1="238" x2="360.0" y2="265" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="268" width="640" height="112" rx="14" fill="#FDF2F8" stroke="#DB2777" stroke-width="1.8"/>
+<circle cx="68" cy="298" r="13" fill="#DB2777"/>
+<text x="68" y="303" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="92" y="304" font-size="18" font-weight="700" fill="#101827" text-anchor="start">May this viewer watch Live TV?</text>
+<text x="92" y="330" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A separate permission. Ordinary accounts do not have it until an administrator</text>
+<text x="92" y="349" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">turns it on for the account. An admin account's main profile always has it.</text>
+<line x1="684" y1="324.0" x2="776" y2="324.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="316.0" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="284" width="380" height="80" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="329.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">No Live TV in the app at all.</text>
+<line x1="360.0" y1="382" x2="360.0" y2="409" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="402" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="412" width="640" height="112" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<circle cx="68" cy="442" r="13" fill="#0EA5E9"/>
+<text x="68" y="447" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="92" y="448" font-size="18" font-weight="700" fill="#101827" text-anchor="start">May this viewer play video?</text>
+<text x="92" y="474" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The plan must allow playback. A browse-only plan or a preview visitor never</text>
+<text x="92" y="493" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">plays Live TV, even with the permission.</text>
+<line x1="684" y1="468.0" x2="776" y2="468.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="460.0" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="428" width="380" height="80" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="473.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Refused.</text>
+<line x1="360.0" y1="526" x2="360.0" y2="553" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="546" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="40" y="556" width="640" height="112" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<circle cx="68" cy="586" r="13" fill="#F59E0B"/>
+<text x="68" y="591" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="92" y="592" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Is a connection free?</text>
+<text x="92" y="618" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Each tuner or provider carries a set number of streams. Watching and recording</text>
+<text x="92" y="637" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">share them, across every Bloem server.</text>
+<line x1="684" y1="612.0" x2="776" y2="612.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="702" y="604.0" font-size="14" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<rect x="780" y="572" width="380" height="80" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<text x="800" y="617.0" font-size="15" font-weight="normal" fill="#101827" text-anchor="start">Refused: every connection is busy.</text>
+<line x1="360.0" y1="670" x2="360.0" y2="697" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="372.0" y="690" font-size="13" font-weight="700" fill="#047857" text-anchor="start">Yes</text>
+<rect x="210.0" y="700" width="300" height="66" rx="33" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="360.0" y="742" font-size="21" font-weight="700" fill="#FFFFFF" text-anchor="middle">The channel plays</text>
+<text x="780" y="706" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The app checks in every 30 seconds to keep its</text>
+<text x="780" y="726" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">connection. Leaving the channel frees it for someone</text>
+<text x="780" y="746" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">else. Bloem checks both permissions again as it sends</text>
+<text x="780" y="766" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the video.</text>
+</svg>

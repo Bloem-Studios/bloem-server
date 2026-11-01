@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="590" viewBox="0 0 1200 590" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">From a bucket to the screen</title>
+<desc id="d">Five steps: add a source with its keys, choose its folders, give them to a library, scan, and the titles appear for viewers to watch, read or listen to.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="589" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">From a bucket to the screen</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A platform administrator, or an organization's own administrator, can set this up in the admin console.</text>
+<rect x="40" y="128" width="204" height="240" rx="14" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.5"/>
+<circle cx="66" cy="156" r="13" fill="#8B5CF6"/>
+<text x="66" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="56" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Add a source</text>
+<text x="56" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Choose the service and</text>
+<text x="56" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">region, and enter the</text>
+<text x="56" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">access keys. Bloem works</text>
+<text x="56" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">out the address.</text>
+<line x1="247" y1="248.0" x2="266" y2="248.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="269" y="128" width="204" height="240" rx="14" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.5"/>
+<circle cx="295" cy="156" r="13" fill="#8B5CF6"/>
+<text x="295" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="285" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Choose folders</text>
+<text x="285" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Browse its buckets and</text>
+<text x="285" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">folders. Pick one or</text>
+<text x="285" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">several, or the whole</text>
+<text x="285" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">source.</text>
+<line x1="476" y1="248.0" x2="495" y2="248.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="498" y="128" width="204" height="240" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="524" cy="156" r="13" fill="#6366F1"/>
+<text x="524" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="514" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Give them to a library</text>
+<text x="514" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">A new library, or another</text>
+<text x="514" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">location for an existing</text>
+<text x="514" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">one, beside its ordinary</text>
+<text x="514" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">folders.</text>
+<line x1="705" y1="248.0" x2="724" y2="248.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="727" y="128" width="204" height="240" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="753" cy="156" r="13" fill="#6366F1"/>
+<text x="753" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="743" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Scan</text>
+<text x="743" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem lists the files and</text>
+<text x="743" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">reads names the way Silo</text>
+<text x="743" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">reads folders. It skips</text>
+<text x="743" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">samples and extras, and</text>
+<text x="743" y="302" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">reads only what it needs.</text>
+<line x1="934" y1="248.0" x2="953" y2="248.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="956" y="128" width="204" height="240" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="982" cy="156" r="13" fill="#10B981"/>
+<text x="982" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="972" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Watch, read, listen</text>
+<text x="972" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The titles appear like</text>
+<text x="972" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">any others, with their</text>
+<text x="972" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">covers, for everyone the</text>
+<text x="972" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">library is open to.</text>
+<text x="40" y="424" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Good to know</text>
+<circle cx="52" cy="458" r="4" fill="#6B7280"/>
+<text x="66" y="463" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Keys can be replaced later without touching the libraries. They are never shown again.</text>
+<circle cx="52" cy="496" r="4" fill="#6B7280"/>
+<text x="66" y="501" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">An organization's administrator can add sources only for their own organization, and only at public internet addresses.</text>
+<circle cx="52" cy="534" r="4" fill="#6B7280"/>
+<text x="66" y="539" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">If one source fails during a scan, the library's other folders and sources are still scanned.</text>
+</svg>

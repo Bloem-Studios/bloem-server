@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">A storefront visitor's preview</title>
+<desc id="d">Five steps: a visitor clicks preview on the storefront, Bloem opens a short guest session on a separate address, the visitor browses without playing, free play if the storefront switched it on, and signing up on the storefront. Limits that protect the server are listed below.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="719" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">A storefront visitor's preview</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">The storefront (Bloem Garden) lets people look around before they buy. Bloem keeps them in a locked room.</text>
+<rect x="40" y="128" width="204" height="236" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="66" cy="156" r="13" fill="#6366F1"/>
+<text x="66" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="56" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Click Preview</text>
+<text x="56" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The storefront hands the</text>
+<text x="56" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">visitor a one-time link</text>
+<text x="56" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">that works for one</text>
+<text x="56" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">minute.</text>
+<line x1="247" y1="246.0" x2="266" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="269" y="128" width="204" height="236" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="295" cy="156" r="13" fill="#6366F1"/>
+<text x="295" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="285" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">A guest session</text>
+<text x="285" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem opens it on a</text>
+<text x="285" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">separate preview address.</text>
+<text x="285" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">It ends after two hours,</text>
+<text x="285" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">or 20 minutes without</text>
+<text x="285" y="302" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">use.</text>
+<line x1="476" y1="246.0" x2="495" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="498" y="128" width="204" height="236" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.5"/>
+<circle cx="524" cy="156" r="13" fill="#14B8A6"/>
+<text x="524" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="514" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Look around</text>
+<text x="514" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Chosen libraries,</text>
+<text x="514" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">descriptions, seasons and</text>
+<text x="514" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">episodes. Nothing plays,</text>
+<text x="514" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">downloads or saves.</text>
+<line x1="705" y1="246.0" x2="724" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="727" y="128" width="204" height="236" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<circle cx="753" cy="156" r="13" fill="#F59E0B"/>
+<text x="753" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="743" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Free play, if on</text>
+<text x="743" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The storefront confirms</text>
+<text x="743" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">an email address. Bloem</text>
+<text x="743" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">then plays real video for</text>
+<text x="743" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">a set number of seconds,</text>
+<text x="743" y="302" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">and counts them.</text>
+<line x1="934" y1="246.0" x2="953" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="956" y="128" width="204" height="236" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="982" cy="156" r="13" fill="#10B981"/>
+<text x="982" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="972" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Sign up</text>
+<text x="972" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">The preview's buttons</text>
+<text x="972" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">lead back to the</text>
+<text x="972" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">storefront, which creates</text>
+<text x="972" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">an ordinary account on a</text>
+<text x="972" y="302" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">plan.</text>
+<text x="40" y="420" font-size="18" font-weight="700" fill="#101827" text-anchor="start">What keeps it safe</text>
+<rect x="40" y="440" width="550" height="112" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="440" width="6" height="112" rx="3" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<text x="64" y="472" font-size="16" font-weight="700" fill="#101827" text-anchor="start">One shared guest account</text>
+<text x="64" y="498" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Every visitor uses the same locked account on the protected Preview</text>
+<text x="64" y="517" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">plan. It cannot be loosened.</text>
+<rect x="610" y="440" width="550" height="112" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="440" width="6" height="112" rx="3" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<text x="634" y="472" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Its own address</text>
+<text x="634" y="498" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Guest sessions work only on the preview address, and nothing else signs</text>
+<text x="634" y="517" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">in there.</text>
+<rect x="40" y="568" width="550" height="112" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="568" width="6" height="112" rx="3" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<text x="64" y="600" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Capacity</text>
+<text x="64" y="626" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">200 visitors at once by default, at most three per internet address.</text>
+<text x="64" y="645" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Free play: 20 streams at once by default.</text>
+<rect x="610" y="568" width="550" height="112" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="610" y="568" width="6" height="112" rx="3" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<text x="634" y="600" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Off means off</text>
+<text x="634" y="626" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Switching the preview off ends every guest session straight away.</text>
+<text x="634" y="645" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Switching free play off stops every allowance.</text>
+</svg>

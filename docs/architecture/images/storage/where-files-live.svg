@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="730" viewBox="0 0 1200 730" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Where a library's files can live</title>
+<desc id="d">A library can read its files from three places at once: folders on the server's own disk, S3 buckets and the Bookwarehouse book service. S3 and Bookwarehouse are reached through approved storage plugins. The library holds ebooks, movies or audiobooks.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="729" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Where a library's files can live</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Silo reads files from the server's disk. Bloem can also read them from cloud storage.</text>
+<text x="40" y="136" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Where the files are</text>
+<rect x="40" y="152" width="360" height="112" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="184" font-size="17" font-weight="700" fill="#101827" text-anchor="start">A folder on the server</text>
+<text x="58" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The usual way, as in Silo: a path on the</text>
+<text x="58" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">server's disk or a mounted share.</text>
+<path d="M 402 208.0 L 492 208.0 L 606 300" fill="none" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="282" width="360" height="150" rx="14" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.8"/>
+<text x="58" y="314" font-size="17" font-weight="700" fill="#101827" text-anchor="start">An S3 bucket</text>
+<text x="58" y="338" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Backblaze B2, Wasabi, Cloudflare R2, Amazon</text>
+<text x="58" y="358" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">S3, DigitalOcean Spaces, Hetzner or another S3</text>
+<text x="58" y="378" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">service. One source can cover a bucket, or</text>
+<text x="58" y="398" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">every bucket its keys can see.</text>
+<rect x="424" y="335.0" width="136" height="44" rx="22" fill="#FFFFFF" stroke="#8B5CF6" stroke-width="1.4"/>
+<text x="492" y="362.0" font-size="13.5" font-weight="600" fill="#6D28D9" text-anchor="middle">storage plugin</text>
+<line x1="402" y1="357.0" x2="420" y2="357.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="562" y1="357.0" x2="606" y2="340" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="450" width="360" height="112" rx="14" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.8"/>
+<text x="58" y="482" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bookwarehouse</text>
+<text x="58" y="506" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A book service. Bloem browses its shelves like</text>
+<text x="58" y="526" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">folders.</text>
+<rect x="424" y="484.0" width="136" height="44" rx="22" fill="#FFFFFF" stroke="#8B5CF6" stroke-width="1.4"/>
+<text x="492" y="511.0" font-size="13.5" font-weight="600" fill="#6D28D9" text-anchor="middle">storage plugin</text>
+<line x1="402" y1="506.0" x2="420" y2="506.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="562" y1="506.0" x2="606" y2="340" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="610" y="152" width="250" height="384" rx="18" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="735" y="192" font-size="20" font-weight="700" fill="#101827" text-anchor="middle">One library</text>
+<text x="735" y="222" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">It can mix folders and several</text>
+<text x="735" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">sources, and pick only some of</text>
+<text x="735" y="262" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">a source's folders.</text>
+<rect x="634" y="318" width="202" height="52" rx="12" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.4"/>
+<text x="652" y="350" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Ebooks</text>
+<text x="818" y="350" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="end">read</text>
+<rect x="634" y="386" width="202" height="52" rx="12" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.4"/>
+<text x="652" y="418" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Movies</text>
+<text x="818" y="418" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="end">watch</text>
+<rect x="634" y="454" width="202" height="52" rx="12" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.4"/>
+<text x="652" y="486" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Audiobooks</text>
+<text x="818" y="486" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="end">listen</text>
+<line x1="864" y1="344" x2="916" y2="344" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="920" y="152" width="240" height="384" rx="16" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="940" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">What viewers get</text>
+<circle cx="952" cy="226" r="11" fill="#10B981"/>
+<path d="M947.05,226.22 L950.9,230.18 L957.5,222.15" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="972" y="231" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Read, watch and listen,</text>
+<text x="972" y="251" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">like any other title.</text>
+<circle cx="952" cy="330" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M947.05,325.05 L956.95,334.95 M956.95,325.05 L947.05,334.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="972" y="335" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">No downloads of these</text>
+<text x="972" y="355" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">files.</text>
+<circle cx="952" cy="400" r="11" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M947.05,395.05 L956.95,404.95 M956.95,395.05 L947.05,404.95" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="972" y="405" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Not through Jellyfin</text>
+<text x="972" y="425" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">apps.</text>
+<rect x="40" y="596" width="1120" height="94" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="62" y="628" font-size="16" font-weight="700" fill="#B45309" text-anchor="start">Experimental</text>
+<text x="62" y="654" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">It works, but no storage service is certified yet. A source keeps its settings even when its plugin is removed; its keys are stored encrypted and never</text>
+<text x="62" y="674" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">shown again.</text>
+</svg>

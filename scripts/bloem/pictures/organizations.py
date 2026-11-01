@@ -1,89 +1,5 @@
-#!/usr/bin/env python3
-"""Draw the pictures on docs/architecture/bloem-organizations.md as SVG files.
-
-Usage: python3 scripts/bloem/draw-organization-pictures.py docs/architecture/images/organizations
-"""
-import os
-import sys
-from xml.sax.saxutils import escape
-
-FONT = "'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif"
-INK = "#101827"
-MUTED = "#4B5563"
-SOFT = "#6B7280"
-LINE = "#9CA3AF"
-
-TIERS = {
-    "platform": {"fill": "#FFF4EC", "stroke": "#FA6400", "label": "#C2410C"},
-    "org": {"fill": "#EEF2FF", "stroke": "#6366F1", "label": "#4338CA"},
-    "account": {"fill": "#ECFDF5", "stroke": "#10B981", "label": "#047857"},
-    "profile": {"fill": "#F0F9FF", "stroke": "#0EA5E9", "label": "#0369A1"},
-    "plan": {"fill": "#F0FDFA", "stroke": "#14B8A6", "label": "#0F766E"},
-    "warn": {"fill": "#FFFBEB", "stroke": "#F59E0B", "label": "#B45309"},
-    "stop": {"fill": "#FEF2F2", "stroke": "#EF4444", "label": "#B91C1C"},
-    "grey": {"fill": "#F3F4F6", "stroke": "#9CA3AF", "label": "#374151"},
-}
-
-
-class Svg:
-    def __init__(self, width, height, title, desc):
-        self.w, self.h = width, height
-        self.parts = []
-        self.title, self.desc = title, desc
-
-    def add(self, s):
-        self.parts.append(s)
-
-    def rect(self, x, y, w, h, fill, stroke="none", rx=12, sw=1.5, dash=None):
-        d = f' stroke-dasharray="{dash}"' if dash else ""
-        self.add(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"{d}/>')
-
-    def text(self, x, y, s, size=15, weight="normal", fill=INK, anchor="start", spacing=None, italic=False):
-        extra = f' letter-spacing="{spacing}"' if spacing else ""
-        if italic:
-            extra += ' font-style="italic"'
-        self.add(f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{weight}" fill="{fill}" text-anchor="{anchor}"{extra}>{escape(s)}</text>')
-
-    def lines(self, x, y, rows, size=14, fill=MUTED, gap=None, weight="normal", anchor="start"):
-        gap = gap or round(size * 1.4)
-        for i, row in enumerate(rows):
-            self.text(x, y + i * gap, row, size=size, fill=fill, weight=weight, anchor=anchor)
-
-    def badge(self, x, y, label, color, size=13, anchor="start"):
-        """Pill with a label. x is the left edge, or the right edge with anchor="end"."""
-        w = round(len(label) * size * 0.58 + 22)
-        left = x - w if anchor == "end" else x
-        self.rect(left, y, w, size + 13, color["fill"], color["stroke"], rx=(size + 13) / 2, sw=1.2)
-        self.text(left + w / 2, y + (size + 13) / 2 + size * 0.36, label, size=size, weight="600", fill=color["label"], anchor="middle")
-        return w
-
-    def number(self, cx, cy, n, color, r=13):
-        self.add(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{color}"/>')
-        self.text(cx, cy + 5, str(n), size=14, weight="700", fill="#FFFFFF", anchor="middle")
-
-    def arrow(self, x1, y1, x2, y2, color=LINE, dash=None, width=2):
-        d = f' stroke-dasharray="{dash}"' if dash else ""
-        self.add(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" stroke-width="{width}"{d} marker-end="url(#arrow)"/>')
-
-    def path(self, d, color=LINE, dash=None, width=2):
-        da = f' stroke-dasharray="{dash}"' if dash else ""
-        self.add(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{width}"{da} marker-end="url(#arrow)"/>')
-
-    def header(self, title, subtitle):
-        self.text(40, 56, title, size=28, weight="700")
-        self.text(40, 88, subtitle, size=17, fill=MUTED)
-
-    def render(self):
-        head = (
-            f'<svg xmlns="http://www.w3.org/2000/svg" width="{self.w}" height="{self.h}" '
-            f'viewBox="0 0 {self.w} {self.h}" role="img" aria-labelledby="t d" '
-            f'font-family="{FONT}">\n'
-            f'<title id="t">{escape(self.title)}</title>\n<desc id="d">{escape(self.desc)}</desc>\n'
-            '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" '
-            f'orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{LINE}"/></marker></defs>\n'
-            f'<rect x="0.5" y="0.5" width="{self.w - 1}" height="{self.h - 1}" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>\n'
-        )
-        return head + "\n".join(self.parts) + "\n</svg>\n"
+"""Pictures for docs/architecture/bloem-organizations.md."""
+from kit import INK, LINE, MUTED, SOFT, TIERS, Svg
 
 
 def tiers():
@@ -429,15 +345,5 @@ def reseller_story():
     return s
 
 
-def main():
-    out = sys.argv[1]
-    os.makedirs(out, exist_ok=True)
-    for name, fn in [("tiers", tiers), ("what-can-i-watch", funnel), ("lifecycle", lifecycle), ("press-play", press_play),
-                     ("reseller-bought", reseller_bought), ("reseller-year", reseller_story)]:
-        with open(os.path.join(out, f"{name}.svg"), "w") as fh:
-            fh.write(fn().render())
-        print(name)
-
-
-if __name__ == "__main__":
-    main()
+PICTURES = [("tiers", tiers), ("what-can-i-watch", funnel), ("lifecycle", lifecycle), ("press-play", press_play),
+            ("reseller-bought", reseller_bought), ("reseller-year", reseller_story)]

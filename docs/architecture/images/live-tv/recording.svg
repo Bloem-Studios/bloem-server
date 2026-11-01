@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a recording works</title>
+<desc id="d">Three ways to ask for a recording, from the guide, by channel and time, or with a recording rule, lead to the recorder, which writes a file to the recordings folder. An administrator scans that folder through a library before the recording appears in the catalog.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="759" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a recording works</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Viewers with the Live TV permission ask for recordings. Bloem records at the right time.</text>
+<text x="40" y="136" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Ask for it</text>
+<rect x="40" y="152" width="300" height="96" rx="14" fill="#FDF2F8" stroke="#DB2777" stroke-width="1.8"/>
+<text x="58" y="184" font-size="16" font-weight="700" fill="#101827" text-anchor="start">From the guide</text>
+<text x="58" y="208" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Pick a programme in the guide.</text>
+<line x1="344" y1="200.0" x2="388" y2="324" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="262" width="300" height="96" rx="14" fill="#FDF2F8" stroke="#DB2777" stroke-width="1.8"/>
+<text x="58" y="294" font-size="16" font-weight="700" fill="#101827" text-anchor="start">By channel and time</text>
+<text x="58" y="318" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Choose a channel, a start and an end.</text>
+<line x1="344" y1="310.0" x2="388" y2="324" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="372" width="300" height="124" rx="14" fill="#FDF2F8" stroke="#DB2777" stroke-width="1.8"/>
+<text x="58" y="404" font-size="16" font-weight="700" fill="#101827" text-anchor="start">With a recording rule</text>
+<text x="58" y="428" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Every programme whose title matches, on</text>
+<text x="58" y="447" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">one channel or only new episodes, or</text>
+<text x="58" y="466" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">one series from the guide.</text>
+<line x1="344" y1="434.0" x2="388" y2="324" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="392" y="239" width="228" height="170" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="410" y="271" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Bloem records it</text>
+<text x="410" y="295" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">At the time, using one of</text>
+<text x="410" y="314" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">the source's connections,</text>
+<text x="410" y="333" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">just as watching does.</text>
+<line x1="624" y1="324" x2="658" y2="324" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="662" y="239" width="228" height="170" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="680" y="271" font-size="16" font-weight="700" fill="#101827" text-anchor="start">A recording file</text>
+<text x="680" y="295" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Written to the recordings</text>
+<text x="680" y="314" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">folder on the server's disk.</text>
+<line x1="894" y1="324" x2="928" y2="324" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="932" y="239" width="228" height="170" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="950" y="271" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Scanned into a library</text>
+<text x="950" y="295" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">An administrator adds that</text>
+<text x="950" y="314" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">folder to a library and</text>
+<text x="950" y="333" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">scans it. Then the recording</text>
+<text x="950" y="352" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">appears in the catalog and</text>
+<text x="950" y="371" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">plays like any video.</text>
+<text x="40" y="548" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Good to know</text>
+<circle cx="52" cy="578" r="4" fill="#6B7280"/>
+<text x="66" y="583" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">A recording does not appear in the catalog by itself: the folder has to be scanned through a library.</text>
+<circle cx="52" cy="618" r="4" fill="#6B7280"/>
+<text x="66" y="623" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Removing a recording rule does not cancel recordings it already scheduled, and deletes no files.</text>
+<circle cx="52" cy="658" r="4" fill="#6B7280"/>
+<text x="66" y="663" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Removing an Xtream provider deletes its channels and scheduled recordings, but never recorded files.</text>
+<circle cx="52" cy="698" r="4" fill="#6B7280"/>
+<text x="66" y="703" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Bloem does not yet delete old recordings for you; a rule's “keep the last N” is not applied.</text>
+</svg>

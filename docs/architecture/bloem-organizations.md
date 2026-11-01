@@ -175,7 +175,17 @@ it.
 | Account settings | the policy columns on Silo's `users` row, which override the plan's values |
 | Profile limits | `user_profiles`: PIN, child flag, age limit and library restrictions |
 
-## Technical pages
+## For developers
+
+- **API:** [organizations and administration](../bloem/api/organizations.md):
+  administrative contexts, organization administration, the platform's
+  organization lifecycle, and the storefront's reseller organizations
+  (`/api/bloem/v1/admin/platform/tenants`), member accounts and account
+  create and update. Plans are on the [plans and preview](../bloem/api/plans.md)
+  page. The storefront left Silo's `/api/v1` on 2026-10-31
+  ([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)).
+
+Technical pages:
 
 - [Multitenant administration](multitenant-administration.md): the Platform and
   Organization admin contexts, and how Silo clients resolve an organization.
@@ -186,10 +196,10 @@ it.
 - [Lifecycle safety](bloem-lifecycle-safety.md): retiring an organization.
 - [Delivery boundary enforcement](delivery-boundary-enforcement.md): access rechecked
   when video and rows leave the server.
-- [Entitlement templates](../wiki/admin/entitlement-templates.md): plans.
+- [How plans work](bloem-plans.md) and the [entitlement templates guide](../wiki/admin/entitlement-templates.md).
 - [Silo backend switching](silo-backend-switching.md): a database shared with Silo is
   limited to one organization.
 
 The pictures are SVG files under `images/organizations/`, drawn by
-`scripts/bloem/draw-organization-pictures.py`. Redraw them there when the model
-changes, not by hand.
+`scripts/bloem/draw-pictures.py`. Redraw them there when the model changes, not
+by hand.

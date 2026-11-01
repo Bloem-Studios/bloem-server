@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">An audiobook request, start to finish</title>
+<desc id="d">Five steps: a profile asks, the request is approved or declined, the book is fetched, the library is scanned and Bloem matches the book by its identifier, then the requester is told. Notes explain counting, privacy and duplicates.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="639" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">An audiobook request, start to finish</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Movie, series and ebook requests follow the same shape.</text>
+<rect x="40" y="128" width="204" height="236" rx="14" fill="#FFF7ED" stroke="#EA580C" stroke-width="1.5"/>
+<circle cx="66" cy="156" r="13" fill="#EA580C"/>
+<text x="66" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="56" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Ask</text>
+<text x="56" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Sam's profile asks for a</text>
+<text x="56" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">book by its ISBN. It</text>
+<text x="56" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">counts against the</text>
+<text x="56" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">account's limit.</text>
+<line x1="247" y1="246.0" x2="266" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="269" y="128" width="204" height="236" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<circle cx="295" cy="156" r="13" fill="#F59E0B"/>
+<text x="295" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="285" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Approve</text>
+<text x="285" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Automatically, or by an</text>
+<text x="285" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">administrator of Sam's</text>
+<text x="285" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">organization. A decline</text>
+<text x="285" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">gives the count back.</text>
+<line x1="476" y1="246.0" x2="495" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="498" y="128" width="204" height="236" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="524" cy="156" r="13" fill="#6366F1"/>
+<text x="524" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="514" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Fetch</text>
+<text x="514" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">A connected audiobook</text>
+<text x="514" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">service downloads it.</text>
+<text x="514" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Without one, an</text>
+<text x="514" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">administrator adds it by</text>
+<text x="514" y="302" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">hand.</text>
+<line x1="705" y1="246.0" x2="724" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="727" y="128" width="204" height="236" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.5"/>
+<circle cx="753" cy="156" r="13" fill="#9CA3AF"/>
+<text x="753" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="743" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Scan and match</text>
+<text x="743" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Every five minutes Bloem</text>
+<text x="743" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">looks for a book with the</text>
+<text x="743" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">same ISBN or ASIN in the</text>
+<text x="743" y="284" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">catalog. A similar title</text>
+<text x="743" y="302" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">is never enough.</text>
+<line x1="934" y1="246.0" x2="953" y2="246.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="956" y="128" width="204" height="236" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="982" cy="156" r="13" fill="#10B981"/>
+<text x="982" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="972" y="202" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Done</text>
+<text x="972" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Sam gets a notice, and</text>
+<text x="972" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">the book is in the</text>
+<text x="972" y="266" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">library.</text>
+<text x="40" y="424" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Good to know</text>
+<circle cx="52" cy="458" r="4" fill="#6B7280"/>
+<text x="66" y="463" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Withdrawing a request still counts against the limit; a decline does not.</text>
+<circle cx="52" cy="498" r="4" fill="#6B7280"/>
+<text x="66" y="503" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Profiles on one account do not see each other's requests. Organization administrators see their own organization's queue, never another's.</text>
+<circle cx="52" cy="538" r="4" fill="#6B7280"/>
+<text x="66" y="543" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Asking twice for the same book in one organization is refused as a duplicate, without showing who asked first.</text>
+<circle cx="52" cy="578" r="4" fill="#6B7280"/>
+<text x="66" y="583" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">An administrator can mark a request fulfilled by hand. That records the decision; it does not claim the book is playable.</text>
+</svg>

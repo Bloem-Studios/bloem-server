@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">When every screen is busy</title>
+<desc id="d">A viewer starts a video while the plan's screens are all in use. Playback is refused, and, if a platform administrator switched the prompt on, an alert with an upgrade button lands in the viewer's inbox. The button leads to the storefront.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="599" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">When every screen is busy</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A refused stream can come with an offer to upgrade, if the storefront wants that.</text>
+<rect x="40" y="128" width="340" height="250" rx="16" fill="#111827" stroke="none" stroke-width="1.5"/>
+<rect x="56" y="144" width="308" height="178" rx="8" fill="#1F2937" stroke="none" stroke-width="1.5"/>
+<circle cx="210" cy="196" r="18" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
+<path d="M201.9,187.9 L218.1,204.1 M218.1,187.9 L201.9,204.1" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
+<text x="210" y="252" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="middle">Can't play here</text>
+<text x="210" y="278" font-size="14" font-weight="normal" fill="#D1D5DB" text-anchor="middle">Your plan plays on 3 screens</text>
+<text x="210" y="298" font-size="14" font-weight="normal" fill="#D1D5DB" text-anchor="middle">at once, and all 3 are in use.</text>
+<text x="210" y="356" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">1  The fourth screen is refused</text>
+<line x1="384" y1="253" x2="438" y2="253" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="442" y="128" width="340" height="250" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="462" y="160" font-size="13" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="1">Inbox</text>
+<rect x="462" y="176" width="300" height="124" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="480" y="206" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Want more screens?</text>
+<text x="480" y="230" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">Upgrade your plan to watch on more</text>
+<text x="480" y="248" font-size="13.5" font-weight="normal" fill="#4B5563" text-anchor="start">devices at once.</text>
+<rect x="480" y="262" width="110" height="28" rx="14" fill="#F59E0B" stroke="none" stroke-width="1.5"/>
+<text x="535" y="281" font-size="13.5" font-weight="700" fill="#FFFFFF" text-anchor="middle">Upgrade</text>
+<text x="612" y="356" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">2  An alert, and a push if allowed</text>
+<line x1="786" y1="253" x2="840" y2="253" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="844" y="128" width="316" height="250" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
+<text x="1002" y="220" font-size="19" font-weight="700" fill="#101827" text-anchor="middle">The storefront</text>
+<text x="1002" y="250" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">The button opens the link the</text>
+<text x="1002" y="270" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">administrator set, such as the</text>
+<text x="1002" y="290" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">storefront's plan page.</text>
+<text x="1002" y="356" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">3  The viewer chooses a plan</text>
+<text x="40" y="432" font-size="18" font-weight="700" fill="#101827" text-anchor="start">The rules</text>
+<circle cx="52" cy="466" r="4" fill="#6B7280"/>
+<text x="66" y="471" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Off until a platform administrator saves the wording and the link, with the prompt switched on.</text>
+<circle cx="52" cy="502" r="4" fill="#6B7280"/>
+<text x="66" y="507" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">A profile gets it at most once a day, and the alert disappears after three days.</text>
+<circle cx="52" cy="538" r="4" fill="#6B7280"/>
+<text x="66" y="543" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">It is a push notification too, only where the profile allows notifications.</text>
+</svg>

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">Which apps connect, and where</title>
+<desc id="d">One Bloem server with three entrances: the main address for the web app, Bloem's apps and Silo's apps; a Jellyfin entrance for Jellyfin apps such as Infuse; and an Audiobookshelf entrance. Every entrance shows a session only its own organization's libraries.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="759" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Which apps connect, and where</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">One server, three entrances. Each kind of app uses the entrance it was built for.</text>
+<rect x="450" y="124" width="300" height="540" rx="18" fill="#FFF4EC" stroke="#FA6400" stroke-width="2"/>
+<text x="600" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="middle">Bloem server</text>
+<rect x="474" y="180" width="252" height="220" rx="12" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.6"/>
+<text x="600" y="214" font-size="16.5" font-weight="700" fill="#101827" text-anchor="middle">Main address</text>
+<text x="600" y="240" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">Silo's API, plus</text>
+<text x="600" y="260" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">Bloem's own extras</text>
+<rect x="474" y="424" width="252" height="100" rx="12" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.6"/>
+<text x="600" y="458" font-size="16.5" font-weight="700" fill="#101827" text-anchor="middle">Jellyfin entrance</text>
+<text x="600" y="484" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">port 8096</text>
+<rect x="474" y="544" width="252" height="100" rx="12" fill="#FFFFFF" stroke="#FA6400" stroke-width="1.6"/>
+<text x="600" y="578" font-size="16.5" font-weight="700" fill="#101827" text-anchor="middle">Audiobookshelf</text>
+<text x="600" y="604" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="middle">port 13378</text>
+<text x="600" y="330" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">/api/v1  /api/v2</text>
+<text x="600" y="350" font-size="13" font-weight="normal" fill="#6B7280" text-anchor="middle">/api/bloem/v1</text>
+<text x="600" y="376" font-size="12.5" font-weight="normal" fill="#6B7280" text-anchor="middle">Port 8090 in Bloem's Docker setup</text>
+<rect x="40" y="152" width="360" height="124" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="184" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The web app and Bloem's apps</text>
+<text x="58" y="208" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">They use Silo's API, plus Bloem's own extras</text>
+<text x="58" y="228" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">built for them: Live TV, profile sign-ins,</text>
+<text x="58" y="248" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">richer title pages and server-side search.</text>
+<line x1="404" y1="214" x2="470" y2="250" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="300" width="360" height="108" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="332" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's own apps</text>
+<text x="58" y="356" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Work as they do with Silo. They see everything</text>
+<text x="58" y="376" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Silo has, and none of Bloem's extras.</text>
+<line x1="404" y1="354" x2="470" y2="330" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="800" y="400" width="360" height="124" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="818" y="432" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Jellyfin apps</text>
+<text x="818" y="456" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Infuse, Findroid, Swiftfin and others. No Live</text>
+<text x="818" y="476" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">TV, and no files from storage sources.</text>
+<line x1="796" y1="462" x2="730" y2="474" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="800" y="540" width="360" height="124" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="818" y="572" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Audiobookshelf apps</text>
+<text x="818" y="596" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">For listening to audiobooks.</text>
+<line x1="796" y1="600" x2="730" y2="594" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="800" y="152" width="360" height="156" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="820" y="186" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Finding the server</text>
+<text x="820" y="214" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Type its address into the app. On a home</text>
+<text x="820" y="233" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">network, Bloem can also announce itself so</text>
+<text x="820" y="252" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem's apps find it on their own; that is</text>
+<text x="820" y="271" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">off until an administrator turns it on.</text>
+<text x="40" y="716" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Whichever entrance an app uses, a session sees only its own organization's libraries, with its plan's and profile's limits.</text>
+</svg>
