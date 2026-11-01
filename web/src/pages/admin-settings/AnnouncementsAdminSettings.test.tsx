@@ -13,7 +13,7 @@ vi.mock("@/api/adminV2Client", async (importOriginal) => ({
   adminV2Api: vi.fn(),
 }));
 vi.mock("@/contexts/AdminContextProvider", () => ({
-  useAdminContext: () => ({ active: adminState.active }),
+  useOptionalAdminContext: () => ({ active: adminState.active }),
 }));
 vi.mock("@/hooks/useUnsavedChanges", () => ({ useReportUnsavedChanges: vi.fn() }));
 const mockApi = vi.mocked(adminV2Api);

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Megaphone } from "lucide-react";
 import { adminV2Api, adminV2QueryKey, captureAdminRequestContext } from "@/api/adminV2Client";
 import type { AdminContextSummary } from "@/api/bloemTypes";
-import { useAdminContext } from "@/contexts/AdminContextProvider";
+import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
@@ -93,7 +93,8 @@ function status(item: Announcement) {
 }
 
 export default function AnnouncementsAdminSettings() {
-  const { active } = useAdminContext();
+  // Optional: the settings layout can render outside AdminContextProvider.
+  const active = useOptionalAdminContext()?.active ?? null;
   if (active?.scope !== "platform")
     return <p role="alert">Select the platform context to publish announcements.</p>;
   return (
