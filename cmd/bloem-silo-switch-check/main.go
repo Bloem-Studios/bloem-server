@@ -5,6 +5,9 @@
 //
 // Usage: bloem-silo-switch-check <step> --base http://127.0.0.1:18090 --state state.json
 // Steps: silo-setup, bloem-writes, silo-verify-and-write, bloem-verify.
+//
+// It speaks Silo's /api/v2 to both servers: Silo will retire /api/v1, and the
+// check must keep working against a Silo image that no longer serves it.
 package main
 
 import (
@@ -18,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -36,7 +40,7 @@ type client struct {
 }
 
 type adminUser struct {
-	ID               int    `json:"id"`
+	ID               string `json:"id"`
 	Username         string `json:"username"`
 	MaxStreams       *int   `json:"max_streams"`
 	TranscodeAllowed *bool  `json:"transcode_allowed"`
@@ -85,7 +89,7 @@ func main() {
 func siloSetup(c *client, st *state) {
 	st.AdminPassword = randomPassword()
 	st.UserPassword = randomPassword()
-	must("setup admin", c.call(http.MethodPost, "/api/v1/auth/setup", map[string]any{
+	must("setup admin", c.call(http.MethodPost, "/api/v2/auth/setup", map[string]any{
 		"username": adminName, "email": adminName + "@example.invalid", "password": st.AdminPassword,
 		"create_default_profile": true, "default_profile_name": "Main",
 	}, nil, http.StatusOK, http.StatusCreated))
@@ -97,14 +101,14 @@ func bloemWrites(c *client, st *state) {
 	c.login(adminName, st.AdminPassword, true)
 	u1 := c.getUser(st.U1)
 	expectInt("u1 max_streams written by Silo", u1.MaxStreams, 3)
-	must("update u1 on Bloem", c.call(http.MethodPut, fmt.Sprintf("/api/v1/admin/users/%d", st.U1), map[string]any{
+	must("update u1 on Bloem", c.updateUser(st.U1, map[string]any{
 		"max_streams": 5, "transcode_allowed": false, "requests_allowed": false,
-	}, nil, http.StatusOK))
+	}))
 	u1 = c.getUser(st.U1)
 	expectInt("u1 max_streams after Bloem update", u1.MaxStreams, 5)
 	st.U2 = c.createUser("sw-u2", st.UserPassword, nil)
 	var created profile
-	must("create extra admin profile on Bloem", c.call(http.MethodPost, "/api/v1/profiles/", map[string]any{"name": "Extra"}, &created, http.StatusOK, http.StatusCreated))
+	must("create extra admin profile on Bloem", c.call(http.MethodPost, "/api/v2/profiles", map[string]any{"name": "Extra"}, &created, http.StatusOK, http.StatusCreated))
 	if created.ID == "" {
 		fail("create extra admin profile on Bloem", errors.New("response has no profile id"))
 	}
@@ -121,12 +125,12 @@ func siloVerifyAndWrite(c *client, st *state) {
 	(&client{base: c.base}).login("sw-u2", st.UserPassword, false)
 	expectProfiles(c, 2, "admin profiles after Bloem added one")
 
-	must("update u1 on Silo", c.call(http.MethodPut, fmt.Sprintf("/api/v1/admin/users/%d", st.U1), map[string]any{"max_streams": 8}, nil, http.StatusOK))
+	must("update u1 on Silo", c.updateUser(st.U1, map[string]any{"max_streams": 8}))
 	st.U3 = c.createUser("sw-u3", st.UserPassword, nil)
-	must("delete extra admin profile on Silo", c.call(http.MethodDelete, "/api/v1/profiles/"+st.ExtraProfile, nil, nil, http.StatusOK, http.StatusNoContent))
+	must("delete extra admin profile on Silo", c.call(http.MethodDelete, "/api/v2/profiles/"+st.ExtraProfile, nil, nil, http.StatusOK, http.StatusNoContent))
 	// u2 was created on Bloem: deleting it on Silo must cascade cleanly through
 	// Bloem's membership and profile rows.
-	must("delete u2 on Silo", c.call(http.MethodDelete, fmt.Sprintf("/api/v1/admin/users/%d", st.U2), nil, nil, http.StatusOK, http.StatusNoContent))
+	must("delete u2 on Silo", c.writeUser(http.MethodDelete, st.U2, nil))
 }
 
 func bloemVerify(c *client, st *state) {
@@ -138,7 +142,7 @@ func bloemVerify(c *client, st *state) {
 	u3.login("sw-u3", st.UserPassword, true)
 	expectProfiles(u3, 1, "profiles of the account Silo created")
 	expectProfiles(c, 1, "admin profiles after Silo deleted one")
-	if err := c.call(http.MethodGet, fmt.Sprintf("/api/v1/admin/users/%d", st.U2), nil, nil, http.StatusNotFound); err != nil {
+	if err := c.call(http.MethodGet, userPath(st.U2), nil, nil, http.StatusNotFound); err != nil {
 		fail("u2 deleted on Silo is gone on Bloem", err)
 	}
 }
@@ -155,7 +159,7 @@ func (c *client) login(username, password string, withDevice bool) {
 	if !withDevice {
 		label += " without device headers"
 	}
-	must(label, c.request(http.MethodPost, "/api/v1/auth/login", map[string]any{"username": username, "password": password}, &resp, headers, http.StatusOK))
+	must(label, c.request(http.MethodPost, "/api/v2/auth/login", map[string]any{"username": username, "password": password}, &resp, headers, nil, http.StatusOK))
 	if resp.AccessToken == "" {
 		fail(label, errors.New("no access token"))
 	}
@@ -165,40 +169,65 @@ func (c *client) login(username, password string, withDevice bool) {
 func (c *client) createUser(username, password string, extra map[string]any) int {
 	body := map[string]any{
 		"username": username, "email": username + "@example.invalid", "password": password, "role": "user",
-		"create_default_profile": true, "default_profile_name": "Main", "library_ids": []int{},
+		"create_default_profile": true, "default_profile_name": "Main", "library_ids": []string{},
 	}
 	for k, v := range extra {
 		body[k] = v
 	}
 	var created adminUser
-	must("create "+username, c.call(http.MethodPost, "/api/v1/admin/users", body, &created, http.StatusOK, http.StatusCreated))
-	if created.ID == 0 {
-		fail("create "+username, errors.New("response has no user id"))
+	must("create "+username, c.call(http.MethodPost, "/api/v2/admin/users", body, &created, http.StatusOK, http.StatusCreated))
+	id, err := strconv.Atoi(created.ID)
+	if err != nil || id <= 0 {
+		fail("create "+username, fmt.Errorf("response has no user id: %q", created.ID))
 	}
-	return created.ID
+	return id
 }
+
+func userPath(id int) string { return fmt.Sprintf("/api/v2/admin/users/%d", id) }
 
 func (c *client) getUser(id int) adminUser {
 	var user adminUser
-	must(fmt.Sprintf("get user %d", id), c.call(http.MethodGet, fmt.Sprintf("/api/v1/admin/users/%d", id), nil, &user, http.StatusOK))
+	must(fmt.Sprintf("get user %d", id), c.call(http.MethodGet, userPath(id), nil, &user, http.StatusOK))
 	return user
+}
+
+// updateUser changes one account. /api/v2 takes writes only with If-Match
+// carrying the account's current ETag.
+func (c *client) updateUser(id int, fields map[string]any) error {
+	return c.writeUser(http.MethodPut, id, fields)
+}
+
+func (c *client) writeUser(method string, id int, body any) error {
+	var header http.Header
+	if err := c.request(http.MethodGet, userPath(id), nil, nil, deviceHeaders, &header, http.StatusOK); err != nil {
+		return err
+	}
+	etag := header.Get("ETag")
+	if etag == "" {
+		return fmt.Errorf("GET %s: no ETag", userPath(id))
+	}
+	headers := map[string]string{"If-Match": etag}
+	for k, v := range deviceHeaders {
+		headers[k] = v
+	}
+	return c.request(method, userPath(id), body, nil, headers, nil, http.StatusNoContent)
 }
 
 func expectProfiles(c *client, want int, label string) {
 	var list struct {
-		Profiles []profile `json:"profiles"`
+		Items []profile `json:"items"`
 	}
-	must(label, c.call(http.MethodGet, "/api/v1/profiles/", nil, &list, http.StatusOK))
-	if len(list.Profiles) != want {
-		fail(label, fmt.Errorf("got %d profiles, want %d", len(list.Profiles), want))
+	must(label, c.call(http.MethodGet, "/api/v2/profiles", nil, &list, http.StatusOK))
+	if len(list.Items) != want {
+		fail(label, fmt.Errorf("got %d profiles, want %d", len(list.Items), want))
 	}
 }
 
 func (c *client) call(method, path string, body, out any, want ...int) error {
-	return c.request(method, path, body, out, deviceHeaders, want...)
+	return c.request(method, path, body, out, deviceHeaders, nil, want...)
 }
 
-func (c *client) request(method, path string, body, out any, headers map[string]string, want ...int) error {
+func (c *client) request(method, path string, body, out any, headers map[string]string, respHeader *http.Header, want ...int) error {
 	var reader io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
@@ -224,6 +253,9 @@ func (c *client) request(method, path string, body, out any, headers map[string]
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
+	if respHeader != nil {
+		*respHeader = resp.Header
+	}
 	ok := false
 	for _, status := range want {
 		ok = ok || resp.StatusCode == status

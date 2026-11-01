@@ -1,6 +1,6 @@
 # Bloem-owned additions. Shared target recipes and behavioral hooks stay in Makefile.
 
-.PHONY: bloem-openapi verify-bloem-openapi migrate-continuum-check verify-upstream-sync-merge settings-bindings-native client-dtos verify-client-dtos client-digest verify-client-digest verify-client-coverage verify-seams migration-ledger test-db-prepare test-bloem-library-locations test-scenarios client-copies client-copies-settings client-copies-dtos silo-switch-check
+.PHONY: bloem-openapi verify-bloem-openapi migrate-continuum-check verify-upstream-sync-merge settings-bindings-native client-dtos verify-client-dtos client-digest verify-client-digest verify-client-coverage verify-seams migration-ledger test-db-prepare test-bloem-library-locations test-scenarios client-copies client-copies-settings client-copies-dtos silo-switch-check silo-switch-check-all-in-one
 
 # Generators and helper scripts run Python; never leave __pycache__ behind in
 # the tree (or in the sibling client repositories).
@@ -55,6 +55,14 @@ test-bloem-library-locations: embed-stub
 silo-switch-check:
 	@if [ -z "$(SILO_IMAGE)" ] || [ -z "$(BLOEM_IMAGE)" ]; then echo "usage: make silo-switch-check SILO_IMAGE=ghcr.io/silo-server/silo-server@sha256:... BLOEM_IMAGE=<tag>" >&2; exit 1; fi
 	SILO_IMAGE=$(SILO_IMAGE) BLOEM_IMAGE=$(BLOEM_IMAGE) scripts/bloem/silo-switch-check.sh
+
+# The same switch for an install on Silo's all-in-one image, whose database
+# lives inside the container's /config volume. SILO_IMAGE is the all-in-one
+# image (a plain commit tag); BLOEM_IMAGE is wrapped in the same layer
+# (omnibus/Dockerfile) by the script.
+silo-switch-check-all-in-one:
+	@if [ -z "$(SILO_IMAGE)" ] || [ -z "$(BLOEM_IMAGE)" ]; then echo "usage: make silo-switch-check-all-in-one SILO_IMAGE=ghcr.io/silo-server/silo-server@sha256:... BLOEM_IMAGE=<tag>" >&2; exit 1; fi
+	SILO_IMAGE=$(SILO_IMAGE) BLOEM_IMAGE=$(BLOEM_IMAGE) scripts/bloem/silo-switch-check-all-in-one.sh
 
 # The tier-1 scenario executor. Its live half needs SILO_SCENARIO_DATABASE_URL
 # (an empty database it owns and truncates); without it only the offline

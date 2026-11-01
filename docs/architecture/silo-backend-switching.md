@@ -1,6 +1,6 @@
 # Silo backend switching
 
-> **Provenance and status** (checked 2026-10-27 against `main` at `e852f92bf`):
+> **Provenance and status** (checked 2026-10-31 against `main` at `c83c424b7`):
 > current. Silo switching is a Bloem addition: Silo knows nothing about it, and
 > its job is to keep a database that Bloem serves readable and writable by an
 > unmodified Silo image. It was introduced on 2026-10-09 (`474782ef1` for this
@@ -14,6 +14,9 @@
 > rollout. `2393c41ee` (2026-10-18) restored Silo's Jellyfin and Audiobookshelf
 > servers in Bloem; the section on what each backend sees was updated for that
 > on 2026-10-27.
+>
+> **Last verified on 2026-10-31:** both checks below passed with Silo `32a2f63e1`
+> (its `-base` image and its all-in-one image) against Bloem `4edbee99d`.
 
 A database can be served by the upstream Silo server or by Bloem, one at a
 time, and the operator can switch between them in either direction without
@@ -99,6 +102,41 @@ as in Silo. See [protocol compatibility](bloem-compatibility-removal.md).
   before, which runs as root.
 - **Rollback point.** Snapshot the database before the first switch.
 
+## Installs on Silo's all-in-one image
+
+Silo's Docker image now carries its own PostgreSQL and Redis, with their data in
+the container's `/config` volume. That PostgreSQL listens only on a socket inside
+the container, so Bloem's ordinary image cannot reach it. Bloem wrapped in the
+same all-in-one layer can: `omnibus/` is Silo's, merged unchanged, and building
+it on top of a Bloem image gives a container that opens the same `/config`.
+
+```sh
+docker build -f omnibus/Dockerfile --build-arg SILO_IMAGE=<bloem image> \
+  -t bloem-server:all-in-one omnibus
+```
+
+To switch, stop the Silo container and start this image on the same `/config`
+with the same `.env` (the same `SECRET_KEY` and `PUID`). Bloem migrates the
+database on its first start. Enable switching from inside the container, as the
+`silo` account with the container's environment:
+
+```sh
+docker exec -e PATH=/command:/usr/local/bin:/usr/bin:/bin <container> \
+  with-contenv s6-setuidgid silo \
+  sh -c 'cd /config/silo && HOME=/config/silo silo silo-switching enable'
+```
+
+`with-contenv` and `s6-setuidgid` are s6 tools under `/command`, which a
+`docker exec` shell does not have on its `PATH`. The container environment
+holds `DATABASE_URL` and is readable only by root, and the bundled PostgreSQL
+admits only the `silo` account, so the command starts as root and drops to
+`silo`. `silo-switching status` works the same way.
+
+The bundled Redis keeps its data in `/config/redis`, which both images would
+share. Delete what is in it while neither container runs, at each switch, so
+that each backend starts with an empty cache. Bloem does not publish an
+all-in-one image; build it from the Bloem image you deploy.
+
 ## Checking a change
 
 `make silo-switch-check SILO_IMAGE=<silo image by digest> BLOEM_IMAGE=<tag>`
@@ -109,8 +147,16 @@ runs both images against one database:
 3. Bloem, Silo and Bloem again each read what the previous backend wrote and
    write something the next one must read.
 
-Run it whenever a change touches a table that both servers write. Run it too
-after merging upstream changes that add Silo writes to tables Bloem constrains.
+`make silo-switch-check-all-in-one SILO_IMAGE=<Silo all-in-one image by digest> BLOEM_IMAGE=<tag>`
+runs the same three steps on one `/config` volume: Silo's all-in-one image
+creates it, and Bloem wrapped in the all-in-one layer takes it over.
+
+The steps talk to both servers through Silo's `/api/v2` (`cmd/bloem-silo-switch-check`),
+so the check keeps working after Silo retires `/api/v1`.
+
+Run both whenever a change touches a table that both servers write. Run them too
+after merging upstream changes that add Silo writes to tables Bloem constrains,
+or that change `omnibus/`.
 The database-level tests are in `internal/tenancy/silo_switching_test.go`,
 `internal/tenancy/silo_switching_writes_test.go`,
 `internal/auth/bloem_repository_switching_test.go` and
