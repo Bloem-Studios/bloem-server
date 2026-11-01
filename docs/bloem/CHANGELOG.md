@@ -21,7 +21,8 @@ Each organization can have its own domains, name, logo and colours
   `409 wrong_organization_domain`, naming the account's own address. An organization
   without a domain still signs in at the server's public address.
 - **Authentik.** A web sign-in through the provider stays on the organization domain it
-  started on; each domain's callback must be registered with the provider. This adds one
+  started on, and a provider sign-out returns to that domain's login page. Each domain's
+  callbacks and `/login` must be registered with the provider. This adds one
   seam, `internal/auth/oauth_handler.go` (303 to 304), approved by the owner.
 - **Seasonal packs.** The web app's signed-out seasonal layer reads
   `GET /api/bloem/v1/ambience/public` instead of Silo's `/api/v1/theme/branding`, so the

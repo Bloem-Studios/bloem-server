@@ -101,10 +101,15 @@ provider sends the browser back to that domain's callback, and the browser finis
 that domain's completion page, where its cookies are. `Directory.OAuthBaseURL` names the
 base, and `auth.OAuthHandler.SetRequestBaseURL` installs it.
 
-`internal/auth/oauth_handler.go` is a declared seam for this: one field and four call
-sites. They are the public-origin check, the callback address, and the completion page
-twice. On any other host the flow keeps the public URL and bounces there, as in Silo.
-The provider must know each domain's callback.
+A provider sign-out started on an organization domain returns the browser to that
+domain's `/login`.
+
+`internal/auth/oauth_handler.go` is a declared seam for this: one field and five call
+sites. They are the public-origin check, the callback address, the completion page
+twice, and the sign-out's return address. On any other host the flow keeps the public
+URL and bounces there, as in Silo. The provider must know each domain's callback and
+sign-out return address. Silo's plugin installation page and the
+`/api/v2/auth/provider-logout` description name only the public URL's.
 
 ## Managing domains and branding
 
@@ -125,15 +130,15 @@ remaining domain primary.
 
 1. Point DNS at the ingress and issue a certificate for the host.
 2. Route the host to Bloem through a trusted proxy that forwards the client's host.
-3. For sign-in through Authentik on that domain, register its callback in the provider:
+3. For sign-in through Authentik on that domain, register its callbacks in the provider:
    `https://<domain>/api/v1/auth/oauth/<installation>/callback` and
-   `https://<domain>/api/v2/auth/oauth/<installation>/callback`.
+   `https://<domain>/api/v2/auth/oauth/<installation>/callback`. When provider sign-out
+   is on, also register `https://<domain>/login` as a post-logout redirect URI.
 4. Register the domain, in the organization page or from the storefront.
 
 ## Limits
 
 - **Authentik:**
-  - Signing out through the provider returns to the server's public URL.
   - App (native) sign-in through a provider keeps the public URL.
   - A provider sign-in refused on another organization's domain gets the OAuth
     handler's generic failure, not the address message.

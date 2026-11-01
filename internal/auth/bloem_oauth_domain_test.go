@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -70,5 +71,23 @@ func TestOAuthOffTheOrganizationDomainKeepsThePublicURL(t *testing.T) {
 	}
 	if _, cookie := rig.start(t, "https://silo.test/api/v1/auth/oauth/42/init"); cookie == nil || rig.client.gotInit.GetRedirectUri() != "https://silo.test/api/v1/auth/oauth/42/callback" {
 		t.Fatalf("public origin: redirect_uri = %q", rig.client.gotInit.GetRedirectUri())
+	}
+}
+
+// A provider sign-out on an organization's own domain sends the browser back
+// to that domain's login page; elsewhere it keeps the public URL's.
+func TestOAuthProviderLogoutReturnsToTheOrganizationDomain(t *testing.T) {
+	rig := newOAuthRig(t)
+	rig.h.SetRequestBaseURL(domainBaseFromContext)
+	onDomain := context.WithValue(context.Background(), orgDomainBaseKey{}, "https://main.domain.com")
+	if got, err := rig.h.ProviderLogoutURL(onDomain, 7); err != nil || got != "https://idp.example/logout?user="+url.QueryEscape("https://main.domain.com/login") {
+		t.Fatalf("on the organization domain: %q, %v", got, err)
+	}
+	if got, err := rig.h.ProviderLogoutURL(context.Background(), 7); err != nil || got != "https://idp.example/logout?user="+url.QueryEscape("https://silo.test/login") {
+		t.Fatalf("off a registered domain: %q, %v", got, err)
+	}
+	rig.h.SetHostBaseURL("")
+	if got, _ := rig.h.ProviderLogoutURL(onDomain, 7); got != "" {
+		t.Fatalf("without a public URL: %q, want no provider sign-out", got)
 	}
 }

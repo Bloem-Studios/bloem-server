@@ -1259,7 +1259,7 @@ func (h *OAuthHandler) ProviderLogoutAvailable() bool {
 // identity at an OAuth provider, or the plugin offers none. The provider
 // returns the browser to the login page on the public origin.
 func (h *OAuthHandler) ProviderLogoutURL(ctx context.Context, userID int) (string, error) {
-	redirect := h.PostLogoutRedirectURL()
+	redirect := h.postLogoutRedirectURLFor(ctx)
 	if !h.ProviderLogoutAvailable() || redirect == "" {
 		return "", nil
 	}
