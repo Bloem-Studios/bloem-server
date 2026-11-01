@@ -694,13 +694,14 @@ func newChiRouter(deps Dependencies) chi.Router {
 		}
 		authService.SetSignInAttempts(signInAttempts)
 		if settingsRepo != nil {
+			accountMailSettings := bloemAccountMailSettings(deps, settingsRepo)
 			invitationService = invitations.NewService(
 				invitations.NewRepository(deps.DB),
 				userRepo,
 				auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider),
 				authService,
 				mail.NewSMTPSender(settingsRepo),
-				settingsRepo,
+				accountMailSettings,
 				deps.EmailBrand,
 				"",
 			)
@@ -709,7 +710,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 				userRepo,
 				authService,
 				mail.NewSMTPSender(settingsRepo),
-				settingsRepo,
+				accountMailSettings,
 				deps.EmailBrand,
 				"",
 			)

@@ -2640,7 +2640,7 @@ func main() {
 	if deps.Blobs.Assets != nil {
 		brandingStore = deps.Blobs.Assets
 	}
-	brandingSvc := branding.NewService(settingsRepo, brandingStore)
+	brandingSvc := branding.NewService(orgdomains.NewSettingsOverlay(settingsRepo, orgDirectory, orgDomainStore, orgdomains.OverlayOptions{}), brandingStore)
 	deps.EmailBrand = mail.NewBrandLoader(brandingSvc)
 
 	// User-facing release notifications. The system reads user state through
