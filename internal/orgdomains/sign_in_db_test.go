@@ -66,3 +66,36 @@ func TestSignInCheck(t *testing.T) {
 		t.Fatalf("no primary domain: %v, want the server public URL", err)
 	}
 }
+
+// An organization without a domain signs in at the server's public URL. When
+// that URL's host is registered to the default organization, its accounts are
+// still let in there, never sent back to the address that refused them.
+func TestSignInCheckLetsAnOrganizationWithoutADomainUseTheServerAddress(t *testing.T) {
+	pool := newMigratedTestPool(t)
+	ctx := context.Background()
+	store := NewStore(pool)
+	defaultOrg := defaultOrganization(t, pool)
+	homeless := seedAccount(t, pool, "homeless-member")
+	seedOrganization(t, pool, "homeless", homeless)
+	org2Member := seedAccount(t, pool, "org2-member")
+	org2 := seedOrganization(t, pool, "main", org2Member)
+	if _, err := store.AddDomain(ctx, defaultOrg, "lib.example.org", SourcePlatform, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.AddDomain(ctx, org2, "main.domain.com", SourcePlatform, false); err != nil {
+		t.Fatal(err)
+	}
+	d := NewDirectory(store, time.Hour)
+	check := d.SignInCheck(store, func(context.Context) string { return "https://Lib.Example.org/" })
+	on := func(org uuid.UUID, host string) context.Context {
+		return WithRequestDomain(WithRequestOrganization(ctx, org), host)
+	}
+
+	if err := check(on(defaultOrg, "lib.example.org"), homeless); err != nil {
+		t.Fatalf("server address: %v, want allowed", err)
+	}
+	var domainErr *auth.OrganizationDomainError
+	if err := check(on(org2, "main.domain.com"), homeless); !errors.As(err, &domainErr) || domainErr.SignInURL != "https://Lib.Example.org/" {
+		t.Fatalf("another organization's domain: %v, want refused with the server address", err)
+	}
+}

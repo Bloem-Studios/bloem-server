@@ -20,7 +20,8 @@ in `internal/auth/bloem_sign_in_domain.go`.
   sending `X-Forwarded-Host`.
 - **The default organization is the server.** It uses the server's own branding and public
   URL, and the branding routes refuse it (`409 default_organization`). It may register
-  domains: an account of another organization is then refused there.
+  domains: an account of another organization is then refused there, unless its
+  organization has no domain and the host is the server public URL's.
 - **Another organization never shows the server's brand.** An organization's unset
   branding value is Bloem's built-in default on its domains, not the server's. The server's
   branding is the default organization's brand.
@@ -79,6 +80,10 @@ password and profile sign-in handlers answer `409 wrong_organization_domain`,
 "This account signs in at https://<primary domain>." That address falls back to the server
 public URL when the account's organization has no primary domain. `/api/v2` renders it as
 `conflict`, and the sign-in page shows the detail.
+
+An organization without a domain signs in at the server public URL. Its accounts are let in
+on that URL's host even when the host is registered to the default organization, so the
+refusal never names the address that refused.
 
 It is 409, not 403: v2 renders a 403 at sign-in as `permission_denied`, which the sign-in
 page reports as a disabled account.
