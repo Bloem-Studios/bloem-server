@@ -2710,6 +2710,34 @@
       "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
     },
     {
+      "type": "internal/api/handlers.BloemOrganizationBranding",
+      "reason": "Platform-administration response for an organization's own branding, read by the embedded web app's platform pages and the storefront; native clients read branding from /theme/branding."
+    },
+    {
+      "type": "internal/api/handlers.BloemOrganizationBrandingAssetResponse",
+      "reason": "Platform-administration response to an organization branding upload, read by the embedded web app's platform pages; no native client uploads branding."
+    },
+    {
+      "type": "internal/api/handlers.BloemOrganizationBrandingUpdate",
+      "reason": "Platform-administration request body for an organization's branding; no native client changes branding."
+    },
+    {
+      "type": "internal/api/handlers.BloemOrganizationDomain",
+      "reason": "Platform-administration view of a registered organization domain, read by the embedded web app's platform pages and the storefront; no native client manages domains."
+    },
+    {
+      "type": "internal/api/handlers.BloemOrganizationDomainRequest",
+      "reason": "Platform-administration request body registering an organization domain; no native client manages domains."
+    },
+    {
+      "type": "internal/api/handlers.BloemOrganizationDomainResponse",
+      "reason": "Platform-administration response to registering an organization domain; no native client manages domains."
+    },
+    {
+      "type": "internal/api/handlers.BloemOrganizationDomainsResponse",
+      "reason": "Platform-administration list of an organization's domains, read by the embedded web app's platform pages and the storefront; no native client manages domains."
+    },
+    {
       "type": "internal/api/handlers.BloemPlatformAccountCreateRequest",
       "reason": "Storefront-only request body for creating an account on a plan; no native client creates accounts."
     },

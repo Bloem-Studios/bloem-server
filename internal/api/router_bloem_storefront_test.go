@@ -34,6 +34,7 @@ func TestBloemPlatformStorefrontRoutesAreMountedBehindThePlatformGate(t *testing
 			Tenants: &handlers.AdminTenantsHandler{}, TenantMembers: &handlers.AdminTenantMembersHandler{},
 			Accounts: handlers.NewAdminHandler(nil, nil, nil), Announcements: &handlers.AdminAnnouncementsHandler{},
 			Promotions: &handlers.AdminPromotionsHandler{}, Ambience: &handlers.AmbienceHandler{}, ServeAmbienceAssets: true,
+			Domains: &handlers.BloemOrganizationDomainsHandler{},
 		},
 	})
 	mint := func(claims auth.AdminContextClaims) string {
@@ -72,6 +73,14 @@ func TestBloemPlatformStorefrontRoutesAreMountedBehindThePlatformGate(t *testing
 		{http.MethodDelete, "/admin/platform/announcements/a1"},
 		{http.MethodGet, "/admin/platform/promotions/"},
 		{http.MethodPost, "/admin/platform/ambience/assets"},
+		{http.MethodGet, "/admin/platform/tenants/" + tenant + "/domains"},
+		{http.MethodPost, "/admin/platform/tenants/" + tenant + "/domains"},
+		{http.MethodPut, "/admin/platform/tenants/" + tenant + "/domains/main.domain.com/primary"},
+		{http.MethodDelete, "/admin/platform/tenants/" + tenant + "/domains/main.domain.com"},
+		{http.MethodGet, "/admin/platform/tenants/" + tenant + "/branding"},
+		{http.MethodPut, "/admin/platform/tenants/" + tenant + "/branding"},
+		{http.MethodPut, "/admin/platform/tenants/" + tenant + "/branding/assets/mark"},
+		{http.MethodDelete, "/admin/platform/tenants/" + tenant + "/branding/assets/mark"},
 	}
 	send := func(method, path, token string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(method, NativeAPIPrefix+path, strings.NewReader(`{}`))

@@ -233,6 +233,15 @@ func (s *Store) BrandingValues(ctx context.Context, org uuid.UUID) (map[string]s
 	return out, rows.Err()
 }
 
+// OrganizationExists reports whether org is an organization.
+func (s *Store) OrganizationExists(ctx context.Context, org uuid.UUID) (bool, error) {
+	var exists bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM organizations WHERE id = $1)`, org).Scan(&exists); err != nil {
+		return false, fmt.Errorf("orgdomains: check organization: %w", err)
+	}
+	return exists, nil
+}
+
 // AccountOrganization is the organization of the account's active membership.
 // An account belongs to one organization (organization_memberships_one_per_account).
 func (s *Store) AccountOrganization(ctx context.Context, accountID int) (uuid.UUID, bool, error) {

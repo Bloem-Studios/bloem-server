@@ -225,6 +225,9 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 				r.With(authMW.RequireAuth).Post("/admin/session", session.HandleSession)
 			}
 		}
+		if system != nil {
+			system.SetOrganizationDomainsAvailable(surfaces.Storefront.Domains != nil && authMW != nil && adminMW != nil)
+		}
 		mountBloemPlatformStorefront(r, surfaces.Storefront, authMW, adminMW)
 		if authMW == nil || adminMW == nil {
 			mountUnavailableAdminContextRoutes(r)

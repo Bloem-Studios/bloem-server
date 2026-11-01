@@ -24,3 +24,19 @@ func TestPresentationSettingKeysCoverEveryAsset(t *testing.T) {
 		t.Fatalf("keys = %v, want the four values and one per asset kind", keys)
 	}
 }
+
+func TestAssetKindsAndSettingKeys(t *testing.T) {
+	kinds := AssetKinds()
+	if len(kinds) != len(assetSpecs) || !slices.IsSorted(kinds) {
+		t.Fatalf("kinds = %v", kinds)
+	}
+	for _, kind := range kinds {
+		key, ok := AssetSettingKey(kind)
+		if !ok || key != assetSpecs[kind].settingKey {
+			t.Errorf("AssetSettingKey(%s) = %q, %v", kind, key, ok)
+		}
+	}
+	if _, ok := AssetSettingKey("nope"); ok {
+		t.Fatal("unknown kind has a setting key")
+	}
+}

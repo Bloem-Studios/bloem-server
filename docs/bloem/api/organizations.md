@@ -14,7 +14,7 @@ For the plain-language picture, read the [Organizations and administration expla
 - [OPA tenant authorization](../../architecture/opa-tenant-authorization.md)
 - [Lifecycle safety](../../architecture/bloem-lifecycle-safety.md)
 
-## Operations (88)
+## Operations (96)
 
 | Method and path | Summary |
 | --- | --- |
@@ -84,6 +84,14 @@ For the plain-language picture, read the [Organizations and administration expla
 | [`POST /api/bloem/v1/admin/platform/tenants`](#post-apibloemv1adminplatformtenants) | Create a reseller organization. |
 | [`GET /api/bloem/v1/admin/platform/tenants/{id}`](#get-apibloemv1adminplatformtenantsid) | Read one reseller organization. |
 | [`DELETE /api/bloem/v1/admin/platform/tenants/{id}`](#delete-apibloemv1adminplatformtenantsid) | Retire a reseller organization. |
+| [`GET /api/bloem/v1/admin/platform/tenants/{id}/branding`](#get-apibloemv1adminplatformtenantsidbranding) | Read an organization's branding. |
+| [`PUT /api/bloem/v1/admin/platform/tenants/{id}/branding`](#put-apibloemv1adminplatformtenantsidbranding) | Change an organization's branding. |
+| [`PUT /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}`](#put-apibloemv1adminplatformtenantsidbrandingassetskind) | Upload an organization's branding image. |
+| [`DELETE /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}`](#delete-apibloemv1adminplatformtenantsidbrandingassetskind) | Remove an organization's branding image. |
+| [`GET /api/bloem/v1/admin/platform/tenants/{id}/domains`](#get-apibloemv1adminplatformtenantsiddomains) | List an organization's domains. |
+| [`POST /api/bloem/v1/admin/platform/tenants/{id}/domains`](#post-apibloemv1adminplatformtenantsiddomains) | Register a domain to an organization. |
+| [`DELETE /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}`](#delete-apibloemv1adminplatformtenantsiddomainshost) | Unregister a domain. |
+| [`PUT /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}/primary`](#put-apibloemv1adminplatformtenantsiddomainshostprimary) | Make a domain the organization's primary. |
 | [`POST /api/bloem/v1/admin/platform/tenants/{id}/freeze`](#post-apibloemv1adminplatformtenantsidfreeze) | Suspend a reseller organization. |
 | [`PATCH /api/bloem/v1/admin/platform/tenants/{id}/limits`](#patch-apibloemv1adminplatformtenantsidlimits) | Change seats and shared conversions. |
 | [`POST /api/bloem/v1/admin/platform/tenants/{id}/thaw`](#post-apibloemv1adminplatformtenantsidthaw) | Lift an administrative suspension. |
@@ -1648,6 +1656,204 @@ Requires a Platform administrative context or an enabled administrator's unscope
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable: retirement is not available, or the credential could not be checked. |
 
+### `GET /api/bloem/v1/admin/platform/tenants/{id}/branding`
+
+Read an organization's branding.
+
+Operation ID: `getBloemPlatformTenantBranding`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Only the organization's own values: an empty field is Bloem's built-in default on its domains. assets maps each uploaded asset kind to its reference.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The organization ID (UUID). A malformed or unknown ID is not_found. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemOrganizationBranding`](#bloemorganizationbranding) | OK |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such organization (a malformed ID answers the same). |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | default_organization: the default organization uses the server's branding settings. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `PUT /api/bloem/v1/admin/platform/tenants/{id}/branding`
+
+Change an organization's branding.
+
+Operation ID: `updateBloemPlatformTenantBranding`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Changes the fields it names; an empty string clears one.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The organization ID (UUID). |
+
+Request body (required, `application/json`): [`BloemOrganizationBrandingUpdate`](#bloemorganizationbrandingupdate).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemOrganizationBranding`](#bloemorganizationbranding) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_json: the body is not valid JSON. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such organization (a malformed ID answers the same). |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | default_organization: the default organization uses the server's branding settings. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | validation: server_name is at most 80 characters and login_subtitle at most 200, without control characters; accent_color is a colour such as #336699; default_theme a theme name such as dark. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `PUT /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}`
+
+Upload an organization's branding image.
+
+Operation ID: `uploadBloemPlatformTenantBrandingAsset`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. The same limits and processing as the server's own branding upload. The image is shown on the organization's domains only.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The organization ID (UUID). |
+| `kind` | path | string: `wordmark`, `mark`, `favicon`, `login_bg` | yes | Branding asset slot |
+
+Request body (required, `multipart/form-data`): [`AdminBrandingAssetForm`](#adminbrandingassetform).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemOrganizationBrandingAssetResponse`](#bloemorganizationbrandingassetresponse) | OK |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an unknown kind, a malformed form, or an unsupported image. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such organization (a malformed ID answers the same). |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | default_organization: the default organization uses the server's branding settings. |
+| 413 | [`BloemNativeError`](README.md#bloemnativeerror) | too_large: the image exceeds the kind's limit. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: asset storage is not configured. |
+
+### `DELETE /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}`
+
+Remove an organization's branding image.
+
+Operation ID: `deleteBloemPlatformTenantBrandingAsset`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The organization ID (UUID). |
+| `kind` | path | string: `wordmark`, `mark`, `favicon`, `login_bg` | yes | Branding asset slot |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | bad_request: an unknown kind. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such organization (a malformed ID answers the same). |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | default_organization: the default organization uses the server's branding settings. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `GET /api/bloem/v1/admin/platform/tenants/{id}/domains`
+
+List an organization's domains.
+
+Operation ID: `listBloemPlatformTenantDomains`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. The primary domain comes first. A request on a registered domain shows its organization's branding, and that organization's emails link to its primary domain. A domain never decides what an account can reach.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The organization ID (UUID). A malformed or unknown ID is not_found. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemOrganizationDomainsResponse`](#bloemorganizationdomainsresponse) | OK |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such organization (a malformed ID answers the same). |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `POST /api/bloem/v1/admin/platform/tenants/{id}/domains`
+
+Register a domain to an organization.
+
+Operation ID: `addBloemPlatformTenantDomain`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. An organization's first domain is its primary; primary on a later one moves the primary to it. An administrator's unscoped API key records the domain as the storefront's (source garden), a Platform context as the platform administrator's.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The organization ID (UUID). |
+
+Request body (required, `application/json`): [`BloemOrganizationDomainRequest`](#bloemorganizationdomainrequest).
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 201 | [`BloemOrganizationDomainResponse`](#bloemorganizationdomainresponse) | Created |
+| 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_json: the body is not valid JSON. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such organization (a malformed ID answers the same). |
+| 409 | [`BloemNativeError`](README.md#bloemnativeerror) | domain_taken: the host is already registered. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_host: a host is a lower-case name with at least one dot, without scheme, port or path. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `DELETE /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}`
+
+Unregister a domain.
+
+Operation ID: `removeBloemPlatformTenantDomain`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Removing the primary makes the oldest remaining domain primary.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The organization ID (UUID). |
+| `host` | path | string | yes | A host registered to the organization, such as main.example.com. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such organization, or it has no such domain. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
+### `PUT /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}/primary`
+
+Make a domain the organization's primary.
+
+Operation ID: `setBloemPlatformTenantPrimaryDomain`.
+Credentials: `bloemPlatformContext`; or `bearerAuth`.
+
+Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The organization ID (UUID). |
+| `host` | path | string | yes | A host registered to the organization, such as main.example.com. |
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 204 |  | No Content |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
+| 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such organization, or it has no such domain. |
+| 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
+| 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
+
 ### `POST /api/bloem/v1/admin/platform/tenants/{id}/freeze`
 
 Suspend a reseller organization.
@@ -2230,6 +2436,12 @@ Requires an account bearer token or API key; no profile or organization needs to
 | `error` | string |  |  |
 | `snapshot` | [`AccountPolicySnapshot`](#accountpolicysnapshot) |  |  |
 
+### AdminBrandingAssetForm
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | string (binary) | yes | The image: PNG, JPEG or WebP for every kind; favicon also accepts ICO and SVG. Per-kind caps: 8 MiB (wordmark, mark), 1 MiB (favicon), 12 MiB (login_bg). |
+
 ### AdminGroupRef
 
 | Field | Type | Required | Description |
@@ -2546,6 +2758,61 @@ Type: object.
 | `policy_revision` | integer (int64) | yes | Increments when this organization's access policy changes. |
 | `security_revision` | integer (int64) | yes | Increments when credentials or sessions are invalidated. |
 | `slug` | string | yes | URL-safe short name. |
+
+### BloemOrganizationBranding
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `accent_color` | string | yes |  |
+| `assets` | object of string | yes |  |
+| `default_theme` | string | yes |  |
+| `login_subtitle` | string | yes |  |
+| `server_name` | string | yes |  |
+
+### BloemOrganizationBrandingAssetResponse
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `kind` | string | yes |  |
+| `ref` | string | yes |  |
+
+### BloemOrganizationBrandingUpdate
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `accent_color` | string |  |  |
+| `default_theme` | string |  |  |
+| `login_subtitle` | string |  |  |
+| `server_name` | string |  |  |
+
+### BloemOrganizationDomain
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `created_at` | string (date-time) | yes | When it was registered. |
+| `host` | string | yes | The registered host, lower case. |
+| `organization_id` | string | yes | The organization the host belongs to. |
+| `primary` | boolean | yes | Whether this is the organization's primary domain, the address its links use. |
+| `source` | string: `platform`, `garden` | yes | Who registered it: the platform administrator, or the storefront with its API key. |
+
+### BloemOrganizationDomainRequest
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `host` | string | yes |  |
+| `primary` | boolean | yes |  |
+
+### BloemOrganizationDomainResponse
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `domain` | [`BloemOrganizationDomain`](#bloemorganizationdomain) | yes |  |
+
+### BloemOrganizationDomainsResponse
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `domains` | array of [`BloemOrganizationDomain`](#bloemorganizationdomain) | yes |  |
 
 ### BloemOrganizationEntitlementRead
 

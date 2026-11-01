@@ -19,7 +19,9 @@ func newMemorySettings(values map[string]string) *memorySettings {
 	return &memorySettings{values: values}
 }
 
-func (m *memorySettings) Get(_ context.Context, key string) (string, error) { return m.values[key], nil }
+func (m *memorySettings) Get(_ context.Context, key string) (string, error) {
+	return m.values[key], nil
+}
 func (m *memorySettings) Set(_ context.Context, key, value string) error {
 	m.values[key] = value
 	return nil

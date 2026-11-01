@@ -198,6 +198,22 @@
         ],
         "type": "object"
       },
+      "AdminBrandingAssetForm": {
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "contentEncoding": "binary",
+            "contentMediaType": "application/octet-stream",
+            "description": "The image: PNG, JPEG or WebP for every kind; favicon also accepts ICO and SVG. Per-kind caps: 8 MiB (wordmark, mark), 1 MiB (favicon), 12 MiB (login_bg).",
+            "format": "binary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
       "AdminFormConditionView": {
         "additionalProperties": false,
         "properties": {
@@ -4030,6 +4046,155 @@
           "membership_role",
           "policy_revision",
           "security_revision"
+        ],
+        "type": "object"
+      },
+      "BloemOrganizationBranding": {
+        "additionalProperties": false,
+        "properties": {
+          "accent_color": {
+            "type": "string"
+          },
+          "assets": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "default_theme": {
+            "type": "string"
+          },
+          "login_subtitle": {
+            "type": "string"
+          },
+          "server_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_name",
+          "login_subtitle",
+          "accent_color",
+          "default_theme",
+          "assets"
+        ],
+        "type": "object"
+      },
+      "BloemOrganizationBrandingAssetResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ref"
+        ],
+        "type": "object"
+      },
+      "BloemOrganizationBrandingUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "accent_color": {
+            "type": "string"
+          },
+          "default_theme": {
+            "type": "string"
+          },
+          "login_subtitle": {
+            "type": "string"
+          },
+          "server_name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "BloemOrganizationDomain": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "description": "When it was registered.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "host": {
+            "description": "The registered host, lower case.",
+            "examples": [
+              "main.example.com"
+            ],
+            "type": "string"
+          },
+          "organization_id": {
+            "description": "The organization the host belongs to.",
+            "type": "string"
+          },
+          "primary": {
+            "description": "Whether this is the organization's primary domain, the address its links use.",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "Who registered it: the platform administrator, or the storefront with its API key.",
+            "enum": [
+              "platform",
+              "garden"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "organization_id",
+          "primary",
+          "source",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "BloemOrganizationDomainRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "primary": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "host",
+          "primary"
+        ],
+        "type": "object"
+      },
+      "BloemOrganizationDomainResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "$ref": "#/components/schemas/BloemOrganizationDomain"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      },
+      "BloemOrganizationDomainsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/BloemOrganizationDomain"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "domains"
         ],
         "type": "object"
       },
@@ -31966,6 +32131,934 @@
           }
         ],
         "summary": "Read one reseller organization.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/tenants/{id}/branding": {
+      "get": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Only the organization's own values: an empty field is Bloem's built-in default on its domains. assets maps each uploaded asset kind to its reference.",
+        "operationId": "getBloemPlatformTenantBranding",
+        "parameters": [
+          {
+            "description": "The organization ID (UUID). A malformed or unknown ID is not_found.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The organization ID (UUID). A malformed or unknown ID is not_found.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemOrganizationBranding"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such organization (a malformed ID answers the same)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "default_organization: the default organization uses the server's branding settings."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read an organization's branding.",
+        "tags": [
+          "administration"
+        ]
+      },
+      "put": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Changes the fields it names; an empty string clears one.",
+        "operationId": "updateBloemPlatformTenantBranding",
+        "parameters": [
+          {
+            "description": "The organization ID (UUID).",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The organization ID (UUID).",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemOrganizationBrandingUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemOrganizationBranding"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_json: the body is not valid JSON."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such organization (a malformed ID answers the same)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "default_organization: the default organization uses the server's branding settings."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "validation: server_name is at most 80 characters and login_subtitle at most 200, without control characters; accent_color is a colour such as #336699; default_theme a theme name such as dark."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Change an organization's branding.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}": {
+      "delete": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. ",
+        "operationId": "deleteBloemPlatformTenantBrandingAsset",
+        "parameters": [
+          {
+            "description": "The organization ID (UUID).",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The organization ID (UUID).",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Branding asset slot",
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "description": "Branding asset slot",
+              "enum": [
+                "wordmark",
+                "mark",
+                "favicon",
+                "login_bg"
+              ],
+              "examples": [
+                "mark"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: an unknown kind."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such organization (a malformed ID answers the same)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "default_organization: the default organization uses the server's branding settings."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Remove an organization's branding image.",
+        "tags": [
+          "administration"
+        ]
+      },
+      "put": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. The same limits and processing as the server's own branding upload. The image is shown on the organization's domains only.",
+        "operationId": "uploadBloemPlatformTenantBrandingAsset",
+        "parameters": [
+          {
+            "description": "The organization ID (UUID).",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The organization ID (UUID).",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Branding asset slot",
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "description": "Branding asset slot",
+              "enum": [
+                "wordmark",
+                "mark",
+                "favicon",
+                "login_bg"
+              ],
+              "examples": [
+                "mark"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "encoding": {
+                "file": {
+                  "contentType": "image/png,image/jpeg,image/webp,image/x-icon,image/vnd.microsoft.icon,image/svg+xml"
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AdminBrandingAssetForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemOrganizationBrandingAssetResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "bad_request: an unknown kind, a malformed form, or an unsupported image."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such organization (a malformed ID answers the same)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "default_organization: the default organization uses the server's branding settings."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "too_large: the image exceeds the kind's limit."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "unavailable: asset storage is not configured."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Upload an organization's branding image.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/tenants/{id}/domains": {
+      "get": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. The primary domain comes first. A request on a registered domain shows its organization's branding, and that organization's emails link to its primary domain. A domain never decides what an account can reach.",
+        "operationId": "listBloemPlatformTenantDomains",
+        "parameters": [
+          {
+            "description": "The organization ID (UUID). A malformed or unknown ID is not_found.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The organization ID (UUID). A malformed or unknown ID is not_found.",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemOrganizationDomainsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such organization (a malformed ID answers the same)."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List an organization's domains.",
+        "tags": [
+          "administration"
+        ]
+      },
+      "post": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. An organization's first domain is its primary; primary on a later one moves the primary to it. An administrator's unscoped API key records the domain as the storefront's (source garden), a Platform context as the platform administrator's.",
+        "operationId": "addBloemPlatformTenantDomain",
+        "parameters": [
+          {
+            "description": "The organization ID (UUID).",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The organization ID (UUID).",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemOrganizationDomainRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemOrganizationDomainResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_json: the body is not valid JSON."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such organization (a malformed ID answers the same)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "domain_taken: the host is already registered."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "invalid_host: a host is a lower-case name with at least one dot, without scheme, port or path."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Register a domain to an organization.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/tenants/{id}/domains/{host}": {
+      "delete": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. Removing the primary makes the oldest remaining domain primary.",
+        "operationId": "removeBloemPlatformTenantDomain",
+        "parameters": [
+          {
+            "description": "The organization ID (UUID).",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The organization ID (UUID).",
+              "type": "string"
+            }
+          },
+          {
+            "description": "A host registered to the organization, such as main.example.com.",
+            "in": "path",
+            "name": "host",
+            "required": true,
+            "schema": {
+              "description": "A host registered to the organization, such as main.example.com.",
+              "examples": [
+                "main.example.com"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such organization, or it has no such domain."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Unregister a domain.",
+        "tags": [
+          "administration"
+        ]
+      }
+    },
+    "/api/bloem/v1/admin/platform/tenants/{id}/domains/{host}/primary": {
+      "put": {
+        "description": "Requires a Platform administrative context or an enabled administrator's unscoped API key; scoped keys, organization contexts and account sessions are refused, and the account is checked again on every request. ",
+        "operationId": "setBloemPlatformTenantPrimaryDomain",
+        "parameters": [
+          {
+            "description": "The organization ID (UUID).",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The organization ID (UUID).",
+              "type": "string"
+            }
+          },
+          {
+            "description": "A host registered to the organization, such as main.example.com.",
+            "in": "path",
+            "name": "host",
+            "required": true,
+            "schema": {
+              "description": "A host registered to the organization, such as main.example.com.",
+              "examples": [
+                "main.example.com"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_session_required or authorization_state_stale: the administrative context is missing, invalid or no longer current; unauthorized: the API key is invalid or its account is disabled."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "not_found: no such organization, or it has no such domain."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "internal_error: the operation failed; details are withheld."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "tenant_unavailable or service_unavailable: the credential or the account could not be checked."
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Make a domain the organization's primary.",
         "tags": [
           "administration"
         ]

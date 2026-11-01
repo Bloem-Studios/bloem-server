@@ -189,6 +189,7 @@ func registerBloemStorefrontDocument(reg *Registry) {
 	registerBloemPlatformAccountResourceDocument(reg)
 	registerBloemAnnouncementDocument(reg)
 	registerBloemAmbienceAssetDocument(reg)
+	registerBloemOrganizationDomainsDocument(reg)
 }
 
 func registerBloemTenantDocument(reg *Registry) {

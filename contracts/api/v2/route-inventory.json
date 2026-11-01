@@ -40,7 +40,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1162
+      "route_count": 1170
     },
     {
       "id": "api_v2",
@@ -62,8 +62,8 @@
     }
   ],
   "totals": {
-    "routes": 1347,
-    "conditional_routes": 922,
+    "routes": 1355,
+    "conditional_routes": 930,
     "streaming_routes": 45,
     "websocket_routes": 4
   },
@@ -13179,6 +13179,254 @@
       ],
       "conditional": true,
       "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/admin/platform/tenants/{id}/branding",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemOrganizationDomainsHandler).HandleGetBranding",
+      "handler_expr": "domains.HandleGetBranding",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 41,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [
+        "domains != nil"
+      ],
+      "conditional": true,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
+      "path": "/api/bloem/v1/admin/platform/tenants/{id}/branding",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemOrganizationDomainsHandler).HandleUpdateBranding",
+      "handler_expr": "domains.HandleUpdateBranding",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 41,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [
+        "domains != nil"
+      ],
+      "conditional": true,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "DELETE",
+      "path": "/api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemOrganizationDomainsHandler).HandleDeleteBrandingAsset",
+      "handler_expr": "domains.HandleDeleteBrandingAsset",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 41,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [
+        "domains != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
+      "path": "/api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemOrganizationDomainsHandler).HandleUploadBrandingAsset",
+      "handler_expr": "domains.HandleUploadBrandingAsset",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 41,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [
+        "domains != nil"
+      ],
+      "conditional": true,
+      "request_kind": "multipart",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/admin/platform/tenants/{id}/domains",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemOrganizationDomainsHandler).HandleListDomains",
+      "handler_expr": "domains.HandleListDomains",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 41,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [
+        "domains != nil"
+      ],
+      "conditional": true,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "POST",
+      "path": "/api/bloem/v1/admin/platform/tenants/{id}/domains",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemOrganizationDomainsHandler).HandleAddDomain",
+      "handler_expr": "domains.HandleAddDomain",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 41,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [
+        "domains != nil"
+      ],
+      "conditional": true,
+      "request_kind": "json",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "DELETE",
+      "path": "/api/bloem/v1/admin/platform/tenants/{id}/domains/{host}",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemOrganizationDomainsHandler).HandleRemoveDomain",
+      "handler_expr": "domains.HandleRemoveDomain",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 41,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [
+        "domains != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "PUT",
+      "path": "/api/bloem/v1/admin/platform/tenants/{id}/domains/{host}/primary",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemOrganizationDomainsHandler).HandleSetPrimaryDomain",
+      "handler_expr": "domains.HandleSetPrimaryDomain",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 41,
+      "auth_class": "acting_admin",
+      "auth_traits": [
+        "acting_admin",
+        "admin_context",
+        "authenticated"
+      ],
+      "conditions": [
+        "domains != nil"
+      ],
+      "conditional": true,
+      "request_kind": "unknown",
       "response_media_kind": "json",
       "delegates_to": "",
       "streams": false,

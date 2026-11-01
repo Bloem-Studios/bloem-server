@@ -20,6 +20,8 @@ type bloemPlatformStorefrontHandlers struct {
 	Announcements *handlers.AdminAnnouncementsHandler
 	Promotions    *handlers.AdminPromotionsHandler
 	Ambience      *handlers.AmbienceHandler
+	// Domains serves an organization's domains and branding.
+	Domains *handlers.BloemOrganizationDomainsHandler
 	// ServeAmbienceAssets mounts the public artwork route; it needs the
 	// ambience registry itself, not only a handler that answers 503.
 	ServeAmbienceAssets bool
@@ -33,6 +35,9 @@ func newBloemPlatformStorefrontHandlers(deps Dependencies, admin *handlers.Admin
 		ServeAmbienceAssets: deps.Ambience != nil, DB: deps.DB}
 	if deps.Notifications != nil {
 		out.Announcements = handlers.NewAdminAnnouncementsHandler(deps.Notifications)
+	}
+	if deps.OrganizationDomainStore != nil && deps.OrganizationDomains != nil {
+		out.Domains = handlers.NewBloemOrganizationDomainsHandler(deps.OrganizationDomainStore, deps.OrganizationDomains, deps.BrandingService)
 	}
 	if deps.DB != nil && admin != nil {
 		out.Tenants, out.TenantMembers = newBloemTenantAdminHandlers(deps, auth.NewUserRepository(deps.DB), admin, tenancy.NewStore(deps.DB))
@@ -129,6 +134,16 @@ func mountBloemPlatformStorefront(r chi.Router, h bloemPlatformStorefrontHandler
 				r.Post("/assets", ambience.HandleUploadAsset)
 				r.Post("/{id}/assets", ambience.HandleAttachAsset)
 			})
+		}
+		if domains := h.Domains; domains != nil {
+			r.Get("/admin/platform/tenants/{id}/domains", domains.HandleListDomains)
+			r.Post("/admin/platform/tenants/{id}/domains", domains.HandleAddDomain)
+			r.Put("/admin/platform/tenants/{id}/domains/{host}/primary", domains.HandleSetPrimaryDomain)
+			r.Delete("/admin/platform/tenants/{id}/domains/{host}", domains.HandleRemoveDomain)
+			r.Get("/admin/platform/tenants/{id}/branding", domains.HandleGetBranding)
+			r.Put("/admin/platform/tenants/{id}/branding", domains.HandleUpdateBranding)
+			r.Put("/admin/platform/tenants/{id}/branding/assets/{kind}", domains.HandleUploadBrandingAsset)
+			r.Delete("/admin/platform/tenants/{id}/branding/assets/{kind}", domains.HandleDeleteBrandingAsset)
 		}
 	})
 }

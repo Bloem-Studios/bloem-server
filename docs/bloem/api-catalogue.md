@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 908 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v1` | 259 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v1` | 267 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -196,6 +196,14 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v1/admin/platform/tenants` | `createBloemPlatformTenant` | Create a reseller organization. |
 | `DELETE /api/bloem/v1/admin/platform/tenants/{id}` | `retireBloemPlatformTenant` | Retire a reseller organization. |
 | `GET /api/bloem/v1/admin/platform/tenants/{id}` | `getBloemPlatformTenant` | Read one reseller organization. |
+| `GET /api/bloem/v1/admin/platform/tenants/{id}/branding` | `getBloemPlatformTenantBranding` | Read an organization's branding. |
+| `PUT /api/bloem/v1/admin/platform/tenants/{id}/branding` | `updateBloemPlatformTenantBranding` | Change an organization's branding. |
+| `DELETE /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}` | `deleteBloemPlatformTenantBrandingAsset` | Remove an organization's branding image. |
+| `PUT /api/bloem/v1/admin/platform/tenants/{id}/branding/assets/{kind}` | `uploadBloemPlatformTenantBrandingAsset` | Upload an organization's branding image. |
+| `GET /api/bloem/v1/admin/platform/tenants/{id}/domains` | `listBloemPlatformTenantDomains` | List an organization's domains. |
+| `POST /api/bloem/v1/admin/platform/tenants/{id}/domains` | `addBloemPlatformTenantDomain` | Register a domain to an organization. |
+| `DELETE /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}` | `removeBloemPlatformTenantDomain` | Unregister a domain. |
+| `PUT /api/bloem/v1/admin/platform/tenants/{id}/domains/{host}/primary` | `setBloemPlatformTenantPrimaryDomain` | Make a domain the organization's primary. |
 | `POST /api/bloem/v1/admin/platform/tenants/{id}/freeze` | `freezeBloemPlatformTenant` | Suspend a reseller organization. |
 | `PATCH /api/bloem/v1/admin/platform/tenants/{id}/limits` | `updateBloemPlatformTenantLimits` | Change seats and shared conversions. |
 | `POST /api/bloem/v1/admin/platform/tenants/{id}/thaw` | `thawBloemPlatformTenant` | Lift an administrative suspension. |

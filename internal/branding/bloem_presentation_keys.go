@@ -14,3 +14,20 @@ func PresentationSettingKeys() []string {
 	slices.Sort(keys)
 	return keys
 }
+
+// AssetKinds are every uploadable asset kind, sorted. Bloem-owned.
+func AssetKinds() []AssetKind {
+	kinds := make([]AssetKind, 0, len(assetSpecs))
+	for kind := range assetSpecs {
+		kinds = append(kinds, kind)
+	}
+	slices.Sort(kinds)
+	return kinds
+}
+
+// AssetSettingKey is the setting that holds kind's asset reference.
+// Bloem-owned.
+func AssetSettingKey(kind AssetKind) (string, bool) {
+	spec, ok := assetSpecs[kind]
+	return spec.settingKey, ok
+}
