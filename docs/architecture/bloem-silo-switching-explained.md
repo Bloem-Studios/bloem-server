@@ -2,8 +2,8 @@
 
 > **Provenance and status.** Bloem page, written on 2026-10-31, updated on 2026-11-01
 > and checked against `main` at `b6039036d`. Silo switching is a Bloem addition: Silo
-> knows nothing about it. On 2026-10-31 both switch checks passed with Silo
-> `32a2f63e1` and Bloem `4edbee99d`; no later run is recorded. This page explains it in
+> knows nothing about it. On 2026-11-01 both switch checks passed with Silo
+> `63ef34b23` and Bloem `59616c4af`, the release production runs. This page explains it in
 > plain language; the technical page,
 > [Silo backend switching](silo-backend-switching.md), holds the commands and
 > invariants.

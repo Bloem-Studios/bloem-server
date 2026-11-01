@@ -92,13 +92,17 @@ onto `users` and removed the earlier three-phase membership-policy rollout.
 `3b9e96939` (2026-10-31) added the all-in-one check and moved the check's driver to
 Silo's `/api/v2`.
 
-**Last verified on 2026-10-31:** both checks below passed with Silo `32a2f63e1` (its
-`-base` image and its all-in-one image) against Bloem `4edbee99d`. No later run is
-recorded. The November 1 merge of Silo through `63ef34b23` brought no Silo
-migrations; it did change two `omnibus/` start scripts (the `NODE_URL` check moved
-from `init-config` into Silo itself, and `init-envfile` refuses to start without
-root). Bloem's
-`20261101055208_bloem_organization_domains` adds two Bloem-only tables.
+**Last verified on 2026-11-01:** both checks below passed, all four steps each, with
+Silo `63ef34b23` against `bloem-server:release-59616c4af`, the release production runs:
+`make silo-switch-check` with Silo's `63ef34b236b88dc77acca1a9a3ed90235377691f-base`
+image (`sha256:4b601e36bcdf88bfc927a485f2a0abb3f1912d20cb55e6eb096e9b908d535f5f`), and
+`make silo-switch-check-all-in-one` with its all-in-one image
+(`sha256:8b652b0be194081936889b8ce48d5fc25cd8f71269d376a51170aada75678d07`). That run
+covers the November 1 merge of Silo through `63ef34b23`, which brought no Silo
+migrations but changed two `omnibus/` start scripts (the `NODE_URL` check moved from
+`init-config` into Silo itself, and `init-envfile` refuses to start without root), and
+Bloem's `20261101055208_bloem_organization_domains`, which adds two Bloem-only tables.
+The previous run, on 2026-10-31, used Silo `32a2f63e1` and Bloem `4edbee99d`.
 
 ### The switch
 
