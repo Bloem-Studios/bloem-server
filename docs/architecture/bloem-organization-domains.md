@@ -89,6 +89,18 @@ Not refused:
   administrator can always reach the server;
 - impersonation sessions.
 
+## Signing in through an OAuth provider (Authentik)
+
+A web sign-in through a provider stays on the organization domain it started on. The
+provider sends the browser back to that domain's callback, and the browser finishes on
+that domain's completion page, where its cookies are. `Directory.OAuthBaseURL` names the
+base, and `auth.OAuthHandler.SetRequestBaseURL` installs it.
+
+`internal/auth/oauth_handler.go` is a declared seam for this: one field and four call
+sites. They are the public-origin check, the callback address, and the completion page
+twice. On any other host the flow keeps the public URL and bounces there, as in Silo.
+The provider must know each domain's callback.
+
 ## Managing domains and branding
 
 The platform routes sit under `/api/bloem/v1/admin/platform/tenants/{id}`:
@@ -108,15 +120,18 @@ remaining domain primary.
 
 1. Point DNS at the ingress and issue a certificate for the host.
 2. Route the host to Bloem through a trusted proxy that forwards the client's host.
-3. For sign-in through Authentik on that domain, register its callback and post-sign-out
-   addresses. Authentik on each domain is not built yet; see the limits.
+3. For sign-in through Authentik on that domain, register its callback in the provider:
+   `https://<domain>/api/v1/auth/oauth/<installation>/callback` and
+   `https://<domain>/api/v2/auth/oauth/<installation>/callback`.
 4. Register the domain, in the organization page or from the storefront.
 
 ## Limits
 
-- **Authentik:** sign-in always completes on the server's public URL
-  (`internal/auth/oauth_handler.go`). An Authentik sign-in refused on another
-  organization's domain gets the OAuth handler's generic failure, not the address message.
+- **Authentik:**
+  - Signing out through the provider returns to the server's public URL.
+  - App (native) sign-in through a provider keeps the public URL.
+  - A provider sign-in refused on another organization's domain gets the OAuth
+    handler's generic failure, not the address message.
 - **Phone and TV apps:** the device sign-in page (`/activate`) and the server address the
   apps are told (`/api/v2/system/identity`) stay on the server's public URL. A device-code
   sign-in creates its session through the device login service, so the domain check does

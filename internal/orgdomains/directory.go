@@ -157,8 +157,10 @@ func WrapListener(root http.Handler, resolver *clientip.Resolver, d *Directory) 
 		return root
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if org, ok := d.Lookup(r.Context(), resolver.RequestHostOf(r)); ok {
-			r = r.WithContext(WithRequestOrganization(r.Context(), org))
+		host := resolver.RequestHostOf(r)
+		if org, ok := d.Lookup(r.Context(), host); ok {
+			ctx := WithRequestOrganization(r.Context(), org)
+			r = r.WithContext(WithRequestDomain(ctx, requestHostKey(host)))
 		}
 		root.ServeHTTP(w, r)
 	})

@@ -49,7 +49,7 @@ Checked on October 31, 2026, against `main` at `81c26179c`.
 | --- | --- |
 | Bloem `main` | `f14332386`: the merge of Silo through `63ef34b23`, on `25129bcbd` (a sign-in its organization revoked is told to sign in again), on `e5cd1eb6a`: the storefront and the web app off Silo's `/api/v1` (`3eb77be33`, `e5cd1eb6a`) and documentation, on `4edbee99d`, the merge of Silo through `32a2f63e1`, on top of `8c99f9c60` (Silo through `fbe0e89ca`), `4c3f4f56b` (Silo through `288f58200`) and `8065e5746` (Silo through `07c05cad6`), then documentation. Since October 28 it also adds library preview free play (`38e587805`), AI subtitles for word-only and Chinese or Japanese speech-to-text (`09dab0097`), per-library figures (`6314dcd0a`), guided S3 setup with all-bucket sources (`8f4ba105c`), the upgrade prompt (`c0d629550`) and new arrivals (`b99aa105c`); see the [changelog](../docs/bloem/CHANGELOG.md) |
 | Silo integrated | all of Silo `main` through `63ef34b23` (November 1, 2026, 04:45 UTC), merged in `f14332386`; `main` was zero commits behind Silo when checked |
-| Seam ledger | 303 Silo-owned files that Bloem differs in, declared in [`contracts/seams.txt`](../contracts/seams.txt) |
+| Seam ledger | 304 Silo-owned files that Bloem differs in (the 304th, `internal/auth/oauth_handler.go`, keeps a provider sign-in on its organization domain), declared in [`contracts/seams.txt`](../contracts/seams.txt) |
 | Production | `f14332386` since 05:22 UTC on November 1, from an image built locally with the Bloem Image steps before Bloem CI finished. See the [receipt](../docs/operations/2026-11-01-silo-sync-63ef34b23-deployment.md) |
 
 The two October 31 Silo merges brought:

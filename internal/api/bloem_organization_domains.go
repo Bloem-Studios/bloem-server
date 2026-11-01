@@ -30,6 +30,15 @@ func bloemInstallSignInDomainCheck(deps Dependencies, authService *auth.Service,
 	authService.SetSignInDomainCheck(deps.OrganizationDomains.SignInCheck(deps.OrganizationDomainStore, bloemServerPublicURL(settings)))
 }
 
+// bloemInstallOAuthDomains keeps a web sign-in through an OAuth provider on the
+// organization domain it started on, when the domain directory is wired.
+func bloemInstallOAuthDomains(deps Dependencies, oauthHandler *auth.OAuthHandler, settings catalog.SettingsStore) {
+	if oauthHandler == nil || deps.OrganizationDomains == nil {
+		return
+	}
+	oauthHandler.SetRequestBaseURL(deps.OrganizationDomains.OAuthBaseURL(bloemServerPublicURL(settings)))
+}
+
 // bloemServerPublicURL reads server.public_url at the time it is asked.
 func bloemServerPublicURL(settings catalog.SettingsStore) func(context.Context) string {
 	return func(ctx context.Context) string {

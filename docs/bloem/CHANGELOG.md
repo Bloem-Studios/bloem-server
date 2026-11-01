@@ -19,8 +19,13 @@ Each organization can have its own domains, name, logo and colours
   domain and carry its name.
 - **Sign-in.** Signing in on another organization's domain is refused with
   `409 wrong_organization_domain`, naming the account's own address.
-- A domain never decides what an account can reach. Authentik on each domain, the phone
-  apps and Garden's domain registration come later.
+- **Authentik.** A web sign-in through the provider stays on the organization domain it
+  started on; each domain's callback must be registered with the provider. This adds one
+  seam, `internal/auth/oauth_handler.go` (303 to 304), approved by the owner.
+- **Seasonal packs.** The web app's signed-out seasonal layer reads
+  `GET /api/bloem/v1/ambience/public` instead of Silo's `/api/v1/theme/branding`, so the
+  web app calls none of Silo's `/api/v1`.
+- A domain never decides what an account can reach. The phone apps come later.
 
 ## November 1, 2026 — an old sign-in is told to sign in again
 

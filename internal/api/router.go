@@ -2536,6 +2536,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 				ProviderLogout:  authService.ProviderLogoutURL,
 				KnownOrigins:    deps.overlayOrigins(),
 			})
+			bloemInstallOAuthDomains(deps, oauthHandler, settingsRepo)
 			if deps.OnConfigChange != nil {
 				deps.OnConfigChange(func(_, updated *config.Config) {
 					oauthHandler.SetHostBaseURL(updated.Server.PublicURL)

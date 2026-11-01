@@ -12,6 +12,7 @@ type contextKey int
 
 const (
 	requestOrganizationKey contextKey = iota
+	requestDomainKey
 	explicitOrganizationKey
 	brandingWriteKey
 )
@@ -27,6 +28,19 @@ func WithRequestOrganization(ctx context.Context, org uuid.UUID) context.Context
 func RequestOrganization(ctx context.Context) (uuid.UUID, bool) {
 	org, ok := ctx.Value(requestOrganizationKey).(uuid.UUID)
 	return org, ok && org != uuid.Nil
+}
+
+// WithRequestDomain records the registered host the request arrived on.
+// WrapListener sets it with the request's organization.
+func WithRequestDomain(ctx context.Context, host string) context.Context {
+	return context.WithValue(ctx, requestDomainKey, host)
+}
+
+// RequestDomain is the registered host the request arrived on; false on any
+// other host.
+func RequestDomain(ctx context.Context) (string, bool) {
+	host, ok := ctx.Value(requestDomainKey).(string)
+	return host, ok && host != ""
 }
 
 // WithOrganization names the organization presentation is for, for work that

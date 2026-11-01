@@ -105,6 +105,8 @@ type OAuthHandlerDeps struct {
 type OAuthHandler struct {
 	deps        OAuthHandlerDeps
 	hostBaseURL atomic.Pointer[string]
+	// Bloem: the organization domain's base for a request (bloem_oauth_domain.go).
+	requestBaseURL atomic.Pointer[func(context.Context) string]
 }
 
 // oauthCompletionTTL is how long a completion code may be redeemed.
@@ -257,7 +259,7 @@ func (h *OAuthHandler) NativeSignInAvailable() bool {
 // The binding cookie must be set there, because the provider sends the
 // browser back to the callback on that origin.
 func (h *OAuthHandler) OnPublicOrigin(r *http.Request) bool {
-	base, err := url.Parse(h.currentHostBaseURL())
+	base, err := url.Parse(h.baseURLFor(r.Context()))
 	if err != nil || base.Host == "" {
 		return true
 	}
@@ -555,7 +557,7 @@ func (h *OAuthHandler) startFlow(ctx context.Context, req OAuthStartRequest, lin
 		InstallID: strconv.Itoa(req.InstallID),
 		ExpiresAt: now.Add(h.deps.StateTTL),
 	})
-	redirectURI := h.CallbackURL(req.Prefix, req.InstallID)
+	redirectURI := h.callbackURLFor(ctx, req.Prefix, req.InstallID)
 
 	initReq := &pluginv1.InitAuthorizeRequest{
 		RedirectUri: redirectURI,
@@ -682,7 +684,7 @@ func (h *OAuthHandler) ServeCallback(w http.ResponseWriter, r *http.Request, pre
 		InstallID: installID, State: state, Code: code, ProviderError: providerError,
 		Binder: binder, CompletionBinder: completionBinder, UserAgent: r.UserAgent(), IP: clientIP(r),
 	})
-	if strings.HasPrefix(location, h.webCompletionURL()+"?") {
+	if strings.HasPrefix(location, h.webCompletionURLFor(r.Context())+"?") {
 		for _, apiPrefix := range []string{oauthV1Prefix, oauthV2Prefix} {
 			http.SetCookie(w, oauthCompletionCookie(completionBinder, h.PublicURL(apiPrefix+oauthCompletePath, nil)))
 		}
@@ -948,7 +950,7 @@ func (h *OAuthHandler) Callback(ctx context.Context, in OAuthCallbackInput) stri
 	}
 	values := url.Values{}
 	values.Set("code", completionCode)
-	return h.webCompletionURL() + "?" + values.Encode()
+	return h.webCompletionURLFor(ctx) + "?" + values.Encode()
 }
 
 // parkNativeLink stores a native linking flow's answer under a one-time
