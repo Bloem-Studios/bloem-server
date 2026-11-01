@@ -36,7 +36,7 @@ type OverlayOptions struct {
 // SettingsOverlay answers the presentation settings for the organization a
 // context belongs to (OrganizationFor), and everything else from the server.
 // Silo's branding service and account mail read through it, so each domain
-// shows its organization's name, logo and colours, and its emails link to it.
+// shows its organization's name, logo and colors, and its emails link to it.
 //
 // For the default organization, or no organization, every key is the
 // server's. For another organization, a presentation key is its own value or

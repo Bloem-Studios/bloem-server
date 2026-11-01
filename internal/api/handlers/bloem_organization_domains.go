@@ -251,9 +251,9 @@ func (h *BloemOrganizationDomainsHandler) HandleGetBranding(w http.ResponseWrite
 	writeJSON(w, http.StatusOK, out)
 }
 
-// validBrandingText is text without control characters, at most max runes.
-func validBrandingText(value string, max int) bool {
-	if !utf8.ValidString(value) || utf8.RuneCountInString(value) > max {
+// validBrandingText is text without control characters, at most limit runes.
+func validBrandingText(value string, limit int) bool {
+	if !utf8.ValidString(value) || utf8.RuneCountInString(value) > limit {
 		return false
 	}
 	for _, r := range value {
@@ -284,7 +284,7 @@ func (h *BloemOrganizationDomainsHandler) HandleUpdateBranding(w http.ResponseWr
 	changes := []change{
 		{branding.KeyServerName, req.ServerName, func(v string) bool { return validBrandingText(v, 80) }, "server_name is at most 80 characters, without control characters"},
 		{branding.KeyLoginSubtitle, req.LoginSubtitle, func(v string) bool { return validBrandingText(v, 200) }, "login_subtitle is at most 200 characters, without control characters"},
-		{branding.KeyAccentColor, req.AccentColor, accentColorPattern.MatchString, "accent_color is a colour such as #336699"},
+		{branding.KeyAccentColor, req.AccentColor, accentColorPattern.MatchString, "accent_color is a color such as #336699"},
 		{branding.KeyDefaultTheme, req.DefaultTheme, defaultThemePattern.MatchString, "default_theme is a theme name such as dark"},
 	}
 	for _, c := range changes {
@@ -329,7 +329,7 @@ func (h *BloemOrganizationDomainsHandler) HandleUploadBrandingAsset(w http.Respo
 	}
 	maxBytes := branding.MaxUploadBytes(branding.AssetKind(kind))
 	r.Body = http.MaxBytesReader(w, r.Body, maxBytes+(1<<20))
-	if err := r.ParseMultipartForm(maxBytes + (1 << 20)); err != nil {
+	if err := r.ParseMultipartForm(maxBytes + (1 << 20)); err != nil { //nolint:gosec // the body is capped by http.MaxBytesReader just above, as in Silo's branding upload
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid multipart form")
 		return
 	}

@@ -32331,7 +32331,7 @@
                 }
               }
             },
-            "description": "validation: server_name is at most 80 characters and login_subtitle at most 200, without control characters; accent_color is a colour such as #336699; default_theme a theme name such as dark."
+            "description": "validation: server_name is at most 80 characters and login_subtitle at most 200, without control characters; accent_color is a color such as #336699; default_theme a theme name such as dark."
           },
           "500": {
             "content": {

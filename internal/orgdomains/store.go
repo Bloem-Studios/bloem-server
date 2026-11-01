@@ -22,7 +22,7 @@ var (
 	ErrDomainTaken          = errors.New("orgdomains: the host is already registered")
 	ErrDomainNotFound       = errors.New("orgdomains: the organization has no such domain")
 	ErrOrganizationNotFound = errors.New("orgdomains: no such organization")
-	ErrInvalidBrandingKey   = errors.New("orgdomains: branding keys start with branding.")
+	ErrInvalidBrandingKey   = errors.New("orgdomains: branding keys need the branding prefix")
 	ErrInvalidSource        = errors.New("orgdomains: a domain's source is platform or garden")
 )
 
@@ -65,7 +65,7 @@ func (s *Store) inTransaction(ctx context.Context, org uuid.UUID, fn func(pgx.Tx
 	if err != nil {
 		return fmt.Errorf("orgdomains: begin: %w", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	defer tx.Rollback(ctx)
 	if err := lockOrganization(ctx, tx, org); err != nil {
 		return err
 	}

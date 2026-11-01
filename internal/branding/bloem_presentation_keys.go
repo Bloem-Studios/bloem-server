@@ -3,7 +3,7 @@ package branding
 import "slices"
 
 // PresentationSettingKeys are the settings a Snapshot is assembled from: the
-// server name, login subtitle, accent colour, default theme and every asset
+// server name, login subtitle, accent color, default theme and every asset
 // reference, sorted. internal/orgdomains answers them per organization.
 // Bloem-owned.
 func PresentationSettingKeys() []string {

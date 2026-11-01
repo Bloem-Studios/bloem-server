@@ -1702,7 +1702,7 @@ Request body (required, `application/json`): [`BloemOrganizationBrandingUpdate`]
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator. |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: no such organization (a malformed ID answers the same). |
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | default_organization: the default organization uses the server's branding settings. |
-| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | validation: server_name is at most 80 characters and login_subtitle at most 200, without control characters; accent_color is a colour such as #336699; default_theme a theme name such as dark. |
+| 422 | [`BloemNativeError`](README.md#bloemnativeerror) | validation: server_name is at most 80 characters and login_subtitle at most 200, without control characters; accent_color is a color such as #336699; default_theme a theme name such as dark. |
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the operation failed; details are withheld. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | tenant_unavailable or service_unavailable: the credential or the account could not be checked. |
 

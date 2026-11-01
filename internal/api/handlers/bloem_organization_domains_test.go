@@ -236,7 +236,7 @@ func TestOrganizationBrandingRoundTrip(t *testing.T) {
 	}
 	rec = f.call(t, f.handler.HandleUpdateBranding, http.MethodPut, org, jsonBody(map[string]any{"accent_color": "blue"}), "application/json", platformClaims)
 	if rec.Code != http.StatusUnprocessableEntity || errorCode(t, rec) != "validation" {
-		t.Fatalf("invalid accent colour = %d %s", rec.Code, rec.Body)
+		t.Fatalf("invalid accent color = %d %s", rec.Code, rec.Body)
 	}
 	rec = f.call(t, f.handler.HandleUpdateBranding, http.MethodPut, org, jsonBody(map[string]any{"server_name": ""}), "application/json", platformClaims)
 	_ = json.Unmarshal(rec.Body.Bytes(), &got)

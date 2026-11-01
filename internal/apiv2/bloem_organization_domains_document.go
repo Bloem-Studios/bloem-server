@@ -90,7 +90,7 @@ func registerBloemOrganizationDomainsDocument(reg *Registry) {
 		400: "invalid_json: the body is not valid JSON.",
 		404: notFound,
 		409: defaultOrg,
-		422: "validation: server_name is at most 80 characters and login_subtitle at most 200, without control characters; accent_color is a colour such as #336699; default_theme a theme name such as dark.",
+		422: "validation: server_name is at most 80 characters and login_subtitle at most 200, without control characters; accent_color is a color such as #336699; default_theme a theme name such as dark.",
 	})
 	update.Description += "Changes the fields it names; an empty string clears one."
 	registerBloemChiDocument[BloemTenantBrandingUpdateInput, BloemTenantBrandingOutput](reg, update)
@@ -105,10 +105,10 @@ func registerBloemOrganizationDomainsDocument(reg *Registry) {
 	upload.Description += "The same limits and processing as the server's own branding upload. The image is shown on the organization's domains only."
 	registerBloemChiDocument[BloemTenantBrandingAssetInput, BloemTenantBrandingAssetOutput](reg, upload)
 
-	clear := bloemStorefrontOp(reg, "DELETE", "/tenants/{id}/branding/assets/{kind}", "deleteBloemPlatformTenantBrandingAsset", "Remove an organization's branding image.", http.StatusNoContent, map[int]string{
+	deleteAsset := bloemStorefrontOp(reg, "DELETE", "/tenants/{id}/branding/assets/{kind}", "deleteBloemPlatformTenantBrandingAsset", "Remove an organization's branding image.", http.StatusNoContent, map[int]string{
 		400: "bad_request: an unknown kind.",
 		404: notFound,
 		409: defaultOrg,
 	})
-	registerBloemChiDocument[BloemTenantBrandingAssetPathInput, struct{}](reg, clear)
+	registerBloemChiDocument[BloemTenantBrandingAssetPathInput, struct{}](reg, deleteAsset)
 }
