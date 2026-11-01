@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { bloemV1Api } from "@/api/bloemClient";
 import type {
   Invitation,
   CreateInvitationRequest,
@@ -17,6 +16,15 @@ import {
 import type { AdminContextSummary } from "@/api/bloemTypes";
 
 const ADMIN_STALE_TIME = 30_000;
+
+// Outside an organization, OrganizationInvitationsTab shows Silo's own
+// invitations screen, so these hooks serve organizations only and send nothing
+// otherwise.
+function outsideOrganization(): Promise<never> {
+  return Promise.reject(
+    new Error("Invitations outside an organization are managed under Users, Invitations."),
+  );
+}
 
 function invitationsKey(context?: AdminContextSummary | null) {
   return context?.scope === "organization"
@@ -36,7 +44,8 @@ export function useAdminInvitations(context?: AdminContextSummary | null) {
             "safe",
             authority,
           ).then((data) => data.invitations ?? [])
-        : bloemV1Api<Invitation[]>("/admin/invitations").then((d) => d ?? []),
+        : outsideOrganization(),
+    enabled: context?.scope === "organization",
     staleTime: ADMIN_STALE_TIME,
   });
 }
@@ -130,14 +139,7 @@ export function useCreateInvitation(context?: AdminContextSummary | null) {
             : undefined,
         };
       }
-      return bloemV1Api<SendInvitationResponse>(
-        "/admin/invitations",
-        {
-          method: "POST",
-          body: JSON.stringify(body),
-        },
-        "none",
-      );
+      return outsideOrganization();
     },
     "Could not confirm invitation creation",
   );
@@ -162,11 +164,7 @@ export function useResendInvitation(context?: AdminContextSummary | null) {
           claim_url: `${window.location.origin}/invite/${encodeURIComponent(data.claim_token)}`,
         };
       }
-      return bloemV1Api<SendInvitationResponse>(
-        `/admin/invitations/${id}/resend`,
-        { method: "POST" },
-        "none",
-      );
+      return outsideOrganization();
     },
     "Failed to resend invitation",
   );
@@ -189,7 +187,7 @@ export function useRevokeInvitation(context?: AdminContextSummary | null) {
             "none",
             authority,
           )
-        : bloemV1Api(`/admin/invitations/${id}`, { method: "DELETE" }),
+        : outsideOrganization(),
     onSuccess: () => {
       toast.success("Invitation revoked");
       queryClient.invalidateQueries({ queryKey: invitationsKey(context) });

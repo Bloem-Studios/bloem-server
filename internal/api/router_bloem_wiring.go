@@ -254,6 +254,19 @@ func wireBloemAdmin(
 	if platformPeople != nil {
 		adminHandler.SetPlatformEntitlementBulk(entitlementStore, platformPeople, tenantOrgStore, platformAuthorizer, deps.AdminPeopleWorker)
 	}
+	return newBloemTenantAdminHandlers(deps, userRepo, adminHandler, tenantOrgStore)
+}
+
+// newBloemTenantAdminHandlers builds the tenant and tenant-member handlers
+// over one member service. The legacy /api/v1/admin/tenants routes and the
+// native /api/bloem/v1/admin/platform/tenants routes each build their own,
+// from the same pieces, so both behave alike.
+func newBloemTenantAdminHandlers(
+	deps Dependencies,
+	userRepo *auth.UserRepository,
+	adminHandler *handlers.AdminHandler,
+	tenantOrgStore *tenancy.Store,
+) (*handlers.AdminTenantsHandler, *handlers.AdminTenantMembersHandler) {
 	memberAccounts := auth.NewAccountProvisioner(userRepo, deps.UserStoreProvider)
 	memberService := tenancy.NewMemberService(
 		deps.DB,

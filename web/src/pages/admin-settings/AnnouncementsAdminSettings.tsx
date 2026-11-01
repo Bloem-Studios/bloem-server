@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Megaphone } from "lucide-react";
-import { bloemV1Api } from "@/api/bloemClient";
+import { adminV2Api, adminV2QueryKey, captureAdminRequestContext } from "@/api/adminV2Client";
+import type { AdminContextSummary } from "@/api/bloemTypes";
+import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
@@ -15,8 +17,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const endpoint = "/admin/notifications/announcements";
-const queryKey = ["admin", "announcements"];
+// Announcements reach the whole server, so they are platform administration.
+const endpoint = "/platform/announcements";
 type Severity = "info" | "warning" | "critical";
 type Audience = "all" | "role" | "organization" | "library" | "explicit";
 interface AnnouncementBody {
@@ -91,10 +93,25 @@ function status(item: Announcement) {
 }
 
 export default function AnnouncementsAdminSettings() {
+  const { active } = useAdminContext();
+  if (active?.scope !== "platform")
+    return <p role="alert">Select the platform context to publish announcements.</p>;
+  return (
+    <AnnouncementsComposer
+      key={`${active.key}:${captureAdminRequestContext(active.key)?.generation ?? "unbound"}`}
+      context={active}
+    />
+  );
+}
+
+function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
   const cache = useQueryClient();
+  const authority = captureAdminRequestContext(context.key);
+  const queryKey = adminV2QueryKey(context.key, "announcements", authority?.generation);
   const listing = useQuery({
     queryKey,
-    queryFn: () => bloemV1Api<{ announcements: Announcement[] }>(endpoint),
+    queryFn: ({ signal }) =>
+      adminV2Api<{ announcements: Announcement[] }>(endpoint, { signal }, "safe", authority),
   });
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -132,7 +149,12 @@ export default function AnnouncementsAdminSettings() {
   );
   const publish = useMutation({
     mutationFn: (input: AnnouncementInput) =>
-      bloemV1Api<Announcement>(endpoint, { method: "POST", body: JSON.stringify(input) }),
+      adminV2Api<Announcement>(
+        endpoint,
+        { method: "POST", body: JSON.stringify(input) },
+        "none",
+        authority,
+      ),
     onSuccess: (result) => {
       setReceipt(
         typeof result.recipient_count === "number"
@@ -158,7 +180,7 @@ export default function AnnouncementsAdminSettings() {
   });
   const withdraw = useMutation({
     mutationFn: (id: string) =>
-      bloemV1Api(endpoint + "/" + encodeURIComponent(id), { method: "DELETE" }),
+      adminV2Api(endpoint + "/" + encodeURIComponent(id), { method: "DELETE" }, "none", authority),
     onSuccess: () => {
       setWithdrawing(null);
       setReceipt("Announcement withdrawn.");

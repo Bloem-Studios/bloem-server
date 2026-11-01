@@ -49,6 +49,7 @@ import { Copy, MailPlus, RotateCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/datetime";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
+import InvitationsTab from "./InvitationsTab";
 import { useOrganizationLibraries } from "@/hooks/queries/admin/organizationLibraries";
 import type { AdminContextSummary } from "@/api/bloemTypes";
 import { useBloemCapabilities } from "@/hooks/queries/useBloemCapabilities";
@@ -92,6 +93,8 @@ const STATUS_BADGES: Record<InvitationStatus, { label: string; variant: "default
 
 export default function OrganizationInvitationsTab() {
   const { active } = useAdminContext();
+  // Outside an organization, invitations are Silo's own, on Silo's /api/v2.
+  if (active?.scope !== "organization") return <InvitationsTab />;
   const generation = active ? captureAdminRequestContext(active.key)?.generation : undefined;
   return (
     <InvitationContent

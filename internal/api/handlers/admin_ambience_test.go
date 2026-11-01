@@ -7,12 +7,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"image"
 	"image/png"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -398,8 +398,9 @@ func TestAdminAmbienceStandaloneUploadReturnsPublicURL(t *testing.T) {
 		t.Fatalf("upload: %d %s %v", rec.Code, rec.Body.String(), reg.attached)
 	}
 	// This response is the standalone upload contract quoted in
-	// docs/specs/client-engagement.md "Admin ambience contract".
-	want := `{"asset":{"asset_id":"3f1c2a9e-1d2b-4c3d-8e4f-5a6b7c8d9e0f","kind":"season_banner","ref":"` + checksum[:16] + `.png","url":"/api/v1/ambience/assets/` + checksum[:16] + `.png","checksum":"` + checksum + `","content_type":"image/png","size_bytes":` + fmt.Sprint(img.Len()) + `},"url":"/api/v1/ambience/assets/` + checksum[:16] + `.png"}`
+	// docs/specs/client-engagement.md "Admin ambience contract", with the
+	// public path on the native API since uploads left /api/v1.
+	want := `{"asset":{"asset_id":"3f1c2a9e-1d2b-4c3d-8e4f-5a6b7c8d9e0f","kind":"season_banner","ref":"` + checksum[:16] + `.png","url":"/api/bloem/v1/ambience/assets/` + checksum[:16] + `.png","checksum":"` + checksum + `","content_type":"image/png","size_bytes":` + strconv.Itoa(img.Len()) + `},"url":"/api/bloem/v1/ambience/assets/` + checksum[:16] + `.png"}`
 	if strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("response drifted from the documented contract:\n got %s\nwant %s", rec.Body.String(), want)
 	}

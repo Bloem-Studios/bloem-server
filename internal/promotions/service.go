@@ -415,6 +415,41 @@ func (s *Service) viewerRole(ctx context.Context, userID int) (string, error) {
 	return *role, nil
 }
 
+// Dismiss records that the profile does not want promotion id on surface
+// again. It writes the per-profile home dismissal store under
+// DismissalSurface(surface), which delivery reads back through dismissed.
+// Repeating it refreshes the stamp.
+func (s *Service) Dismiss(ctx context.Context, v Viewer, surface, id string) error {
+	if !IsSurface(surface) {
+		return invalid("surface must be one of home, detail, pre_playback, in_playback")
+	}
+	if id == "" || len(id) > maxDismissedIDLen {
+		return invalid("promotion id must be 1 to %d bytes", maxDismissedIDLen)
+	}
+	if s.stores == nil || v.UserID <= 0 || v.ProfileID == "" {
+		return ErrDismissalUnavailable
+	}
+	store, err := s.stores.ForUser(ctx, v.UserID)
+	if err != nil {
+		return fmt.Errorf("promotions: user store: %w", err)
+	}
+	if store == nil {
+		return ErrDismissalUnavailable
+	}
+	return store.UpsertHomeDismissal(ctx, userstore.HomeItemDismissal{
+		ProfileID:   v.ProfileID,
+		Surface:     DismissalSurface(surface),
+		MediaItemID: id,
+		DismissedAt: s.Now().Format(time.RFC3339),
+	})
+}
+
+// maxDismissedIDLen bounds a dismissed promotion id; ids are ULIDs.
+const maxDismissedIDLen = 64
+
+// ErrDismissalUnavailable means no per-profile store can hold a dismissal.
+var ErrDismissalUnavailable = errors.New("promotions: dismissals unavailable")
+
 // dismissed lists the promotion ids the profile dismissed on the surface.
 // Store failures degrade to "nothing dismissed" (logged), never to an error.
 func (s *Service) dismissed(ctx context.Context, v Viewer, surface string) map[string]struct{} {

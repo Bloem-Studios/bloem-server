@@ -337,10 +337,15 @@ func (h *AdminHandler) bloemPrepareUpdateUser(w http.ResponseWriter, r *http.Req
 	return currentUser, false
 }
 
-// requestAccountID is the authenticated account making the request, or 0.
+// requestAccountID is the authenticated account making the request, or 0:
+// the account behind the session or API key, or behind a Platform context on
+// the native account routes.
 func requestAccountID(r *http.Request) int {
 	if claims := apimw.GetClaims(r.Context()); claims != nil {
 		return claims.UserID
+	}
+	if claims, ok := apimw.GetAdminContextClaims(r.Context()); ok && claims.Scope == auth.AdminScopePlatform {
+		return claims.AccountID
 	}
 	return 0
 }

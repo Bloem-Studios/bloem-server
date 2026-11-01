@@ -49,6 +49,11 @@ var bloemAuthRules = []authRule{
 	// to platform scope; it does not exchange organization authority.
 	{marker: "RequireBloemPlatformContext", class: authActingAdmin, trait: traitActingAdmin, rank: 60},
 	{marker: "RequireBloemPlatformContext", trait: traitAdminContext},
+	// RequireBloemPlatformAdmin follows eitherPlatformCredential on the
+	// storefront routes and narrows either credential to platform
+	// administrator authority (internal/api/handlers/bloem_platform_admin_gate.go).
+	{marker: "RequireBloemPlatformAdmin", class: authActingAdmin, trait: traitActingAdmin, rank: 60},
+	{marker: "RequireBloemPlatformAdmin", trait: traitAdminContext},
 	{marker: markerPlatformCredential, class: authActingAdmin, trait: traitActingAdmin, rank: 60},
 	{marker: markerPlatformCredential, trait: traitAdminContext},
 	{marker: markerPlatformCredential, trait: traitAuthenticated},

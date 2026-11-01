@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 
-	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/go-chi/chi/v5"
 )
@@ -79,7 +78,7 @@ func (h *AdminAnnouncementsHandler) HandleCreate(w http.ResponseWriter, r *http.
 		writeError(w, http.StatusBadRequest, "bad_request", "Invalid request body")
 		return
 	}
-	created, err := h.service.Create(r.Context(), apimw.GetUserID(r.Context()), in)
+	created, err := h.service.Create(r.Context(), engagementActorID(r), in)
 	if err != nil {
 		writeAnnouncementError(w, err)
 		return

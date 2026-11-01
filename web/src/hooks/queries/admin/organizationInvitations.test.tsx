@@ -46,21 +46,11 @@ function deferred<T>() {
   });
   return { promise, resolve };
 }
-function listResponse(native = true) {
-  return new Response(JSON.stringify(native ? { invitations: [invitation] } : [invitation]));
+function listResponse() {
+  return new Response(JSON.stringify({ invitations: [invitation] }));
 }
-function claimResponse(native = true) {
-  return new Response(
-    JSON.stringify(
-      native
-        ? { invitation, claim_token: token }
-        : {
-            invitation,
-            email_sent: true,
-            claim_url: `https://server.test/invite/${token}`,
-          },
-    ),
-  );
+function claimResponse() {
+  return new Response(JSON.stringify({ invitation, claim_token: token }));
 }
 function mountInvitations(native = true) {
   const client = new QueryClient({
@@ -213,25 +203,16 @@ describe.each(["create", "resend"] as const)("%s direct invitation request", (ac
     },
   );
 
-  it("preserves legacy delivery and role without caching the response", async () => {
-    fetchMock.mockImplementation(async (_url, init) =>
-      init?.method === "POST" ? claimResponse(false) : listResponse(false),
-    );
+  it("sends nothing outside an organization", async () => {
     const view = mountInvitations(false);
-    await waitFor(() => expect(view.result.current.list.isSuccess).toBe(true));
+    expect(view.result.current.list.fetchStatus).toBe("idle");
     await act(async () => {
       const handoff = await (action === "create"
         ? view.result.current.create.send(body)
         : view.result.current.resend.send(3));
-      expect(handoff).toEqual({
-        invitation,
-        email_sent: true,
-        claim_url: `https://server.test/invite/${token}`,
-      });
+      expect(handoff).toBeUndefined();
     });
-    const write = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")!;
-    expect(write[0]).toBe(`/api/v1/admin/invitations${action === "resend" ? "/3/resend" : ""}`);
-    if (action === "create") expect(JSON.parse(String(write[1]?.body))).toEqual(body);
+    expect(fetchMock).not.toHaveBeenCalled();
     expectNoCachedToken(view.client);
   });
 });

@@ -51,24 +51,46 @@ type promotionsResponse struct {
 // The response carries cards only: there is no timer or wait field, the
 // client always keeps "continue to content" as the default action.
 func (h *PromotionsHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+	h.list(w, r, false)
+}
+
+// list serves both campaign lists. The /api/v1 route (native false) leaves
+// home cards to the `promoted` home section; the native route also serves
+// the home surface, with the row position.
+func (h *PromotionsHandler) list(w http.ResponseWriter, r *http.Request, native bool) {
 	if h == nil || h.source == nil {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Promotions are not available")
 		return
 	}
 	surface := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("surface")))
-	if !promotions.IsSurface(surface) || surface == promotions.SurfaceHome {
-		writeError(w, http.StatusBadRequest, "bad_request", "surface must be detail, pre_playback or in_playback")
+	if !promotions.IsSurface(surface) || (!native && surface == promotions.SurfaceHome) {
+		message := "surface must be detail, pre_playback or in_playback"
+		if native {
+			message = "surface must be home, detail, pre_playback or in_playback"
+		}
+		writeError(w, http.StatusBadRequest, "bad_request", message)
 		return
 	}
-	viewer := promotions.Viewer{UserID: apimw.GetUserID(r.Context()), ProfileID: apimw.GetProfileID(r.Context())}
-	if scope, ok := access.GetScope(r.Context()); ok {
-		viewer.LibraryIDs = scope.AllowedLibraryIDs
+	viewer := promotionViewer(r)
+	var cards []promotions.Card
+	var position *int
+	var err error
+	if surface == promotions.SurfaceHome {
+		home, ok := h.source.(promotionViewerSource)
+		if !ok {
+			writeError(w, http.StatusServiceUnavailable, "unavailable", "Promotions are not available")
+			return
+		}
+		var at int
+		cards, at, err = home.ActiveHome(r.Context(), viewer)
+		position = &at
+	} else {
+		cards, err = h.source.Active(r.Context(), promotions.Query{
+			Surface:   surface,
+			ContentID: strings.TrimSpace(r.URL.Query().Get("content_id")),
+			Viewer:    viewer,
+		})
 	}
-	cards, err := h.source.Active(r.Context(), promotions.Query{
-		Surface:   surface,
-		ContentID: strings.TrimSpace(r.URL.Query().Get("content_id")),
-		Viewer:    viewer,
-	})
 	if err != nil {
 		if errors.Is(err, promotions.ErrInvalid) {
 			writeError(w, http.StatusBadRequest, "bad_request", err.Error())
@@ -80,7 +102,20 @@ func (h *PromotionsHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	if cards == nil {
 		cards = []promotions.Card{}
 	}
+	if native {
+		writeJSON(w, http.StatusOK, BloemPromotionsResponse{Surface: surface, Promotions: cards, HomePosition: position})
+		return
+	}
 	writeJSON(w, http.StatusOK, promotionsResponse{Surface: surface, Promotions: cards})
+}
+
+// promotionViewer is the profile a campaign request is evaluated for.
+func promotionViewer(r *http.Request) promotions.Viewer {
+	viewer := promotions.Viewer{UserID: apimw.GetUserID(r.Context()), ProfileID: apimw.GetProfileID(r.Context())}
+	if scope, ok := access.GetScope(r.Context()); ok {
+		viewer.LibraryIDs = scope.AllowedLibraryIDs
+	}
+	return viewer
 }
 
 // HandleSave sends only the authenticated profile's eligible campaign to its inbox.
@@ -90,10 +125,7 @@ func (h *PromotionsHandler) HandleSave(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "unavailable", "Inbox is unavailable")
 		return
 	}
-	viewer := promotions.Viewer{UserID: apimw.GetUserID(r.Context()), ProfileID: apimw.GetProfileID(r.Context())}
-	if scope, ok := access.GetScope(r.Context()); ok {
-		viewer.LibraryIDs = scope.AllowedLibraryIDs
-	}
+	viewer := promotionViewer(r)
 	cards, err := h.source.Active(r.Context(), promotions.Query{Surface: promotions.SurfaceInPlayback, ContentID: strings.TrimSpace(r.URL.Query().Get("content_id")), Viewer: viewer})
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "unavailable", "Campaign cannot be saved")

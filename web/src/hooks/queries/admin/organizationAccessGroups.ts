@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { bloemV1Api } from "@/api/bloemClient";
+import {
+  createAccessGroup,
+  deleteAccessGroup,
+  getAccessGroup,
+  listAccessGroups,
+  updateAccessGroup,
+} from "@/api/v2/accessGroups";
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
 import type { AccessGroup, AccessGroupInput } from "@/api/types";
 import type { AdminContextSummary } from "@/api/bloemTypes";
@@ -23,7 +29,7 @@ export function useAccessGroups(context?: AdminContextSummary | null) {
         ? adminV2Api<{ groups: AccessGroup[] }>("/organization/groups").then(
             (data) => data.groups ?? [],
           )
-        : bloemV1Api<AccessGroup[]>("/admin/access-groups").then((data) => data ?? []),
+        : listAccessGroups(),
     staleTime: ADMIN_STALE_TIME,
   });
 }
@@ -38,10 +44,7 @@ export function useCreateAccessGroup(context?: AdminContextSummary | null) {
           body: JSON.stringify({ ...body, expected_revision: context.policyRevision }),
         }).then((data) => data.group);
       }
-      return bloemV1Api<AccessGroup>("/admin/access-groups", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
+      return createAccessGroup(body);
     },
     onSuccess: () => {
       toast.success("Access group created");
@@ -63,10 +66,9 @@ export function useUpdateAccessGroup(context?: AdminContextSummary | null) {
           body: JSON.stringify({ ...body, expected_revision: context.policyRevision }),
         }).then((data) => data.group);
       }
-      return bloemV1Api<AccessGroup>(`/admin/access-groups/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      });
+      return getAccessGroup(id)
+        .then((editor) => updateAccessGroup(editor, body))
+        .then((saved) => saved.group);
     },
     onSuccess: (_data, variables) => {
       toast.success("Access group updated");
@@ -92,13 +94,13 @@ export interface GroupDeletionImpact {
 export function useDeleteAccessGroup(context?: AdminContextSummary | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) =>
+    mutationFn: (id: number): Promise<GroupDeletionImpact | void> =>
       context?.scope === "organization"
         ? adminV2Api<GroupDeletionImpact>(`/organization/groups/${id}`, {
             method: "DELETE",
             body: JSON.stringify({ expected_revision: context.policyRevision }),
           })
-        : bloemV1Api(`/admin/access-groups/${id}`, { method: "DELETE" }),
+        : getAccessGroup(id).then(deleteAccessGroup),
     onSuccess: (_data, id) => {
       toast.success("Access group deleted");
       queryClient.invalidateQueries({ queryKey: groupKey(context) });

@@ -2710,6 +2710,18 @@
       "reason": "Administrative /api/v1 surface, read only by the bundled web admin UI. It appears in neither the v2 nor the Bloem native document, so no generated client decodes it."
     },
     {
+      "type": "internal/api/handlers.BloemPlatformAccountCreateRequest",
+      "reason": "Storefront-only request body for creating an account on a plan; no native client creates accounts."
+    },
+    {
+      "type": "internal/api/handlers.BloemPlatformAccountUpdateRequest",
+      "reason": "Storefront-only request body for updating an account on a plan; no native client updates accounts."
+    },
+    {
+      "type": "internal/api/handlers.BloemPromotionsResponse",
+      "reason": "Native viewer campaign list read by the embedded web app; the phone apps still read the /api/v1 promotions shape and have not adopted the native route."
+    },
+    {
       "type": "internal/apiv2.AdminAPIClient",
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     },
@@ -2736,6 +2748,42 @@
     {
       "type": "internal/apiv2.AdminRateLimitSessionQuotaUpdate",
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.BloemAnnouncementList",
+      "reason": "OpenAPI-only list envelope for the platform announcements route the storefront calls; runtime announcements use notifications.Announcement and no native client authors them."
+    },
+    {
+      "type": "internal/apiv2.BloemPlatformAccountUpdateBody",
+      "reason": "OpenAPI-only description of the storefront's account update body, whose tri-state fields the schema reflector cannot read."
+    },
+    {
+      "type": "internal/apiv2.BloemPromotionSaveResponse",
+      "reason": "OpenAPI-only wrapper documenting the native campaign save acknowledgement; the embedded web app ignores the body."
+    },
+    {
+      "type": "internal/apiv2.BloemTenantCreateBody",
+      "reason": "OpenAPI-only declaration of the storefront's tenant creation body; the handler decodes its own struct and no native client provisions tenants."
+    },
+    {
+      "type": "internal/apiv2.BloemTenantExternalRef",
+      "reason": "OpenAPI-only part of the storefront's tenant creation body; the handler owns the runtime type."
+    },
+    {
+      "type": "internal/apiv2.BloemTenantLimits",
+      "reason": "OpenAPI-only declaration of the storefront's tenant seats and conversions body; the handler decodes its own struct."
+    },
+    {
+      "type": "internal/apiv2.BloemTenantMemberCreateBody",
+      "reason": "OpenAPI-only declaration of the storefront's tenant member creation body; no native client provisions members."
+    },
+    {
+      "type": "internal/apiv2.BloemTenantMemberPasswordBody",
+      "reason": "OpenAPI-only declaration of the storefront's member password reset body; no native client calls it."
+    },
+    {
+      "type": "internal/apiv2.BloemTenantMemberUpdateBody",
+      "reason": "OpenAPI-only declaration of the storefront's member update body; no native client calls it."
     }
   ]
 }

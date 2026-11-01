@@ -31,9 +31,15 @@ const (
 )
 
 // AssetURLBase is the public path prefix under which server-stored ambience
-// artwork is served (see Service.ServeAsset). Pack asset URLs must be https://
-// absolute URLs or paths under this prefix.
-const AssetURLBase = "/api/v1/ambience/assets/"
+// artwork is served (see Service.ServeAsset), on Bloem's native API. Pack asset
+// URLs must be https:// absolute URLs or paths under this prefix or
+// LegacyAssetURLBase.
+const AssetURLBase = "/api/bloem/v1/ambience/assets/"
+
+// LegacyAssetURLBase is where uploads were served before they moved to
+// AssetURLBase. Packs and campaigns saved then still hold such paths, and the
+// legacy route keeps serving them, so they stay valid.
+const LegacyAssetURLBase = "/api/v1/ambience/assets/"
 
 const (
 	maxEffectIDLen = 64
@@ -227,14 +233,16 @@ func NormalizeAssets(in Assets) (Assets, error) {
 
 // IsAssetURL reports whether s is an acceptable artwork reference: an
 // absolute https:// URL with a host, or a server-served path under
-// AssetURLBase. Everything else (http:, data:, javascript:, protocol-relative,
+// AssetURLBase or LegacyAssetURLBase. Everything else (http:, data:, javascript:, protocol-relative,
 // arbitrary app paths) is rejected.
 func IsAssetURL(s string) bool {
 	if s == "" || len(s) > maxAssetURLLen {
 		return false
 	}
-	if strings.HasPrefix(s, AssetURLBase) {
-		return assetRefPattern.MatchString(strings.TrimPrefix(s, AssetURLBase))
+	for _, base := range []string{AssetURLBase, LegacyAssetURLBase} {
+		if strings.HasPrefix(s, base) {
+			return assetRefPattern.MatchString(strings.TrimPrefix(s, base))
+		}
 	}
 	u, err := url.Parse(s)
 	if err != nil {

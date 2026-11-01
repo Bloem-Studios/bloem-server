@@ -114,13 +114,17 @@ type BloemAmbienceAttachOutput struct{ Body BloemAmbienceAttachResponse }
 
 func bloemEngagementDocumentOp(reg *Registry, method, path, id, summary string, status int) huma.Operation {
 	op := bloemChiDocumentOp(reg, method, "/admin/platform"+path, id, "engagement", summary, "bloemPlatformContext", status)
-	op.Description = "Requires a platform-scoped administrative-context token, with current account and originating login-session authority revalidated. Organization contexts and ordinary account tokens are insufficient. This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority."
+	op.Security = append(op.Security, map[string][]string{"bearerAuth": {}})
+	op.Description = bloemStorefrontAuthority + "This registry can author both deployment-wide and organization-owned content; organization_id in a body selects ownership, not authority."
 	registry := "promotion"
 	if strings.HasPrefix(path, "/ambience") {
 		registry = "ambience"
 	}
+	if registry == "promotion" {
+		op.Description += " In-playback cards (surface in_playback) are available when /api/bloem/v1/capabilities lists playback_overlays_v1."
+	}
 	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
-		403: "insufficient_platform_authority: the token is not a platform-scoped administrative context, or its account is no longer a platform administrator. An organization context can instead receive organization_suspended.",
+		403: "insufficient_platform_authority: the credential is neither a Platform context nor an administrator's unscoped API key, or the account is no longer an enabled administrator.",
 		500: "internal_error: the registry operation failed.",
 		503: "unavailable: the " + registry + " registry is not configured. tenant_unavailable: administrative authority could not be checked.",
 	})
@@ -172,7 +176,7 @@ func registerBloemEngagementDocument(reg *Registry) {
 			invalid = "bad_request: invalid multipart form, missing file part, a slot other than banner or sprite, or a sprite for a pack that already has 32."
 		}
 		op := bloemEngagementDocumentOp(reg, "POST", path, id, summary, 201)
-		op.Description += " Requires configured asset upload storage, reported as storage_available by the ambience list. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. Stored artwork is content-addressed; url is its public server path under /api/v1/ambience/assets/."
+		op.Description += " Requires configured asset upload storage, reported as storage_available by the ambience list. Send multipart/form-data with a file part of at most 8 MiB; the entire form is capped at 9 MiB. PNG, WebP, JPEG and GIF are accepted by sniffing the bytes, regardless of declared content type. Stored artwork is content-addressed; url is its public server path under /api/bloem/v1/ambience/assets/. Paths under /api/v1/ambience/assets/ from earlier uploads stay valid in pack and campaign bodies."
 		bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{
 			400: invalid,
 			413: "too_large: artwork or the multipart body exceeds its limit.",

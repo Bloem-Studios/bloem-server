@@ -2,15 +2,15 @@ import { cleanup, render, screen, fireEvent, act } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, expect, it, vi } from "vitest";
 import { PlaybackSession } from "./PlaybackEngagement";
-import { bloemV1Api } from "@/api/bloemClient";
-vi.mock("@/api/bloemClient", () => ({ bloemV1Api: vi.fn() }));
+import { nativeApi } from "@/api/bloemClient";
+vi.mock("@/api/bloemClient", () => ({ nativeApi: vi.fn() }));
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
 it("renders without taking focus, accepts Right, and honors a configured twenty-second duration", async () => {
   vi.useFakeTimers();
-  vi.mocked(bloemV1Api).mockResolvedValue({
+  vi.mocked(nativeApi).mockResolvedValue({
     promotions: [
       {
         id: "offer",

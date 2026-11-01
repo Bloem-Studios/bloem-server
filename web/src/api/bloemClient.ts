@@ -1,4 +1,7 @@
-// Bloem's JSON API client (legacy /api/v1 and native /api/bloem/v1 routes).
+// Bloem's JSON API client. Bloem screens call Silo's /api/v2 through v2() and
+// Bloem's native /api/bloem/v1 through nativeApi(); nothing in Bloem calls
+// Silo's /api/v1 (docs/architecture/bloem-leaving-silo-v1.md). api() keeps the
+// shared transport that bloemClient.test.ts exercises.
 // Built on the Silo-owned session transport in client.ts so that file stays
 // close to upstream.
 import type { ApiError } from "./types";
@@ -152,17 +155,6 @@ export function apiWithProfileRequestContext<T>(
 ): Promise<T> {
   return apiForProfile<T>(path, snapshot, options, "/api/v1", policy);
 }
-
-/**
- * Bloem screens calling /api/v1 routes that have no generated v2 contract
- * (organization administration, announcements, promotions, campaigns) declare
- * the response type at the call site. Silo's lint rule against api<T>() is for
- * routes with a contract: call v2() for those, and nativeApi() for
- * /api/bloem/v1.
- */
-export const bloemV1Api: typeof api = api;
-export const bloemV1ApiWithProfileRequestContext: typeof apiWithProfileRequestContext =
-  apiWithProfileRequestContext;
 
 /** Native viewer routes use the same authentication, profile binding and refresh flow. */
 export function nativeApiWithProfileRequestContext<T>(

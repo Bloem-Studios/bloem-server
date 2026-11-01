@@ -26,6 +26,8 @@ type BloemSystemHandler struct {
 	directProfileLogin          bool
 	profileCredentialManagement bool
 	seasonalViewer              bool
+	playbackOverlays            bool
+	promotionsViewer            bool
 	bookRequests                bool
 	ebookRequests               bool
 	bookRequestConnectionAdmin  bool
@@ -53,6 +55,18 @@ func (h *BloemSystemHandler) SetEbookRequestsAvailable(available bool) { h.ebook
 // edit and test routes of the book request lanes.
 func (h *BloemSystemHandler) SetBookRequestConnectionAdminAvailable(available bool) {
 	h.bookRequestConnectionAdmin = available
+}
+
+// SetPlaybackOverlaysAvailable tracks the campaign registry that in-playback
+// cards need; a storefront checks it before saving one.
+func (h *BloemSystemHandler) SetPlaybackOverlaysAvailable(available bool) {
+	h.playbackOverlays = available
+}
+
+// SetPromotionsViewerAvailable tracks the native viewer campaign routes
+// (/promotions, /promotions/{id}/save, /promotions/{id}/dismissals/{surface}).
+func (h *BloemSystemHandler) SetPromotionsViewerAvailable(available bool) {
+	h.promotionsViewer = available
 }
 
 // SetSeasonalViewerAvailable tracks the authenticated native ambience route.
@@ -181,6 +195,12 @@ func (h *BloemSystemHandler) HandleCapabilities(w http.ResponseWriter, request *
 	}
 	if h.seasonalViewer {
 		featureTokens = append(featureTokens, "seasonal_viewer_v1")
+	}
+	if h.playbackOverlays {
+		featureTokens = append(featureTokens, "playback_overlays_v1")
+	}
+	if h.promotionsViewer {
+		featureTokens = append(featureTokens, "promotions_viewer_v1")
 	}
 	writeJSON(w, http.StatusOK, bloemCapabilitiesResponse{
 		API:            nativeAPIIdentifier,

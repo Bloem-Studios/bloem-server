@@ -114,6 +114,7 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 	// capability that disagrees with the route table is worse than no
 	// capability at all.
 	system.SetDirectProfileLoginAvailable(deps.DB != nil && deps.Config != nil)
+	system.SetPlaybackOverlaysAvailable(deps.Promotions != nil)
 	var credentialHandler *handlers.BloemProfileCredentialsHandler
 	var credentialLimit func(http.Handler) http.Handler
 	if deps.DB != nil && deps.Config != nil && deps.Config.Auth.JWTSecret != "" && deps.UserStoreProvider != nil {
@@ -134,11 +135,13 @@ func mountBloem(r chi.Router, deps Dependencies, authMW *apimw.AuthMiddleware, t
 			Platform:       platformHandler, People: peopleHandler, Organization: organizationHandler,
 			Explain:     explainHandler,
 			Entitlement: entitlementHandler, AccountPolicy: accountPolicyHandler,
-			Promotions: handlers.NewAdminPromotionsHandler(deps.Promotions), Ambience: handlers.NewAmbienceHandler(deps.Ambience),
+			Storefront: newBloemPlatformStorefrontHandlers(deps, accountPolicyHandler,
+				handlers.NewAdminPromotionsHandler(deps.Promotions), handlers.NewAmbienceHandler(deps.Ambience)),
 			ProfileCredentials: credentialHandler, ProfileCredentialLimit: credentialLimit,
-			SeasonalViewer: handlers.NewBloemSeasonalViewerHandler(deps.Ambience, tenants),
-			NativeStorage:  deps.NativeStorageManagement,
-			BookRequests:   newBloemBookRequests(deps),
+			SeasonalViewer:   handlers.NewBloemSeasonalViewerHandler(deps.Ambience, tenants),
+			PromotionsViewer: bloemPromotionsViewerHandler(deps),
+			NativeStorage:    deps.NativeStorageManagement,
+			BookRequests:     newBloemBookRequests(deps),
 		})
 }
 
@@ -160,9 +163,9 @@ type bloemRouteSurfaces struct {
 	Explain                *handlers.BloemPolicyExplainHandler
 	Entitlement            *handlers.EntitlementTemplatesHandler
 	AccountPolicy          *handlers.AdminHandler
-	Promotions             *handlers.AdminPromotionsHandler
-	Ambience               *handlers.AmbienceHandler
+	Storefront             bloemPlatformStorefrontHandlers
 	SeasonalViewer         *handlers.BloemSeasonalViewerHandler
+	PromotionsViewer       *handlers.PromotionsHandler
 	ProfileCredentials     *handlers.BloemProfileCredentialsHandler
 	ProfileCredentialLimit func(http.Handler) http.Handler
 	NativeStorage          *handlers.BloemNativeStorageManagementHandler
@@ -194,6 +197,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 
 		client.mount(r)
 		mountBloemSeasonalViewer(r, surfaces.SeasonalViewer, client, system)
+		mountBloemPromotionsViewer(r, surfaces.PromotionsViewer, client, system)
 		mountBloemBookRequests(r, surfaces.BookRequests, client, system)
 		if authMW != nil && surfaces.ProfileCredentials != nil {
 			r.Group(func(r chi.Router) {
@@ -221,6 +225,7 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 				r.With(authMW.RequireAuth).Post("/admin/session", session.HandleSession)
 			}
 		}
+		mountBloemPlatformStorefront(r, surfaces.Storefront, authMW, adminMW)
 		if authMW == nil || adminMW == nil {
 			mountUnavailableAdminContextRoutes(r)
 			return
@@ -230,7 +235,6 @@ func mountBloemRoutes(r chi.Router, system *handlers.BloemSystemHandler, session
 			r.Use(adminMW.Require)
 			mountBloemAdminBookRequests(r, surfaces.BookRequests, system)
 			mountBloemNativeStorageManagement(r, surfaces.NativeStorage)
-			mountBloemEngagementRoutes(r, surfaces.Promotions, surfaces.Ambience)
 			if entitlementHandler != nil {
 				entitlement := entitlementHandler
 				// The catalog list (with create, on the same path) and the

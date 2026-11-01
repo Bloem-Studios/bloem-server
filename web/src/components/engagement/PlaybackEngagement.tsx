@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { bloemV1Api } from "@/api/bloemClient";
+import { nativeApi } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 import { ChapterGate } from "./playback-policy";
 import "./playback-engagement.css";
@@ -69,7 +69,7 @@ export function PlaybackSession({
   const data = useQuery({
     queryKey: ["playback-campaign", scope],
     queryFn: () =>
-      bloemV1Api<{ promotions: PlaybackCard[] }>(
+      nativeApi<{ promotions: PlaybackCard[] }>(
         `/promotions?surface=in_playback&content_id=${encodeURIComponent(contentId)}`,
       ),
     refetchInterval: 30000,
@@ -176,7 +176,7 @@ export function PlaybackSession({
               onClick={async () => {
                 setMessage("Saving…");
                 try {
-                  await bloemV1Api(
+                  await nativeApi(
                     `/promotions/${encodeURIComponent(card.id)}/save?content_id=${encodeURIComponent(contentId)}`,
                     { method: "POST" },
                   );

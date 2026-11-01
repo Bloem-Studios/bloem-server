@@ -97,6 +97,10 @@ func TestBloemWebCompletionDocumentOperations(t *testing.T) {
 		t.Run(tc.method+tc.path, func(t *testing.T) {
 			op := bloemDocObject(t, doc, "paths", BloemPrefix+tc.path, tc.method)
 			wantSecurity := []any{map[string]any{tc.security: []any{}}}
+			if strings.HasPrefix(tc.path, "/admin/platform/promotions") || strings.HasPrefix(tc.path, "/admin/platform/ambience") {
+				// The storefront authors campaigns and seasonal packs with its API key.
+				wantSecurity = append(wantSecurity, map[string]any{"bearerAuth": []any{}})
+			}
 			if !reflect.DeepEqual(op["security"], wantSecurity) {
 				t.Errorf("security = %v, want %v", op["security"], wantSecurity)
 			}

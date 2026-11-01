@@ -9,7 +9,7 @@ artifacts; it is not a complete router inventory or evidence of live deployment.
 | Surface | Typed operations | Contract and usage |
 | --- | ---: | --- |
 | Silo native `/api/v2` | 908 | [OpenAPI](../../contracts/api/v2/openapi.json); [interactive viewer](overlays/api-docs.md) |
-| Bloem extensions `/api/bloem/v1` | 217 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
+| Bloem extensions `/api/bloem/v1` | 259 | [OpenAPI](../../contracts/api/bloem/v1/openapi.json); [wire reference](../bloem-api-reference.md) |
 | Frozen alpha `/api/v1` | Not generated here | [Contract policy](overlays/architecture/api-contract.md); [route inventory](../../contracts/api/v2/route-inventory.json) |
 
 OpenAPI documents typed operations, including separately described raw transports.
@@ -98,20 +98,34 @@ security declaration and the wire reference before sending credentials or mutati
 | `PATCH /api/bloem/v1/admin/organization/people/{account_id}/profiles/{profile_id}` | `updateBloemOrganizationPersonProfile` | Assign an organization person profile to an access group. |
 | `GET /api/bloem/v1/admin/organization/policy-decisions` | `listBloemOrganizationPolicyDecisions` | Page sanitized organization policy decision explanations. |
 | `GET /api/bloem/v1/admin/organization/policy-decisions/{id}` | `getBloemOrganizationPolicyDecision` | Read a sanitized organization policy decision explanation. |
+| `POST /api/bloem/v1/admin/platform/accounts` | `createBloemPlatformAccount` | Create an account, optionally on a plan. |
 | `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs` | `createBloemPlatformDirectPolicyJob` | Enqueue a confirmed bulk entitlement policy job. |
 | `GET /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}` | `getBloemPlatformDirectPolicyJob` | Read a bulk entitlement policy job. |
 | `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel` | `cancelBloemPlatformDirectPolicyJob` | Cancel an eligible bulk entitlement policy job. |
 | `POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews` | `previewBloemPlatformDirectPolicy` | Create a selection and preview a bulk policy command. |
 | `POST /api/bloem/v1/admin/platform/accounts/entitlement-snapshots` | `readBloemDirectAccountPolicySnapshots` | Read bounded account policy snapshots in one observation. |
+| `PUT /api/bloem/v1/admin/platform/accounts/{account_id}` | `updateBloemPlatformAccount` | Update an account, optionally moving it to a plan. |
+| `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions` | `revokeAllBloemPlatformAccountAuthSessions` | End every sign-in session of an account. |
+| `GET /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions` | `listBloemPlatformAccountAuthSessions` | List an account's sign-in sessions. |
+| `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions/{session_id}` | `revokeBloemPlatformAccountAuthSession` | End one of an account's sign-in sessions. |
+| `GET /api/bloem/v1/admin/platform/accounts/{account_id}/devices` | `listBloemPlatformAccountDevices` | List an account's devices. |
+| `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/devices/{device_id}` | `deleteBloemPlatformAccountDevice` | Remove an account's device. |
 | `GET /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement` | `getBloemDirectAccountPolicy` | Read authoritative account and profile entitlement policies. |
 | `POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/apply` | `applyBloemAccountEntitlement` | Apply a pinned entitlement template. |
 | `POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run` | `previewBloemAccountEntitlement` | Preview a pinned entitlement template. |
+| `GET /api/bloem/v1/admin/platform/accounts/{account_id}/profiles` | `listBloemPlatformAccountProfiles` | List an account's profiles. |
+| `POST /api/bloem/v1/admin/platform/accounts/{account_id}/profiles` | `createBloemPlatformAccountProfile` | Create a profile for an account. |
+| `DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/profiles/{profile_id}` | `deleteBloemPlatformAccountProfile` | Delete an account's profile. |
+| `PUT /api/bloem/v1/admin/platform/accounts/{account_id}/profiles/{profile_id}` | `updateBloemPlatformAccountProfile` | Change an account's profile. |
 | `GET /api/bloem/v1/admin/platform/ambience/` | `listBloemPlatformAmbience` | List ambience packs and authoring capabilities. |
 | `POST /api/bloem/v1/admin/platform/ambience/` | `createBloemPlatformAmbience` | Create a registry entry. |
 | `POST /api/bloem/v1/admin/platform/ambience/assets` | `uploadBloemPlatformAmbienceAsset` | Upload a standalone authoring asset without attaching it to a pack. |
 | `DELETE /api/bloem/v1/admin/platform/ambience/{id}` | `deleteBloemPlatformAmbience` | Delete a registry entry. |
 | `PUT /api/bloem/v1/admin/platform/ambience/{id}` | `updateBloemPlatformAmbience` | Replace every editable field of a registry entry. |
 | `POST /api/bloem/v1/admin/platform/ambience/{id}/assets` | `attachBloemPlatformAmbienceAsset` | Upload artwork and attach it to an ambience pack. |
+| `GET /api/bloem/v1/admin/platform/announcements` | `listBloemPlatformAnnouncements` | List published announcements, including withdrawn ones. |
+| `POST /api/bloem/v1/admin/platform/announcements` | `createBloemPlatformAnnouncement` | Publish an announcement to its audience's inboxes. |
+| `DELETE /api/bloem/v1/admin/platform/announcements/{id}` | `withdrawBloemPlatformAnnouncement` | Withdraw an announcement. |
 | `GET /api/bloem/v1/admin/platform/entitlement-templates` | `listBloemEntitlementTemplates` | List the entitlement template catalog. |
 | `POST /api/bloem/v1/admin/platform/entitlement-templates` | `createBloemEntitlementTemplate` | Create a versioned entitlement template. |
 | `GET /api/bloem/v1/admin/platform/entitlement-templates/{key}` | `getBloemEntitlementTemplate` | Read the latest or a selected entitlement template revision. |
@@ -178,6 +192,30 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v1/admin/platform/promotions/` | `createBloemPlatformPromotion` | Create a registry entry. |
 | `DELETE /api/bloem/v1/admin/platform/promotions/{id}` | `deleteBloemPlatformPromotion` | Delete a registry entry. |
 | `PUT /api/bloem/v1/admin/platform/promotions/{id}` | `updateBloemPlatformPromotion` | Replace every editable field of a registry entry. |
+| `GET /api/bloem/v1/admin/platform/tenants` | `listBloemPlatformTenants` | List reseller organizations with live usage. |
+| `POST /api/bloem/v1/admin/platform/tenants` | `createBloemPlatformTenant` | Create a reseller organization. |
+| `DELETE /api/bloem/v1/admin/platform/tenants/{id}` | `retireBloemPlatformTenant` | Retire a reseller organization. |
+| `GET /api/bloem/v1/admin/platform/tenants/{id}` | `getBloemPlatformTenant` | Read one reseller organization. |
+| `POST /api/bloem/v1/admin/platform/tenants/{id}/freeze` | `freezeBloemPlatformTenant` | Suspend a reseller organization. |
+| `PATCH /api/bloem/v1/admin/platform/tenants/{id}/limits` | `updateBloemPlatformTenantLimits` | Change seats and shared conversions. |
+| `POST /api/bloem/v1/admin/platform/tenants/{id}/thaw` | `thawBloemPlatformTenant` | Lift an administrative suspension. |
+| `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members` | `listBloemPlatformTenantMembers` | List a reseller organization's members. |
+| `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members` | `createBloemPlatformTenantMember` | Add a member account to a reseller organization. |
+| `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}` | `deleteBloemPlatformTenantMember` | Remove a member. |
+| `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}` | `getBloemPlatformTenantMember` | Read one member. |
+| `PUT /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}` | `updateBloemPlatformTenantMember` | Change a member's username or email. |
+| `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions` | `revokeAllBloemPlatformTenantMemberAuthSessions` | End every sign-in session of a member. |
+| `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions` | `listBloemPlatformTenantMemberAuthSessions` | List a member's sign-in sessions. |
+| `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}` | `revokeBloemPlatformTenantMemberAuthSession` | End one of a member's sign-in sessions. |
+| `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/devices` | `listBloemPlatformTenantMemberDevices` | List a member's devices. |
+| `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/devices/{device_id}` | `deleteBloemPlatformTenantMemberDevice` | Remove a member's device. |
+| `GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles` | `listBloemPlatformTenantMemberProfiles` | List a member's profiles. |
+| `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles` | `createBloemPlatformTenantMemberProfile` | Create a profile for a member. |
+| `DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}` | `deleteBloemPlatformTenantMemberProfile` | Delete a member's profile. |
+| `PUT /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}` | `updateBloemPlatformTenantMemberProfile` | Change a member's profile. |
+| `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/reset-password` | `resetBloemPlatformTenantMemberPassword` | Set a member's password. |
+| `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/resume` | `resumeBloemPlatformTenantMember` | Resume a suspended member's account. |
+| `POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/suspend` | `suspendBloemPlatformTenantMember` | Suspend a member's account. |
 | `GET /api/bloem/v1/admin/platform/upgrade-prompt` | `getBloemUpgradePrompt` | Read the upgrade prompt. |
 | `PUT /api/bloem/v1/admin/platform/upgrade-prompt` | `putBloemUpgradePrompt` | Replace the upgrade prompt. |
 | `GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement` | `getBloemLegacyAccountEntitlement` | Read the legacy managed account entitlement projection. |
@@ -185,6 +223,7 @@ security declaration and the wire reference before sending credentials or mutati
 | `POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run` | `previewBloemLegacyAccountEntitlement` | Preview a pinned entitlement template. |
 | `POST /api/bloem/v1/admin/session` | `createBloemAdminSession` | Exchange a login session for a scoped administrative context. |
 | `GET /api/bloem/v1/ambience` | `getBloemSeasonalViewer` | Read seasonal presentation for the current verified tenant viewer. |
+| `GET /api/bloem/v1/ambience/assets/{ref}` | `getBloemAmbienceAsset` | Serve uploaded seasonal and campaign artwork. |
 | `POST /api/bloem/v1/book-requests` | `createBloemBookRequest` | File an audiobook request. |
 | `GET /api/bloem/v1/book-requests/capability` | `getBloemBookRequestCapability` | Read audiobook request capability and current viewer policy. |
 | `GET /api/bloem/v1/book-requests/mine` | `listBloemBookRequests` | List this profile's audiobook requests in the current organization. |
@@ -238,6 +277,9 @@ security declaration and the wire reference before sending credentials or mutati
 | `DELETE /api/bloem/v1/profile-credentials/{id}` | `clearBloemProfileCredentials` | Clear direct-profile login credentials. |
 | `GET /api/bloem/v1/profile-credentials/{id}` | `getBloemProfileCredentials` | Read direct-profile credential status without exposing a password or hash. |
 | `PUT /api/bloem/v1/profile-credentials/{id}` | `setBloemProfileCredentials` | Set or replace direct-profile login credentials. |
+| `GET /api/bloem/v1/promotions` | `listBloemPromotions` | List the campaign cards a profile sees on a surface. |
+| `PUT /api/bloem/v1/promotions/{id}/dismissals/{surface}` | `dismissBloemPromotion` | Stop showing a campaign to a profile on a surface. |
+| `POST /api/bloem/v1/promotions/{id}/save` | `saveBloemPromotion` | Save an in-playback campaign to the profile's inbox. |
 | `GET /api/bloem/v1/server/identity` | `getBloemServerIdentity` | Which server this is, which surfaces it serves, and whether it has been set up. |
 | `POST /api/bloem/v1/sync/progress` | `syncBloemProgress` | Reconcile playback positions, including ones recorded offline. |
 | `GET /api/bloem/v1/watch/home` | `getBloemWatchHome` | The composed home document for this viewer. |

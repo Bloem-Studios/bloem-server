@@ -47,6 +47,25 @@ func TestBloemProfileCredentialManagementCapabilityTracksWiring(t *testing.T) {
 	}
 }
 
+// A storefront checks playback_overlays_v1 before saving an in-playback card.
+func TestBloemPlaybackOverlayCapabilityTracksWiring(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		h := NewBloemSystemHandler(nil)
+		h.SetPlaybackOverlaysAvailable(enabled)
+		rec := httptest.NewRecorder()
+		h.HandleCapabilities(rec, httptest.NewRequest(http.MethodGet, NativeAPIPrefix+"/capabilities", nil))
+		var body struct {
+			FeatureTokens []string `json:"feature_tokens"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if slices.Contains(body.FeatureTokens, "playback_overlays_v1") != enabled {
+			t.Fatalf("capability enabled=%v body=%s", enabled, rec.Body.String())
+		}
+	}
+}
+
 func TestBloemSeasonalViewerCapabilityTracksWiring(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
 		h := NewBloemSystemHandler(nil)

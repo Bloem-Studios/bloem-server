@@ -33,7 +33,11 @@ DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_i
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-snapshots
+DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions
+DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions/{session_id}
+DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/devices/{device_id}
 DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
+DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/profiles/{profile_id}
 DELETE /api/bloem/v1/admin/platform/ambience/{id}
 DELETE /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
@@ -46,6 +50,12 @@ DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots
 DELETE /api/bloem/v1/admin/platform/preview/sessions
 DELETE /api/bloem/v1/admin/platform/promotions/{id}
+DELETE /api/bloem/v1/admin/platform/tenants/{id}
+DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}
+DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions
+DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions/{session_id}
+DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/devices/{device_id}
+DELETE /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}
 DELETE /api/v1/admin/access-groups/{id}
 DELETE /api/v1/admin/api-keys/{id}
 DELETE /api/v1/admin/collection-groups/{id}
@@ -114,7 +124,10 @@ GET /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}
 GET /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel
 GET /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews
 GET /api/bloem/v1/admin/platform/accounts/entitlement-snapshots
+GET /api/bloem/v1/admin/platform/accounts/{account_id}/auth-sessions
+GET /api/bloem/v1/admin/platform/accounts/{account_id}/devices
 GET /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
+GET /api/bloem/v1/admin/platform/accounts/{account_id}/profiles
 GET /api/bloem/v1/admin/platform/ambience/
 GET /api/bloem/v1/admin/platform/entitlement-templates
 GET /api/bloem/v1/admin/platform/entitlement-templates/{key}
@@ -145,6 +158,13 @@ GET /api/bloem/v1/admin/platform/preview/capacity
 GET /api/bloem/v1/admin/platform/preview/catalog
 GET /api/bloem/v1/admin/platform/preview/settings
 GET /api/bloem/v1/admin/platform/promotions/
+GET /api/bloem/v1/admin/platform/tenants
+GET /api/bloem/v1/admin/platform/tenants/{id}
+GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members
+GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}
+GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/auth-sessions
+GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/devices
+GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles
 GET /api/bloem/v1/admin/platform/upgrade-prompt
 GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement
 GET /api/bloem/v1/capabilities
@@ -375,6 +395,7 @@ PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-b
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-cohorts/{cohort_id}
 PATCH /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-snapshots
+PATCH /api/bloem/v1/admin/platform/tenants/{id}/limits
 PATCH /api/v1/admin/items/{id}/metadata
 PATCH /api/v1/admin/jellyfin-compat/settings
 PATCH /api/v1/admin/subtitles/{id}/
@@ -415,6 +436,7 @@ POST /api/bloem/v1/admin/organization/people/policy-jobs
 POST /api/bloem/v1/admin/organization/people/policy-jobs/{job_id}/cancel
 POST /api/bloem/v1/admin/organization/people/policy-previews
 POST /api/bloem/v1/admin/organization/people/selections
+POST /api/bloem/v1/admin/platform/accounts
 POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs
 POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}
 POST /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel
@@ -423,6 +445,7 @@ POST /api/bloem/v1/admin/platform/accounts/entitlement-snapshots
 POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
 POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/apply
 POST /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement/dry-run
+POST /api/bloem/v1/admin/platform/accounts/{account_id}/profiles
 POST /api/bloem/v1/admin/platform/ambience/
 POST /api/bloem/v1/admin/platform/ambience/assets
 POST /api/bloem/v1/admin/platform/ambience/{id}/assets
@@ -459,6 +482,14 @@ POST /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-sn
 POST /api/bloem/v1/admin/platform/preview/account
 POST /api/bloem/v1/admin/platform/preview/verify
 POST /api/bloem/v1/admin/platform/promotions/
+POST /api/bloem/v1/admin/platform/tenants
+POST /api/bloem/v1/admin/platform/tenants/{id}/freeze
+POST /api/bloem/v1/admin/platform/tenants/{id}/thaw
+POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members
+POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles
+POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/reset-password
+POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/resume
+POST /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/suspend
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run
 POST /api/bloem/v1/admin/session
@@ -574,7 +605,9 @@ PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-previews
 PUT /api/bloem/v1/admin/platform/accounts/entitlement-snapshots
+PUT /api/bloem/v1/admin/platform/accounts/{account_id}
 PUT /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
+PUT /api/bloem/v1/admin/platform/accounts/{account_id}/profiles/{profile_id}
 PUT /api/bloem/v1/admin/platform/ambience/{id}
 PUT /api/bloem/v1/admin/platform/library-locations/{library_id}
 PUT /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration
@@ -591,6 +624,8 @@ PUT /api/bloem/v1/admin/platform/preview/keys
 PUT /api/bloem/v1/admin/platform/preview/libraries
 PUT /api/bloem/v1/admin/platform/preview/settings
 PUT /api/bloem/v1/admin/platform/promotions/{id}
+PUT /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}
+PUT /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles/{profile_id}
 PUT /api/bloem/v1/admin/platform/upgrade-prompt
 PUT /api/v1/admin/access-groups/{id}
 PUT /api/v1/admin/api-keys/{id}/tier

@@ -5,7 +5,7 @@ import {
   isCapturedProfileAuthorityActive,
   StaleApiRequestContextError,
 } from "@/api/client";
-import { bloemV1ApiWithProfileRequestContext } from "@/api/bloemClient";
+import { nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import { useAuth } from "@/hooks/useAuth";
 import type { CampaignCard } from "./campaigns";
 
@@ -86,7 +86,7 @@ export function useCampaigns(surface: CampaignSurface, contentId = "", enabled =
   async function read<T>(path: string, signal: AbortSignal) {
     if (!authority || !isCapturedProfileAuthorityActive(authority))
       throw new StaleApiRequestContextError();
-    const data = await bloemV1ApiWithProfileRequestContext<T>(path, authority, { signal });
+    const data = await nativeApiWithProfileRequestContext<T>(path, authority, { signal });
     if (!isCapturedProfileAuthorityActive(authority)) throw new StaleApiRequestContextError();
     return data;
   }
@@ -97,28 +97,15 @@ export function useCampaigns(surface: CampaignSurface, contentId = "", enabled =
     staleTime: 20_000,
     refetchInterval: 30_000,
     queryFn: async ({ signal }): Promise<CampaignResult> => {
-      if (surface !== "home") {
-        const data = await read<{ promotions: CampaignCard[] }>(
-          `/promotions?surface=${surface}&content_id=${encodeURIComponent(contentId)}`,
-          signal,
-        );
-        return { cards: data.promotions ?? [], position: 0 };
-      }
-      const layout = await read<{ sections: { id: string; section_type: string }[] }>(
-        "/home/layout?promoted=1",
+      // Home cards come with the row they are shown at; the other surfaces
+      // are shown with one title.
+      const data = await read<{ promotions: CampaignCard[]; home_position?: number }>(
+        surface === "home"
+          ? "/promotions?surface=home"
+          : `/promotions?surface=${surface}&content_id=${encodeURIComponent(contentId)}`,
         signal,
       );
-      const position = layout.sections.findIndex((section) => section.section_type === "promoted");
-      const section = layout.sections[position];
-      if (!section) return { cards: [], position: 0 };
-      const data = await read<{ section: { items: { promo?: CampaignCard }[] } }>(
-        `/home/sections/${encodeURIComponent(section.id)}/items?promoted=1`,
-        signal,
-      );
-      return {
-        position,
-        cards: data.section.items.flatMap((item) => (item.promo ? [item.promo] : [])),
-      };
+      return { cards: data.promotions ?? [], position: data.home_position ?? 0 };
     },
   });
   const cards =
@@ -128,10 +115,10 @@ export function useCampaigns(surface: CampaignSurface, contentId = "", enabled =
   async function dismiss(id: string) {
     if (!authority || !isCapturedProfileAuthorityActive(authority))
       throw new StaleApiRequestContextError();
-    await bloemV1ApiWithProfileRequestContext(
-      `/home/dismissals/${encodeURIComponent(`promo:${surface}`)}/${encodeURIComponent(id)}`,
+    await nativeApiWithProfileRequestContext(
+      `/promotions/${encodeURIComponent(id)}/dismissals/${surface}`,
       authority,
-      { method: "PUT", body: "{}" },
+      { method: "PUT" },
       "none",
     );
     if (!isCapturedProfileAuthorityActive(authority)) throw new StaleApiRequestContextError();

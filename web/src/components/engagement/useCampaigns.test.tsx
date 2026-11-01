@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { bloemV1ApiWithProfileRequestContext } from "@/api/bloemClient";
+import { nativeApiWithProfileRequestContext } from "@/api/bloemClient";
 import { useCampaigns, useHomeCampaignPreference } from "./useCampaigns";
 const identity = vi.hoisted(() => ({ version: 1, child: false, profileId: "viewer" }));
 vi.mock("@/hooks/useAuth", () => ({
@@ -25,7 +25,7 @@ vi.mock("@/api/client", async (original) => ({
 }));
 vi.mock("@/api/bloemClient", async (original) => ({
   ...(await original<typeof import("@/api/bloemClient")>()),
-  bloemV1ApiWithProfileRequestContext: vi.fn(),
+  nativeApiWithProfileRequestContext: vi.fn(),
 }));
 const card = {
   id: "message",
@@ -34,7 +34,7 @@ const card = {
   expires_at: "2099-01-01T00:00:00Z",
   dismissible: true,
 };
-const request = vi.mocked(bloemV1ApiWithProfileRequestContext);
+const request = vi.mocked(nativeApiWithProfileRequestContext);
 let clients: QueryClient[] = [];
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -65,9 +65,9 @@ it("delivers detail cards and persists per-profile dismissals without mutation r
   request.mockResolvedValue({ promotions: [] });
   await act(() => hook.result.current.dismiss("message"));
   expect(request).toHaveBeenCalledWith(
-    "/home/dismissals/promo%3Adetail/message",
+    "/promotions/message/dismissals/detail",
     expect.anything(),
-    { method: "PUT", body: "{}" },
+    { method: "PUT" },
     "none",
   );
   await waitFor(() => expect(hook.result.current.cards).toHaveLength(0));
@@ -79,24 +79,12 @@ it("does not request or render campaigns for child profiles", () => {
   expect(hook.result.current.cards).toHaveLength(0);
   expect(request).not.toHaveBeenCalled();
 });
-it("reads home opt-in layout and its typed promoted items at the server-selected position", async () => {
-  request.mockImplementation(async (path) =>
-    path.startsWith("/home/layout")
-      ? {
-          sections: [
-            { id: "continue", section_type: "continue_watching" },
-            { id: "system-promoted", section_type: "promoted" },
-          ],
-        }
-      : { section: { items: [{ promo: card }] } },
-  );
+it("reads home cards and the row they are shown at from the native list", async () => {
+  request.mockResolvedValue({ surface: "home", promotions: [card], home_position: 2 });
   const hook = renderHook(() => useCampaigns("home", "", true), { wrapper: wrapper() });
   await waitFor(() => expect(hook.result.current.cards).toHaveLength(1));
-  expect(hook.result.current.position).toBe(1);
-  expect(request.mock.calls.map((call) => call[0])).toEqual([
-    "/home/layout?promoted=1",
-    "/home/sections/system-promoted/items?promoted=1",
-  ]);
+  expect(hook.result.current.position).toBe(2);
+  expect(request.mock.calls.map((call) => call[0])).toEqual(["/promotions?surface=home"]);
 });
 it("excludes expired delivery even when the server response is cached", async () => {
   request.mockResolvedValue({ promotions: [{ ...card, expires_at: "2000-01-01T00:00:00Z" }] });

@@ -30,6 +30,9 @@ vi.mock("@/contexts/AdminContextProvider", () => ({
   useAdminContext: () => ({ active: adminState.active }),
 }));
 
+vi.mock("./InvitationsTab", () => ({
+  default: () => <p>Silo invitations</p>,
+}));
 vi.mock("@/hooks/queries/useBloemCapabilities", () => ({
   useBloemCapabilities: () => ({
     data: { feature_tokens: ["organization_invitation_lifecycle_v1"] },
@@ -51,6 +54,20 @@ describe("OrganizationInvitationsTab", () => {
     cleanup();
     clearAdminV2Context();
     vi.clearAllMocks();
+  });
+
+  it("shows Silo's own invitations outside an organization", () => {
+    adminState.active = {
+      key: "platform",
+      scope: "platform",
+    } as unknown as typeof adminState.active;
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <OrganizationInvitationsTab />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText("Silo invitations")).toBeInTheDocument();
+    expect(vi.mocked(adminV2Api)).not.toHaveBeenCalled();
   });
 
   it("loads only the active organization's v2 invitations and labels their identity", async () => {

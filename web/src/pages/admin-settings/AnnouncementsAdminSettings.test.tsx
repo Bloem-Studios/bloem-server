@@ -1,13 +1,22 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { bloemV1Api } from "@/api/bloemClient";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { activateAdminV2Context, adminV2Api, clearAdminV2Context } from "@/api/adminV2Client";
 import AnnouncementsAdminSettings from "./AnnouncementsAdminSettings";
 
-vi.mock("@/api/bloemClient", () => ({ bloemV1Api: vi.fn() }));
+const adminState = vi.hoisted(() => ({
+  active: { key: "platform", scope: "platform" } as { key: string; scope: string } | null,
+}));
+vi.mock("@/api/adminV2Client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/adminV2Client")>()),
+  adminV2Api: vi.fn(),
+}));
+vi.mock("@/contexts/AdminContextProvider", () => ({
+  useAdminContext: () => ({ active: adminState.active }),
+}));
 vi.mock("@/hooks/useUnsavedChanges", () => ({ useReportUnsavedChanges: vi.fn() }));
-const mockApi = vi.mocked(bloemV1Api);
+const mockApi = vi.mocked(adminV2Api);
 function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -19,8 +28,13 @@ function renderPage() {
   );
 }
 beforeEach(() => {
+  adminState.active = { key: "platform", scope: "platform" };
+  activateAdminV2Context("test-authority", "platform");
   mockApi.mockReset();
   mockApi.mockResolvedValue({ announcements: [] });
+});
+afterEach(() => {
+  clearAdminV2Context();
 });
 describe("server admin announcements", () => {
   it("requires preview before publishing and makes critical messages non-dismissible", async () => {
@@ -35,8 +49,10 @@ describe("server admin announcements", () => {
     await user.click(screen.getByRole("button", { name: "Publish announcement" }));
     await waitFor(() =>
       expect(mockApi).toHaveBeenCalledWith(
-        "/admin/notifications/announcements",
+        "/platform/announcements",
         expect.objectContaining({ method: "POST" }),
+        "none",
+        expect.objectContaining({ key: "platform" }),
       ),
     );
     const call = mockApi.mock.calls.find(([, options]) => options?.method === "POST");
@@ -97,10 +113,19 @@ describe("server admin announcements", () => {
     expect(mockApi.mock.calls.every(([, options]) => options?.method !== "DELETE")).toBe(true);
     await user.click(screen.getByRole("button", { name: "Withdraw announcement" }));
     await waitFor(() =>
-      expect(mockApi).toHaveBeenCalledWith("/admin/notifications/announcements/a1", {
-        method: "DELETE",
-      }),
+      expect(mockApi).toHaveBeenCalledWith(
+        "/platform/announcements/a1",
+        { method: "DELETE" },
+        "none",
+        expect.objectContaining({ key: "platform" }),
+      ),
     );
+  });
+  it("asks for the platform context instead of calling the server", () => {
+    adminState.active = { key: "organization:org-1", scope: "organization" };
+    renderPage();
+    expect(screen.getByRole("alert")).toHaveTextContent("Select the platform context");
+    expect(mockApi).not.toHaveBeenCalled();
   });
   it("shows the server error while preserving the draft", async () => {
     mockApi.mockRejectedValue(new Error("Announcements are unavailable"));
