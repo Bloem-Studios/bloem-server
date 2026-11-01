@@ -233,7 +233,7 @@ Normal URL validation and dial-time SSRF guards reject loopback tuner destinatio
 a permitted isolated network for media acceptance; never disable those guards to make a
 local fixture pass. An offline transport-stream decode does not prove server-mediated
 playback. Actual tuner, Safari, prolonged playback and multi-replica owner-loss checks
-remain in the [completion handoff](bloem-web-completion-handoff.md).
+remain outstanding.
 
 ### Related pages
 

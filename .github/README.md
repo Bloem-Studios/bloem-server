@@ -464,7 +464,7 @@ stays in the database.
   [Pastime removal](../docs/architecture/bloem-pastime-removal.md).
 - **The header-authenticated media deployment gate** (`545ed3a33`, October 9).
   Bloem negotiates header-authenticated media whenever a client asks, as Silo
-  does. See the [superseded rollout page](../docs/architecture/header-authenticated-media-rollout.md).
+  does.
 - **v1 socket audience tickets** (`a7436b4e5`, October 25). No Bloem client used
   the v1 sockets; they run Silo's handshake again.
 - **Membership-owned account policy** (`c60b7008e`, October 26). Policy moved

@@ -266,9 +266,7 @@ overlay.
 - Embedded-web organization workflows, household profile-credential management,
   platform campaign/seasonal authoring and native Live TV/DVR controls. The
   [coverage matrix](docs/architecture/bloem-web-feature-coverage.md) records the shared
-  seams, tested behavior and remaining limits; the
-  [completion handoff](docs/architecture/bloem-web-completion-handoff.md) is the
-  historical September record of that work.
+  seams, tested behavior and remaining limits.
 - Encrypted Xtream live-provider consumption and provider-bound XMLTV, with shared
   physical-connection budgets and server-owned encoder input. This is Bloem's addition
   to the Prairie-derived subsystem, not a Silo feature or a general remote-URL player.
@@ -292,7 +290,7 @@ pages record what stays in the database.
 | --- | --- | --- |
 | Companion-application enrollment and the same-origin compatibility gateway | October 13, 2026 (`b8ddec9bf`); not restored on October 18 | Removed with Bloem's first removal of Jellyfin and Audiobookshelf compatibility. When Bloem went back to running Silo's compatibility servers as Silo ships them (`2393c41ee`), its own gateway stayed out. See [protocol compatibility](docs/architecture/bloem-compatibility-removal.md). |
 | Pastime managed tracking | October 14, 2026 (merge `4835a698e`) | The bridge, broker and host hooks needed private triggers and writes into Silo tables. Pastime may return only as an ordinary plugin. See [Pastime removal](docs/architecture/bloem-pastime-removal.md). |
-| Header-authenticated media deployment gate | October 9, 2026 (`545ed3a33`) | Bloem negotiates header-authenticated media whenever a client asks, as Silo does. See the [superseded rollout page](docs/architecture/header-authenticated-media-rollout.md). |
+| Header-authenticated media deployment gate | October 9, 2026 (`545ed3a33`) | Bloem negotiates header-authenticated media whenever a client asks, as Silo does. |
 | Membership-owned account policy and its rollout phases | October 26, 2026 (`c60b7008e`) | Policy back on `users`, where Silo keeps it; 13 seams returned to Silo's bytes. See the [changelog](docs/bloem/CHANGELOG.md#october-26-2026--account-policy-back-on-users). |
 | Music catalog | October 26, 2026 (`f9e1447f3`) | Silo has no music library type; production had no music libraries. |
 | Bundled presentation worker processes | October 26, 2026 (`310c545f9`) | The workers ran only Bloem's own code, without a sandbox, so the process boundary isolated nothing. See [presentation evaluators](docs/architecture/bloem-presentation-evaluators.md). |

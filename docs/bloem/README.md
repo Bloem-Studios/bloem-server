@@ -80,7 +80,7 @@ All historical; the [changelog](CHANGELOG.md) carries every later integration.
 - [October 5 presentation plugin cutover](../operations/2026-10-05-presentation-plugin-cutover.md) — historical: the worker processes that [in-process evaluators](../architecture/bloem-presentation-evaluators.md) replaced on October 26.
 - [October 5 integration verification](../operations/2026-10-05-upstream-integration.md) — historical: Silo build 1116, checks and inherited test limitations.
 - [October 2 integration verification](../operations/2026-10-02-upstream-integration.md) — historical: imported revision, regressions and validation gaps.
-- [September 24 handover](HANDOVER-2026-09-24.md) — historical: the September Silo sync, the 20-item fix program and the first seam-extraction round.
+- [Upstream reconciliation — 2026-09-08](../architecture/2026-09-08-upstream-reconciliation.md) — historical: the September 8 reconciliation and its deferred items.
 
 ## Bloem editions of upstream documents
 
@@ -148,8 +148,6 @@ same path. Read the upstream document together with its overlay.
 - [How Bloem looks inside a stored file](../architecture/bloem-native-probe.md) — trusted ffprobe input, shared read budgets and process cleanup.
 - [How playback works across several API servers](../architecture/bloem-cluster-media.md) — which node owns Live TV and native media sessions, on Silo's playback attempts and heartbeats.
 - [How access is checked as content leaves the server](../architecture/delivery-boundary-enforcement.md) — library access rechecked where bytes or rows leave the server.
-- [Storage source management UI design](../architecture/bloem-storage-source-management-ui-design.md) — historical: the October 15 design for adding and managing S3 and Bookwarehouse sources in the web admin.
-- [Storage source management UI plan](../architecture/bloem-storage-source-management-ui-plan.md) — historical: the October 15 implementation plan for that design.
 
 ### Requests and preview
 
@@ -180,28 +178,17 @@ same path. Read the upstream document together with its overlay.
 - [How Bloem runs Silo's Jellyfin and Audiobookshelf servers](../architecture/bloem-compatibility-removal.md) — Silo's Jellyfin and Audiobookshelf servers, their tenant wiring, and the removed companion gateway.
 - [How Pastime tracking was removed](../architecture/bloem-pastime-removal.md) — forward-only cleanup migration and the rule that Pastime returns only as an ordinary plugin.
 - [How remote control works](../architecture/admin-remote-control.md) — invariants for server-issued commands to client apps.
-- [Header-authenticated media client rollout](../architecture/header-authenticated-media-rollout.md) — historical: superseded on October 9, when the deployment gate was removed.
 
 ### Embedded web
 
 - [What the web app covers](../architecture/bloem-web-feature-coverage.md) — Bloem features in Silo's web app: implemented screens, authority boundaries, verification and limits.
-- [Embedded-web completion handoff](../architecture/bloem-web-completion-handoff.md) — historical: the September 18–19 web batch and its remaining acceptance work.
-
-### Historical evaluations and plans
-
-- [Silo playback merge impact on Bloem clients](../architecture/2026-08-24-silo-server-merge-client-impact.md) — historical: the August 24 client impact audit.
-- [Upstream reconciliation — 2026-09-08](../architecture/2026-09-08-upstream-reconciliation.md) — historical: the September 8 reconciliation and its deferred items.
-- [Server A–Z architecture evaluation](../architecture/server-a-z-architecture-evaluation-2026-08-23.md) — historical: the August 23 architecture audit.
-- [Server-first client remediation roadmap](../architecture/server-first-client-remediation-roadmap-2026-08-23.md) — historical: the August 23 roadmap that followed the audit.
 
 ## API references and specs
 
 - [Bloem native API reference](../bloem-api-reference.md) — the maintained wire reference for Bloem's native extensions.
 - [Playback cards: who calls which route](../playback-overlays-api.md) — campaign CRUD and the save-to-inbox endpoint for playback overlays.
 - [How Bloem announces itself on a home network (`_bloem._tcp`)](../specs/lan-service-advertisement.md) — the opt-in DNS-SD service (`internal/lanadvert`) Bloem's clients browse for.
-- [Bloem private plugin inventory](../plugin-fork-inventory.md) — historical snapshot of Bloem's plugin forks, with later dated notes.
 - [Admin remote control of clients (S-5)](../specs/admin-remote-control.md) — historical: the working spec; the architecture page above is maintained.
-- [api-v2 fork readiness](../specs/api-v2-fork-readiness.md) — historical: September preparation for Silo's `/api/v2` route-inventory gates.
 - [Client DTO generator (R-19)](../specs/client-dto-generator.md) — historical: the design of the generated Kotlin/Swift contracts.
 - [Client engagement spec](../specs/client-engagement.md) — historical: the September design for alerts, promotions and ambience.
 
@@ -210,7 +197,6 @@ same path. Read the upstream document together with its overlay.
 - [Managing entitlement templates](../operations/entitlement-templates.md) — platform-administrator operation of revisioned policy templates.
 - [How bulk policy changes work](../operations/bulk-policy-cohorts.md) — reviewed policy changes for up to 10,000 snapshotted accounts.
 - [Releasing bulk policy changes: the canary runbook](../operations/bulk-policy-cohorts-runbook.md) — releasing the cohort capability and validating it with one test account.
-- [Header-authenticated media rollout handoff](../operations/header-authenticated-media-rollout-handoff.md) — historical: the August 24 handoff; the gate it describes was removed on October 9.
 
 ## Other Bloem-owned files
 

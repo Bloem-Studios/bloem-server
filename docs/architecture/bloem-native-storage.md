@@ -828,8 +828,7 @@ Persisted sources and bindings arrived on 2026-10-06 (`324ed712d`, `dbf43c8a6`,
 Bookwarehouse installs on 2026-10-09 (`5268a8ce5`), S3 discovery and private S3
 state on 2026-10-10 (`730bbfe3d`, `204f820e1`), movies and checked-ETag reads on
 2026-10-11 (`b781ac3ff`), audiobooks on 2026-10-12 (`8b8943320`), the
-source-management UI and organization S3 sources on 2026-10-15 (see the
-[design](bloem-storage-source-management-ui-design.md)), and full 30-second
+source-management UI and organization S3 sources on 2026-10-15, and full 30-second
 listing deadlines on 2026-10-25 (`d183b286f`). The Silo merge `68070f04b`
 (2026-10-27) added Silo's private plugin cache check. On 2026-10-28 lock-free
 read-only lease checks (`24c1f3354`, `54cadaab5`), transient page-listing retries
@@ -846,7 +845,6 @@ read-only lease checks (`24c1f3354`, `54cadaab5`), transient page-listing retrie
   [native audiobook presentations](bloem-native-audio-playback.md).
 - [Delivery boundary enforcement](delivery-boundary-enforcement.md): the
   standalone proxy hides native files.
-- [Storage source management UI design](bloem-storage-source-management-ui-design.md).
 
 The pictures are SVG files under `images/native-storage/`, drawn by
 `scripts/bloem/draw-pictures.py`. Redraw them there, not by hand.

@@ -191,10 +191,8 @@ reports the eager launch bundle's brotli size without gating it, and fails when
 the vendor chunk is missing or imports another chunk, or when `index.html` loads
 a cross-origin render-blocking resource.
 
-The [web coverage matrix](../../architecture/bloem-web-feature-coverage.md) and
-[completion handoff](../../architecture/bloem-web-completion-handoff.md) distinguish
-automated checks, browser acceptance, the completed deployment and remaining media
-acceptance. Preserve the existing web exclusions; do not add skips or weaken
+The [web coverage matrix](../../architecture/bloem-web-feature-coverage.md)
+distinguishes automated checks, browser acceptance and remaining media acceptance. Preserve the existing web exclusions; do not add skips or weaken
 assertions to conceal failures.
 For documentation-only changes, check changed links/anchors, `git diff --check`,
 `make verify-local-paths` and `make verify-seams`; a new full build or test suite is unnecessary.

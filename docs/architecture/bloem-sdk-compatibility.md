@@ -150,9 +150,7 @@ pin with every schema change.
 
 To test against an unreleased SDK change, set `BLOEM_STORAGE_SDK_WORKTREE` to an SDK checkout.
 That override is development test input, not proof that a production provider can resolve an
-SDK version: publish providers against an immutable, pushed SDK release. The dated
-[plugin inventory](../plugin-fork-inventory.md) preserves its August release audit; its old SDK
-pin and six-plugin count are not a current catalog inventory.
+SDK version: publish providers against an immutable, pushed SDK release.
 
 #### Creating S3 and Bookwarehouse plugins
 

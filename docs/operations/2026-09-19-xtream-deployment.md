@@ -131,6 +131,5 @@ authorized recovery operation with possible loss of post-backup changes.
 - Complete keyboard/accessibility, Safari and prolonged-playback acceptance.
 - Exercise multi-replica owner loss and cleanup; no seamless failover is claimed.
 
-The [web coverage matrix](../architecture/bloem-web-feature-coverage.md) and
-[completion handoff](../architecture/bloem-web-completion-handoff.md) distinguish
+The [web coverage matrix](../architecture/bloem-web-feature-coverage.md) distinguishes
 implemented features, historical acceptance and these outstanding checks.

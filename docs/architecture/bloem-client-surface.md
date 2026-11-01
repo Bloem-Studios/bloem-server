@@ -233,9 +233,8 @@ receiving handlers assembled by the v1 tree. That independence is the point: a n
 can be added, changed or removed without editing `internal/api/router.go` at all.
 
 The embedded web keeps working Silo v2 screens and adds native adapters at the owning feature
-boundary. See [web coverage](bloem-web-feature-coverage.md) for route ownership and
-validation, and the [completion handoff](bloem-web-completion-handoff.md) for remaining
-acceptance. Current server-owned Kotlin/Swift bindings are generated artifacts; their presence
+boundary. See [web coverage](bloem-web-feature-coverage.md) for route ownership,
+validation and remaining acceptance. Current server-owned Kotlin/Swift bindings are generated artifacts; their presence
 is not evidence that sibling client implementations have shipped these workflows. The
 [SDK compatibility guide](bloem-sdk-compatibility.md) describes the source revision, digest
 checks and explicit consumer adoption procedure.

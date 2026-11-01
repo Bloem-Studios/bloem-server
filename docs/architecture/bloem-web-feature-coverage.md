@@ -125,8 +125,6 @@ recovery fixed (`276becf4a`, 2026-10-27); the web app off Silo's `/api/v1`
 revoked sign-in ended so the client signs in again (`25129bcbd`); organization domains
 and branding (`f7f96d7ef` and its server commits, 2026-11-01).
 
-The [completion handoff](bloem-web-completion-handoff.md) records the finished
-milestone, remaining acceptance and exact continuation steps.
 [README](../../.github/README.md) and the [operator guide](../wiki/admin-guide.md)
 provide the product and operational entry points.
 
@@ -178,8 +176,7 @@ Prepublication Xtream checks passed 625 web files / 4,622 tests, then 20 focused
 tests and TypeScript after the final guide-reconciliation change. Media race checks
 passed 2,685 hierarchical events; the explicit contract packet passed 52 transport
 leaves / 99 events, and the route packet passed 9 events. These are separate runs, not
-one aggregate count. The [handoff](bloem-web-completion-handoff.md) records their order
-and limits.
+one aggregate count.
 
 Remote CI for `418a18b7d` passed 189 Go packages, other CI jobs and static and artifact
 gates, but the executor timed out at 20 minutes. Deployment used an explicitly approved

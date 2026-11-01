@@ -100,7 +100,6 @@ Good to know:
 - [How a scan reads a stored file](bloem-native-scan-reader.md),
   [how a trusted tool reads a stored file](bloem-native-tool-input.md) and
   [how Bloem looks inside a stored file](bloem-native-probe.md).
-- [Storage source management UI design](bloem-storage-source-management-ui-design.md).
 - [S3 storage notes](../bloem/overlays/s3-storage-setup.md): S3 for Silo's Assets
   store, which is separate from storage sources.
 
