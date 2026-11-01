@@ -693,6 +693,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 			signInAttempts = ratelimit.NewMemoryAttemptLimiter(ratelimit.SignInNamePolicy)
 		}
 		authService.SetSignInAttempts(signInAttempts)
+		bloemInstallSignInDomainCheck(deps, authService, settingsRepo)
 		if settingsRepo != nil {
 			accountMailSettings := bloemAccountMailSettings(deps, settingsRepo)
 			invitationService = invitations.NewService(

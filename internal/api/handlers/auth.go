@@ -252,6 +252,9 @@ func (h *AuthHandler) Login(ctx context.Context, in LoginInput) (TokenPairView, 
 		if apiErr := externalSignInError(err); apiErr != nil {
 			return TokenPairView{}, apiErr
 		}
+		if apiErr := organizationDomainAPIError(err); apiErr != nil {
+			return TokenPairView{}, apiErr
+		}
 		return TokenPairView{}, apiError(http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
 	}
 	return TokenPairView{

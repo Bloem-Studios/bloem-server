@@ -88,6 +88,10 @@ func (h *AuthHandler) HandleProfileLogin(w http.ResponseWriter, r *http.Request)
 			writeAPIError(w, busyError(err))
 			return
 		}
+		if apiErr := organizationDomainAPIError(err); apiErr != nil {
+			writeAPIError(w, apiErr)
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
 		return
 	}

@@ -1,6 +1,10 @@
 package api
 
 import (
+	"context"
+	"strings"
+
+	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/mail"
 	"github.com/Silo-Server/silo-server/internal/orgdomains"
@@ -15,4 +19,27 @@ func bloemAccountMailSettings(deps Dependencies, settings catalog.SettingsStore)
 		return settings
 	}
 	return orgdomains.NewSettingsOverlay(settings, deps.OrganizationDomains, deps.OrganizationDomainStore, orgdomains.OverlayOptions{PublicURL: true})
+}
+
+// bloemInstallSignInDomainCheck refuses a sign-in on another organization's
+// domain, when the domain directory is wired.
+func bloemInstallSignInDomainCheck(deps Dependencies, authService *auth.Service, settings catalog.SettingsStore) {
+	if authService == nil || deps.OrganizationDomains == nil || deps.OrganizationDomainStore == nil {
+		return
+	}
+	authService.SetSignInDomainCheck(deps.OrganizationDomains.SignInCheck(deps.OrganizationDomainStore, bloemServerPublicURL(settings)))
+}
+
+// bloemServerPublicURL reads server.public_url at the time it is asked.
+func bloemServerPublicURL(settings catalog.SettingsStore) func(context.Context) string {
+	return func(ctx context.Context) string {
+		if settings == nil {
+			return ""
+		}
+		value, err := settings.Get(ctx, "server.public_url")
+		if err != nil {
+			return ""
+		}
+		return strings.TrimRight(strings.TrimSpace(value), "/")
+	}
 }
