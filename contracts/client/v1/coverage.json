@@ -842,6 +842,18 @@
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     },
     {
+      "type": "internal/apiv2.CatalogBoxSetDetail",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-11-01 sync (box sets from TMDB collections). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.CatalogBoxSetList",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-11-01 sync (box sets from TMDB collections). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.CatalogItemBoxSet",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-11-01 sync (box sets from TMDB collections). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
       "type": "internal/apiv2.CollectionTemplateBundle",
       "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
     },
@@ -2624,6 +2636,14 @@
     {
       "type": "internal/playback.DesiredTracksV3",
       "reason": "Upstream Silo wire type taken as shipped in the 2026-10-25 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/playback.SubtitleRenditionSource",
+      "reason": "Server-side half of an HLS subtitle rendition: the executable recipe, the recipe card and the transcode node handoff carry it to say which embedded tracks a rendition reads and from where. PlanV3 and the subtitle inventory are the only client-visible projections."
+    },
+    {
+      "type": "internal/playback.SubtitleRenditionTrack",
+      "reason": "Server-side half of an HLS subtitle rendition: the executable recipe, the recipe card and the transcode node handoff carry it to say which embedded tracks a rendition reads and from where. PlanV3 and the subtitle inventory are the only client-visible projections."
     },
     {
       "type": "internal/apiv2.AdminDeviceConnection",

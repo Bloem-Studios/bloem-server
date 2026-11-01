@@ -34,6 +34,7 @@ docs/design/schemas/playback-v3/v3/fixtures/invalid/native-negative-index-decisi
 docs/design/schemas/playback-v3/v3/fixtures/invalid/native-remux-decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/valid/decision_response.json
 docs/design/schemas/playback-v3/v3/fixtures/valid/hls-subtitle-rendition-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
+docs/design/schemas/playback-v3/v3/fixtures/valid/hls-subtitle-renditions-all-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 docs/design/schemas/playback-v3/v3/fixtures/valid/learned-limit-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 docs/design/schemas/playback-v3/v3/fixtures/valid/native-decision_response.json
 go.mod
@@ -183,6 +184,7 @@ internal/playback/session.go
 internal/playback/session_test.go
 internal/playback/testdata/protocol_v3/decision_response.json
 internal/playback/testdata/protocol_v3/hls-subtitle-rendition-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
+internal/playback/testdata/protocol_v3/hls-subtitle-renditions-all-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 internal/playback/testdata/protocol_v3/learned-limit-decision_response.json  # generated: decision responses carry Bloem's negotiated_client_features
 internal/playback/testdata/protocol_v3/native-decision_response.json
 internal/playback/transcode.go
@@ -269,6 +271,7 @@ web/src/components/LibraryAccessSelector.tsx
 web/src/components/RealtimeEventsProvider.test.tsx
 web/src/components/admin/libraries/LibraryFormSections.tsx  # location toggle and storage source picker for ebook libraries
 web/src/components/admin/libraries/RealtimeMonitoringFields.test.tsx  # mocks the storage sources query the library form now reads
+web/src/components/admin/libraries/useLibraryForm.boxSets.test.tsx  # mocks the storage sources query the library form now reads
 web/src/components/admin/libraries/useLibraryForm.save.test.tsx  # mocks the storage sources query the library form now reads
 web/src/components/admin/libraries/useLibraryForm.ts  # library form state for a storage source location
 web/src/hooks/queries/admin/plugins.ts

@@ -14,6 +14,12 @@ vi.mock("@/hooks/queries/admin/libraries", () => ({
   useLibraryProviders: () => ({ data: { levels: {} } }),
   useLibraryProviderDefaults: () => ({ data: { levels: {} }, isLoading: false }),
 }));
+const storageSourcesMock = vi.hoisted(() => ({ sources: [] as unknown[] }));
+vi.mock("@/hooks/queries/admin/storageSources", () => ({
+  useStorageSources: () => ({ data: storageSourcesMock.sources }),
+  storageSourceLabel: (source: { provider_source_id: string; plugin_id: string }) =>
+    `${source.provider_source_id} (${source.plugin_id})`,
+}));
 
 beforeEach(() => mutate.mockClear());
 
