@@ -167,6 +167,7 @@ GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/devices
 GET /api/bloem/v1/admin/platform/tenants/{tenant_id}/members/{user_id}/profiles
 GET /api/bloem/v1/admin/platform/upgrade-prompt
 GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement
+GET /api/bloem/v1/ambience/public
 GET /api/bloem/v1/capabilities
 GET /api/bloem/v1/organizations
 GET /api/bloem/v1/server/identity

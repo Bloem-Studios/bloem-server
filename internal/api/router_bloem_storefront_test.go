@@ -34,7 +34,7 @@ func TestBloemPlatformStorefrontRoutesAreMountedBehindThePlatformGate(t *testing
 			Tenants: &handlers.AdminTenantsHandler{}, TenantMembers: &handlers.AdminTenantMembersHandler{},
 			Accounts: handlers.NewAdminHandler(nil, nil, nil), Announcements: &handlers.AdminAnnouncementsHandler{},
 			Promotions: &handlers.AdminPromotionsHandler{}, Ambience: &handlers.AmbienceHandler{}, ServeAmbienceAssets: true,
-			Domains: &handlers.BloemOrganizationDomainsHandler{},
+			Domains: &handlers.BloemOrganizationDomainsHandler{}, PublicAmbience: handlers.NewBloemPublicAmbienceHandler(nil),
 		},
 	})
 	mint := func(claims auth.AdminContextClaims) string {
@@ -105,5 +105,9 @@ func TestBloemPlatformStorefrontRoutesAreMountedBehindThePlatformGate(t *testing
 	// Public, so no 401: the handler without a registry answers unavailable.
 	if rec := send(http.MethodGet, "/ambience/assets/abc", ""); rec.Code != http.StatusServiceUnavailable {
 		t.Errorf("public artwork = %d %s", rec.Code, rec.Body.String())
+	}
+	// Public too: the signed-out seasonal layer reads the active packs here.
+	if rec := send(http.MethodGet, "/ambience/public", ""); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"ambience":[]`) {
+		t.Errorf("public ambience = %d %s", rec.Code, rec.Body.String())
 	}
 }

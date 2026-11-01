@@ -110,7 +110,7 @@ function serverRoutes() {
     "GET /api/v2/auth/signup": { body: { enabled: false } },
     "GET /api/v2/capabilities/password-reset": { body: { revision: "r", state: "disabled" } },
     "GET /api/v2/theme/branding": { body: {} },
-    "GET /api/v1/theme/branding": { body: {} },
+    "GET /api/bloem/v1/ambience/public": { body: { ambience: [] } },
     "GET /api/bloem/v1/capabilities": { body: { features: {}, feature_tokens: [] } },
     "GET /api/v2/account/me": { body: getCurrentUserOk },
     "GET /api/v2/profiles": { body: listProfilesOk },

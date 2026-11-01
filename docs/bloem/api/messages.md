@@ -15,7 +15,7 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 - [Presentation evaluators](../../architecture/bloem-presentation-evaluators.md)
 - [Campaign and seasonal asset storage](../../architecture/bloem-campaign-asset-storage.md)
 
-## Operations (23)
+## Operations (24)
 
 | Method and path | Summary |
 | --- | --- |
@@ -36,6 +36,7 @@ For the plain-language picture, read the [Messages and promotions explainer](../
 | [`PUT /api/bloem/v1/admin/platform/upgrade-prompt`](#put-apibloemv1adminplatformupgrade-prompt) | Replace the upgrade prompt. |
 | [`GET /api/bloem/v1/ambience`](#get-apibloemv1ambience) | Read seasonal presentation for the current verified tenant viewer. |
 | [`GET /api/bloem/v1/ambience/assets/{ref}`](#get-apibloemv1ambienceassetsref) | Serve uploaded seasonal and campaign artwork. |
+| [`GET /api/bloem/v1/ambience/public`](#get-apibloemv1ambiencepublic) | List the active deployment-wide seasonal packs. |
 | [`GET /api/bloem/v1/notifications`](#get-apibloemv1notifications) | The acting profile's inbox, newest first, with the alert fields a row needs to render. |
 | [`GET /api/bloem/v1/notifications/sync`](#get-apibloemv1notificationssync) | Rows newer than a cursor, for a client waking from a push or reconnecting across a gap. |
 | [`GET /api/bloem/v1/notifications/{id}`](#get-apibloemv1notificationsid) | One inbox row. Another profile's row is absent, not forbidden. |
@@ -405,6 +406,20 @@ Public: no credential, because artwork shows on the sign-in page. Uploads under 
 | 500 | [`BloemNativeError`](README.md#bloemnativeerror) | internal_error: the artwork could not be read. |
 | 503 | [`BloemNativeError`](README.md#bloemnativeerror) | unavailable: seasonal packs or their asset storage are not configured. |
 
+### `GET /api/bloem/v1/ambience/public`
+
+List the active deployment-wide seasonal packs.
+
+Operation ID: `getBloemPublicAmbience`.
+Credentials: none (public).
+
+Public: no credential, so a signed-out page can show the season. Only deployment-wide packs; a profile's own seasonal presentation is GET /api/bloem/v1/ambience. Always an array, empty when none are active.
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemPublicAmbienceResponse`](#bloempublicambienceresponse) | OK |
+| default | `application/problem+json` [`Problem`](#problem) | Error |
+
 ### `GET /api/bloem/v1/notifications`
 
 The acting profile's inbox, newest first, with the alert fields a row needs to render.
@@ -766,6 +781,12 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | `promotions` | array of [`Card`](#card) | yes | Cards to show, in order. Empty when none apply. |
 | `surface` | string | yes | The surface the cards are for. |
 
+### BloemPublicAmbienceResponse
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `ambience` | array of [`Wire`](#wire) | yes |  |
+
 ### BloemSeasonalViewerResponse
 
 | Field | Type | Required | Description |
@@ -851,6 +872,25 @@ Requires authentication, native tenant resolution, viewer/PIN verification and a
 | `home_position` | integer (int64) |  |  |
 | `playback_style` | string |  |  |
 | `video_url` | string |  |  |
+
+### Problem
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `detail` | string | yes | Safe occurrence-specific explanation; not for control flow |
+| `errors` | array of [`ProblemError`](#problemerror) |  | Field-level validation details |
+| `instance` | string (uri) | yes | urn:silo:request:<request-id>, matching the X-Request-ID response header |
+| `status` | integer (int64) | yes | HTTP status code, equal to the response status |
+| `title` | string | yes | Short summary fixed for the problem type |
+| `type` | string (uri) | yes | Stable problem type URI; the final segment is the problem identifier |
+
+### ProblemError
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `code` | string | yes | Stable machine-readable code for the failure |
+| `detail` | string | yes | Safe human-readable explanation; never the rejected value |
+| `location` | string | yes | Where the error occurred: body.*, query.*, path.* or header.* |
 
 ### Promotion
 

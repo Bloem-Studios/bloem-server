@@ -45,7 +45,7 @@ export type FakeRoute = FakeResponse | ((request: RecordedRequest) => FakeRespon
  * operation answers 401 to an anonymous request.
  */
 const PUBLIC_OPERATIONS = new Set<string>([
-  "GET /api/v1/theme/branding",
+  "GET /api/bloem/v1/ambience/public",
   "GET /api/bloem/v1/capabilities",
   "GET /api/v2/system/setup",
   "GET /api/v2/auth/providers",

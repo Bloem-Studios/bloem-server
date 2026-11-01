@@ -6238,6 +6238,21 @@
         ],
         "type": "object"
       },
+      "BloemPublicAmbienceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ambience": {
+            "items": {
+              "$ref": "#/components/schemas/Wire"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "ambience"
+        ],
+        "type": "object"
+      },
       "BloemRevisionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -36382,6 +36397,38 @@
           }
         },
         "summary": "Serve uploaded seasonal and campaign artwork.",
+        "tags": [
+          "engagement"
+        ]
+      }
+    },
+    "/api/bloem/v1/ambience/public": {
+      "get": {
+        "description": "Public: no credential, so a signed-out page can show the season. Only deployment-wide packs; a profile's own seasonal presentation is GET /api/bloem/v1/ambience. Always an array, empty when none are active.",
+        "operationId": "getBloemPublicAmbience",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemPublicAmbienceResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the active deployment-wide seasonal packs.",
         "tags": [
           "engagement"
         ]

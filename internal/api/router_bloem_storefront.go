@@ -22,6 +22,9 @@ type bloemPlatformStorefrontHandlers struct {
 	Ambience      *handlers.AmbienceHandler
 	// Domains serves an organization's domains and branding.
 	Domains *handlers.BloemOrganizationDomainsHandler
+	// PublicAmbience serves the deployment-wide seasonal packs without a
+	// credential, for the signed-out seasonal layer.
+	PublicAmbience *handlers.BloemPublicAmbienceHandler
 	// ServeAmbienceAssets mounts the public artwork route; it needs the
 	// ambience registry itself, not only a handler that answers 503.
 	ServeAmbienceAssets bool
@@ -33,6 +36,11 @@ type bloemPlatformStorefrontHandlers struct {
 func newBloemPlatformStorefrontHandlers(deps Dependencies, admin *handlers.AdminHandler, promotions *handlers.AdminPromotionsHandler, ambience *handlers.AmbienceHandler) bloemPlatformStorefrontHandlers {
 	out := bloemPlatformStorefrontHandlers{Accounts: admin, Promotions: promotions, Ambience: ambience,
 		ServeAmbienceAssets: deps.Ambience != nil, DB: deps.DB}
+	if deps.Ambience != nil {
+		out.PublicAmbience = handlers.NewBloemPublicAmbienceHandler(deps.Ambience)
+	} else {
+		out.PublicAmbience = handlers.NewBloemPublicAmbienceHandler(nil)
+	}
 	if deps.Notifications != nil {
 		out.Announcements = handlers.NewAdminAnnouncementsHandler(deps.Notifications)
 	}
@@ -54,10 +62,14 @@ func newBloemPlatformStorefrontHandlers(deps Dependencies, admin *handlers.Admin
 // unscoped API key. The handlers are the ones behind the legacy /api/v1/admin
 // routes, which stay mounted for the clients that still call them.
 //
-// It also serves uploaded seasonal artwork publicly at /ambience/assets/{ref}.
+// It also serves uploaded seasonal artwork publicly at /ambience/assets/{ref},
+// and the active deployment-wide packs at /ambience/public.
 func mountBloemPlatformStorefront(r chi.Router, h bloemPlatformStorefrontHandlers, authMW *apimw.AuthMiddleware, adminMW *apimw.AdminContextMiddleware) {
 	if h.Ambience != nil && h.ServeAmbienceAssets {
 		r.Get("/ambience/assets/{ref}", h.Ambience.HandleServeAsset)
+	}
+	if h.PublicAmbience != nil {
+		r.Get("/ambience/public", h.PublicAmbience.HandleGet)
 	}
 	if authMW == nil || adminMW == nil {
 		return

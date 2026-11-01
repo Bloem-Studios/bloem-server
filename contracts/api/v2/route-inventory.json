@@ -40,7 +40,7 @@
       "id": "api",
       "entrypoint": "internal/api.NewRouter",
       "description": "Main Silo API listener: the /api/v1 namespace and the routes mounted beside it.",
-      "route_count": 1170
+      "route_count": 1171
     },
     {
       "id": "api_v2",
@@ -62,8 +62,8 @@
     }
   ],
   "totals": {
-    "routes": 1355,
-    "conditional_routes": 930,
+    "routes": 1356,
+    "conditional_routes": 931,
     "streaming_routes": 45,
     "websocket_routes": 4
   },
@@ -14337,6 +14337,33 @@
       "auth_traits": [],
       "conditions": [
         "h.Ambience != nil && h.ServeAmbienceAssets"
+      ],
+      "conditional": true,
+      "request_kind": "none",
+      "response_media_kind": "json",
+      "delegates_to": "",
+      "streams": false,
+      "upgrades_websocket": false,
+      "method_origin": "explicit",
+      "success_statuses": null,
+      "error_codes": null,
+      "source_file": "internal/api/router_bloem_storefront.go"
+    },
+    {
+      "listener": "api",
+      "namespace": "legacy_unversioned",
+      "method": "GET",
+      "path": "/api/bloem/v1/ambience/public",
+      "route_group": "/api/bloem/v1",
+      "handler": "(*internal/api/handlers.BloemPublicAmbienceHandler).HandleGet",
+      "handler_expr": "h.PublicAmbience.HandleGet",
+      "handler_kind": "method",
+      "handler_resolved": true,
+      "middleware_chain": 1,
+      "auth_class": "public",
+      "auth_traits": [],
+      "conditions": [
+        "h.PublicAmbience != nil"
       ],
       "conditional": true,
       "request_kind": "none",

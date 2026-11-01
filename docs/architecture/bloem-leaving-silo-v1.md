@@ -72,6 +72,7 @@ the helper (`bloemV1Api`) that reached `/api/v1`.
 | Saving an in-playback campaign to the inbox | `POST /api/v1/promotions/{id}/save` | `POST /api/bloem/v1/promotions/{id}/save` |
 | Settings, Announcements | `/api/v1/admin/notifications/announcements` | `/api/bloem/v1/admin/platform/announcements`, in the platform context |
 | Access groups and invitations outside an organization | `/api/v1/admin/access-groups`, `/api/v1/admin/invitations` | Silo's `/api/v2`, through Silo's own web code; outside an organization the invitations page shows Silo's invitations screen |
+| Seasonal packs on signed-out pages | `GET /api/v1/theme/branding` (its `ambience` block) | `GET /api/bloem/v1/ambience/public`, public, the active deployment-wide packs (moved later on 2026-11-01; the phone apps still read the `ambience` block) |
 
 Silo's `/api/v2` home could not carry the campaign row: its dismissals accept only
 `continue_watching` and `next_up`, and its home cards have no field for a campaign.

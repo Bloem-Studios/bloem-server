@@ -451,4 +451,13 @@ func registerBloemAmbienceAssetDocument(reg *Registry) {
 		503: "unavailable: seasonal packs or their asset storage are not configured.",
 	})
 	registerBloemChiDocument[BloemAmbienceAssetInput, struct{}](reg, op)
+
+	public := bloemOp("GET", "/ambience/public", "getBloemPublicAmbience", "engagement", "List the active deployment-wide seasonal packs.")
+	public.Description = "Public: no credential, so a signed-out page can show the season. Only deployment-wide packs; a profile's own seasonal presentation is GET /api/bloem/v1/ambience. Always an array, empty when none are active."
+	public.DefaultStatus = http.StatusOK
+	registerBloemChiDocument[struct{}, BloemPublicAmbienceOutput](reg, public)
+}
+
+type BloemPublicAmbienceOutput struct {
+	Body handlers.BloemPublicAmbienceResponse
 }

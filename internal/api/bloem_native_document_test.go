@@ -272,7 +272,7 @@ func mountedAdministrativeAndLiveTVOperations(t *testing.T) map[string]struct{} 
 			Storefront: bloemPlatformStorefrontHandlers{Tenants: &handlers.AdminTenantsHandler{}, TenantMembers: &handlers.AdminTenantMembersHandler{},
 				Accounts: &handlers.AdminHandler{}, Announcements: &handlers.AdminAnnouncementsHandler{},
 				Promotions: &handlers.AdminPromotionsHandler{}, Ambience: &handlers.AmbienceHandler{}, ServeAmbienceAssets: true,
-				Domains: &handlers.BloemOrganizationDomainsHandler{}},
+				Domains: &handlers.BloemOrganizationDomainsHandler{}, PublicAmbience: handlers.NewBloemPublicAmbienceHandler(nil)},
 			Entitlement: &handlers.EntitlementTemplatesHandler{}, AccountPolicy: &handlers.AdminHandler{},
 			PreviewAdmin: &handlers.BloemPreviewAdminHandler{}, LibraryFigures: &handlers.BloemLibraryFiguresHandler{}, UpgradePrompt: &handlers.BloemUpgradePromptHandler{}, NewArrivals: &handlers.BloemNewArrivalsHandler{},
 			Client: bloemClientSurface{auth: &apimw.AuthMiddleware{}, tenant: &apimw.TenantMiddleware{}, viewer: &apimw.ViewerAccessMiddleware{}, liveTV: &handlers.LiveTVHandler{}, liveTVAdmin: func(h http.Handler) http.Handler { return h }},

@@ -73,7 +73,7 @@ beforeEach(() => {
     if (path === "/api/bloem/v1/capabilities")
       return json({ features: {}, feature_tokens: ["seasonal_viewer_v1"] });
     if (path === "/api/bloem/v1/ambience") return json({ ambience: [pack("organization")] });
-    if (path === "/api/v1/theme/branding") return json({ ambience: [pack("public")] });
+    if (path === "/api/bloem/v1/ambience/public") return json({ ambience: [pack("public")] });
     throw new Error(`Unexpected request: ${path}`);
   };
   vi.stubGlobal(
@@ -123,7 +123,7 @@ it.each([false, true])("keeps login presentation public-only (signed in: %s)", a
   }
   mount("/login");
   await waitFor(() => expect(artwork("public")).not.toBeNull());
-  expect(paths()).toEqual(["/api/v1/theme/branding"]);
+  expect(paths()).toEqual(["/api/bloem/v1/ambience/public"]);
   expect(new Headers(requests[0]!.options?.headers).has("Authorization")).toBe(false);
   expect(requests[0]!.options?.credentials).toBe("omit");
   expect(artwork("organization")).toBeNull();
@@ -138,7 +138,7 @@ it.each(["missing token", "unsupported probe"])(
         : json({ ambience: [pack("public")] });
     mount();
     await waitFor(() => expect(artwork("public")).not.toBeNull());
-    expect(paths()).toEqual(["/api/bloem/v1/capabilities", "/api/v1/theme/branding"]);
+    expect(paths()).toEqual(["/api/bloem/v1/capabilities", "/api/bloem/v1/ambience/public"]);
     expect(new Headers(requests[1]!.options?.headers).has("Authorization")).toBe(false);
     expect(requests[1]!.options?.credentials).toBe("omit");
   },

@@ -110,9 +110,13 @@ export default function SeasonalLayer() {
           throw error;
         }
       } else {
-        // Branding is public-only, including on servers without viewer delivery.
+        // The deployment-wide packs are public, including on servers without
+        // viewer delivery (Bloem's native route, not Silo's /api/v1 branding).
         // It must never be mistaken for an authenticated seasonal response.
-        const response = await fetch("/api/v1/theme/branding", { signal, credentials: "omit" });
+        const response = await fetch("/api/bloem/v1/ambience/public", {
+          signal,
+          credentials: "omit",
+        });
         if (!response.ok) throw new Error("Seasonal presentation is unavailable");
         result = await response.json();
       }

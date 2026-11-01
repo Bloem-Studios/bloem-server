@@ -2746,6 +2746,10 @@
       "reason": "Storefront-only request body for updating an account on a plan; no native client updates accounts."
     },
     {
+      "type": "internal/api/handlers.BloemPublicAmbienceResponse",
+      "reason": "Public deployment-wide seasonal packs read by the embedded web app's signed-out seasonal layer; the phone apps still read the same packs from /api/v1/theme/branding and have not adopted the native route."
+    },
+    {
       "type": "internal/api/handlers.BloemPromotionsResponse",
       "reason": "Native viewer campaign list read by the embedded web app; the phone apps still read the /api/v1 promotions shape and have not adopted the native route."
     },
