@@ -1,3 +1,4 @@
+GET /api/bloem/v1/ambience/public
 GET /api/bloem/v1/capabilities
 GET /api/bloem/v1/organizations
 GET /api/bloem/v1/server/identity

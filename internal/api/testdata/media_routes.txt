@@ -1,5 +1,6 @@
 # fixture 1
 POST /api/bloem/v1/admin/session	non-media
+GET /api/bloem/v1/ambience/public	non-media
 GET /api/bloem/v1/capabilities	non-media
 GET /api/bloem/v1/organizations	non-media
 GET /api/bloem/v1/server/identity	non-media
@@ -1273,6 +1274,7 @@ GET /api/bloem/v1/admin/platform/users/{user_id}/entitlement	non-media
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/apply	non-media
 POST /api/bloem/v1/admin/platform/users/{user_id}/entitlement/dry-run	non-media
 POST /api/bloem/v1/admin/session	non-media
+GET /api/bloem/v1/ambience/public	non-media
 GET /api/bloem/v1/capabilities	non-media
 GET /api/bloem/v1/organizations	non-media
 GET /api/bloem/v1/server/identity	non-media
