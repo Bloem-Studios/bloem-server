@@ -130,6 +130,7 @@ type catalogRow struct {
 	checksum string
 	url      string                   // overrides the well-formed binary URL when set
 	manifest *publicv1.PluginManifest // overrides the served manifest.json when set
+	others   map[string]string        // more binaries of the same release: "os/arch" to checksum
 }
 
 func catalogFixtureRows(t *testing.T, rows ...catalogRow) *http.Client {
@@ -151,8 +152,12 @@ func catalogFixtureRows(t *testing.T, rows ...catalogRow) *http.Client {
 		if url == "" {
 			url = "https://github.com/Bloem-Studios/bloem-plugins/releases/download/" + row.spec.ReleaseTag + row.version + "/plugin-" + runtime.GOOS + "-" + runtime.GOARCH
 		}
-		plugins = append(plugins, map[string]any{"plugin_id": row.spec.PluginID, "source_version": row.version,
-			"binaries": map[string]any{runtime.GOOS + "/" + runtime.GOARCH: map[string]any{"url": url, "checksum": row.checksum}}})
+		binaries := map[string]any{runtime.GOOS + "/" + runtime.GOARCH: map[string]any{"url": url, "checksum": row.checksum}}
+		for platform, checksum := range row.others {
+			binaries[platform] = map[string]any{"checksum": checksum,
+				"url": "https://github.com/Bloem-Studios/bloem-plugins/releases/download/" + row.spec.ReleaseTag + row.version + "/plugin-" + strings.ReplaceAll(platform, "/", "-")}
+		}
+		plugins = append(plugins, map[string]any{"plugin_id": row.spec.PluginID, "source_version": row.version, "binaries": binaries})
 	}
 	inventory, _ := json.Marshal(map[string]any{"plugins": plugins})
 	return &http.Client{Transport: storageCatalogTransport(func(r *http.Request) (*http.Response, error) {
@@ -360,6 +365,25 @@ func TestNativeCatalogSkipsS3RowWhenServedManifestIdentityDiffers(t *testing.T) 
 				t.Fatalf("S3 row with a mismatched served manifest was admitted: %+v", got)
 			}
 		})
+	}
+}
+
+// A release has one manifest.json for every platform, so it can carry only one
+// platform's digest. A pinned S3 row for this platform is still admitted when
+// the served manifest names another binary of the same release; the static
+// approval's manifest is what gets used either way.
+func TestNativeCatalogAdmitsPinnedS3WhenServedManifestNamesAnotherPlatform(t *testing.T) {
+	checksum := strings.Repeat("a", 64)
+	other := strings.Repeat("b", 64)
+	registry := &NativeStorageRegistry{baseDir: t.TempDir(), approved: make(map[string]NativeStorageArtifact), pinned: s3Pins(t, "0.4.0", checksum)}
+	registry.catalogClient = catalogFixtureRows(t, catalogRow{spec: s3Spec, version: "0.4.0", checksum: checksum,
+		others: map[string]string{"otheros/otherarch": other}, manifest: staticS3Manifest("0.4.0", other)})
+	if err := registry.RefreshCatalog(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	got := catalogS3Artifact(t, registry)
+	if got.Checksum != checksum || !proto.Equal(got.Manifest, staticS3Manifest("0.4.0", checksum)) {
+		t.Fatalf("pinned S3 row for this platform not admitted with its approved manifest: %+v", got)
 	}
 }
 

@@ -98,6 +98,16 @@ type storageCatalogRelease struct {
 	} `json:"binaries"`
 }
 
+// hasChecksum reports whether one of the release's binaries has checksum.
+func (r storageCatalogRelease) hasChecksum(checksum string) bool {
+	for _, binary := range r.Binaries {
+		if checksum != "" && binary.Checksum == checksum {
+			return true
+		}
+	}
+	return false
+}
+
 func storageCatalogURL(spec nativeCatalogSpec, raw, version, file string) bool {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" || u.Host != "github.com" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
@@ -301,8 +311,10 @@ func (r *NativeStorageRegistry) RefreshCatalog(ctx context.Context) error {
 			// The served manifest is only a sanity check: a pinned release always
 			// uses the statically approved manifest, so the catalog repository can
 			// change neither its schema nor its metadata, and an installed archive
-			// stays admissible without this cache.
-			if parseErr != nil || m.GetPluginId() != release.ID || m.GetVersion() != release.Version || m.GetChecksum() != binary.Checksum {
+			// stays admissible without this cache. A release serves one
+			// manifest.json for all its platforms, so it names one platform's
+			// binary: any binary of this release passes.
+			if parseErr != nil || m.GetPluginId() != release.ID || m.GetVersion() != release.Version || !release.hasChecksum(m.GetChecksum()) {
 				continue
 			}
 			m = proto.CloneOf(pinned.Manifest)

@@ -260,6 +260,13 @@ a committed higher generation runs.
 
 ### S3 process state
 
+A pinned S3 catalog row uses the statically approved manifest; the release's served
+`manifest.json` is only a sanity check of plugin ID, version and checksum. A release
+serves one `manifest.json` for all its platforms, so it names one platform's binary:
+since 2026-11-01 any binary checksum of the same release passes
+(`storageCatalogRelease.hasChecksum`), so the linux/arm64 row of S3 0.4.0 is offered
+too. Before that, only the platform the served manifest named was offered.
+
 The `bloem.storage.s3` provider, installed from the catalog when its digest is pinned
 in the host's static approvals or from a manually approved artifact, needs a durable
 private identity and cursor database. The registry derives its `connection.state_path`
