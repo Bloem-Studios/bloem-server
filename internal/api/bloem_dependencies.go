@@ -9,6 +9,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/auth"
 	"github.com/Silo-Server/silo-server/internal/livetv"
+	"github.com/Silo-Server/silo-server/internal/orgdomains"
 	"github.com/Silo-Server/silo-server/internal/promotions"
 )
 
@@ -30,6 +31,12 @@ type BloemDependencies struct {
 	Promotions              *promotions.Service // S-2 promotion cards (nil when DB unavailable)
 	HostStatsSource         handlers.HostStatsSource
 	LiveTV                  *livetv.Service // shared Live TV / OTA / DVR service (may be nil)
+
+	// OrganizationDomains maps each request's domain to its organization for
+	// presentation; OrganizationDomainStore writes domains and branding. Both
+	// nil without a database (internal/orgdomains).
+	OrganizationDomains     *orgdomains.Directory
+	OrganizationDomainStore *orgdomains.Store
 
 	// OnUserProfileSessionsRevoked invalidates sessions bound to the
 	// named profiles of one account.

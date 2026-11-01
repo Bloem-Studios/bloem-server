@@ -105,6 +105,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/nodesessions"
 	"github.com/Silo-Server/silo-server/internal/notifications"
 	"github.com/Silo-Server/silo-server/internal/opslog"
+	"github.com/Silo-Server/silo-server/internal/orgdomains"
 	"github.com/Silo-Server/silo-server/internal/partman"
 	"github.com/Silo-Server/silo-server/internal/playback"
 	"github.com/Silo-Server/silo-server/internal/playback/planstore"
@@ -903,6 +904,8 @@ func main() {
 	// plaintext while sensitive keys rest as ciphertext. The settings backfill
 	// (run after migrations, before this GetAll) is wired further below.
 	settingsRepo := catalog.NewEncryptedSettingsRepo(catalog.NewServerSettingsRepo(pool), dataCipher)
+	orgDomainStore := orgdomains.NewStore(pool)
+	orgDirectory := orgdomains.NewDirectory(orgDomainStore, orgdomains.DirectoryTTL)
 	if isPrimaryNode {
 		runCredentialBackfills(ctx, pool, dataCipher, settingsRepo)
 		convertLegacyAIProviders(ctx, settingsRepo)
@@ -3031,6 +3034,7 @@ func main() {
 	}
 	ipResolver = clientip.NewResolver(trustedCIDRs)
 	deps.ClientIPResolver = ipResolver
+	deps.OrganizationDomains, deps.OrganizationDomainStore = orgDirectory, orgDomainStore
 	// Hot-reload trusted proxies on settings changes via two complementary
 	// paths. The direct event-bus subscription re-reads only the clientip key,
 	// so a malformed unrelated setting (which fails the whole-config reload)
@@ -3846,7 +3850,7 @@ func main() {
 
 	// Step 8: Build the handler the primary port serves — the API router and
 	// frontend. Metrics use a separate opt-in listener; see newRootHandler.
-	rootHandler := newRootHandler(router)
+	rootHandler := orgdomains.WrapListener(newRootHandler(router), ipResolver, orgDirectory)
 	stopMetricsListener, err := startMetricsListener(true)
 	if err != nil {
 		log.Fatalf("metrics listener: %v", err)
