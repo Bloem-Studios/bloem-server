@@ -189,7 +189,6 @@ same path. Read the upstream document together with its overlay.
 
 ### Historical evaluations and plans
 
-- [Native client subtitle delivery](../architecture/native-subtitle-delivery.md) — historical: the September 8 adoption of Silo `658be10eb`'s subtitle artifact and timeline contract; the behaviour is now Silo's, described in Silo's [playback protocol v3](../architecture/playback-protocol-v3.md#8-track-identity-and-the-subtitle-ordinal-space).
 - [Silo playback merge impact on Bloem clients](../architecture/2026-08-24-silo-server-merge-client-impact.md) — historical: the August 24 client impact audit.
 - [Upstream reconciliation — 2026-09-08](../architecture/2026-09-08-upstream-reconciliation.md) — historical: the September 8 reconciliation and its deferred items.
 - [Server A–Z architecture evaluation](../architecture/server-a-z-architecture-evaluation-2026-08-23.md) — historical: the August 23 architecture audit.

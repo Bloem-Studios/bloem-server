@@ -5,7 +5,8 @@
 > `aeb82e1c9` in merge `3cbc2abed`. Every later Silo merge supersedes its state: Bloem
 > `main` now contains all of Silo `main` through `3e2d306b2` (merge `68070f04b`,
 > 2026-10-27). The deferred native part of Silo `658be10eb` was completed the same day
-> in `549d88b6d` (see [native subtitle delivery](native-subtitle-delivery.md)). Fork
+> in `549d88b6d`; that behaviour is now Silo's own, described in Silo's
+> [playback protocol v3](playback-protocol-v3.md#8-track-identity-and-the-subtitle-ordinal-space). Fork
 > policy and current merge practice are in [FORK.md](../../FORK.md); later merges are
 > listed in the [integration changelog](../bloem/CHANGELOG.md). The record below is kept
 > as written, except that the final merge hash replaces a pointer to an external report.
@@ -96,7 +97,7 @@ push contract link is added to its existing documentation section.
 
 ## Deferred work and client compatibility
 
-**Follow-up:** the subsequently authorized [native subtitle delivery update](native-subtitle-delivery.md)
+**Follow-up:** the subsequently authorized native subtitle delivery update (`549d88b6d`)
 completes the server-side remainder of `658be10eb` and coordinates Apple v3 and
 Android v3. The inventory and original discussion record the initial reconciliation decisions.
 
