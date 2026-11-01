@@ -12,6 +12,12 @@
 > files that also exist in Silo are Silo's, and Bloem's documentation lives in
 > Bloem-owned files indexed in [docs/bloem/README.md](../docs/bloem/README.md).
 
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
+> `main` at `6b6a92f2b`, with Silo merged through `63ef34b23`. This page says what
+> Bloem is, where it comes from and how to run it, in plain language; the technical
+> parts for people changing the code are in the [For developers](#for-developers)
+> section.
+
 Bloem Server is a public **tracking fork** of
 [Silo Server](https://github.com/Silo-Server/silo-server), maintained by
 Bloem Studios: it keeps Silo's full Git history and merges Silo's `main` as it
@@ -483,70 +489,6 @@ stays in the database.
 [FORK.md](../FORK.md#what-bloem-removed) has the same list as a table, and the
 [changelog](../docs/bloem/CHANGELOG.md) has the detail.
 
-## CI and the published image
-
-- **Bloem CI** ([`bloem-ci.yml`](workflows/bloem-ci.yml)) runs on every pull
-  request, on pushes to `main` and `apiv2`, weekly and on demand. It runs Silo's
-  former CI jobs, adapted, plus Bloem's own gates: tenant identity and native
-  authentication suites against disposable PostgreSQL, sharded Go tests, Go lint
-  (changed-line lint that ignores lines identical to Silo's, `govulncheck`),
-  contract checks (OpenAPI, route inventory, migration ledger, client DTOs,
-  playback fixtures, the seam ledger), the scenario executor and the web build
-  and tests. Silo's own `ci.yml` stays Silo's file apart from one line that
-  skips its job outside Silo's repository, because it calls Silo's reusable
-  workflow from Silo's `main`, which knows none of Bloem's gates.
-- **Runners.** When the repository variable `BLOEM_SELF_HOSTED` is `true`,
-  pushes to `main` and pull requests by members listed in `BLOEM_CI_MEMBERS` run
-  on private, disposable self-hosted runners. These accept only a job carrying
-  its own run's labels. Every other run, including every pull request from a
-  fork, runs on GitHub's `ubuntu-24.04` runners. Workflow runs from outside
-  contributors need approval.
-- **Bloem Image** ([`bloem-image.yml`](workflows/bloem-image.yml)) runs after
-  Bloem CI succeeds on a push to `main`, or on demand for `main`. It checks
-  through the GitHub API that the exact commit passed Bloem CI on `main`. It then
-  builds that commit with the web bundle CI built and uploaded
-  (`frontend-dist-<sha>`) and pushes one tag, the full 40-character commit SHA:
-  `ghcr.io/bloem-studios/bloem-server:<sha>`, for `linux/amd64`, with the
-  revision in the image labels. Since `6d0adcfe9` (October 27, 2026) it then
-  points `latest` at the same image if that commit is still `main`'s head, so
-  `latest` follows `main` as Silo's does; before that, `latest` was a September
-  24 build nothing moved. Silo's own image workflow follows Silo's CI and does
-  not run here.
-
-See [Bloem CI](../docs/bloem/ci.md) for the job list and tool pins.
-
-## How production is deployed
-
-Bloem's production deployments follow the same pattern, recorded in
-dated receipts under [`docs/operations/`](../docs/bloem/README.md#deployment-receipts):
-
-1. **Image.** Production runs an image built for the exact commit: the one
-   Bloem Image publishes, or, when the owner asks to deploy before CI finishes
-   (most releases since October 28, 2026), one built locally from a
-   `git archive` of the commit with the same build arguments and labels. The
-   image is loaded on the application host and both transcode nodes under a
-   release tag, its binary checksum is compared on each, and its runtime
-   configuration is compared with the running release.
-2. **Restore point.** Before the restart: a container snapshot, a named database
-   restore point with its WAL segment archived, and dumps of the tables the
-   migrations change. For the October 26 Stage A release, whose migrations
-   reshaped account data, they were first rehearsed on a restored copy.
-3. **Offline migrations.** A restart script refuses to run unless the live image
-   is the expected previous release. It stops the server, applies the pending
-   migrations while nothing serves, and starts the new image.
-4. **Checks.** Readiness and health locally and publicly, zero pending
-   migrations, the Silo switching state, account and membership counts, active
-   streams and the first minutes of logs.
-5. **Rollback.** Bloem's migrations are forward-only, so a release with
-   migrations rolls back by restoring the database to the restore point together
-   with the container snapshot, not by starting the old image on the new schema.
-   A release without migrations rolls back by starting the previous image.
-
-The database runs in its own container, separate from the application server,
-with WAL archiving and a streaming standby. Since October 27, 2026, production
-runs with `POSTGRES_TUNE=off` and the database is tuned directly; see
-[PostgreSQL auto-tuning](#postgresql-auto-tuning).
-
 ## Features
 
 This list combines Silo's inherited functionality with the Bloem additions
@@ -868,39 +810,6 @@ change PostgreSQL server settings. Settings already written with `ALTER SYSTEM`
 remain in `postgresql.auto.conf`; reset those PostgreSQL parameters if you later
 move fully to a custom `postgresql.conf`.
 
-## Build from Source
-
-If you prefer running Bloem without Docker:
-
-1. **Install prerequisites**: Go 1.26.10+ (the patch `go.mod` names), Node.js 24+ for the frontend, pnpm 10.32.1, a C compiler and libvips development libraries for CGO, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
-
-2. **Configure the source process**
-
-   ```sh
-   cp .env.bloem.example .env
-   printf '\nSECRET_KEY=%s\nDATABASE_URL=%s\nREDIS_URL=%s\n' \
-     "$(openssl rand -base64 48)" \
-     'postgres://silo:silo@localhost:5432/silo?sslmode=disable' \
-     'redis://localhost:6379' >> .env
-   ```
-
-   Change the URLs when you use existing services instead of the bundled development defaults.
-
-3. **Start PostgreSQL and Redis** (skip if you already have them running)
-
-   ```sh
-   docker compose up -d postgres redis
-   ```
-
-4. **Build and run**
-
-   ```sh
-   GOWORK=off make build
-   ./silo
-   ```
-
-   The source process uses `PORT` from its environment or `.env`; without a value, it listens on `8080`. Docker Compose separately maps the host port (normally `8090`) to container port `8080`. Other settings are configured through the admin UI.
-
 ## Documentation
 
 - [Bloem documentation index](../docs/bloem/README.md) — every Bloem-owned document, including Bloem editions of and overlays on upstream Silo documents, with historical pages marked.
@@ -910,7 +819,7 @@ If you prefer running Bloem without Docker:
 - [Bloem CI](../docs/bloem/ci.md) — jobs, the daily upstream sync, the image gate and runner placement.
 - [Admin guide](../docs/wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback and transcoding, access policy, Live TV, maintenance and troubleshooting.
 - [User guide](../docs/wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests, notifications, and connecting native clients.
-- [Wiki index](../docs/bloem/overlays/wiki/index.md) — every operator- and viewer-facing page, including [Deploy Bloem with Docker](../docs/bloem/overlays/wiki/deployment/docker.md), [Entitlement Templates](../docs/wiki/admin/entitlement-templates.md), [Supported Media Folder Structures and Naming](../docs/architecture/media-naming.md), [Collection Templates](../docs/architecture/collection-templates.md), [Local NFO Metadata](../docs/architecture/local-nfo-metadata.md) and [Monitoring Stream Nodes](../docs/architecture/observability.md).
+- [Wiki index](../docs/bloem/overlays/wiki/index.md) — every operator- and viewer-facing page, including [Installing and running Bloem with Docker](../docs/bloem/overlays/wiki/deployment/docker.md), [Entitlement templates](../docs/wiki/admin/entitlement-templates.md), [Supported Media Folder Structures and Naming](../docs/architecture/media-naming.md), [Collection Templates](../docs/architecture/collection-templates.md), [Local NFO Metadata](../docs/architecture/local-nfo-metadata.md) and [Monitoring Stream Nodes](../docs/architecture/observability.md).
 - [SDK compatibility](../docs/architecture/bloem-sdk-compatibility.md) — plugin protocol versions, generated Kotlin/Swift contracts and client adoption.
 - [Xtream live providers](../docs/architecture/xtream-live-tv.md) — encrypted setup, XMLTV, connection limits, delivery boundaries and removal; [operator steps](../docs/wiki/admin-guide.md#210-live-tv).
 - [Embedded-web coverage](../docs/architecture/bloem-web-feature-coverage.md) — implemented screens, authority boundaries, verification and remaining product limits.
@@ -955,7 +864,142 @@ Deployment:
 Technical notes:
 ```
 
-## Contributing & Development
+## License & Trademarks
+
+Silo's source code is licensed under the **GNU Affero General Public License
+v3.0 or later** (`AGPL-3.0-or-later`) — see [LICENSE](../LICENSE).
+
+The **Silo name, logo, and wordmark are trademarks of Silo Media L.L.C.** and
+are **not** covered by the AGPL. You're free to fork and redistribute the code,
+but forks and redistributions must not use the Silo brand as their identity and
+must remove or replace the brand assets. Publishing a Silo-branded app to an app
+store requires written permission. See [TRADEMARK.md](../TRADEMARK.md) for what's
+permitted — including referential use like "compatible with Silo."
+
+## Who does what
+
+| Who | What they do |
+| --- | --- |
+| Silo's maintainers | Write Silo: the scanner, catalog, playback, web app and plugin runtime that most of Bloem is. Their files stay as they wrote them. |
+| Bloem Studios | Maintains this fork: takes in Silo's changes every day, and builds organizations, Live TV, storage sources, campaigns and Bloem's native API on top. |
+| The owner | Approves each new seam (a Silo file Bloem has to change), and asks for each production deployment. |
+| A server's administrators | Run a Bloem server: install it, add libraries, and manage organizations, plans and people, as the [admin guide](../docs/wiki/admin-guide.md) describes. |
+
+## Words used in the code
+
+| On this page | In the code and repository |
+| --- | --- |
+| Tracking fork | this repository, which merges Silo's `main` (remote `upstream`) as it moves; [FORK.md](../FORK.md) |
+| Silo wins | in a merge conflict, Silo's lines are kept and Bloem's change moves to its own lines or files |
+| Seam | a Silo-owned file Bloem changes, listed in [`contracts/seams.txt`](../contracts/seams.txt) and checked by `make verify-seams` |
+| Overlay | a Bloem page beside a Silo document, under `docs/bloem/overlays/`, listing what Bloem changes in it |
+| Bloem-owned file | a file that does not exist in Silo's `main`, often named `bloem_*` or under `internal/<bloem package>` |
+| Native API | Bloem's own routes, under `/api/bloem/v1`; Silo's are `/api/v1` and `/api/v2` |
+| Compatibility names | the Silo names Bloem keeps so merges stay clean: module path, `cmd/silo`, `SILO_*` variables, `X-Silo-*` headers |
+| Organization | `organizations` and `organization_memberships` (`internal/tenancy`); see [How organizations work](../docs/architecture/bloem-organizations.md) |
+
+## For developers
+
+How Bloem is built, tested, released and deployed, and how to contribute.
+
+### CI and the published image
+
+- **Bloem CI** ([`bloem-ci.yml`](workflows/bloem-ci.yml)) runs on every pull
+  request, on pushes to `main` and `apiv2`, weekly and on demand. It runs Silo's
+  former CI jobs, adapted, plus Bloem's own gates: tenant identity and native
+  authentication suites against disposable PostgreSQL, sharded Go tests, Go lint
+  (changed-line lint that ignores lines identical to Silo's, `govulncheck`),
+  contract checks (OpenAPI, route inventory, migration ledger, client DTOs,
+  playback fixtures, the seam ledger), the scenario executor and the web build
+  and tests. Silo's own `ci.yml` stays Silo's file apart from one line that
+  skips its job outside Silo's repository, because it calls Silo's reusable
+  workflow from Silo's `main`, which knows none of Bloem's gates.
+- **Runners.** When the repository variable `BLOEM_SELF_HOSTED` is `true`,
+  pushes to `main` and pull requests by members listed in `BLOEM_CI_MEMBERS` run
+  on private, disposable self-hosted runners. These accept only a job carrying
+  its own run's labels. Every other run, including every pull request from a
+  fork, runs on GitHub's `ubuntu-24.04` runners. Workflow runs from outside
+  contributors need approval.
+- **Bloem Image** ([`bloem-image.yml`](workflows/bloem-image.yml)) runs after
+  Bloem CI succeeds on a push to `main`, or on demand for `main`. It checks
+  through the GitHub API that the exact commit passed Bloem CI on `main`. It then
+  builds that commit with the web bundle CI built and uploaded
+  (`frontend-dist-<sha>`) and pushes one tag, the full 40-character commit SHA:
+  `ghcr.io/bloem-studios/bloem-server:<sha>`, for `linux/amd64`, with the
+  revision in the image labels. Since `6d0adcfe9` (October 27, 2026) it then
+  points `latest` at the same image if that commit is still `main`'s head, so
+  `latest` follows `main` as Silo's does; before that, `latest` was a September
+  24 build nothing moved. Silo's own image workflow follows Silo's CI and does
+  not run here.
+
+See [Bloem CI](../docs/bloem/ci.md) for the job list and tool pins.
+
+### How production is deployed
+
+Bloem's production deployments follow the same pattern, recorded in
+dated receipts under [`docs/operations/`](../docs/bloem/README.md#deployment-receipts):
+
+1. **Image.** Production runs an image built for the exact commit: the one
+   Bloem Image publishes, or, when the owner asks to deploy before CI finishes
+   (most releases since October 28, 2026), one built locally from a
+   `git archive` of the commit with the same build arguments and labels. The
+   image is loaded on the application host and both transcode nodes under a
+   release tag, its binary checksum is compared on each, and its runtime
+   configuration is compared with the running release.
+2. **Restore point.** Before the restart: a container snapshot, a named database
+   restore point with its WAL segment archived, and dumps of the tables the
+   migrations change. For the October 26 Stage A release, whose migrations
+   reshaped account data, they were first rehearsed on a restored copy.
+3. **Offline migrations.** A restart script refuses to run unless the live image
+   is the expected previous release. It stops the server, applies the pending
+   migrations while nothing serves, and starts the new image.
+4. **Checks.** Readiness and health locally and publicly, zero pending
+   migrations, the Silo switching state, account and membership counts, active
+   streams and the first minutes of logs.
+5. **Rollback.** Bloem's migrations are forward-only, so a release with
+   migrations rolls back by restoring the database to the restore point together
+   with the container snapshot, not by starting the old image on the new schema.
+   A release without migrations rolls back by starting the previous image.
+
+The database runs in its own container, separate from the application server,
+with WAL archiving and a streaming standby. Since October 27, 2026, production
+runs with `POSTGRES_TUNE=off` and the database is tuned directly; see
+[PostgreSQL auto-tuning](#postgresql-auto-tuning).
+
+### Build from Source
+
+If you prefer running Bloem without Docker:
+
+1. **Install prerequisites**: Go 1.26.10+ (the patch `go.mod` names), Node.js 24+ for the frontend, pnpm 10.32.1, a C compiler and libvips development libraries for CGO, PostgreSQL 18 with pgvector, Redis, and FFmpeg.
+
+2. **Configure the source process**
+
+   ```sh
+   cp .env.bloem.example .env
+   printf '\nSECRET_KEY=%s\nDATABASE_URL=%s\nREDIS_URL=%s\n' \
+     "$(openssl rand -base64 48)" \
+     'postgres://silo:silo@localhost:5432/silo?sslmode=disable' \
+     'redis://localhost:6379' >> .env
+   ```
+
+   Change the URLs when you use existing services instead of the bundled development defaults.
+
+3. **Start PostgreSQL and Redis** (skip if you already have them running)
+
+   ```sh
+   docker compose up -d postgres redis
+   ```
+
+4. **Build and run**
+
+   ```sh
+   GOWORK=off make build
+   ./silo
+   ```
+
+   The source process uses `PORT` from its environment or `.env`; without a value, it listens on `8080`. Docker Compose separately maps the host port (normally `8090`) to container port `8080`. Other settings are configured through the admin UI.
+
+### Contributing & Development
 
 Bloem Server is open source under the same terms as Silo. See
 [Bloem development guide](../docs/bloem/overlays/DEVELOPMENT.md) for building from source in a dev workflow,
@@ -972,15 +1016,3 @@ in a Silo repository or when a maintainer asks, so a clear issue is usually the
 better route; see Silo's root `README.md`.
 Contributions to Bloem-specific areas — the `/api/bloem/v1` tenant foundation, the
 plugin SDK/catalog, or the client-contract test suites — belong here.
-
-## License & Trademarks
-
-Silo's source code is licensed under the **GNU Affero General Public License
-v3.0 or later** (`AGPL-3.0-or-later`) — see [LICENSE](../LICENSE).
-
-The **Silo name, logo, and wordmark are trademarks of Silo Media L.L.C.** and
-are **not** covered by the AGPL. You're free to fork and redistribute the code,
-but forks and redistributions must not use the Silo brand as their identity and
-must remove or replace the brand assets. Publishing a Silo-branded app to an app
-store requires written permission. See [TRADEMARK.md](../TRADEMARK.md) for what's
-permitted — including referential use like "compatible with Silo."

@@ -148,7 +148,6 @@ same path. Read the upstream document together with its overlay.
 - [How Bloem looks inside a stored file](../architecture/bloem-native-probe.md) — trusted ffprobe input, shared read budgets and process cleanup.
 - [How playback works across several API servers](../architecture/bloem-cluster-media.md) — which node owns Live TV and native media sessions, on Silo's playback attempts and heartbeats.
 - [How access is checked as content leaves the server](../architecture/delivery-boundary-enforcement.md) — library access rechecked where bytes or rows leave the server.
-- [Native client subtitle delivery](../architecture/native-subtitle-delivery.md) — subtitle artifact and timeline contract adopted from Silo `658be10eb`.
 - [Storage source management UI design](../architecture/bloem-storage-source-management-ui-design.md) — historical: the October 15 design for adding and managing S3 and Bookwarehouse sources in the web admin.
 - [Storage source management UI plan](../architecture/bloem-storage-source-management-ui-plan.md) — historical: the October 15 implementation plan for that design.
 
@@ -190,6 +189,7 @@ same path. Read the upstream document together with its overlay.
 
 ### Historical evaluations and plans
 
+- [Native client subtitle delivery](../architecture/native-subtitle-delivery.md) — historical: the September 8 adoption of Silo `658be10eb`'s subtitle artifact and timeline contract; the behaviour is now Silo's, described in Silo's [playback protocol v3](../architecture/playback-protocol-v3.md#8-track-identity-and-the-subtitle-ordinal-space).
 - [Silo playback merge impact on Bloem clients](../architecture/2026-08-24-silo-server-merge-client-impact.md) — historical: the August 24 client impact audit.
 - [Upstream reconciliation — 2026-09-08](../architecture/2026-09-08-upstream-reconciliation.md) — historical: the September 8 reconciliation and its deferred items.
 - [Server A–Z architecture evaluation](../architecture/server-a-z-architecture-evaluation-2026-08-23.md) — historical: the August 23 architecture audit.
