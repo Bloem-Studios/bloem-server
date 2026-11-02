@@ -1,16 +1,16 @@
 # How Bloem CI works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`; updated on 2026-11-02,
-> when the upstream sync was switched off and the local gate was added. Bloem's CI, image
-> and upstream-sync workflows are Bloem additions; Silo's own `ci.yml` stays as Silo
-> wrote it apart from one line. The technical rules are in the
-> [For developers](#for-developers) section.
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
+> and checked against `main` at `f12b3c75f`, which includes Silo through `07f0ae21c`.
+> Since 2 November Silo's work comes in through the merge bot, and the GitHub upstream
+> sync is switched off. Bloem's CI, image and upstream-sync workflows are Bloem
+> additions; Silo's own `ci.yml` stays as Silo wrote it apart from one line. The
+> technical rules are in the [For developers](#for-developers) section.
 
 Every change to Bloem Server is checked before it can be trusted, every passing
-commit on `main` gets a server image, and Silo's work comes in as ordinary merges. This page
-walks through what runs and when, which machines run it, how Silo's changes land,
-and what to do when a run fails.
+commit on `main` gets a server image, and Silo's work comes in as ordinary merges,
+made by a merge bot. This page walks through what runs and when, which machines run
+it, how Silo's changes land, and what to do when a run fails.
 
 ## What runs, and when
 
@@ -32,8 +32,10 @@ Bloem has four workflows of its own:
 4. **Upstream sync merge** lands that pull request on `main` once Bloem CI has passed
    on exactly the merge it tested. It is switched off together with the sync.
 
-None of them deploys anything. A person starts each deployment, and a dated record
-in [`docs/operations/`](../operations/) says what was deployed and how.
+None of them deploys anything. The merge bot deploys each Silo batch once Bloem CI
+passes it ([below](#how-silos-work-comes-in)), and a person starts every other
+deployment. A dated record in [`docs/operations/`](../operations/) says what was
+deployed and how.
 
 ## Where the jobs run
 
@@ -56,20 +58,36 @@ must change together.
 Bloem is a **tracking fork**: it takes in Silo's work as ordinary merges instead of
 copying it by hand ([how Bloem keeps up with Silo](../architecture/bloem-following-silo.md)).
 
-Since November 2, 2026 a maintainer merges Silo outside GitHub Actions:
+Since November 2, 2026 a **merge bot** on Bloem's build machine takes each Silo
+batch, outside GitHub Actions:
 
-1. Merge Silo's `main` into a new branch. Each conflict takes Silo's side, word for
-   word, and Bloem's change goes on its own lines or in its own file.
-2. Run every check before pushing. The **local gate** runs every Bloem CI job on the
-   maintainer's own machine, the scenario executor included, so a merge that would turn
-   CI red shows up before it reaches `main` ([local gate](#local-gate)). Where
-   Silo's change would break Bloem, Bloem's behavior goes back on Bloem's own lines, with
-   a test.
-3. Push the merge to `main`. Bloem CI checks it like any other push.
+1. **A free check every 10 minutes** starts a batch when Silo has new commits and has
+   been quiet for 30 minutes. The batch is everything on Silo's `main` at that moment,
+   and only one runs at a time.
+2. **One thread per batch.** The bot works the batch in its own T3 thread and its own
+   copy of the repository, which the owner can watch and answer.
+3. **Merge and check.** Each conflict takes Silo's side, word for word, and Bloem's
+   change goes on its own lines or in its own file, with a test where Silo's version
+   would break Bloem. A review list names the seams, Bloem files, overlays, pages and
+   migrations to read. Then the **local gate** runs every Bloem CI job on the build
+   machine, the scenario executor included, so a merge that would turn CI red shows up
+   before it reaches `main` ([local gate](#local-gate)).
+4. **Push and wait.** The bot pushes the merge to `main` and waits for Bloem CI on
+   that exact commit.
+5. **Deploy.** Only a commit Bloem CI passed is deployed. The bot writes the receipt
+   and sends one message: deployed, stuck or rolled back.
 
-The daily sync and its merge gate are still in the repository, switched off. A
-repository administrator turns both back on by setting the repository variable
-`BLOEM_UPSTREAM_SYNC` to `true`. Switched on, they work like this:
+![The merge bot pushes to main and waits for Bloem CI on that commit. Passed: it deploys. A failed job is rerun once; a run cancelled by a newer push is followed to main's new tip; a failure that comes back is fixed on Bloem's own lines and pushed again, at most three times. A failure it cannot fix stops the batch for the owner](../architecture/images/bloem-ci/merge-bot.svg)
+
+The bot stops in its thread and sends the "stuck" message when a test or check
+cannot be fixed, when Bloem cannot be kept working without editing Silo's lines, when
+Bloem CI stays red after its fixes, or when the deploy fails or rolls back. No new
+batch starts until the owner answers there or releases the batch.
+
+The daily sync and its merge gate are still in the repository, switched off, so two
+automatic mergers never race. A repository administrator turns both back on by
+setting the repository variable `BLOEM_UPSTREAM_SYNC` to `true`. Switched on, they
+work like this:
 
 ![The daily sync and five checks before a sync pull request merges itself: Bloem CI passed, the branch comes from this repository, it is the one open non-draft sync pull request, its head is the exact commit CI tested, and that commit is the untouched merge of Bloem's main and Silo's main. Any no leaves the pull request for a person](../architecture/images/bloem-ci/merge-gate.svg)
 
@@ -94,6 +112,9 @@ Nothing in the sync writes to `main` directly or rewrites history.
 - **A cancelled run is not a pass.** When two pushes to `main` follow each other
   quickly, the second cancels the first run, and only the second commit gets an
   image.
+- **The merge bot reruns once by itself.** When CI fails on a batch it pushed, it
+  reruns the failed jobs once. The same failure twice is real: the bot fixes it, or
+  stops for the owner.
 
 ## Example: two pushes in quick succession
 
@@ -113,6 +134,8 @@ This example is made up.
 | Who | What they manage |
 | --- | --- |
 | A repository administrator | The repository variables that switch on and route to the disposable runners (`BLOEM_SELF_HOSTED`, `BLOEM_CI_MEMBERS`), the one that switches the upstream sync back on (`BLOEM_UPSTREAM_SYNC`), and the secrets for the sync token and Discord (`UPSTREAM_SYNC_TOKEN`, `DISCORD_WEBHOOK_URL`). |
+| The owner | Answering or releasing a stopped batch, pausing the merge bot, and every deployment the bot does not make. |
+| The merge bot, outside this repository | Merging each Silo batch, pushing it to `main`, its one re-run of a failed CI run, and deploying a batch Bloem CI passed. |
 | Anyone with push access | Bloem's workflow files and scripts, re-runs, pushing a checked Silo merge to `main`, and merging a resolved sync pull request by hand. |
 | The runner controller, outside this repository | Starting a fresh disposable runner for each job. Its own settings are the authority for routing. |
 | Silo | Its own workflow files, which Bloem keeps exactly as Silo wrote them except one line of `ci.yml`. |
@@ -123,6 +146,9 @@ This example is made up.
 | --- | --- |
 | Bloem CI | `.github/workflows/bloem-ci.yml`, workflow name "Bloem CI" |
 | Bloem Image | `.github/workflows/bloem-image.yml`, workflow name "Bloem Image" |
+| The merge bot | runs on Bloem's build machine; its configuration, scripts and prompts live in Bloem's private infrastructure repository |
+| Review list | `scripts/bloem/silo-merge-review.py` |
+| Local gate | `scripts/bloem/local-gate.py` |
 | Upstream sync | `.github/workflows/upstream-sync.yml` |
 | Upstream sync merge, the merge gate | `.github/workflows/upstream-sync-merge.yml` and `scripts/verify-upstream-sync-merge.sh` |
 | The switch for both | the repository variable `BLOEM_UPSTREAM_SYNC`; `true` turns them on, anything else (unset today) keeps them off |
@@ -145,8 +171,8 @@ Terms used below:
   out of Silo's files where it can
   ([FORK.md](../../FORK.md#this-is-a-tracking-fork-deliberately)).
 - A **seam** is a Silo-owned file that Bloem has changed. Each one is listed in
-  the seam ledger, [`contracts/seams.txt`](../../contracts/seams.txt) (304
-  entries at `b6039036d`), and `make verify-seams` fails on a change the
+  the seam ledger, [`contracts/seams.txt`](../../contracts/seams.txt) (310
+  entries at `f12b3c75f`), and `make verify-seams` fails on a change the
   ledger does not list.
 - A **disposable runner** is a private self-hosted runner that runs one job
   and is not reused. See [Where jobs run](#where-jobs-run).
@@ -162,7 +188,7 @@ Terms used below:
 | CI | `ci.yml` | As in Silo | Nothing on Bloem: its one job runs only in Silo's repository ([below](#silos-ciyml)) | Silo's file; a one-line seam |
 
 The other files in `.github/workflows/` are Silo's and byte-identical to Silo's
-`main` at `63ef34b23`. None of them tests or publishes Bloem:
+`main` at `07f0ae21c`. None of them tests or publishes Bloem:
 
 - Silo's `docker.yml` ("Docker Image") publishes only after a successful "CI"
   run, and on Bloem every "CI" run concludes `skipped`, so Silo's image job is
@@ -357,11 +383,15 @@ python3 scripts/bloem/local-gate.py services down "$GATE_SERVICES_ID"
   per step with the step's log file, and exits non-zero when any step failed.
 - `make verify-local-gate`, a Go contract check, fails when this workflow
   gains a `make` target or a `go test` the gate does not run.
+- The merge bot runs it on every batch with `--base` set to the `main` the batch
+  started from. After a fix it reruns, with `--only`, the failed phases and every
+  phase the fix can reach.
 
 ### Failures and re-runs
 
-Nothing in the workflows retries a failed test or job. When a job fails for a
-reason that has nothing to do with the change, such as a flaky test or a lost
+Nothing in the workflows retries a failed test or job. The merge bot's one
+re-run of a batch it pushed is its own ([below](#the-merge-bot)). When a job fails
+for a reason that has nothing to do with the change, such as a flaky test or a lost
 runner, the run is re-run with GitHub's **Re-run failed jobs**
 (`gh run rerun <run id> --failed`). That starts attempt 2 of the same run.
 The failed jobs run again, and the jobs that passed keep their attempt-1
@@ -538,17 +568,88 @@ patch.
 
 ### Upstream sync merges
 
-Two Bloem workflows, added on August 26, 2026 (`af2be39f1`), merge Silo into
-Bloem without anyone having to notice that Silo moved. Bloem CI is the gate:
-nothing reaches `main` unless Bloem CI passed on the exact merge.
+Since November 2, 2026 the merge bot takes in every Silo batch. The two GitHub
+workflows that used to merge Silo are switched off, because two automatic mergers
+must never race.
 
-Both are switched off since November 2, 2026, when Silo merges moved outside GitHub
-Actions: two automatic mergers must never race. Each job's `if:` requires the
-repository variable `BLOEM_UPSTREAM_SYNC` to be `true`, and it is unset. A scheduled
-sync run therefore starts and skips its job; a sync started by hand, dry run included,
-still runs and opens its pull request; and the merge gate skips every Bloem CI
-completion, so a sync pull request is merged by a person. The rest of this section
-describes both workflows as they run when switched on.
+#### The merge bot
+
+It runs on Bloem's build machine, outside GitHub Actions. Its configuration,
+scripts and prompts live in Bloem's private infrastructure repository; nothing in
+this repository starts it. It uses two scripts from this repository:
+`scripts/bloem/silo-merge-review.py` and `scripts/bloem/local-gate.py`.
+
+1. **The check.** A timer runs it every 10 minutes. It runs no model and starts no
+   thread. It fetches Bloem's and Silo's `main`, and acts only when Silo's tip is
+   not in Bloem's `main` and that tip's commit time is at least 30 minutes old. It
+   then takes a lock, one batch at a time, and starts the batch. The check also
+   reports a batch nobody picked up, a stopped batch that sent no message, a running
+   batch silent for four hours, and its own repeated failures.
+2. **The batch thread.** One T3 thread per batch, titled "Silo sync <sha9>", in its
+   own worktree on `merge/upstream-<sha9>` from `origin/main`. The batch is exactly
+   the Silo commit the check found; later commits wait. If that commit is already in
+   `main`, the batch ends with nothing to do.
+3. **Merge.** `git merge --no-ff --no-commit <batch>`; each conflicted hunk takes
+   Silo's side verbatim, Bloem's behavior goes back on Bloem's own added lines or in
+   a Bloem-owned file or field, and a Silo deletion wins. When keeping Bloem working
+   would need a change to one of Silo's lines, the batch stops. The merge commit is
+   titled "Merge Silo upstream through <sha9>".
+4. **Review.** `python3 scripts/bloem/silo-merge-review.py --base <old main> --silo <batch>`
+   lists the seams the batch touches, Bloem files beside or calling changed Silo code,
+   overlays to bring in line, Bloem pages that mention changed files, and the
+   batch's migrations. Each item gets a line saying why Bloem still works or what
+   breaks; a break is fixed on Bloem's own lines with a test that fails first.
+5. **Regenerate and document.** `make client-dtos`, `make playback-fixtures`, the API
+   catalogue, coverage reasons in `contracts/client/v1/coverage.json` with
+   `make client-digest`; then the overlays and Bloem pages the merge affects, with
+   pictures redrawn, and the status rows that say which Silo commit Bloem includes.
+6. **Gate.** `python3 scripts/bloem/local-gate.py run --base <old main>`. A failed
+   test is rerun alone once; a real failure gets at most three fix attempts. If
+   `main` moved meanwhile, it is merged in and the whole gate runs again; a third
+   move stops the batch.
+7. **Push and wait.** `git push origin HEAD:main`, never forced. The bot then waits
+   for the Bloem CI run on that exact commit. A failed run is rerun once, failed jobs
+   only (`gh run rerun <id> --failed`), unless `main` has moved on, since a re-run
+   would cancel the newer push's run. A run cancelled by a newer push, or failed with
+   `main` moved on, is followed to the new tip after checking it still contains the
+   pushed commit. Red twice: a test that also fails alone is fixed and pushed again,
+   at most three fix pushes per batch; anything else stops the batch. The bot never
+   pushes an empty commit or starts CI by hand to turn it green.
+8. **Deploy.** Only a commit Bloem CI passed, and the new tip may carry other
+   commits pushed to `main`, which the receipt names. One fixed deploy script builds
+   the image from a `git archive` of the commit, loads it on the server and both
+   transcode nodes, takes a server snapshot and a database restore point, refuses to
+   restart unless production runs the expected previous release, applies migrations
+   while the server is stopped, restarts and checks readiness, health, the version,
+   the logs and the transcode nodes. A failed check rolls the image back by itself.
+   Two cases leave production to the owner instead: after migrations, a server that
+   is ready, healthy and on the new version but fails a softer check (error lines,
+   the transcode nodes) keeps running; and when the host stops answering during the
+   restart, or the rollback itself fails, nothing more is tried. The bot never
+   restores the database.
+9. **Receipt and message.** `docs/operations/<date>-silo-sync-<sha9>-deployment.md`,
+   the index's "current:" receipt and the front page's `Production` row, pushed to
+   `main` and checked by Bloem CI too; one message (deployed, stuck or rolled back)
+   with the Silo range, the user-visible changes, any Bloem workaround or new seam,
+   migrations and downtime, and a link to the thread.
+
+It stops in its thread, writes "Needs you" with what failed, what it tried and what
+it suggests, and sends the stuck message when a test or check will not pass and it
+cannot fix the cause, when Bloem cannot be kept working without editing Silo's lines,
+when Bloem CI stays red after its fixes, and when the deploy fails or rolls back.
+Migrations and active streams are not stop reasons. A stopped batch keeps the lock,
+so no new batch starts until the owner answers in its thread or releases it.
+
+#### The switch for the GitHub sync
+
+The two Bloem workflows below, added on August 26, 2026 (`af2be39f1`), merged Silo
+into Bloem without anyone having to notice that Silo moved, with Bloem CI as the
+gate: nothing reached `main` unless Bloem CI passed on the exact merge. Each job's
+`if:` requires the repository variable `BLOEM_UPSTREAM_SYNC` to be `true`, and it is
+unset. A scheduled sync run therefore starts and skips its job; a sync started by
+hand, dry run included, still runs and opens its pull request; and the merge gate
+skips every Bloem CI completion, so a sync pull request is merged by a person. The
+rest of this section describes both workflows as they run when switched on.
 
 #### The daily sync: `upstream-sync.yml`
 
@@ -644,7 +745,7 @@ major production runs. `TestCIPostgresServicesMatchTheDeploymentMajor` in
 `internal/api` keeps them equal (`9f7a9a3ee`, October 14, 2026): it reads
 `ARG PG_MAJOR=` from `omnibus/Dockerfile`, the PostgreSQL major Silo's
 all-in-one image bundles, and requires every CI service to run
-`pgvector/pgvector:pg<major>` (18 at `63ef34b23`). Bloem's own
+`pgvector/pgvector:pg<major>` (18 at `07f0ae21c`). Bloem's own
 `docker-compose.advanced.yml` runs `pgvector/pgvector:pg18` as well. PostgreSQL
 18 reports an `ON DELETE RESTRICT` violation as SQLSTATE 23001, where 17
 reports 23503, so a 17 service hides behavior production has.
@@ -688,8 +789,8 @@ Go test:
 
 Related pages:
 
-- [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md): the
-  daily sync and the rule that Silo wins every conflict.
+- [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md): each
+  Silo batch, its deploy and the rule that Silo wins every conflict.
 - [FORK.md](../../FORK.md): fork provenance and merge policy.
 - [Docker deployment guide](overlays/wiki/deployment/docker.md): choosing and
   pinning an image.

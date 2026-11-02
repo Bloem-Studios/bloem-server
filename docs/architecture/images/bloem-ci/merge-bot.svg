@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How the merge bot waits for Bloem CI</title>
+<desc id="d">The merge bot pushes a Silo batch to main and waits for Bloem CI on that exact commit. If CI passed, it deploys that commit, writes the receipt and sends one message. If a job failed, it reruns the failed jobs once and reads CI again. If a newer push to main cancelled the run, it follows CI to main's new tip, which still holds its commit. If the same failure comes back, a test that also fails alone is fixed on Bloem's own lines with a test and pushed again, at most three times. A failure it cannot fix, or CI that stays red, stops the batch: the bot writes Needs you in its thread, sends the stuck message, deploys nothing and starts no new batch until the owner answers or releases it.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="699" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How the merge bot waits for Bloem CI</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">It deploys only a commit Bloem CI passed. Anything else stops the batch for the owner.</text>
+<rect x="40" y="124" width="240" height="124" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Pushed to main</text>
+<text x="58" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The merge, its regenerated</text>
+<text x="58" y="200" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">files and any Bloem fixes.</text>
+<line x1="284" y1="186" x2="316" y2="186" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="320" y="124" width="260" height="124" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="338" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem CI</text>
+<text x="338" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Runs on exactly that commit,</text>
+<text x="338" y="200" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">like any other push.</text>
+<line x1="584" y1="186" x2="606" y2="186" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M680,128 L750,186 L680,244 L610,186 Z" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="680" y="192" font-size="15" font-weight="700" fill="#101827" text-anchor="middle">Passed?</text>
+<line x1="754" y1="186" x2="796" y2="186" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="775" y="176" font-size="13" font-weight="700" fill="#047857" text-anchor="middle">Yes</text>
+<rect x="800" y="124" width="360" height="124" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="818" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Deployed</text>
+<text x="818" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Only now. The deploy has its own checks and</text>
+<text x="818" y="200" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">rollback, then the receipt and one message.</text>
+<line x1="680" y1="248" x2="680" y2="282" stroke="#9CA3AF" stroke-width="2"/>
+<text x="692" y="272" font-size="13" font-weight="700" fill="#B91C1C" text-anchor="start">No</text>
+<line x1="220" y1="282" x2="980" y2="282" stroke="#9CA3AF" stroke-width="2"/>
+<line x1="220" y1="282" x2="220" y2="306" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="600" y1="282" x2="600" y2="306" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="980" y1="282" x2="980" y2="306" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="310" width="360" height="156" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="58" y="342" font-size="17" font-weight="700" fill="#101827" text-anchor="start">A job failed</text>
+<text x="58" y="366" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">The bot reruns the failed jobs once, then</text>
+<text x="58" y="386" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">reads Bloem CI again. Nothing in the</text>
+<text x="58" y="406" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">workflows retries by itself.</text>
+<rect x="420" y="310" width="360" height="156" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="438" y="342" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Cancelled by a newer push</text>
+<text x="438" y="366" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Someone pushed to main. The bot follows</text>
+<text x="438" y="386" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem CI to main's new tip, which still</text>
+<text x="438" y="406" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">holds its commit.</text>
+<rect x="800" y="310" width="360" height="156" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<text x="818" y="342" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Failed again</text>
+<text x="818" y="366" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A test that also fails alone is real: fixed</text>
+<text x="818" y="386" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">on Bloem's own lines with a test, pushed,</text>
+<text x="818" y="406" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">and checked again. At most three times.</text>
+<line x1="980" y1="470" x2="980" y2="520" stroke="#EF4444" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<text x="992" y="500" font-size="12.5" font-weight="700" fill="#B91C1C" text-anchor="start">cannot fix, or still red</text>
+<rect x="40" y="524" width="1120" height="110" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<text x="64" y="558" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Stopped</text>
+<text x="64" y="586" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">The bot writes “Needs you” in its thread and sends the stuck message. It deploys nothing, and no new batch starts until the owner answers in that</text>
+<text x="64" y="606" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">thread or releases it. It never pushes an empty commit to start CI again.</text>
+<text x="40" y="668" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">A test that passes alone after failing in CI, or a failed runner, also stops the batch for the owner.</text>
+</svg>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a batch is deployed</title>
+<desc id="d">Three steps: a snapshot of the server and a restore point in the database; a restart of about a minute, in which migrations run before the new version serves; then the checks. Three outcomes: every check passes, so the batch is deployed and the bot writes the receipt and sends deployed; a check fails, so the previous image goes back on the server and both transcode nodes and the bot sends rolled back; or, after migrations, the server is ready, healthy and on the new version but a softer check fails, so it keeps running and the bot stops for the owner. The bot never restores the database.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="659" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a batch is deployed</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Only a commit Bloem CI passed. The image can go back by itself; the database never does.</text>
+<rect x="40" y="124" width="346" height="136" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="58" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">1. Safety first</text>
+<text x="58" y="180" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">A snapshot of the server and a restore</text>
+<text x="58" y="200" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">point in the database.</text>
+<line x1="390" y1="192" x2="423" y2="192" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="427" y="124" width="346" height="136" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="445" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">2. Restart</text>
+<text x="445" y="180" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Usually about a minute offline. Migrations</text>
+<text x="445" y="200" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">run, then the new version serves.</text>
+<line x1="777" y1="192" x2="810" y2="192" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="814" y="124" width="346" height="136" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
+<text x="832" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">3. Checks</text>
+<text x="832" y="180" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Ready, healthy, on the new version, no</text>
+<text x="832" y="200" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">errors in the logs, both transcode nodes</text>
+<text x="832" y="220" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">on the new image.</text>
+<line x1="987" y1="262" x2="987" y2="290" stroke="#9CA3AF" stroke-width="2"/>
+<line x1="213" y1="290" x2="987" y2="290" stroke="#9CA3AF" stroke-width="2"/>
+<line x1="213" y1="290" x2="213" y2="318" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="600" y1="290" x2="600" y2="318" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="987" y1="290" x2="987" y2="318" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="322" width="346" height="176" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="58" y="354" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">Every check passes</text>
+<text x="58" y="378" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Deployed. The bot writes the receipt and</text>
+<text x="58" y="398" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">sends “deployed”.</text>
+<rect x="427" y="322" width="346" height="176" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
+<text x="445" y="354" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">A check fails</text>
+<text x="445" y="378" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">The previous image goes back on the server</text>
+<text x="445" y="398" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">and both transcode nodes, by itself. The</text>
+<text x="445" y="418" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">bot sends “rolled back” and stops.</text>
+<rect x="814" y="322" width="346" height="176" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
+<text x="832" y="354" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">A softer check fails</text>
+<text x="832" y="378" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">After migrations, the server is ready,</text>
+<text x="832" y="398" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">healthy and on the new version, so it</text>
+<text x="832" y="418" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">keeps running. The bot stops for the</text>
+<text x="832" y="438" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">owner.</text>
+<rect x="40" y="530" width="1120" height="86" rx="14" fill="#101827" stroke="none" stroke-width="1.5"/>
+<text x="64" y="564" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="start">The bot never restores the database.</text>
+<text x="64" y="592" font-size="14.5" font-weight="normal" fill="#E5E7EB" text-anchor="start">That would undo what people did since the restore point, so it is the owner's decision.</text>
+</svg>

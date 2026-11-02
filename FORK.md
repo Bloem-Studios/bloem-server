@@ -1,9 +1,9 @@
 # How Bloem forks Silo
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. This is Bloem's fork policy and provenance; Silo has no such
-> file. Every rule, command and number is in the [For developers](#for-developers)
-> section.
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
+> and checked against `main` at `f12b3c75f`. This is Bloem's fork policy and
+> provenance; Silo has no such file. Every rule, command and number is in the
+> [For developers](#for-developers) section.
 
 Bloem Server is Silo Server with Bloem's additions. This page walks through what that
 means, how Bloem takes in Silo's work, where Bloem keeps its own work, what
@@ -35,10 +35,12 @@ Silo's module path in 1,178 files. After that, every Silo change was a conflict.
 Silo's own. Renaming it could still happen any day; getting the ability to merge back
 could not.
 
-A maintainer merges Silo's work into Bloem, takes Silo's side of every conflict, checks
-that Bloem still works and pushes the merge to `main`, where Bloem CI checks it again.
-Until 2 November 2026 a daily GitHub job made clean merges by itself; it is switched
-off. [How Bloem keeps up with Silo](docs/architecture/bloem-following-silo.md) explains
+A **merge bot** on Bloem's build machine takes each batch of Silo's work. It merges
+it into Bloem, takes Silo's side of every conflict, checks that Bloem still works,
+pushes the merge to `main`, waits for Bloem CI to pass it and deploys it. Each batch
+is worked in its own thread that the owner can watch and answer. Until 2 November 2026
+a daily GitHub job made clean merges by itself; it is switched off.
+[How Bloem keeps up with Silo](docs/architecture/bloem-following-silo.md) explains
 the routine with pictures.
 
 ## When Silo and Bloem change the same lines
@@ -58,7 +60,7 @@ is no reason to keep Bloem's code different from Silo's.
   Silo doesn't have, such as Live TV.
 - **Seams.** A **seam** is a Silo file that Bloem still changes, usually by one hook
   line that calls Bloem's code. Every seam is listed, with its reason, in
-  `contracts/seams.txt`. On 1 November 2026 the list held 304. The number may only go
+  `contracts/seams.txt`. On 2 November 2026 the list held 310. The number may only go
   down, and adding one is a reviewed decision.
 - **Overlays.** Where a Silo document needs a Bloem note, a separate Bloem page, an
   **overlay**, carries it, and Silo's document stays as Silo wrote it.
@@ -99,17 +101,19 @@ settings on organization memberships. The
 
 ## Where things stand
 
-On 1 November 2026, Bloem's `main` has all of Silo's work through `63ef34b23`, from
-that morning, and the seam list holds 304 files. Production runs `59616c4af`.
-Production has one organization, the default one, with the server's public address
-registered as its primary domain.
+On 2 November 2026, Bloem's `main` has all of Silo's work through `07f0ae21c`, from
+that night, and the seam list holds 310 files. Production runs `e3a096b20`. From now
+on the merge bot takes each new Silo batch through to production. Production has one
+organization, the default one, with the server's public address registered as its
+primary domain.
 
 ## Who can change what
 
 | Who | What they decide |
 | --- | --- |
-| The owner | When to deploy, and whether a new seam may be added. |
-| A Bloem maintainer | Merging Silo's `main`, resolving its conflicts, and pushing the merge after the full checks pass. |
+| The owner | When to deploy anything the merge bot does not, whether a new seam may be added, and how a stopped batch goes on. |
+| The merge bot | Merging each Silo batch with Silo winning, fixing Bloem on Bloem's own lines, pushing to `main` after the full checks pass, and deploying a batch Bloem CI passed. |
+| A Bloem maintainer | Merging Silo by hand, with the same steps, when the bot cannot. |
 | A repository administrator | Switching the daily GitHub sync back on, with the repository variable `BLOEM_UPSTREAM_SYNC`. It is off since 2 November 2026. |
 | Silo's maintainers | Whether a change Bloem offers is taken into Silo. Bloem never pushes to Silo directly; it offers changes through a separate fork and a pull request. |
 
@@ -120,6 +124,7 @@ registered as its primary domain.
 | Silo's work | `upstream/main`, from the `upstream` remote |
 | Tracking fork | `main` shares Silo's history and merges `upstream/main` with `--no-ff` |
 | Module path | `github.com/Silo-Server/silo-server` in `go.mod` |
+| The merge bot | outside this repository; its configuration, scripts and prompts live in Bloem's private infrastructure repository. It runs `scripts/bloem/silo-merge-review.py` and `scripts/bloem/local-gate.py` |
 | The daily sync (switched off) | `.github/workflows/upstream-sync.yml`, landed by `upstream-sync-merge.yml`; both run only when `BLOEM_UPSTREAM_SYNC` is `true` |
 | Seam, seam list | a Silo-owned file Bloem differs in; `contracts/seams.txt`, checked by `make verify-seams` |
 | Overlay | a Bloem page under `docs/bloem/overlays/` |
@@ -170,8 +175,17 @@ use a separate fork and pull request.
 
 ### Taking upstream changes
 
+Since 2 November 2026 the **merge bot** takes in each Silo batch. It runs on Bloem's
+build machine, outside GitHub Actions; its configuration, scripts and prompts live in
+Bloem's private infrastructure repository. A free check every 10 minutes starts a
+batch only when Silo's `main` has commits Bloem lacks and has been quiet for 30
+minutes. The batch is everything on Silo's `main` when its thread starts; later
+commits wait for the next batch. One batch runs at a time, each in its own T3 thread
+and worktree, on a `merge/upstream-<sha9>` branch from `origin/main`, which the owner
+can watch and answer. A person merging by hand follows the same steps.
+
 Update the tracked fork with a normal merge so both projects' ancestry remains visible
-and future merges can reuse Git's conflict resolutions:
+and future merges can reuse Git's conflict resolutions. By hand:
 
 ```sh
 git fetch --prune upstream
@@ -180,16 +194,40 @@ git pull --ff-only origin main
 git merge --no-ff upstream/main
 ```
 
+The bot merges its batch commit instead of `upstream/main`, on its own branch, and
+pushes the result with `git push origin HEAD:main`.
+
 **Silo wins.** In shared code, take Silo's side of every conflict Bloem can adapt
 around, then reapply the smallest Bloem delta in Bloem-owned files. Bloem's native
 clients are unreleased, so keeping them on an older wire shape is not a reason to keep
 a Bloem difference ([agent rules](BLOEM_AGENTS.md#shared-implementation-follows-silo)).
 Every Silo line Bloem keeps edited conflicts again on the next merge, and Silo moves
-daily; adopting Silo's implementation also brings Silo's fixes and tests.
+daily; adopting Silo's implementation also brings Silo's fixes and tests. Where Silo's
+version would break Bloem, Bloem's behavior goes back on Bloem's own added lines or in
+a Bloem-owned file or field, with a test that fails without it. When Bloem cannot be
+kept working without editing one of Silo's lines, the batch stops for the owner.
 
-Run the complete verification suite before pushing the merge to `origin`: the
-[validation checks](.github/CONTRIBUTING.md#validate-your-change), including the web
-bundle budget and CI's changed-line lint for merges, then push the merge to `main`.
+Before pushing, each batch:
+
+1. runs `python3 scripts/bloem/silo-merge-review.py --base <old main> --silo <batch>`
+   and reads each item it lists against Silo's change: the seams the batch touches,
+   Bloem files beside or calling changed Silo code, overlays to bring in line, Bloem
+   pages that mention changed files, and the batch's migrations;
+2. regenerates the client DTOs, playback fixtures and API catalogue, with coverage
+   reasons and the client digest for new Silo wire types;
+3. updates the documentation the merge affects, in the same push;
+4. runs the full local gate, `python3 scripts/bloem/local-gate.py run --base <old main>`,
+   which runs every Bloem CI job, including the web bundle budget and CI's
+   changed-line lint ([validation checks](.github/CONTRIBUTING.md#validate-your-change)).
+
+Then it pushes to `main`, waits for Bloem CI on that exact commit (a failed job is
+rerun once; a run cancelled by a newer push is followed to the new tip), deploys only
+a commit CI passed, writes the receipt and sends one message: deployed, stuck or
+rolled back. It stops in its thread, and blocks the next batch, when a test or check
+cannot be fixed, when Bloem cannot be kept working without editing Silo's lines, when
+CI stays red, or when the deploy fails or rolls back. See
+[CI](docs/bloem/ci.md#the-merge-bot) for every step.
+
 The daily `Upstream sync` workflow (`.github/workflows/upstream-sync.yml`, 05:20 UTC)
 and its merge gate are switched off since 2 November 2026: their jobs run only when the
 repository variable `BLOEM_UPSTREAM_SYNC` is `true`. Switched on, the sync performs this
@@ -305,10 +343,10 @@ dead-code removals.
 
 ### Current integration boundary
 
-At `b6039036d` (November 1, 2026), Bloem `main` contains all of Silo `main` through
-`63ef34b23` (2026-11-01 04:45 UTC), merged in `f14332386`, and the ledger declares
-**304 seams**. Production runs `59616c4af`: the
-[November 1 receipt](docs/operations/2026-11-01-provider-sign-out-deployment.md)
+At `f12b3c75f` (November 2, 2026), Bloem `main` contains all of Silo `main` through
+`07f0ae21c` (2026-11-02 01:45 UTC), merged in `e3a096b20`, and the ledger declares
+**310 seams**. Production runs `e3a096b20`: the
+[November 2 receipt](docs/operations/2026-11-02-silo-sync-07f0ae21c-deployment.md)
 records that deployment, and the
 [documentation index](docs/bloem/README.md#deployment-receipts) lists the ones before
 it. A source integration is not a deployment, and a deployment is not native-client or
@@ -328,9 +366,13 @@ Upstream merges that add Silo writes to tables Bloem constrains need a switching
 and a passing `make silo-switch-check`; see
 [Silo backend switching](docs/architecture/silo-backend-switching.md).
 
-History, kept as history: on October 31, 2026, at `81c26179c`, Bloem `main` had Silo
-through `32a2f63e1` (2026-10-31 19:48 UTC), merged in `4edbee99d`, with 303 seams, and
-production ran `4edbee99d`
+History, kept as history: on November 1, 2026, at `b6039036d`, Bloem `main` had Silo
+through `63ef34b23` (2026-11-01 04:45 UTC), merged in `f14332386`, with 304 seams, and
+production ran `59616c4af`
+([November 1 receipt](docs/operations/2026-11-01-provider-sign-out-deployment.md)). On
+October 31, 2026, at `81c26179c`, Bloem `main` had Silo through `32a2f63e1`
+(2026-10-31 19:48 UTC), merged in `4edbee99d`, with 303 seams, and production ran
+`4edbee99d`
 ([October 31 receipt](docs/operations/2026-10-31-silo-sync-32a2f63e1-deployment.md)).
 On October 7, 2026 production ran Bloem `c87b44545`, with
 Silo through `74158b4a8` and 407 declared seams
@@ -344,13 +386,19 @@ the AI subtitle fixes to 306 (two upstream PR candidates), the October 31 merge 
 305, and keeping Silo's session-revoked hook type to 303. The November 1 merge of Silo
 through `63ef34b23` kept it at 303, and organization domains took it to 304 with
 `internal/auth/oauth_handler.go`, which keeps a provider sign-in and sign-out on the
-organization domain it started on. The September deployment records are historical
-evidence too, and no deployment record changes the normal merge policy or certifies
-future builds.
+organization domain it started on. The November 1 merge of Silo through `6f5be75cd`
+took it to 307 with two generated playback fixtures and a library-form test
+(`46354baee`); keeping Silo's preferred-version preflight line verbatim took it to 308
+(`internal/api/handlers/playback_missing.go`, `f49e73147`); and two Silo tests that
+failed in Bloem CI on November 2 took it to 310
+(`web/src/player/components/WatchPage.test.ts`, `c27b5f0be`;
+`internal/blobgc/collector_s3_db_test.go`, `6e1250062`). The September deployment
+records are historical evidence too, and no deployment record changes the normal merge
+policy or certifies future builds.
 
 ### Ongoing merge cost
 
-The seam ledger is the merge cost: 304 Silo-owned files differ at `b6039036d`, most by
+The seam ledger is the merge cost: 310 Silo-owned files differ at `f12b3c75f`, most by
 a hook line or a generated artifact (the route inventory, OpenAPI and migration ledger
 necessarily differ because Bloem registers more routes).
 
@@ -396,8 +444,8 @@ or tests.
 
 - [How Bloem keeps up with Silo](docs/architecture/bloem-following-silo.md): each Silo
   merge and "Silo wins", with pictures.
-- [Bloem CI](docs/bloem/ci.md): every job, the switched-off daily sync and its merge
-  gate, and the image.
+- [Bloem CI](docs/bloem/ci.md): every job, the merge bot's CI wait and deploy, the
+  switched-off daily sync and its merge gate, and the image.
 - [Bloem's adapters over Silo](docs/architecture/bloem-upstream-adapters.md): how Bloem
   changes Silo's behavior without editing Silo's files.
 - [BLOEM_AGENTS.md](BLOEM_AGENTS.md): the rules for changing Bloem, including Silo

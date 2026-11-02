@@ -3,6 +3,22 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 2, 2026 — Silo batches come in through the merge bot
+
+A merge bot on Bloem's build machine now takes each Silo batch: a free check every 10
+minutes starts one when Silo has been quiet for 30 minutes, one batch at a time, each in
+its own T3 thread. It merges with Silo winning, runs the review list
+(`scripts/bloem/silo-merge-review.py`) and the full local gate
+(`scripts/bloem/local-gate.py`), pushes to `main`, waits for Bloem CI on that commit,
+deploys it, writes the receipt and sends one message. It stops in its thread, and blocks
+the next batch, when it cannot go on. Its configuration lives in Bloem's private
+infrastructure repository; the GitHub sync stays off behind `BLOEM_UPSTREAM_SYNC`.
+
+- **Pages.** [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md),
+  [How Bloem CI works](ci.md#the-merge-bot), [FORK.md](../../FORK.md#taking-upstream-changes)
+  and the front page's status rows, checked at `f12b3c75f` (310 seams); three pictures
+  redrawn and two added.
+
 ## November 2, 2026 — the daily upstream sync is switched off
 
 Silo is now merged outside GitHub Actions. A maintainer merges Silo's `main`, takes

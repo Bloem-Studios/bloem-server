@@ -12,11 +12,11 @@
 > files that also exist in Silo are Silo's, and Bloem's documentation lives in
 > Bloem-owned files indexed in [docs/bloem/README.md](../docs/bloem/README.md).
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `6b6a92f2b`, with Silo merged through `63ef34b23`. This page says what
-> Bloem is, where it comes from and how to run it, in plain language; the technical
-> parts for people changing the code are in the [For developers](#for-developers)
-> section.
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
+> and checked against `main` at `f12b3c75f`, with Silo merged through `07f0ae21c`.
+> This page says what Bloem is, where it comes from and how to run it, in plain
+> language; the technical parts for people changing the code are in the
+> [For developers](#for-developers) section.
 
 Bloem Server is a public **tracking fork** of
 [Silo Server](https://github.com/Silo-Server/silo-server), maintained by
@@ -70,13 +70,14 @@ Every other page is listed by area in the [documentation index](../docs/bloem/RE
 
 ## Current state
 
-Checked on November 2, 2026, against `main` at `e3a096b20`.
+Checked on November 2, 2026, against `main` at `f12b3c75f`.
 
 | | |
 | --- | --- |
-| Bloem `main` | `e3a096b20`: the merge of Silo through `07f0ae21c`, on `7eada59a0`: the merge of Silo through `257390ba1` (`605bd1003`), Silo's preferred-version preflight line restored with Bloem's native-storage check on its own lines (`f49e73147`) and regenerated contracts, on `46354baee`: the merge of Silo through `6f5be75cd` (`de1ea66cf`) and its regenerated contracts, on `99a4a1133`: a pinned S3 release offered on every platform it ships for ([native storage](../docs/architecture/bloem-native-storage.md)), on `ab4aadc75`: every Bloem page rewritten in one plain-language style, stale pages removed and the last three specs folded into current pages (documentation and comments only), on `59616c4af`: [organization domains and branding](../docs/architecture/bloem-organization-domains.md), with a provider sign-in kept on its organization domain (`9181ef630`) and a provider sign-out returned there (`59616c4af`) and the web app's last Silo `/api/v1` call moved to a native route (`45abcda81`), on `f14332386`: the merge of Silo through `63ef34b23`, on `25129bcbd` (a sign-in its organization revoked is told to sign in again), on `e5cd1eb6a`: the storefront and the web app off Silo's `/api/v1` (`3eb77be33`, `e5cd1eb6a`) and documentation, on `4edbee99d`, the merge of Silo through `32a2f63e1`, on top of `8c99f9c60` (Silo through `fbe0e89ca`), `4c3f4f56b` (Silo through `288f58200`) and `8065e5746` (Silo through `07c05cad6`), then documentation. Since October 28 it also adds library preview free play (`38e587805`), AI subtitles for word-only and Chinese or Japanese speech-to-text (`09dab0097`), per-library figures (`6314dcd0a`), guided S3 setup with all-bucket sources (`8f4ba105c`), the upgrade prompt (`c0d629550`) and new arrivals (`b99aa105c`); see the [changelog](../docs/bloem/CHANGELOG.md) |
-| Silo integrated | all of Silo `main` through `07f0ae21c` (November 2, 2026, 01:45 UTC), merged in `e3a096b20`; Silo `main` had no newer commits when checked |
-| Seam ledger | 304 Silo-owned files that Bloem differs in (the 304th, `internal/auth/oauth_handler.go`, keeps a provider sign-in on its organization domain), declared in [`contracts/seams.txt`](../contracts/seams.txt) |
+| Bloem `main` | `f12b3c75f`: the merge bot's review list (`f383f407c`, `f12b3c75f`), on `6e1250062`: fixes for the failing Bloem CI jobs (`02c8aa859`, `83e262d38`, `c023202cb`, `9fa3782fd`, `c27b5f0be`, `6e1250062`), on `9ea0cb767`: a local gate that runs every Bloem CI job, on `9527f72f1`: the daily GitHub sync switched off, on `3a36eda06`: the deployment receipt, on `e3a096b20`: the merge of Silo through `07f0ae21c`, on `7eada59a0`: the merge of Silo through `257390ba1` (`605bd1003`), Silo's preferred-version preflight line restored with Bloem's native-storage check on its own lines (`f49e73147`) and regenerated contracts, on `46354baee`: the merge of Silo through `6f5be75cd` (`de1ea66cf`) and its regenerated contracts, on `99a4a1133`: a pinned S3 release offered on every platform it ships for ([native storage](../docs/architecture/bloem-native-storage.md)), on `ab4aadc75`: every Bloem page rewritten in one plain-language style, stale pages removed and the last three specs folded into current pages (documentation and comments only), on `59616c4af`: [organization domains and branding](../docs/architecture/bloem-organization-domains.md), with a provider sign-in kept on its organization domain (`9181ef630`) and a provider sign-out returned there (`59616c4af`) and the web app's last Silo `/api/v1` call moved to a native route (`45abcda81`), on `f14332386`: the merge of Silo through `63ef34b23`, on `25129bcbd` (a sign-in its organization revoked is told to sign in again), on `e5cd1eb6a`: the storefront and the web app off Silo's `/api/v1` (`3eb77be33`, `e5cd1eb6a`) and documentation, on `4edbee99d`, the merge of Silo through `32a2f63e1`, on top of `8c99f9c60` (Silo through `fbe0e89ca`), `4c3f4f56b` (Silo through `288f58200`) and `8065e5746` (Silo through `07c05cad6`), then documentation. Since October 28 it also adds library preview free play (`38e587805`), AI subtitles for word-only and Chinese or Japanese speech-to-text (`09dab0097`), per-library figures (`6314dcd0a`), guided S3 setup with all-bucket sources (`8f4ba105c`), the upgrade prompt (`c0d629550`) and new arrivals (`b99aa105c`); see the [changelog](../docs/bloem/CHANGELOG.md) |
+| Silo integrated | all of Silo `main` through `07f0ae21c` (November 2, 2026, 01:45 UTC), merged in `e3a096b20`; Silo `main` had newer commits when checked, which wait for the merge bot |
+| Silo merges | the merge bot, since November 2, 2026: each Silo batch is merged with Silo winning, checked, pushed to `main` and deployed once Bloem CI passes it ([how](../docs/architecture/bloem-following-silo.md)) |
+| Seam ledger | 310 Silo-owned files that Bloem differs in (the 310th, `internal/blobgc/collector_s3_db_test.go`, adds lines so a Silo database test collects its own queue row first), declared in [`contracts/seams.txt`](../contracts/seams.txt) |
 | Production | `e3a096b20` since 02:11 UTC on November 2, from an image built locally with the Bloem Image steps before Bloem CI finished; both transcode nodes run the same image. See the [receipt](../docs/operations/2026-11-02-silo-sync-07f0ae21c-deployment.md) |
 
 The two October 31 Silo merges brought:
@@ -156,10 +157,18 @@ Silo's changes as ordinary merges. See [FORK.md](../FORK.md#this-is-a-tracking-f
 
 ### How Silo's changes reach Bloem
 
-A maintainer merges Silo's `main` outside GitHub Actions, takes Silo's side of every
-conflict, puts Bloem's behavior back on Bloem's own lines where Silo's change would
-break it, runs the full checks and pushes the merge to `main`. Bloem CI checks it
-there like any other push.
+A merge bot on Bloem's build machine takes each Silo batch, outside GitHub Actions.
+A free check every 10 minutes starts a batch when Silo has new commits and has been
+quiet for 30 minutes, one batch at a time, each in its own T3 thread that the owner
+can watch and answer. The bot takes Silo's side of every conflict, puts Bloem's
+behavior back on Bloem's own lines where Silo's change would break it, reads what
+the review list (`scripts/bloem/silo-merge-review.py`) names, runs the full local
+gate (`scripts/bloem/local-gate.py`) and pushes the merge to `main`. It waits for
+Bloem CI on that exact commit, deploys only a commit CI passed, writes the receipt
+and sends one message: deployed, stuck or rolled back. When it cannot go on, it
+stops in its thread and blocks the next batch. Its configuration, scripts and
+prompts live in Bloem's private infrastructure repository. See
+[how Bloem keeps up with Silo](../docs/architecture/bloem-following-silo.md).
 
 Two Bloem-owned workflows used to automate the merge. Both are switched off since
 November 2, 2026: their jobs run only when the repository variable
@@ -193,7 +202,7 @@ November 2, 2026: their jobs run only when the repository variable
    A resolved conflict, an amendment or an extra commit means a person merges
    it.
 
-Either way, Bloem CI gates `main`. See [Bloem CI](../docs/bloem/ci.md#how-silos-work-comes-in).
+Either way, Bloem CI gates `main`. See [Bloem CI](../docs/bloem/ci.md#upstream-sync-merges).
 
 ### "Silo wins"
 
@@ -442,9 +451,9 @@ integration points through [owned integration adapters](../docs/architecture/blo
 - **Bloem plugin ecosystem:** a separately maintained SDK, catalog and
   first-party plugin set alongside the inherited host plugin runtime, and Bloem's
   own storage-provider protocol (`proto/bloem/plugin/v1`).
-- **Continuous upstream tracking:** frequent merges of Silo's `main` with conflict
-  review and the full checks, CI on every merge pushed to `main`, plus maintained
-  operator and viewer guides.
+- **Continuous upstream tracking:** a merge bot that takes each Silo batch with
+  conflict review and the full checks, waits for CI on every merge pushed to `main`
+  and deploys it, plus maintained operator and viewer guides.
 
 ## What Bloem removed, and why
 
@@ -822,7 +831,7 @@ move fully to a custom `postgresql.conf`.
 - [FORK.md](../FORK.md) — provenance, the "Silo wins" rule, seams and overlays, what Bloem adds and removed; [TRADEMARK.md](../TRADEMARK.md) and [LICENSE](../LICENSE).
 - [Integration changelog](../docs/bloem/CHANGELOG.md) and [upstream adapters](../docs/architecture/bloem-upstream-adapters.md) — what each merge brought in and where Bloem keeps its extensions.
 - [Deployment receipts](../docs/bloem/README.md#deployment-receipts) — the revision production runs, its image, migrations, checks and limits, newest first.
-- [Bloem CI](../docs/bloem/ci.md) — jobs, the switched-off daily upstream sync, the image gate and runner placement.
+- [Bloem CI](../docs/bloem/ci.md) — jobs, the merge bot, the switched-off daily upstream sync, the image gate and runner placement.
 - [Admin guide](../docs/wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback and transcoding, access policy, Live TV, maintenance and troubleshooting.
 - [User guide](../docs/wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests, notifications, and connecting native clients.
 - [Wiki index](../docs/bloem/overlays/wiki/index.md) — every operator- and viewer-facing page, including [Installing and running Bloem with Docker](../docs/bloem/overlays/wiki/deployment/docker.md), [Entitlement templates](../docs/wiki/admin/entitlement-templates.md), [Supported Media Folder Structures and Naming](../docs/architecture/media-naming.md), [Collection Templates](../docs/architecture/collection-templates.md), [Local NFO Metadata](../docs/architecture/local-nfo-metadata.md) and [Monitoring Stream Nodes](../docs/architecture/observability.md).
@@ -887,8 +896,9 @@ permitted — including referential use like "compatible with Silo."
 | Who | What they do |
 | --- | --- |
 | Silo's maintainers | Write Silo: the scanner, catalog, playback, web app and plugin runtime that most of Bloem is. Their files stay as they wrote them. |
-| Bloem Studios | Maintains this fork: takes in Silo's changes every day, and builds organizations, Live TV, storage sources, campaigns and Bloem's native API on top. |
-| The owner | Approves each new seam (a Silo file Bloem has to change), and asks for each production deployment. |
+| Bloem Studios | Maintains this fork: takes in Silo's changes as they land, and builds organizations, Live TV, storage sources, campaigns and Bloem's native API on top. |
+| The merge bot | Merges each Silo batch, checks it, pushes it to `main` and deploys it once Bloem CI passes; stops for the owner when it cannot. |
+| The owner | Approves each new seam (a Silo file Bloem has to change), answers a stopped batch, and asks for each production deployment the merge bot does not make. |
 | A server's administrators | Run a Bloem server: install it, add libraries, and manage organizations, plans and people, as the [admin guide](../docs/wiki/admin-guide.md) describes. |
 
 ## Words used in the code
@@ -946,26 +956,29 @@ Bloem's production deployments follow the same pattern, recorded in
 dated receipts under [`docs/operations/`](../docs/bloem/README.md#deployment-receipts):
 
 1. **Image.** Production runs an image built for the exact commit: the one
-   Bloem Image publishes, or, when the owner asks to deploy before CI finishes
-   (most releases since October 28, 2026), one built locally from a
-   `git archive` of the commit with the same build arguments and labels. The
-   image is loaded on the application host and both transcode nodes under a
-   release tag, its binary checksum is compared on each, and its runtime
-   configuration is compared with the running release.
-2. **Restore point.** Before the restart: a container snapshot, a named database
-   restore point with its WAL segment archived, and dumps of the tables the
-   migrations change. For the October 26 Stage A release, whose migrations
-   reshaped account data, they were first rehearsed on a restored copy.
+   Bloem Image publishes, or one built locally from a `git archive` of the commit
+   with the same build arguments and labels. The merge bot builds it locally, only
+   for a commit Bloem CI passed; before November 2, 2026 the owner often asked to
+   deploy before CI finished. The image is loaded on the application host and
+   both transcode nodes under a release tag, its binary checksum is compared on
+   each, and its runtime configuration is compared with the running release.
+2. **Restore point.** Before the restart: a container snapshot and a named database
+   restore point with its WAL segment archived. Hand deployments also took dumps of
+   the tables the migrations change; for the October 26 Stage A release, whose
+   migrations reshaped account data, they were first rehearsed on a restored copy.
 3. **Offline migrations.** A restart script refuses to run unless the live image
    is the expected previous release. It stops the server, applies the pending
    migrations while nothing serves, and starts the new image.
-4. **Checks.** Readiness and health locally and publicly, zero pending
-   migrations, the Silo switching state, account and membership counts, active
-   streams and the first minutes of logs.
-5. **Rollback.** Bloem's migrations are forward-only, so a release with
-   migrations rolls back by restoring the database to the restore point together
-   with the container snapshot, not by starting the old image on the new schema.
-   A release without migrations rolls back by starting the previous image.
+4. **Checks.** Readiness, health and the new version, both transcode nodes on the
+   new image, and no errors in the first minutes of logs. Hand deployments also
+   checked zero pending migrations, the Silo switching state, account and
+   membership counts and active streams.
+5. **Rollback.** A failed check puts the previous image back on the server and
+   both transcode nodes; the merge bot does this by itself. Once migrations have
+   run, a server that is ready, healthy and on the new version but fails a softer
+   check keeps running instead, and the bot stops for the owner. Bloem's migrations
+   are forward-only: restoring the database to the restore point, together with the
+   container snapshot, is always the owner's decision, never automatic.
 
 The database runs in its own container, separate from the application server,
 with WAL archiving and a streaming standby. Since October 27, 2026, production

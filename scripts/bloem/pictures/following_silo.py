@@ -14,52 +14,128 @@ def _code(s, x, y, rows, size=14, gap=22):
               f'xml:space="preserve">{escape(txt)}</text>')
 
 
+def _line(s, x1, y1, x2, y2, color=LINE, dash=None):
+    """A connector without an arrowhead, for the shared part of a branch."""
+    d = f' stroke-dasharray="{dash}"' if dash else ""
+    s.add(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" stroke-width="2"{d}/>')
+
+
 def daily_flow():
-    s = Svg(1200, 760, "How Bloem keeps up with Silo",
-            "A maintainer merges Silo's latest work into a branch, taking Silo's side of every conflict. Every "
-            "check runs; where Silo's change would break Bloem, Bloem's behavior goes back on its own lines, with "
-            "a test, and the checks run again. The merge is pushed to Bloem's main, where Bloem CI checks it. "
-            "From main, an image is built and deployed when the owner asks.")
+    s = Svg(1200, 740, "How Bloem keeps up with Silo",
+            "A merge bot takes each batch of Silo's work. Silo's main has new commits and has been quiet for 30 "
+            "minutes; a free check every 10 minutes starts one batch at a time, each in its own T3 thread the owner "
+            "can watch and answer; the merge takes Silo's side of every conflict. If Bloem still works, after the "
+            "review list and the full local gate, the merge is pushed to Bloem's main, Bloem CI checks that exact "
+            "commit, the bot deploys it, writes the receipt and sends one message. If not, Bloem adapts on its own "
+            "lines with a test. When a check cannot be fixed, Bloem cannot keep working without editing Silo's "
+            "lines, CI stays red or the deploy fails, the bot stops in its thread and blocks the next batch.")
     s.header("How Bloem keeps up with Silo",
-             "Bloem is a tracking fork: it takes in Silo's work as ordinary merges instead of copying it by hand.")
-    g, a, w, p = TIERS["grey"], TIERS["account"], TIERS["warn"], TIERS["plan"]
+             "A merge bot takes in each batch of Silo's work, checks that Bloem still works, and deploys it.")
+    g, a, w, p, st = TIERS["grey"], TIERS["account"], TIERS["warn"], TIERS["plan"], TIERS["stop"]
 
-    s.text(40, 140, "Each Silo merge", size=17, weight="700")
-    box(s, 40, 156, 200, 120, SILO, "Silo's main", "The Silo project's latest work.", size=14)
-    s.arrow(244, 216, 276, 216)
-    box(s, 280, 156, 220, 120, g, "The merge", "A maintainer merges Silo into a new branch. Silo wins every conflict.",
-        size=14)
-    s.arrow(504, 216, 540, 216)
+    s.text(40, 140, "Each Silo batch", size=17, weight="700")
+    first = [
+        (SILO, "Silo's main", "New commits, then 30 quiet minutes. The batch is all of it."),
+        (g, "The check", "Every 10 minutes, at no cost. One batch at a time."),
+        (BLOEM, "One thread per batch", "Its own T3 thread, which the owner can watch and answer."),
+        (g, "The merge", "Silo wins every conflict, word for word."),
+    ]
+    x = 40
+    for i, (c, t, b) in enumerate(first):
+        box(s, x, 156, 260, 120, c, t, b, size=14)
+        if i < len(first) - 1:
+            s.arrow(x + 264, 216, x + 282, 216)
+        x += 286
+    # From the merge, round to the start of the second row.
+    _line(s, 1028, 278, 1028, 300)
+    _line(s, 1028, 300, 130, 300)
+    s.arrow(130, 300, 130, 318)
+
     # Decision diamond.
-    s.add(f'<path d="M620,150 L700,216 L620,282 L540,216 Z" fill="{w["fill"]}" stroke="{w["stroke"]}" stroke-width="1.8"/>')
-    s.text(620, 212, "Does Bloem", size=14, weight="700", anchor="middle")
-    s.text(620, 230, "still work?", size=14, weight="700", anchor="middle")
-    s.arrow(704, 216, 756, 216)
-    s.text(728, 206, "Yes", size=13, weight="700", fill=a["label"], anchor="middle")
-    box(s, 760, 156, 180, 120, a, "Bloem's main", "Pushed once every check passes.", size=14)
-    s.arrow(944, 216, 976, 216)
-    box(s, 980, 156, 180, 120, p, "Bloem CI", "Checks the push like any other.", size=14)
+    s.add(f'<path d="M130,322 L220,388 L130,454 L40,388 Z" fill="{w["fill"]}" stroke="{w["stroke"]}" '
+          'stroke-width="1.8"/>')
+    s.text(130, 384, "Does Bloem", size=14, weight="700", anchor="middle")
+    s.text(130, 402, "still work?", size=14, weight="700", anchor="middle")
+    s.arrow(224, 388, 254, 388)
+    s.text(239, 378, "Yes", size=13, weight="700", fill=a["label"], anchor="middle")
+    second = [
+        (a, 210, "Bloem's main", "Pushed once the review and the full local gate pass."),
+        (p, 210, "Bloem CI", "On that exact commit. A failed job runs once more."),
+        (w, 200, "Deploy", "Only a commit CI passed. A snapshot and a restore point first."),
+        (a, 192, "One message", "The receipt, then deployed, stuck or rolled back."),
+    ]
+    x = 258
+    centers = []
+    for i, (c, wdt, t, b) in enumerate(second):
+        box(s, x, 322, wdt, 132, c, t, b, size=14)
+        centers.append(x + wdt / 2)
+        if i < len(second) - 1:
+            s.arrow(x + wdt + 4, 388, x + wdt + 26, 388)
+        x += wdt + 30
 
-    s.path("M620,286 L620,346")
-    s.text(632, 322, "No", size=13, weight="700", fill=TIERS["stop"]["label"])
-    box(s, 470, 350, 300, 150, BLOEM, "Bloem adapts",
-        "Where Silo's change would break Bloem, Bloem's behavior goes back on its own lines, with a test. "
-        "Then every check again.", size=14)
-    s.path("M774,425 L850,425 L850,280")
+    s.arrow(130, 458, 130, 510)
+    s.text(142, 490, "No", size=13, weight="700", fill=st["label"])
+    box(s, 40, 514, 330, 166, BLOEM, "Bloem adapts",
+        "Where Silo's change would break Bloem, Bloem's behavior goes back on its own lines, with a test that "
+        "fails without it. Then every check again.", size=14)
+    s.arrow(374, 597, 456, 597, color=st["stroke"], dash="6 5")
+    s.text(415, 585, "cannot fix", size=12.5, weight="700", fill=st["label"], anchor="middle")
+    for cx, label in ((centers[1], "stays red"), (centers[2], "fails or rolls back")):
+        s.arrow(cx, 458, cx, 510, color=st["stroke"], dash="6 5")
+        s.text(cx + 10, 490, label, size=12.5, weight="700", fill=st["label"])
+    box(s, 460, 514, 700, 166, st, "Stops for the owner",
+        "The bot stops in its thread, writes what failed, what it tried and what it suggests, and sends the "
+        "stuck message. No new batch starts until the owner answers in that thread or releases it. A change to "
+        "Silo's lines is never the way out.", size=14.5)
+    return s
 
-    s.text(40, 560, "When the owner says deploy", size=17, weight="700")
+
+def deploy():
+    s = Svg(1200, 660, "How a batch is deployed",
+            "Three steps: a snapshot of the server and a restore point in the database; a restart of about a "
+            "minute, in which migrations run before the new version serves; then the checks. Three outcomes: every "
+            "check passes, so the batch is deployed and the bot writes the receipt and sends deployed; a check "
+            "fails, so the previous image goes back on the server and both transcode nodes and the bot sends rolled "
+            "back; or, after migrations, the server is ready, healthy and on the new version but a softer check "
+            "fails, so it keeps running and the bot stops for the owner. The bot never restores the database.")
+    s.header("How a batch is deployed",
+             "Only a commit Bloem CI passed. The image can go back by itself; the database never does.")
+    g, a, w, p, st = TIERS["grey"], TIERS["account"], TIERS["warn"], TIERS["plan"], TIERS["stop"]
+
     steps = [
-        (a, "Bloem's main", "Everything merged and checked."),
-        (g, "An image", "The server, the web app and its tools, labelled with the exact commit."),
-        (w, "Safety first", "A snapshot of the server and a restore point in the database."),
-        (p, "Restart", "Usually about a minute offline. Migrations run, then the new version serves."),
+        (w, "1. Safety first", "A snapshot of the server and a restore point in the database."),
+        (g, "2. Restart", "Usually about a minute offline. Migrations run, then the new version serves."),
+        (p, "3. Checks", "Ready, healthy, on the new version, no errors in the logs, both transcode nodes "
+                         "on the new image."),
     ]
     x = 40
     for i, (c, t, b) in enumerate(steps):
-        box(s, x, 576, 262, 140, c, t, b, size=14, title_size=16)
+        box(s, x, 124, 346, 136, c, t, b, size=14.5)
         if i < len(steps) - 1:
-            s.arrow(x + 266, 646, x + 282, 646)
-        x += 286
+            s.arrow(x + 350, 192, x + 383, 192)
+        x += 387
+    # The checks branch into three outcomes.
+    _line(s, 987, 262, 987, 290)
+    _line(s, 213, 290, 987, 290)
+    for cx in (213, 600, 987):
+        s.arrow(cx, 290, cx, 318)
+
+    outcomes = [
+        (a, "Every check passes", "Deployed. The bot writes the receipt and sends “deployed”."),
+        (st, "A check fails", "The previous image goes back on the server and both transcode nodes, by itself. "
+                              "The bot sends “rolled back” and stops."),
+        (w, "A softer check fails", "After migrations, the server is ready, healthy and on the new version, so "
+                                    "it keeps running. The bot stops for the owner."),
+    ]
+    x = 40
+    for c, t, b in outcomes:
+        box(s, x, 322, 346, 176, c, t, b, size=14.5, title_size=16.5)
+        x += 387
+
+    s.rect(40, 530, 1120, 86, INK, rx=14)
+    s.text(64, 564, "The bot never restores the database.", size=17, weight="700", fill="#FFFFFF")
+    s.text(64, 592, "That would undo what people did since the restore point, so it is the owner's decision.",
+           size=14.5, fill="#E5E7EB")
     return s
 
 
@@ -109,7 +185,7 @@ def silo_wins():
     homes = [
         (BLOEM, "Its own files", "Files named bloem_*, and whole packages Silo does not have, such as Live TV."),
         (BLOEM, "Overlays", "Where a Silo document needs a Bloem note, a separate Bloem page carries it."),
-        (st, "The seam list", "The Silo files Bloem still edits: 304 on 1 November 2026. The number may only go "
+        (st, "The seam list", "The Silo files Bloem still edits: 310 on 2 November 2026. The number may only go "
          "down."),
     ]
     for i, (c, t, b) in enumerate(homes):
@@ -122,4 +198,4 @@ def silo_wins():
     return s
 
 
-PICTURES = [("daily-flow", daily_flow), ("silo-wins", silo_wins)]
+PICTURES = [("daily-flow", daily_flow), ("deploy", deploy), ("silo-wins", silo_wins)]
