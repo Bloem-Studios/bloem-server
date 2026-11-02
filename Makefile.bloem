@@ -241,6 +241,7 @@ verify-seams:
 .PHONY: verify-local-gate
 verify-local-gate:
 	python3 scripts/bloem/local-gate_test.py
+	python3 scripts/bloem/silo-merge-review_test.py
 
 # Bloem CI's Go test shards skip Silo's database-list tests (db-pins.txt and
 # db-contracts.txt), which the Go database pins job runs on a fresh database.
