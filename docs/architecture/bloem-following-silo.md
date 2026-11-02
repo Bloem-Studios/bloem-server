@@ -50,7 +50,7 @@ in `e3a096b20`, and production ran `e3a096b20`.
 
 ## Deploying a batch
 
-![Three steps: a snapshot of the server and a restore point in the database, a restart of about a minute with migrations, then the checks. Three outcomes: every check passes and the batch is deployed; a check fails and the previous image goes back; after migrations, a server that is ready, healthy and on the new version but fails a softer check keeps running and the bot stops for the owner. The bot never restores the database](images/following-silo/deploy.svg)
+![Three steps: a snapshot of the server and a restore point in the database, a restart of about a minute with migrations, then the checks. Three outcomes: every check passes and the batch is deployed; a check fails and the previous image goes back, whether or not migrations ran; the server stops answering during the restart and the bot stops for the owner. The bot never restores the database](images/following-silo/deploy.svg)
 
 1. **Safety first.** Before the restart there is a snapshot of the server and a
    **restore point** in the database: a marked moment the database can be taken back
@@ -60,11 +60,11 @@ in `e3a096b20`, and production ran `e3a096b20`.
 3. **Checks.** The server must be ready, healthy and on the new version, with no
    errors in its logs and both transcode nodes on the new image.
 
-If a check fails, the bot puts the previous image back by itself. There is one
-exception: once migrations have run, a server that is ready, healthy and on the new
-version but fails a softer check (an error in the logs, a transcode node) is left
-running, and the bot stops for the owner. The bot never restores the database: that
-would undo what people did since the restore point, so it is the owner's decision.
+If a check fails, the bot puts the previous image back by itself, whether or not
+migrations ran. Only when the server stops answering during the restart, or the
+rollback itself fails, does the bot try nothing more and stop for the owner. The bot
+never restores the database: that would undo what people did since the restore
+point, so it is the owner's decision.
 
 ## When the bot stops
 
