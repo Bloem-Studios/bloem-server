@@ -234,6 +234,13 @@ verify-seams:
 	@bash scripts/verify-seams_test.sh
 	@./scripts/verify-seams.sh
 
+# The local gate (scripts/bloem/local-gate.py) runs every Bloem CI job on a
+# developer machine. Its test fails when bloem-ci.yml gains a make target or a
+# go test the gate does not run, so the two cannot drift apart unnoticed.
+.PHONY: verify-local-gate
+verify-local-gate:
+	python3 scripts/bloem/local-gate_test.py
+
 # Re-merge the ledger against the current route inventory: refresh the copied
 # fields, restore inventory order, seed an entry for every new route, and
 # reassign sections. Curated decisions and committed consumer evidence are

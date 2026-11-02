@@ -2,7 +2,7 @@
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
 > `main` at `b6039036d`, which includes Silo through `63ef34b23`; updated on 2026-11-02,
-> when the upstream sync was switched off. Bloem's CI, image
+> when the upstream sync was switched off and the local gate was added. Bloem's CI, image
 > and upstream-sync workflows are Bloem additions; Silo's own `ci.yml` stays as Silo
 > wrote it apart from one line. The technical rules are in the
 > [For developers](#for-developers) section.
@@ -60,8 +60,9 @@ Since November 2, 2026 a maintainer merges Silo outside GitHub Actions:
 
 1. Merge Silo's `main` into a new branch. Each conflict takes Silo's side, word for
    word, and Bloem's change goes on its own lines or in its own file.
-2. Run every check before pushing
-   ([validate your change](../../.github/CONTRIBUTING.md#validate-your-change)). Where
+2. Run every check before pushing. The **local gate** runs every Bloem CI job on the
+   maintainer's own machine, the scenario executor included, so a merge that would turn
+   CI red shows up before it reaches `main` ([local gate](#local-gate)). Where
    Silo's change would break Bloem, Bloem's behavior goes back on Bloem's own lines, with
    a test.
 3. Push the merge to `main`. Bloem CI checks it like any other push.
@@ -276,7 +277,7 @@ runners on October 26, 2026 (`52369dbad`, `5e6f9e407`):
 | Tenant stores race (1-4/4, disposable PostgreSQL) | `internal/tenancy` under the race detector, its tests split four ways. |
 | Native authentication (1-3/3, disposable PostgreSQL) | `internal/auth` with and without the race detector, its tests split three ways, and its vet (shard 1). |
 | Go lint | gofmt, `go vet ./...`, govulncheck, changed-line lint (`scripts/bloem-lint-changed-ci.sh`) and the full-tree router recovery lint (`make lint-router-recovery`). |
-| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, migration ledger, scenario catalogs, offline routes, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, and the seam ledger. |
+| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, migration ledger, scenario catalogs, offline routes, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, the seam ledger, and the local gate's coverage of this workflow (`make verify-local-gate`). |
 | Go test (1-4/4) | `make test-go` on a database `cmd/bloem-testdb` prepared, its packages split four ways, four at a time per database. |
 | Go database pins | The database pins (`make test-db-pins`) and the upstream database regression gates. |
 | Go database regressions | Watch Party and history-import race tests and the mixed library location pins. |
@@ -311,6 +312,39 @@ OpenAPI artifacts without failing anything, and on that date it had.
 (`scripts/bloem/api-topic-docs.py --check`) and the explainer pictures
 (`scripts/bloem/draw-pictures.py --check`); see
 [writing Bloem documentation](documentation-workflow.md#pictures).
+
+### Local gate
+
+`scripts/bloem/local-gate.py` runs every job in the table above on one
+machine, in this order of phases: `build` (gofmt, build, vet), `verify` (the Go
+contract checks, client coverage, local paths), `lint`, `web` (the web checks
+and the four Vitest shards), `go` (the four Go test shards), `db` (the database
+pins and regressions), `tenancy` (Tenant identity, Tenant stores and Native
+authentication) and `scenarios` (the scenario executor). Commands assume the
+repository root is the cwd:
+
+```sh
+python3 scripts/bloem/local-gate.py run                     # every phase, compared with origin/main
+python3 scripts/bloem/local-gate.py run --base <sha> --only go,scenarios
+python3 scripts/bloem/local-gate.py list                    # every step and its command
+eval "$(python3 scripts/bloem/local-gate.py services up)"   # the databases alone, for debugging
+python3 scripts/bloem/local-gate.py services down "$GATE_SERVICES_ID"
+```
+
+- It starts one disposable `pgvector/pgvector:pg18` with CI's
+  `max_connections=300` and `max_locks_per_transaction=512`, and one Redis, on
+  free localhost ports under container names unique to the run, and removes
+  both when the run ends. Each job that CI gives its own database gets a fresh
+  database of the same name here, and the Go tests run in CI's four shards.
+- Every step runs under `umask 022`, with `GOWORK=off` and the Go toolchain
+  `go.mod` names. Changed-line lint builds the pinned golangci-lint with that
+  toolchain once and keeps it in the user's cache directory.
+- `--base` is the commit changed-line lint and the v2 contract diff compare
+  with: the old `main` when checking a merge.
+- It keeps going after a failure, prints one `GATE PASS` or `GATE FAIL` line
+  per step with the step's log file, and exits non-zero when any step failed.
+- `make verify-local-gate`, a Go contract check, fails when this workflow
+  gains a `make` target or a `go test` the gate does not run.
 
 ### Failures and re-runs
 

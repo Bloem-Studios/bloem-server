@@ -139,6 +139,10 @@ need disk space: a PostgreSQL data directory on a small tmpfs fills up and
 crashes the server mid-run. On hosts with many cores, cap package parallelism
 with `GOFLAGS=-p=8` so local runs resemble CI.
 
+To run every Bloem CI job at once before pushing, use the local gate,
+`python3 scripts/bloem/local-gate.py run`. It starts and removes its own sized
+PostgreSQL and Redis; see [Bloem CI](../ci.md#local-gate).
+
 The storage plugin executable tests build `examples/hello-storage` from the
 published `bloem-plugin-sdk` module pinned in `internal/bloemtestsdk`
 (`StorageModule`, `github.com/Bloem-Studios/bloem-plugin-sdk@v0.27.0` at

@@ -585,6 +585,9 @@ jobs:
       - name: Verify the seam ledger covers Silo-file changes
         run: make verify-seams
 
+      - name: Verify the local gate runs every CI command
+        run: make verify-local-gate
+
       - name: Save the Go cache
         if: success() && runner.environment == 'github-hosted' && github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request'
         uses: ./.github/actions/save-go-cache
