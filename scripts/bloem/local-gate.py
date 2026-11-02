@@ -184,7 +184,7 @@ STEPS = [
     Step(
         "db",
         "library-locations",
-        "export SILO_TEST_DATABASE_URL=" + _pg("bloem_storage_test_ci") + " SILO_TEST_REDIS_URL=@REDIS@"
+        "export SILO_TEST_DATABASE_URL=" + _pg("bloem_storage_test_ci") + " SILO_TEST_REDIS_URL=@REDIS@ SILO_TEST_REDIS_DISPOSABLE_ADDR=@REDIS_ADDR@"
         + " && go run ./cmd/bloem-testdb && make test-bloem-library-locations",
         _needs("pg", "redis", "fresh_db:bloem_storage_test_ci"),
     ),
@@ -285,6 +285,7 @@ def services_exports(sid, pg_port, redis_port):
         ("SILO_TEST_DATABASE_URL", pg_url(pg_port, "bloem_test")),
         ("SILO_SCENARIO_DATABASE_URL", pg_url(pg_port, "bloem_contract_scenarios_ci")),
         ("SILO_TEST_REDIS_URL", redis_url(redis_port)),
+        ("SILO_TEST_REDIS_DISPOSABLE_ADDR", f"127.0.0.1:{redis_port}"),
         ("GATE_SERVICES_ID", sid),
     ]
     return "".join(f"export {key}={shlex.quote(value)}\n" for key, value in pairs)
@@ -364,7 +365,8 @@ def golangci_dir(env):
 
 def expand(cmd, *, base, pg_port, r_port, env):
     cmd = re.sub(r"@PG\(([a-z0-9_]+)\)@", lambda m: shlex.quote(pg_url(pg_port, m.group(1))), cmd)
-    cmd = cmd.replace("@REDIS@", redis_url(r_port)).replace("@BASE@", base)
+    cmd = cmd.replace("@REDIS@", redis_url(r_port)).replace("@REDIS_ADDR@", f"127.0.0.1:{r_port}")
+    cmd = cmd.replace("@BASE@", base)
     if "@GOLANGCI_DIR@" in cmd:
         cmd = cmd.replace("@GOLANGCI_DIR@", golangci_dir(env))
     return cmd

@@ -51,7 +51,8 @@ test-db-prepare:
 # integration build tag and refuse services they do not own:
 # SILO_TEST_DATABASE_URL must name a migrated database (make test-db-prepare)
 # whose name starts with bloem_storage_test_, and the Redis cursor tests need
-# SILO_TEST_REDIS_URL=redis://127.0.0.1:65421/0 on a disposable server.
+# SILO_TEST_REDIS_URL=redis://127.0.0.1:65421/0 on a disposable server, or a
+# loopback server the harness started and names in SILO_TEST_REDIS_DISPOSABLE_ADDR.
 # Packages run one at a time: the tagged tests clone that database as a
 # template, which PostgreSQL refuses while another package is connected to it.
 test-bloem-library-locations: embed-stub

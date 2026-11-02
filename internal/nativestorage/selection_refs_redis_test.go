@@ -18,9 +18,9 @@ func browseRedisFixture(t *testing.T) (*RedisBrowseCursorStore, *redis.Client) {
 	if raw == "" {
 		t.Skip("SILO_TEST_REDIS_URL is not set")
 	}
-	opts, err := redis.ParseURL(raw)
-	if err != nil || opts.Addr != "127.0.0.1:65421" || opts.Username != "" || opts.Password != "" {
-		t.Fatal("refusing non-disposable browse Redis")
+	opts, err := disposableRedisOptions(raw, os.Getenv("SILO_TEST_REDIS_DISPOSABLE_ADDR"))
+	if err != nil {
+		t.Fatalf("refusing non-disposable browse Redis: %v", err)
 	}
 	client := redis.NewClient(opts)
 	t.Cleanup(func() { client.Close() })

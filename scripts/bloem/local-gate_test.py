@@ -133,6 +133,16 @@ class LocalGateTest(unittest.TestCase):
         test_go = next(line for line in block.split("\n") if "make test-go" in line)
         self.assertIn('GOFLAGS="$GOFLAGS -skip=$skip" make test-go', test_go)
 
+    def test_redis_steps_declare_their_disposable_server(self):
+        # The browse Redis tests flush their server and accept only CI's fixed
+        # address or one the harness declares; the gate's Redis has a free port.
+        redis_steps = [s for s in self.gate.STEPS if "@REDIS@" in s.cmd]
+        self.assertTrue(redis_steps)
+        for step in redis_steps:
+            self.assertIn("SILO_TEST_REDIS_DISPOSABLE_ADDR=@REDIS_ADDR@", step.cmd)
+        exports = self.gate.services_exports("123-abcd", 40001, 40002)
+        self.assertIn("export SILO_TEST_REDIS_DISPOSABLE_ADDR=127.0.0.1:40002", exports)
+
     def test_gofmt_is_the_go_mod_toolchains(self):
         # The gofmt on PATH belongs to the machine's Go, which can format
         # differently from the toolchain go.mod names (and CI uses).

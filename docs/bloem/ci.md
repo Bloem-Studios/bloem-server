@@ -661,7 +661,10 @@ tests need:
 - the `integration` build tag, which the target sets;
 - a migrated database whose name starts with `bloem_storage_test_`, which the
   tagged tests clone as a template. Packages therefore run one at a time;
-- `SILO_TEST_REDIS_URL=redis://127.0.0.1:65421/0` on a disposable Redis;
+- `SILO_TEST_REDIS_URL=redis://127.0.0.1:65421/0` on a disposable Redis. The
+  tests flush it, so they refuse any other address unless
+  `SILO_TEST_REDIS_DISPOSABLE_ADDR` names that same loopback address: the
+  local gate sets it for the Redis it starts on a free port;
 - a `$HOME` whose ancestors are not group- or world-writable, because the
   native S3 state directory checks refuse unsafe ancestors;
 - FFmpeg on `PATH`.
