@@ -126,6 +126,10 @@ func TestCollectorDeletesFromTheNamespaceStoreS3DB(t *testing.T) {
 	if err := blobgc.NewQueue(pool).Schedule(t.Context(), []string{key}, 0); err != nil {
 		t.Fatal(err)
 	}
+	// Bloem: other listed packages share this queue and may hold older due rows; collect this key first.
+	if _, err := pool.Exec(t.Context(), `UPDATE public.blob_gc_queue SET not_before = '-infinity' WHERE prefix = $1`, key); err != nil {
+		t.Fatal(err)
+	}
 	ns := chapterthumbs.ImageBlobNamespace()
 	ns.Store = private
 	if stats, err := blobgc.NewCollector(pool, assets, ns).Collect(t.Context(), 1); err != nil || stats.Deleted != 1 {

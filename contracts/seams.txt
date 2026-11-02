@@ -121,6 +121,7 @@ internal/auth/permissions.go
 internal/auth/repository.go
 internal/auth/service.go
 internal/auth/session.go
+internal/blobgc/collector_s3_db_test.go  # added lines: collect the test's own queue row first; dbpins runs listed packages at once and another may hold an older due row (failed in Bloem CI on 2026-11-02)
 internal/branding/branding.go
 internal/branding/render.go
 internal/branding/render_test.go
