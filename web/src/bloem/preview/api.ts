@@ -1,6 +1,6 @@
 import { getAccessToken } from "@/api/client";
 import { API_READ_TIMEOUT_MS, startRequestDeadline } from "@/api/requestDeadline";
-import { guestRefreshToken, setGuestHost } from "./session";
+import { guestRefreshToken, setGuestHost, setPreviewDiscoveryPending } from "./session";
 
 export interface PreviewStatus {
   enabled: boolean;
@@ -42,7 +42,18 @@ async function publicRequest<T>(path: string, body?: unknown): Promise<T> {
 }
 let discovery: Promise<PreviewStatus | null> | null = null;
 export async function discoverPreviewHost() {
-  discovery ??= publicRequest<PreviewStatus>("status").catch(() => null);
+  if (!discovery) {
+    setPreviewDiscoveryPending(true);
+    // The host is known before pending clears, so nothing routes a visitor
+    // in the moment between the two.
+    discovery = publicRequest<PreviewStatus>("status")
+      .catch(() => null)
+      .then((status) => {
+        if (status) setGuestHost(typeof status.brand === "string");
+        setPreviewDiscoveryPending(false);
+        return status;
+      });
+  }
   const status = await discovery;
   if (status) setGuestHost(typeof status.brand === "string");
   return status;

@@ -695,7 +695,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function restoreSession() {
-      if (guestHost() || !storage.get(storage.KEYS.REFRESH_TOKEN)) await discoverPreviewHost();
+      if (guestHost()) await discoverPreviewHost();
       // A sign-in on another path (the OAuth completion page, a login,
       // impersonation) or a sign-out can replace the session while this
       // restore waits on the network. From then on the restore speaks for a

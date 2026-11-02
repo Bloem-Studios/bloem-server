@@ -82,6 +82,17 @@ export function setGuestHost(value: boolean) {
   }
   changed();
 }
+// True while the first preview status request is in flight. Until it
+// answers, nobody knows whether a signed-out visitor is on a preview host.
+let discovering = false;
+export function previewDiscoveryPending() {
+  return discovering;
+}
+export function setPreviewDiscoveryPending(value: boolean) {
+  if (discovering === value) return;
+  discovering = value;
+  changed();
+}
 export function guestSession() {
   return current;
 }

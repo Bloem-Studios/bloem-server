@@ -1,7 +1,7 @@
 # How browse-only access and the preview work
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Browse-only access and the storefront preview are Bloem
+> `main` at `b6039036d`; the preview status wait updated on 2026-11-02. Browse-only access and the storefront preview are Bloem
 > additions. Silo's group policy has the playback, download and permission switches
 > that this page builds on; Silo has no preview principals, guest sessions or
 > delivery-time playback checks. The technical rules are in the
@@ -449,8 +449,12 @@ nor exposes collection creation or editing. The upstream subscriber page stays
 unchanged behind the module adapter.
 
 The web client derives preview mode from the authenticated account presentation.
-Guest entry also discovers the dedicated host through the public preview status;
-visiting a preview route on the normal host cannot change subscriber credential
+Guest entry also discovers the dedicated host through the public preview status.
+While that status is in flight, a signed-out visitor on a page behind sign-in waits
+in the preview route boundary (`web/src/bloem/preview/RequireFullAccess.tsx`) instead
+of being sent to log in; public pages such as the login screen are not held. The boot
+session restore waits for the status only on a known preview host, so an ordinary
+subscriber's restore never depends on it. Visiting a preview route on the normal host cannot change subscriber credential
 storage. Guest refresh tokens and their display/attribution metadata live under
 the tab-scoped `bloem-preview-session` key. Ordinary subscriber refresh and
 profile storage stay separate. Ticket fragments are cleared before exchange, and
