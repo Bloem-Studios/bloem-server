@@ -26,6 +26,10 @@ left out of counts (#3383).
   well as downloads. `5a044930c` resolves it in the signed-in account's own
   organization again, failing closed when that cannot be worked out
   ([security foundation](../architecture/bloem-security-foundation.md#account-provisioning-and-login-policy)).
+- **Members without a username or email.** Silo's #3392 made its own account reads
+  accept an account with only a username or only an email; Bloem's member list,
+  member actions and member delete in `internal/tenancy` still failed on the NULL.
+  They now read it as empty, as Silo does.
 - **Contracts.** The client DTOs gain Silo's `installation_reset_available`, with
   coverage reasons for the Apple push reset types and a re-pinned digest.
 - **Migrations.** `20261102003211_requeue_local_artwork_refused_outside_roots` requeues

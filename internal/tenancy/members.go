@@ -627,7 +627,7 @@ func (s *MemberService) DeleteInTransaction(ctx context.Context, tx pgx.Tx, tena
 		otherOwnerCount int
 		platformOwner   bool
 	)
-	if err := tx.QueryRow(ctx, `SELECT role,username,email FROM users WHERE id=$1 FOR UPDATE`, userID).Scan(&role, &username, &email); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT role,COALESCE(username,''),COALESCE(email,'') FROM users WHERE id=$1 FOR UPDATE`, userID).Scan(&role, &username, &email); err != nil {
 		return fmt.Errorf("tenancy: lock member account: %w", err)
 	}
 	if err := tx.QueryRow(ctx, `SELECT count(*) FROM organizations WHERE owner_account_id=$1 AND id<>$2`, userID, tenantID).Scan(&otherOwnerCount); err != nil {

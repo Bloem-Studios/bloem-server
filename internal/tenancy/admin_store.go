@@ -498,7 +498,7 @@ func (s *Store) ListOrganizationMemberships(ctx context.Context, organizationID 
 	args = append(args, limit+1)
 	rows, err := s.pool.Query(ctx, `
 		SELECT m.id, m.organization_id, m.account_id, m.status, m.legacy_role, m.security_revision,
-		       u.email, u.username
+		       COALESCE(u.email, ''), COALESCE(u.username, '')
 		FROM organization_memberships m
 		JOIN users u ON u.id = m.account_id
 		WHERE m.organization_id = $1`+condition+`

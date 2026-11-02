@@ -828,3 +828,64 @@ func passwordMatches(user *models.User, password string) bool {
 	ok, err := auth.CheckPassword(context.Background(), user, password)
 	return err == nil && ok
 }
+
+// An account can have only a username or only an email: both users columns are
+// nullable (Silo #3392). Listing an organization's members and every member
+// action must read such an account instead of failing on the NULL.
+func TestMemberServiceHandlesAccountsWithoutUsernameOrEmail(t *testing.T) {
+	ctx, pool, store, service, _ := newMemberService(t)
+	tenant := createMemberTenant(t, ctx, store, 4)
+	text := func(value *string) string {
+		if value == nil {
+			return ""
+		}
+		return *value
+	}
+	username := fmt.Sprintf("no-email-%d", time.Now().UnixNano())
+	email := fmt.Sprintf("no-username-%d@members.test", time.Now().UnixNano())
+	for _, tc := range []struct {
+		name            string
+		username, email *string
+	}{
+		{name: "username only", username: &username},
+		{name: "email only", email: &email},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var userID int
+			if err := pool.QueryRow(ctx, `INSERT INTO users (username,email,password_hash,role,enabled)
+				VALUES ($1,$2,'legacy-hash','user',true) RETURNING id`, tc.username, tc.email).Scan(&userID); err != nil {
+				t.Fatalf("seed account: %v", err)
+			}
+			if _, err := pool.Exec(ctx, `INSERT INTO organization_memberships (organization_id,account_id,status,legacy_role)
+				VALUES ($1,$2,'active','user')`, tenant.ID, userID); err != nil {
+				t.Fatalf("seed membership: %v", err)
+			}
+
+			page, err := store.ListOrganizationMemberships(ctx, tenant.ID, tenancy.MembershipFilter{})
+			if err != nil {
+				t.Fatalf("list memberships: %v", err)
+			}
+			listed := false
+			for _, item := range page.Items {
+				if item.AccountID == userID {
+					listed = item.Username == text(tc.username) && item.Email == text(tc.email)
+				}
+			}
+			if !listed {
+				t.Fatalf("membership page %+v does not list account %d with its username and email", page.Items, userID)
+			}
+			if suspended, err := service.Suspend(ctx, tenant.ID, userID); err != nil || suspended.Enabled {
+				t.Fatalf("suspend = (%+v, %v)", suspended, err)
+			}
+			if resumed, err := service.Resume(ctx, tenant.ID, userID); err != nil || !resumed.Enabled || resumed.Username != text(tc.username) || resumed.Email != text(tc.email) {
+				t.Fatalf("resume = (%+v, %v)", resumed, err)
+			}
+			if _, err := service.ResetPassword(ctx, tenant.ID, userID, "replacement-secret"); err != nil {
+				t.Fatalf("reset password: %v", err)
+			}
+			if err := service.Delete(ctx, tenant.ID, userID); err != nil {
+				t.Fatalf("delete: %v", err)
+			}
+		})
+	}
+}
