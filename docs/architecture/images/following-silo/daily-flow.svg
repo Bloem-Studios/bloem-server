@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">How Bloem keeps up with Silo</title>
-<desc id="d">A merge bot takes each batch of Silo's work. Silo's main has new commits and has been quiet for 30 minutes; a free check every 10 minutes starts one batch at a time, each in its own T3 thread the owner can watch and answer; the merge takes Silo's side of every conflict. If Bloem still works, after the review list and the full local gate, the merge is pushed to Bloem's main, Bloem CI checks that exact commit, the bot deploys it, writes the receipt and sends one message. If not, Bloem adapts on its own lines with a test. When a check cannot be fixed, Bloem cannot keep working without editing Silo's lines, CI stays red or the deploy fails, the bot stops in its thread and blocks the next batch.</desc>
+<desc id="d">A merge bot takes each batch of Silo's work. Silo's main has new commits and has been quiet for 10 minutes; a free check every 10 minutes starts one batch at a time, each in its own T3 thread the owner can watch and answer; the merge takes Silo's side of every conflict. If Bloem still works, after the review list and the fast local checks, the merge is pushed to Bloem's main, Bloem CI runs the full suite on that exact commit, the bot deploys it, writes the receipt and sends one message. If not, Bloem adapts on its own lines with a test. When a check cannot be fixed, Bloem cannot keep working without editing Silo's lines, CI stays red or the deploy fails, the bot stops in its thread and blocks the next batch.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="739" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How Bloem keeps up with Silo</text>
@@ -8,7 +8,7 @@
 <text x="40" y="140" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Each Silo batch</text>
 <rect x="40" y="156" width="260" height="120" rx="14" fill="#F0F9FF" stroke="#0284C7" stroke-width="1.8"/>
 <text x="58" y="188" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Silo's main</text>
-<text x="58" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">New commits, then 30 quiet</text>
+<text x="58" y="212" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">New commits, then 10 quiet</text>
 <text x="58" y="232" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">minutes. The batch is all of it.</text>
 <line x1="304" y1="216" x2="322" y2="216" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="326" y="156" width="260" height="120" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
@@ -36,14 +36,14 @@
 <rect x="258" y="322" width="210" height="132" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
 <text x="276" y="354" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem's main</text>
 <text x="276" y="378" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Pushed once the review</text>
-<text x="276" y="398" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">and the full local gate</text>
-<text x="276" y="418" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">pass.</text>
+<text x="276" y="398" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">and the fast local</text>
+<text x="276" y="418" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">checks pass.</text>
 <line x1="472" y1="388" x2="494" y2="388" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="498" y="322" width="210" height="132" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
 <text x="516" y="354" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem CI</text>
-<text x="516" y="378" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">On that exact commit. A</text>
-<text x="516" y="398" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">failed job runs once</text>
-<text x="516" y="418" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">more.</text>
+<text x="516" y="378" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The full suite, on that</text>
+<text x="516" y="398" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">exact commit. A failed</text>
+<text x="516" y="418" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">job runs once more.</text>
 <line x1="712" y1="388" x2="734" y2="388" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="738" y="322" width="200" height="132" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
 <text x="756" y="354" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Deploy</text>

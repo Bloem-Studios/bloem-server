@@ -102,8 +102,10 @@ settings on organization memberships. The
 ## Where things stand
 
 On 2 November 2026, Bloem's `main` has all of Silo's work through `56e6f871c`, from
-that evening, and the seam list holds 309 files. Production runs `e3a096b20`. From now
-on the merge bot takes each new Silo batch through to production. Production has one
+that evening, and the seam list holds 309 files. Production runs `c5a2b43f3`, the merge
+bot's first batch, deployed by hand at the owner's request
+([receipt](docs/operations/2026-11-02-silo-sync-56e6f871c-deployment.md)). From now on
+the merge bot takes each new Silo batch through to production. Production has one
 organization, the default one, with the server's public address registered as its
 primary domain.
 
@@ -112,7 +114,7 @@ primary domain.
 | Who | What they decide |
 | --- | --- |
 | The owner | When to deploy anything the merge bot does not, whether a new seam may be added, and how a stopped batch goes on. |
-| The merge bot | Merging each Silo batch with Silo winning, fixing Bloem on Bloem's own lines, pushing to `main` after the full checks pass, and deploying a batch Bloem CI passed. |
+| The merge bot | Merging each Silo batch with Silo winning, fixing Bloem on Bloem's own lines, pushing to `main` after the fast local checks pass, and deploying a batch Bloem CI passed. |
 | A Bloem maintainer | Merging Silo by hand, with the same steps, when the bot cannot. |
 | A repository administrator | Switching the daily GitHub sync back on, with the repository variable `BLOEM_UPSTREAM_SYNC`. It is off since 2 November 2026. |
 | Silo's maintainers | Whether a change Bloem offers is taken into Silo. Bloem never pushes to Silo directly; it offers changes through a separate fork and a pull request. |
@@ -178,7 +180,7 @@ use a separate fork and pull request.
 Since 2 November 2026 the **merge bot** takes in each Silo batch. It runs on Bloem's
 build machine, outside GitHub Actions; its configuration, scripts and prompts live in
 Bloem's private infrastructure repository. A free check every 10 minutes starts a
-batch only when Silo's `main` has commits Bloem lacks and has been quiet for 30
+batch only when Silo's `main` has commits Bloem lacks and has been quiet for 10
 minutes. The batch is everything on Silo's `main` when its thread starts; later
 commits wait for the next batch. One batch runs at a time, each in its own T3 thread
 and worktree, on a `merge/upstream-<sha9>` branch from `origin/main`, which the owner
@@ -216,14 +218,22 @@ Before pushing, each batch:
 2. regenerates the client DTOs, playback fixtures and API catalogue, with coverage
    reasons and the client digest for new Silo wire types;
 3. updates the documentation the merge affects, in the same push;
-4. runs the full local gate, `python3 scripts/bloem/local-gate.py run --base <old main>`,
-   which runs every Bloem CI job, including the web bundle budget and CI's
-   changed-line lint ([validation checks](.github/CONTRIBUTING.md#validate-your-change)).
+4. runs the fast local checks: the build, the contract and verify checks,
+   changed-line lint and the scenario executor
+   (`python3 scripts/bloem/local-gate.py run --base <old main> --only build,verify,lint,scenarios`),
+   and the scenario catalog tests (`go test ./internal/scenariocatalog/`). Bloem CI
+   runs the full suite on the pushed commit, and the deploy refuses any commit Bloem
+   CI has not passed. The whole local gate, without `--only`, still runs every Bloem
+   CI job for a developer checking by hand
+   ([validation checks](.github/CONTRIBUTING.md#validate-your-change)).
 
 Then it pushes to `main`, waits for Bloem CI on that exact commit (a failed job is
 rerun once; a run cancelled by a newer push is followed to the new tip), deploys only
 a commit CI passed, writes the receipt and sends one message: deployed, stuck or
-rolled back. It stops in its thread, and blocks the next batch, when a test or check
+rolled back. The operator can override the CI check by hand with the deploy script's
+`--skip-ci-check`, which the bot never passes; that happened once, for `c5a2b43f3`
+([receipt](docs/operations/2026-11-02-silo-sync-56e6f871c-deployment.md)). It stops
+in its thread, and blocks the next batch, when a test or check
 cannot be fixed, when Bloem cannot be kept working without editing Silo's lines, when
 CI stays red, or when the deploy fails or rolls back. See
 [CI](docs/bloem/ci.md#the-merge-bot) for every step.

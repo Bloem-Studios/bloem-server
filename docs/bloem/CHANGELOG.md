@@ -3,6 +3,21 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 2, 2026 — merge-bot batches run the fast local checks
+
+The merge bot no longer runs the full local gate on a batch. It runs the fast local
+checks: the build, the contract and verify checks, changed-line lint, the scenario
+executor and the scenario catalog tests. Bloem CI runs the full suite on the pushed
+commit, and the deploy refuses any commit Bloem CI has not passed. The operator can
+override that by hand, as happened once, for `c5a2b43f3`
+([receipt](../operations/2026-11-02-silo-sync-56e6f871c-deployment.md)). A batch now
+starts once Silo has been quiet for 10 minutes instead of 30. Developers still run the
+whole gate by hand with `scripts/bloem/local-gate.py`.
+
+- **Pages.** [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md),
+  [How Bloem CI works](ci.md#the-merge-bot), [FORK.md](../../FORK.md#taking-upstream-changes)
+  and the front page; one picture redrawn.
+
 ## November 2, 2026 — Silo integration through 56e6f871c
 
 The merge bot's first batch: `209447445` merges nineteen Silo commits after

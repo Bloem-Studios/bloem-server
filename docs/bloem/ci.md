@@ -62,20 +62,22 @@ Since November 2, 2026 a **merge bot** on Bloem's build machine takes each Silo
 batch, outside GitHub Actions:
 
 1. **A free check every 10 minutes** starts a batch when Silo has new commits and has
-   been quiet for 30 minutes. The batch is everything on Silo's `main` at that moment,
+   been quiet for 10 minutes. The batch is everything on Silo's `main` at that moment,
    and only one runs at a time.
 2. **One thread per batch.** The bot works the batch in its own T3 thread and its own
    copy of the repository, which the owner can watch and answer.
 3. **Merge and check.** Each conflict takes Silo's side, word for word, and Bloem's
    change goes on its own lines or in its own file, with a test where Silo's version
    would break Bloem. A review list names the seams, Bloem files, overlays, pages and
-   migrations to read. Then the **local gate** runs every Bloem CI job on the build
-   machine, the scenario executor included, so a merge that would turn CI red shows up
-   before it reaches `main` ([local gate](#local-gate)).
-4. **Push and wait.** The bot pushes the merge to `main` and waits for Bloem CI on
-   that exact commit.
-5. **Deploy.** Only a commit Bloem CI passed is deployed. The bot writes the receipt
-   and sends one message: deployed, stuck or rolled back.
+   migrations to read. Then the **fast local checks** run on the build machine: the
+   build, the contract and verify checks, changed-line lint, the scenario executor and
+   the scenario catalog tests ([local gate](#local-gate)).
+4. **Push and wait.** The bot pushes the merge to `main` and waits for Bloem CI, which
+   runs the full suite, on that exact commit.
+5. **Deploy.** Only a commit Bloem CI passed is deployed; the deploy refuses any other.
+   The operator can override that by hand, as happened once
+   ([receipt](../operations/2026-11-02-silo-sync-56e6f871c-deployment.md)). The bot
+   writes the receipt and sends one message: deployed, stuck or rolled back.
 
 ![The merge bot pushes to main and waits for Bloem CI on that commit. Passed: it deploys. A failed job is rerun once; a run cancelled by a newer push is followed to main's new tip; a failure that comes back is fixed on Bloem's own lines and pushed again, at most three times. A failure it cannot fix stops the batch for the owner](../architecture/images/bloem-ci/merge-bot.svg)
 
@@ -383,9 +385,11 @@ python3 scripts/bloem/local-gate.py services down "$GATE_SERVICES_ID"
   per step with the step's log file, and exits non-zero when any step failed.
 - `make verify-local-gate`, a Go contract check, fails when this workflow
   gains a `make` target or a `go test` the gate does not run.
-- The merge bot runs it on every batch with `--base` set to the `main` the batch
-  started from. After a fix it reruns, with `--only`, the failed phases and every
-  phase the fix can reach.
+- The merge bot runs only its fast phases on each batch,
+  `--only build,verify,lint,scenarios` with `--base` set to the `main` the batch
+  started from, plus `go test ./internal/scenariocatalog/`. Bloem CI runs the full
+  suite on the pushed commit. After a fix the bot reruns, with `--only`, the failed
+  phases and every phase the fix can reach.
 
 ### Failures and re-runs
 
@@ -581,7 +585,7 @@ this repository starts it. It uses two scripts from this repository:
 
 1. **The check.** A timer runs it every 10 minutes. It runs no model and starts no
    thread. It fetches Bloem's and Silo's `main`, and acts only when Silo's tip is
-   not in Bloem's `main` and that tip's commit time is at least 30 minutes old. It
+   not in Bloem's `main` and that tip's commit time is at least 10 minutes old. It
    then takes a lock, one batch at a time, and starts the batch. The check also
    reports a batch nobody picked up, a stopped batch that sent no message, a running
    batch silent for four hours, and its own repeated failures.
@@ -603,10 +607,13 @@ this repository starts it. It uses two scripts from this repository:
    catalogue, coverage reasons in `contracts/client/v1/coverage.json` with
    `make client-digest`; then the overlays and Bloem pages the merge affects, with
    pictures redrawn, and the status rows that say which Silo commit Bloem includes.
-6. **Gate.** `python3 scripts/bloem/local-gate.py run --base <old main>`. A failed
-   test is rerun alone once; a real failure gets at most three fix attempts. If
-   `main` moved meanwhile, it is merged in and the whole gate runs again; a third
-   move stops the batch.
+6. **Fast checks.** `python3 scripts/bloem/local-gate.py run --base <old main> --only build,verify,lint,scenarios`
+   (the build, gofmt, vet, every contract and verify target, changed-line lint and the
+   scenario executor) and `go test ./internal/scenariocatalog/`. Bloem CI runs the
+   full suite on the pushed commit, and the deploy refuses any commit Bloem CI has not
+   passed. A failed test is rerun alone once; a real failure gets at most three fix
+   attempts. If `main` moved meanwhile, it is merged in and the fast checks run again;
+   a third move stops the batch.
 7. **Push and wait.** `git push origin HEAD:main`, never forced. The bot then waits
    for the Bloem CI run on that exact commit. A failed run is rerun once, failed jobs
    only (`gh run rerun <id> --failed`), unless `main` has moved on, since a re-run
@@ -624,7 +631,10 @@ this repository starts it. It uses two scripts from this repository:
    the logs and the transcode nodes. A failed check rolls the image back by itself,
    whether or not migrations ran. Only when the host stops answering during the
    restart, or the rollback itself fails, is nothing more tried and production left
-   to the owner. The bot never restores the database.
+   to the owner. The bot never restores the database. The operator can override the
+   CI check by hand with the script's operator-only `--skip-ci-check`, which the bot
+   never passes; that happened once, for `c5a2b43f3`
+   ([receipt](../operations/2026-11-02-silo-sync-56e6f871c-deployment.md)).
 9. **Receipt and message.** `docs/operations/<date>-silo-sync-<sha9>-deployment.md`,
    the index's "current:" receipt and the front page's `Production` row, pushed to
    `main` and checked by Bloem CI too; one message (deployed, stuck or rolled back)

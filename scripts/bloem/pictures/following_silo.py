@@ -22,11 +22,11 @@ def _line(s, x1, y1, x2, y2, color=LINE, dash=None):
 
 def daily_flow():
     s = Svg(1200, 740, "How Bloem keeps up with Silo",
-            "A merge bot takes each batch of Silo's work. Silo's main has new commits and has been quiet for 30 "
+            "A merge bot takes each batch of Silo's work. Silo's main has new commits and has been quiet for 10 "
             "minutes; a free check every 10 minutes starts one batch at a time, each in its own T3 thread the owner "
             "can watch and answer; the merge takes Silo's side of every conflict. If Bloem still works, after the "
-            "review list and the full local gate, the merge is pushed to Bloem's main, Bloem CI checks that exact "
-            "commit, the bot deploys it, writes the receipt and sends one message. If not, Bloem adapts on its own "
+            "review list and the fast local checks, the merge is pushed to Bloem's main, Bloem CI runs the full "
+            "suite on that exact commit, the bot deploys it, writes the receipt and sends one message. If not, Bloem adapts on its own "
             "lines with a test. When a check cannot be fixed, Bloem cannot keep working without editing Silo's "
             "lines, CI stays red or the deploy fails, the bot stops in its thread and blocks the next batch.")
     s.header("How Bloem keeps up with Silo",
@@ -35,7 +35,7 @@ def daily_flow():
 
     s.text(40, 140, "Each Silo batch", size=17, weight="700")
     first = [
-        (SILO, "Silo's main", "New commits, then 30 quiet minutes. The batch is all of it."),
+        (SILO, "Silo's main", "New commits, then 10 quiet minutes. The batch is all of it."),
         (g, "The check", "Every 10 minutes, at no cost. One batch at a time."),
         (BLOEM, "One thread per batch", "Its own T3 thread, which the owner can watch and answer."),
         (g, "The merge", "Silo wins every conflict, word for word."),
@@ -59,8 +59,8 @@ def daily_flow():
     s.arrow(224, 388, 254, 388)
     s.text(239, 378, "Yes", size=13, weight="700", fill=a["label"], anchor="middle")
     second = [
-        (a, 210, "Bloem's main", "Pushed once the review and the full local gate pass."),
-        (p, 210, "Bloem CI", "On that exact commit. A failed job runs once more."),
+        (a, 210, "Bloem's main", "Pushed once the review and the fast local checks pass."),
+        (p, 210, "Bloem CI", "The full suite, on that exact commit. A failed job runs once more."),
         (w, 200, "Deploy", "Only a commit CI passed. A snapshot and a restore point first."),
         (a, 192, "One message", "The receipt, then deployed, stuck or rolled back."),
     ]

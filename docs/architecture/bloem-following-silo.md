@@ -16,14 +16,14 @@ keeps its own work.
 
 ## Each Silo batch
 
-![A merge bot takes each batch: Silo's main has new commits and 30 quiet minutes; a free check every 10 minutes starts one batch at a time in its own thread; the merge takes Silo's side of every conflict; if Bloem still works, the merge is pushed to main, Bloem CI checks that commit, the bot deploys it and sends one message. If not, Bloem adapts on its own lines, or the bot stops for the owner and blocks the next batch](images/following-silo/daily-flow.svg)
+![A merge bot takes each batch: Silo's main has new commits and 10 quiet minutes; a free check every 10 minutes starts one batch at a time in its own thread; the merge takes Silo's side of every conflict; if Bloem still works, the merge is pushed to main, Bloem CI checks that commit, the bot deploys it and sends one message. If not, Bloem adapts on its own lines, or the bot stops for the owner and blocks the next batch](images/following-silo/daily-flow.svg)
 
 A **merge bot** on Bloem's build machine takes each Silo **batch**: everything on
 Silo's `main` when the bot starts work on it.
 
 1. **A free check every 10 minutes** looks for Silo commits Bloem lacks. It costs
    nothing, and it starts a batch only when Silo has new commits and has been quiet
-   for 30 minutes, because Silo's commits arrive in bursts. One batch runs at a time;
+   for 10 minutes, because Silo's commits arrive in bursts. One batch runs at a time;
    commits that land later wait for the next one.
 2. **One thread per batch.** The bot works each batch in its own T3 thread, in its
    own copy of the repository. The owner can watch it live and answer it.
@@ -34,19 +34,23 @@ Silo's `main` when the bot starts work on it.
    the seams, Bloem's files beside or calling the Silo code that changed, overlays,
    Bloem pages and migrations. The bot reads each one, regenerates the contracts and
    brings the pages the merge affects up to date.
-5. **Does Bloem still work?** The **local gate** runs every Bloem CI job on the build
-   machine before anything is pushed.
-6. **Pushed to `main`,** the merge goes through Bloem CI like any other push. The bot
-   waits for CI on that exact commit.
-7. **Deployed.** The bot deploys only a commit Bloem CI passed, writes the dated
-   receipt and sends the owner one message: deployed, stuck or rolled back.
+5. **Does Bloem still work?** The **fast local checks** run on the build machine
+   before anything is pushed: the build, the contract and verify checks, changed-line
+   lint, the scenario executor and the scenario catalog tests.
+6. **Pushed to `main`,** the merge goes through Bloem CI like any other push, and
+   Bloem CI runs the full suite. The bot waits for CI on that exact commit.
+7. **Deployed.** The bot deploys only a commit Bloem CI passed: the deploy refuses any
+   other. It writes the dated receipt and sends the owner one message: deployed,
+   stuck or rolled back. The operator can override the CI check by hand, as happened
+   once, when the owner wanted the first batch live at once.
 
 Until 2 November 2026 a daily GitHub job made clean merges by itself, and maintainers
 merged the rest by hand. The job could not resolve a conflict or adapt Bloem's code,
 so it is switched off ([Bloem CI](../bloem/ci.md#how-silos-work-comes-in)).
 
 On 2 November 2026 Bloem's `main` had all of Silo's work through `56e6f871c`, merged
-in `209447445`, and production ran `e3a096b20`.
+in `209447445`, and production ran `c5a2b43f3`, that first batch, deployed by hand at
+the owner's request ([receipt](../operations/2026-11-02-silo-sync-56e6f871c-deployment.md)).
 
 ## Deploying a batch
 
@@ -106,17 +110,17 @@ Bloem keeps its own work in three places:
 
 This example is made up.
 
-1. Silo lands three commits, at 08:05, 08:20 and 08:31.
-2. The checks from 08:10 to 09:00 find new commits, but Silo has not been quiet for
-   30 minutes yet. At 09:10 it has, and the check starts a batch with all three.
+1. Silo lands three commits, at 08:05, 08:12 and 08:21.
+2. The checks from 08:10 to 08:30 find new commits, but Silo has not been quiet for
+   10 minutes yet. At 08:40 it has, and the check starts a batch with all three.
 3. At 09:15 Silo lands a fourth commit. It waits for the next batch.
 4. The merge conflicts in one file. The bot takes Silo's lines, puts Bloem's check
-   back on its own lines with a test, and runs the gate. It pushes at 10:40.
+   back on its own lines with a test, and runs the fast checks. It pushes at 10:40.
 5. Bloem CI fails one job. The bot runs it once more, and it passes.
 6. At 11:25 the batch is deployed. The bot writes the receipt and sends the owner
    one message: deployed.
-7. Once Bloem CI has passed the receipt too, the batch is done. At 12:10 the check
-   starts the next batch, with the 09:15 commit.
+7. Right after the message the batch is done; Bloem CI still checks the receipt on
+   its own. At 11:30 the check starts the next batch, with the 09:15 commit.
 
 ## Who can change what
 
@@ -135,7 +139,7 @@ This example is made up.
 | The merge bot | runs outside this repository and GitHub Actions; its configuration, scripts and prompts live in Bloem's private infrastructure repository |
 | A batch, a Silo merge | one Silo commit and everything before it; its merge commit on `main` is titled "Merge Silo upstream through <sha>", from a `merge/upstream-<sha9>` branch |
 | The review | `scripts/bloem/silo-merge-review.py` |
-| The local gate | `scripts/bloem/local-gate.py` |
+| The fast local checks | the `build`, `verify`, `lint` and `scenarios` phases of `scripts/bloem/local-gate.py`, and `go test ./internal/scenariocatalog/` |
 | The daily sync (switched off) | `.github/workflows/upstream-sync.yml`, merged by `upstream-sync-merge.yml`; both run only when the repository variable `BLOEM_UPSTREAM_SYNC` is `true` |
 | Bloem CI | `.github/workflows/bloem-ci.yml` |
 | The image | built from exactly the commit Bloem CI passed |
