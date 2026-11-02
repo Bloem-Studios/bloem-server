@@ -2602,6 +2602,14 @@
       "reason": "Upstream Silo wire type taken as shipped in the 2026-10-23 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
     },
     {
+      "type": "internal/apiv2.ApplePushResetBody",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-11-02 sync (Silo through 56e6f871c). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.ApplePushResetReceipt",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-11-02 sync (Silo through 56e6f871c). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
       "type": "internal/apiv2.SeasonalTheme",
       "reason": "Upstream Silo wire type taken as shipped in the 2026-10-23 sync. Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
     },
