@@ -1,7 +1,8 @@
 # How Bloem's security foundation works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. The tenant foundation (organizations, memberships, platform
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
+> and checked against `main` at `209447445`, the merge of Silo through `56e6f871c`, with
+> its Bloem fixes. The tenant foundation (organizations, memberships, platform
 > ownership, administrator passes and the native `/api/bloem/v1` namespace) is a Bloem
 > addition: Silo has one set of accounts, profiles and sign-ins per server. The technical
 > rules are in the [For developers](#for-developers) section.
@@ -31,7 +32,9 @@ an organization's own web address, and how a server gets its first owner.
   and it never opens an organization's administration.
 
 Signing in tells Bloem nothing about organizations. Bloem works out the organization from the
-account itself, so apps built for Silo work unchanged.
+account itself, so apps built for Silo work unchanged. What the sign-in answer says the account
+may do, such as downloading, comes from the account's own organization and access group. When
+Bloem cannot work out that organization, the answer offers nothing, and the sign-in still works.
 
 ## What Bloem checks on every request
 
@@ -163,7 +166,9 @@ policy back on Silo's `users` table with one membership per account (`c60b7008e`
 token binding and playback ownership rules applied to Bloem's paths (Silo merge `68070f04b`,
 2026-10-27); a sign-in older than its organization's revocation ended with `401
 session_invalid` (`25129bcbd`, 2026-11-01); organization domains (migration
-`20261101055208_bloem_organization_domains`, 2026-11-01). The [Rollback](#rollback) procedure
+`20261101055208_bloem_organization_domains`, 2026-11-01); the login response's policy
+resolved in the account's own tenant again after Silo's account payload began reporting
+group-masked permissions (`5a044930c`, 2026-11-02). The [Rollback](#rollback) procedure
 applies only to the August 2026 foundation release.
 
 ### The native namespace and capabilities
@@ -349,10 +354,18 @@ does not change organization keys, and competing organization updates remain ser
 transaction retry substitutes for that lock compatibility.
 
 Password-login responses resolve the authenticated account's default-organization viewer
-policy before reporting `download_allowed`. The login request cannot select a tenant through
-headers or an ambient profile context. Missing viewer authority reports downloads as
-unavailable without preventing account login for administrative-context selection. This
-response is informational: later resource requests still enforce their own authority.
+policy before reporting `download_allowed` and the group-masked permissions (v2
+`Account.permissions`), which Silo's `effectiveAccountPolicy` computes since Silo `243d7e0da`.
+The login request cannot select a tenant through headers or an ambient profile context: two
+Bloem lines in Silo's `AuthHandler.Login` bind the account's own tenant
+(`bloemLoginPolicyContext`, `internal/api/handlers/bloem_login_policy.go`) before Silo's line
+runs. Missing viewer authority marks the context with `access.RequireTenantPolicy`, so
+`access.EffectivePolicyForUser` fails closed instead of falling back to the no-group policy:
+the response reports no downloads and no permissions, without preventing account login for
+administrative-context selection. This response is informational: later resource requests
+still enforce their own authority. `TestBloemLoginReportsTheAccountGroupPolicyDB` drives the
+real login against Postgres; `TestBloemLoginPolicyUsesAuthenticatedAccountTenant` covers each
+way the tenant can be refused.
 
 The v1 account-password capability and mutation routes preserve profileless account
 administration. A selected profile first resolves tenant authority, then passes the shared

@@ -1,7 +1,8 @@
 # How apps reach Live TV
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Silo has no Live TV. Bloem's tuner, guide and recording code
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
+> and checked against `main` at `209447445`, the merge of Silo through `56e6f871c`, with
+> its Bloem fixes. Silo has no Live TV. Bloem's tuner, guide and recording code
 > is adapted from Prairie Server; the access rules on this page are Bloem's own. Every
 > route, field, error code and invariant is in the [For developers](#for-developers)
 > section.
@@ -107,6 +108,15 @@ Both viewer resolvers derive `LiveTVAllowed` from the effective permission set. 
 primary profile of an admin account has an implicit grant; other household profiles
 need an explicit effective grant. Existing account/group persistence and revision
 invalidation apply without a schema migration.
+
+The permission joins Silo's assignable set rather than sitting beside it.
+`internal/auth/permissions.go` stays Silo's: `internal/auth/bloem_permissions.go` adds
+every `internal/permissioncatalog` entry to Silo's `assignablePermissions` map at init,
+so `auth.NormalizePermissions` accepts `watch_live_tv` and `auth.AssignablePermissions`,
+which the frozen v1 account body lists for an enabled admin, names it. v2
+`Account.permissions` lists only an admin's explicitly assigned permissions, as in Silo
+(`243d7e0da`). `TestAssignablePermissionsListTheBloemCatalog` pins the registry
+(`631730bb4`, 2026-11-02).
 
 ### Capability
 

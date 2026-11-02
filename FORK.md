@@ -1,7 +1,7 @@
 # How Bloem forks Silo
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-02
-> and checked against `main` at `f12b3c75f`. This is Bloem's fork policy and
+> and checked against `main` at `a7359de60`. This is Bloem's fork policy and
 > provenance; Silo has no such file. Every rule, command and number is in the
 > [For developers](#for-developers) section.
 
@@ -60,7 +60,7 @@ is no reason to keep Bloem's code different from Silo's.
   Silo doesn't have, such as Live TV.
 - **Seams.** A **seam** is a Silo file that Bloem still changes, usually by one hook
   line that calls Bloem's code. Every seam is listed, with its reason, in
-  `contracts/seams.txt`. On 2 November 2026 the list held 310. The number may only go
+  `contracts/seams.txt`. On 2 November 2026 the list held 309. The number may only go
   down, and adding one is a reviewed decision.
 - **Overlays.** Where a Silo document needs a Bloem note, a separate Bloem page, an
   **overlay**, carries it, and Silo's document stays as Silo wrote it.
@@ -101,8 +101,8 @@ settings on organization memberships. The
 
 ## Where things stand
 
-On 2 November 2026, Bloem's `main` has all of Silo's work through `07f0ae21c`, from
-that night, and the seam list holds 310 files. Production runs `e3a096b20`. From now
+On 2 November 2026, Bloem's `main` has all of Silo's work through `56e6f871c`, from
+that evening, and the seam list holds 309 files. Production runs `e3a096b20`. From now
 on the merge bot takes each new Silo batch through to production. Production has one
 organization, the default one, with the server's public address registered as its
 primary domain.
@@ -343,9 +343,9 @@ dead-code removals.
 
 ### Current integration boundary
 
-At `f12b3c75f` (November 2, 2026), Bloem `main` contains all of Silo `main` through
-`07f0ae21c` (2026-11-02 01:45 UTC), merged in `e3a096b20`, and the ledger declares
-**310 seams**. Production runs `e3a096b20`: the
+At `a7359de60` (November 2, 2026), Bloem `main` contains all of Silo `main` through
+`56e6f871c` (2026-11-02 18:16 UTC), merged in `209447445`, and the ledger declares
+**309 seams**. Production runs `e3a096b20`: the
 [November 2 receipt](docs/operations/2026-11-02-silo-sync-07f0ae21c-deployment.md)
 records that deployment, and the
 [documentation index](docs/bloem/README.md#deployment-receipts) lists the ones before
@@ -392,13 +392,16 @@ took it to 307 with two generated playback fixtures and a library-form test
 (`internal/api/handlers/playback_missing.go`, `f49e73147`); and two Silo tests that
 failed in Bloem CI on November 2 took it to 310
 (`web/src/player/components/WatchPage.test.ts`, `c27b5f0be`;
-`internal/blobgc/collector_s3_db_test.go`, `6e1250062`). The September deployment
+`internal/blobgc/collector_s3_db_test.go`, `6e1250062`); the merge of Silo through
+`56e6f871c` took it to 309, when `internal/auth/permissions.go` went back to Silo's
+bytes and Bloem's permission catalog moved to `internal/auth/bloem_permissions.go`
+(`631730bb4`). The September deployment
 records are historical evidence too, and no deployment record changes the normal merge
 policy or certifies future builds.
 
 ### Ongoing merge cost
 
-The seam ledger is the merge cost: 310 Silo-owned files differ at `f12b3c75f`, most by
+The seam ledger is the merge cost: 309 Silo-owned files differ at `a7359de60`, most by
 a hook line or a generated artifact (the route inventory, OpenAPI and migration ledger
 necessarily differ because Bloem registers more routes).
 

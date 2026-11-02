@@ -171,8 +171,8 @@ Terms used below:
   out of Silo's files where it can
   ([FORK.md](../../FORK.md#this-is-a-tracking-fork-deliberately)).
 - A **seam** is a Silo-owned file that Bloem has changed. Each one is listed in
-  the seam ledger, [`contracts/seams.txt`](../../contracts/seams.txt) (310
-  entries at `f12b3c75f`), and `make verify-seams` fails on a change the
+  the seam ledger, [`contracts/seams.txt`](../../contracts/seams.txt) (309
+  entries at `a7359de60`), and `make verify-seams` fails on a change the
   ledger does not list.
 - A **disposable runner** is a private self-hosted runner that runs one job
   and is not reused. See [Where jobs run](#where-jobs-run).

@@ -185,7 +185,7 @@ def silo_wins():
     homes = [
         (BLOEM, "Its own files", "Files named bloem_*, and whole packages Silo does not have, such as Live TV."),
         (BLOEM, "Overlays", "Where a Silo document needs a Bloem note, a separate Bloem page carries it."),
-        (st, "The seam list", "The Silo files Bloem still edits: 310 on 2 November 2026. The number may only go "
+        (st, "The seam list", "The Silo files Bloem still edits: 309 on 2 November 2026. The number may only go "
          "down."),
     ]
     for i, (c, t, b) in enumerate(homes):

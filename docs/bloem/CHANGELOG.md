@@ -3,6 +3,36 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 2, 2026 — Silo integration through 56e6f871c
+
+The merge bot's first batch: `209447445` merges nineteen Silo commits after
+`07f0ae21c`, through `56e6f871c`. Among them: seek previews served from an external
+read endpoint (#3425), a deleted audiobook folder removed on the monitor scan
+(#3172), podcast show folders scanned with the podcast scanner (#2435), local artwork
+read in title folders linked out of the library (#2558), a plugin with an unreadable
+stored archive listed instead of failing the list (#3262), marker grants required for
+secondary admin profiles (#2177), "limit reached" instead of "server busy" when an
+account limit blocks playback (#3417), push recovery after an iPhone reinstall
+(#3352), MPTCP off on Silo's listeners (#3379) and titles held by the removal grace
+left out of counts (#3383).
+
+- **Conflicts.** Six files, all from #2177; every hunk took Silo's side.
+- **Live TV permission.** Silo's exported `AssignablePermissions`, the frozen v1 admin
+  list, read only Silo's two permissions. `631730bb4` registers Bloem's permission
+  catalog in Silo's map, so `watch_live_tv` stays assignable and listed;
+  `internal/auth/permissions.go` matches Silo again and the seam ledger goes from 310
+  to 309 ([How apps reach Live TV](../architecture/live-tv-client-access.md#the-permission)).
+- **Sign-in policy.** Silo's sign-in answer now reports group-masked permissions as
+  well as downloads. `5a044930c` resolves it in the signed-in account's own
+  organization again, failing closed when that cannot be worked out
+  ([security foundation](../architecture/bloem-security-foundation.md#account-provisioning-and-login-policy)).
+- **Contracts.** The client DTOs gain Silo's `installation_reset_available`, with
+  coverage reasons for the Apple push reset types and a re-pinned digest.
+- **Migrations.** `20261102003211_requeue_local_artwork_refused_outside_roots` requeues
+  artwork jobs refused as outside the library roots;
+  `20261102144235_add_trickplay_delivery_scope` adds two nullable columns to
+  `media_file_trickplay`.
+
 ## November 2, 2026 — Silo batches come in through the merge bot
 
 A merge bot on Bloem's build machine now takes each Silo batch: a free check every 10

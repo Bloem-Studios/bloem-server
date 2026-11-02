@@ -1,7 +1,7 @@
 # How Bloem keeps up with Silo
 
 > **Provenance and status.** Bloem page, written on 2026-10-31, updated on 2026-11-02
-> and checked against `main` at `f12b3c75f`. Bloem is a tracking fork of Silo Server.
+> and checked against `main` at `a7359de60`. Bloem is a tracking fork of Silo Server.
 > This page explains in plain language how Bloem takes in Silo's work and keeps its
 > own apart. The policy itself is in [how Bloem forks Silo](../../FORK.md), the
 > automation in [Bloem CI](../bloem/ci.md), and the technical rules in the
@@ -45,8 +45,8 @@ Until 2 November 2026 a daily GitHub job made clean merges by itself, and mainta
 merged the rest by hand. The job could not resolve a conflict or adapt Bloem's code,
 so it is switched off ([Bloem CI](../bloem/ci.md#how-silos-work-comes-in)).
 
-On 2 November 2026 Bloem's `main` had all of Silo's work through `07f0ae21c`, merged
-in `e3a096b20`, and production ran `e3a096b20`.
+On 2 November 2026 Bloem's `main` had all of Silo's work through `56e6f871c`, merged
+in `209447445`, and production ran `e3a096b20`.
 
 ## Deploying a batch
 
@@ -96,8 +96,9 @@ Bloem keeps its own work in three places:
 - **Overlays:** where a Silo document needs a Bloem note, a separate Bloem page
   carries it, and Silo's document stays as Silo wrote it.
 - **The seam list,** `contracts/seams.txt`: the Silo files Bloem still edits,
-  each with its reason. On 2 November 2026 it held 310. The number may only go
-  down, and adding one is a reviewed decision: the 310th, on 2 November, adds lines
+  each with its reason. On 2 November 2026 it held 309, after the merge of Silo
+  through `56e6f871c` gave one file back to Silo. The number may only go down, and
+  adding one is a reviewed decision: the last one added, on 2 November, adds lines
   to one of Silo's database tests so that it collects its own row first, after it
   failed in Bloem CI.
 
