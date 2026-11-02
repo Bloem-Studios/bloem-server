@@ -510,6 +510,8 @@ describe("Watch Party source fallback", () => {
     const fallbackSource = vi.fn().mockRejectedValue(new Error("No alternative room source"));
     roomConnectionMock.mockReturnValue({ room, connectionState: "connected", fallbackSource });
     const view = render(createElement(WatchPage, props));
+    // Bloem: the refusal renders one commit before the fallback starts; wait for both.
+    await waitFor(() => expect(fallbackSource).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(
         screen.getByText(
