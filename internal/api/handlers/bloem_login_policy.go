@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	apimw "github.com/Silo-Server/silo-server/internal/api/middleware"
 	"github.com/Silo-Server/silo-server/internal/models"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -17,26 +18,34 @@ func (h *AuthHandler) SetLoginTenantResolver(resolver apimw.TenantResolver) {
 	h.loginTenants = resolver
 }
 
-func (h *AuthHandler) loginDownloadAllowed(ctx context.Context, user *models.User) bool {
+// bloemLoginPolicyContext returns the context Login resolves the signed-in
+// account's policy in (Silo's effectiveAccountPolicy). The login request has
+// no tenant, and an ambient profile/tenant context is not authority for the
+// account it has just authenticated, so the account's own default-organization
+// tenant is bound instead. When that viewer tenant cannot be established the
+// policy fails closed (no downloads, no permissions) rather than fall back to
+// the permissive no-group policy: account login stays available for
+// administrative context selection without a viewer membership. Without a
+// resolver ctx is returned unchanged. The caller cancels the returned context.
+func (h *AuthHandler) bloemLoginPolicyContext(ctx context.Context, user *models.User) (context.Context, context.CancelFunc) {
 	if h.loginTenants == nil {
-		return effectiveAccountPolicy(ctx, user, h.accessGroups).DownloadAllowed
-	}
-	if user == nil || user.ID <= 0 {
-		return false
+		return ctx, func() {}
 	}
 	checkCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	// Login has just authenticated user; an ambient profile/tenant context is
-	// not authority for that newly authenticated account.
-	tenant, err := h.loginTenants.Resolve(checkCtx, user.ID, nil, true)
-	if err != nil || tenant.AccountID != user.ID || tenant.OrganizationID == uuid.Nil ||
-		tenant.MembershipID == uuid.Nil || !tenant.Legacy || !tenant.OrganizationDefault ||
-		tenant.MembershipStatus != tenancy.MembershipActive || tenant.OrganizationStatus == tenancy.OrganizationSuspended ||
-		tenant.PolicyRevision <= 0 || tenant.SecurityRevision <= 0 {
-		// Account login remains available for administrative context selection
-		// even without viewer membership. Never advertise a permissive download
-		// capability when viewer policy could not be established.
-		return false
+	tenant := tenancy.Context{}
+	if user != nil && user.ID > 0 {
+		if resolved, err := h.loginTenants.Resolve(checkCtx, user.ID, nil, true); err == nil && loginViewerTenant(resolved, user.ID) {
+			tenant = resolved
+		}
 	}
-	return effectiveAccountPolicy(tenancy.WithContext(checkCtx, tenant), user, h.accessGroups).DownloadAllowed
+	return access.RequireTenantPolicy(tenancy.WithContext(checkCtx, tenant)), cancel
+}
+
+// loginViewerTenant reports whether tenant is accountID's active membership of
+// the default organization, the only tenant a password login projects.
+func loginViewerTenant(tenant tenancy.Context, accountID int) bool {
+	return tenant.AccountID == accountID && tenant.OrganizationID != uuid.Nil &&
+		tenant.MembershipID != uuid.Nil && tenant.Legacy && tenant.OrganizationDefault &&
+		tenant.MembershipStatus == tenancy.MembershipActive && tenant.OrganizationStatus != tenancy.OrganizationSuspended &&
+		tenant.PolicyRevision > 0 && tenant.SecurityRevision > 0
 }

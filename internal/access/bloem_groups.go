@@ -34,6 +34,22 @@ func GroupSubjectFromContext(ctx context.Context, accountID int, profileID strin
 	}, nil
 }
 
+type tenantPolicyRequiredKey struct{}
+
+// RequireTenantPolicy marks ctx so that EffectivePolicyForUser, given a
+// tenant-scoped provider, fails closed instead of falling back to the no-group
+// policy when ctx carries no validated tenant for the account. Password login
+// sets it: its request has no tenant, and the account it signs in must not be
+// told it may do what its group denies.
+func RequireTenantPolicy(ctx context.Context) context.Context {
+	return context.WithValue(ctx, tenantPolicyRequiredKey{}, true)
+}
+
+func tenantPolicyRequired(ctx context.Context) bool {
+	required, _ := ctx.Value(tenantPolicyRequiredKey{}).(bool)
+	return required
+}
+
 // EffectivePolicyForSubject resolves the provider-selected group through the
 // shared dependency-neutral evaluator.
 func EffectivePolicyForSubject(ctx context.Context, user *models.User, subject GroupSubject, provider GroupPolicyProvider) (EffectiveUserPolicy, error) {

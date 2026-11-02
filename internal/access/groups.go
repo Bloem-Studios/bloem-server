@@ -34,6 +34,9 @@ func EffectivePolicyForUser(ctx context.Context, user *models.User, provider Gro
 	}
 	subject, err := GroupSubjectFromContext(ctx, user.ID, "")
 	if err != nil {
+		if tenantPolicyRequired(ctx) {
+			return EffectiveUserPolicy{}, err
+		}
 		return ApplyGroupPolicy(user, nil), nil //nolint:nilerr // deliberate compatibility fallback
 	}
 	return EffectivePolicyForSubject(ctx, user, subject, provider)

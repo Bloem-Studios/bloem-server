@@ -261,6 +261,8 @@ func (h *AuthHandler) Login(ctx context.Context, in LoginInput) (TokenPairView, 
 		}
 		return TokenPairView{}, apiError(http.StatusInternalServerError, "internal_error", "An unexpected error occurred")
 	}
+	ctx, bloemLoginPolicyDone := h.bloemLoginPolicyContext(ctx, user) // Bloem: the account's own tenant decides its policy
+	defer bloemLoginPolicyDone()
 	return TokenPairView{
 		AccessToken:  pair.AccessToken,
 		RefreshToken: pair.RefreshToken,
