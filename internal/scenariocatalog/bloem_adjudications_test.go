@@ -1,8 +1,12 @@
 package scenariocatalog
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 func TestBloemAdjudicationsPreserveFrozenCatalogs(t *testing.T) {
@@ -96,5 +100,31 @@ func TestBloemAdjudicationsRefuseChangedOriginal(t *testing.T) {
 				t.Fatal("accepted drift in adjudicated original")
 			}
 		})
+	}
+}
+
+func TestBloemUpdateAdjudicationPinsRewritesOnlyChangedDigests(t *testing.T) {
+	digest := func(s string) string { return fmt.Sprintf("%x", sha256.Sum256([]byte(s))) }
+	fsys := fstest.MapFS{
+		"api/a.json": {Data: []byte("new bytes")},
+		"api/b.json": {Data: []byte("same bytes")},
+	}
+	stale := strings.Repeat("0", 64)
+	raw := `{
+  "schema_version": 1,
+  "catalog_sha256": {
+    "api/a.json": "` + stale + `",
+    "api/b.json": "` + digest("same bytes") + `"
+  },
+  "decisions": []
+}
+`
+	got, err := bloemUpdateAdjudicationPins([]byte(raw), fsys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Replace(raw, stale, digest("new bytes"), 1)
+	if string(got) != want {
+		t.Fatalf("pins:\n%s\nwant:\n%s", got, want)
 	}
 }
