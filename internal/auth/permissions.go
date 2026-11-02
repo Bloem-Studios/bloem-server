@@ -7,14 +7,13 @@ import (
 	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/access"
-	"github.com/Silo-Server/silo-server/internal/permissioncatalog"
 )
 
 type Permission string
 
 const (
-	PermissionMarkerEdit       Permission = permissioncatalog.MarkerEdit
-	PermissionMetadataCuration Permission = permissioncatalog.MetadataCuration
+	PermissionMarkerEdit       Permission = "marker_edit"
+	PermissionMetadataCuration Permission = "metadata_curation"
 )
 
 var assignablePermissions = map[Permission]struct{}{
@@ -33,7 +32,8 @@ func AssignablePermissions() []string {
 }
 
 func isAssignablePermission(permission Permission) bool {
-	return permissioncatalog.IsAssignable(string(permission))
+	_, ok := assignablePermissions[permission]
+	return ok
 }
 
 func NormalizePermissions(values []string) ([]string, error) {

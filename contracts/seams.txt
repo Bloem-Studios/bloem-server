@@ -117,7 +117,6 @@ internal/auth/login_session_device_db_test.go  # auth_sessions.device_id is NOT 
 internal/auth/login_sessions_db_test.go  # directly inserted accounts get the default-organization membership Bloem profiles require
 internal/auth/oauth_handler.go  # one field and five call sites: a web sign-in or provider sign-out through an OAuth provider keeps the organization domain it started on (bloem_oauth_domain.go); approved by the owner on 2026-11-01 ("Finish the rest of the open issues")
 internal/auth/password_hash_test.go  # compose upstream bcrypt test initialization with isolated Bloem auth database lifecycle
-internal/auth/permissions.go
 internal/auth/repository.go
 internal/auth/service.go
 internal/auth/session.go
