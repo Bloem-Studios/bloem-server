@@ -96,8 +96,8 @@ def deploy():
             "minute, in which migrations run before the new version serves; then the checks. Three outcomes: every "
             "check passes, so the batch is deployed and the bot writes the receipt and sends deployed; a check "
             "fails, so the previous image goes back on the server and both transcode nodes and the bot sends rolled "
-            "back; or, after migrations, the server is ready, healthy and on the new version but a softer check "
-            "fails, so it keeps running and the bot stops for the owner. The bot never restores the database.")
+            "back, whether or not migrations ran; or the server stops answering during the restart, so nothing "
+            "more is tried and the bot stops for the owner. The bot never restores the database.")
     s.header("How a batch is deployed",
              "Only a commit Bloem CI passed. The image can go back by itself; the database never does.")
     g, a, w, p, st = TIERS["grey"], TIERS["account"], TIERS["warn"], TIERS["plan"], TIERS["stop"]
@@ -122,10 +122,10 @@ def deploy():
 
     outcomes = [
         (a, "Every check passes", "Deployed. The bot writes the receipt and sends “deployed”."),
-        (st, "A check fails", "The previous image goes back on the server and both transcode nodes, by itself. "
-                              "The bot sends “rolled back” and stops."),
-        (w, "A softer check fails", "After migrations, the server is ready, healthy and on the new version, so "
-                                    "it keeps running. The bot stops for the owner."),
+        (st, "A check fails", "The previous image goes back on the server and both transcode nodes, by itself, "
+                              "migrations or not. The bot sends “rolled back” and stops."),
+        (w, "The server stops answering", "During the restart the bot cannot reach it, so nothing more is "
+                                          "tried. The bot stops for the owner."),
     ]
     x = 40
     for c, t, b in outcomes:

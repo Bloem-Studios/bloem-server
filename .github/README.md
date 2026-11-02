@@ -974,11 +974,10 @@ dated receipts under [`docs/operations/`](../docs/bloem/README.md#deployment-rec
    checked zero pending migrations, the Silo switching state, account and
    membership counts and active streams.
 5. **Rollback.** A failed check puts the previous image back on the server and
-   both transcode nodes; the merge bot does this by itself. Once migrations have
-   run, a server that is ready, healthy and on the new version but fails a softer
-   check keeps running instead, and the bot stops for the owner. Bloem's migrations
-   are forward-only: restoring the database to the restore point, together with the
-   container snapshot, is always the owner's decision, never automatic.
+   both transcode nodes; the merge bot does this by itself, whether or not
+   migrations ran. Bloem's migrations are forward-only: restoring the database to
+   the restore point, together with the container snapshot, is always the owner's
+   decision, never automatic.
 
 The database runs in its own container, separate from the application server,
 with WAL archiving and a streaming standby. Since October 27, 2026, production

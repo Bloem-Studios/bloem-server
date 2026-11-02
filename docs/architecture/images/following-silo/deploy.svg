@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">How a batch is deployed</title>
-<desc id="d">Three steps: a snapshot of the server and a restore point in the database; a restart of about a minute, in which migrations run before the new version serves; then the checks. Three outcomes: every check passes, so the batch is deployed and the bot writes the receipt and sends deployed; a check fails, so the previous image goes back on the server and both transcode nodes and the bot sends rolled back; or, after migrations, the server is ready, healthy and on the new version but a softer check fails, so it keeps running and the bot stops for the owner. The bot never restores the database.</desc>
+<desc id="d">Three steps: a snapshot of the server and a restore point in the database; a restart of about a minute, in which migrations run before the new version serves; then the checks. Three outcomes: every check passes, so the batch is deployed and the bot writes the receipt and sends deployed; a check fails, so the previous image goes back on the server and both transcode nodes and the bot sends rolled back, whether or not migrations ran; or the server stops answering during the restart, so nothing more is tried and the bot stops for the owner. The bot never restores the database.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="659" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a batch is deployed</text>
@@ -32,14 +32,14 @@
 <rect x="427" y="322" width="346" height="176" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.8"/>
 <text x="445" y="354" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">A check fails</text>
 <text x="445" y="378" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">The previous image goes back on the server</text>
-<text x="445" y="398" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">and both transcode nodes, by itself. The</text>
-<text x="445" y="418" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">bot sends “rolled back” and stops.</text>
+<text x="445" y="398" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">and both transcode nodes, by itself,</text>
+<text x="445" y="418" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">migrations or not. The bot sends “rolled</text>
+<text x="445" y="438" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">back” and stops.</text>
 <rect x="814" y="322" width="346" height="176" rx="14" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.8"/>
-<text x="832" y="354" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">A softer check fails</text>
-<text x="832" y="378" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">After migrations, the server is ready,</text>
-<text x="832" y="398" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">healthy and on the new version, so it</text>
-<text x="832" y="418" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">keeps running. The bot stops for the</text>
-<text x="832" y="438" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">owner.</text>
+<text x="832" y="354" font-size="16.5" font-weight="700" fill="#101827" text-anchor="start">The server stops answering</text>
+<text x="832" y="378" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">During the restart the bot cannot reach</text>
+<text x="832" y="398" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">it, so nothing more is tried. The bot</text>
+<text x="832" y="418" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">stops for the owner.</text>
 <rect x="40" y="530" width="1120" height="86" rx="14" fill="#101827" stroke="none" stroke-width="1.5"/>
 <text x="64" y="564" font-size="17" font-weight="700" fill="#FFFFFF" text-anchor="start">The bot never restores the database.</text>
 <text x="64" y="592" font-size="14.5" font-weight="normal" fill="#E5E7EB" text-anchor="start">That would undo what people did since the restore point, so it is the owner's decision.</text>

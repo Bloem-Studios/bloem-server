@@ -621,12 +621,10 @@ this repository starts it. It uses two scripts from this repository:
    transcode nodes, takes a server snapshot and a database restore point, refuses to
    restart unless production runs the expected previous release, applies migrations
    while the server is stopped, restarts and checks readiness, health, the version,
-   the logs and the transcode nodes. A failed check rolls the image back by itself.
-   Two cases leave production to the owner instead: after migrations, a server that
-   is ready, healthy and on the new version but fails a softer check (error lines,
-   the transcode nodes) keeps running; and when the host stops answering during the
-   restart, or the rollback itself fails, nothing more is tried. The bot never
-   restores the database.
+   the logs and the transcode nodes. A failed check rolls the image back by itself,
+   whether or not migrations ran. Only when the host stops answering during the
+   restart, or the rollback itself fails, is nothing more tried and production left
+   to the owner. The bot never restores the database.
 9. **Receipt and message.** `docs/operations/<date>-silo-sync-<sha9>-deployment.md`,
    the index's "current:" receipt and the front page's `Production` row, pushed to
    `main` and checked by Bloem CI too; one message (deployed, stuck or rolled back)
