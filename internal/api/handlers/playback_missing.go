@@ -103,6 +103,9 @@ func preflightPlaybackFile(
 		return &playbackFilePreflightError{notFound: true}
 	}
 
+	if handled, err := bloemNativePreflight(ctx, file); handled {
+		return err
+	}
 	if _, err := fspath.StatContext(ctx, file.FilePath); err != nil {
 		if os.IsNotExist(err) {
 			markPlaybackFileMissing(ctx, file, marker, eventsHub)

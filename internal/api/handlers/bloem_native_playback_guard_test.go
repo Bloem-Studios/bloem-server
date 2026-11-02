@@ -240,3 +240,60 @@ func TestNativePlaybackGuardPreservesLookupErrors(t *testing.T) {
 		}
 	}
 }
+
+// Silo's preflightPlaybackFile stats a path, which a native-storage file does
+// not have. A replan's preferred-version check calls it unchanged, so the
+// request's handler must answer for the file through its provider: a healthy
+// native version is available, a refused one is not, and neither is ever
+// marked missing. Without a handler in the context the file is unavailable.
+func TestNativePreferredVersionPreflightUsesTheProvider(t *testing.T) {
+	cases := []struct {
+		name      string
+		handler   bool
+		refuse    bool
+		available bool
+	}{
+		{name: "provider-available", handler: true, available: true},
+		{name: "provider-refuses", handler: true, refuse: true},
+		{name: "no-handler"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			service, file, _, _, _ := nativeVideoFixture(t)
+			if tc.refuse {
+				service.Open = func(context.Context, *models.MediaFile) (NativeVideoFile, error) {
+					return nil, catalog.ErrItemNotFound
+				}
+			}
+			handler := NewPlaybackHandler(playback.NewSessionManager(0, 0))
+			handler.NativeVideo = service
+			marker := &recordingMissingMarker{}
+			handler.MissingMarker = marker
+			request := httptest.NewRequest(http.MethodPost, "/api/v2/playback/replan", nil)
+			if tc.handler {
+				request = handler.withNativePreflight(request)
+			}
+			err := preflightPlaybackFile(request.Context(), file, handler.MissingMarker, handler.EventsHub)
+			if (err == nil) != tc.available {
+				t.Fatalf("preflight = %v, want available %v", err, tc.available)
+			}
+			if file.MissingSince != nil || len(marker.ids) != 0 {
+				t.Fatalf("native version marked missing: missing=%v, marked=%v", file.MissingSince != nil, marker.ids)
+			}
+		})
+	}
+}
+
+// Local files keep Silo's check: a gone file is still marked missing.
+func TestNativePreferredVersionHookLeavesLocalFilesToSilo(t *testing.T) {
+	handler := NewPlaybackHandler(playback.NewSessionManager(0, 0))
+	marker := &recordingMissingMarker{}
+	request := handler.withNativePreflight(httptest.NewRequest(http.MethodPost, "/api/v2/playback/replan", nil))
+	file := &models.MediaFile{ID: 7, FilePath: t.TempDir() + "/gone.mkv"}
+	if err := preflightPlaybackFile(request.Context(), file, marker, nil); err == nil {
+		t.Fatal("a missing local file passed preflight")
+	}
+	if file.MissingSince == nil || len(marker.ids) != 1 || marker.ids[0] != 7 {
+		t.Fatalf("local file not marked missing: missing=%v, marked=%v", file.MissingSince != nil, marker.ids)
+	}
+}

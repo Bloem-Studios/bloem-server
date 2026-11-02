@@ -5978,6 +5978,7 @@ func (h *PlaybackHandler) replanInputV3(r *http.Request, p replanPlanningV3, sta
 
 // executeReplanV3 prepares an atomic replacement for a failed playback route.
 func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.AttemptRecordV3, req playback.ReplanRequestV3) (playback.DecisionResponseV3, playback.AttemptRecordV3, *preparedTransportV3, *transportErrorV3) {
+	r = h.withNativePreflight(r)
 	r = r.WithContext(withPlaybackRoutingPolicySnapshotV3(r.Context(), h.playbackRoutingPolicyV3()))
 	r = r.WithContext(withServerBitrateCapV3(r.Context(), record.ServerBitrateCapKbps))
 	r = r.WithContext(withCueIndexReadsV3(r.Context()))
@@ -6187,7 +6188,7 @@ func (h *PlaybackHandler) executeReplanV3(r *http.Request, record *playback.Atte
 		// change must not abandon a healthy active alternate merely because the
 		// inactive original has gone missing since playback started. A reported
 		// subtitle switch stays on the version playing.
-		if !pinnedTrackChange && requestedEditionResolved && h.nativeVideoPreflight(r, requestedFile) == nil {
+		if !pinnedTrackChange && requestedEditionResolved && preflightPlaybackFile(r.Context(), requestedFile, h.MissingMarker, h.EventsHub) == nil {
 			effectiveFile = requestedFile
 		}
 		// Track identities only need remapping when the effective edition

@@ -509,14 +509,18 @@ func (h *PlaybackHandler) ResolveNativeVideoFile(ctx context.Context, id int) (*
 	return file, err
 }
 func (h *PlaybackHandler) nativeVideoPreflight(r *http.Request, file *models.MediaFile) error {
-	if err := pinNativeAudioRequest(r.Context(), file); err != nil {
+	return h.nativeVideoPreflightContext(r.Context(), file)
+}
+
+func (h *PlaybackHandler) nativeVideoPreflightContext(ctx context.Context, file *models.MediaFile) error {
+	if err := pinNativeAudioRequest(ctx, file); err != nil {
 		return err
 	}
 	if NativeAudioSupported(file) {
 		if h.NativeVideo == nil || !h.NativeVideo.AudioReady || h.NativeVideo.Presentation == nil {
 			return &playbackFilePreflightError{notFound: true}
 		}
-		if err := h.NativeVideo.Presentation(r.Context(), file); err != nil {
+		if err := h.NativeVideo.Presentation(ctx, file); err != nil {
 			return &playbackFilePreflightError{notFound: errors.Is(err, storagesource.ErrReferenceConflict) || errors.Is(err, catalog.ErrItemNotFound), err: err}
 		}
 	}
@@ -524,9 +528,32 @@ func (h *PlaybackHandler) nativeVideoPreflight(r *http.Request, file *models.Med
 		if h.NativeVideo == nil {
 			return catalog.ErrItemNotFound
 		}
-		return h.NativeVideo.Preflight(r.Context(), file)
+		return h.NativeVideo.Preflight(ctx, file)
 	}
-	return preflightPlaybackFile(r.Context(), file, h.MissingMarker, h.EventsHub)
+	return preflightPlaybackFile(ctx, file, h.MissingMarker, h.EventsHub)
+}
+
+type nativePreflightKey struct{}
+
+// withNativePreflight lets Silo's preflightPlaybackFile, called with this
+// request's context, check a native-storage file through this handler.
+func (h *PlaybackHandler) withNativePreflight(r *http.Request) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), nativePreflightKey{}, h))
+}
+
+// bloemNativePreflight stands in for the stat in Silo's preflightPlaybackFile
+// when the file is on native storage, which has no local path. The request's
+// playback handler checks it through its provider (withNativePreflight); with
+// no handler in the context the file is unavailable. It is never marked
+// missing. Other files report handled=false and get Silo's check.
+func bloemNativePreflight(ctx context.Context, file *models.MediaFile) (handled bool, err error) {
+	if file == nil || !storagesource.IsNativeLocation(file.FilePath) {
+		return false, nil
+	}
+	if h, ok := ctx.Value(nativePreflightKey{}).(*PlaybackHandler); ok && h != nil {
+		return true, h.nativeVideoPreflightContext(ctx, file)
+	}
+	return true, &playbackFilePreflightError{notFound: true}
 }
 func nativeVideoDeliveryError(err error) error {
 	if errors.Is(err, storagesource.ErrReferenceConflict) {

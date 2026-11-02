@@ -74,6 +74,7 @@ internal/api/handlers/notifications.go
 internal/api/handlers/playback.go
 internal/api/handlers/playback_connection.go  # the buffering version switch preflights through Bloem's native-storage-aware check
 internal/api/handlers/playback_hung_node_test.go  # the router fixture sets the viewer scope Bloem's per-segment library recheck requires
+internal/api/handlers/playback_missing.go  # a native-storage file is checked through its provider, never stat'ed or marked missing (bloemNativePreflight)
 internal/api/handlers/playback_test.go
 internal/api/handlers/playback_v3.go
 internal/api/handlers/playback_v3_test.go
