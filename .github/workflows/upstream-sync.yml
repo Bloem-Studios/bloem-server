@@ -10,6 +10,12 @@ name: Upstream sync
 #
 # Silo is in rapid development, so this runs daily. Nothing here force-pushes,
 # and nothing here touches main directly.
+#
+# Switched off since 2026-11-02: Silo is now merged outside GitHub Actions and
+# pushed to main, and two automatic mergers must never race. The schedule still
+# fires, but the job runs only when the repository variable BLOEM_UPSTREAM_SYNC
+# is "true". A run started by hand (including a dry run) always works; with the
+# switch off, its pull request is left for a person to merge.
 
 on:
   schedule:
@@ -37,6 +43,7 @@ env:
 jobs:
   sync:
     name: Merge upstream into a PR
+    if: github.event_name == 'workflow_dispatch' || vars.BLOEM_UPSTREAM_SYNC == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out full history

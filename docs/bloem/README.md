@@ -26,7 +26,7 @@ state is on the [front page](../../.github/README.md#current-state).
 - [Contributing to Bloem](../../.github/CONTRIBUTING.md) — repository ownership, AI disclosure and the validation commands; the root `CONTRIBUTING.md` is Silo's.
 - [Integration changelog](CHANGELOG.md) — every Silo integration and Bloem change, newest first, with commits and seam counts.
 - [Writing Bloem documentation](documentation-workflow.md) — Silo's manual/reference model, where each kind of Bloem change is documented, regeneration and verification commands.
-- [How Bloem CI works](ci.md) — the Bloem CI jobs, the daily upstream sync, the published image's gate, runner placement and tool pins.
+- [How Bloem CI works](ci.md) — the Bloem CI jobs, the switched-off daily upstream sync, the published image's gate, runner placement and tool pins.
 - [API catalogue](api-catalogue.md) — generated list of typed `/api/v2` and `/api/bloem/v1` operations and native documentation gaps.
 - [API by topic](api/README.md) — every typed `/api/bloem/v1` operation, generated from the OpenAPI contract, one page per topic, with credentials, fields and error codes; plus the hand-written page for Bloem's remaining [`/api/v1` routes](api/v1-routes.md).
 
@@ -44,7 +44,7 @@ more detailed pages of its area, and ends with a "For developers" section.
 - [How messages and promotions work](../architecture/bloem-messages-and-promotions.md) — announcements, campaign and playback cards, seasonal packs.
 - [How apps connect](../architecture/bloem-apps.md) — the three entrances, signing in, remote control.
 - [Switching between Silo and Bloem](../architecture/bloem-silo-switching-explained.md) — one database, two servers taking turns, both install layouts.
-- [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md) — the daily sync, "Silo wins", where Bloem keeps its own work.
+- [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md) — each Silo merge, "Silo wins", where Bloem keeps its own work.
 
 The pictures are drawn by `scripts/bloem/draw-pictures.py`.
 

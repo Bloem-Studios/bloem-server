@@ -1,19 +1,20 @@
 # How Bloem CI works
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. Bloem's CI, image
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`; updated on 2026-11-02,
+> when the upstream sync was switched off. Bloem's CI, image
 > and upstream-sync workflows are Bloem additions; Silo's own `ci.yml` stays as Silo
 > wrote it apart from one line. The technical rules are in the
 > [For developers](#for-developers) section.
 
 Every change to Bloem Server is checked before it can be trusted, every passing
-commit on `main` gets a server image, and Silo's work comes in every day. This page
+commit on `main` gets a server image, and Silo's work comes in as ordinary merges. This page
 walks through what runs and when, which machines run it, how Silo's changes land,
 and what to do when a run fails.
 
 ## What runs, and when
 
-![Two flows. Every change: a pull request, a push to main, the Monday run or a manual run starts Bloem CI; a passing push to main starts Bloem Image, which publishes an image tagged with the commit and moves latest when that commit is still main's newest. Every day: the upstream sync merges Silo into a branch and opens a pull request, Bloem CI checks it, and the merge gate lands it on main](../architecture/images/bloem-ci/workflows.svg)
+![Two flows. Every change: a pull request, a push to main, the Monday run or a manual run starts Bloem CI; a passing push to main starts Bloem Image, which publishes an image tagged with the commit and moves latest when that commit is still main's newest. Every day, only when switched on (off since November 2, 2026): the upstream sync merges Silo into a branch and opens a pull request, Bloem CI checks it, and the merge gate lands it on main](../architecture/images/bloem-ci/workflows.svg)
 
 Bloem has four workflows of its own:
 
@@ -25,10 +26,11 @@ Bloem has four workflows of its own:
    only after Bloem CI passes on a push to `main`, and tags the image with that
    commit. It also moves the `latest` tag, but only while that commit is still the
    newest on `main`.
-3. **Upstream sync** runs every morning. It merges Silo's latest work into a new
-   branch and opens a pull request.
+3. **Upstream sync** merges Silo's latest work into a new branch every morning and
+   opens a pull request, when it is switched on. It is off since November 2, 2026
+   ([below](#how-silos-work-comes-in)).
 4. **Upstream sync merge** lands that pull request on `main` once Bloem CI has passed
-   on exactly the merge it tested.
+   on exactly the merge it tested. It is switched off together with the sync.
 
 None of them deploys anything. A person starts each deployment, and a dated record
 in [`docs/operations/`](../operations/) says what was deployed and how.
@@ -51,10 +53,24 @@ must change together.
 
 ## How Silo's work comes in
 
-![The daily sync and five checks before a sync pull request merges itself: Bloem CI passed, the branch comes from this repository, it is the one open non-draft sync pull request, its head is the exact commit CI tested, and that commit is the untouched merge of Bloem's main and Silo's main. Any no leaves the pull request for a person](../architecture/images/bloem-ci/merge-gate.svg)
+Bloem is a **tracking fork**: it takes in Silo's work as ordinary merges instead of
+copying it by hand ([how Bloem keeps up with Silo](../architecture/bloem-following-silo.md)).
 
-Bloem is a **tracking fork**: it takes in Silo's work every day instead of copying
-it by hand ([how Bloem keeps up with Silo](../architecture/bloem-following-silo.md)).
+Since November 2, 2026 a maintainer merges Silo outside GitHub Actions:
+
+1. Merge Silo's `main` into a new branch. Each conflict takes Silo's side, word for
+   word, and Bloem's change goes on its own lines or in its own file.
+2. Run every check before pushing
+   ([validate your change](../../.github/CONTRIBUTING.md#validate-your-change)). Where
+   Silo's change would break Bloem, Bloem's behavior goes back on Bloem's own lines, with
+   a test.
+3. Push the merge to `main`. Bloem CI checks it like any other push.
+
+The daily sync and its merge gate are still in the repository, switched off. A
+repository administrator turns both back on by setting the repository variable
+`BLOEM_UPSTREAM_SYNC` to `true`. Switched on, they work like this:
+
+![The daily sync and five checks before a sync pull request merges itself: Bloem CI passed, the branch comes from this repository, it is the one open non-draft sync pull request, its head is the exact commit CI tested, and that commit is the untouched merge of Bloem's main and Silo's main. Any no leaves the pull request for a person](../architecture/images/bloem-ci/merge-gate.svg)
 
 1. Every morning the sync checks whether Silo's `main` has anything Bloem lacks.
 2. If it has, the sync merges it on a new branch and opens a pull request.
@@ -95,8 +111,8 @@ This example is made up.
 
 | Who | What they manage |
 | --- | --- |
-| A repository administrator | The repository variables that switch on and route to the disposable runners (`BLOEM_SELF_HOSTED`, `BLOEM_CI_MEMBERS`), and the secrets for the sync token and Discord (`UPSTREAM_SYNC_TOKEN`, `DISCORD_WEBHOOK_URL`). |
-| Anyone with push access | Bloem's workflow files and scripts, re-runs, and merging a resolved sync pull request by hand. |
+| A repository administrator | The repository variables that switch on and route to the disposable runners (`BLOEM_SELF_HOSTED`, `BLOEM_CI_MEMBERS`), the one that switches the upstream sync back on (`BLOEM_UPSTREAM_SYNC`), and the secrets for the sync token and Discord (`UPSTREAM_SYNC_TOKEN`, `DISCORD_WEBHOOK_URL`). |
+| Anyone with push access | Bloem's workflow files and scripts, re-runs, pushing a checked Silo merge to `main`, and merging a resolved sync pull request by hand. |
 | The runner controller, outside this repository | Starting a fresh disposable runner for each job. Its own settings are the authority for routing. |
 | Silo | Its own workflow files, which Bloem keeps exactly as Silo wrote them except one line of `ci.yml`. |
 
@@ -108,6 +124,7 @@ This example is made up.
 | Bloem Image | `.github/workflows/bloem-image.yml`, workflow name "Bloem Image" |
 | Upstream sync | `.github/workflows/upstream-sync.yml` |
 | Upstream sync merge, the merge gate | `.github/workflows/upstream-sync-merge.yml` and `scripts/verify-upstream-sync-merge.sh` |
+| The switch for both | the repository variable `BLOEM_UPSTREAM_SYNC`; `true` turns them on, anything else (unset today) keeps them off |
 | Disposable runner | a self-hosted runner with the labels `bloem-linux`, `bloem-run-<run id>-<attempt>` and `bloem-job-<job id>` |
 | GitHub's runners | `ubuntu-24.04` (Bloem CI) and `ubuntu-latest` (the other three workflows) |
 | Server image | `ghcr.io/bloem-studios/bloem-server:<full commit SHA>`, and `latest` |
@@ -139,8 +156,8 @@ Terms used below:
 |---|---|---|---|---|
 | Bloem CI | `bloem-ci.yml` | Pull requests; pushes to `main` and `apiv2`; Mondays at 04:23 UTC; manual | Runs every Bloem gate ([Jobs](#jobs)) | Bloem, 2026-10-26 (`dcbd1c525`) |
 | Bloem Image | `bloem-image.yml` | A Bloem CI run on `main` completing; manual | Publishes `ghcr.io/bloem-studios/bloem-server:<full sha>` ([Bloem Image](#bloem-image)) | Bloem, 2026-10-11 (`04a69c0fe`) |
-| Upstream sync | `upstream-sync.yml` | Daily at 05:20 UTC; manual, with a dry run | Merges Silo's `main` on a branch and opens a pull request | Bloem, 2026-08-26 (`af2be39f1`) |
-| Upstream sync merge | `upstream-sync-merge.yml` | Any Bloem CI run completing | Merges a sync pull request whose exact head passed Bloem CI | Bloem, 2026-08-26 (`af2be39f1`) |
+| Upstream sync | `upstream-sync.yml` | Daily at 05:20 UTC, but its job runs only when `BLOEM_UPSTREAM_SYNC` is `true`; manual, with a dry run, always | Merges Silo's `main` on a branch and opens a pull request | Bloem, 2026-08-26 (`af2be39f1`); switched off 2026-11-02 |
+| Upstream sync merge | `upstream-sync-merge.yml` | Any Bloem CI run completing; acts only when `BLOEM_UPSTREAM_SYNC` is `true` | Merges a sync pull request whose exact head passed Bloem CI | Bloem, 2026-08-26 (`af2be39f1`); switched off 2026-11-02 |
 | CI | `ci.yml` | As in Silo | Nothing on Bloem: its one job runs only in Silo's repository ([below](#silos-ciyml)) | Silo's file; a one-line seam |
 
 The other files in `.github/workflows/` are Silo's and byte-identical to Silo's
@@ -479,9 +496,17 @@ Two Bloem workflows, added on August 26, 2026 (`af2be39f1`), merge Silo into
 Bloem without anyone having to notice that Silo moved. Bloem CI is the gate:
 nothing reaches `main` unless Bloem CI passed on the exact merge.
 
+Both are switched off since November 2, 2026, when Silo merges moved outside GitHub
+Actions: two automatic mergers must never race. Each job's `if:` requires the
+repository variable `BLOEM_UPSTREAM_SYNC` to be `true`, and it is unset. A scheduled
+sync run therefore starts and skips its job; a sync started by hand, dry run included,
+still runs and opens its pull request; and the merge gate skips every Bloem CI
+completion, so a sync pull request is merged by a person. The rest of this section
+describes both workflows as they run when switched on.
+
 #### The daily sync: `upstream-sync.yml`
 
-It runs daily at 05:20 UTC. GitHub can start scheduled runs hours late; from
+When switched on, it runs daily at 05:20 UTC. GitHub can start scheduled runs hours late; from
 October 23 to 26, 2026 they started between about 09:30 and 11:15 UTC. It can
 also be started by hand with `dry_run`, which reports what would happen
 without pushing or opening anything. Runs queue in the group `upstream-sync`.
@@ -512,7 +537,8 @@ Nothing in it force-pushes or writes to `main`.
 #### The merge gate: `upstream-sync-merge.yml`
 
 It runs whenever a Bloem CI run completes, re-run attempts included. It acts
-only if that run was for a pull request on a branch named `upstream-sync/*`.
+only when the switch is on and that run was for a pull request on a branch named
+`upstream-sync/*`.
 It checks out the default branch, never the pull request's head, so a pull
 request cannot change the helper that judges it. It then fetches Silo's
 `main` and runs `scripts/verify-upstream-sync-merge.sh` (`e0e95626e`,

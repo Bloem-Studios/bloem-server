@@ -156,10 +156,18 @@ Silo's changes as ordinary merges. See [FORK.md](../FORK.md#this-is-a-tracking-f
 
 ### How Silo's changes reach Bloem
 
-Two Bloem-owned workflows automate the merge:
+A maintainer merges Silo's `main` outside GitHub Actions, takes Silo's side of every
+conflict, puts Bloem's behavior back on Bloem's own lines where Silo's change would
+break it, runs the full checks and pushes the merge to `main`. Bloem CI checks it
+there like any other push.
+
+Two Bloem-owned workflows used to automate the merge. Both are switched off since
+November 2, 2026: their jobs run only when the repository variable
+`BLOEM_UPSTREAM_SYNC` is `true`. Switched on, they work like this:
 
 1. [`upstream-sync.yml`](workflows/upstream-sync.yml) runs daily (scheduled for
-   05:20 UTC) and on demand, with a dry-run option. It fetches Silo's `main`; if
+   05:20 UTC) and on demand, with a dry-run option. A run started by hand works
+   even while the switch is off. It fetches Silo's `main`; if
    Bloem is behind, it merges it with `git merge --no-ff` on a branch named
    `upstream-sync/<date>-<sha>`.
    - On a clean merge it runs `go build ./...` as a quick signal (a failure is
@@ -185,9 +193,7 @@ Two Bloem-owned workflows automate the merge:
    A resolved conflict, an amendment or an extra commit means a person merges
    it.
 
-Maintainers also merge Silo by hand when Bloem's code needs adapting in the same
-merge; the two most recent integrations, `303511a25` and `68070f04b`, were such
-merges. Either way, Bloem CI gates `main`. See [Bloem CI](../docs/bloem/ci.md#upstream-sync-merges).
+Either way, Bloem CI gates `main`. See [Bloem CI](../docs/bloem/ci.md#how-silos-work-comes-in).
 
 ### "Silo wins"
 
@@ -436,9 +442,9 @@ integration points through [owned integration adapters](../docs/architecture/blo
 - **Bloem plugin ecosystem:** a separately maintained SDK, catalog and
   first-party plugin set alongside the inherited host plugin runtime, and Bloem's
   own storage-provider protocol (`proto/bloem/plugin/v1`).
-- **Continuous upstream tracking:** the daily synchronization workflow, conflict
-  review and CI checks that bind a merge to the upstream revision actually
-  tested, plus maintained operator and viewer guides.
+- **Continuous upstream tracking:** frequent merges of Silo's `main` with conflict
+  review and the full checks, CI on every merge pushed to `main`, plus maintained
+  operator and viewer guides.
 
 ## What Bloem removed, and why
 
@@ -816,7 +822,7 @@ move fully to a custom `postgresql.conf`.
 - [FORK.md](../FORK.md) — provenance, the "Silo wins" rule, seams and overlays, what Bloem adds and removed; [TRADEMARK.md](../TRADEMARK.md) and [LICENSE](../LICENSE).
 - [Integration changelog](../docs/bloem/CHANGELOG.md) and [upstream adapters](../docs/architecture/bloem-upstream-adapters.md) — what each merge brought in and where Bloem keeps its extensions.
 - [Deployment receipts](../docs/bloem/README.md#deployment-receipts) — the revision production runs, its image, migrations, checks and limits, newest first.
-- [Bloem CI](../docs/bloem/ci.md) — jobs, the daily upstream sync, the image gate and runner placement.
+- [Bloem CI](../docs/bloem/ci.md) — jobs, the switched-off daily upstream sync, the image gate and runner placement.
 - [Admin guide](../docs/wiki/admin-guide.md) — for the person running the server: install, first run, libraries, users and profiles, playback and transcoding, access policy, Live TV, maintenance and troubleshooting.
 - [User guide](../docs/wiki/user-guide.md) — for viewers: signing in, profiles, finding and playing things, downloads, requests, notifications, and connecting native clients.
 - [Wiki index](../docs/bloem/overlays/wiki/index.md) — every operator- and viewer-facing page, including [Installing and running Bloem with Docker](../docs/bloem/overlays/wiki/deployment/docker.md), [Entitlement templates](../docs/wiki/admin/entitlement-templates.md), [Supported Media Folder Structures and Naming](../docs/architecture/media-naming.md), [Collection Templates](../docs/architecture/collection-templates.md), [Local NFO Metadata](../docs/architecture/local-nfo-metadata.md) and [Monitoring Stream Nodes](../docs/architecture/observability.md).

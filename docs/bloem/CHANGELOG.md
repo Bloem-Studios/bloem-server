@@ -3,6 +3,23 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 2, 2026 — the daily upstream sync is switched off
+
+Silo is now merged outside GitHub Actions. A maintainer merges Silo's `main`, takes
+Silo's side of every conflict, puts Bloem's behavior back on Bloem's own lines where
+Silo's change would break it, runs the full checks and pushes the merge to `main`, where
+Bloem CI checks it. The daily GitHub sync could not resolve a conflict or adapt Bloem's
+code, and two automatic mergers must never race, so it is off.
+
+- **The switch.** `upstream-sync.yml` and `upstream-sync-merge.yml` run their jobs only
+  when the repository variable `BLOEM_UPSTREAM_SYNC` is `true`; it is unset. A sync
+  started by hand, dry run included, still runs, and its pull request is merged by a
+  person.
+- **Pages.** [How Bloem CI works](ci.md#how-silos-work-comes-in),
+  [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md),
+  [FORK.md](../../FORK.md) and the repository README describe the new routine, with
+  three pictures redrawn.
+
 ## November 1, 2026 — every Bloem page in one style
 
 Every current Bloem page now reads like

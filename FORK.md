@@ -6,7 +6,7 @@
 > section.
 
 Bloem Server is Silo Server with Bloem's additions. This page walks through what that
-means, how Bloem takes in Silo's work every day, where Bloem keeps its own work, what
+means, how Bloem takes in Silo's work, where Bloem keeps its own work, what
 it adds and what it took out again, and where things stand today.
 
 ## What Bloem is
@@ -35,10 +35,11 @@ Silo's module path in 1,178 files. After that, every Silo change was a conflict.
 Silo's own. Renaming it could still happen any day; getting the ability to merge back
 could not.
 
-A daily job merges Silo's work into Bloem. When it merges cleanly and every check
-passes, it lands by itself; when it doesn't, a person resolves it.
-[How Bloem keeps up with Silo](docs/architecture/bloem-following-silo.md) explains the
-daily routine with pictures.
+A maintainer merges Silo's work into Bloem, takes Silo's side of every conflict, checks
+that Bloem still works and pushes the merge to `main`, where Bloem CI checks it again.
+Until 2 November 2026 a daily GitHub job made clean merges by itself; it is switched
+off. [How Bloem keeps up with Silo](docs/architecture/bloem-following-silo.md) explains
+the routine with pictures.
 
 ## When Silo and Bloem change the same lines
 
@@ -108,8 +109,8 @@ registered as its primary domain.
 | Who | What they decide |
 | --- | --- |
 | The owner | When to deploy, and whether a new seam may be added. |
-| A Bloem maintainer | Resolving a merge that conflicted, and pushing a merge after the full checks pass. |
-| The daily sync | Merging Silo's `main` into a new branch every day. It lands the merge itself only when it is clean and Bloem CI passed. |
+| A Bloem maintainer | Merging Silo's `main`, resolving its conflicts, and pushing the merge after the full checks pass. |
+| A repository administrator | Switching the daily GitHub sync back on, with the repository variable `BLOEM_UPSTREAM_SYNC`. It is off since 2 November 2026. |
 | Silo's maintainers | Whether a change Bloem offers is taken into Silo. Bloem never pushes to Silo directly; it offers changes through a separate fork and a pull request. |
 
 ## Words used in the code
@@ -119,7 +120,7 @@ registered as its primary domain.
 | Silo's work | `upstream/main`, from the `upstream` remote |
 | Tracking fork | `main` shares Silo's history and merges `upstream/main` with `--no-ff` |
 | Module path | `github.com/Silo-Server/silo-server` in `go.mod` |
-| The daily sync | `.github/workflows/upstream-sync.yml`, landed by `upstream-sync-merge.yml` |
+| The daily sync (switched off) | `.github/workflows/upstream-sync.yml`, landed by `upstream-sync-merge.yml`; both run only when `BLOEM_UPSTREAM_SYNC` is `true` |
 | Seam, seam list | a Silo-owned file Bloem differs in; `contracts/seams.txt`, checked by `make verify-seams` |
 | Overlay | a Bloem page under `docs/bloem/overlays/` |
 | The name and the look | `web/bloem-brand-plugin.ts`, and Bloem's artwork in `assets/` |
@@ -188,9 +189,11 @@ daily; adopting Silo's implementation also brings Silo's fixes and tests.
 
 Run the complete verification suite before pushing the merge to `origin`: the
 [validation checks](.github/CONTRIBUTING.md#validate-your-change), including the web
-bundle budget and CI's changed-line lint for merges. The daily `Upstream sync` workflow
-(`.github/workflows/upstream-sync.yml`, 05:20 UTC) performs this merge on an
-`upstream-sync/<date>-<sha>` branch and opens a pull request; `upstream-sync-merge.yml`
+bundle budget and CI's changed-line lint for merges, then push the merge to `main`.
+The daily `Upstream sync` workflow (`.github/workflows/upstream-sync.yml`, 05:20 UTC)
+and its merge gate are switched off since 2 November 2026: their jobs run only when the
+repository variable `BLOEM_UPSTREAM_SYNC` is `true`. Switched on, the sync performs this
+merge on an `upstream-sync/<date>-<sha>` branch and opens a pull request; `upstream-sync-merge.yml`
 merges it only when Bloem CI passed on that exact head and the head is the untouched,
 conflict-free merge of a `main` commit with a Silo commit. A conflicted merge is pushed
 as a draft pull request with the conflict markers committed, for a person to resolve.
@@ -391,10 +394,10 @@ or tests.
 
 ### Related pages
 
-- [How Bloem keeps up with Silo](docs/architecture/bloem-following-silo.md): the daily
-  sync and "Silo wins", with pictures.
-- [Bloem CI](docs/bloem/ci.md): every job, the daily sync and its merge gate, and the
-  image.
+- [How Bloem keeps up with Silo](docs/architecture/bloem-following-silo.md): each Silo
+  merge and "Silo wins", with pictures.
+- [Bloem CI](docs/bloem/ci.md): every job, the switched-off daily sync and its merge
+  gate, and the image.
 - [Bloem's adapters over Silo](docs/architecture/bloem-upstream-adapters.md): how Bloem
   changes Silo's behavior without editing Silo's files.
 - [BLOEM_AGENTS.md](BLOEM_AGENTS.md): the rules for changing Bloem, including Silo

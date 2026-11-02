@@ -14,6 +14,10 @@ name: Upstream sync merge
 # upstream-sync/**. Anyone with push access can name a branch that, so the
 # helper also refuses drafts and any head that is not the untouched,
 # conflict-free merge of a base-branch commit with a Silo upstream commit.
+#
+# Switched off since 2026-11-02, together with upstream-sync.yml: the job runs
+# only when the repository variable BLOEM_UPSTREAM_SYNC is "true". With the
+# switch off, a sync pull request is merged by a person.
 
 on:
   workflow_run:
@@ -28,6 +32,7 @@ jobs:
   merge:
     name: Merge if CI passed
     if: >-
+      vars.BLOEM_UPSTREAM_SYNC == 'true' &&
       github.event.workflow_run.event == 'pull_request' &&
       startsWith(github.event.workflow_run.head_branch, 'upstream-sync/')
     runs-on: ubuntu-latest

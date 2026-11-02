@@ -16,33 +16,35 @@ def _code(s, x, y, rows, size=14, gap=22):
 
 def daily_flow():
     s = Svg(1200, 760, "How Bloem keeps up with Silo",
-            "Every day a sync merges Silo's latest work into a branch. A clean merge that passes Bloem's checks "
-            "joins Bloem's main by itself; a conflict waits for a person, who takes Silo's side. From main, an "
-            "image is built and deployed when the owner asks.")
+            "A maintainer merges Silo's latest work into a branch, taking Silo's side of every conflict. Every "
+            "check runs; where Silo's change would break Bloem, Bloem's behavior goes back on its own lines, with "
+            "a test, and the checks run again. The merge is pushed to Bloem's main, where Bloem CI checks it. "
+            "From main, an image is built and deployed when the owner asks.")
     s.header("How Bloem keeps up with Silo",
-             "Bloem is a tracking fork: it takes in Silo's work every day instead of copying it by hand.")
+             "Bloem is a tracking fork: it takes in Silo's work as ordinary merges instead of copying it by hand.")
     g, a, w, p = TIERS["grey"], TIERS["account"], TIERS["warn"], TIERS["plan"]
 
-    s.text(40, 140, "Every day", size=17, weight="700")
+    s.text(40, 140, "Each Silo merge", size=17, weight="700")
     box(s, 40, 156, 200, 120, SILO, "Silo's main", "The Silo project's latest work.", size=14)
     s.arrow(244, 216, 276, 216)
-    box(s, 280, 156, 220, 120, g, "The daily sync", "At 05:20 UTC it merges Silo into a new branch.", size=14)
+    box(s, 280, 156, 220, 120, g, "The merge", "A maintainer merges Silo into a new branch. Silo wins every conflict.",
+        size=14)
     s.arrow(504, 216, 540, 216)
     # Decision diamond.
     s.add(f'<path d="M620,150 L700,216 L620,282 L540,216 Z" fill="{w["fill"]}" stroke="{w["stroke"]}" stroke-width="1.8"/>')
-    s.text(620, 212, "Did it merge", size=14, weight="700", anchor="middle")
-    s.text(620, 230, "cleanly?", size=14, weight="700", anchor="middle")
+    s.text(620, 212, "Does Bloem", size=14, weight="700", anchor="middle")
+    s.text(620, 230, "still work?", size=14, weight="700", anchor="middle")
     s.arrow(704, 216, 756, 216)
     s.text(728, 206, "Yes", size=13, weight="700", fill=a["label"], anchor="middle")
-    box(s, 760, 156, 180, 120, p, "Bloem CI", "Builds and runs every test.", size=14)
+    box(s, 760, 156, 180, 120, a, "Bloem's main", "Pushed once every check passes.", size=14)
     s.arrow(944, 216, 976, 216)
-    box(s, 980, 156, 180, 120, a, "Bloem's main", "Merged by itself when CI passes.", size=14)
+    box(s, 980, 156, 180, 120, p, "Bloem CI", "Checks the push like any other.", size=14)
 
     s.path("M620,286 L620,346")
     s.text(632, 322, "No", size=13, weight="700", fill=TIERS["stop"]["label"])
-    box(s, 470, 350, 300, 150, BLOEM, "A person resolves it",
-        "Each conflict takes Silo's side, word for word. Bloem's change goes on its own line or in its own "
-        "file. Then CI again.", size=14)
+    box(s, 470, 350, 300, 150, BLOEM, "Bloem adapts",
+        "Where Silo's change would break Bloem, Bloem's behavior goes back on its own lines, with a test. "
+        "Then every check again.", size=14)
     s.path("M774,425 L850,425 L850,280")
 
     s.text(40, 560, "When the owner says deploy", size=17, weight="700")

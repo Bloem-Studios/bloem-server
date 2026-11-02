@@ -18,9 +18,9 @@ def workflows():
             "Top, every change: a pull request, a push to main, the Monday run or a manual run starts Bloem CI. "
             "When Bloem CI passes on a push to main, Bloem Image builds the server image tagged with that commit, "
             "and moves latest if the commit is still main's newest. Deploying is a separate step a person starts. "
-            "Bottom, every day: the upstream sync merges Silo's main into a branch and opens a pull request; Bloem "
-            "CI checks it; the merge gate lands it on main. A sync with conflicts opens as a draft that a person "
-            "resolves.")
+            "Bottom, every day, only when switched on (off since November 2, 2026): the upstream sync merges Silo's "
+            "main into a branch and opens a pull request; Bloem CI checks it; the merge gate lands it on main. A "
+            "sync with conflicts opens as a draft that a person resolves.")
     s.header("What runs, and when",
              "Four Bloem workflows. Bloem CI is the gate for everything that reaches main.")
     a, p, g, w, o = TIERS["account"], TIERS["plan"], TIERS["grey"], TIERS["warn"], TIERS["org"]
@@ -55,7 +55,7 @@ def workflows():
     s.text(660, 400, "Deploying is a separate step a person starts.", size=14.5, fill=MUTED)
 
     # Every day.
-    s.text(40, 468, "Every day", size=17, weight="700")
+    s.text(40, 468, "Every day, only when switched on (off since November 2, 2026)", size=17, weight="700")
     row_y, row_h = 484, 116
     steps = [
         (g, 210, "Upstream sync", "05:20 UTC: merges Silo's main into a new branch."),
@@ -125,7 +125,8 @@ def runners():
 
 def merge_gate():
     s = Svg(1200, 966, "When a sync merges itself",
-            "Every morning the sync merges Silo's main into a branch and opens a pull request. Five checks then run "
+            "When the sync is switched on, every morning it merges Silo's main into a branch and opens a pull "
+            "request. Five checks then run "
             "in order on the commit Bloem CI tested: Bloem CI passed; the branch comes from this repository; it is "
             "the one open sync pull request and not a draft; its head is the exact commit CI tested; and that "
             "commit is the untouched merge of Bloem's main and Silo's main. Any no leaves the pull request for a "
@@ -135,7 +136,7 @@ def merge_gate():
     a, g, o, w, st = TIERS["account"], TIERS["grey"], TIERS["org"], TIERS["warn"], TIERS["stop"]
 
     s.rect(40, 116, 1120, 70, g["fill"], g["stroke"], rx=14, sw=1.6)
-    s.text(64, 146, "Every morning", size=16, weight="700")
+    s.text(64, 146, "Every morning, when switched on", size=16, weight="700")
     s.text(64, 170, "The sync merges Silo's main into upstream-sync/<date>-<sha> and opens a pull request. "
                     "Bloem CI then runs on it.", size=14, fill=MUTED)
 
