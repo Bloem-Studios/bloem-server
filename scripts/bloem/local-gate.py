@@ -72,8 +72,8 @@ def _go_shard(n):
     return Step(
         "go",
         f"shard-{n}",
-        "SILO_TEST_DATABASE_URL=" + _pg(f"bloem_test_s{n}")
-        + " GOFLAGS='-count=1 -p=4' make test-go GO_TEST_PACKAGES=\"$(make -s --no-print-directory"
+        "skip=$(python3 scripts/ci/bloem-db-list-skip.py) && SILO_TEST_DATABASE_URL=" + _pg(f"bloem_test_s{n}")
+        + " GOFLAGS=\"-count=1 -p=4 -skip=$skip\" make test-go GO_TEST_PACKAGES=\"$(make -s --no-print-directory"
         + f" go-test-packages | scripts/ci/deal.sh 4 {n} | paste -sd ' ')\"",
         _needs("pg", f"fresh_db:bloem_test_s{n}"),
     )
@@ -111,6 +111,7 @@ STEPS = [
     Step("verify", "client-coverage", "go test ./cmd/... ./contracts/..."),
     Step("verify", "local-paths", "make verify-local-paths"),
     Step("verify", "local-gate", "make verify-local-gate"),
+    Step("verify", "db-list-skip", "make verify-db-list-skip"),
     # go-lint.
     Step("lint", "govulncheck", "go tool govulncheck ./..."),
     Step("lint", "changed-lines", "BASE_SHA=@BASE@ PATH=@GOLANGCI_DIR@:$PATH scripts/bloem-lint-changed-ci.sh"),

@@ -277,8 +277,8 @@ runners on October 26, 2026 (`52369dbad`, `5e6f9e407`):
 | Tenant stores race (1-4/4, disposable PostgreSQL) | `internal/tenancy` under the race detector, its tests split four ways. |
 | Native authentication (1-3/3, disposable PostgreSQL) | `internal/auth` with and without the race detector, its tests split three ways, and its vet (shard 1). |
 | Go lint | gofmt, `go vet ./...`, govulncheck, changed-line lint (`scripts/bloem-lint-changed-ci.sh`) and the full-tree router recovery lint (`make lint-router-recovery`). |
-| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, migration ledger, scenario catalogs, offline routes, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, the seam ledger, and the local gate's coverage of this workflow (`make verify-local-gate`). |
-| Go test (1-4/4) | `make test-go` on a database `cmd/bloem-testdb` prepared, its packages split four ways, four at a time per database. |
+| Go contract checks | Settings bindings, client DTOs, playback fixtures, route inventory, migration ledger, scenario catalogs, offline routes, the API v2 OpenAPI, the Bloem native OpenAPI and API catalogue, the v2 contract diff and fixtures, the seam ledger, the local gate's coverage of this workflow (`make verify-local-gate`), and the Go test shards' database-list skip (`make verify-db-list-skip`). |
+| Go test (1-4/4) | `make test-go` on a database `cmd/bloem-testdb` prepared, its packages split four ways, four at a time per database. Silo's database-list tests are left to Go database pins (below). |
 | Go database pins | The database pins (`make test-db-pins`) and the upstream database regression gates. |
 | Go database regressions | Watch Party and history-import race tests and the mixed library location pins. |
 | Scenario executor | `make test-scenarios`, with a 45-minute job timeout. |
@@ -294,6 +294,18 @@ Changed-line lint reports only findings on lines that changed in the push or
 pull request and that differ from Silo's copy of the file, so Silo's own lint
 debt does not fail Bloem. An upstream sync merge is linted only on its
 conflict-resolution lines.
+
+The Go test shards skip Silo's database-list tests, the ones named in
+`scripts/ci/db-pins.txt` and `scripts/ci/db-contracts.txt`. Silo's own
+`make test-go` has no database, so Silo runs these only through
+`scripts/ci/dbpins`, and some assume nothing else writes to the database while
+they run: the marker population sync walks every eligible file in it, and
+failed on November 1 and 2, 2026 when another package's files appeared
+mid-test. Go database pins runs both lists on a fresh database, as Silo does,
+so the shards pass `-skip` with the pattern
+`scripts/ci/bloem-db-list-skip.py` prints. The script refuses a list name that
+is also a test in a package the lists do not name, because `-skip` matches
+names, not packages, and that test would then run nowhere.
 
 The split jobs each run against their own PostgreSQL.
 `scripts/ci/deal.sh N I` deals lines round-robin to N shards so each lands in

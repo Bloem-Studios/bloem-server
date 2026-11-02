@@ -588,6 +588,9 @@ jobs:
       - name: Verify the local gate runs every CI command
         run: make verify-local-gate
 
+      - name: Verify the Go test shards can leave Silo's database-list tests to the pins job
+        run: make verify-db-list-skip
+
       - name: Save the Go cache
         if: success() && runner.environment == 'github-hosted' && github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request'
         uses: ./.github/actions/save-go-cache
@@ -707,7 +710,10 @@ jobs:
           SHARD: ${{ matrix.shard }}
         run: |
           packages=$(make -s --no-print-directory go-test-packages | scripts/ci/deal.sh 4 "$SHARD")
-          make test-go GO_TEST_PACKAGES="$(paste -sd ' ' <<< "$packages")"
+          # Silo's database-list tests run in Go database pins on a fresh
+          # database, as Silo runs them; scripts/ci/bloem-db-list-skip.py says why.
+          skip=$(python3 scripts/ci/bloem-db-list-skip.py)
+          GOFLAGS="$GOFLAGS -skip=$skip" make test-go GO_TEST_PACKAGES="$(paste -sd ' ' <<< "$packages")"
 
       - name: Save the Go cache
         if: ${{ !cancelled() && matrix.shard == 1 && runner.environment == 'github-hosted' && github.ref_name == github.event.repository.default_branch && github.event_name != 'pull_request' }}

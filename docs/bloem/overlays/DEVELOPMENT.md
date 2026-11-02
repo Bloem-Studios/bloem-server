@@ -141,7 +141,11 @@ with `GOFLAGS=-p=8` so local runs resemble CI.
 
 To run every Bloem CI job at once before pushing, use the local gate,
 `python3 scripts/bloem/local-gate.py run`. It starts and removes its own sized
-PostgreSQL and Redis; see [Bloem CI](../ci.md#local-gate).
+PostgreSQL and Redis; see [Bloem CI](../ci.md#local-gate). A plain `make test-go` on
+a shared database also runs Silo's database-list tests beside every other
+package, where some fail by design; skip them as CI does with
+`GOFLAGS="-skip=$(python3 scripts/ci/bloem-db-list-skip.py)"` and run them with
+`make test-db-pins` on a fresh database.
 
 The storage plugin executable tests build `examples/hello-storage` from the
 published `bloem-plugin-sdk` module pinned in `internal/bloemtestsdk`

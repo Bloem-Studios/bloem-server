@@ -119,6 +119,20 @@ class LocalGateTest(unittest.TestCase):
         fresh = {n for s in shards for n in s.needs if n.startswith("fresh_db:")}
         self.assertEqual(len(fresh), 4)
 
+    def test_go_shards_leave_database_list_tests_to_the_pins_job(self):
+        # Silo's database-list tests run in the db phase on a fresh database;
+        # run beside every other package they see each other's writes.
+        # The pattern is computed on its own, so a broken list fails the step
+        # instead of leaving -skip empty.
+        for step in (s for s in self.gate.STEPS if s.phase == "go"):
+            self.assertTrue(step.cmd.startswith("skip=$(python3 scripts/ci/bloem-db-list-skip.py) && "), step.cmd)
+            self.assertIn('-skip=$skip"', step.cmd)
+        block = next(b for b in run_blocks(WORKFLOW.read_text()) if "make test-go" in b)
+        self.assertIn("\nskip=$(python3 scripts/ci/bloem-db-list-skip.py)\n", "\n" + "\n".join(
+            line.strip() for line in block.split("\n")) + "\n")
+        test_go = next(line for line in block.split("\n") if "make test-go" in line)
+        self.assertIn('GOFLAGS="$GOFLAGS -skip=$skip" make test-go', test_go)
+
     def test_gofmt_is_the_go_mod_toolchains(self):
         # The gofmt on PATH belongs to the machine's Go, which can format
         # differently from the toolchain go.mod names (and CI uses).

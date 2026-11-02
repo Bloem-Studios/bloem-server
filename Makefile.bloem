@@ -241,6 +241,15 @@ verify-seams:
 verify-local-gate:
 	python3 scripts/bloem/local-gate_test.py
 
+# Bloem CI's Go test shards skip Silo's database-list tests (db-pins.txt and
+# db-contracts.txt), which the Go database pins job runs on a fresh database.
+# scripts/ci/bloem-db-list-skip.py builds the -skip pattern and refuses a list
+# name that is also a test in another package.
+.PHONY: verify-db-list-skip
+verify-db-list-skip:
+	python3 scripts/ci/bloem-db-list-skip_test.py
+	python3 scripts/ci/bloem-db-list-skip.py > /dev/null
+
 # Re-merge the ledger against the current route inventory: refresh the copied
 # fields, restore inventory order, seed an entry for every new route, and
 # reassign sections. Curated decisions and committed consumer evidence are
