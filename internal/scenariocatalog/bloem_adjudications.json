@@ -966,7 +966,7 @@
       "registration_index": 0,
       "scenario": "account_capability.ok",
       "transport": "v2",
-      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained.",
+      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained. Silo #2925 (7ee9615f2) added sign_out_other_sessions, which this server always offers on v2.",
       "expect": {
         "status": 200,
         "headers": [
@@ -986,7 +986,8 @@
               "allowed",
               "requires_current_password",
               "minimum_password_length",
-              "maximum_password_bytes"
+              "maximum_password_bytes",
+              "sign_out_other_sessions"
             ]
           },
           {
@@ -1018,6 +1019,11 @@
             "pointer": "/maximum_password_bytes",
             "op": "equals",
             "value": 72
+          },
+          {
+            "pointer": "/sign_out_other_sessions",
+            "op": "equals",
+            "value": true
           }
         ]
       },
@@ -1030,7 +1036,7 @@
       "registration_index": 0,
       "scenario": "account_capability.meaning",
       "transport": "v2",
-      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained.",
+      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained. Silo #2925 (7ee9615f2) added sign_out_other_sessions, which this server always offers on v2.",
       "expect": {
         "status": 200,
         "headers": [
@@ -1050,7 +1056,8 @@
               "allowed",
               "requires_current_password",
               "minimum_password_length",
-              "maximum_password_bytes"
+              "maximum_password_bytes",
+              "sign_out_other_sessions"
             ]
           },
           {
@@ -1082,6 +1089,11 @@
             "pointer": "/maximum_password_bytes",
             "op": "equals",
             "value": 72
+          },
+          {
+            "pointer": "/sign_out_other_sessions",
+            "op": "equals",
+            "value": true
           }
         ]
       },
@@ -1094,7 +1106,7 @@
       "registration_index": 0,
       "scenario": "account_capability.no_profile",
       "transport": "v2",
-      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained.",
+      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained. Silo #2925 (7ee9615f2) added sign_out_other_sessions, which this server always offers on v2.",
       "expect": {
         "status": 200,
         "headers": [
@@ -1114,7 +1126,8 @@
               "allowed",
               "requires_current_password",
               "minimum_password_length",
-              "maximum_password_bytes"
+              "maximum_password_bytes",
+              "sign_out_other_sessions"
             ]
           },
           {
@@ -1146,6 +1159,11 @@
             "pointer": "/maximum_password_bytes",
             "op": "equals",
             "value": 72
+          },
+          {
+            "pointer": "/sign_out_other_sessions",
+            "op": "equals",
+            "value": true
           }
         ]
       },
@@ -1158,7 +1176,7 @@
       "registration_index": 0,
       "scenario": "account_capability.secondary_profile",
       "transport": "v2",
-      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained.",
+      "reason": "Account capability revision is an opaque authority-bound digest, not the constant 1; all primary/secondary/profileless capability predicates are retained. Silo #2925 (7ee9615f2) added sign_out_other_sessions, which this server always offers on v2.",
       "expect": {
         "status": 200,
         "headers": [
@@ -1178,7 +1196,8 @@
               "allowed",
               "requires_current_password",
               "minimum_password_length",
-              "maximum_password_bytes"
+              "maximum_password_bytes",
+              "sign_out_other_sessions"
             ]
           },
           {
@@ -1210,6 +1229,11 @@
             "pointer": "/maximum_password_bytes",
             "op": "equals",
             "value": 72
+          },
+          {
+            "pointer": "/sign_out_other_sessions",
+            "op": "equals",
+            "value": true
           }
         ]
       },

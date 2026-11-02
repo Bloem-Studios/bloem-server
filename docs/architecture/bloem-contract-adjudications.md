@@ -1,7 +1,7 @@
 # How Bloem's contract adjudications work
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against `main`
-> at `b6039036d`. Adjudications are a Bloem test layer over Silo's frozen API scenario
+> at `b6039036d`; the account capability row updated on 2026-11-02. Adjudications are a Bloem test layer over Silo's frozen API scenario
 > catalogs: where Bloem deliberately answers differently from what a Silo test expects, a
 > reviewed, pinned decision replaces that expectation. Silo's files are unchanged. The
 > technical rules are in the [For developers](#for-developers) section; the dated results
@@ -164,7 +164,7 @@ historical selectors are not rewritten.
 | `me.api_key` / v1 | An authenticated unscoped key reads its own exact, nonsecret account projection | Authentication is resolved once by middleware rather than reparsing a key as a JWT. This does not permit session minting, logout or scope escalation. |
 | `me.api_key`, `me.ok`, `me.disabled_account` / v2 | Silo's account keys plus `preview` and `playback_allowed` | Bloem's account projection reports the guest preview binding (null otherwise) and playback permission. Everything else Silo pins is unchanged. |
 | `setup_status.db_down` / v1, `signup_status.db_down` and `capability.ok` / v1 and v2 | `503 unavailable`, "Preview host configuration is unavailable." | With the database unreachable the preview host guard cannot read its settings, so it refuses every auth route before routing; a GET there can start a sign-in. Anonymous routes elsewhere, including liveness and readiness, keep Silo's answers. |
-| Four `account_capability.*` cases / v2 | Revision is the opaque authority-bound digest, not constant `"1"` | Primary, secondary and profileless capability predicates stay unchanged. |
+| Four `account_capability.*` cases / v2 | Revision is the opaque authority-bound digest, not constant `"1"`; the body also carries `sign_out_other_sessions: true`, which Silo added on October 31, 2026 (#2925) | Primary, secondary and profileless capability predicates stay unchanged. |
 | Three `state.*` and four `progress.*` cases / v2 | Exact `Cache-Control: no-store, no-transform`, including follow-up reads | Preserve both privacy directives rather than weakening the response. |
 | `avatar_upload.typed_nil_panic`, `avatar_upload.meaning` / both | Missing object storage returns `503` with a safe envelope | An unavailable dependency is not a recovered handler panic. |
 | Four `sessions.*` cases / v2 | The listing also carries `current_session`; each session also carries `current` and `last_seen_at` | Silo's v2 session listing added them after the oracle was frozen. Silo wins. |
