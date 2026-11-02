@@ -19,7 +19,7 @@ func (h *AuthHandler) SetLoginTenantResolver(resolver apimw.TenantResolver) {
 
 func (h *AuthHandler) loginDownloadAllowed(ctx context.Context, user *models.User) bool {
 	if h.loginTenants == nil {
-		return effectiveDownloadAllowed(ctx, user, h.accessGroups)
+		return effectiveAccountPolicy(ctx, user, h.accessGroups).DownloadAllowed
 	}
 	if user == nil || user.ID <= 0 {
 		return false
@@ -38,5 +38,5 @@ func (h *AuthHandler) loginDownloadAllowed(ctx context.Context, user *models.Use
 		// capability when viewer policy could not be established.
 		return false
 	}
-	return effectiveDownloadAllowed(tenancy.WithContext(checkCtx, tenant), user, h.accessGroups)
+	return effectiveAccountPolicy(tenancy.WithContext(checkCtx, tenant), user, h.accessGroups).DownloadAllowed
 }
