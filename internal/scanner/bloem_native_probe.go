@@ -168,9 +168,15 @@ func probeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 		if err != nil {
 			return nil, nil, &nativeProbeFailure{err}
 		}
+		// As applyMatroskaSubtitleTrackIDs does for a local file.
 		for i := range probe.SubtitleTracks {
-			if probe.SubtitleTracks[i].ContainerTrackID == "" {
-				probe.SubtitleTracks[i].ContainerTrackID = ids[i]
+			track := &probe.SubtitleTracks[i]
+			if track.ContainerTrackID != "" {
+				continue
+			}
+			track.ContainerTrackID = ids[i].ID
+			if ids[i].IndexOnly {
+				track.Codec, track.IndexOnly = ids[i].Codec, true
 			}
 		}
 	}
