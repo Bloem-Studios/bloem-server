@@ -24684,10 +24684,6 @@
             },
             "type": "array"
           },
-          "box_set": {
-            "$ref": "#/components/schemas/CatalogBoxSet",
-            "description": "The box set a box_set card stands for; open it with getCatalogBoxSet"
-          },
           "content_id": {
             "description": "Deterministic catalog identifier",
             "examples": [
@@ -24908,7 +24904,7 @@
             "type": "string"
           },
           "type": {
-            "description": "movie, series, season, episode, audiobook, ebook, podcast, podcast_episode, or box_set for a box set card of a group=box_set browse",
+            "description": "movie, series, season, episode, audiobook, ebook, podcast, podcast_episode",
             "examples": [
               "movie"
             ],
@@ -25060,10 +25056,6 @@
             "description": "Presigned, short-lived. A wide banner strip. Movies and series only; see getImageCapabilities extended_item_artwork",
             "format": "uri-reference",
             "type": "string"
-          },
-          "box_set": {
-            "$ref": "#/components/schemas/CatalogBoxSet",
-            "description": "The box set a box_set card stands for; open it with getCatalogBoxSet"
           },
           "cast": {
             "description": "Empty, never null",
@@ -25460,7 +25452,7 @@
             "type": "string"
           },
           "type": {
-            "description": "movie, series, season, episode, audiobook, ebook, podcast, podcast_episode, or box_set for a box set card of a group=box_set browse",
+            "description": "movie, series, season, episode, audiobook, ebook, podcast, podcast_episode",
             "examples": [
               "movie"
             ],
@@ -25819,13 +25811,6 @@
       "CatalogLettersQuery": {
         "additionalProperties": false,
         "properties": {
-          "group": {
-            "description": "Count the list a group=box_set browse pages, with each box set counted once under its first title",
-            "enum": [
-              "box_set"
-            ],
-            "type": "string"
-          },
           "groups": {
             "description": "Rule groups, as on queryCatalogItems; empty matches everything",
             "items": {
@@ -25877,10 +25862,8 @@
             "type": "string"
           },
           "group": {
-            "description": "As the listCatalogItems group parameter",
             "enum": [
-              "work",
-              "box_set"
+              "work"
             ],
             "type": "string"
           },
@@ -26115,7 +26098,7 @@
             "type": "boolean"
           },
           "box_sets": {
-            "description": "listCatalogItems, queryCatalogItems, and queryCatalogLetters accept group=box_set, and searchCatalogBoxSets, getCatalogBoxSet and getCatalogItemBoxSet answer; listUserLibraries reports which libraries have box sets on",
+            "description": "searchCatalogBoxSets, getCatalogBoxSet and getCatalogItemBoxSet answer; listUserLibraries reports which libraries have box sets on",
             "type": "boolean"
           },
           "extended_query_rules": {
@@ -33279,10 +33262,6 @@
             },
             "type": "array"
           },
-          "box_set": {
-            "$ref": "#/components/schemas/CatalogBoxSet",
-            "description": "The box set a box_set card stands for; open it with getCatalogBoxSet"
-          },
           "content_id": {
             "description": "Deterministic catalog identifier",
             "examples": [
@@ -33503,7 +33482,7 @@
             "type": "string"
           },
           "type": {
-            "description": "movie, series, season, episode, audiobook, ebook, podcast, podcast_episode, or box_set for a box set card of a group=box_set browse",
+            "description": "movie, series, season, episode, audiobook, ebook, podcast, podcast_episode",
             "examples": [
               "movie"
             ],
@@ -34872,7 +34851,7 @@
             "type": "integer"
           },
           "box_sets_enabled": {
-            "description": "Browse the movies TMDB lists in one collection (a franchise such as Harry Potter) as one box set; movie and mixed libraries only",
+            "description": "Gather the movies TMDB lists in one collection (a franchise such as Harry Potter) into a box set, shown on movie pages and, when box_sets_in_search is true, in search; library browse still lists each movie. Movie and mixed libraries only",
             "examples": [
               false
             ],
@@ -35058,7 +35037,7 @@
             "type": "boolean"
           },
           "box_sets": {
-            "description": "This build supports the per-library box set settings (box_sets_enabled, box_set_min_movies, box_sets_in_search), group=box_set on the catalog, and the box set reads",
+            "description": "This build supports the per-library box set settings (box_sets_enabled, box_set_min_movies, box_sets_in_search) and the box set reads",
             "examples": [
               true
             ],
@@ -51812,7 +51791,7 @@
         "additionalProperties": false,
         "properties": {
           "box_sets_enabled": {
-            "description": "The library browses movies of one TMDB collection as a box set; request group=box_set when browsing it",
+            "description": "The library gathers movies of one TMDB collection into a box set, which movie pages and, when box_sets_in_search is true, search show; browsing lists each movie",
             "examples": [
               false
             ],
@@ -54455,10 +54434,6 @@
             },
             "type": "array"
           },
-          "box_set": {
-            "$ref": "#/components/schemas/CatalogBoxSet",
-            "description": "The box set a box_set card stands for; open it with getCatalogBoxSet"
-          },
           "cast": {
             "description": "Up to four cast members; empty, never null",
             "items": {
@@ -54686,7 +54661,7 @@
             "type": "string"
           },
           "type": {
-            "description": "movie, series, season, episode, audiobook, ebook, podcast, podcast_episode, or box_set for a box set card of a group=box_set browse",
+            "description": "movie, series, season, episode, audiobook, ebook, podcast, podcast_episode",
             "examples": [
               "movie"
             ],
@@ -54858,10 +54833,6 @@
               "type": "string"
             },
             "type": "array"
-          },
-          "box_set": {
-            "$ref": "#/components/schemas/CatalogBoxSet",
-            "description": "The box set a box_set card stands for; open it with getCatalogBoxSet"
           },
           "content_id": {
             "description": "Deterministic catalog identifier",
@@ -55083,7 +55054,7 @@
             "type": "string"
           },
           "type": {
-            "description": "movie, series, season, episode, audiobook, ebook, podcast, podcast_episode, or box_set for a box set card of a group=box_set browse",
+            "description": "movie, series, season, episode, audiobook, ebook, podcast, podcast_episode",
             "examples": [
               "movie"
             ],
@@ -142668,15 +142639,14 @@
             }
           },
           {
-            "description": "group=work collapses editions of one book into one card. group=box_set, on a source=query browse of one library with box sets on and no search text, collapses the movies of each TMDB collection into one box_set card; elsewhere it returns the ordinary list",
+            "description": "group=work collapses editions of one book into one card",
             "explode": false,
             "in": "query",
             "name": "group",
             "schema": {
-              "description": "group=work collapses editions of one book into one card. group=box_set, on a source=query browse of one library with box sets on and no search text, collapses the movies of each TMDB collection into one box_set card; elsewhere it returns the ordinary list",
+              "description": "group=work collapses editions of one book into one card",
               "enum": [
-                "work",
-                "box_set"
+                "work"
               ],
               "type": "string"
             }
