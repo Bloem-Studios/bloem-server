@@ -56,6 +56,12 @@ Good to know:
   Otherwise, or when that record is more than a week old, Bloem lists everything
   again.
 - A book that has not changed is not written to the catalog again.
+- Copies of one book become one catalog entry, matched by ISBN or by title and
+  author. Some sources fill in a made-up ISBN, such as `0000000000000`, for
+  books that have none. Bloem ignores it, so those books stay separate; one
+  with no author is kept apart by its own file. A book an older release had
+  wrongly joined to others is moved to its own entry the next time it is
+  listed, changed or not.
 
 ## When a file disappears
 
