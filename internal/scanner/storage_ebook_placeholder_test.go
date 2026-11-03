@@ -34,11 +34,11 @@ func TestStorageEbookDropsPlaceholderISBN(t *testing.T) {
 		return book
 	}
 
-	real := entry("dune", &storagev1.EbookMetadata{Title: "Dune", Authors: []string{"Frank Herbert"}, Isbn: "978-0-441-01359-3"})
-	if real.Book.ISBN != "9780441013593" || real.isbnPlaceholder {
-		t.Fatalf("real ISBN = %q placeholder=%v", real.Book.ISBN, real.isbnPlaceholder)
+	dune := entry("dune", &storagev1.EbookMetadata{Title: "Dune", Authors: []string{"Frank Herbert"}, Isbn: "978-0-441-01359-3"})
+	if dune.Book.ISBN != "9780441013593" || dune.isbnPlaceholder {
+		t.Fatalf("real ISBN = %q placeholder=%v", dune.Book.ISBN, dune.isbnPlaceholder)
 	}
-	if key := storageEbookGroupKey(&real); key != "ebook:isbn:9780441013593" {
+	if key := storageEbookGroupKey(&dune); key != "ebook:isbn:9780441013593" {
 		t.Fatalf("real ISBN key = %q", key)
 	}
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -235,7 +236,9 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 	var vacated []string
 	for i := range books {
 		digests[i] = storageEntryDigest(books[i].Entry)
-		if f, ok := existing[paths[i]]; ok && !regroup[i] {
+		f, ok := existing[paths[i]]
+		switch {
+		case ok && !regroup[i]:
 			contentIDs[i] = f.contentID
 			changed := f.revision != books[i].Entry.GetRevision() || (f.digest != nil && !bytes.Equal(f.digest, digests[i]))
 			if changed {
@@ -249,11 +252,11 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 				republish = append(republish, i)
 			}
 			continue
-		} else if ok {
+		case ok:
 			// The entry itself may be unchanged; its file still moves.
 			result.Updated++
 			vacated = append(vacated, f.contentID)
-		} else {
+		default:
 			result.New++
 		}
 		republish = append(republish, i)
@@ -385,7 +388,7 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 	}
 	if len(vacated) > 0 {
 		if s.libraryRepo == nil {
-			return result, fmt.Errorf("storage ebook publication: scanner not configured")
+			return result, errors.New("storage ebook publication: scanner not configured")
 		}
 		slices.Sort(vacated)
 		// A removed item's stored artwork is queued for collection by the

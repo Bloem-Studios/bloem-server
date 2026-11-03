@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -198,7 +199,7 @@ func TestPublishStorageEbooksFromProviderMetadata(t *testing.T) {
 func TestPublishStorageEbooksRegroupsPlaceholderISBN(t *testing.T) {
 	pool, s, folder, location := storageEbookFixture(t)
 	ctx := t.Context()
-	suffix := fmt.Sprint(time.Now().UnixNano())
+	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
 	const placeholder = "0000000000000"
 	alpha := &storagev1.EbookMetadata{Title: "Alpha " + suffix, Authors: []string{"Ann " + suffix}, Isbn: placeholder}
 	beta := &storagev1.EbookMetadata{Title: "Beta " + suffix, Authors: []string{"Bob " + suffix}, Isbn: placeholder}
