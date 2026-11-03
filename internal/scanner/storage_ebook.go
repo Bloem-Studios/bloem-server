@@ -5,6 +5,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +31,51 @@ type StorageEbook struct {
 	// Cover names the provider's cover image entry; empty when the book has
 	// none. Covers are fetched after publication, never during a scan.
 	CoverEntryID, CoverRevision, CoverThumbhash string
+	// isbnPlaceholder records that the source gave a placeholder ISBN, which
+	// was dropped.
+	isbnPlaceholder bool
+}
+
+// isPlaceholderISBN reports a normalized ISBN that passes its checksum but
+// names no book: one repeated digit, or an ISBN-13 outside the 978 and 979
+// book prefixes. Catalogs fill one in for books without an ISBN, so grouping
+// by it would make all of those books one item.
+func isPlaceholderISBN(isbn string) bool {
+	if isbn == "" {
+		return false
+	}
+	if strings.Count(isbn, isbn[:1]) == len(isbn) {
+		return true
+	}
+	return len(isbn) == 13 && !strings.HasPrefix(isbn, "978") && !strings.HasPrefix(isbn, "979")
+}
+
+// dropPlaceholderISBN clears a placeholder ISBN, so the book is grouped by its
+// title, authors or path, and the placeholder is not published as its ISBN.
+func (b *StorageEbook) dropPlaceholderISBN() {
+	if isPlaceholderISBN(normalizeEbookISBN(b.Book.ISBN)) {
+		b.Book.ISBN, b.isbnPlaceholder = "", true
+	}
+}
+
+// storageEbookGroupKey is the identity a new file of the book joins. A book
+// that had a placeholder ISBN and names no author is keyed by its own path: a
+// source such as Bookwarehouse keeps every book in one flat directory, where
+// the title alone would join unrelated books that share it.
+func storageEbookGroupKey(b *StorageEbook) string {
+	if b.isbnPlaceholder && !slices.ContainsFunc(b.Book.Authors, func(a string) bool { return normalizeEbookIdentityPart(a) != "" }) {
+		if p := strings.TrimSpace(filepath.Clean(b.Entry.GetLogicalPath())); p != "." {
+			return "ebook:path:" + p
+		}
+	}
+	return ebookContentGroupKey(&b.Book, b.Entry.GetLogicalPath())
+}
+
+// placeholderISBNGroupKey reports a group key made from a placeholder ISBN,
+// which files published before placeholders were dropped still carry.
+func placeholderISBNGroupKey(key string) bool {
+	isbn, ok := strings.CutPrefix(key, "ebook:isbn:")
+	return ok && isPlaceholderISBN(isbn)
 }
 
 // StorageEbookFromEntry builds a StorageEbook from provider-held metadata. It
@@ -59,6 +106,7 @@ func StorageEbookFromEntry(e *storagev1.Entry) (StorageEbook, bool) {
 	if meta.GetCoverEntryId() != "" && meta.GetCoverRevision() != "" {
 		out.CoverEntryID, out.CoverRevision = meta.GetCoverEntryId(), meta.GetCoverRevision()
 	}
+	out.dropPlaceholderISBN()
 	return out, true
 }
 
@@ -72,7 +120,9 @@ func ParseStorageEbook(ctx context.Context, e *storagev1.Entry, file mediasource
 	// Embedded covers are not extracted on this path: cover bytes would have
 	// to be uploaded inside the scan. A later cover pass can read them.
 	book.Cover = nil
-	return StorageEbook{Entry: e, Book: book}, nil
+	out := StorageEbook{Entry: e, Book: book}
+	out.dropPlaceholderISBN()
+	return out, nil
 }
 
 func boundedStrings(values []string) []string {
@@ -113,14 +163,15 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 	// A current file is present in the library under this configuration, so
 	// listing its entry again unchanged leaves nothing to republish.
 	type existingFile struct {
-		contentID, revision string
-		digest              []byte
-		current             bool
+		contentID, revision, groupKey string
+		digest                        []byte
+		current                       bool
 	}
 	existing := map[string]existingFile{}
 	rows, err := tx.Query(ctx, `SELECT f.file_path, f.content_id, COALESCE(r.revision, ''), r.entry_sha256,
 		f.missing_since IS NULL AND r.configuration_revision IS NOT DISTINCT FROM $3 AND EXISTS(SELECT 1 FROM media_item_libraries m
-			WHERE m.content_id = f.content_id AND m.media_folder_id = f.media_folder_id)
+			WHERE m.content_id = f.content_id AND m.media_folder_id = f.media_folder_id),
+		COALESCE(f.content_group_key, '')
 		FROM media_files f LEFT JOIN bloem_storage_file_refs r ON r.media_file_id = f.id
 		WHERE f.media_folder_id = $1 AND f.file_path = ANY($2)`, folder.ID, paths, configurationRevision)
 	if err != nil {
@@ -129,7 +180,7 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 	for rows.Next() {
 		var path string
 		var f existingFile
-		if err := rows.Scan(&path, &f.contentID, &f.revision, &f.digest, &f.current); err != nil {
+		if err := rows.Scan(&path, &f.contentID, &f.revision, &f.digest, &f.current, &f.groupKey); err != nil {
 			rows.Close()
 			return result, err
 		}
@@ -141,12 +192,17 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 	}
 
 	// New files join an existing item with the same identity (an EPUB and a
-	// PDF of one ISBN), first in this page, then in the library.
+	// PDF of one ISBN), first in this page, then in the library. A published
+	// file keeps its item, except one that was grouped by a placeholder ISBN:
+	// it regroups by its own identity, like a new file.
 	groupKeys := make([]string, len(books))
+	regroup := make([]bool, len(books))
 	var unresolved []string
-	for i, b := range books {
-		groupKeys[i] = ebookContentGroupKey(&books[i].Book, b.Entry.GetLogicalPath())
-		if _, ok := existing[paths[i]]; !ok && groupKeys[i] != "" {
+	for i := range books {
+		groupKeys[i] = storageEbookGroupKey(&books[i])
+		f, ok := existing[paths[i]]
+		regroup[i] = ok && f.groupKey != groupKeys[i] && placeholderISBNGroupKey(f.groupKey)
+		if (!ok || regroup[i]) && groupKeys[i] != "" {
 			unresolved = append(unresolved, groupKeys[i])
 		}
 	}
@@ -175,9 +231,11 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 	contentIDs := make([]string, len(books))
 	digests := make([][]byte, len(books))
 	republish := make([]int, 0, len(books))
+	// Items a regrouped file left; each is removed once its last file has.
+	var vacated []string
 	for i := range books {
 		digests[i] = storageEntryDigest(books[i].Entry)
-		if f, ok := existing[paths[i]]; ok {
+		if f, ok := existing[paths[i]]; ok && !regroup[i] {
 			contentIDs[i] = f.contentID
 			changed := f.revision != books[i].Entry.GetRevision() || (f.digest != nil && !bytes.Equal(f.digest, digests[i]))
 			if changed {
@@ -191,8 +249,13 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 				republish = append(republish, i)
 			}
 			continue
+		} else if ok {
+			// The entry itself may be unchanged; its file still moves.
+			result.Updated++
+			vacated = append(vacated, f.contentID)
+		} else {
+			result.New++
 		}
-		result.New++
 		republish = append(republish, i)
 		if id, ok := byGroup[groupKeys[i]]; ok && groupKeys[i] != "" {
 			contentIDs[i] = id
@@ -319,6 +382,17 @@ func (s *Scanner) PublishStorageEbooksTx(ctx context.Context, tx pgx.Tx, folder 
 	}
 	if err := publishStorageEbookISBNs(ctx, tx, metadataOrder, bookFor); err != nil {
 		return result, err
+	}
+	if len(vacated) > 0 {
+		if s.libraryRepo == nil {
+			return result, fmt.Errorf("storage ebook publication: scanner not configured")
+		}
+		slices.Sort(vacated)
+		// A removed item's stored artwork is queued for collection by the
+		// media_items delete trigger; storage covers are served, not stored.
+		if _, _, _, err := s.reconcileStorageItemsTx(ctx, tx, folder, location, slices.Compact(vacated)); err != nil {
+			return result, err
+		}
 	}
 	return result, nil
 }
@@ -505,6 +579,26 @@ func (s *Scanner) SweepStorageLocationTx(ctx context.Context, tx pgx.Tx, folder 
 
 // SweepStorageLocationCountsTx also reports catalog membership and item changes.
 // Apply its counters only after the authorized completion transaction commits.
+// reconcileStorageItemsTx removes the library's membership of each candidate
+// left without a present file, and deletes the items that leaves orphaned.
+// Files of other lanes protect their items from that purge, including
+// versions already marked missing.
+func (s *Scanner) reconcileStorageItemsTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder, location storagesource.Location, candidates []string) (int, int, []string, error) {
+	rows, err := tx.Query(ctx, `SELECT DISTINCT mf.content_id FROM media_files mf WHERE mf.content_id=ANY($1::text[]) AND NOT EXISTS(SELECT 1 FROM bloem_storage_file_refs r WHERE r.media_file_id=mf.id AND r.location_id=$2)`, candidates, location.ID)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	retained, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	memberships, items, dirs, err := s.libraryRepo.ReconcileItemsMembershipTx(ctx, tx, folder.ID, candidates, nil, retained)
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("reconciling storage library membership for folder %d: %w", folder.ID, err)
+	}
+	return memberships, items, dirs, nil
+}
+
 func (s *Scanner) SweepStorageLocationCountsTx(ctx context.Context, tx pgx.Tx, folder *models.MediaFolder, location storagesource.Location) (ScanResult, []string, error) {
 	if s == nil || s.libraryRepo == nil || s.fileRepo == nil || tx == nil || folder == nil ||
 		(!librarykind.IsEbook(folder.Type) && !librarykind.IsMovie(folder.Type) && !librarykind.Of(folder.Type).Audiobook) || folder.ID != location.FolderID {
@@ -518,19 +612,9 @@ func (s *Scanner) SweepStorageLocationCountsTx(ctx context.Context, tx pgx.Tx, f
 	if err != nil {
 		return ScanResult{}, nil, err
 	}
-	// Retained rows owned by other lanes protect shared items against a
-	// cascading orphan purge, including versions already marked missing.
-	rows, err = tx.Query(ctx, `SELECT DISTINCT mf.content_id FROM media_files mf WHERE mf.content_id=ANY($1::text[]) AND NOT EXISTS(SELECT 1 FROM bloem_storage_file_refs r WHERE r.media_file_id=mf.id AND r.location_id=$2)`, candidates, location.ID)
+	membershipsRemoved, itemsDeleted, orphanedImageDirs, err := s.reconcileStorageItemsTx(ctx, tx, folder, location, candidates)
 	if err != nil {
 		return ScanResult{}, nil, err
-	}
-	retained, err := pgx.CollectRows(rows, pgx.RowTo[string])
-	if err != nil {
-		return ScanResult{}, nil, err
-	}
-	membershipsRemoved, itemsDeleted, orphanedImageDirs, err := s.libraryRepo.ReconcileItemsMembershipTx(ctx, tx, folder.ID, candidates, nil, retained)
-	if err != nil {
-		return ScanResult{}, nil, fmt.Errorf("reconciling storage library membership for folder %d: %w", folder.ID, err)
 	}
 	trashed := 0
 	if s.emptyTrashAfterScan {

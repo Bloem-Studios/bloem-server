@@ -521,9 +521,15 @@ Publication (`scanner.PublishStorageEbooksTx`) is set-based: a page of up to
 512 entries costs a fixed number of statements. Entries carrying provider
 `EbookMetadata` publish without the host reading the file. Entries without it
 are opened and parsed (`ParseNativeEbook`; EPUB and PDF). Files group into items
-by ISBN, or title and authors, as file scans do. Items publish with status
-`matched`: the source supplies their metadata. Provider metadata and credits are
-reapplied only when the item has no present local version and no locked fields.
+by ISBN, or title and authors, as file scans do. A placeholder ISBN (one
+repeated digit, or an ISBN-13 outside 978/979, such as Bookwarehouse's
+`0000000000000`) is dropped first: the book groups by title and authors, or by
+its own path when it names no author, and the placeholder is not published as
+its ISBN. A file still grouped by a placeholder from before this rule regroups
+the next time it is listed, and an item it leaves empty is removed. Items
+publish with status `matched`: the source supplies their metadata. Provider
+metadata and credits are reapplied only when the item has no present local
+version and no locked fields.
 A native edition joining a curated local item preserves its title, credits, sort
 title and artwork.
 

@@ -195,6 +195,111 @@ func TestPublishStorageEbooksFromProviderMetadata(t *testing.T) {
 	}
 }
 
+func TestPublishStorageEbooksRegroupsPlaceholderISBN(t *testing.T) {
+	pool, s, folder, location := storageEbookFixture(t)
+	ctx := t.Context()
+	suffix := fmt.Sprint(time.Now().UnixNano())
+	const placeholder = "0000000000000"
+	alpha := &storagev1.EbookMetadata{Title: "Alpha " + suffix, Authors: []string{"Ann " + suffix}, Isbn: placeholder}
+	beta := &storagev1.EbookMetadata{Title: "Beta " + suffix, Authors: []string{"Bob " + suffix}, Isbn: placeholder}
+	// Two authorless books with one title.
+	notes := &storagev1.EbookMetadata{Title: "Notes " + suffix, Isbn: placeholder}
+	entries := map[string]*storagev1.Entry{
+		"alpha.epub": storageEbookEntry("alpha", "epub", alpha, "sha256:a"),
+		"alpha.pdf":  storageEbookEntry("alpha", "pdf", alpha, "sha256:b"),
+		"beta.epub":  storageEbookEntry("beta", "epub", beta, "sha256:c"),
+		"one.epub":   storageEbookEntry("notes-one", "epub", notes, "sha256:d"),
+		"two.epub":   storageEbookEntry("notes-two", "epub", notes, "sha256:e"),
+	}
+	publish := func(names ...string) StoragePublishResult {
+		t.Helper()
+		page := make([]*storagev1.Entry, len(names))
+		for i, name := range names {
+			page[i] = entries[name]
+		}
+		return publishStorageEbooks(t, pool, s, folder, location, page...)
+	}
+	itemOf := func(entryID string) string {
+		t.Helper()
+		var id string
+		if err := pool.QueryRow(ctx, `SELECT f.content_id FROM media_files f JOIN bloem_storage_file_refs r ON r.media_file_id=f.id
+			WHERE f.media_folder_id=$1 AND r.entry_id=$2`, folder.ID, entryID).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	counts := func() (items, files int) {
+		t.Helper()
+		if err := pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM media_item_libraries WHERE media_folder_id=$1),
+			(SELECT count(*) FROM media_files WHERE media_folder_id=$1)`, folder.ID).Scan(&items, &files); err != nil {
+			t.Fatal(err)
+		}
+		return items, files
+	}
+
+	// A placeholder ISBN groups nothing and is not published as an ISBN.
+	if result := publish("alpha.epub", "alpha.pdf", "beta.epub", "one.epub", "two.epub"); result != (StoragePublishResult{New: 5}) {
+		t.Fatalf("result = %+v", result)
+	}
+	if items, files := counts(); items != 4 || files != 5 {
+		t.Fatalf("items=%d files=%d", items, files)
+	}
+	if itemOf("epub/alpha") != itemOf("pdf/alpha") {
+		t.Fatal("the EPUB and PDF of one title and author are not one item")
+	}
+	var isbns int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM media_item_provider_ids WHERE provider='isbn' AND provider_id=$1
+		AND content_id IN (SELECT content_id FROM media_item_libraries WHERE media_folder_id=$2)`, placeholder, folder.ID).Scan(&isbns); err != nil || isbns != 0 {
+		t.Fatalf("placeholder published as an ISBN %d times: %v", isbns, err)
+	}
+
+	// Recreate the catalog an earlier release left: every file in one item,
+	// grouped by the placeholder.
+	merged := itemOf("epub/beta")
+	if _, err := pool.Exec(ctx, `UPDATE media_files SET content_id=$2, content_group_key='ebook:isbn:'||$3 WHERE media_folder_id=$1`, folder.ID, merged, placeholder); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `DELETE FROM media_items WHERE content_id<>$2 AND content_id IN (SELECT content_id FROM media_item_libraries WHERE media_folder_id=$1)`, folder.ID, merged); err != nil {
+		t.Fatal(err)
+	}
+	if items, files := counts(); items != 1 || files != 5 {
+		t.Fatalf("merged items=%d files=%d", items, files)
+	}
+
+	// Unchanged entries still regroup. The merged item stays while a file
+	// remains in it.
+	if result := publish("alpha.epub", "beta.epub"); result != (StoragePublishResult{Updated: 2}) {
+		t.Fatalf("first regroup result = %+v", result)
+	}
+	if items, _ := counts(); items != 3 || itemOf("epub/beta") == merged || itemOf("epub/alpha") == merged || itemOf("pdf/alpha") != merged {
+		t.Fatalf("after the first page items=%d beta=%s alpha=%s pdf=%s merged=%s", items, itemOf("epub/beta"), itemOf("epub/alpha"), itemOf("pdf/alpha"), merged)
+	}
+
+	// The last files leave; the PDF rejoins its EPUB and the emptied item goes.
+	if result := publish("alpha.pdf", "one.epub", "two.epub"); result != (StoragePublishResult{Updated: 3}) {
+		t.Fatalf("second regroup result = %+v", result)
+	}
+	if items, files := counts(); items != 4 || files != 5 {
+		t.Fatalf("after regrouping items=%d files=%d", items, files)
+	}
+	if itemOf("pdf/alpha") != itemOf("epub/alpha") || itemOf("epub/notes-one") == itemOf("epub/notes-two") {
+		t.Fatal("regrouped files joined the wrong items")
+	}
+	var left int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM media_items WHERE content_id=$1`, merged).Scan(&left); err != nil || left != 0 {
+		t.Fatalf("emptied item kept: %d %v", left, err)
+	}
+	var title string
+	if err := pool.QueryRow(ctx, `SELECT title FROM media_items WHERE content_id=$1`, itemOf("epub/beta")).Scan(&title); err != nil || title != beta.Title {
+		t.Fatalf("beta title = %q %v", title, err)
+	}
+
+	// Once regrouped, a rescan leaves every file alone.
+	if result := publish("alpha.epub", "alpha.pdf", "beta.epub", "one.epub", "two.epub"); result != (StoragePublishResult{Unchanged: 5}) {
+		t.Fatalf("rescan result = %+v", result)
+	}
+}
+
 func storageEbookContentID(t *testing.T, pool *pgxpool.Pool, folderID int, bookID string) string {
 	t.Helper()
 	var id string
