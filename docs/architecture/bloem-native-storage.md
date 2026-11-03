@@ -1,12 +1,13 @@
 # How native storage works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Native storage is a Bloem addition: Silo's libraries read
-> files from paths on the server, and Bloem adds libraries that read from S3 buckets
-> and the Bookwarehouse book service through approved storage plugins. It builds on
-> Silo's plugin runtime (`internal/plugins`), scanner and catalog. It is
-> experimental, and no storage service is certified (`backend_verified` stays
-> false). The technical rules are in the [For developers](#for-developers) section.
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-03
+> and checked against `main` at `ff0a75fd1`. Native storage is a Bloem addition:
+> Silo's libraries read files from paths on the server, and Bloem adds libraries
+> that read from S3 buckets and the Bookwarehouse book service through approved
+> storage plugins. It builds on Silo's plugin runtime (`internal/plugins`),
+> scanner and catalog. It is experimental, and no storage service is certified
+> (`backend_verified` stays false). The technical rules are in the
+> [For developers](#for-developers) section.
 
 This page walks through what happens after a storage source is added: how Bloem
 scans it, how it notices a file has gone, where covers come from, and how people
@@ -37,8 +38,8 @@ read, watch and listen. Adding a source is on the
    of every folder and page it has listed. A scan that stopped part-way resumes
    from the journal instead of starting again.
 3. **List a page at a time.** The plugin lists up to 512 files at a time. Bloem
-   skips what a folder scan would skip, such as samples, extras and system
-   folders, and adds each page's books, movies or audiobook tracks to the catalog
+   skips what a folder scan would skip, such as samples, extras, hidden folders
+   and system folders, and adds each page's books, movies or audiobook tracks to the catalog
    in one go.
 4. **Finish.** When every folder has been listed, Bloem works out what is no
    longer there and tidies up.
@@ -445,9 +446,12 @@ For each selection, `libraryingest.StorageScanner`:
    so a retry lists it again. The unfenced `ApplyPage` entry point remains
    available for standalone journal discovery. A directory the filesystem
    scanner would never walk is recorded but not queued for listing
-   (`scanner.StorageDirectorySkipped`): Silo's ignored names (`.recyclebin`,
-   `@eaDir`, `.downloads`, ...) for every kind, plus sample, subtitle and
-   title-owned extras folders for movies. `.ignore`, `.siloignore` and
+   (`scanner.StorageDirectorySkipped`): every name Silo's walk skips
+   (`scanner.SkippedDirName`: any hidden, dot-prefixed folder below the source
+   root, and the NAS and OS housekeeping folders `@eaDir`, `@recycle`,
+   `#recycle` and `$RECYCLE.BIN`) for every kind, plus sample, subtitle and
+   title-owned extras folders for movies. A movie file under any of these
+   folders is skipped too (`scanner.StorageMovieFileSkipped`). `.ignore`, `.siloignore` and
    `.nomedia` are not read: honoring them would need a pinned read of each
    ignore file and directory state across listing pages.
    A page extends the run's root reach (`bloem_storage_scan_directory_roots`)
@@ -839,7 +843,9 @@ source-management UI and organization S3 sources on 2026-10-15, and full 30-seco
 listing deadlines on 2026-10-25 (`d183b286f`). The Silo merge `68070f04b`
 (2026-10-27) added Silo's private plugin cache check. On 2026-10-28 lock-free
 read-only lease checks (`24c1f3354`, `54cadaab5`), transient page-listing retries
-(`3ed00c8bd`) and the ebook following-page listing (`f78891f74`) landed.
+(`3ed00c8bd`) and the ebook following-page listing (`f78891f74`) landed. The Silo
+merge `ff0a75fd1` (2026-11-03) brought Silo's skip of every hidden folder, and
+native scans skip the same folders (`dbe43fa54`).
 
 ### Related pages
 
