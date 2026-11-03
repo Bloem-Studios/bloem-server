@@ -131,11 +131,12 @@ func storageTitleKey(title string, year int) string {
 }
 
 // StorageMovieFileSkipped reports a listed movie-library file that Silo's
-// filesystem walk would not publish as a movie: one inside an ignored or
-// sample/subtitle folder, a sample, or a local extra. Extras are classified by
-// Silo's folder and suffix conventions. A native listing cannot prove that a
-// title folder holds media of its own, so an extras folder counts as owned
-// when its owner is named like a title (Title (Year) or provider tags).
+// filesystem walk would not publish as a movie: one inside a skipped (hidden or
+// housekeeping) or sample/subtitle folder, a sample, or a local extra. Extras
+// are classified by Silo's folder and suffix conventions. A native listing
+// cannot prove that a title folder holds media of its own, so an extras folder
+// counts as owned when its owner is named like a title (Title (Year) or
+// provider tags).
 func StorageMovieFileSkipped(entry *storagev1.Entry) bool {
 	if entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_FILE {
 		return false
@@ -145,7 +146,7 @@ func StorageMovieFileSkipped(entry *storagev1.Entry) bool {
 		return false
 	}
 	for dir := path.Dir(p); strings.HasPrefix(dir, storageMovieParseRoot+"/"); dir = path.Dir(dir) {
-		if isIgnoredDirectoryPath(dir) || shouldSkipMovieSupplementalDir(dir) {
+		if SkippedDirName(path.Base(dir)) || shouldSkipMovieSupplementalDir(dir) {
 			return true
 		}
 	}
@@ -166,10 +167,10 @@ func StorageMovieFileSkipped(entry *storagev1.Entry) bool {
 }
 
 // StorageDirectorySkipped reports a listed directory the native scan never
-// lists, as Silo's walk never enters it: an ignored directory name for every
-// library kind, and for movie libraries a sample/subtitle folder or an extras
-// folder owned by a title. Its entry is still recorded; its contents cost no
-// provider requests.
+// lists, as Silo's walk never enters it: a skipped (hidden or housekeeping)
+// directory name for every library kind, and for movie libraries a
+// sample/subtitle folder or an extras folder owned by a title. Its entry is
+// still recorded; its contents cost no provider requests.
 func StorageDirectorySkipped(libraryType string, entry *storagev1.Entry) bool {
 	if entry.GetKind() != storagev1.EntryKind_ENTRY_KIND_DIRECTORY {
 		return false
@@ -180,7 +181,7 @@ func StorageDirectorySkipped(libraryType string, entry *storagev1.Entry) bool {
 	}
 	movie := librarykind.IsMovie(libraryType)
 	for dir := p; strings.HasPrefix(dir, storageMovieParseRoot+"/"); dir = path.Dir(dir) {
-		if isIgnoredDirectoryPath(dir) {
+		if SkippedDirName(path.Base(dir)) {
 			return true
 		}
 		if movie && (shouldSkipMovieSupplementalDir(dir) ||

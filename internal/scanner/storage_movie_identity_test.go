@@ -73,8 +73,8 @@ func TestStorageMovieIdentityGroupsEditions(t *testing.T) {
 	}
 }
 
-// Silo's walk never collects samples, sidecar-only folders, local extras or
-// its ignored directories. Native movie publication must not turn them into
+// Silo's walk never collects samples, sidecar-only folders, local extras,
+// hidden (dot-prefixed) folders or its ignored directories. Native movie publication must not turn them into
 // catalog movies either.
 func TestStorageMovieFileSkippedFollowsSiloWalk(t *testing.T) {
 	for logical, want := range map[string]bool{
@@ -87,6 +87,8 @@ func TestStorageMovieFileSkippedFollowsSiloWalk(t *testing.T) {
 		".recyclebin/Heat (1995)/Heat (1995).mkv":                true,
 		"00s/.downloads/Heat (1995).mkv":                         true,
 		"@eaDir/Heat (1995).mkv":                                 true,
+		".hidden/Heat (1995)/Heat (1995).mkv":                    true,
+		"Heat (1995) {tmdb-949}/.thumbs/Heat (1995).mkv":         true,
 		"shorts/Heat (1995)/Heat (1995).mkv":                     false,
 		"Other/Heat (1995) {tmdb-949}/Heat (1995).mkv":           false,
 		"3 A.M. (2001) {imdb-tt0248661} {tmdb-77084}/3 A.M..mkv": false,
@@ -107,6 +109,8 @@ func TestStorageDirectorySkipped(t *testing.T) {
 		{"movies", ".recyclebin", true},
 		{"movies", "00s/@eaDir", true},
 		{"movies", "00s/$RECYCLE.BIN", true},
+		{"movies", "00s/.cache", true},
+		{"movies", ".hidden/Heat (1995) {tmdb-949}", true},
 		{"movies", "Heat (1995) {tmdb-949}/Trailers", true},
 		{"movies", "Heat (1995) {tmdb-949}/Subs", true},
 		{"movies", "Heat (1995) {tmdb-949}/Sample", true},
@@ -116,6 +120,7 @@ func TestStorageDirectorySkipped(t *testing.T) {
 		{"movies", "4K/Other", false},
 		{"movies", "Heat (1995) {tmdb-949}", false},
 		{"ebooks", ".recyclebin", true},
+		{"ebooks", "Author/.git", true},
 		{"ebooks", "Author/Trailers", false},
 		{"ebooks", "Author/Subs", false},
 	} {
