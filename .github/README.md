@@ -78,7 +78,7 @@ Checked on November 4, 2026, against `main` at `aaf390389`.
 | Silo integrated | all of Silo `main` through `6d1562473` (November 4, 2026, 21:26 UTC), merged in `a4aa3611a`; Silo `main` had no newer commits when checked |
 | Silo merges | the merge bot, since November 2, 2026: each Silo batch is merged with Silo winning, checked, pushed to `main` and deployed once Bloem CI passes it ([how](../docs/architecture/bloem-following-silo.md)) |
 | Seam ledger | 316 Silo-owned files that Bloem differs in, eight of them temporary web fixes added in `74e207aca` and `0edcd6e49` that go when Silo merges its own versions (the library grid from `d690b98a5` matches Silo again since Silo #3501, merged in `73cbf3b3a`), declared in [`contracts/seams.txt`](../contracts/seams.txt) |
-| Production | `28bdc197b` since 22:01 UTC on November 4, Silo through `4e3020a26`, deployed by the merge bot after Bloem CI passed it; both transcode nodes run the same image. See the [receipt](../docs/operations/2026-11-04-silo-sync-4e3020a26-deployment.md) |
+| Production | `6604bfd44` since 22:47 UTC on November 4, Silo through `6d1562473`, deployed by the merge bot after Bloem CI passed it; both transcode nodes run the same image. See the [receipt](../docs/operations/2026-11-04-silo-sync-6d1562473-deployment.md) |
 
 The two October 31 Silo merges brought:
 
