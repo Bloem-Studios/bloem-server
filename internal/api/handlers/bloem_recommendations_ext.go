@@ -58,7 +58,7 @@ func (h *RecommendationsHandler) HandleSimilarResolved(w http.ResponseWriter, r 
 		limit = 20
 	}
 
-	scored, err := h.SimilarItems(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), itemID, limit, requestAccessFilter(r))
+	scored, err := h.SimilarItems(r.Context(), apimw.GetUserID(r.Context()), apimw.GetProfileID(r.Context()), itemID, limit, requestAccessFilter(r), true)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to fetch similar items")
 		return

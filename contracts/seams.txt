@@ -236,7 +236,6 @@ internal/sections/fetcher.go
 internal/sections/types.go
 internal/subtitles/ai/transcriber.go  # Chinese and Japanese cues: words joined without spaces, width counted in columns, 16-character lines, splits at clause marks; candidate for a Silo upstream PR
 internal/transcodenode/server_test.go
-internal/userstore/pgstore/profile_libraries.go
 internal/userstore/pgstore/profiles.go
 internal/userstore/types.go
 internal/worker/cleanup.go

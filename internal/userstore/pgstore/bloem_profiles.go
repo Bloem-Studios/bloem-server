@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
@@ -24,7 +25,8 @@ func (s *PostgresUserStore) GetProfileInTransaction(ctx context.Context, tx pgx.
 
 // ListProfilesInTransaction lists profiles through a caller-owned transaction.
 func (s *PostgresUserStore) ListProfilesInTransaction(ctx context.Context, tx pgx.Tx) ([]userstore.Profile, error) {
-	return listProfiles(ctx, tx, s.userID)
+	profiles, _, err := bloemListProfiles(ctx, tx, s.userID)
+	return profiles, err
 }
 
 // DeleteProfileInTransaction deletes a profile through a caller-owned transaction.
@@ -88,5 +90,145 @@ func resolveProfileTenancy(ctx context.Context, exec preferenceSettingsExecutor,
 		}
 		p.AccessGroupID = &defaultGroupID
 	}
+	return nil
+}
+
+// bloemProfileColumns are the user_profiles columns Bloem adds: a profile's own
+// sign-in, its organization and its access group. Bloem's profile reads select
+// them after Silo's own columns and scan them through scanProfile's extra
+// targets, so Silo's column list and scan stay as Silo wrote them.
+const bloemProfileColumns = `COALESCE(login_email, ''), credential_revision, organization_id::text, access_group_id`
+
+// bloemProfileByIDQuery is Silo's profileByIDQuery with bloemProfileColumns
+// after its last column.
+var bloemProfileByIDQuery = bloemWithProfileColumns(profileByIDQuery)
+
+// bloemWithProfileColumns adds bloemProfileColumns to the end of a Silo profile
+// query's select list. It panics when the query no longer reads FROM
+// user_profiles on its own line, so a reshaped Silo query fails every test.
+func bloemWithProfileColumns(query string) string {
+	const from = "\n\tFROM user_profiles "
+	at := strings.LastIndex(query, from)
+	if at < 0 {
+		panic("pgstore: Silo's profile query no longer selects FROM user_profiles")
+	}
+	return query[:at] + ",\n\t       " + bloemProfileColumns + query[at:]
+}
+
+// bloemProfileFields holds bloemProfileColumns while scanProfile builds the
+// profile.
+type bloemProfileFields struct {
+	loginEmail         string
+	credentialRevision int64
+	organizationID     string
+	accessGroupID      *int64
+}
+
+func (f *bloemProfileFields) targets() []any {
+	return []any{&f.loginEmail, &f.credentialRevision, &f.organizationID, &f.accessGroupID}
+}
+
+func (f *bloemProfileFields) apply(p *userstore.Profile) {
+	p.LoginEmail = f.loginEmail
+	p.CredentialRevision = f.credentialRevision
+	p.OrganizationID = f.organizationID
+	p.AccessGroupID = f.accessGroupID
+}
+
+// bloemGetProfile is getProfile on Bloem's schema: Silo's read of the profile
+// and its allowed libraries, plus bloemProfileColumns. It always handles the
+// read; getProfile keeps Silo's own read below its hook.
+func bloemGetProfile(ctx context.Context, db preferenceSettingsExecutor, userID int, id string) (*userstore.Profile, bool, error) {
+	var libraryIDs []int
+	var fields bloemProfileFields
+	row := db.QueryRow(ctx, bloemProfileByIDQuery, userID, id)
+	p, err := scanProfile(row, append([]any{&libraryIDs}, fields.targets()...)...)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, true, nil
+	}
+	if err != nil {
+		return nil, true, fmt.Errorf("querying profile %s: %w", id, err)
+	}
+	fields.apply(p)
+	// A profile without allowed libraries keeps a nil list, as ListProfiles
+	// reports it.
+	if len(libraryIDs) > 0 {
+		p.AllowedLibraryIDs = libraryIDs
+	}
+	return p, true, nil
+}
+
+// bloemListProfiles is ListProfiles on Bloem's schema and in a caller's
+// transaction: Silo's columns plus bloemProfileColumns, in creation order with
+// the id as tie-breaker. It always handles the read; ListProfiles keeps Silo's
+// own read below its hook.
+func bloemListProfiles(ctx context.Context, exec preferenceSettingsExecutor, userID int) ([]userstore.Profile, bool, error) {
+	rows, err := exec.Query(ctx, `
+		SELECT id, name, avatar, pin_hash, is_child, is_primary, max_content_rating, COALESCE(max_advisory_age, 0),
+		       require_advisory_age,
+		       quality_preference, language, preferred_metadata_language, subtitle_language, subtitle_mode,
+		       auto_skip_intro, auto_skip_credits, auto_skip_recap, auto_play_next_preview, library_restrictions_enabled,
+		       show_forced_subtitles, max_playback_quality, pin_revision, created_at, updated_at,
+		       `+bloemProfileColumns+`
+		FROM user_profiles WHERE user_id = $1 ORDER BY created_at ASC, id ASC`, userID)
+	if err != nil {
+		return nil, true, fmt.Errorf("listing profiles: %w", err)
+	}
+	defer rows.Close()
+
+	var profiles []userstore.Profile
+	for rows.Next() {
+		var fields bloemProfileFields
+		p, err := scanProfile(rows, fields.targets()...)
+		if err != nil {
+			return nil, true, fmt.Errorf("scanning profile row: %w", err)
+		}
+		fields.apply(p)
+		profiles = append(profiles, *p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, true, fmt.Errorf("iterating profile rows: %w", err)
+	}
+	if err := bloemAttachAllowedLibraries(ctx, exec, userID, profiles); err != nil {
+		return nil, true, err
+	}
+	return profiles, true, nil
+}
+
+// bloemAttachAllowedLibraries is Silo's attachAllowedLibraries for a caller's
+// executor, such as a transaction, instead of the store's pool.
+func bloemAttachAllowedLibraries(ctx context.Context, exec preferenceSettingsExecutor, userID int, profiles []userstore.Profile) error {
+	if len(profiles) == 0 {
+		return nil
+	}
+	ids := make([]string, len(profiles))
+	for i := range profiles {
+		ids[i] = profiles[i].ID
+	}
+	rows, err := exec.Query(ctx,
+		`SELECT profile_id, library_id
+		FROM user_profile_allowed_libraries
+		WHERE user_id = $1 AND profile_id = ANY($2)
+		ORDER BY library_id ASC`,
+		userID,
+		ids,
+	)
+	if err != nil {
+		return fmt.Errorf("listing allowed libraries for user %d: %w", userID, err)
+	}
+	defer rows.Close()
+
+	var allowedLibraries []userstore.ProfileAllowedLibrary
+	for rows.Next() {
+		var allowedLibrary userstore.ProfileAllowedLibrary
+		if err := rows.Scan(&allowedLibrary.ProfileID, &allowedLibrary.LibraryID); err != nil {
+			return fmt.Errorf("scanning allowed library for user %d: %w", userID, err)
+		}
+		allowedLibraries = append(allowedLibraries, allowedLibrary)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterating allowed libraries for user %d: %w", userID, err)
+	}
+	userstore.AttachAllowedLibraries(profiles, allowedLibraries)
 	return nil
 }

@@ -27,6 +27,10 @@ func (f *fakeSimilarEngine) SimilarItems(context.Context, int, string, string, i
 	return f.scored, f.err
 }
 
+func (f *fakeSimilarEngine) SimilarItemsWithReasons(context.Context, int, string, string, int, catalog.AccessFilter) ([]recommendations.ScoredItem, error) {
+	return f.scored, f.err
+}
+
 func (f *fakeSimilarEngine) BecauseYouWatched(context.Context, int, string, string, int, catalog.AccessFilter) ([]recommendations.ScoredItem, error) {
 	return nil, nil
 }

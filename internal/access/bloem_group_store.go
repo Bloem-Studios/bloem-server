@@ -610,8 +610,9 @@ func TenantGroupPolicyInTransaction(ctx context.Context, tx pgx.Tx, subject Grou
 // account-level compatibility path), and the account is a member there. An
 // account with no such membership or no group in that organization has no
 // group, matching Silo's "nil when the user has no group". Server wiring uses TenantGroupStore,
-// whose profile-scoped, fail-closed resolution this does not change.
-func bloemAccountGroupPolicy(ctx context.Context, db groupQueryRower, accountID int) (*GroupPolicy, error) {
+// whose profile-scoped, fail-closed resolution this does not change. It always
+// handles the read; groupPolicyForUser keeps Silo's own read below its hook.
+func bloemAccountGroupPolicy(ctx context.Context, db groupQueryRower, accountID int) (*GroupPolicy, bool, error) {
 	var organizationID *uuid.UUID
 	if tenant, ok := tenancy.FromContext(ctx); ok && tenant.AccountID == accountID && tenant.OrganizationID != uuid.Nil {
 		organizationID = &tenant.OrganizationID
@@ -632,10 +633,10 @@ func bloemAccountGroupPolicy(ctx context.Context, db groupQueryRower, accountID 
 		 AND g.id = u.access_group_id
 		WHERE m.account_id = $1`, accountID, organizationID))
 	if errors.Is(err, ErrGroupNotFound) {
-		return nil, nil
+		return nil, true, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("loading access group policy for user %d: %w", accountID, err)
+		return nil, true, fmt.Errorf("loading access group policy for user %d: %w", accountID, err)
 	}
-	return policy, nil
+	return policy, true, nil
 }

@@ -761,7 +761,9 @@ func newChiRouter(deps Dependencies) chi.Router {
 
 		if deps.UserStoreProvider != nil {
 			if deps.PolicySystem != nil {
-				viewerResolver = policy.NewViewerResolver(userRepo, deps.UserStoreProvider, profileTokenService, deps.PolicySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))
+				viewerResolver = policy.NewViewerResolver(userRepo, deps.UserStoreProvider, profileTokenService, deps.PolicySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults).WithSharedTables(deps.DB)
+				// Bloem: tenant libraries narrow every viewer scope (bloem_viewer_resolver.go).
+				viewerResolver = viewerResolver.(*policy.ViewerResolver).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))
 			} else {
 				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 				viewerResolver = access.NewResolver(userRepo, deps.UserStoreProvider, profileTokenService, accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)
