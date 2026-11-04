@@ -52,6 +52,36 @@ type fakeFFmpegBinary struct {
 	startedPath string
 }
 
+func TestNVIDIADeviceCandidatesRequireSuccessfulNVENCProbe(t *testing.T) {
+	for _, device := range []string{"dxg", "nvidiactl", "nvidia0"} {
+		for _, succeeds := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/smoke_success=%t", device, succeeds), func(t *testing.T) {
+				env := setupHWAccelTest(t)
+				env.addNVIDIADevice(t, device)
+				probe := successfulNVENCProbe()
+				probe.smokeOK = succeeds
+				ffmpeg := writeFakeFFmpeg(t, probe)
+
+				info := DetectHWAccelWithFFmpeg("auto", ffmpeg.path, "")
+				backend := detectedBackendEntry(t, info, transcodeHWNVENC)
+				if backend.Verified != succeeds {
+					t.Fatalf("NVENC verified = %t, want %t: %+v", backend.Verified, succeeds, backend)
+				}
+				want := HWAccelNone
+				if succeeds {
+					want = transcodeHWNVENC
+				}
+				if info.Resolved != want {
+					t.Fatalf("resolved = %q, want %q", info.Resolved, want)
+				}
+				if log := fakeFFmpegLog(t, ffmpeg); !strings.Contains(log, "h264_nvenc") {
+					t.Fatalf("NVENC smoke encode missing from probe log: %s", log)
+				}
+			})
+		}
+	}
+}
+
 func TestResolveHWAccelWithFFmpegAutoPrefersNVENCOverIntel(t *testing.T) {
 	env := setupHWAccelTest(t)
 	env.addRenderDevice(t, "renderD128", "0x8086")
@@ -708,6 +738,7 @@ func setupHWAccelTest(t *testing.T) *hwAccelTestEnv {
 	oldDRIDir := defaultDRIDir
 	oldNVIDIAControlDevice := defaultNVIDIAControlDevice
 	oldNVIDIADeviceGlob := defaultNVIDIADeviceGlob
+	oldDXGDevice := defaultDXGDevice
 	oldSysClassDRMDir := sysClassDRMDir
 	oldGOOS := currentGOOS
 	oldProbeTimeout := hwProbeCommandTimeout
@@ -723,6 +754,7 @@ func setupHWAccelTest(t *testing.T) *hwAccelTestEnv {
 	defaultDRIDir = env.driDir
 	defaultNVIDIAControlDevice = filepath.Join(env.devDir, "nvidiactl")
 	defaultNVIDIADeviceGlob = filepath.Join(env.devDir, "nvidia[0-9]*")
+	defaultDXGDevice = filepath.Join(env.devDir, "dxg")
 	sysClassDRMDir = env.sysDir
 	currentGOOS = "linux"
 	// Process startup on loaded macOS runners can exceed 200ms before the
@@ -742,6 +774,7 @@ func setupHWAccelTest(t *testing.T) *hwAccelTestEnv {
 		defaultDRIDir = oldDRIDir
 		defaultNVIDIAControlDevice = oldNVIDIAControlDevice
 		defaultNVIDIADeviceGlob = oldNVIDIADeviceGlob
+		defaultDXGDevice = oldDXGDevice
 		sysClassDRMDir = oldSysClassDRMDir
 		currentGOOS = oldGOOS
 		hwProbeCommandTimeout = oldProbeTimeout
