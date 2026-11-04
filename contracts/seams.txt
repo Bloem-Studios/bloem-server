@@ -238,6 +238,9 @@ internal/subtitles/ai/transcriber.go  # Chinese and Japanese cues: words joined 
 internal/transcodenode/server_test.go
 internal/userstore/pgstore/profiles.go
 internal/userstore/types.go
+internal/watchsync/plugin_provider_state.go  # decode a watched removal before an ordinary watched state; temporary, Pastime watched removals (bloem_watched_removal.go) until Silo carries WatchSyncRemoteWatchedState.removed, drop when Silo's version merges
+internal/watchsync/service.go  # apply watched removals in ImportWatched and count them as signal changes; temporary, Pastime watched removals (bloem_watched_removal.go) until Silo carries WatchSyncRemoteWatchedState.removed, drop when Silo's version merges
+internal/watchsync/types.go  # RemoteWatch.Removed; temporary, Pastime watched removals (bloem_watched_removal.go) until Silo carries WatchSyncRemoteWatchedState.removed, drop when Silo's version merges
 internal/worker/cleanup.go
 internal/worker/heartbeat.go
 internal/worker/reconciler.go

@@ -477,6 +477,8 @@ type RemoteWatch struct {
 	EpisodeNumber   int
 	PlayCount       int
 	LastWatchedAt   *time.Time
+	// Removed marks a watched removal (bloem_watched_removal.go); LastWatchedAt is then its time.
+	Removed bool
 }
 
 type RemoteProgress struct {

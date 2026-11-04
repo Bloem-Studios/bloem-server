@@ -201,6 +201,7 @@ same path. Read the upstream document together with its overlay.
 - [How the client contract generator works](../architecture/bloem-client-contract-generator.md) — the registry, the Kotlin and Swift files the apps copy, the contract digest, and the rules that keep older apps working.
 - [How Bloem runs Silo's Jellyfin and Audiobookshelf servers](../architecture/bloem-compatibility-removal.md) — Silo's Jellyfin and Audiobookshelf servers, their tenant wiring, and the removed companion gateway.
 - [How Pastime tracking was removed](../architecture/bloem-pastime-removal.md) — forward-only cleanup migration and the rule that Pastime returns only as an ordinary plugin.
+- [How removing a title in a tracker clears its watch history](../architecture/bloem-watch-sync-removals.md) — watched removals on a watch-sync connection, applied to that one profile, newer watches kept.
 - [How remote control works](../architecture/admin-remote-control.md) — invariants for server-issued commands to client apps.
 
 ### Embedded web

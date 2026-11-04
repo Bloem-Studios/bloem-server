@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How a removal in a tracker reaches one profile's watch history</title>
+<desc id="d">Four stages from left to right: Robin removes a show in the tracker; the tracker keeps a note of the removal for Robin's profile; the tracker's plugin passes it on Robin's own connection; Bloem clears the show from Robin's watch history. Below, three checks: Sam's profile on the same account keeps its history, an episode Robin watched again after the removal stays, and repeating the note changes nothing.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="499" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How a removal in a tracker reaches one profile's watch history</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Every step carries one profile. Nothing else on the account changes.</text>
+<rect x="40" y="128" width="260" height="150" rx="14" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.5"/>
+<circle cx="66" cy="156" r="13" fill="#14B8A6"/>
+<text x="66" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="56" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Robin removes a show</text>
+<text x="56" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">In the tracker, Robin deletes</text>
+<text x="56" y="249" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the show from their library.</text>
+<line x1="303" y1="203.0" x2="323" y2="203.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="326" y="128" width="260" height="150" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.5"/>
+<circle cx="352" cy="156" r="13" fill="#9CA3AF"/>
+<text x="352" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="342" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The tracker keeps a note</text>
+<text x="342" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">One note: this title, this</text>
+<text x="342" y="249" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">profile, removed at this time.</text>
+<line x1="589" y1="203.0" x2="609" y2="203.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="612" y="128" width="260" height="150" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<circle cx="638" cy="156" r="13" fill="#6366F1"/>
+<text x="638" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="628" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Robin's connection</text>
+<text x="628" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The plugin passes the note on</text>
+<text x="628" y="249" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">with the profile's next sync.</text>
+<line x1="875" y1="203.0" x2="895" y2="203.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="898" y="128" width="260" height="150" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<circle cx="924" cy="156" r="13" fill="#10B981"/>
+<text x="924" y="161" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="914" y="202" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Robin's watch history</text>
+<text x="914" y="230" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Bloem clears the show's episodes</text>
+<text x="914" y="249" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">watched up to that time.</text>
+<rect x="40" y="304" width="1120" height="156" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<text x="62" y="338" font-size="16" font-weight="700" fill="#101827" text-anchor="start">What stays</text>
+<circle cx="74" cy="376" r="12" fill="#10B981"/>
+<path d="M68.6,376.24 L72.8,380.56 L80.0,371.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="96" y="381" font-size="15" font-weight="700" fill="#101827" text-anchor="start">Sam's history</text>
+<text x="62" y="412" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Sam is another profile on the same account.</text>
+<text x="62" y="431" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Sam's watches of the show stay.</text>
+<circle cx="442" cy="376" r="12" fill="#10B981"/>
+<path d="M436.6,376.24 L440.8,380.56 L448.0,371.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="464" y="381" font-size="15" font-weight="700" fill="#101827" text-anchor="start">A later watch</text>
+<text x="430" y="412" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">An episode Robin watched again in Bloem after</text>
+<text x="430" y="431" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the removal stays.</text>
+<circle cx="810" cy="376" r="12" fill="#10B981"/>
+<path d="M804.6,376.24 L808.8,380.56 L816.0,371.8" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="832" y="381" font-size="15" font-weight="700" fill="#101827" text-anchor="start">A repeated note</text>
+<text x="798" y="412" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The tracker repeats the note on every sync.</text>
+<text x="798" y="431" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">After the first, nothing changes.</text>
+</svg>

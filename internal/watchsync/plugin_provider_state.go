@@ -100,7 +100,10 @@ func (p *PluginProvider) FetchWatchedBatch(
 		if state.GetWatched() == nil {
 			continue
 		}
-		row, err := remoteWatchFromProto(p.Key(), state)
+		row, removal, err := remoteWatchRemovalFromProto(p.Key(), state)
+		if !removal {
+			row, err = remoteWatchFromProto(p.Key(), state)
+		}
 		if err != nil {
 			batch.Warnings = append(batch.Warnings, err.Error())
 			continue

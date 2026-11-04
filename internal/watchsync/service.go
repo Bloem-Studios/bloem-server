@@ -905,7 +905,7 @@ func (s *Service) executeSyncRun(ctx context.Context, conn Connection, run SyncR
 			result, err := s.ImportWatched(ctx, conn, cfg, importer)
 			run.InboundWatchedFound = result.Found
 			run.InboundWatchedImported = result.Imported
-			signalsChanged = signalsChanged || result.Imported > 0
+			signalsChanged = signalsChanged || result.Imported > 0 || result.Removed > 0
 			run.Warning = appendWarning(run.Warning, result.Warnings)
 			afterFlow("watched import", err)
 		}
@@ -1162,6 +1162,7 @@ func summarizeWarnings(warnings []string) []string {
 type ImportWatchedResult struct {
 	Found     int
 	Imported  int
+	Removed   int
 	Unmatched int
 	Warnings  []string
 }
@@ -1190,7 +1191,12 @@ func (s *Service) ImportWatched(
 	rows := batch.Rows
 	result := ImportWatchedResult{Found: len(rows), Warnings: append([]string{}, batch.Warnings...)}
 	matchedLeaves := make(map[string]matchedWatchedLeaf)
+	var removals []RemoteWatch
 	for _, row := range rows {
+		if row.Removed {
+			removals = append(removals, row)
+			continue
+		}
 		matches, reason, err := s.matchWatchedLeaves(ctx, row)
 		if err != nil {
 			return result, err
@@ -1214,6 +1220,9 @@ func (s *Service) ImportWatched(
 				}
 			}
 		}
+	}
+	if err := s.applyWatchedRemovals(ctx, conn, removals, &result); err != nil {
+		return result, err
 	}
 	mediaItemIDs := make([]string, 0, len(matchedLeaves))
 	for mediaItemID := range matchedLeaves {
