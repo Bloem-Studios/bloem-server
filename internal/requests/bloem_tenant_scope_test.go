@@ -112,6 +112,9 @@ func TestBloemAdminCannotMutateAnotherOrganizationsRequest(t *testing.T) {
 			_, err := s.Cancel(context.Background(), v, id, "no")
 			return err
 		}},
+		{"RemoveFailed", func(s *Service, v Viewer, id string) error {
+			return s.RemoveFailed(context.Background(), v, id)
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			store := newFakeStore()
