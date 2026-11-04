@@ -118,6 +118,10 @@ func (f *fakeRequestService) Retry(context.Context, mediarequests.Viewer, string
 	return nil, nil
 }
 
+func (f *fakeRequestService) RemoveFailed(context.Context, mediarequests.Viewer, string) error {
+	return nil
+}
+
 func (f *fakeRequestService) RequestCapabilityAllowed(context.Context, mediarequests.Viewer) (bool, error) {
 	return true, nil
 }
