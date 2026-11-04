@@ -20,11 +20,18 @@ type TenantLibraryResolver interface {
 // makes available to it, failing closed otherwise. Without it the resolver
 // keeps Silo's single-tenant behavior. Production wiring always sets it
 // (TestProductionViewerResolversUseBloemTenancy).
+//
+// It also turns off Silo's batched read (WithSharedTables): that batch reads
+// the account's access group and a profile without Bloem's columns, where
+// Bloem resolves the profile's own group through the group provider
+// (access.EffectivePolicyForRequest). Resolve then reads each fact through its
+// repository.
 func (r *ViewerResolver) WithBloemTenancy(tenantLibraries TenantLibraryResolver) *ViewerResolver {
 	if tenantLibraries == nil {
 		panic("policy: WithBloemTenancy requires a tenant library resolver")
 	}
 	r.tenantLibraries = tenantLibraries
+	r.shared = nil
 	return r
 }
 

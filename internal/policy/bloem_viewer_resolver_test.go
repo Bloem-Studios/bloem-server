@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"reflect"
 	"slices"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 	"github.com/Silo-Server/silo-server/internal/userstore"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestTenantFactsFromContextRequiresCompleteResolvedContext(t *testing.T) {
@@ -341,4 +343,73 @@ func (p *bloemViewerResolverGroupProvider) ResolvePolicy(_ context.Context, subj
 		*p.events = append(*p.events, "group")
 	}
 	return p.group, p.err
+}
+
+// Silo's batched read (WithSharedTables) reads the account's group and a
+// profile without Bloem's columns, so it would skip the profile's own group.
+// Bloem tenancy keeps the per-request reads through the repositories.
+func TestViewerResolverBloemTenancyKeepsRepositoryReads(t *testing.T) {
+	organizationID := uuid.New()
+	events := []string{}
+	store := orderedViewerResolverStore{
+		viewerResolverTestStore: viewerResolverTestStore{profile: &userstore.Profile{
+			ID:             "prof-1",
+			OrganizationID: organizationID.String(),
+		}},
+		events: &events,
+	}
+	groups := &bloemViewerResolverGroupProvider{
+		group:  &access.GroupPolicy{PlaybackAllowed: true, TranscodeAllowed: true, DownloadAllowed: true, DownloadTranscodeAllowed: true, RequestsAllowed: true},
+		events: &events,
+	}
+	libraries := &viewerResolverTenantLibraries{ids: defaultViewerResolverTenantLibraries().ids, events: &events}
+	tenant := resolvedTenantForPolicyTest()
+	tenant.OrganizationID = organizationID
+	ctx := tenancy.WithContext(context.Background(), tenant)
+
+	config, err := pgxpool.ParseConfig("postgres://bloem@bloem-test.invalid/none")
+	if err != nil {
+		t.Fatalf("ParseConfig: %v", err)
+	}
+	config.ConnConfig.LookupFunc = func(context.Context, string) ([]string, error) {
+		return nil, errors.New("test pool: the batched read must not run")
+	}
+	config.ConnConfig.DialFunc = func(context.Context, string, string) (net.Conn, error) {
+		return nil, errors.New("test pool: the batched read must not run")
+	}
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
+		t.Fatalf("NewWithConfig: %v", err)
+	}
+	t.Cleanup(pool.Close)
+
+	// The production order: Silo's line, then Bloem's.
+	resolver := NewViewerResolver(
+		viewerResolverUserRepo{user: &models.User{ID: 1, AccessPolicyRevision: 5}},
+		sharedViewerResolverStoreProvider{viewerResolverStoreProvider: viewerResolverStoreProvider{store: store}, pool: pool},
+		nil,
+		newViewerResolverTestPDP(t, ctx),
+		groups).WithSharedTables(pool).WithBloemTenancy(libraries)
+
+	if _, err := resolver.Resolve(ctx, access.ResolveInput{UserID: 1, ProfileID: "prof-1"}); err != nil {
+		t.Fatalf("Resolve() error: %v", err)
+	}
+	if !reflect.DeepEqual(events, []string{"profile", "group", "libraries"}) {
+		t.Fatalf("resolution order = %#v, want the repository reads", events)
+	}
+	wantSubject := access.GroupSubject{OrganizationID: organizationID, AccountID: 1, ProfileID: "prof-1", Legacy: true}
+	if groups.subject != wantSubject {
+		t.Fatalf("ResolvePolicy subject = %#v, want %#v", groups.subject, wantSubject)
+	}
+}
+
+// sharedViewerResolverStoreProvider reports that every account lives in pool,
+// as pgstore.PostgresProvider does in production.
+type sharedViewerResolverStoreProvider struct {
+	viewerResolverStoreProvider
+	pool *pgxpool.Pool
+}
+
+func (p sharedViewerResolverStoreProvider) StoresAccountsIn(pool *pgxpool.Pool) bool {
+	return pool != nil && pool == p.pool
 }
