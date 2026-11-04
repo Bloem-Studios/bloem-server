@@ -9,9 +9,8 @@ import (
 )
 
 type resolverStore interface {
-	DefaultOrganization(context.Context) (Organization, error)
-	GetOrganization(context.Context, uuid.UUID) (Organization, error)
-	GetMembership(context.Context, int, uuid.UUID) (Membership, error)
+	// OrganizationMembership is Store.OrganizationMembership.
+	OrganizationMembership(ctx context.Context, accountID int, organizationID *uuid.UUID) (Organization, Membership, error)
 }
 
 // Resolver resolves an account's current membership into request tenant context.
@@ -30,12 +29,14 @@ func (r *Resolver) Resolve(ctx context.Context, accountID int, requestedOrganiza
 	if r == nil || r.store == nil {
 		return Context{}, ErrTenantUnavailable
 	}
-
-	organization, err := r.resolveOrganization(ctx, requestedOrganizationID, legacy)
+	if requestedOrganizationID == nil && !legacy {
+		return Context{}, ErrOwnershipResolutionRequired
+	}
+	organization, membership, member, err := r.read(ctx, accountID, requestedOrganizationID)
 	if err != nil {
 		return Context{}, err
 	}
-	return r.resolveTenant(ctx, accountID, organization, legacy)
+	return resolveTenant(accountID, organization, membership, member, legacy)
 }
 
 // ResolveProfile validates a profile's authoritative organization. Profiles
@@ -45,27 +46,44 @@ func (r *Resolver) ResolveProfile(ctx context.Context, accountID int, organizati
 	if r == nil || r.store == nil || organizationID == uuid.Nil {
 		return Context{}, ErrTenantUnavailable
 	}
-	organization, err := r.resolveOrganization(ctx, &organizationID, false)
+	organization, membership, member, err := r.read(ctx, accountID, &organizationID)
 	if err != nil {
 		return Context{}, err
 	}
-	return r.resolveTenant(ctx, accountID, organization, organization.Default)
+	return resolveTenant(accountID, organization, membership, member, organization.Default)
 }
 
-func (r *Resolver) resolveTenant(ctx context.Context, accountID int, organization Organization, legacy bool) (Context, error) {
+// read loads the organization (the deployment default when organizationID is
+// nil) and accountID's membership in it in one statement. member is false when
+// the account has no membership there; resolveTenant reports that only after
+// judging the organization.
+func (r *Resolver) read(ctx context.Context, accountID int, organizationID *uuid.UUID) (organization Organization, membership Membership, member bool, err error) {
+	organization, membership, err = r.store.OrganizationMembership(ctx, accountID, organizationID)
+	switch {
+	case err == nil:
+		return organization, membership, true, nil
+	case errors.Is(err, ErrMembershipNotFound):
+		return organization, Membership{}, false, nil
+	case organizationID == nil && errors.Is(err, ErrOwnershipResolutionRequired):
+		return Organization{}, Membership{}, false, ErrOwnershipResolutionRequired
+	case organizationID == nil:
+		return Organization{}, Membership{}, false, fmt.Errorf("%w: load default organization: %w", ErrTenantUnavailable, err)
+	case errors.Is(err, ErrOrganizationNotFound):
+		return Organization{}, Membership{}, false, ErrTenantNotFoundOrHidden
+	default:
+		return Organization{}, Membership{}, false, fmt.Errorf("%w: load organization: %w", ErrTenantUnavailable, err)
+	}
+}
+
+func resolveTenant(accountID int, organization Organization, membership Membership, member, legacy bool) (Context, error) {
 	if organization.Status == OrganizationSuspended {
 		return Context{}, ErrTenantSuspended
 	}
 	if !legacy && (organization.Status != OrganizationActive || organization.OwnerAccountID == nil) {
 		return Context{}, ErrOwnershipResolutionRequired
 	}
-
-	membership, err := r.store.GetMembership(ctx, accountID, organization.ID)
-	if errors.Is(err, ErrMembershipNotFound) {
+	if !member {
 		return Context{}, ErrTenantNotFoundOrHidden
-	}
-	if err != nil {
-		return Context{}, fmt.Errorf("%w: load membership: %w", ErrTenantUnavailable, err)
 	}
 	if membership.OrganizationID != organization.ID || membership.AccountID != accountID || membership.Status == MembershipInvited {
 		return Context{}, ErrTenantNotFoundOrHidden
@@ -88,29 +106,4 @@ func (r *Resolver) resolveTenant(ctx context.Context, accountID int, organizatio
 		SecurityRevision:    membership.SecurityRevision,
 		Legacy:              legacy,
 	}, nil
-}
-
-func (r *Resolver) resolveOrganization(ctx context.Context, requestedOrganizationID *uuid.UUID, legacy bool) (Organization, error) {
-	if requestedOrganizationID == nil {
-		if !legacy {
-			return Organization{}, ErrOwnershipResolutionRequired
-		}
-		organization, err := r.store.DefaultOrganization(ctx)
-		if errors.Is(err, ErrOwnershipResolutionRequired) {
-			return Organization{}, ErrOwnershipResolutionRequired
-		}
-		if err != nil {
-			return Organization{}, fmt.Errorf("%w: load default organization: %w", ErrTenantUnavailable, err)
-		}
-		return organization, nil
-	}
-
-	organization, err := r.store.GetOrganization(ctx, *requestedOrganizationID)
-	if errors.Is(err, ErrOrganizationNotFound) {
-		return Organization{}, ErrTenantNotFoundOrHidden
-	}
-	if err != nil {
-		return Organization{}, fmt.Errorf("%w: load organization: %w", ErrTenantUnavailable, err)
-	}
-	return organization, nil
 }

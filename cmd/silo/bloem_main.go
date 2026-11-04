@@ -155,9 +155,7 @@ type proxySourceFiles interface {
 }
 
 type proxySourceTenantStore interface {
-	DefaultOrganization(context.Context) (tenancy.Organization, error)
-	GetOrganization(context.Context, uuid.UUID) (tenancy.Organization, error)
-	GetMembership(context.Context, int, uuid.UUID) (tenancy.Membership, error)
+	OrganizationMembership(ctx context.Context, accountID int, organizationID *uuid.UUID) (tenancy.Organization, tenancy.Membership, error)
 	tenancy.ProfileOrganizationResolver
 }
 

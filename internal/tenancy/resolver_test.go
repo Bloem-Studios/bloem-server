@@ -236,27 +236,23 @@ type resolverTestStore struct {
 	memberships         map[resolverMembershipKey]Membership
 }
 
-func (s resolverTestStore) DefaultOrganization(context.Context) (Organization, error) {
-	if s.defaultErr != nil {
-		return Organization{}, s.defaultErr
+func (s resolverTestStore) OrganizationMembership(_ context.Context, accountID int, organizationID *uuid.UUID) (Organization, Membership, error) {
+	organization := s.defaultOrganization
+	if organizationID == nil {
+		if s.defaultErr != nil {
+			return Organization{}, Membership{}, s.defaultErr
+		}
+	} else {
+		var ok bool
+		if organization, ok = s.organizations[*organizationID]; !ok {
+			return Organization{}, Membership{}, ErrOrganizationNotFound
+		}
 	}
-	return s.defaultOrganization, nil
-}
-
-func (s resolverTestStore) GetOrganization(_ context.Context, organizationID uuid.UUID) (Organization, error) {
-	organization, ok := s.organizations[organizationID]
+	membership, ok := s.memberships[resolverMembershipKey{accountID: accountID, organizationID: organization.ID}]
 	if !ok {
-		return Organization{}, ErrOrganizationNotFound
+		return organization, Membership{}, ErrMembershipNotFound
 	}
-	return organization, nil
-}
-
-func (s resolverTestStore) GetMembership(_ context.Context, accountID int, organizationID uuid.UUID) (Membership, error) {
-	membership, ok := s.memberships[resolverMembershipKey{accountID: accountID, organizationID: organizationID}]
-	if !ok {
-		return Membership{}, ErrMembershipNotFound
-	}
-	return membership, nil
+	return organization, membership, nil
 }
 
 func activeOrganization() Organization {

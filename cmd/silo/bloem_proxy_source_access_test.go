@@ -29,27 +29,25 @@ type proxySourceTenantStoreStub struct {
 	memberships   map[int]tenancy.Membership
 }
 
-func (s proxySourceTenantStoreStub) DefaultOrganization(context.Context) (tenancy.Organization, error) {
-	for _, organization := range s.organizations {
-		if organization.Default {
-			return organization, nil
+func (s proxySourceTenantStoreStub) OrganizationMembership(_ context.Context, accountID int, organizationID *uuid.UUID) (tenancy.Organization, tenancy.Membership, error) {
+	var organization tenancy.Organization
+	found := false
+	for id, candidate := range s.organizations {
+		if (organizationID == nil && candidate.Default) || (organizationID != nil && id == *organizationID) {
+			organization, found = candidate, true
+			break
 		}
 	}
-	return tenancy.Organization{}, tenancy.ErrOwnershipResolutionRequired
-}
-
-func (s proxySourceTenantStoreStub) GetOrganization(_ context.Context, id uuid.UUID) (tenancy.Organization, error) {
-	if organization, ok := s.organizations[id]; ok {
-		return organization, nil
+	switch {
+	case !found && organizationID == nil:
+		return tenancy.Organization{}, tenancy.Membership{}, tenancy.ErrOwnershipResolutionRequired
+	case !found:
+		return tenancy.Organization{}, tenancy.Membership{}, tenancy.ErrOrganizationNotFound
 	}
-	return tenancy.Organization{}, tenancy.ErrOrganizationNotFound
-}
-
-func (s proxySourceTenantStoreStub) GetMembership(_ context.Context, accountID int, organizationID uuid.UUID) (tenancy.Membership, error) {
-	if membership, ok := s.memberships[accountID]; ok && membership.OrganizationID == organizationID {
-		return membership, nil
+	if membership, ok := s.memberships[accountID]; ok && membership.OrganizationID == organization.ID {
+		return organization, membership, nil
 	}
-	return tenancy.Membership{}, tenancy.ErrMembershipNotFound
+	return organization, tenancy.Membership{}, tenancy.ErrMembershipNotFound
 }
 
 func (s proxySourceTenantStoreStub) ProfileOrganization(context.Context, int, string) (uuid.UUID, error) {

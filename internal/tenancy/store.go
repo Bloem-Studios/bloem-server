@@ -73,6 +73,54 @@ func (s *Store) DefaultOrganization(ctx context.Context) (Organization, error) {
 	return organization, nil
 }
 
+// OrganizationMembership returns an organization, organizationID or the
+// deployment default when it is nil, together with accountID's membership in
+// it, in one statement. It answers DefaultOrganization's and GetOrganization's
+// errors for a missing organization. Without a membership it returns the
+// organization and ErrMembershipNotFound, so a caller can still judge the
+// organization first.
+func (s *Store) OrganizationMembership(ctx context.Context, accountID int, organizationID *uuid.UUID) (Organization, Membership, error) {
+	const columns = `o.id, o.slug, o.name, o.status, o.owner_account_id, o.policy_revision, o.is_default,
+		m.id, m.organization_id, m.account_id, m.status, m.legacy_role, m.security_revision
+		FROM organizations o
+		LEFT JOIN organization_memberships m ON m.organization_id = o.id AND m.account_id = $1`
+	var row pgx.Row
+	if organizationID == nil {
+		row = s.pool.QueryRow(ctx, `SELECT `+columns+` WHERE o.is_default`, accountID)
+	} else {
+		row = s.pool.QueryRow(ctx, `SELECT `+columns+` WHERE o.id = $2`, accountID, *organizationID)
+	}
+	var organization Organization
+	var membershipID, membershipOrganizationID *uuid.UUID
+	var membershipAccountID *int
+	var membershipStatus *MembershipStatus
+	var legacyRole *string
+	var securityRevision *int64
+	err := row.Scan(
+		&organization.ID, &organization.Slug, &organization.Name, &organization.Status,
+		&organization.OwnerAccountID, &organization.PolicyRevision, &organization.Default,
+		&membershipID, &membershipOrganizationID, &membershipAccountID, &membershipStatus, &legacyRole, &securityRevision,
+	)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows) && organizationID == nil:
+		return Organization{}, Membership{}, ErrOwnershipResolutionRequired
+	case errors.Is(err, pgx.ErrNoRows):
+		return Organization{}, Membership{}, ErrOrganizationNotFound
+	case err != nil:
+		return Organization{}, Membership{}, fmt.Errorf("load organization membership: %w", err)
+	case membershipID == nil:
+		return organization, Membership{}, ErrMembershipNotFound
+	}
+	return organization, Membership{
+		ID:               *membershipID,
+		OrganizationID:   *membershipOrganizationID,
+		AccountID:        *membershipAccountID,
+		Status:           *membershipStatus,
+		LegacyRole:       *legacyRole,
+		SecurityRevision: *securityRevision,
+	}, nil
+}
+
 // GetOrganization returns one organization regardless of its status.
 func (s *Store) GetOrganization(ctx context.Context, organizationID uuid.UUID) (Organization, error) {
 	organization, err := scanOrganization(s.pool.QueryRow(ctx, `

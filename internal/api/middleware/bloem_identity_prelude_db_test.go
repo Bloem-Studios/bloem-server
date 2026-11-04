@@ -198,10 +198,10 @@ func TestProfileScopedPreludeStatementBudget(t *testing.T) {
 		// Bloem adds validated tenant membership and resource bounds. All paths
 		// resolve the effective profile group, including the default group.
 		// The profile's allowed libraries come with its row (Silo #3453).
-		{name: "default profile", budget: 8},
-		{name: "profile with stored hidden libraries", storedHiddenLibraries: true, budget: 8},
+		{name: "default profile", budget: 7},
+		{name: "profile with stored hidden libraries", storedHiddenLibraries: true, budget: 7},
 		// An explicit group uses the same policy read as the default group.
-		{name: "access group member", grouped: true, budget: 8},
+		{name: "access group member", grouped: true, budget: 7},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

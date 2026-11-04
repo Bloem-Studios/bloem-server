@@ -35,16 +35,8 @@ type subjectResolverStoreStub struct {
 	membership   Membership
 }
 
-func (s subjectResolverStoreStub) DefaultOrganization(context.Context) (Organization, error) {
-	return s.organization, nil
-}
-
-func (s subjectResolverStoreStub) GetOrganization(context.Context, uuid.UUID) (Organization, error) {
-	return s.organization, nil
-}
-
-func (s subjectResolverStoreStub) GetMembership(context.Context, int, uuid.UUID) (Membership, error) {
-	return s.membership, nil
+func (s subjectResolverStoreStub) OrganizationMembership(context.Context, int, *uuid.UUID) (Organization, Membership, error) {
+	return s.organization, s.membership, nil
 }
 
 func (s *subjectProfileOrganizationStub) ProfileOrganization(_ context.Context, accountID int, profileID string) (uuid.UUID, error) {

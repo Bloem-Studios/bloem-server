@@ -414,3 +414,43 @@ func newTenancyDisposableDatabase(t *testing.T, ctx context.Context, dsn string)
 	})
 	return pool
 }
+
+// A request's tenant comes from one read of the organization and the
+// account's membership in it. The organization answers even without a
+// membership, so the resolver can still report a suspended organization first.
+func TestStoreOrganizationMembershipReadsBothInOneStatement(t *testing.T) {
+	store, fixture := newTenancyFixture(t)
+	defaultOrganization := fixture.defaultOrganization(t)
+	wantMembership, err := store.GetMembership(fixture.ctx, fixture.adminID, defaultOrganization.ID)
+	if err != nil {
+		t.Fatalf("GetMembership: %v", err)
+	}
+
+	organization, membership, err := store.OrganizationMembership(fixture.ctx, fixture.adminID, nil)
+	if err != nil || organization != defaultOrganization || membership != wantMembership {
+		t.Fatalf("default = %#v, %#v, %v; want %#v, %#v", organization, membership, err, defaultOrganization, wantMembership)
+	}
+	organization, membership, err = store.OrganizationMembership(fixture.ctx, fixture.adminID, &defaultOrganization.ID)
+	if err != nil || organization != defaultOrganization || membership != wantMembership {
+		t.Fatalf("named = %#v, %#v, %v", organization, membership, err)
+	}
+
+	if _, err := fixture.pool.Exec(fixture.ctx, `DELETE FROM organization_memberships WHERE account_id = $1`, fixture.adminID); err != nil {
+		t.Fatal(err)
+	}
+	organization, _, err = store.OrganizationMembership(fixture.ctx, fixture.adminID, &defaultOrganization.ID)
+	if !errors.Is(err, ErrMembershipNotFound) || organization != defaultOrganization {
+		t.Fatalf("no membership = %#v, %v; want the organization and ErrMembershipNotFound", organization, err)
+	}
+
+	missing := uuid.New()
+	if _, _, err := store.OrganizationMembership(fixture.ctx, fixture.adminID, &missing); !errors.Is(err, ErrOrganizationNotFound) {
+		t.Fatalf("missing organization error = %v, want ErrOrganizationNotFound", err)
+	}
+	if _, err := fixture.pool.Exec(fixture.ctx, `UPDATE organizations SET is_default = false WHERE is_default`); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := store.OrganizationMembership(fixture.ctx, fixture.adminID, nil); !errors.Is(err, ErrOwnershipResolutionRequired) {
+		t.Fatalf("missing default organization error = %v, want ErrOwnershipResolutionRequired", err)
+	}
+}
