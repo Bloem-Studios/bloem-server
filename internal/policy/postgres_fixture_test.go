@@ -12,12 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/bloemtestdb"
-	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
+
+	"github.com/Silo-Server/silo-server/internal/bloemtestdb"
+	"github.com/Silo-Server/silo-server/migrations"
 )
 
 var (

@@ -77,7 +77,6 @@ import (
 	"github.com/Silo-Server/silo-server/internal/recommendations"
 	mediarequests "github.com/Silo-Server/silo-server/internal/requests"
 	"github.com/Silo-Server/silo-server/internal/requests/discoverrows"
-	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/s3client"
 	"github.com/Silo-Server/silo-server/internal/scanner"
 	"github.com/Silo-Server/silo-server/internal/scanqueue"
@@ -762,8 +761,8 @@ func newChiRouter(deps Dependencies) chi.Router {
 		if deps.UserStoreProvider != nil {
 			if deps.PolicySystem != nil {
 				viewerResolver = policy.NewViewerResolver(userRepo, deps.UserStoreProvider, profileTokenService, deps.PolicySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults).WithSharedTables(deps.DB)
-				// Bloem: tenant libraries narrow every viewer scope (bloem_viewer_resolver.go).
-				viewerResolver = viewerResolver.(*policy.ViewerResolver).WithBloemTenancy(resourcetenancy.NewStore(deps.DB))
+				// Bloem: tenant libraries narrow every viewer scope (router_bloem_wiring.go).
+				viewerResolver = withBloemViewerTenancy(viewerResolver, deps.DB)
 			} else {
 				// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path. Removed with the legacy cleanup phase.
 				viewerResolver = access.NewResolver(userRepo, deps.UserStoreProvider, profileTokenService, accessGroupStore).WithUnratedContentPolicy(unratedContent).WithAdminDefaults(adminDefaults)

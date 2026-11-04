@@ -122,7 +122,7 @@ func chainsBloemTenancy(stack []ast.Node) bool {
 // call (the innermost last in stack) chains WithBloemTenancy or passes the
 // resolver to newTenantAwareViewerResolver, or whether the statement that
 // assigns the resolver is followed at once by Bloem's own line reassigning the
-// same variable through WithBloemTenancy, as Silo's line in router.go is.
+// same variable through withBloemViewerTenancy, as Silo's line in router.go is.
 func tenancyApplied(stack []ast.Node) bool {
 	for i := len(stack) - 2; i >= 0; i-- {
 		switch n := stack[i].(type) {
@@ -149,9 +149,9 @@ func tenancyApplied(stack []ast.Node) bool {
 }
 
 // nextStatementAppliesTenancy reports whether stmt assigns one variable and
-// the statement after it in block assigns that variable again through a
-// WithBloemTenancy chain on it, such as
-// v = v.(*policy.ViewerResolver).WithBloemTenancy(...).
+// the statement after it in block assigns that variable again through
+// withBloemViewerTenancy (internal/api/router_bloem_wiring.go), which applies
+// WithBloemTenancy or panics: v = withBloemViewerTenancy(v, ...).
 func nextStatementAppliesTenancy(block *ast.BlockStmt, stmt ast.Stmt) bool {
 	name := assignedName(stmt)
 	if name == "" {
@@ -162,23 +162,18 @@ func nextStatementAppliesTenancy(block *ast.BlockStmt, stmt ast.Stmt) bool {
 			continue
 		}
 		next, ok := block.List[i+1].(*ast.AssignStmt)
-		if !ok || assignedName(next) != name || len(next.Rhs) != 1 {
+		if !ok || assignedName(next) != name {
 			return false
 		}
 		call, ok := next.Rhs[0].(*ast.CallExpr)
-		if !ok {
+		if !ok || len(call.Args) == 0 {
 			return false
 		}
-		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || selector.Sel.Name != "WithBloemTenancy" {
+		if fun, ok := call.Fun.(*ast.Ident); !ok || fun.Name != "withBloemViewerTenancy" {
 			return false
 		}
-		receiver := selector.X
-		if assertion, ok := receiver.(*ast.TypeAssertExpr); ok {
-			receiver = assertion.X
-		}
-		ident, ok := receiver.(*ast.Ident)
-		return ok && ident.Name == name
+		arg, ok := call.Args[0].(*ast.Ident)
+		return ok && arg.Name == name
 	}
 	return false
 }

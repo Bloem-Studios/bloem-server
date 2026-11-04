@@ -28,6 +28,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/previewcontext"
 	"github.com/Silo-Server/silo-server/internal/ratelimit"
 	"github.com/Silo-Server/silo-server/internal/remote"
+	"github.com/Silo-Server/silo-server/internal/resourcetenancy"
 	"github.com/Silo-Server/silo-server/internal/serverid"
 	"github.com/Silo-Server/silo-server/internal/serveridentity"
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -56,6 +57,17 @@ func wireBloemAuthService(authService *auth.Service, profileCredentials *auth.Pr
 		authService.EnablePreviewGuests(deps.DB, reader)
 	}
 
+}
+
+// withBloemViewerTenancy applies Bloem tenancy to the policy viewer resolver
+// that Silo's line in newChiRouter builds (policy.ViewerResolver.WithBloemTenancy).
+// It panics on any other resolver, so the router never starts without it.
+func withBloemViewerTenancy(resolver apimw.ViewerResolver, pool *pgxpool.Pool) apimw.ViewerResolver {
+	viewer, ok := resolver.(*policy.ViewerResolver)
+	if !ok {
+		panic(fmt.Sprintf("api: Bloem tenancy needs a *policy.ViewerResolver, got %T", resolver))
+	}
+	return viewer.WithBloemTenancy(resourcetenancy.NewStore(pool))
 }
 
 // wireBloemViewerTokenResolver gives the viewer-access middleware a resolver
