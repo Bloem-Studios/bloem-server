@@ -278,6 +278,7 @@ web/src/hooks/queries/admin/plugins.ts
 web/src/hooks/queries/admin/policy.ts
 web/src/hooks/queries/admin/stats.ts
 web/src/hooks/queries/admin/system.ts
+web/src/hooks/queries/mediaSurfaceRefresh.ts  # catalog sweeps wait for list pages on their first read, so a letter jump lands during a scan; temporary, being proposed to Silo, drop when Silo's version merges
 web/src/hooks/useAuth.tsx
 web/src/lib/adminNavigation.test.ts  # covers the organization Storage sources entry
 web/src/lib/adminNavigation.ts
