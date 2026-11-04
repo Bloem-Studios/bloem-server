@@ -47,7 +47,8 @@ JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = k.attnum
 JOIN pg_attribute r ON r.attrelid = con.confrelid AND r.attnum = k.refnum
 WHERE con.contype = 'f'
   AND con.confrelid IN ('media_items'::regclass, 'seasons'::regclass, 'episodes'::regclass)
-  AND a.attcollation <> r.attcollation
+  AND r.attcollation <> 0
+  AND (a.attcollation <> r.attcollation OR r.attcollation <> 'pg_catalog."C"'::regcollation)
 ORDER BY 1`)
 	if err != nil {
 		t.Fatal(err)
