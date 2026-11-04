@@ -636,6 +636,10 @@ func groupPolicyForUser(ctx context.Context, db interface {
 // reads were queued, with GetPolicyForUser's answer: nil for an account
 // without a group.
 func QueueGroupPolicy(batch *pgx.Batch, userID int) func(pgx.BatchResults) (*GroupPolicy, error) {
+	// Bloem: groups are organization-owned; see bloemQueueAccountGroupPolicy.
+	if read, handled := bloemQueueAccountGroupPolicy(batch, userID); handled {
+		return read
+	}
 	batch.Queue(groupPolicyForUserQuery, userID)
 	return func(results pgx.BatchResults) (*GroupPolicy, error) {
 		return groupPolicyFromRow(results.QueryRow(), userID)

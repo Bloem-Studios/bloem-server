@@ -139,15 +139,30 @@ func (f *bloemProfileFields) apply(p *userstore.Profile) {
 // and its allowed libraries, plus bloemProfileColumns. It always handles the
 // read; getProfile keeps Silo's own read below its hook.
 func bloemGetProfile(ctx context.Context, db preferenceSettingsExecutor, userID int, id string) (*userstore.Profile, bool, error) {
+	p, err := bloemProfileFromRow(db.QueryRow(ctx, bloemProfileByIDQuery, userID, id), id)
+	return p, true, err
+}
+
+// bloemQueueProfile is QueueProfile on Bloem's schema, with bloemGetProfile's
+// read and answer. It always handles the read; QueueProfile keeps Silo's own
+// below its hook.
+func bloemQueueProfile(batch *pgx.Batch, userID int, id string) (func(pgx.BatchResults) (*userstore.Profile, error), bool) {
+	batch.Queue(bloemProfileByIDQuery, userID, id)
+	return func(results pgx.BatchResults) (*userstore.Profile, error) {
+		return bloemProfileFromRow(results.QueryRow(), id)
+	}, true
+}
+
+// bloemProfileFromRow is Silo's profileFromRow for bloemProfileByIDQuery.
+func bloemProfileFromRow(row pgx.Row, id string) (*userstore.Profile, error) {
 	var libraryIDs []int
 	var fields bloemProfileFields
-	row := db.QueryRow(ctx, bloemProfileByIDQuery, userID, id)
 	p, err := scanProfile(row, append([]any{&libraryIDs}, fields.targets()...)...)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, true, nil
+		return nil, nil
 	}
 	if err != nil {
-		return nil, true, fmt.Errorf("querying profile %s: %w", id, err)
+		return nil, fmt.Errorf("querying profile %s: %w", id, err)
 	}
 	fields.apply(p)
 	// A profile without allowed libraries keeps a nil list, as ListProfiles
@@ -155,7 +170,7 @@ func bloemGetProfile(ctx context.Context, db preferenceSettingsExecutor, userID 
 	if len(libraryIDs) > 0 {
 		p.AllowedLibraryIDs = libraryIDs
 	}
-	return p, true, nil
+	return p, nil
 }
 
 // bloemListProfiles is ListProfiles on Bloem's schema and in a caller's

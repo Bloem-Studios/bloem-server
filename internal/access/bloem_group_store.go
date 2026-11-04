@@ -617,7 +617,26 @@ func bloemAccountGroupPolicy(ctx context.Context, db groupQueryRower, accountID 
 	if tenant, ok := tenancy.FromContext(ctx); ok && tenant.AccountID == accountID && tenant.OrganizationID != uuid.Nil {
 		organizationID = &tenant.OrganizationID
 	}
-	policy, err := nullableGroupPolicy(db.QueryRow(ctx, `
+	policy, err := bloemAccountGroupPolicyFromRow(db.QueryRow(ctx, bloemAccountGroupPolicyQuery, accountID, organizationID), accountID)
+	return policy, true, err
+}
+
+// bloemQueueAccountGroupPolicy is QueueGroupPolicy on Bloem's schema: it
+// queues bloemAccountGroupPolicy's read for the default organization, which is
+// what GetPolicyForUser reads without a request tenant. A batch carries no
+// request context, so a request with a tenant must not batch this read;
+// policy.ViewerResolver.WithBloemTenancy turns the viewer gate's batch off. It
+// always handles the read; QueueGroupPolicy keeps Silo's own below its hook.
+func bloemQueueAccountGroupPolicy(batch *pgx.Batch, accountID int) (func(pgx.BatchResults) (*GroupPolicy, error), bool) {
+	batch.Queue(bloemAccountGroupPolicyQuery, accountID, (*uuid.UUID)(nil))
+	return func(results pgx.BatchResults) (*GroupPolicy, error) {
+		return bloemAccountGroupPolicyFromRow(results.QueryRow(), accountID)
+	}, true
+}
+
+// bloemAccountGroupPolicyQuery reads an account's group within one
+// organization: $2, or the default organization when $2 is NULL.
+const bloemAccountGroupPolicyQuery = `
 		SELECT u.access_group_id, g.id, g.library_ids, g.max_playback_quality,
 			g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 			g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
@@ -631,12 +650,15 @@ func bloemAccountGroupPolicy(ctx context.Context, db groupQueryRower, accountID 
 		LEFT JOIN access_groups g
 		  ON g.organization_id = o.id
 		 AND g.id = u.access_group_id
-		WHERE m.account_id = $1`, accountID, organizationID))
+		WHERE m.account_id = $1`
+
+func bloemAccountGroupPolicyFromRow(row groupScanner, accountID int) (*GroupPolicy, error) {
+	policy, err := nullableGroupPolicy(row)
 	if errors.Is(err, ErrGroupNotFound) {
-		return nil, true, nil
+		return nil, nil
 	}
 	if err != nil {
-		return nil, true, fmt.Errorf("loading access group policy for user %d: %w", accountID, err)
+		return nil, fmt.Errorf("loading access group policy for user %d: %w", accountID, err)
 	}
-	return policy, true, nil
+	return policy, nil
 }

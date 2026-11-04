@@ -127,6 +127,10 @@ func getProfile(ctx context.Context, db preferenceSettingsExecutor, userID int, 
 // order the batch's reads were queued, with GetProfile's answer: nil, nil when
 // the account has no such profile.
 func QueueProfile(batch *pgx.Batch, userID int, id string) func(pgx.BatchResults) (*userstore.Profile, error) {
+	// Bloem: a profile also carries its login, organization and group (bloem_profiles.go).
+	if read, handled := bloemQueueProfile(batch, userID, id); handled {
+		return read
+	}
 	batch.Queue(profileByIDQuery, userID, id)
 	return func(results pgx.BatchResults) (*userstore.Profile, error) {
 		return profileFromRow(results.QueryRow(), id)

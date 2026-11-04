@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -68,6 +69,20 @@ func TestProfileOrganizationAndAccessGroupPersistence(t *testing.T) {
 	}
 	if len(profiles) != 1 || profiles[0].OrganizationID != organizationID || profiles[0].AccessGroupID == nil || *profiles[0].AccessGroupID != accessGroupID {
 		t.Fatalf("listed profiles = %#v", profiles)
+	}
+	// Silo's batched read (the viewer gate's) answers what GetProfile does.
+	batch := &pgx.Batch{}
+	readQueued := QueueProfile(batch, userID, "tenant-profile")
+	results := pool.SendBatch(ctx, batch)
+	queued, err := readQueued(results)
+	if closeErr := results.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		t.Fatalf("QueueProfile: %v", err)
+	}
+	if !reflect.DeepEqual(queued, profile) {
+		t.Fatalf("queued profile = %#v, want %#v", queued, profile)
 	}
 
 	var legacyGroupID *int64
