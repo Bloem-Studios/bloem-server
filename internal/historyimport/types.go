@@ -206,6 +206,9 @@ type Record struct {
 	// matched item is added to the importing profile's watchlist instead of
 	// receiving watch state.
 	Watchlisted bool
+	// Marked is a played item stamped in a bulk "mark played" (bloem_marked_records.go):
+	// its history is recorded as a manual mark, not an imported play.
+	Marked bool
 	// FavoriteOnly prevents a favorite with no played/resumable counterpart
 	// from creating an empty progress row. PreferTMDB avoids stale secondary
 	// TVDB IDs winning over Emby's primary TMDB identity for favorite series.

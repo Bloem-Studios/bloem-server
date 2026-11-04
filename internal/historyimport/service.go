@@ -418,6 +418,7 @@ func (s *Service) executeRunWithClaim(run *Run, provider Provider, claim RunClai
 		return
 	}
 	summary.Warnings = append(summary.Warnings, warnings...)
+	markBulkMarkedRecords(records)
 	summary.Fetched = len(records)
 	slog.Info(
 		"history import: fetched source records",
@@ -617,8 +618,8 @@ func (s *Service) applyImportedWatch(ctx context.Context, userID int, profileID,
 	if err != nil {
 		return outcome, err
 	}
-	outcome.HistoryCreated, err = s.watchState.RecordImportedHistory(
-		ctx, userID, profileID, itemID, record.DurationSeconds, record.Played, record.LastPlayedAt)
+	outcome.HistoryCreated, err = s.watchState.RecordImportedHistoryWithSource(
+		ctx, userID, profileID, itemID, record.DurationSeconds, record.Played, record.LastPlayedAt, importedHistorySource(record))
 	if err != nil || !record.HiddenFromResume {
 		return outcome, err
 	}

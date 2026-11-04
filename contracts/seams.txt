@@ -151,6 +151,8 @@ internal/ebooks/enrichment.go
 internal/ebooks/enrichment_queue.go
 internal/ebooks/enrichment_test.go
 internal/events/socket_ticket.go
+internal/historyimport/service.go  # mark bulk-marked records after the fetch and record their history with their source; temporary, bulk "mark played" records become manual marks (bloem_marked_records.go) until the Emby servers retire at the end of November 2026
+internal/historyimport/types.go  # Record.Marked; temporary, bulk "mark played" records become manual marks (bloem_marked_records.go) until the Emby servers retire at the end of November 2026
 internal/invitations/repository.go
 internal/invitations/repository_atomic_test.go  # fully migrated isolated databases preserve tenant FKs/triggers and strengthen rollback checks
 internal/invitations/service.go
