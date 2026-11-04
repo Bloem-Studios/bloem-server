@@ -137,8 +137,38 @@ func (s *Store) AvailableMediaFolderIDs(ctx context.Context, tenant tenancy.Cont
 	if s == nil || s.pool == nil {
 		return nil, ErrResourceUnavailable
 	}
+	rows, err := s.pool.Query(ctx, availableMediaFolderIDsQuery, tenant.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: load available media folders: %w", ErrResourceUnavailable, err)
+	}
+	return collectAvailableMediaFolderIDs(rows)
+}
 
-	rows, err := s.pool.Query(ctx, `
+// QueueAvailableMediaFolderIDs queues AvailableMediaFolderIDs's read on batch
+// and returns the function that answers it, in the order the batch's reads
+// were queued. A tenant AvailableMediaFolderIDs refuses without reading queues
+// nothing, and the function returns that refusal.
+func (s *Store) QueueAvailableMediaFolderIDs(batch *pgx.Batch, tenant tenancy.Context) func(pgx.BatchResults) ([]int, error) {
+	if !tenantCanAccessResources(tenant) {
+		return func(pgx.BatchResults) ([]int, error) { return nil, ErrResourceHidden }
+	}
+	if s == nil || s.pool == nil {
+		return func(pgx.BatchResults) ([]int, error) { return nil, ErrResourceUnavailable }
+	}
+	batch.Queue(availableMediaFolderIDsQuery, tenant.OrganizationID)
+	return func(results pgx.BatchResults) ([]int, error) {
+		rows, err := results.Query()
+		if err != nil {
+			return nil, fmt.Errorf("%w: load available media folders: %w", ErrResourceUnavailable, err)
+		}
+		return collectAvailableMediaFolderIDs(rows)
+	}
+}
+
+// StoresIn reports whether the store reads pool.
+func (s *Store) StoresIn(pool *pgxpool.Pool) bool { return s != nil && s.pool != nil && s.pool == pool }
+
+const availableMediaFolderIDsQuery = `
 		SELECT DISTINCT folders.id
 		FROM media_folders AS folders
 		JOIN resource_owners AS owners ON owners.id = folders.owner_id
@@ -149,12 +179,10 @@ func (s *Store) AvailableMediaFolderIDs(ctx context.Context, tenant tenancy.Cont
 		 AND entitlements.status = 'active'
 		WHERE (owners.kind = 'organization' AND owners.organization_id = $1)
 		   OR (owners.kind = 'platform' AND entitlements.id IS NOT NULL)
-		ORDER BY folders.id`, tenant.OrganizationID)
-	if err != nil {
-		return nil, fmt.Errorf("%w: load available media folders: %w", ErrResourceUnavailable, err)
-	}
-	defer rows.Close()
+		ORDER BY folders.id`
 
+func collectAvailableMediaFolderIDs(rows pgx.Rows) ([]int, error) {
+	defer rows.Close()
 	ids := make([]int, 0)
 	for rows.Next() {
 		var id int

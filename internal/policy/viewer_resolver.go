@@ -107,6 +107,10 @@ func NewViewerResolver(
 
 // Resolve computes the effective viewer scope for the request.
 func (r *ViewerResolver) Resolve(ctx context.Context, input access.ResolveInput) (access.Scope, error) {
+	// Bloem: tenancy reads its own facts (bloem_viewer_resolver.go).
+	if r.tenantLibraries != nil {
+		return r.bloemResolve(ctx, input)
+	}
 	if r.shared != nil {
 		return r.resolveBatched(ctx, input)
 	}

@@ -345,9 +345,11 @@ func (p *bloemViewerResolverGroupProvider) ResolvePolicy(_ context.Context, subj
 	return p.group, p.err
 }
 
-// Silo's batched read (WithSharedTables) reads the account's group and a
-// profile without Bloem's columns, so it would skip the profile's own group.
-// Bloem tenancy keeps the per-request reads through the repositories.
+// Silo's batched read (WithSharedTables) reads the account's group without the
+// request tenant, so it would skip the profile's own group: it never runs under
+// Bloem tenancy. Providers that cannot queue their reads on the shared pool,
+// like these, keep the per-request reads through the repositories;
+// TestBloemViewerResolverBatchedReadsMatchEachDB covers Bloem's own batch.
 func TestViewerResolverBloemTenancyKeepsRepositoryReads(t *testing.T) {
 	organizationID := uuid.New()
 	events := []string{}

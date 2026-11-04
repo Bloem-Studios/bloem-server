@@ -47,6 +47,22 @@ func (c *preludeStatementTracer) TraceQueryStart(ctx context.Context, _ *pgx.Con
 
 func (c *preludeStatementTracer) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
 
+// A batch is one round trip however many statements it carries, so it counts
+// once, as "batch", and its statements do not count on their own.
+func (c *preludeStatementTracer) TraceBatchStart(ctx context.Context, _ *pgx.Conn, _ pgx.TraceBatchStartData) context.Context {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.armed {
+		c.queries = append(c.queries, "batch")
+	}
+	return ctx
+}
+
+func (c *preludeStatementTracer) TraceBatchQuery(context.Context, *pgx.Conn, pgx.TraceBatchQueryData) {
+}
+
+func (c *preludeStatementTracer) TraceBatchEnd(context.Context, *pgx.Conn, pgx.TraceBatchEndData) {}
+
 func (c *preludeStatementTracer) arm() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -100,7 +116,7 @@ func TestProfileScopedPreludeStatementBudget(t *testing.T) {
 	}
 	resolver := policy.NewViewerResolver(users, provider,
 		access.NewProfileTokenService("prelude-budget-profile-secret", 0), policy.NewPDP(engine), groups).
-		WithBloemTenancy(resourcetenancy.NewStore(pool))
+		WithSharedTables(pool).WithBloemTenancy(resourcetenancy.NewStore(pool))
 	authMW := NewAuthMiddleware(jwt, sessions, auth.NewAPIKeyRepository(pool), users)
 	viewerMW := NewViewerAccessMiddleware(resolver)
 
@@ -195,13 +211,14 @@ func TestProfileScopedPreludeStatementBudget(t *testing.T) {
 		storedHiddenLibraries bool
 		budget                int
 	}{
-		// Bloem adds validated tenant membership and resource bounds. All paths
-		// resolve the effective profile group, including the default group.
-		// The profile's allowed libraries come with its row (Silo #3453).
-		{name: "default profile", budget: 7},
-		{name: "profile with stored hidden libraries", storedHiddenLibraries: true, budget: 7},
+		// The login session, the tenant's organization and membership, and one
+		// batch with the account, the profile (its allowed libraries on its
+		// row), its group in the tenant, its viewer preferences and the
+		// tenant's libraries.
+		{name: "default profile", budget: 3},
+		{name: "profile with stored hidden libraries", storedHiddenLibraries: true, budget: 3},
 		// An explicit group uses the same policy read as the default group.
-		{name: "access group member", grouped: true, budget: 7},
+		{name: "access group member", grouped: true, budget: 3},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -276,15 +276,25 @@ take Bloem's hooks too: `QueueGroupPolicy` goes to `bloemQueueAccountGroupPolicy
 which queues `bloemAccountGroupPolicy`'s read for the default organization, and
 `QueueProfile` goes to `bloemQueueProfile`, which queues `bloemGetProfile`'s read
 (`b436fdc79`). Silo's `TestViewerResolverBatchedReadsMatchEachDB` pins that the batch
-answers what one-at-a-time reads answer. A batch carries no request tenant and reads
-the account's group, where Bloem tenancy resolves the profile's own group
-(`access.EffectivePolicyForRequest`), so `WithBloemTenancy` turns the batch off and
-`Resolve` reads each fact through its repository. Production wiring applies it on
+answers what one-at-a-time reads answer. Silo's batch reads the account's group
+without the request tenant, where Bloem tenancy resolves the profile's own group
+(`access.EffectivePolicyForRequest`), so under `WithBloemTenancy` a hook line at the
+top of Silo's `Resolve` sends every request to `bloemResolve`
+(`internal/policy/bloem_viewer_resolver.go`) and Silo's batch never runs. On the
+shared pool `bloemResolve` sends its own batch: the account, the profile, the
+profile's group in the request tenant (`access.QueueSubjectGroupPolicy`), the
+viewer preferences and the tenant's libraries
+(`resourcetenancy.Store.QueueAvailableMediaFolderIDs`), judged in the order the
+one-at-a-time reads judge them; a failed statement the one-at-a-time path would
+have read past sends it back to those reads.
+`TestBloemViewerResolverBatchedReadsMatchEachDB` pins one batch and the same answers
+for Silo's cases, and `TestProfileScopedPreludeStatementBudget` pins the whole
+profile prelude at three round trips. Production wiring applies tenancy on
 Bloem's own line straight after Silo's resolver line in `internal/api/router.go`,
 through `withBloemViewerTenancy` (`internal/api/router_bloem_wiring.go`), which
 panics on any resolver it cannot apply it to.
 `TestProductionViewerResolversUseBloemTenancy` accepts that line and nothing else in
-between, and `TestViewerResolverBloemTenancyKeepsRepositoryReads` proves the batch
+between, and `TestViewerResolverBloemTenancyKeepsRepositoryReads` proves Silo's batch
 stays off (`7d5f8b586`, `0462cd353`, `76c2b64d7`). The policy package's tests run on their own
 prepared database (`bloemtestdb.RunIsolatedSuite`), because Silo's database tests
 there seed accounts and profiles directly (`9202011e1`).

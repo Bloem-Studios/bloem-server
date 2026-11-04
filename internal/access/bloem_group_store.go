@@ -308,11 +308,37 @@ func (s *TenantGroupStore) GetPolicyForUser(ctx context.Context, userID int) (*G
 func resolveGroupPolicy(ctx context.Context, db interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, subject GroupSubject) (*GroupPolicy, error) {
+	query, args, err := subjectGroupPolicyStatement(subject)
+	if err != nil {
+		return nil, err
+	}
+	return nullableGroupPolicy(db.QueryRow(ctx, query, args...))
+}
+
+// QueueSubjectGroupPolicy queues ResolvePolicy's read for subject on batch and
+// returns the function that answers it, in the order the batch's reads were
+// queued. A subject ResolvePolicy refuses without reading queues nothing, and
+// the function returns that refusal without touching the results.
+func QueueSubjectGroupPolicy(batch *pgx.Batch, subject GroupSubject) func(pgx.BatchResults) (*GroupPolicy, error) {
+	query, args, err := subjectGroupPolicyStatement(subject)
+	if err != nil {
+		return func(pgx.BatchResults) (*GroupPolicy, error) { return nil, err }
+	}
+	batch.Queue(query, args...)
+	return func(results pgx.BatchResults) (*GroupPolicy, error) {
+		return nullableGroupPolicy(results.QueryRow())
+	}
+}
+
+// subjectGroupPolicyStatement is the statement that reads subject's group: the
+// profile's own group in the subject's organization, or for a profile-less
+// legacy request the account's group in the default organization.
+func subjectGroupPolicyStatement(subject GroupSubject) (string, []any, error) {
 	if subject.OrganizationID == uuid.Nil || subject.AccountID <= 0 {
-		return nil, ErrGroupNotFound
+		return "", nil, ErrGroupNotFound
 	}
 	if subject.ProfileID != "" {
-		return nullableGroupPolicy(db.QueryRow(ctx, `
+		return `
 			SELECT p.access_group_id, g.id, g.library_ids, g.max_playback_quality,
 				g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 				g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
@@ -324,12 +350,12 @@ func resolveGroupPolicy(ctx context.Context, db interface {
 			 AND g.id = p.access_group_id
 			WHERE p.organization_id = $1
 			  AND p.user_id = $2
-			  AND p.id = $3`, subject.OrganizationID, subject.AccountID, subject.ProfileID))
+			  AND p.id = $3`, []any{subject.OrganizationID, subject.AccountID, subject.ProfileID}, nil
 	}
 	if !subject.Legacy {
-		return nil, ErrGroupNotFound
+		return "", nil, ErrGroupNotFound
 	}
-	return nullableGroupPolicy(db.QueryRow(ctx, `
+	return `
 		SELECT u.access_group_id, g.id, g.library_ids, g.max_playback_quality,
 			g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
 			g.transcode_allowed, g.audio_transcode_allowed, g.max_streams, g.max_profiles,
@@ -344,7 +370,7 @@ func resolveGroupPolicy(ctx context.Context, db interface {
 		LEFT JOIN access_groups g
 		  ON g.organization_id = o.id
 		 AND g.id = u.access_group_id
-		WHERE m.account_id = $2`, subject.OrganizationID, subject.AccountID))
+		WHERE m.account_id = $2`, []any{subject.OrganizationID, subject.AccountID}, nil
 }
 
 func nullableGroupPolicy(row groupScanner) (*GroupPolicy, error) {
@@ -447,6 +473,12 @@ func (s *TenantGroupStore) DeleteMovingMembers(ctx context.Context, organization
 type TenantGroupStore struct{ pool *pgxpool.Pool }
 
 func NewTenantGroupStore(pool *pgxpool.Pool) *TenantGroupStore { return &TenantGroupStore{pool: pool} }
+
+// StoresIn reports whether the store reads pool, so a batch sent to pool can
+// carry ResolvePolicy's read (QueueSubjectGroupPolicy).
+func (s *TenantGroupStore) StoresIn(pool *pgxpool.Pool) bool {
+	return s != nil && s.pool != nil && s.pool == pool
+}
 
 const tenantGroupSelectColumns = `g.id, g.organization_id, g.name, g.description, g.library_ids, g.max_playback_quality,
 	g.playback_allowed, g.download_allowed, g.download_transcode_allowed,
