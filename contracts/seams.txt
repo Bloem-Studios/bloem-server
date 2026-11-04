@@ -267,6 +267,7 @@ web/src/components/AdminSidebar.test.tsx
 web/src/components/AdminSidebar.tsx
 web/src/components/AppSidebar.test.tsx
 web/src/components/AppSidebar.tsx
+web/src/components/ItemGrid.tsx  # a grid past a safe page height reserves a window of rows, so phones keep drawing deep letter jumps and desktop reaches a million episodes; temporary, being proposed to Silo, drop when Silo's version merges
 web/src/components/LibraryAccessSelector.tsx
 web/src/components/RealtimeEventsProvider.test.tsx
 web/src/components/admin/libraries/LibraryFormSections.tsx  # location toggle and storage source picker for ebook libraries
