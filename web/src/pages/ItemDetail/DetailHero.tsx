@@ -111,7 +111,20 @@ export default function DetailHero({
   // Below lg a viewport-bounded hero hides its poster (detailLayout.css), so
   // it is not rendered there and its image is never downloaded.
   const wideViewport = useMediaQuery("(min-width: 64rem)", true);
-  const showPoster = !hidePoster && (!isViewportBounded || wideViewport);
+  // On a phone the play action belongs in the first screen. The backdrop and
+  // title art already name the title, so the poster steps aside, the actions
+  // follow the facts and the overview clamps to a few lines.
+  const phoneViewport = !useMediaQuery("(min-width: 40rem)", true);
+  const showPoster = !hidePoster && (!isViewportBounded || wideViewport) && !phoneViewport;
+  const actionsAfterFacts = phoneViewport && !isViewportBounded;
+  const actionBar = actions ? (
+    <div
+      className={`detail-action-bar ${actionsAfterFacts ? "mb-6" : "mt-6"}`}
+      style={{ textShadow: "none" }}
+    >
+      {actions}
+    </div>
+  ) : null;
 
   const posterSizeClass = (() => {
     switch (posterOrientation) {
@@ -325,11 +338,13 @@ export default function DetailHero({
                   {scoreRow && <div className="mb-4">{scoreRow}</div>}
                 </div>
 
+                {actionsAfterFacts && actionBar}
+
                 {overview && (
                   <DetailOverview
                     overview={overview}
                     compact={isCompact}
-                    clamp={isViewportBounded}
+                    clamp={isViewportBounded || phoneViewport}
                     translating={overviewTranslating}
                     onTranslate={onTranslateOverview}
                     machineTranslated={overviewMachineTranslated}
@@ -362,11 +377,7 @@ export default function DetailHero({
                 )}
               </div>
 
-              {actions && (
-                <div className="detail-action-bar mt-6" style={{ textShadow: "none" }}>
-                  {actions}
-                </div>
-              )}
+              {!actionsAfterFacts && actionBar}
             </div>
           </div>
 

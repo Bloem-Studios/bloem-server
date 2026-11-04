@@ -268,13 +268,17 @@ web/src/components/AdminSidebar.tsx
 web/src/components/AppSidebar.test.tsx
 web/src/components/AppSidebar.tsx
 web/src/components/ItemGrid.tsx  # a grid past a safe page height reserves a window of rows, so phones keep drawing deep letter jumps and desktop reaches a million episodes; temporary, being proposed to Silo, drop when Silo's version merges
+web/src/components/Layout.tsx  # opaque full-width mobile header; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/components/LibraryAccessSelector.tsx
+web/src/components/LibraryHeader.tsx  # library tabs fit or scroll at phone width; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
+web/src/components/MediaCarousel.tsx  # row titles stay on one line on phones (All link); temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/components/RealtimeEventsProvider.test.tsx
 web/src/components/admin/libraries/LibraryFormSections.tsx  # location toggle and storage source picker for ebook libraries
 web/src/components/admin/libraries/RealtimeMonitoringFields.test.tsx  # mocks the storage sources query the library form now reads
 web/src/components/admin/libraries/useLibraryForm.boxSets.test.tsx  # mocks the storage sources query the library form now reads
 web/src/components/admin/libraries/useLibraryForm.save.test.tsx  # mocks the storage sources query the library form now reads
 web/src/components/admin/libraries/useLibraryForm.ts  # library form state for a storage source location
+web/src/components/ui/sheet.tsx  # darker sheet overlay and a visible 40px close button; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/hooks/queries/admin/plugins.ts
 web/src/hooks/queries/admin/policy.ts
 web/src/hooks/queries/admin/stats.ts
@@ -285,13 +289,16 @@ web/src/lib/adminNavigation.test.ts  # covers the organization Storage sources e
 web/src/lib/adminNavigation.ts
 web/src/lib/adminSettingsSearch.ts
 web/src/lib/documentTitle.ts
+web/src/lib/episodeCardLabels.ts  # no placeholder 'Episode N' title above the episode code; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/lib/loginSessionDevice.ts  # recognizes Bloem client user agents as the app
 web/src/pages/AdminAccessGroups.test.tsx
 web/src/pages/AdminAccessGroups.tsx
 web/src/pages/AdminLibraries.tsx  # shows a storage library's source instead of paths
 web/src/pages/AdminPlugins.tsx  # Storage tab for storage sources inside an administrative context
 web/src/pages/AdminUsers.tsx
+web/src/pages/Catalog.tsx  # empty search field at the top on phones; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/pages/Home.tsx
+web/src/pages/ItemDetail/DetailHero.tsx  # phone detail hero puts the actions in the first screen; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/pages/ItemDetail/SeasonContent.test.tsx
 web/src/pages/Notifications.test.tsx
 web/src/pages/Notifications.tsx

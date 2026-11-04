@@ -95,9 +95,19 @@ export default function LibraryHeader({
             </button>
           </div>
         )}
-        <TabsPrimitive.List className="marquee-tab-bar" aria-label="Library view">
+        {/* At phone width, with large text, three tabs can outgrow the row:
+            they tighten there, and the bar scrolls rather than running off
+            the screen's edge. */}
+        <TabsPrimitive.List
+          className="marquee-tab-bar max-w-full min-w-0 overflow-x-auto [scrollbar-width:none]"
+          aria-label="Library view"
+        >
           {availableTabs.map((tab) => (
-            <TabsPrimitive.Trigger key={tab} value={tab} className="marquee-tab-trigger">
+            <TabsPrimitive.Trigger
+              key={tab}
+              value={tab}
+              className="marquee-tab-trigger shrink-0 whitespace-nowrap max-sm:px-3"
+            >
               {tabLabels[tab]}
             </TabsPrimitive.Trigger>
           ))}

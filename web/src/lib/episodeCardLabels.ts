@@ -28,10 +28,15 @@ export function buildEpisodeCardLabels(item: EpisodeCardLabelItem): EpisodeCardL
   }
 
   const hasSeriesTitle = Boolean(item.series_title && item.series_title !== item.title);
+  // Providers title an episode "Episode 3" until it gets a real name; under
+  // the series title that only repeats the code line below it.
+  const placeholderTitle = new RegExp(`^episode\\s+0*${item.episode_number}$`, "i").test(
+    item.title.trim(),
+  );
 
   return {
     seriesTitle: hasSeriesTitle ? item.series_title! : item.title,
-    episodeTitle: hasSeriesTitle ? item.title : undefined,
+    episodeTitle: hasSeriesTitle && !placeholderTitle ? item.title : undefined,
     episodeCode: formatEpisodeCode(item.season_number, item.episode_number),
   };
 }

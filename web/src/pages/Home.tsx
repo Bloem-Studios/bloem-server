@@ -384,7 +384,7 @@ export default function Home({
   return (
     <>
       <h1 className="sr-only">Home</h1>
-      <div className={`space-y-10 ${hasHeroSlot ? "pb-2" : "pt-6 pb-2"}`}>
+      <div className={`space-y-10 ${hasHeroSlot ? "pb-2" : "pt-1 pb-2 sm:pt-6"}`}>
         {hasHeroSlot && renderSupplementalRow?.(0, totalSlots)}
         {heroSlot}
         <TasteSeedBanner />

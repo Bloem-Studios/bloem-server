@@ -418,15 +418,18 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Mobile header — visible below lg. Slides up on scroll-down within
-          the Calendar route to free vertical space; pulling up reveals it. */}
+          the Calendar route to free vertical space; pulling up reveals it.
+          An opaque bar across the full width: page content scrolls under it,
+          and a see-through or inset header let that content show through
+          and around its controls. */}
         <div
           ref={mobileHeaderRef}
           data-sticky-header
-          className={`mobile-header glass-dark border-border/70 sticky top-0 z-30 mx-3 mt-3 flex items-center justify-between rounded-2xl border px-4 py-3 transition-transform duration-200 ease-out lg:hidden ${
+          className={`mobile-header bg-background border-border/70 sticky top-0 z-30 flex min-h-14 items-center justify-between border-b pt-[env(safe-area-inset-top)] pr-[max(0.5rem,env(safe-area-inset-right))] pl-[max(0.5rem,env(safe-area-inset-left))] transition-transform duration-200 ease-out lg:hidden ${
             mobileHeaderHidden ? "-translate-y-[140%]" : "translate-y-0"
           }`}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setMobileOpen(true)}
               className="text-muted-foreground hover:text-foreground hover:bg-accent/60 flex h-10 w-10 items-center justify-center rounded-xl transition-all active:scale-[0.98]"
@@ -438,7 +441,7 @@ export default function Layout({ children }: LayoutProps) {
               <SiloBrand className="h-10 w-[94px]" />
             </ViewTransitionLink>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <ViewTransitionLink
               to={buildQueryCatalogHref()}
               onPointerDown={prefetchCatalog}
@@ -451,9 +454,9 @@ export default function Layout({ children }: LayoutProps) {
             <Link
               to="/settings"
               aria-label={`${profile?.name ?? user?.username ?? "User"} settings`}
-              className="flex h-9 w-9 items-center justify-center rounded-full transition-transform active:scale-[0.98]"
+              className="flex h-10 w-10 items-center justify-center rounded-full transition-transform active:scale-[0.98]"
             >
-              <Avatar className="h-9 w-9 shadow-[0_16px_32px_-22px_rgba(0,0,0,0.7)]">
+              <Avatar className="h-8 w-8">
                 {profile?.avatar_url ? (
                   <AvatarImage src={profile.avatar_url} alt={profile.name} />
                 ) : null}

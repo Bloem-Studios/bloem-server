@@ -221,8 +221,17 @@ export default function MediaCarousel({
   windowing,
   onNearEnd,
 }: MediaCarouselProps) {
+  // On a phone the row title needs the width: the link reads "All ›" there,
+  // "Explore all" from sm up. Its accessible name stays "Explore all".
   const viewAllClass =
-    "text-muted-foreground hover:text-primary text-[0.75rem] font-semibold tracking-[0.16em] uppercase transition-all active:scale-[0.98]";
+    "text-muted-foreground hover:text-primary inline-flex items-center text-[0.75rem] font-semibold uppercase transition-all active:scale-[0.98] sm:tracking-[0.16em]";
+  const viewAllLabel = (
+    <>
+      <span className="sm:hidden">All</span>
+      <ChevronRight className="h-4 w-4 sm:hidden" aria-hidden="true" />
+      <span className="hidden sm:inline">Explore all</span>
+    </>
+  );
   const { emblaApi, emblaRef, canScrollPrev, canScrollNext, scrollPrev, scrollNext } =
     useCarouselEmbla();
   useEffect(() => {
@@ -241,7 +250,7 @@ export default function MediaCarousel({
   const containerPadX = edgePadding ? " pl-4 sm:pl-6 lg:pl-10 xl:pl-12" : "";
   const titleClass = compact
     ? "text-muted-foreground text-[0.6875rem] font-semibold tracking-[0.18em] uppercase"
-    : "text-foreground text-xl font-semibold tracking-tight";
+    : "text-foreground text-lg font-semibold tracking-tight sm:text-xl";
   const headerGap = compact ? "mb-2" : "mb-5";
   const slideGap = compact ? "gap-3" : "gap-4 lg:gap-5";
   const listClassName = `embla__container flex cursor-grab list-none ${slideGap}${containerPadX}`;
@@ -298,11 +307,15 @@ export default function MediaCarousel({
             aria-label={`Explore all ${title}`}
             className={`${viewAllClass} shrink-0`}
           >
-            Explore all
+            {viewAllLabel}
           </Link>
         ) : onViewAll ? (
-          <button onClick={onViewAll} className={viewAllClass}>
-            Explore all
+          <button
+            onClick={onViewAll}
+            aria-label="Explore all"
+            className={`${viewAllClass} shrink-0`}
+          >
+            {viewAllLabel}
           </button>
         ) : null}
       </div>
