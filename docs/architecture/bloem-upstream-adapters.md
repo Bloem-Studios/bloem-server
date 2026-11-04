@@ -280,10 +280,12 @@ answers what one-at-a-time reads answer. A batch carries no request tenant and r
 the account's group, where Bloem tenancy resolves the profile's own group
 (`access.EffectivePolicyForRequest`), so `WithBloemTenancy` turns the batch off and
 `Resolve` reads each fact through its repository. Production wiring applies it on
-Bloem's own line straight after Silo's resolver line in `internal/api/router.go`;
-`TestProductionViewerResolversUseBloemTenancy` accepts that form and nothing else in
+Bloem's own line straight after Silo's resolver line in `internal/api/router.go`,
+through `withBloemViewerTenancy` (`internal/api/router_bloem_wiring.go`), which
+panics on any resolver it cannot apply it to.
+`TestProductionViewerResolversUseBloemTenancy` accepts that line and nothing else in
 between, and `TestViewerResolverBloemTenancyKeepsRepositoryReads` proves the batch
-stays off (`7d5f8b586`, `0462cd353`). The policy package's tests run on their own
+stays off (`7d5f8b586`, `0462cd353`, `76c2b64d7`). The policy package's tests run on their own
 prepared database (`bloemtestdb.RunIsolatedSuite`), because Silo's database tests
 there seed accounts and profiles directly (`9202011e1`).
 
