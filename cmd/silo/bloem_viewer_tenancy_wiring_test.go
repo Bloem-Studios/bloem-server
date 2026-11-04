@@ -120,7 +120,9 @@ func chainsBloemTenancy(stack []ast.Node) bool {
 
 // tenancyApplied reports whether an enclosing expression of the constructor
 // call (the innermost last in stack) chains WithBloemTenancy or passes the
-// resolver to newTenantAwareViewerResolver.
+// resolver to newTenantAwareViewerResolver, or whether the statement that
+// assigns the resolver is followed at once by Bloem's own line reassigning the
+// same variable through WithBloemTenancy, as Silo's line in router.go is.
 func tenancyApplied(stack []ast.Node) bool {
 	for i := len(stack) - 2; i >= 0; i-- {
 		switch n := stack[i].(type) {
@@ -132,9 +134,64 @@ func tenancyApplied(stack []ast.Node) bool {
 			if ident, ok := n.Fun.(*ast.Ident); ok && ident.Name == "newTenantAwareViewerResolver" {
 				return true
 			}
-		case ast.Stmt, ast.Decl:
+		case ast.Stmt:
+			if i > 0 {
+				if block, ok := stack[i-1].(*ast.BlockStmt); ok {
+					return nextStatementAppliesTenancy(block, n)
+				}
+			}
+			return false
+		case ast.Decl:
 			return false
 		}
 	}
 	return false
+}
+
+// nextStatementAppliesTenancy reports whether stmt assigns one variable and
+// the statement after it in block assigns that variable again through a
+// WithBloemTenancy chain on it, such as
+// v = v.(*policy.ViewerResolver).WithBloemTenancy(...).
+func nextStatementAppliesTenancy(block *ast.BlockStmt, stmt ast.Stmt) bool {
+	name := assignedName(stmt)
+	if name == "" {
+		return false
+	}
+	for i, candidate := range block.List {
+		if candidate != stmt || i+1 >= len(block.List) {
+			continue
+		}
+		next, ok := block.List[i+1].(*ast.AssignStmt)
+		if !ok || assignedName(next) != name || len(next.Rhs) != 1 {
+			return false
+		}
+		call, ok := next.Rhs[0].(*ast.CallExpr)
+		if !ok {
+			return false
+		}
+		selector, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || selector.Sel.Name != "WithBloemTenancy" {
+			return false
+		}
+		receiver := selector.X
+		if assertion, ok := receiver.(*ast.TypeAssertExpr); ok {
+			receiver = assertion.X
+		}
+		ident, ok := receiver.(*ast.Ident)
+		return ok && ident.Name == name
+	}
+	return false
+}
+
+// assignedName returns the variable a single-variable assignment assigns.
+func assignedName(stmt ast.Stmt) string {
+	assign, ok := stmt.(*ast.AssignStmt)
+	if !ok || len(assign.Lhs) != 1 || len(assign.Rhs) != 1 {
+		return ""
+	}
+	ident, ok := assign.Lhs[0].(*ast.Ident)
+	if !ok {
+		return ""
+	}
+	return ident.Name
 }
