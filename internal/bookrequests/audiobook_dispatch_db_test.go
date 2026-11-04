@@ -1257,3 +1257,28 @@ func TestAudiobookPathMatchUsesPrefixIndexDatabase(t *testing.T) {
 		t.Fatalf("path match does not use the prefix index:\n%s", plan)
 	}
 }
+
+// The library match runs for every open audiobook request on each reconcile
+// pass. Walked from the files, it read every media file in content order to
+// test each item's identifiers (7.5 s a pass on production); it must find the
+// few items carrying the request's identifiers first.
+func TestAudiobookLibraryMatchStartsFromTheIdentifiersDatabase(t *testing.T) {
+	env := audiobookFixture(t)
+	tx, err := env.pool.Begin(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(t.Context())
+	if _, err = tx.Exec(t.Context(), `SET LOCAL enable_seqscan=off`); err != nil {
+		t.Fatal(err)
+	}
+	for _, ids := range [][2]string{{"9780306406157", ""}, {"", "B012345678"}, {"9780306406157", "B012345678"}} {
+		var plan string
+		if err = tx.QueryRow(t.Context(), `EXPLAIN (FORMAT JSON) `+audiobookLibraryMatchSQL, env.v.OrganizationID, ids[0], isbnVariants(ids[0]), ids[1]).Scan(&plan); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(plan, "bloem_audiobook_identifiers_idx") {
+			t.Fatalf("ISBN %q ASIN %q: the match does not look the identifiers up first:\n%s", ids[0], ids[1], plan)
+		}
+	}
+}

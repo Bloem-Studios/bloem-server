@@ -37,25 +37,43 @@ func findLibraryMatch(ctx context.Context, tx pgx.Tx, r Request) (string, error)
 		return "", nil
 	}
 	var id string
-	err := tx.QueryRow(ctx, `
- SELECT i.content_id
- FROM media_items i
- JOIN media_files mf ON mf.content_id=i.content_id
- JOIN media_folders f ON f.id=mf.media_folder_id AND f.enabled AND lower(btrim(f.type)) IN ('audiobook','audiobooks')
- JOIN resource_owners ro ON ro.id=f.owner_id
- JOIN organizations o ON o.id=$1 AND (o.status='active' OR (o.is_default AND o.status='initializing'))
- WHERE i.type='audiobook'
-	AND ($2='' OR EXISTS(SELECT 1 FROM media_item_provider_ids ids WHERE ids.content_id=i.content_id AND ids.item_type='audiobook' AND lower(ids.provider)='isbn' AND upper(regexp_replace(ids.provider_id,'[-[:space:]]','','g'))=ANY($3) FOR SHARE))
-	AND ($4='' OR EXISTS(SELECT 1 FROM media_item_provider_ids ids WHERE ids.content_id=i.content_id AND ids.item_type='audiobook' AND lower(ids.provider)='asin' AND upper(btrim(ids.provider_id))=$4 FOR SHARE))
- AND ((ro.kind='organization' AND ro.organization_id=$1)
-   OR (ro.kind='platform' AND EXISTS(SELECT 1 FROM organization_entitlements e WHERE e.organization_id=$1 AND e.media_folder_id=f.id AND e.root_owner_id=ro.id AND e.status='active' FOR SHARE)))
- ORDER BY i.content_id,f.id LIMIT 1
- FOR SHARE OF i,mf,f,ro,o`, r.OrganizationID, r.ISBN, isbnVariants(r.ISBN), r.ASIN).Scan(&id)
+	err := tx.QueryRow(ctx, audiobookLibraryMatchSQL, r.OrganizationID, r.ISBN, isbnVariants(r.ISBN), r.ASIN).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil
 	}
 	return id, err
 }
+
+// audiobookLibraryMatchSQL takes $1 organization, $2 ISBN, $3 its ISBN-10 and
+// ISBN-13 forms, and $4 ASIN. An item must carry every identifier the request
+// names. The identifiers are looked up first, through
+// bloem_audiobook_identifiers_idx, whose key expression the lookup repeats.
+const audiobookLibraryMatchSQL = `
+ WITH identified AS MATERIALIZED (
+	SELECT ids.content_id, lower(ids.provider) AS kind
+	FROM media_item_provider_ids ids
+	WHERE ids.item_type='audiobook' AND lower(ids.provider) IN ('isbn','asin')
+	  AND ((lower(ids.provider)='isbn' AND $2<>''
+	        AND upper(CASE WHEN lower(ids.provider)='isbn' THEN regexp_replace(ids.provider_id,'[-[:space:]]','','g') ELSE btrim(ids.provider_id) END)=ANY($3))
+	    OR (lower(ids.provider)='asin' AND $4<>''
+	        AND upper(CASE WHEN lower(ids.provider)='isbn' THEN regexp_replace(ids.provider_id,'[-[:space:]]','','g') ELSE btrim(ids.provider_id) END)=$4))
+	FOR SHARE
+ ), carrying AS (
+	SELECT content_id FROM identified GROUP BY content_id
+	HAVING ($2='' OR bool_or(kind='isbn')) AND ($4='' OR bool_or(kind='asin'))
+ )
+ SELECT i.content_id
+ FROM carrying c
+ JOIN media_items i ON i.content_id=c.content_id
+ JOIN media_files mf ON mf.content_id=i.content_id
+ JOIN media_folders f ON f.id=mf.media_folder_id AND f.enabled AND lower(btrim(f.type)) IN ('audiobook','audiobooks')
+ JOIN resource_owners ro ON ro.id=f.owner_id
+ JOIN organizations o ON o.id=$1 AND (o.status='active' OR (o.is_default AND o.status='initializing'))
+ WHERE i.type='audiobook'
+ AND ((ro.kind='organization' AND ro.organization_id=$1)
+   OR (ro.kind='platform' AND EXISTS(SELECT 1 FROM organization_entitlements e WHERE e.organization_id=$1 AND e.media_folder_id=f.id AND e.root_owner_id=ro.id AND e.status='active' FOR SHARE)))
+ ORDER BY i.content_id,f.id LIMIT 1
+ FOR SHARE OF i,mf,f,ro,o`
 
 func (s *Service) Reconcile(ctx context.Context, limit int) (int, error) {
 	if limit <= 0 || limit > 100 {
