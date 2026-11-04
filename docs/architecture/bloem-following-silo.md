@@ -48,9 +48,9 @@ Until 2 November 2026 a daily GitHub job made clean merges by itself, and mainta
 merged the rest by hand. The job could not resolve a conflict or adapt Bloem's code,
 so it is switched off ([Bloem CI](../bloem/ci.md#how-silos-work-comes-in)).
 
-On 3 November 2026 Bloem's `main` had all of Silo's work through `f2393ad21`, merged
-in `a1a84b196`, and production ran `4939c4cfa`, deployed by the merge bot after Bloem
-CI passed it ([receipt](../operations/2026-11-03-silo-sync-527e40436-deployment.md)).
+On 4 November 2026 Bloem's `main` had all of Silo's work through `f2393ad21`, merged
+in `a1a84b196`, and production ran `341108c6e`, deployed by the merge bot after Bloem
+CI passed it ([receipt](../operations/2026-11-04-silo-sync-f2393ad21-deployment.md)).
 
 ## Deploying a batch
 
