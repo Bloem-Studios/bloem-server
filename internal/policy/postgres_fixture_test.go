@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Silo-Server/silo-server/internal/bloemtestdb"
 	"github.com/Silo-Server/silo-server/migrations"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -24,14 +25,24 @@ var (
 	policyStoreTestDatabaseName   string
 )
 
+// TestMain runs the package on its own prepared database
+// (bloemtestdb.RunIsolatedSuite), as the pgstore package does: Silo's database
+// tests here, such as TestViewerResolverBatchedReadsMatchEachDB, seed accounts
+// and profiles directly and need the fixture-compatibility triggers, which the
+// tenancy job's bare migrated database does not carry. Bloem's own tests here
+// use the URL only to create disposable databases of their own.
 func TestMain(m *testing.M) {
+	os.Exit(bloemtestdb.RunIsolatedSuite(func() int { return runPolicyTests(m) }))
+}
+
+func runPolicyTests(m *testing.M) int {
 	dsn := strings.TrimSpace(os.Getenv("SILO_TEST_DATABASE_URL"))
 	if dsn == "" {
 		if strings.TrimSpace(os.Getenv("SILO_REQUIRE_TEST_DATABASE")) == "1" {
 			_, _ = fmt.Fprintln(os.Stderr, "SILO_TEST_DATABASE_URL is required when SILO_REQUIRE_TEST_DATABASE=1")
-			os.Exit(1)
+			return 1
 		}
-		os.Exit(m.Run())
+		return m.Run()
 	}
 
 	var cleanup func() error
@@ -39,7 +50,7 @@ func TestMain(m *testing.M) {
 	policyStoreTestDatabaseConfig, policyStoreTestDatabaseName, cleanup, err = preparePolicyStoreTestDatabase(context.Background(), dsn)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "prepare policy-store test database: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	code := m.Run()
@@ -47,7 +58,7 @@ func TestMain(m *testing.M) {
 		_, _ = fmt.Fprintf(os.Stderr, "clean up policy-store test database: %v\n", err)
 		code = 1
 	}
-	os.Exit(code)
+	return code
 }
 
 func TestPolicyStoreUsesDisposableMigratedDatabase(t *testing.T) {
