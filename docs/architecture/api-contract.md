@@ -1639,7 +1639,8 @@ home sections service is not wired.
 every row: each row's limit becomes the smaller of its own effective limit and `item_limit`, and
 the response's per-row `item_limit` reports the capped value. The cap applies to the resolved rows
 before their items are fetched, so the hide-watched widening and the cross-row duplicate filter
-work from the capped size; `total_count` keeps its meaning. Without the parameter every row keeps
+work from the capped size, and a row whose source answers more cards than its limit, such as an
+admin curated list, is cut to it before the duplicate filter; `total_count` keeps its meaning. Without the parameter every row keeps
 its own limit, and the frozen `/api/v1` reads have no such parameter. A client sends `item_limit`
 only when `getHomeCapabilities` reports `section_item_limit_max` (100), which is present whenever
 `include_items_max` is.
@@ -2462,7 +2463,11 @@ slash is dropped, so the saved address is the one the options probe used. An
 address with credentials, a query or a fragment, or another scheme, is a
 `validation_failed` problem on `body.base_url`. An options request that leaves
 `base_url` out tests the saved address; one that sends it blank tests a router
-that declares `base_url_optional` without an address. When `POST
+that declares `base_url_optional` without an address. The options request first runs
+the router's `TestConnection` without the plugin config, because a router can
+answer an empty option list for a server it cannot reach; a failed test
+answers like a failed option load, and a router that does not implement the
+check is judged by its options. When `POST
 /admin/request-integrations/{id}/options` fails, the host answers with its own
 sentences and never echoes the plugin's upstream text. What the admin must fix
 is a `validation_failed` problem on `body.base_url` (wrong address, missing URL
