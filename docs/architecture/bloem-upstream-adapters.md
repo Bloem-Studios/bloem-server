@@ -1,7 +1,7 @@
 # How Bloem's adapters over Silo work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Adapters are Bloem's own: they are how Bloem changes Silo's
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-04
+> and checked against `main` at `c1aae06b2`. Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
 
@@ -224,10 +224,12 @@ disable those checks.
 organization-qualified group storage and profile-scoped resolution. Production HTTP
 wiring, background policy readers and scenario execution must select
 `NewTenantGroupStore`. Silo's `GroupStore` stays for account-level reads. Its
-`GetPolicyForUser` and `GroupPolicyInTransaction` go through the seam in
-`internal/access/group_store.go` to `bloemAccountGroupPolicy`, which reads the
-account's `users.access_group_id` within the account's organization. It is not a
-substitute for the profile-scoped `TenantGroupStore`. Tenant policy writes have one
+`GetPolicyForUser` and `GroupPolicyInTransaction` go through a hook line in
+`internal/access/group_store.go`, ahead of Silo's own read, to
+`bloemAccountGroupPolicy`, which reads the account's `users.access_group_id` within
+the account's organization and always reports the read handled. Silo's read below
+the hook stays as Silo wrote it (since the merge of Silo through `b8114188f`,
+`c1aae06b2`). It is not a substitute for the profile-scoped `TenantGroupStore`. Tenant policy writes have one
 canonical owned implementation; migrations and encrypted settings are unchanged.
 
 [`TenantGroup`](../../internal/access/bloem_group_model.go) retains the common upstream
@@ -252,6 +254,38 @@ moves and invalidates both the accounts and the profiles on the group. (Before
 preserve the configuration revision; a nonempty same-value write advances it through
 the existing timestamp trigger while retaining unchanged authorization revisions.
 These are compatibility semantics, not new optional plugin behavior.
+
+### Profile columns and the viewer gate
+
+Bloem's `user_profiles` rows carry four columns Silo does not have: the profile's
+own sign-in (`login_email`, `credential_revision`), its organization and its access
+group. [`bloemGetProfile` and `bloemListProfiles`](../../internal/userstore/pgstore/bloem_profiles.go)
+read them after Silo's own columns (`bloemProfileColumns`) and scan them through the
+extra targets of Silo's `scanProfile`, so Silo's column list and scan stay as Silo
+wrote them. `getProfile` and `ListProfiles` in `internal/userstore/pgstore/profiles.go`
+reach them through hook lines and keep Silo's reads below. The by-id read is Silo's
+`profileByIDQuery` with Bloem's columns added by `bloemWithProfileColumns`, which
+panics at package load when Silo's query no longer selects `FROM user_profiles` on
+its own line. Transactional reads (`ListProfilesInTransaction`) use
+`bloemAttachAllowedLibraries`, Silo's allowed-library read for a caller's executor.
+`internal/userstore/pgstore/profile_libraries.go` is Silo's file again.
+
+Silo's viewer gate can read the account, its access group, the profile and its
+viewer preferences as one batch (`WithSharedTables`, Silo #3453). Its queued reads
+take Bloem's hooks too: `QueueGroupPolicy` goes to `bloemQueueAccountGroupPolicy`,
+which queues `bloemAccountGroupPolicy`'s read for the default organization, and
+`QueueProfile` goes to `bloemQueueProfile`, which queues `bloemGetProfile`'s read
+(`b436fdc79`). Silo's `TestViewerResolverBatchedReadsMatchEachDB` pins that the batch
+answers what one-at-a-time reads answer. A batch carries no request tenant and reads
+the account's group, where Bloem tenancy resolves the profile's own group
+(`access.EffectivePolicyForRequest`), so `WithBloemTenancy` turns the batch off and
+`Resolve` reads each fact through its repository. Production wiring applies it on
+Bloem's own line straight after Silo's resolver line in `internal/api/router.go`;
+`TestProductionViewerResolversUseBloemTenancy` accepts that form and nothing else in
+between, and `TestViewerResolverBloemTenancyKeepsRepositoryReads` proves the batch
+stays off (`7d5f8b586`, `0462cd353`). The policy package's tests run on their own
+prepared database (`bloemtestdb.RunIsolatedSuite`), because Silo's database tests
+there seed accounts and profiles directly (`9202011e1`).
 
 ### Owned startup helpers
 
