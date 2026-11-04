@@ -9,7 +9,7 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
-import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { useWindowVirtualizer, windowScroll } from "@tanstack/react-virtual";
 import type { BrowseItem } from "@/api/types";
 import ItemCard from "./ItemCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,17 +75,29 @@ function stickyHeaderInset(): number {
  *
  * Chrome on Android stops drawing a page scrolled a few million pixels down:
  * a 151,000-title library in three columns is 11.5 million pixels tall, and
- * on a phone every row past about 2.5 million went blank, so a touch grid
- * keeps to TOUCH_GRID_MAX_EXTENT_PX. Desktop browsers draw that deep, and a
- * desktop grid keeps the whole list's height, so its scrollbar spans it, up
- * to GRID_MAX_EXTENT_PX: an element can't be taller than 33,554,428 pixels in
- * Chrome or about 17.9 million in Firefox, which a million episodes in eight
- * columns (52 million pixels) passes. The window is sized by the estimated
- * row pitch, which the measured one can exceed (by 12% at the default text
- * size), so both limits leave room for that.
+ * on a phone every row past about 2.5 million went blank, so a grid on a
+ * device with a touchscreen keeps to TOUCH_GRID_MAX_EXTENT_PX. Desktop
+ * browsers draw that deep, and a desktop grid keeps the whole list's height,
+ * so its scrollbar spans it, up to what an element may measure: Chrome caps
+ * one at 33,554,428 device pixels, about 11 million CSS pixels at a pixel
+ * ratio of 3, and Firefox at about 17.9 million CSS pixels. A million
+ * episodes in eight columns (52 million pixels) passes both. The window is
+ * sized by the estimated row pitch, which the measured one exceeds (by 12% at
+ * the default text size), so the limits leave room for a pitch up to
+ * PITCH_HEADROOM times the estimate.
  */
 const TOUCH_GRID_MAX_EXTENT_PX = 1_200_000;
-const GRID_MAX_EXTENT_PX = 12_000_000;
+const GRID_MAX_EXTENT_PX = 11_000_000;
+const MAX_ELEMENT_DEVICE_PX = 33_554_428;
+const PITCH_HEADROOM = 1.5;
+// How long the scroll position rests before the row window moves.
+const WINDOW_SETTLE_MS = 600;
+
+function gridMaxExtent(touch: boolean): number {
+  if (touch) return TOUCH_GRID_MAX_EXTENT_PX;
+  const pixelRatio = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
+  return Math.min(GRID_MAX_EXTENT_PX, MAX_ELEMENT_DEVICE_PX / pixelRatio / PITCH_HEADROOM);
+}
 
 interface WindowedItemGridProps extends SharedItemGridProps {
   totalItems: number;
@@ -179,10 +191,10 @@ export default function ItemGrid(props: ItemGridProps) {
   // A grid taller than its extent limit reserves only a window of rows,
   // starting at absolute row windowStart; the virtualizer's rows are that
   // window's. The budget follows the estimated pitch, so a measured, taller
-  // pitch doesn't resize the window under a scroll.
-  const coarsePointer = useMediaQuery("(pointer: coarse)");
-  const maxExtent = coarsePointer ? TOUCH_GRID_MAX_EXTENT_PX : GRID_MAX_EXTENT_PX;
-  const windowBudget = Math.max(1, Math.floor(maxExtent / estimatedRowHeight));
+  // pitch doesn't resize the window under a scroll. Any touchscreen counts:
+  // Android with a mouse as its primary pointer draws no deeper.
+  const touch = useMediaQuery("(any-pointer: coarse)");
+  const windowBudget = Math.max(1, Math.floor(gridMaxExtent(touch) / estimatedRowHeight));
   const windowed = rowCount > windowBudget;
   const windowRows = windowed ? windowBudget : rowCount;
   const maxWindowStart = rowCount - windowRows;
@@ -194,15 +206,33 @@ export default function ItemGrid(props: ItemGridProps) {
       windowed ? Math.max(0, Math.min(row - Math.floor(windowRows / 2), maxWindowStart)) : 0,
     [windowed, windowRows, maxWindowStart],
   );
-  // A scroll to make once a moved window has rendered: `row` (absolute) at
-  // `offset` pixels below the grid's top edge.
-  const windowScrollRef = useRef<{ row: number; offset: number } | null>(null);
+  // A scroll to make once the window requested at `start` has rendered:
+  // absolute row `row` at `offset` pixels below the grid's top edge.
+  const windowScrollRef = useRef<{ row: number; offset: number; start: number } | null>(null);
+  // The item at the start of the viewport's top row, and how far into that
+  // row, as of the last scroll the grid saw; a window that changes under the
+  // viewer keeps them on it.
+  const topItemRef = useRef<{ index: number; offset: number } | null>(null);
+  const committedWindowRef = useRef<{
+    requested: number;
+    start: number;
+    rows: number;
+    columns: number;
+    windowed: boolean;
+  } | null>(null);
 
   const virtualizer = useWindowVirtualizer({
     count: windowRows,
     estimateSize: () => rowHeight,
     overscan: 5,
     scrollMargin,
+    // The virtualizer otherwise learns where its own scroll went from the
+    // next scroll event, a frame later; a moved row window has to draw the
+    // rows it scrolled to in the same frame (see the window scroll below).
+    scrollToFn: (offset, options, instance) => {
+      windowScroll(offset, options, instance);
+      instance.scrollOffset = window.scrollY;
+    },
   });
 
   // The estimate function closes over rowHeight. Explicitly invalidate the
@@ -219,11 +249,65 @@ export default function ItemGrid(props: ItemGridProps) {
     }
   }, [rowHeight, virtualizer]);
 
+  // A window that changes under the viewer without a move of the grid's own
+  // (a new requested start), when the list's total, its columns or the
+  // pointer change, keeps the item they were on: in the new window if it
+  // holds that item's row, else in one centered on it. An empty list, as
+  // while a new sort loads, has nothing to keep. Grids that weren't and
+  // aren't windowed are left alone.
+  useLayoutEffect(() => {
+    const previous = committedWindowRef.current;
+    committedWindowRef.current = {
+      requested: requestedWindowStart,
+      start: windowStart,
+      rows: windowRows,
+      columns: columnCount,
+      windowed,
+    };
+    if (!previous || previous.requested !== requestedWindowStart) return;
+    if (
+      previous.start === windowStart &&
+      previous.rows === windowRows &&
+      previous.columns === columnCount
+    ) {
+      return;
+    }
+    if ((!windowed && !previous.windowed) || rowCount === 0) return;
+    const top = topItemRef.current;
+    if (!top || windowScrollRef.current || awaitingGridRestore()) return;
+    const savedRow = Math.floor(top.index / columnCount);
+    const row = Math.min(savedRow, rowCount - 1);
+    const offset = row === savedRow ? Math.min(top.offset, rowHeight - 1) : 0;
+    const start =
+      row < windowStart || row >= windowStart + windowRows
+        ? windowStartFor(row)
+        : requestedWindowStart;
+    windowScrollRef.current = { row, offset, start };
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the viewer's item left the window; move to one that holds it
+    if (start !== requestedWindowStart) setWindowStart(start);
+  }, [
+    requestedWindowStart,
+    windowStart,
+    windowRows,
+    windowed,
+    columnCount,
+    rowCount,
+    rowHeight,
+    windowStartFor,
+  ]);
+
   // Make the scroll a moved window was waiting for before the frame paints,
-  // so the row the viewer was on (or jumped to) is where they see it.
+  // so the row the viewer was on (or jumped to) is where they see it, and
+  // render the rows there now rather than on the next scroll event. A target
+  // the window it waited for can't hold, because the list got shorter
+  // meanwhile, is dropped.
   useLayoutEffect(() => {
     const target = windowScrollRef.current;
     if (!target) return;
+    if (target.row < windowStart || target.row >= windowStart + windowRows) {
+      if (requestedWindowStart === target.start) windowScrollRef.current = null;
+      return;
+    }
     windowScrollRef.current = null;
     virtualizer.scrollToOffset(
       Math.max(
@@ -232,7 +316,8 @@ export default function ItemGrid(props: ItemGridProps) {
       ),
       { behavior: "instant" },
     );
-  }, [requestedWindowStart, windowStart, rowHeight, virtualizer]);
+    virtualizer.measure();
+  }, [requestedWindowStart, windowStart, windowRows, rowHeight, virtualizer]);
 
   const virtualRows = virtualizer.getVirtualItems();
   const showsItems = !loading && totalItems > 0;
@@ -301,13 +386,13 @@ export default function ItemGrid(props: ItemGridProps) {
     gridRef,
     () => ({
       scrollToItem: (index: number) => {
-        const row = Math.floor(Math.max(0, index) / columnCount);
+        const row = Math.max(0, Math.min(Math.floor(index / columnCount), rowCount - 1));
         const offset = -stickyHeaderInset();
         // A windowed grid moves its window to put the row in its middle, then
         // scrolls once the moved window has rendered.
         const start = windowStartFor(row);
         if (start !== windowStart) {
-          windowScrollRef.current = { row, offset };
+          windowScrollRef.current = { row, offset, start };
           setWindowStart(start);
           return;
         }
@@ -317,7 +402,7 @@ export default function ItemGrid(props: ItemGridProps) {
         );
       },
     }),
-    [columnCount, rowHeight, virtualizer, windowStart, windowStartFor],
+    [columnCount, rowCount, rowHeight, virtualizer, windowStart, windowStartFor],
   );
 
   // Sticky headers only change height at layout breakpoints, so measure them
@@ -346,30 +431,72 @@ export default function ItemGrid(props: ItemGridProps) {
     onTopRowChange(row * columnCount, (row + 1) * columnCount - 1);
   }, [onTopRowChange, scrollOffset, scrollMargin, rowHeight, columnCount, windowStart]);
 
-  // Scrolling into the first or last quarter of the row window moves the
-  // window half its length that way, keeping the row on screen where it
-  // is. Back at the grid's top edge, a scroll to the top of the page, which
-  // scrolling by hand only reaches through the window's first rows, puts the
-  // window back at the start of the list.
+  // Note the viewer's top item after every scroll and window move, for the
+  // window to keep them on when it changes under them.
+  useLayoutEffect(() => {
+    if (!anchorEl || windowScrollRef.current) return;
+    const top = window.scrollY - scrollMargin;
+    const row = Math.max(0, Math.floor(top / rowHeight));
+    topItemRef.current = {
+      index: (windowStart + row) * columnCount,
+      offset: top - row * rowHeight,
+    };
+  }, [anchorEl, scrollOffset, scrollMargin, rowHeight, windowStart, columnCount]);
+
+  // Once the scroll position has rested for WINDOW_SETTLE_MS in the first or
+  // last quarter of the row window, the window moves half its length that
+  // way, keeping the row on screen where it is. Moving it scrolls, which
+  // would cut short a smooth scroll (the scroll-to-top button) or a fling,
+  // and a smooth scroll can pause between frames; until then the window
+  // moves only for a viewport about to run out of rows below. Back at the
+  // grid's top edge, a scroll to the top of the page, which scrolling by hand
+  // only reaches through the window's first rows, puts the window back at the
+  // start of the list; that needs no scroll.
   useLayoutEffect(() => {
     if (!windowed || !anchorEl || windowScrollRef.current || awaitingGridRestore()) return;
-    const top = window.scrollY - scrollMargin;
-    const row = Math.floor(top / rowHeight);
-    const edge = Math.floor(windowRows / 4);
     const step = Math.floor(windowRows / 2);
-    let next = windowStart;
+    const edge = Math.floor(windowRows / 4);
+    // Moves the window to `next`, keeping the row on screen now in place.
+    const move = (next: number) => {
+      const top = window.scrollY - scrollMargin;
+      const row = Math.max(0, Math.floor(top / rowHeight));
+      windowScrollRef.current = {
+        row: windowStart + row,
+        offset: top - row * rowHeight,
+        start: next,
+      };
+      setWindowStart(next);
+    };
+    // The window a viewer resting at `top` pixels into it belongs in.
+    const settledStart = (top: number) => {
+      const row = Math.floor(top / rowHeight);
+      if (row < edge && windowStart > 0) return Math.max(0, windowStart - step);
+      if (row >= windowRows - edge && windowStart < maxWindowStart) {
+        return Math.min(maxWindowStart, windowStart + step);
+      }
+      return windowStart;
+    };
+    const top = window.scrollY - scrollMargin;
     if (top <= 0) {
-      next = 0;
-    } else if (row < edge && windowStart > 0) {
-      next = Math.max(0, windowStart - step);
-    } else if (row >= windowRows - edge && windowStart < maxWindowStart) {
-      next = Math.min(maxWindowStart, windowStart + step);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the viewer scrolled to the top of the page; the list's start belongs there
+      if (windowStart > 0) setWindowStart(0);
+      return;
     }
-    if (next === windowStart) return;
-    if (top > 0)
-      windowScrollRef.current = { row: windowStart + row, offset: top - row * rowHeight };
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the scroll position decides the window; the next commit keeps the row in place
-    setWindowStart(next);
+    const screenRows = Math.ceil(window.innerHeight / rowHeight);
+    if (
+      Math.floor(top / rowHeight) + 2 * screenRows >= windowRows &&
+      windowStart < maxWindowStart
+    ) {
+      move(Math.min(maxWindowStart, windowStart + step));
+      return;
+    }
+    if (settledStart(top) === windowStart) return;
+    // Decide again when the timer fires, from where the viewer is then.
+    const timer = window.setTimeout(() => {
+      const next = settledStart(window.scrollY - scrollMargin);
+      if (next !== windowStart) move(next);
+    }, WINDOW_SETTLE_MS);
+    return () => window.clearTimeout(timer);
   }, [
     scrollOffset,
     windowed,
