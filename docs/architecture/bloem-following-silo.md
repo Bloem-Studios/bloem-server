@@ -49,9 +49,8 @@ merged the rest by hand. The job could not resolve a conflict or adapt Bloem's c
 so it is switched off ([Bloem CI](../bloem/ci.md#how-silos-work-comes-in)).
 
 On 5 November 2026 Bloem's `main` had all of Silo's work through `90c531469`, merged
-in `9d83bfbc4`, and production ran `6604bfd44`, deployed by the merge bot after Bloem
-CI passed it ([receipt](../operations/2026-11-04-silo-sync-6d1562473-deployment.md)),
-then `66b56baa3` and `eeb919cb5`, deployed by hand on top of it ([receipt](../operations/2026-11-04-watch-sync-removals-deployment.md), [receipt](../operations/2026-11-04-import-marks-deployment.md)).
+in `9d83bfbc4`, and production ran `d69ce2aa8`, deployed by the merge bot after Bloem
+CI passed it ([receipt](../operations/2026-11-05-silo-sync-90c531469-deployment.md)).
 
 ## Deploying a batch
 
