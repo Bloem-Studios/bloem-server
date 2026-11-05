@@ -474,7 +474,7 @@ func (h *ProfileHandler) CreateProfile(ctx context.Context, cmd ProfileCreateCom
 	if err != nil {
 		return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to list profiles")
 	}
-	existingProfiles = profilesForOrganization(ctx, existingProfiles)
+	existingProfiles = profilesForAccountOrganization(ctx, userID, existingProfiles)
 	// The very first profile on a user can be bootstrapped without
 	// primary/admin privileges (it becomes the primary); everything after
 	// requires the household manager (canManageHouseholdAs): the caller's

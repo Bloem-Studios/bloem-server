@@ -71,12 +71,7 @@ func (h *ProfileHandler) effectiveProfileLimit(ctx context.Context, user *models
 		return limit, cloneGroupID(user.AccessGroupID), nil
 	}
 	explicitOrganizationID := adminResourceOrganization(ctx)
-	organizationID := explicitOrganizationID
-	if organizationID == uuid.Nil {
-		if tenant, ok := tenancy.FromContext(ctx); ok {
-			organizationID = tenant.OrganizationID
-		}
-	}
+	organizationID := profileOrganization(ctx, user.ID)
 	if organizationID == uuid.Nil {
 		if user.AccessGroupID == nil {
 			return limit, nil, nil
@@ -145,6 +140,28 @@ func strictestProfileLimit(accountLimit, groupLimit int, managed bool) int {
 	return groupLimit
 }
 
+// profileOrganization is the organization a profile write on accountID runs
+// in: the administrator's explicit resource organization, else the request
+// tenant's when that tenant is the account itself. A server administrator's
+// request carries the administrator's own tenant (Silo's admin profile
+// writes, ProfileCreateCommand.AccountAdmin), so for another account it is
+// uuid.Nil and the account's own group and profiles decide.
+func profileOrganization(ctx context.Context, accountID int) uuid.UUID {
+	if organizationID := adminResourceOrganization(ctx); organizationID != uuid.Nil {
+		return organizationID
+	}
+	if tenant, ok := tenancy.FromContext(ctx); ok && tenant.AccountID == accountID {
+		return tenant.OrganizationID
+	}
+	return uuid.Nil
+}
+
+// profilesForAccountOrganization is profilesForOrganization for a write on
+// accountID's household, in profileOrganization's organization.
+func profilesForAccountOrganization(ctx context.Context, accountID int, profiles []userstore.Profile) []userstore.Profile {
+	return filterProfilesByOrganization(profileOrganization(ctx, accountID), profiles)
+}
+
 func profilesForOrganization(ctx context.Context, profiles []userstore.Profile) []userstore.Profile {
 	organizationID := adminResourceOrganization(ctx)
 	if organizationID == uuid.Nil {
@@ -152,6 +169,10 @@ func profilesForOrganization(ctx context.Context, profiles []userstore.Profile) 
 			organizationID = tenant.OrganizationID
 		}
 	}
+	return filterProfilesByOrganization(organizationID, profiles)
+}
+
+func filterProfilesByOrganization(organizationID uuid.UUID, profiles []userstore.Profile) []userstore.Profile {
 	if organizationID == uuid.Nil {
 		return profiles
 	}

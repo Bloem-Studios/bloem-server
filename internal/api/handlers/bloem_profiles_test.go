@@ -159,3 +159,55 @@ func TestHandleCreateProfile_InheritsAccountManagedGroup(t *testing.T) {
 		t.Fatalf("created profile access group = %v, want %d", store.created.AccessGroupID, groupID)
 	}
 }
+
+// accountOrganizationGroups serves one account's group in its own
+// organization, and a different default group in the caller's organization.
+type accountOrganizationGroups struct {
+	AccessGroupValidator
+	account, callerDefault access.TenantGroup
+}
+
+func (g accountOrganizationGroups) Get(_ context.Context, organizationID uuid.UUID, id int64) (*access.TenantGroup, error) {
+	if organizationID == g.account.OrganizationID && id == g.account.ID {
+		return &g.account, nil
+	}
+	return nil, access.ErrGroupNotFound
+}
+
+func (g accountOrganizationGroups) GetForAccount(_ context.Context, _ int, id int64) (*access.TenantGroup, error) {
+	if id == g.account.ID {
+		return &g.account, nil
+	}
+	return nil, access.ErrGroupNotFound
+}
+
+func (g accountOrganizationGroups) GetDefault(_ context.Context, organizationID uuid.UUID) (*access.TenantGroup, error) {
+	if organizationID == g.callerDefault.OrganizationID {
+		return &g.callerDefault, nil
+	}
+	return nil, access.ErrGroupNotFound
+}
+
+// TestCreateProfile_AccountAdminUsesTheAccountsOrganization pins Silo's
+// createAdminUserProfile (AccountAdmin) under Bloem tenancy: the request's
+// tenant is the platform administrator's own organization, so the new
+// profile's group and limit must come from the account, not from that
+// tenant. The caller's default group would break the profile's
+// (organization_id, access_group_id) key.
+func TestCreateProfile_AccountAdminUsesTheAccountsOrganization(t *testing.T) {
+	store := &recordingProfileStore{UserStore: newProfileTestStore(t)}
+	accountGroup := access.TenantGroup{Group: access.Group{ID: 77}, OrganizationID: uuid.New(), MaxProfiles: 5}
+	callerDefault := access.TenantGroup{Group: access.Group{ID: 11}, OrganizationID: uuid.New(), MaxProfiles: 5}
+	handler := NewProfileHandler(testUserStoreProvider{store: store})
+	handler.UserRepo = testProfileUserRepo{user: &models.User{ID: 2, Role: models.RoleUser, AccessGroupID: &accountGroup.ID}}
+	handler.AccessGroups = accountOrganizationGroups{account: accountGroup, callerDefault: callerDefault}
+
+	ctx := newAuthorizedProfileRequestWithRole(http.MethodPost, "/", "", "admin", "").Context()
+	ctx = tenancy.WithContext(ctx, tenancy.Context{OrganizationID: callerDefault.OrganizationID, AccountID: 1, Legacy: true})
+	if _, err := handler.CreateProfile(ctx, ProfileCreateCommand{UserID: 2, Request: ProfileCreateRequest{Name: "Kids"}, AccountAdmin: true}); err != nil {
+		t.Fatalf("CreateProfile() error = %v", err)
+	}
+	if got := store.created.AccessGroupID; got == nil || *got != accountGroup.ID {
+		t.Fatalf("created profile access group = %v, want the account's group %d", got, accountGroup.ID)
+	}
+}
