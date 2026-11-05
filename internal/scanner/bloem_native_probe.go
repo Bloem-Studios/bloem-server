@@ -165,20 +165,7 @@ func probeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 		if err != nil && missingID {
 			return nil, nil, &nativeProbeFailure{err}
 		}
-		// As applyMatroskaSubtitleTracks does for a local file.
-		for i := range matches {
-			track := &probe.SubtitleTracks[i]
-			if matches[i].Language != "" {
-				track.Language = matches[i].Language
-			}
-			if track.ContainerTrackID != "" {
-				continue
-			}
-			track.ContainerTrackID = matches[i].ID
-			if matches[i].IndexOnly {
-				track.Codec, track.IndexOnly = matches[i].Codec, true
-			}
-		}
+		applyNativeMatroskaSubtitleMatches(probe, matches)
 	}
 	// The trusted binary must not echo its private argument into persistable
 	// metadata. Ordinary media tags containing unrelated URLs stay intact.
@@ -346,4 +333,23 @@ func nativeMatroskaSubtitleMatches(probe *ProbeData, tracks []mediaprobe.Matrosk
 		return nil, err
 	}
 	return matches, nil
+}
+
+// applyNativeMatroskaSubtitleMatches applies the matches as
+// applyMatroskaSubtitleTracks does for a local file: the entry's language,
+// and the container track ID and index-only codec of a track that lacks one.
+func applyNativeMatroskaSubtitleMatches(probe *ProbeData, matches []matroskaSubtitleMatch) {
+	for i := range matches {
+		track := &probe.SubtitleTracks[i]
+		if matches[i].Language != "" {
+			track.Language = matches[i].Language
+		}
+		if track.ContainerTrackID != "" {
+			continue
+		}
+		track.ContainerTrackID = matches[i].ID
+		if matches[i].IndexOnly {
+			track.Codec, track.IndexOnly = matches[i].Codec, true
+		}
+	}
 }
