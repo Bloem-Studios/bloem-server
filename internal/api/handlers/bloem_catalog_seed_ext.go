@@ -24,13 +24,13 @@ type catalogSeedStagingStore interface {
 func fetchRemoteCatalogSeed(ctx context.Context, client *outbound.Client, remoteURL string) ([]byte, error) {
 	parsed, err := url.Parse(remoteURL)
 	if err != nil {
-		return nil, errCatalogSeedImportInvalidRemoteURL
+		return nil, catalogseed.ErrInvalidRemoteURL
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return nil, errCatalogSeedImportInvalidRemoteURL
+		return nil, catalogseed.ErrInvalidRemoteURL
 	}
 	if !strings.HasSuffix(strings.ToLower(parsed.Path), ".json.gz") {
-		return nil, errCatalogSeedImportInvalidRemoteURL
+		return nil, catalogseed.ErrInvalidRemoteURL
 	}
 
 	if client == nil {
@@ -45,7 +45,7 @@ func fetchRemoteCatalogSeed(ctx context.Context, client *outbound.Client, remote
 		return nil, fmt.Errorf("downloading remote catalog seed: %w", err)
 	}
 	if response.FinalURL == nil || !strings.HasSuffix(strings.ToLower(response.FinalURL.Path), ".json.gz") {
-		return nil, errCatalogSeedImportInvalidRemoteURL
+		return nil, catalogseed.ErrInvalidRemoteURL
 	}
 	if err := catalogseed.ValidateBundle(response.Body); err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func stageRemoteCatalogSeed(ctx context.Context, store catalogSeedStagingStore, 
 // withBloemCatalogSeedRemoteClient installs the SSRF-guarded outbound client
 // used for remote catalog seed downloads.
 func withBloemCatalogSeedRemoteClient(h *CatalogSeedHandler) *CatalogSeedHandler {
-	h.remoteClient = outbound.NewClient(outbound.PublicHTTPPolicy(), outbound.WithTimeout(remoteCatalogSeedTimeout))
+	h.remoteClient = outbound.NewClient(outbound.PublicHTTPPolicy(), outbound.WithTimeout(catalogseed.RemoteBundleTimeout))
 	return h
 }
 

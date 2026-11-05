@@ -46,11 +46,36 @@ func (s *Service) EnableTenantRequestPolicy() error {
 	return nil
 }
 
-func (s *Service) requestAccessForAccount(ctx context.Context, accountID int) (requestAccess, error) {
-	if resolver, ok := s.groupProvider.(requestAccessResolver); ok {
-		return resolver.resolveRequestAccess(ctx, accountID, nil)
+// bloemResolvePolicy is resolvePolicy with the tenant request policy
+// installed: the account's requests switch and its group's limits come from
+// the profile-bound resolver instead of Silo's account-group resolution
+// (viewerRequestAccess), then Silo's LayeredPolicy and usage apply as in
+// resolvePolicy.
+func (s *Service) bloemResolvePolicy(ctx context.Context, userID int, resolver requestAccessResolver) (EffectivePolicy, error) {
+	settings, err := s.store.GetSettings(ctx)
+	if err != nil {
+		return EffectivePolicy{}, err
 	}
-	return s.viewerRequestAccess(ctx, accountID)
+	limit, err := s.store.GetUserLimit(ctx, userID)
+	if err != nil {
+		return EffectivePolicy{}, err
+	}
+	viewerAccess, err := resolver.resolveRequestAccess(ctx, userID, nil)
+	if err != nil {
+		return EffectivePolicy{}, err
+	}
+
+	policy := LayeredPolicy(settings, viewerAccess.allowed, viewerAccess.group, limit)
+	policy.WindowStart = s.now().AddDate(0, 0, -policy.WindowDays)
+	if !policy.Unlimited {
+		used, err := s.store.CountUserRequestsSince(ctx, userID, policy.WindowStart)
+		if err != nil {
+			return EffectivePolicy{}, err
+		}
+		policy.Used = used
+		policy.Remaining = max(policy.MaxRequests-used, 0)
+	}
+	return policy, nil
 }
 
 func (p *tenantRequestPolicyProvider) resolveRequestAccess(ctx context.Context, accountID int, viewerProfile *string) (requestAccess, error) {

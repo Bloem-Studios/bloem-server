@@ -6,7 +6,6 @@ package handlers
 // linter quiet about them. If upstream deletes one, delete its line here.
 var (
 	_ = (*AdminHandler).presignPosterURL
-	_ = readImportDataFromRemoteURL
 	_ = containsStringFoldV3
 )
 

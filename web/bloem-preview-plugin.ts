@@ -30,6 +30,14 @@ const modules: Record<string, string> = {
   "api/v2/account.ts": "account.ts",
   "pages/audiobooks/player/audiobookPlaybackContext.tsx": "adapters/audiobookPlayback.tsx",
 };
+
+// Boundaries replaced for one importer only, so every other importer, Silo's
+// own tests included, keeps the original module.
+const importerModules: Record<string, Record<string, string>> = {
+  // The app's requests route gets Bloem's page, which adds the audiobook and
+  // ebook request tabs around Silo's and imports Silo's page itself.
+  "App.tsx": { "pages/Requests.tsx": "../BloemRequests.tsx" },
+};
 export function bloemPreview(): Plugin {
   let src = "";
   return {
@@ -47,7 +55,8 @@ export function bloemPreview(): Plugin {
       const target = path
         .relative(src, resolved.id.split("?")[0] ?? resolved.id)
         .replaceAll("\\", "/");
-      const adapter = modules[target];
+      const from = path.relative(src, importer.split("?")[0] ?? importer).replaceAll("\\", "/");
+      const adapter = importerModules[from]?.[target] ?? modules[target];
       if (!adapter) return null;
       const id = path.join(src, "bloem/preview", adapter);
       if (importer.split("?")[0] === id) return null;

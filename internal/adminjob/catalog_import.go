@@ -9,5 +9,6 @@ type CatalogImportRequest struct {
 	SourceLabel   string                    `json:"source_label,omitempty"`
 	CleanupSource bool                      `json:"cleanup_source,omitempty"`
 	LocalPath     string                    `json:"local_path,omitempty"`
+	RemoteURL     string                    `json:"remote_url,omitempty"`
 	Options       catalogseed.ImportOptions `json:"options"`
 }

@@ -43,7 +43,9 @@ func (r *Repo) RecordAdminEvent(ctx context.Context, event AdminEvent) error {
 	if err != nil {
 		return fmt.Errorf("marshal admin audit after state: %w", err)
 	}
-	_, err = r.pool.Exec(ctx, `
+	// Repo's pool is Silo's query-only queryer, so the insert runs as a query
+	// whose rows are closed at once; its error surfaces through rows.Err.
+	rows, err := r.pool.Query(ctx, `
 		INSERT INTO admin_audit_events (
 			actor_account_id, actor_platform_role, authority_context, action,
 			target_type, target_id, organization_id, subject_id,
@@ -54,6 +56,10 @@ func (r *Repo) RecordAdminEvent(ctx context.Context, event AdminEvent) error {
 		event.TargetType, event.TargetID, event.OrganizationID, event.SubjectID,
 		event.BeforeRevision, event.AfterRevision, event.Outcome, event.RequestID,
 		beforeState, afterState)
+	if err == nil {
+		rows.Close()
+		err = rows.Err()
+	}
 	if err != nil {
 		return fmt.Errorf("record admin audit event: %w", err)
 	}
