@@ -1,7 +1,7 @@
 # How Bloem's adapters over Silo work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-04
-> and checked against `main` at `c1aae06b2`. Adapters are Bloem's own: they are how Bloem changes Silo's
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
+> and checked against `main` at `3ab048c07`. Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
 
@@ -191,6 +191,14 @@ apply an adapter twice.
   methods remain for an explicit download profile. The Jellyfin-compatible server uses
   them (`newBloemCompatDownloadServer` in `cmd/silo/bloem_compat.go`), and that
   explicit profile wins over the context.
+- Silo's own `CheckAction` lines in `internal/downloads/policy.go` stay as Silo wrote
+  them. Where the action input needs the request tenant's facts, Bloem sets
+  `input.Tenant` on its own line just before Silo's call, with
+  `bloemBindDownloadTenant` (the served-quality check of an original download, since
+  the merge of Silo through `2d5f22e7d`). A missing tenant, or one for another
+  account, is `ErrDownloadNotAllowed` before the decider runs
+  (`TestDownloadPolicyRejectsMissingTenantFactsBeforeEvaluation`,
+  `TestDownloadPolicyRejectsTenantForDifferentAccount`).
 - [`NewProfilePrepareAgainService`](../../internal/downloads/bloem_reprepare.go) is
   mandatory in Bloem HTTP retry composition. It checks the requesting profile's
   download and transcode authority before calling Silo's unchanged `PrepareAgain`.
@@ -202,6 +210,23 @@ apply an adapter twice.
 - Account and profile policy continue to be evaluated in the acting organization (an
   account has exactly one since `c60b7008e`). Server ownership, organization
   ownership, and a household's primary profile are different authority boundaries.
+
+### Home section extensions
+
+Bloem's home transformers (the promoted row, delivered only on `promoted=1`) read their
+options from the context, never from Silo's `SectionViewer`, which has no Bloem field.
+On `/api/v1` Bloem's own line `r = withRequestSectionOptions(r)` puts the request's
+query on the context before each of Silo's `HomeLayout`, `HomeSections` and
+`homeSectionItems` calls in `internal/api/handlers/sections.go`. On `/api/v2` the line
+`ctx = bloemHomePromotionContext(ctx, in.BloemHomePromotionInput)` does the same before
+Silo's three calls in `internal/apiv2/home.go`. The transform lines in
+`home_views_service.go` read the options with `sectionOptions(ctx)`
+([hooks](../../internal/api/handlers/bloem_section_hooks.go)). Until the merge of Silo
+through `2d5f22e7d` (2026-11-05) Bloem carried the opt-in in a `SectionViewer.Extensions`
+field and wrapped Silo's arguments with it; that merge returned
+`internal/api/handlers/library_views_service.go` to Silo's bytes.
+`TestBloemHomeReadsCarryPromotionOptIn` (v2) and
+`TestHomeEndpointsDeliverPromotedOnlyWhenOptedIn` (v1) pin the opt-in.
 
 ### Playback tenant facts
 

@@ -1,7 +1,7 @@
 # How Bloem looks inside a stored file
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Probing stored files is part of Bloem's
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
+> and checked against `main` at `3ab048c07`. Probing stored files is part of Bloem's
 > [native storage](bloem-native-storage.md), a Bloem addition built on Silo's
 > ffprobe-based scanner (`internal/scanner`, `internal/mediaprobe`). The technical
 > rules are in the [For developers](#for-developers) section.
@@ -128,8 +128,15 @@ binary that does not launch other processes.
 
 Output must be a single bounded JSON document with a format and at least one
 stream. The converted result uses the pinned file size and display name as a
-container hint, fills missing Matroska subtitle track IDs, and rejects an echo
-of the private argument. Error messages exposed by this consumer omit raw tool
+container hint, completes Matroska subtitle tracks as Silo's local probe does
+(`applyMatroskaSubtitleTracks`), and rejects an echo of the private argument.
+For a Matroska file with subtitles it matches each stream to the track entries
+read before ffprobe ran, fills a missing container track ID, and takes the
+entry's canonical `LanguageBCP47` (so `pt-BR` and `pt-PT` stay apart) over
+ffprobe's legacy language. A failed track read fails the probe only while a
+track still lacks its container ID; otherwise the tracks keep ffprobe's values.
+`TestNativeProbeRealFixturesMatchLocal` checks every fixture, including
+`testdata/subtitles-bcp47.mkv`, against the local probe. Error messages exposed by this consumer omit raw tool
 output, provider details and command arguments; wrapped causes remain available
 for typed internal classification.
 
@@ -173,7 +180,9 @@ consumer, and `4e73aa7aa` (2026-10-11) added the teardown rule. Native movies
 became the first consumer in `b781ac3ff` (2026-10-11), and audiobooks followed
 through `ProbeNativeAudio` (`17ca70d9b` and `d5d02a00e`, 2026-10-12). Audio probes
 moved to 1 MiB reads in `2538b6e41` and accepted up to 10,000 chapters in
-`396dd92e9` (both 2026-10-28).
+`396dd92e9` (both 2026-10-28). The merge of Silo through `2d5f22e7d` (2026-11-05)
+brought Silo's Matroska subtitle language pass (Silo #3081) to the native probe in
+`b0537be3c`.
 
 ### Related pages
 

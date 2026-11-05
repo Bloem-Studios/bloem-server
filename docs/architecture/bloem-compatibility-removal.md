@@ -1,7 +1,7 @@
 # How Bloem runs Silo's Jellyfin and Audiobookshelf servers
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. The compatibility servers are Silo's; only the organization
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
+> and checked against `main` at `3ab048c07`. The compatibility servers are Silo's; only the organization
 > wiring and the persistence notes are Bloem's. The file name still says "removal"
 > because the page was first written when Bloem removed the protocols; today they are
 > served. The technical rules are in the [For developers](#for-developers) section.
@@ -89,10 +89,7 @@ not restore them ([BLOEM_AGENTS.md](../../BLOEM_AGENTS.md#jellyfin-and-audiobook
 
 ### Tenant integration
 
-Silo's packages stay upstream bytes, except one test file recorded in the seam ledger
-(`contracts/seams.txt`, the reviewed list of Silo-owned files Bloem may differ in; here
-`internal/jellycompat/dv_strip_test.go`, whose no-route cases turn off Bloem's
-tone-mapping defaults). Bloem adapts them only where `cmd/silo/main.go` wires them,
+Silo's packages stay upstream bytes. Bloem adapts them only where `cmd/silo/main.go` wires them,
 with the adapters in `cmd/silo/bloem_compat.go` and the tenant-aware resolver in
 `cmd/silo/bloem_main.go`:
 
@@ -138,7 +135,11 @@ table; the deleted preferences do not return. See
 
 ### Upstream merges
 
-Take Silo's compatibility code as it is; there are no deletion seams to preserve. When
+Take Silo's compatibility code as it is; there are no deletion seams to preserve.
+Until the merge of Silo through `2d5f22e7d` (2026-11-05), one Jellyfin test file was
+a seam: `internal/jellycompat/dv_strip_test.go`, whose no-route cases turned off
+Bloem's tone-mapping defaults. Silo #3470 turns tone mapping off in those fixtures
+itself, so the file is Silo's bytes again and left `contracts/seams.txt`. When
 upstream changes how `main.go` builds either server, keep the tenant wiring above.
 `TestProductionViewerResolversUseBloemTenancy`
 (`cmd/silo/bloem_viewer_tenancy_wiring_test.go`) fails when a production
