@@ -156,27 +156,27 @@ func probeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 	raw.Format.Filename = reader.info.Name
 	raw.Format.Size = strconv.FormatInt(reader.info.Size, 10)
 	probe := convertProbeData(&raw)
-	if probe.Container == containerMKV && nativeSubtitleTracksMissingContainerID(probe.SubtitleTracks) {
-		if tracksErr != nil {
-			return nil, nil, &nativeProbeFailure{tracksErr}
-		}
-		subtitles := make([]matroskaSubtitleStream, len(probe.SubtitleTracks))
-		for i, track := range probe.SubtitleTracks {
-			subtitles[i] = matroskaSubtitleStream{Index: track.Index, Codec: track.Codec}
-		}
-		ids, err := matroskaSubtitleTrackIDs(tracks, len(probe.VideoTracks), len(probe.AudioTracks), subtitles)
-		if err != nil {
+	if probe.Container == containerMKV && len(probe.SubtitleTracks) > 0 {
+		// A track the probe left without its container ID cannot play
+		// without the index, so a failed read fails the probe; otherwise the
+		// tracks keep FFprobe's values, as they do for a local file.
+		missingID := nativeSubtitleTracksMissingContainerID(probe.SubtitleTracks)
+		matches, err := nativeMatroskaSubtitleMatches(probe, tracks, tracksErr)
+		if err != nil && missingID {
 			return nil, nil, &nativeProbeFailure{err}
 		}
-		// As applyMatroskaSubtitleTrackIDs does for a local file.
-		for i := range probe.SubtitleTracks {
+		// As applyMatroskaSubtitleTracks does for a local file.
+		for i := range matches {
 			track := &probe.SubtitleTracks[i]
+			if matches[i].Language != "" {
+				track.Language = matches[i].Language
+			}
 			if track.ContainerTrackID != "" {
 				continue
 			}
-			track.ContainerTrackID = ids[i].ID
-			if ids[i].IndexOnly {
-				track.Codec, track.IndexOnly = ids[i].Codec, true
+			track.ContainerTrackID = matches[i].ID
+			if matches[i].IndexOnly {
+				track.Codec, track.IndexOnly = matches[i].Codec, true
 			}
 		}
 	}
@@ -328,4 +328,22 @@ func nativeSubtitleTracksMissingContainerID(tracks []SubtitleTrackInfo) bool {
 		}
 	}
 	return false
+}
+
+// nativeMatroskaSubtitleMatches matches the probed subtitle streams to the
+// Matroska track entries read before the probe ran. It answers no matches
+// when the entries could not be read or matched.
+func nativeMatroskaSubtitleMatches(probe *ProbeData, tracks []mediaprobe.MatroskaTrack, tracksErr error) ([]matroskaSubtitleMatch, error) {
+	if tracksErr != nil {
+		return nil, tracksErr
+	}
+	subtitles := make([]matroskaSubtitleStream, len(probe.SubtitleTracks))
+	for i, track := range probe.SubtitleTracks {
+		subtitles[i] = matroskaSubtitleStream{Index: track.Index, Codec: track.Codec}
+	}
+	matches, err := matroskaSubtitleTrackIDs(tracks, len(probe.VideoTracks), len(probe.AudioTracks), subtitles)
+	if err != nil {
+		return nil, err
+	}
+	return matches, nil
 }

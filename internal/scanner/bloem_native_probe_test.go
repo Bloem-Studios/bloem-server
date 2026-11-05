@@ -123,7 +123,7 @@ func nativeProbeBinary(t *testing.T) string {
 }
 
 func TestNativeProbeRealFixturesMatchLocal(t *testing.T) {
-	for _, path := range []string{"testdata/test.mp4", "testdata/subtitles.mkv"} {
+	for _, path := range []string{"testdata/test.mp4", "testdata/subtitles.mkv", "testdata/subtitles-bcp47.mkv"} {
 		t.Run(filepath.Base(path), func(t *testing.T) {
 			binary := nativeProbeBinary(t)
 			data, err := os.ReadFile(path)
