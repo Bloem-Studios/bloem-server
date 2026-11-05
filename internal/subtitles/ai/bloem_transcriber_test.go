@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -141,5 +142,66 @@ func TestWrapCueTextBreaksUnspacedText(t *testing.T) {
 	}
 	if strings.HasPrefix(lines[1], "。") {
 		t.Errorf("second line %q starts with a closing mark", lines[1])
+	}
+}
+
+// Cues stay on screen briefly after speech stops, as human subtitles do.
+
+func nearDuration(got, want time.Duration) bool {
+	d := got - want
+	return d > -time.Millisecond && d < time.Millisecond
+}
+
+func TestHoldCueEndsKeepsCuesUpAfterSpeech(t *testing.T) {
+	cues := []SubtitleCue{
+		{Start: 1 * time.Second, End: 2 * time.Second},         // room: the full hold
+		{Start: 5 * time.Second, End: 6 * time.Second},         // next cue 0.3 s later
+		{Start: 6300 * time.Millisecond, End: 7 * time.Second}, // last cue: chunk end
+	}
+	holdCueEnds(cues, 7200*time.Millisecond)
+	want := []time.Duration{2600 * time.Millisecond, 6300 * time.Millisecond, 7200 * time.Millisecond}
+	for i, c := range cues {
+		if !nearDuration(c.End, want[i]) {
+			t.Errorf("cue %d end = %v, want %v", i, c.End, want[i])
+		}
+	}
+}
+
+func TestHoldCueEndsNeverShortensACue(t *testing.T) {
+	cues := []SubtitleCue{
+		{Start: 1 * time.Second, End: 4 * time.Second},
+		{Start: 3 * time.Second, End: 5 * time.Second},
+	}
+	holdCueEnds(cues, 4500*time.Millisecond)
+	if cues[0].End != 4*time.Second || cues[1].End != 5*time.Second {
+		t.Errorf("ends = %v, %v; want 4s, 5s unchanged", cues[0].End, cues[1].End)
+	}
+}
+
+func TestTranscribeHoldsCuesWithinTheirChunk(t *testing.T) {
+	var dir string
+	client := &fakeASRClient{
+		language: "en",
+		perChunk: map[string][]llm.TranscriptionSegment{
+			"chunk00000.wav": {
+				{Start: 10, End: 12, Text: "first line"},
+				{Start: 598, End: 599.8, Text: "last words"},
+			},
+			"chunk00001.wav": {{Start: 0.1, End: 1.5, Text: "next chunk"}},
+		},
+	}
+	tr := newTestTranscriber(client, 2, &dir)
+	cues, _, err := tr.Transcribe(context.Background(), TranscribeJobRequest{FilePath: "/x.mkv"}, nil)
+	if err != nil {
+		t.Fatalf("Transcribe: %v", err)
+	}
+	want := []time.Duration{12600 * time.Millisecond, 600 * time.Second, 602100 * time.Millisecond}
+	if len(cues) != len(want) {
+		t.Fatalf("cues = %+v, want %d", cues, len(want))
+	}
+	for i, c := range cues {
+		if !nearDuration(c.End, want[i]) {
+			t.Errorf("cue %d end = %v, want %v", i, c.End, want[i])
+		}
 	}
 }
