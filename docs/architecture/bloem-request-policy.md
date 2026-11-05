@@ -1,7 +1,7 @@
 # How request rules apply to organizations and profiles
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. The movie and series request service, its limits and its
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
+> and checked against `main` at `1430c3769`. The movie and series request service, its limits and its
 > routing are Silo's (`internal/requests`; see Silo's
 > [media requests](media-requests.md)). Bloem adds adapters that tie them to its
 > organizations and to the profile that asks. The technical rules are in the
@@ -121,6 +121,13 @@ precedence, approval rules, quota consumption and request enrichment. Account
 consumption stays shared across profiles; selecting a different profile does
 not reset its counter. Services without the Bloem provider keep Silo's ordinary
 account-group resolution.
+
+With the provider installed (`EnableTenantRequestPolicy`), Silo's `resolvePolicy`
+(`internal/requests/service.go`) returns at once into `bloemResolvePolicy`, on
+lines Bloem added at its top (since the merge of Silo through `cb4f45d0c`). It
+layers the settings, the group's limits and the account's own limits through
+Silo's `LayeredPolicy` and counts usage as `resolvePolicy` does, so Silo's
+account-group resolution (`viewerRequestAccess`) is never consulted.
 
 ### Administrative reads and group writes
 

@@ -1,7 +1,7 @@
 # How native storage works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-03
-> and checked against `main` at `ff0a75fd1`. Native storage is a Bloem addition:
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
+> and checked against `main` at `1430c3769`. Native storage is a Bloem addition:
 > Silo's libraries read files from paths on the server, and Bloem adds libraries
 > that read from S3 buckets and the Bookwarehouse book service through approved
 > storage plugins. It builds on Silo's plugin runtime (`internal/plugins`),
@@ -236,6 +236,19 @@ the new location and reloads retained source fields after any lock wait:
 The source must be enabled, with an enabled, native-marked installation. A
 refused attach rolls the whole library creation back. The library is then
 scanned like any other.
+
+Silo's `CreateLibrary` and `normalizeNewLibrary`
+(`internal/api/handlers/libraries_service.go`) stay as Silo wrote them; Bloem's
+part is on added lines that call `bloemLibraryAttachment`
+(`internal/api/handlers/bloem_library_create.go`, since the merge of Silo through
+`cb4f45d0c`). It validates `storage_source`, or takes the attachment that
+`CreateLibraryWithAttachment` (the native `library-locations` create) passes in the
+request context, and marks a library with no paths. `normalizeNewLibrary` sends
+such a library to `bloemNormalizePathlessLibrary`, which runs Silo's checks on a
+copy carrying a placeholder path, so only the paths requirement is skipped. The
+attachment runs inside Silo's `CreateFolderInTx`; `FolderRepository.Create` reports
+a failed commit of an attached library as `MutationOutcomeUnknown` and reloads its
+storage location after the commit.
 
 ### Installing, upgrading and fencing
 

@@ -1,7 +1,7 @@
 # How Bloem's adapters over Silo work
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
-> and checked against `main` at `3ab048c07`. Adapters are Bloem's own: they are how Bloem changes Silo's
+> and checked against `main` at `1430c3769`. Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
 
@@ -91,10 +91,15 @@ servers came back on 2026-10-18 (`2393c41ee`). The Silo merge `68070f04b`
 ### Migration filesystem
 
 [`migrations.BloemFS`](../../migrations/bloem.go) wraps Silo's embedded migration
-filesystem. The status, up, down, and normal startup paths in
-[`cmd/silo/main.go`](../../cmd/silo/main.go) all use that wrapper. The migration
-provider (`internal/database/migrate.go`) applies `migrations.AdaptBloemFS` even to
-filtered migration filesystems used for upgrade and rollback rehearsals. Historical
+filesystem. The status and down paths in
+[`cmd/silo/main.go`](../../cmd/silo/main.go) pass that wrapper; startup and
+`--migrate-only` run Silo's `database.MigrateAtStartup` with Silo's `migrations.FS`.
+Every migration run opens the migration folder through `migrationSubFS`
+(`internal/database/migrate.go`), whose first line, added by Bloem, applies
+`migrations.AdaptBloemFS` (idempotent): to Silo's startup sequence, the goose
+provider, the version list a backup restore checks, and the filtered migration
+filesystems used for upgrade and rollback rehearsals
+(`TestMigrationSubFSAppliesBloemSchemaAdapters`). Historical
 SQL remains unchanged; owned adapters handle the explicitly reviewed schema
 differences. The adapted files are `20260926181741_request_group_limits`,
 `20261013231605_access_group_max_profiles`,
@@ -390,7 +395,11 @@ replace Silo modules at Vite resolve time, so TypeScript checks callers against 
 original module and cannot see an adapter that drops an argument or prop. Each adapter
 forwards every argument and prop outside preview mode. When an upstream merge changes a
 redirected module, compare its signature with the adapter; Silo's own tests for that
-module run through the adapter.
+module run through the adapter. One replacement applies to a single importer
+(`importerModules`): `App.tsx`'s requests route loads `web/src/bloem/BloemRequests.tsx`,
+which adds the audiobook and ebook request tabs around Silo's page, in place of
+Silo's `pages/Requests`. Every other importer, Silo's own `pages/Requests` test
+included, keeps Silo's page (`web/bloem-preview-plugin.test.ts`).
 
 The web app calls none of Silo's `/api/v1`. It reaches Silo's `/api/v2` through
 Silo's own web functions (`web/src/api/v2/`), and `/api/bloem/v1` through `nativeApi`
@@ -549,6 +558,20 @@ deployed environment or encrypted settings. Since `2393c41ee` (2026-10-18) both
 samples document Silo's `JF_PORT` and `ABS_PORT` for the restored compatibility
 listeners. The route-prefix constants and same-origin gateway controls of Bloem's
 removal-era runtime are not active configuration and should not be restored.
+
+### Remote catalog seeds
+
+A queued catalog import from a remote URL never fetches the URL in the job. Silo's
+`CreateCatalogImportJob` (`internal/api/handlers/catalog_transfer_service.go`)
+first checks the URL with its guarded `catalogseed.DownloadRemoteBundle`; the next
+line, added by Bloem, calls `bloemStageRemoteCatalogSeed`
+(`internal/api/handlers/bloem_catalog_seed_ext.go`), which downloads the seed again
+through the public-address outbound client, stores it in the artifact store and
+records its key and SHA-256 (`SourceSHA256`), so the job reads that artifact and
+checks its digest. The job request never carries `RemoteURL`, so the runner's
+remote branch, which Silo kept, is not reached. The synchronous import uses
+Silo's guarded download as Silo ships it (since the merge of Silo through
+`cb4f45d0c`).
 
 ### Preparing Silo contributions
 

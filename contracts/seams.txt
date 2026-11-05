@@ -326,7 +326,7 @@ web/vite.config.ts
 # after the 2026-10-13 removal; Bloem's own companion gateway stays removed.
 internal/userdb/migrate.go # Bloem's SQLite step (v36) runs after Silo's v35; a store Bloem left at its former v34 or v35 resumes after v33
 
-internal/database/migrate.go # apply owned migration adapters at the provider boundary
+internal/database/migrate.go # apply owned migration adapters where every migration run opens the migration folder
 internal/api/handlers/profiles_test.go # adapt Silo inherited-limit fixture to organization-aware group interface
 web/src/components/admin/libraries/useLibraryForm.localMetadata.test.tsx # supply query context for the owned storage-location hook
 web/src/hooks/admin/useSettingsHealth.ts # include owned announcements

@@ -1,7 +1,7 @@
 # Bloem overlay: Authentication API
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
+> and checked against `main` at `1430c3769`, which includes Silo through `cb4f45d0c`. It lists what Bloem
 > adds to or replaces in Silo's [`docs/auth-api.md`](../../auth-api.md), which stays
 > exactly as Silo wrote it. The section-by-section changes are in the
 > [For developers](#for-developers) section.
@@ -206,6 +206,9 @@ signup commits invite consumption…”. **Bloem replaces** it with:
 
 Invited signup commits invite consumption and account creation together. With the
 PostgreSQL profile provider, the optional default profile joins that transaction.
+The transaction rechecks public-signup and local-password policy while holding
+the settings mutation lock. If disabling signup commits first, the in-flight
+signup is refused without creating an account or spending the invite.
 Both transactional account entrypoints check provider support before inserting an
 account, provisioning membership or opening a profile store. Nil, unsupported and
 SQLite providers cannot create a default profile through those transactions
