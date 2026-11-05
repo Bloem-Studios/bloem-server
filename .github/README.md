@@ -74,8 +74,8 @@ Checked on November 5, 2026, against `main` at `66def9b30`.
 
 | | |
 | --- | --- |
-| Bloem `main` | `0ae71c000`: the merge of Silo through `2d5f22e7d` (`3ab048c07`) by the merge bot, with the native-storage probe reading Matroska subtitle languages as Silo's local probe does (`b0537be3c`), and its regenerated contracts, on `99e5529f0`: the deployment receipt for Silo through `ba1280870` |
-| Silo integrated | all of Silo `main` through `2d5f22e7d` (November 5, 2026, 02:34 UTC), merged in `3ab048c07`; Silo `main` had no newer commits when checked |
+| Bloem `main` | `2f04bcd2a`: the merge of Silo through `d941225b4` by the merge bot, on `4aa7a4395`: the deployment receipt for Silo through `2d5f22e7d`, on `38156af18`: native Matroska subtitle matches applied in their own function, on `504bc8039`: the native settings bindings regenerated for Silo's settings revision 26, on `0ae71c000`: the merge of Silo through `2d5f22e7d` (`3ab048c07`) by the merge bot, with the native-storage probe reading Matroska subtitle languages as Silo's local probe does (`b0537be3c`), and its regenerated contracts |
+| Silo integrated | all of Silo `main` through `d941225b4` (November 5, 2026, 13:36 UTC), merged in `2f04bcd2a`; Silo `main` had no newer commits when checked |
 | Silo merges | the merge bot, since November 2, 2026: each Silo batch is merged with Silo winning, checked, pushed to `main` and deployed once Bloem CI passes it ([how](../docs/architecture/bloem-following-silo.md)) |
 | Seam ledger | 320 Silo-owned files that Bloem differs in, eight of them temporary web fixes added in `74e207aca` and `0edcd6e49` that go when Silo merges its own versions (the library grid from `d690b98a5` matches Silo again since Silo #3501, merged in `73cbf3b3a`), declared in [`contracts/seams.txt`](../contracts/seams.txt) |
 | Production | `38156af18` since 04:04 UTC on November 5, Silo through `2d5f22e7d`, deployed by the merge bot after Bloem CI passed it; both transcode nodes run the same image. See the [receipt](../docs/operations/2026-11-05-silo-sync-2d5f22e7d-deployment.md) |
