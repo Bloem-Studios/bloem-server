@@ -20,6 +20,7 @@ cmd/silo/main.go  # Bloem service wiring, including the existing SECRET_KEY ciph
 contracts/api/v2/fixtures/admin_api_key_capabilities.json
 contracts/api/v2/fixtures/admin_policy_vendor.json
 contracts/api/v2/fixtures/create_library_validation_failed.json  # generated: createLibrary accepts storage_source instead of paths, so paths is no longer required
+contracts/api/v2/fixtures/get_device_login_bound.json  # upstream device approval now includes the Bloem server brand
 contracts/api/v2/fixtures/get_device_login_ok.json  # upstream device approval now includes the Bloem server brand
 contracts/api/v2/migration.json
 contracts/api/v2/migration.schema.json  # section and auth-trait enums Bloem's own namespaces and middleware add
