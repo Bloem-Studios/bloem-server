@@ -3,6 +3,25 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 5, 2026 — AI subtitle cues stay up after speech
+
+`5eecc34c4` holds each AI-generated cue 0.6 s after its speech ends, as human
+subtitles do. A held cue never runs into the next cue or past the end of its audio
+chunk, so cues from neighbouring chunks cannot overlap. Before, a cue closed the moment
+the last word ended. On 10-minute excerpts scored against human subtitles, cue ends
+within 0.5 s rose from 69% to 88% in English and from 34% to 96% in Dutch. Dialogue
+with a subtitle on screen rose from 84% to 91% and from 83% to 95%. Cue starts and
+wording are unchanged.
+
+The tests are in `bloem_transcriber_test.go`. `internal/subtitles/ai/transcriber.go`
+was already a seam, so the ledger stays at 320. The change is a candidate for a Silo
+upstream PR.
+
+The speech server's voice detection was fixed the same day, outside this repository.
+It now restarts its state every 30 seconds, because state carried across a 10-minute
+request suppressed later speech and dropped whole stretches of dialogue. English
+character errors on the same excerpts fell from 13.3% to 6.5%.
+
 ## November 2, 2026 — merge-bot batches run the fast local checks
 
 The merge bot no longer runs the full local gate on a batch. It runs the fast local
