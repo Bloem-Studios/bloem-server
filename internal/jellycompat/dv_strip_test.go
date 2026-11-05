@@ -93,8 +93,8 @@ var (
 	androidTVHDR10Display = append(append([]string(nil), androidTVDVProfile8Disabled...), "HDR10Plus")
 )
 
-// newDVStripHandler serves one profile 8.1 version with tone mapping off (the
-// explicit fixture policy), so a full HDR encode is never available.
+// newDVStripHandler serves one profile 8.1 version with tone mapping off,
+// so a full HDR encode is never available.
 func newDVStripHandler(t *testing.T, localStrip bool) (*PlaybackHandler, string) {
 	t.Helper()
 	return newDVStripHandlerWithTrack(t, localStrip, dvStripProfile8Track())

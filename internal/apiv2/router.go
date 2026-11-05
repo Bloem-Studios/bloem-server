@@ -989,7 +989,7 @@ type LibraryAdminService interface {
 // LibrarySectionService is the slice of *handlers.SectionHandler the
 // viewer-facing library section reads use.
 type LibrarySectionService interface {
-	LibraryLayout(ctx context.Context, libraryID int) (handlers.SectionLayoutView, error)
+	LibraryLayout(ctx context.Context, libraryID int, viewer handlers.SectionViewer) (handlers.SectionLayoutView, error)
 	LibrarySections(ctx context.Context, libraryID int, viewer handlers.SectionViewer) (handlers.SectionsView, error)
 	LibrarySectionItems(ctx context.Context, libraryID int, sectionID string, viewer handlers.SectionViewer) (handlers.SectionView, error)
 }
@@ -1289,7 +1289,7 @@ type DeviceLoginService interface {
 	DeviceLoginConfigured() bool
 	StartDeviceLogin(ctx context.Context, input auth.DeviceLoginStartInput) (*auth.DeviceLoginStartResult, error)
 	LookupDeviceLogin(ctx context.Context, input auth.DeviceLoginLookupInput) (*auth.DeviceLoginInfo, error)
-	PollDeviceLogin(ctx context.Context, deviceCode string) (*handlers.DeviceLoginPollView, error)
+	PollDeviceLogin(ctx context.Context, deviceCode, bindingSecret string) (*handlers.DeviceLoginPollView, error)
 	ApproveDeviceLogin(ctx context.Context, input auth.DeviceLoginLookupInput, userID int) (handlers.DeviceLoginDecision, error)
 	ApproveDeviceHandoff(ctx context.Context, input auth.DeviceLoginLookupInput, userID int, profileID string) (handlers.DeviceLoginDecision, error)
 	DenyDeviceLogin(ctx context.Context, input auth.DeviceLoginLookupInput, userID int) (handlers.DeviceLoginDecision, error)

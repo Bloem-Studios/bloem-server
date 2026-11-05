@@ -137,6 +137,10 @@ type createSectionRequest struct {
 	ItemLimit   int             `json:"item_limit"`
 	Config      json.RawMessage `json:"config"`
 	Enabled     bool            `json:"enabled"`
+	// WebOnly keeps a featured row on the web app alone; it is dropped when
+	// Featured is false. Only /api/v2 sets it; the frozen /api/v1 body has
+	// no such member.
+	WebOnly bool `json:"-"`
 	// ValidateRecipe runs the section type's own config check. Only /api/v2
 	// sets it; the frozen /api/v1 routes keep accepting what they always did.
 	ValidateRecipe bool `json:"-"`
@@ -153,6 +157,9 @@ type updateSectionRequest struct {
 	ItemLimit   *int            `json:"item_limit"`
 	Config      json.RawMessage `json:"config,omitempty"`
 	Enabled     *bool           `json:"enabled"`
+	// WebOnly: see createSectionRequest. Nil keeps the stored value, which
+	// is cleared when the saved row is not featured.
+	WebOnly *bool `json:"-"`
 	// ValidateRecipe: see createSectionRequest.
 	ValidateRecipe bool `json:"-"`
 	// V1Rules: see createSectionRequest.
@@ -182,6 +189,9 @@ type sectionResponse struct {
 	Enabled     bool            `json:"enabled"`
 	CreatedAt   string          `json:"created_at"`
 	UpdatedAt   string          `json:"updated_at"`
+	// WebOnly is answered by /api/v2 only; the frozen /api/v1 body has no
+	// such member.
+	WebOnly bool `json:"-"`
 }
 
 type sectionListResponse struct {
@@ -202,6 +212,7 @@ func toSectionResponse(s *sections.PageSection) sectionResponse {
 		Enabled:     s.Enabled,
 		CreatedAt:   s.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt:   s.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		WebOnly:     s.WebOnly,
 	}
 }
 
@@ -454,7 +465,8 @@ type homeSectionItemsResponse struct {
 
 // HandleHomeLayout handles GET /home/layout
 func (h *SectionHandler) HandleHomeLayout(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.HomeLayout(WithSectionOptions(r.Context(), r.URL.Query()))
+	r = withRequestSectionOptions(r)
+	resp, err := h.HomeLayout(r.Context(), sectionViewerFromRequest(r))
 	if err != nil {
 		writeAPIError(w, err)
 		return
@@ -471,7 +483,7 @@ func (h *SectionHandler) HandleLibraryLayout(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	resp, err := h.LibraryLayout(r.Context(), libraryID)
+	resp, err := h.LibraryLayout(r.Context(), libraryID, sectionViewerFromRequest(r))
 	if err != nil {
 		writeAPIError(w, err)
 		return
@@ -484,6 +496,7 @@ func (h *SectionHandler) HandleHomeSections(w http.ResponseWriter, r *http.Reque
 	if !rejectInvalidImageSize(w, r) {
 		return
 	}
+	r = withRequestSectionOptions(r)
 	resp, err := h.HomeSections(r.Context(), sectionViewerFromRequest(r))
 	if err != nil {
 		writeAPIError(w, err)
@@ -505,6 +518,7 @@ func (h *SectionHandler) HandleHomeSectionItems(w http.ResponseWriter, r *http.R
 
 	// The frozen v1 endpoint answers a section whose items cannot be fetched
 	// with no items; v2 answers the error.
+	r = withRequestSectionOptions(r)
 	section, err := h.homeSectionItems(r.Context(), sectionID, sectionViewerFromRequest(r), true)
 	if err != nil {
 		writeAPIError(w, err)

@@ -68,7 +68,6 @@ internal/api/handlers/home_views_service.go
 internal/api/handlers/household.go
 internal/api/handlers/libraries.go  # native selected-target authorization boundary
 internal/api/handlers/libraries_service.go  # native selected-target authorization boundary
-internal/api/handlers/library_views_service.go
 internal/api/handlers/markers_test.go
 internal/api/handlers/notifications.go
 internal/api/handlers/playback.go
@@ -325,7 +324,6 @@ web/vite.config.ts
 # Silo's Jellyfin and Audiobookshelf compatibility was restored 2026-10-18
 # after the 2026-10-13 removal; Bloem's own companion gateway stays removed.
 internal/userdb/migrate.go # Bloem's SQLite step (v36) runs after Silo's v35; a store Bloem left at its former v34 or v35 resumes after v33
-internal/jellycompat/dv_strip_test.go # the no-route cases turn off Bloem's tone-mapping defaults explicitly
 
 internal/database/migrate.go # apply owned migration adapters at the provider boundary
 internal/api/handlers/profiles_test.go # adapt Silo inherited-limit fixture to organization-aware group interface

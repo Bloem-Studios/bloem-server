@@ -156,7 +156,7 @@ func probeNative(ctx context.Context, ffprobePath string, file mediasource.File,
 	raw.Format.Filename = reader.info.Name
 	raw.Format.Size = strconv.FormatInt(reader.info.Size, 10)
 	probe := convertProbeData(&raw)
-	if probe.Container == containerMKV && subtitleTracksMissingContainerID(probe.SubtitleTracks) {
+	if probe.Container == containerMKV && nativeSubtitleTracksMissingContainerID(probe.SubtitleTracks) {
 		if tracksErr != nil {
 			return nil, nil, &nativeProbeFailure{tracksErr}
 		}
@@ -319,4 +319,13 @@ func (w *nativeProbeOutput) Write(p []byte) (int, error) {
 		return w.data.Write(p)
 	}
 	return len(p), nil
+}
+
+func nativeSubtitleTracksMissingContainerID(tracks []SubtitleTrackInfo) bool {
+	for _, track := range tracks {
+		if track.ContainerTrackID == "" {
+			return true
+		}
+	}
+	return false
 }

@@ -92,6 +92,7 @@ type HomeLayoutInput struct {
 	// TestHomeCapabilities pins the two.
 	ItemLimit int `query:"item_limit" minimum:"1" maximum:"100" doc:"Answer at most this many cards in each included section, exactly as getHomeSectionItems answers it with the same item_limit. The entries in sections keep each section's own item_limit. Absent keeps each section's own limit. Send it only when getHomeCapabilities reports row_item_limit_max; an older server rejects the parameter" example:"20"`
 	ArtworkQuery
+	SectionClient
 }
 
 // HomeLayout is the home page's sections in display order and, on request,
@@ -127,6 +128,7 @@ type HomeSectionsInput struct {
 	BloemHomePromotionInput
 	SectionItemLimitQuery
 	ArtworkQuery
+	SectionClient
 }
 
 // HomeSectionItemsInput is the getHomeSectionItems query.
@@ -138,6 +140,7 @@ type HomeSectionItemsInput struct {
 	// TestHomeCapabilities pins the two.
 	ItemLimit int `query:"item_limit" minimum:"1" maximum:"100" doc:"Answer at most this many cards: the section's item_limit becomes the smaller of its own and this value; total_count keeps its meaning. Absent keeps the section's own limit. Send it only when getHomeCapabilities reports row_item_limit_max; an older server rejects the parameter" example:"20"`
 	ArtworkQuery
+	SectionClient
 }
 
 // RecipePreset is one gallery preset: a recipe plus the config it starts from.
@@ -459,7 +462,8 @@ func (reg *Registry) getHomeLayout(ctx context.Context, in *HomeLayoutInput) (*H
 	if _, _, p := viewerIdentity(ctx); p != nil {
 		return nil, p
 	}
-	view, err := svc.HomeLayoutWithItems(bloemHomeLayoutContext(ctx, in.BloemHomePromotionInput), bloemPromotedViewer(sectionViewerCapped(ctx, in.Artwork(), in.ItemLimit), in.BloemHomePromotionInput), in.IncludeItems)
+	ctx = bloemHomePromotionContext(ctx, in.BloemHomePromotionInput)
+	view, err := svc.HomeLayoutWithItems(ctx, sectionViewerCapped(ctx, in.Artwork(), in.SectionClient, in.ItemLimit), in.IncludeItems)
 	if err != nil {
 		return nil, serviceProblem(err)
 	}
@@ -481,7 +485,8 @@ func (reg *Registry) listHomeSections(ctx context.Context, in *HomeSectionsInput
 	if _, _, p := viewerIdentity(ctx); p != nil {
 		return nil, p
 	}
-	view, err := svc.HomeSections(ctx, bloemPromotedViewer(sectionViewerCapped(ctx, in.Artwork(), in.ItemLimit), in.BloemHomePromotionInput))
+	ctx = bloemHomePromotionContext(ctx, in.BloemHomePromotionInput)
+	view, err := svc.HomeSections(ctx, sectionViewerCapped(ctx, in.Artwork(), in.SectionClient, in.ItemLimit))
 	if err != nil {
 		return nil, serviceProblem(err)
 	}
@@ -501,7 +506,8 @@ func (reg *Registry) getHomeSectionItems(ctx context.Context, in *HomeSectionIte
 	if _, _, p := viewerIdentity(ctx); p != nil {
 		return nil, p
 	}
-	view, err := svc.HomeSectionItems(ctx, in.ID, bloemPromotedViewer(sectionViewerCapped(ctx, in.Artwork(), in.ItemLimit), in.BloemHomePromotionInput))
+	ctx = bloemHomePromotionContext(ctx, in.BloemHomePromotionInput)
+	view, err := svc.HomeSectionItems(ctx, in.ID, sectionViewerCapped(ctx, in.Artwork(), in.SectionClient, in.ItemLimit))
 	if err != nil {
 		return nil, serviceProblem(err)
 	}

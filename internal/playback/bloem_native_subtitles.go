@@ -79,10 +79,3 @@ func prepareSourceSubtitleInput(ctx context.Context, opts TranscodeOpts) (Transc
 	opts.subtitleFilterInputPath, opts.SubtitleTrackIndex = path, 0
 	return opts, nil
 }
-
-func appendSourceSubtitleFonts(filter string, opts TranscodeOpts) string {
-	if opts.subtitleFilterFontsDir != "" {
-		return filter + ":fontsdir='" + escapeFilterPath(opts.subtitleFilterFontsDir) + "'"
-	}
-	return filter
-}

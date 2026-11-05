@@ -17,12 +17,22 @@ import (
 // input's final UserID (the policy user's ID when one is loaded). A missing or
 // inactive tenant is an error, which every caller maps to ErrDownloadNotAllowed.
 func bloemCheckDownloadAction(ctx context.Context, decider ActionDecider, input policyengine.ActionInput) (policyengine.ActionDecision, policyengine.Meta, error) {
-	tenantFacts, err := policyengine.TenantFactsFromContext(ctx, input.UserID)
-	if err != nil {
+	if err := bloemBindDownloadTenant(ctx, &input); err != nil {
 		return policyengine.ActionDecision{}, policyengine.Meta{}, err
 	}
-	input.Tenant = tenantFacts
 	return decider.CheckAction(ctx, input)
+}
+
+// bloemBindDownloadTenant sets input.Tenant to the request tenant's facts,
+// keyed on the input's final UserID, for a caller that runs Silo's own
+// CheckAction line next. A missing or inactive tenant is an error.
+func bloemBindDownloadTenant(ctx context.Context, input *policyengine.ActionInput) error {
+	tenantFacts, err := policyengine.TenantFactsFromContext(ctx, input.UserID)
+	if err != nil {
+		return err
+	}
+	input.Tenant = tenantFacts
+	return nil
 }
 
 // bloemEffectiveDownloadPolicy resolves the download policy for the

@@ -18178,6 +18178,10 @@
             "pattern": "^(?:[1-9][0-9]{3}|0[1-9][0-9]{2}|00[1-9][0-9]|000[2-9])-",
             "patternDescription": "a non-zero RFC 3339 instant",
             "type": "string"
+          },
+          "web_only": {
+            "description": "Keeps the section off every client but the web app while it is its page's first featured section, the one the web shows as the banner: a viewer section read then answers it only to a caller whose X-Silo-Client-Family is web. Once another featured section comes first, every client gets it as a regular row. Always false on a section that is not featured.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -18191,6 +18195,7 @@
           "item_limit",
           "config",
           "enabled",
+          "web_only",
           "created_at",
           "updated_at"
         ],
@@ -18297,12 +18302,17 @@
               "unsupported"
             ],
             "type": "string"
+          },
+          "web_only": {
+            "description": "Admin sections accept and answer web_only, and viewer section reads honor it",
+            "type": "boolean"
           }
         },
         "required": [
           "available",
           "reset_profiles",
           "preview",
+          "web_only",
           "revision",
           "state",
           "allowed"
@@ -18359,6 +18369,10 @@
           "title": {
             "maxLength": 500,
             "type": "string"
+          },
+          "web_only": {
+            "description": "Keep the featured section off every client but the web app; ignored unless featured is true. Send it only when getAdminSectionCapabilities reports web_only",
+            "type": "boolean"
           }
         },
         "required": [
@@ -18547,6 +18561,10 @@
             "maxLength": 500,
             "minLength": 1,
             "type": "string"
+          },
+          "web_only": {
+            "description": "Keep the featured section off every client but the web app. Absent keeps the saved value, except that an update making the section featured saves false; a section that is not featured after the update always saves false. Send it only when getAdminSectionCapabilities reports web_only",
+            "type": "boolean"
           }
         },
         "type": "object"
@@ -29338,6 +29356,13 @@
       "DeviceLogin": {
         "additionalProperties": false,
         "properties": {
+          "binding": {
+            "description": "The session binding the device started the request with; absent for an unbound request. An approver that compared one request's code can approve later requests carrying the same binding without comparing again",
+            "examples": [
+              "Zmh6rfhivXdsj8GLjp-OIAiXFIVu4jOzkCpZHQ1fKSU"
+            ],
+            "type": "string"
+          },
           "client_purpose": {
             "description": "Purpose the request was opened with: device_login, remote_playback, or jellyfin_quick_connect for a Jellyfin app signing in with Quick Connect, which is approved for a profile through approve-handoff",
             "examples": [
@@ -29525,6 +29550,13 @@
             "description": "Opaque revision of this document",
             "type": "string"
           },
+          "session_binding": {
+            "description": "Whether startDeviceLogin accepts binding, getDeviceLogin reports it, and pollDeviceLogin requires the matching binding_secret for a bound request",
+            "examples": [
+              true
+            ],
+            "type": "boolean"
+          },
           "state": {
             "description": "Support and configuration state, not health",
             "enum": [
@@ -29542,6 +29574,7 @@
           "protocol_versions",
           "cancel",
           "opened_signal",
+          "session_binding",
           "revision",
           "state"
         ],
@@ -44093,6 +44126,14 @@
       "PollDeviceLoginInputBody": {
         "additionalProperties": false,
         "properties": {
+          "binding_secret": {
+            "description": "For a request started with binding: the secret, as base64url without padding, whose SHA-256 is the binding. Required on every poll of a bound request; ignored otherwise",
+            "examples": [
+              "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            ],
+            "maxLength": 64,
+            "type": "string"
+          },
           "device_code": {
             "description": "The device code from startDeviceLogin",
             "examples": [
@@ -49308,6 +49349,14 @@
       "StartDeviceLoginInputBody": {
         "additionalProperties": false,
         "properties": {
+          "binding": {
+            "description": "Session binding: base64url without padding of SHA-256 of a 32-byte secret the device keeps. getDeviceLogin shows it to the approver, and every poll of the request must send the secret as binding_secret. Omit for an unbound request; an empty string is malformed like any other value",
+            "examples": [
+              "Zmh6rfhivXdsj8GLjp-OIAiXFIVu4jOzkCpZHQ1fKSU"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "type": "string"
+          },
           "client_purpose": {
             "description": "Pairing purpose; defaults to device_login. remote_playback requires temporary=true and is approved through approve-handoff",
             "enum": [
@@ -109765,7 +109814,7 @@
     },
     "/api/v2/admin/recommendations/embeddings/reset": {
       "post": {
-        "description": "Recovers a server whose embedding lock pins a model it can no longer use, or switches embedding models. It refuses with 409 while the embedding, taste profile or recommendation job, or a stale profile sweep, runs on any server, while a catalog import with embeddings runs, and while saved embedding settings wait for a server restart. Run the embedding job afterwards to build the new embedding space.",
+        "description": "Recovers a server whose embedding lock pins a model it can no longer use, or switches embedding models. It refuses with 409 while the embedding, taste profile or recommendation job, or a stale profile sweep, runs on any server, while a catalog import with embeddings runs, and while a saved embedding model or base URL waits for a server restart. Run the embedding job afterwards to build the new embedding space.",
         "operationId": "resetAdminRecommendationEmbeddings",
         "parameters": [
           {
@@ -138483,6 +138532,7 @@
     },
     "/api/v2/auth/device/poll": {
       "post": {
+        "description": "A request started with binding is polled only with its binding_secret: a poll without it, or with another secret, is 403 device_binding_mismatch and leaves the request unchanged.",
         "operationId": "pollDeviceLogin",
         "parameters": [
           {
@@ -138553,6 +138603,16 @@
               }
             },
             "description": "Bad Request"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "404": {
             "content": {
@@ -173336,6 +173396,18 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+            "in": "header",
+            "name": "X-Silo-Client-Family",
+            "schema": {
+              "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+              "examples": [
+                "tv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -173606,6 +173678,18 @@
               "maximum": 7680,
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+            "in": "header",
+            "name": "X-Silo-Client-Family",
+            "schema": {
+              "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+              "examples": [
+                "tv"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -173891,6 +173975,18 @@
               "maximum": 7680,
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+            "in": "header",
+            "name": "X-Silo-Client-Family",
+            "schema": {
+              "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+              "examples": [
+                "tv"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -180863,6 +180959,18 @@
               "minLength": 1,
               "type": "string"
             }
+          },
+          {
+            "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+            "in": "header",
+            "name": "X-Silo-Client-Family",
+            "schema": {
+              "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+              "examples": [
+                "tv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -181135,6 +181243,18 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+            "in": "header",
+            "name": "X-Silo-Client-Family",
+            "schema": {
+              "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+              "examples": [
+                "tv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -181404,6 +181524,18 @@
               "maximum": 7680,
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+            "in": "header",
+            "name": "X-Silo-Client-Family",
+            "schema": {
+              "description": "The caller's client family: tv, mobile, tablet, desktop or web. Only web receives a featured section an administrator limited to the web app (an admin section's web_only). For any other value, or none, layouts and lists leave that section out and reading it alone answers 404",
+              "examples": [
+                "tv"
+              ],
+              "type": "string"
             }
           }
         ],
@@ -236260,6 +236392,9 @@
           "artifact_id": {
             "pattern": "^[A-Za-z0-9_-]{1,128}$",
             "type": "string"
+          },
+          "audio_only": {
+            "type": "boolean"
           },
           "audio_recipe_version": {
             "type": "string"

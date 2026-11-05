@@ -154,7 +154,7 @@ func TestBloemHomeSectionsWithWithdrawnLibraryGrant(t *testing.T) {
 					t.Fatalf("fetch %s: items=%d error=%v", section.SectionType, len(items.Items), err)
 				}
 			}
-			layout, err := h.HomeLayout(WithHomePromotions(viewerCtx, true))
+			layout, err := h.HomeLayout(WithHomePromotions(viewerCtx, true), SectionViewer{})
 			if err != nil || len(layout.Sections) != len(resolved)+1 {
 				t.Fatalf("layout: sections=%d error=%v", len(layout.Sections), err)
 			}
@@ -185,7 +185,7 @@ func TestBloemHomeSectionsWithWithdrawnLibraryGrant(t *testing.T) {
 				}
 			}
 			if len(wantIDs) == 0 {
-				_, err := h.LibraryLayout(viewerCtx, folderID)
+				_, err := h.LibraryLayout(viewerCtx, folderID, SectionViewer{})
 				var apiErr *APIError
 				if !errors.As(err, &apiErr) || apiErr.Status != http.StatusNotFound {
 					t.Fatalf("inaccessible library layout: %v, want 404", err)
