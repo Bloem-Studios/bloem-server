@@ -1,7 +1,7 @@
 # How multitenant administration works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Multitenant administration is a Bloem addition: Silo has one
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
+> and checked against `main` at `747960b29`. Multitenant administration is a Bloem addition: Silo has one
 > set of accounts per server and one kind of administrator. This page explains it in
 > plain language; the technical rules are in the [For developers](#for-developers)
 > section.
@@ -114,10 +114,10 @@ Silo-style connections work as they do in Silo.
 
 | Who | What they manage |
 | --- | --- |
-| Platform administrator | In the Platform context: create, rename, suspend and reactivate organizations, memberships, ownership transfers (after entering their password again), platform libraries and grants, plans, reseller organizations, and each organization's domains and branding. |
+| Platform administrator | In the Platform context: create, rename, suspend and reactivate organizations, memberships, ownership transfers (after entering their password again), platform libraries and grants, plans, reseller organizations, and each organization's domains and branding. Any account's profiles and PINs, on the account's page in the admin console; only the Owner may change the Owner's or another administrator's. |
 | Organization administrator | In their organization's context: people, profiles, groups, grants already made, invitations, activity and policy explanations. |
 | The storefront (Bloem Garden) | Platform routes for reseller organizations and accounts, with a platform administrator's API key. It cannot open an administrative context. |
-| An account's main profile | The household's profiles and PINs, through the account's own sign-in, not the admin console. |
+| An account's main profile | The household's profiles and PINs, through the account's own sign-in. |
 
 ## Words used in the code
 
@@ -227,7 +227,18 @@ The embedded organization console provides three further bounded workflows:
 Drafts and confirmations capture administrative-context generation and the
 applicable revision. An expired or replaced context cannot lend new credentials to
 an old intent. The browser reloads after attempted writes and does not replay
-uncertain mutations. Platform campaign/seasonal authoring and account-session
+uncertain mutations.
+
+A platform administrator manages any account's profiles through Silo's
+`/api/v2/admin/users/{id}/profiles` operations (Silo #3516): create, update,
+delete, and set or remove a PIN, under Silo's Owner rules. The request's tenant
+is the administrator's own organization, not the account's, so Bloem's profile
+limit and profile count use the request tenant only when it is the account
+itself (`profileOrganization` in `internal/api/handlers/bloem_profiles_ext.go`).
+For another account, the account's own access group decides
+(`GetForAccount`), and the store stamps the profile with the account's
+organization. Taking the caller's default group instead would break
+`user_profiles_organization_access_group_fkey`. Platform campaign/seasonal authoring and account-session
 household credential management have separate authorities. See the
 [native workflow contract](../bloem-api-reference.md#embedded-web-workflow-adapters)
 and [web coverage](bloem-web-feature-coverage.md).
@@ -367,7 +378,9 @@ policy moved back onto Silo's `users` table and each account got at most one
 membership (`c60b7008e`, 2026-10-26); Silo's token binding (#3140, merged in
 `68070f04b`, 2026-10-27) also checks the administrative context's login session
 against its account; a session predating its organization's revocation is ended
-with `401 session_invalid` (`25129bcbd`, 2026-11-01).
+with `401 session_invalid` (`25129bcbd`, 2026-11-01); Silo's admin profile
+management (#3516, merged in `747960b29`, 2026-11-05) takes the account's own
+organization for a profile write on another account (`7768bb4a7`).
 
 Technical pages:
 
