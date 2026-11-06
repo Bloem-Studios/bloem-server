@@ -67,6 +67,9 @@ func buildRestoreSet(ctx context.Context, tx pgx.Tx, meta restoreSetMeta) (*rest
 	}
 	b.index.ServerName = settings[branding.KeyServerName]
 	for _, spec := range restoreSections {
+		if bloemLeavesOutSection(spec.id) { // Bloem: bloem_user_data_backup.go
+			continue
+		}
 		var err error
 		switch spec.id {
 		case SectionSettings:

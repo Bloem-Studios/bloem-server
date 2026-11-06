@@ -19,8 +19,9 @@ func bloemUserDataBackups(t *testing.T) {
 
 // TestBloemUserDataBackupLeavesOutTheCatalogDB: a user-data backup's dump
 // keeps the accounts, profiles, per-user tables, organizations, memberships
-// and groups, leaves the catalog and the rest of the server's data out, and
-// cannot replace a live database; a whole-server backup can.
+// and groups, leaves the catalog and the rest of the server's data out; its
+// restore set holds the accounts and libraries only, it copies no server
+// files, and it cannot replace a live database; a whole-server backup can.
 func TestBloemUserDataBackupLeavesOutTheCatalogDB(t *testing.T) {
 	bloemUserDataBackups(t)
 	f := newSelectiveFixture(t)
@@ -45,6 +46,21 @@ func TestBloemUserDataBackupLeavesOutTheCatalogDB(t *testing.T) {
 	// Sign-in sessions stay left out, as in every backup.
 	if !slices.Contains(excluded, "auth_sessions") {
 		t.Error("a user-data backup keeps sign-in sessions")
+	}
+	// The restore set holds the accounts and the libraries they map by, and
+	// no server files are copied: avatars travel with the accounts.
+	if src.Manifest.RestoreSet == nil {
+		t.Fatal("a user-data backup has no restore set")
+	}
+	for section := range src.Manifest.RestoreSet.Sections {
+		if !slices.Contains(bloemRestoreSetSections, section) {
+			t.Errorf("a user-data backup's restore set holds section %s", section)
+		}
+	}
+	for _, o := range src.Manifest.Objects {
+		if strings.HasPrefix(o.Name, BlobsName) && o.Size > 4096 {
+			t.Errorf("a user-data backup copies server files: %s is %d bytes", o.Name, o.Size)
+		}
 	}
 	if err := bloemRefuseWholeServerRestore(src.Manifest); err == nil {
 		t.Error("a user-data backup may replace the live database")

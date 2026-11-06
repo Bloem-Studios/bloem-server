@@ -101,6 +101,7 @@ func (s *Service) ExecuteRestore(ctx context.Context, run RestoreRun) (any, erro
 	if req.BackupID != "" {
 		pinned[req.BackupID] = true
 	}
+	work = bloemBeforeRestoreContext(work, req) // Bloem: bloem_user_data_backup.go
 	result, err := s.backupWith(work, held, KindBeforeRestore, "", nil, pinned, nil)
 	if err != nil {
 		return fail(fmt.Errorf("%w: %w", errBeforeRestoreBackup, err))

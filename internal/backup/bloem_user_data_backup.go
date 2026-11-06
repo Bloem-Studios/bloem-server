@@ -65,6 +65,47 @@ func bloemExcludedTableData(ctx context.Context, q queryer, excluded []string) (
 	return out, rows.Err()
 }
 
+// bloemRestoreSetSections are the restore-set sections a user-data backup
+// writes: the accounts, and the libraries, which a restore maps each
+// profile's allowed libraries by. Plugins (with their archives),
+// collections and home sections (with their artwork) and settings are the
+// server's configuration, not user data.
+var bloemRestoreSetSections = []string{SectionUsers, SectionLibraries}
+
+// bloemLeavesOutSection reports whether a user-data backup leaves the
+// restore-set section out.
+func bloemLeavesOutSection(section string) bool {
+	return bloemUserDataOnly.Load() && !slices.Contains(bloemRestoreSetSections, section)
+}
+
+type bloemAccountsOnlyKey struct{}
+
+// bloemBeforeRestoreContext marks a restore of accounts and nothing else
+// from a user-data backup: it takes no backup first (bloemSkipBeforeRestore).
+// Point-in-time recovery of the database stands in for that copy, and such a
+// restore only adds accounts and profiles this server lacks and merges the
+// data chosen for them.
+func bloemBeforeRestoreContext(ctx context.Context, req RestoreRequest) context.Context {
+	if !bloemUserDataOnly.Load() || len(req.Users) == 0 {
+		return ctx
+	}
+	for _, ids := range req.Selection {
+		if len(ids) > 0 {
+			return ctx
+		}
+	}
+	return context.WithValue(ctx, bloemAccountsOnlyKey{}, true)
+}
+
+// bloemSkipBeforeRestore skips the before-restore backup of a restore
+// bloemBeforeRestoreContext marked.
+func bloemSkipBeforeRestore(ctx context.Context, kind Kind) (RunResult, bool) {
+	if kind != KindBeforeRestore || ctx.Value(bloemAccountsOnlyKey{}) != true {
+		return RunResult{}, false
+	}
+	return RunResult{Kind: kind, Skipped: "a restore of accounts takes no backup first; point-in-time recovery covers it"}, true
+}
+
 // bloemRefuseWholeServerRestore refuses to replace the live database with a
 // user-data backup, which holds no catalog. Its accounts are restored from
 // the Backups page instead.

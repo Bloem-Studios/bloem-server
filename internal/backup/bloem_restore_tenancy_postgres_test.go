@@ -44,6 +44,9 @@ func TestBloemRestoredAccountsJoinTheirOrganizationDB(t *testing.T) {
 		{Account: id(s.ben), Target: TargetNew, Profiles: []ProfileSelection{profile("ben", "main")}},
 		{Account: id(s.cat), Target: TargetNew, Profiles: []ProfileSelection{profile("cat", "main")}},
 	})
+	if report.BeforeRestoreBackupID != "" {
+		t.Errorf("a restore of accounts from a user-data backup took backup %s first", report.BeforeRestoreBackupID)
+	}
 	restored := map[int]int{}
 	for _, source := range []int{s.ann, s.ben, s.cat} {
 		item := reportItem(t, report, SectionUsers, id(source))

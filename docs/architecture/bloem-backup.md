@@ -10,10 +10,12 @@
 A backup is a copy an administrator can bring back later. On Bloem it holds **user
 data only**: the accounts and their profiles, everything each profile keeps (watch
 history and progress, ratings, favourites, watchlists, lists, settings), the
-organizations, memberships and access groups they belong to, and uploaded files such
-as avatars. The catalog, the recommendations' embeddings and the scan state are left
-out: they are most of the database, and the server rebuilds them. A production backup
-is a few hundred megabytes instead of the whole database.
+organizations, memberships and access groups they belong to, their avatars, and the
+list of libraries their access is matched by. The catalog, the recommendations'
+embeddings, the scan state, the plugins, the server's collections, home rows and
+settings, and the server's files (artwork, subtitles, branding) are left out: they
+are most of the server, and the server rebuilds them or keeps them itself. A
+production backup is tens of megabytes instead of the whole database.
 
 Recovering the whole server is not what a backup is for on Bloem. The database's
 point-in-time recovery does that, so a Bloem backup refuses to replace the live
@@ -37,6 +39,11 @@ the access group of every profile.
 
 A backup taken before 6 November 2026 does not record organizations, so its
 accounts come back in the default organization.
+
+Restoring accounts takes no extra backup first. Silo copies the whole server before
+every restore so it can be undone; on Bloem, point-in-time recovery of the database
+stands in for that copy, and a restore of accounts only adds what is missing and
+merges the data chosen for them.
 
 **Not compared yet.** A restore refuses an account the server would give more than
 the backup did, field by field. It does not yet compare whether an account may play
@@ -67,8 +74,13 @@ at all or is preview-only, because the backup does not record those two.
   except `users`, `organizations`, `organization_memberships` and `access_groups`, on
   top of the tables every backup leaves out. A manifest whose `excluded_table_data`
   names `media_items` is a user-data backup, and `RestoreSwap` refuses it (one seam
-  line in `swap.go`; the exclusion is one in `service.go`). The switch is off by
-  default, so Silo's own tests keep whole-server backups.
+  line in `swap.go`; the exclusion is one in `service.go`). Its restore set holds only
+  the users and libraries sections (`bloemRestoreSetSections`, one line in
+  `restoreset_write.go`), and it copies no server files (`withBlobs` is off; avatars
+  travel in the users section). A restore whose selection is accounts only takes no
+  before-restore backup (`bloemBeforeRestoreContext` in `selective_apply.go`,
+  `bloemSkipBeforeRestore` in `backupWith`). The switch is off by default, so Silo's
+  own tests keep whole-server backups.
 - Whole-server classification, for a backup taken with the switch off. Every table
   belongs to one group: data, restored as the backup has it (organizations,
   memberships, plans, branding, promotions, book requests, the Live TV setup); server

@@ -123,7 +123,9 @@ internal/auth/session.go
 internal/backup/backuptest/backuptest.go  # one call: the template gets Bloem's fixture-compatibility triggers (bloem_fixture_compat.go), because Silo's backup tests seed profiles and libraries with bare SQL
 internal/backup/credentials_authority_test.go  # two guards: Bloem's access-policy and profile fields are decided in bloem_coverage_test.go
 internal/backup/restoreset_users.go  # two fields and two calls: a restore set records each account's organization and each profile's access group (bloem_restore_tenancy.go)
-internal/backup/service.go  # one call: a Bloem backup's dump leaves out every table that is not user data (bloem_user_data_backup.go)
+internal/backup/restoreset_write.go  # one call: a user-data backup's restore set holds the accounts and libraries only (bloem_user_data_backup.go)
+internal/backup/selective_apply.go  # one call: a restore of accounts only is marked, so it takes no backup first (bloem_user_data_backup.go)
+internal/backup/service.go  # three calls: a Bloem backup's dump leaves out every table that is not user data, it copies no server files, and a restore of accounts takes no backup first (bloem_user_data_backup.go)
 internal/backup/swap.go  # one call: a user-data backup cannot replace the live database (bloem_user_data_backup.go)
 internal/backup/users_apply.go  # a restored account is created in its organization, a restored profile carries its group name (bloem_restore_tenancy.go)
 internal/backup/users_plan.go  # one call: the planner names the organization an account is restored into, so its group is matched there (bloem_restore_tenancy.go)

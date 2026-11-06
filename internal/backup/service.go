@@ -347,6 +347,9 @@ func (s *Service) Backup(ctx context.Context, held Held, kind Kind, id string, p
 // source, so the before-restore backup it takes cannot rotate it away) and,
 // for a before-upgrade backup, the upgrade its manifest records.
 func (s *Service) backupWith(ctx context.Context, held Held, kind Kind, id string, progress func(float64, string), pinned map[string]bool, upgrade *UpgradeRecord) (RunResult, error) {
+	if result, skip := bloemSkipBeforeRestore(ctx, kind); skip { // Bloem: bloem_user_data_backup.go
+		return result, nil
+	}
 	if progress == nil {
 		progress = func(float64, string) {}
 	}
@@ -493,6 +496,7 @@ func (s *Service) backup(ctx context.Context, prep backupPrep, kind Kind, starte
 	// left: the dump and the core inventory only, which check each table
 	// before reading it. Migrations do not touch blobs.
 	withBlobs := !kind.databaseOnly()
+	withBlobs = withBlobs && !bloemUserDataOnly.Load() // Bloem: a user-data backup copies no server files (bloem_user_data_backup.go)
 	includeFingerprints, includeSubtitles, err := s.contentSettings(ctx, withBlobs)
 	if err != nil {
 		return RunResult{}, err
