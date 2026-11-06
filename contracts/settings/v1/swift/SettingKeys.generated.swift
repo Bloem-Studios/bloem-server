@@ -175,10 +175,12 @@ public enum SettingKey: String, CaseIterable, Sendable {
     case uiTimeFormat = "ui.time_format"
     /// Show title art
     case uiTitleArt = "ui.title_art"
+    /// Watch Party playback controls
+    case watchPartyGuestControlPolicy = "watch_party.guest_control_policy"
 }
 
 public extension SettingKey {
-    static let revision = 26
+    static let revision = 27
 
     /// Keys the server stores. The rest never leave the device.
     static let remote: [SettingKey] = [
@@ -249,6 +251,7 @@ public extension SettingKey {
         .uiThemeMusicLoop,
         .uiTimeFormat,
         .uiTitleArt,
+        .watchPartyGuestControlPolicy,
     ]
 
     static let clientLocal: [SettingKey] = [

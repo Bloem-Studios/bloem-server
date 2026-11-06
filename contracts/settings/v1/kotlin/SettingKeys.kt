@@ -24,7 +24,7 @@ data class SettingPresentation(
 )
 
 object SettingKeys {
-    const val REVISION = 26
+    const val REVISION = 27
 
     /** Blur unwatched episode images */
     const val CATALOG_HIDE_UNWATCHED_EPISODE_IMAGES = "catalog.hide_unwatched_episode_images"
@@ -176,6 +176,8 @@ object SettingKeys {
     const val UI_TIME_FORMAT = "ui.time_format"
     /** Show title art */
     const val UI_TITLE_ART = "ui.title_art"
+    /** Watch Party playback controls */
+    const val WATCH_PARTY_GUEST_CONTROL_POLICY = "watch_party.guest_control_policy"
 
     /** Every key the server stores. Safe to flush. */
     val REMOTE: List<String> = listOf(
@@ -246,6 +248,7 @@ object SettingKeys {
         UI_THEME_MUSIC_LOOP,
         UI_TIME_FORMAT,
         UI_TITLE_ART,
+        WATCH_PARTY_GUEST_CONTROL_POLICY,
     )
 
     /** Contract-known keys that never leave the device. */
