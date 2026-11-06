@@ -158,6 +158,18 @@ carry the ceiling are recorded seams in `contracts/seams.txt` (304 entries on
 `cmd/silo/main.go`. Earlier versions of this page cited exact line numbers, which
 later Silo merges invalidated; the references here name files and symbols instead.
 
+The queued-delivery recheck fails closed, so a Silo test that sends a queued
+notification finds no delivery row unless its recipient is a profile in an active
+organization. Such a test keeps its assertions and gets the recipient from a Bloem
+fixture called by one added line, a recorded test seam:
+`internal/notifications/push_test_send_db_test.go` seeds real tenant profiles
+(`bloem_push_test_fixture_test.go`), and
+`internal/notifications/webpush_login_session_db_test.go`, whose tests run on a
+private schema, gets schema-local `organizations` and `user_profiles` tables with
+one active organization (`seedSchemaTenantProfiles` in
+`bloem_schema_tenant_fixture_test.go`, added with the Silo merge through
+`fcd546a04`). Never loosen the predicate for a test.
+
 ### Invariants
 
 These are rules a future change must not break.
