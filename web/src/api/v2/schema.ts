@@ -23846,6 +23846,11 @@ export interface components {
       episode_number?: number;
       /** @description Empty, never null */
       genres: string[];
+      /**
+       * @description The item's IMDb ID, the one item detail shows. On movie and series cards in catalog browse, collection, favorites, and history listings, and on item detail, when the item has one; Home and library section cards and episode cards leave it absent
+       * @example tt0113277
+       */
+      imdb_id?: string;
       /** @description On a continue-watching card: in_progress or next_up */
       item_source?: string;
       /** @description Empty, never null */
@@ -23961,6 +23966,16 @@ export interface components {
       studios?: string[];
       /** @example Heat */
       title: string;
+      /**
+       * @description The item's TMDB ID, the one item detail shows. Present where imdb_id is
+       * @example 949
+       */
+      tmdb_id?: string;
+      /**
+       * @description The item's TVDB ID, the one item detail shows. Present where imdb_id is
+       * @example 81189
+       */
+      tvdb_id?: string;
       /**
        * @description movie, series, season, episode, audiobook, ebook, podcast, podcast_episode
        * @example movie
@@ -24086,6 +24101,10 @@ export interface components {
       folder_paths?: string[];
       /** @description Empty, never null */
       genres: string[];
+      /**
+       * @description The item's IMDb ID, the one item detail shows. On movie and series cards in catalog browse, collection, favorites, and history listings, and on item detail, when the item has one; Home and library section cards and episode cards leave it absent
+       * @example tt0113277
+       */
       imdb_id?: string;
       intro?: components["schemas"]["Marker"];
       is_specials?: boolean;
@@ -24233,7 +24252,15 @@ export interface components {
       thumb_url?: string;
       /** @example Heat */
       title: string;
+      /**
+       * @description The item's TMDB ID, the one item detail shows. Present where imdb_id is
+       * @example 949
+       */
       tmdb_id?: string;
+      /**
+       * @description The item's TVDB ID, the one item detail shows. Present where imdb_id is
+       * @example 81189
+       */
       tvdb_id?: string;
       /**
        * @description movie, series, season, episode, audiobook, ebook, podcast, podcast_episode
@@ -27262,6 +27289,11 @@ export interface components {
       episode_number?: number;
       /** @description Empty, never null */
       genres: string[];
+      /**
+       * @description The item's IMDb ID, the one item detail shows. On movie and series cards in catalog browse, collection, favorites, and history listings, and on item detail, when the item has one; Home and library section cards and episode cards leave it absent
+       * @example tt0113277
+       */
+      imdb_id?: string;
       /** @description On a continue-watching card: in_progress or next_up */
       item_source?: string;
       /** @description Empty, never null */
@@ -27377,6 +27409,16 @@ export interface components {
       studios?: string[];
       /** @example Heat */
       title: string;
+      /**
+       * @description The item's TMDB ID, the one item detail shows. Present where imdb_id is
+       * @example 949
+       */
+      tmdb_id?: string;
+      /**
+       * @description The item's TVDB ID, the one item detail shows. Present where imdb_id is
+       * @example 81189
+       */
+      tvdb_id?: string;
       /**
        * @description movie, series, season, episode, audiobook, ebook, podcast, podcast_episode
        * @example movie
@@ -36507,6 +36549,11 @@ export interface components {
       episode_number?: number;
       /** @description Empty, never null */
       genres: string[];
+      /**
+       * @description The item's IMDb ID, the one item detail shows. On movie and series cards in catalog browse, collection, favorites, and history listings, and on item detail, when the item has one; Home and library section cards and episode cards leave it absent
+       * @example tt0113277
+       */
+      imdb_id?: string;
       /** @description On a continue-watching card: in_progress or next_up */
       item_source?: string;
       /** @description Empty, never null */
@@ -36622,6 +36669,16 @@ export interface components {
       studios?: string[];
       /** @example Heat */
       title: string;
+      /**
+       * @description The item's TMDB ID, the one item detail shows. Present where imdb_id is
+       * @example 949
+       */
+      tmdb_id?: string;
+      /**
+       * @description The item's TVDB ID, the one item detail shows. Present where imdb_id is
+       * @example 81189
+       */
+      tvdb_id?: string;
       /**
        * @description movie, series, season, episode, audiobook, ebook, podcast, podcast_episode
        * @example movie
@@ -36718,6 +36775,11 @@ export interface components {
       episode_number?: number;
       /** @description Empty, never null */
       genres: string[];
+      /**
+       * @description The item's IMDb ID, the one item detail shows. On movie and series cards in catalog browse, collection, favorites, and history listings, and on item detail, when the item has one; Home and library section cards and episode cards leave it absent
+       * @example tt0113277
+       */
+      imdb_id?: string;
       /** @description On a continue-watching card: in_progress or next_up */
       item_source?: string;
       /** @description Empty, never null */
@@ -36833,6 +36895,16 @@ export interface components {
       studios?: string[];
       /** @example Heat */
       title: string;
+      /**
+       * @description The item's TMDB ID, the one item detail shows. Present where imdb_id is
+       * @example 949
+       */
+      tmdb_id?: string;
+      /**
+       * @description The item's TVDB ID, the one item detail shows. Present where imdb_id is
+       * @example 81189
+       */
+      tvdb_id?: string;
       /**
        * @description movie, series, season, episode, audiobook, ebook, podcast, podcast_episode
        * @example movie
