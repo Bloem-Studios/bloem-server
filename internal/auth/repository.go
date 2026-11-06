@@ -964,5 +964,8 @@ func CreateRestoredAccountInTx(ctx context.Context, tx pgx.Tx, in RestoredAccoun
 		}
 		return nil, fmt.Errorf("creating restored account: %w", err)
 	}
+	if err := linkAccountMembership(ctx, tx, user); err != nil { // Bloem: the creation organization, else its group's, else the default
+		return nil, err
+	}
 	return user, nil
 }

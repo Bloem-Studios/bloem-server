@@ -3,6 +3,19 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 6, 2026 — restoring accounts puts them back in their organization
+
+Silo's selective restore could not bring an account or profile back on Bloem: it
+wrote accounts without an organization membership and profiles without an
+organization, which Bloem refuses. A backup now records each account's organization
+and each profile's access group. A restored account goes back to that organization
+when this server still has it, else to the default organization, with its membership
+there; its group and its profiles' groups are matched by name within that
+organization. Bloem's tests run the restore with the fixture triggers off, as
+production has none ([How backups work in Bloem](../architecture/bloem-backup.md)).
+Three new seams in `internal/backup` (`restoreset_users.go`, `users_plan.go`,
+`users_apply.go`); the ledger goes from 322 to 325.
+
 ## November 6, 2026 — Silo's backup understands Bloem's data
 
 Silo's backup and restore, merged through `cb4f45d0c`, refused Bloem: 80 Bloem tables,

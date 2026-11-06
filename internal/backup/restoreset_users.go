@@ -57,6 +57,8 @@ type AccountEntry struct {
 	// Effective is the account's resolved policy in the backup, against its
 	// group, with the backup's library ids.
 	Effective EffectivePolicy `json:"effective_policy"`
+	// BloemOrganization is the account's organization (bloem_restore_tenancy.go).
+	BloemOrganization *BloemOrganizationEntry `json:"bloem_organization,omitempty"`
 }
 
 // AccountPolicy is an account's policy overrides. LibraryIDs null inherits
@@ -134,6 +136,8 @@ type ProfileEntry struct {
 	LibraryRestrictionsEnabled bool   `json:"library_restrictions_enabled"`
 	AllowedLibraryIDs          []int  `json:"allowed_library_ids"`
 	MaxPlaybackQuality         string `json:"max_playback_quality"`
+	// BloemAccessGroup is the profile's access group (bloem_restore_tenancy.go).
+	BloemAccessGroup string `json:"bloem_access_group,omitempty"`
 	// Data holds each data type's document by data type id.
 	// Data is each type's own document, which the type bounds itself
 	// (userdata.DecodeStrict).
@@ -208,6 +212,9 @@ func avatarBlob(avatar string) string {
 func (b *restoreSetBuild) addUsers(ctx context.Context, tx pgx.Tx, spec sectionSpec) error {
 	accounts, err := readBackupAccounts(ctx, tx)
 	if err != nil {
+		return err
+	}
+	if err := bloemAttachOrganizations(ctx, tx, accounts); err != nil { // Bloem: bloem_restore_tenancy.go
 		return err
 	}
 	si := SectionIndex{ID: spec.id, Files: []FileDigest{}, Blobs: []string{}}
@@ -432,6 +439,9 @@ func exportUser(ctx context.Context, tx pgx.Tx, account AccountEntry) (UserDocum
 	doc := UserDocument{Account: account, Profiles: []ProfileEntry{}, Items: []ItemRef{}}
 	profiles, err := readBackupProfiles(ctx, tx, account.ID)
 	if err != nil {
+		return doc, nil, &exportError{part: "profiles", err: err}
+	}
+	if err := bloemAttachProfileGroups(ctx, tx, account.ID, profiles); err != nil { // Bloem: bloem_restore_tenancy.go
 		return doc, nil, &exportError{part: "profiles", err: err}
 	}
 	var blobs []blobRef

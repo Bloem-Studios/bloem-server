@@ -664,6 +664,9 @@ type RestoredProfile struct {
 	LibraryRestrictionsEnabled bool
 	AllowedLibraryIDs          []int
 	MaxPlaybackQuality         string
+	// BloemAccessGroup names the profile's access group in its account's
+	// organization (bloem_restored_profiles.go); empty takes the account's.
+	BloemAccessGroup string
 }
 
 // NewProfileID returns an id for a new profile.
@@ -690,6 +693,9 @@ func LockProfilesInTx(ctx context.Context, tx pgx.Tx, userID int) (int, error) {
 func CreateRestoredProfileInTx(ctx context.Context, tx pgx.Tx, userID int, p RestoredProfile) error {
 	if p.ID == "" {
 		return errors.New("a restored profile needs an id")
+	}
+	if handled, err := bloemCreateRestoredProfileInTx(ctx, tx, userID, p); handled { // Bloem: bloem_restored_profiles.go
+		return err
 	}
 	var hasPrimary bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM user_profiles WHERE user_id = $1 AND is_primary)`, userID).Scan(&hasPrimary); err != nil {

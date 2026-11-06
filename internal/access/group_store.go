@@ -680,6 +680,9 @@ func GroupPolicyForUser(ctx context.Context, db interface {
 func GroupPolicyByName(ctx context.Context, db interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, name string) (*GroupPolicy, error) {
+	if policy, handled, err := bloemGroupPolicyByName(ctx, db, name); handled { // Bloem: bloem_group_by_name.go
+		return policy, err
+	}
 	policy, err := scanGroupPolicy(db.QueryRow(ctx, `
 		SELECT g.id, g.library_ids, g.max_playback_quality, g.download_allowed,
 			g.download_transcode_allowed, g.transcode_allowed, g.audio_transcode_allowed,

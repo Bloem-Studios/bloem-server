@@ -15,17 +15,18 @@ func init() {
 // TestProfileComparisonCoversEveryField skip a field named here.
 //
 // The ones marked "not compared yet" grant or limit access, but Silo's
-// restore cannot compare them yet: a restore set's effective policy and
-// profile entries do not carry them, so comparing them would refuse every
-// account a selective restore brings to Bloem. Backups are off in Bloem's
-// production. docs/architecture/bloem-backup.md lists the follow-up.
+// restore cannot compare them yet: a restore set's effective policy does not
+// carry them, so comparing them would refuse every account a selective
+// restore brings to Bloem. The organization and group are placed by name
+// instead (bloem_restore_tenancy.go). docs/architecture/bloem-backup.md lists
+// the follow-up.
 var bloemFieldDecisions = map[string]string{
 	// accesspolicy.EffectiveUserPolicy
 	"PlaybackAllowed": "not compared yet: a restore set's effective policy has no playback switch",
 	"PreviewOnly":     "not compared yet: a restore set's effective policy has no preview flag",
 	// userstore.Profile
-	"OrganizationID":     "not compared yet: a restore set's profile entry has no organization",
-	"AccessGroupID":      "not compared yet: a restore set's profile entry has no access group",
+	"OrganizationID":     "placed, not compared: a restored profile joins its account's organization (bloem_restore_tenancy.go)",
+	"AccessGroupID":      "placed, not compared: a restored profile joins its recorded group's namesake there (bloem_restore_tenancy.go)",
 	"LoginEmail":         "no authority: the address the profile signs in with, an identity like Name",
 	"CredentialRevision": "no authority: profile sign-in tokens are bound to it, as to PINRevision",
 }

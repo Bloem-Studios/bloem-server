@@ -213,6 +213,10 @@ func (s *Service) newUserPlanner(rs *RestoreSet, q queryer, serverID string, lib
 // plan matches one account and its profiles.
 func (u *userPlanner) plan(ctx context.Context, doc *UserDocument) (accountPlan, error) {
 	a := doc.Account
+	ctx, err := bloemPlanContext(ctx, u.q, a) // Bloem: bloem_restore_tenancy.go
+	if err != nil {
+		return accountPlan{}, err
+	}
 	label := a.Username
 	if label == "" {
 		label = a.Email

@@ -1,10 +1,11 @@
 # How backups work in Bloem
 
-> **Provenance and status.** Bloem page, written on 2026-11-06 against `main` at
-> `2b1131b3d`. Backup and restore are Silo's feature, merged from Silo through
-> `cb4f45d0c`; this page covers what Bloem adds so they understand Bloem's data.
-> Backups are switched off on Bloem's production server (`backup.enabled` is false),
-> where point-in-time database recovery covers recovery. Silo's
+> **Provenance and status.** Bloem page, written on 2026-11-06 and updated the same
+> day against `main` at `8d3d5e17d`. Backup and restore are Silo's feature, merged
+> from Silo through `6791aac86`; this page covers what Bloem adds so they understand
+> Bloem's data. The nightly backup is switched off on Bloem's production server
+> (`backup.enabled` is false), where point-in-time database recovery covers recovery;
+> "Back up now" and each person's "Your data" export still work. Silo's
 > [backup reference](backups.md) holds the full design.
 
 A backup is a copy of the server's database and files that an administrator can bring
@@ -40,15 +41,28 @@ password, because credentials come from the live server. The channel stays hidde
 the storage source stays off, because switches keep the stricter value. A recording
 rule a household added on Tuesday is gone, as is everything else added since Monday.
 
-## What is not finished yet
+## Bringing back chosen accounts
 
-A **selective restore** copies chosen accounts from a backup into a running server.
-Silo's restore file does not yet carry four things Bloem's access rules depend on:
-whether an account may play at all, whether it is preview-only, and a profile's
-organization and access group. Until it does, a selective restore cannot compare
-them, and one that creates a profile fails, because Bloem requires every profile to
-belong to an organization. Backups are off in production, so nothing uses this path
-today.
+A **selective restore** copies chosen accounts and profiles from a backup into a
+running server. Each backup records the organization every account belonged to and
+the access group of every profile.
+
+- An account that is no longer on the server comes back in the organization it was
+  in when the backup was taken, if the server still has that organization. If not,
+  or if the backup came from another server, it comes back in the default
+  organization.
+- Its access group is the group of the same name in that organization, never a
+  same-named group of another organization.
+- A restored profile joins its account's organization, in the group of the name the
+  backup recorded there, else the account's group, else the organization's default
+  group.
+
+A backup taken before 6 November 2026 does not record organizations, so its
+accounts come back in the default organization.
+
+**Not compared yet.** A restore refuses an account the server would give more than
+the backup did, field by field. It does not yet compare whether an account may play
+at all or is preview-only, because the backup does not record those two.
 
 ## Who can change what
 
@@ -80,13 +94,25 @@ today.
   `lan.advertisement_enabled` and `bloem.requests.ebooks_enabled` keep their stricter
   value, as `server.lan_discovery` and Silo's request switches do. The Silo user-DB S3
   keys are not Bloem settings and are dropped from the restored secrets.
+- Selective restore (`bloem_restore_tenancy.go`): `bloemAttachOrganizations` and
+  `bloemAttachProfileGroups` add `bloem_organization` to each account entry and
+  `bloem_access_group` to each profile entry of a restore set. `bloemPlanContext`
+  names the organization an account is restored into (by id, else the default) as
+  the creation organization (`tenancy.WithCreationOrganization`), so
+  `access.GroupPolicyByName` matches the group there (`bloem_group_by_name.go`) and
+  `auth.CreateRestoredAccountInTx` creates the membership there
+  (`linkAccountMembership`). `pgstore.CreateRestoredProfileInTx` writes the profile
+  with its account's organization and group (`bloem_restored_profiles.go`).
+  `TestBloemRestoredAccountsJoinTheirOrganizationDB` runs a restore with the fixture
+  triggers off, as production has none. Seams: `restoreset_users.go`, `users_plan.go`
+  and `users_apply.go` in `internal/backup`.
 - Bloem's fields on Silo's access-policy and profile types are listed in
   `internal/backup/bloem_coverage_test.go`, which Silo's coverage tests consult through
-  two seam lines in `credentials_authority_test.go`. `PlaybackAllowed`, `PreviewOnly`,
-  `OrganizationID` and `AccessGroupID` are marked "not compared yet". Comparing them
-  needs them in the restore set's `EffectivePolicy` and `ProfileEntry` first:
-  `access.WiderThan` would otherwise report every restored account as wider, since
-  the restore file's policy has no playback switch.
+  two seam lines in `credentials_authority_test.go`. `PlaybackAllowed` and `PreviewOnly`
+  are marked "not compared yet". Comparing them needs them in the restore set's
+  `EffectivePolicy` first: `access.WiderThan` would otherwise report every restored
+  account as wider, since the restore file's policy has no playback switch. A
+  profile's `OrganizationID` and `AccessGroupID` are placed, not compared.
 - Test databases: Silo's `internal/backup/backuptest` migrates a template of its own.
   `bloem_fixture_compat.go` installs Bloem's fixture-compatibility triggers there
   (one seam line in `backuptest.go`). The triggers arm themselves in any database whose

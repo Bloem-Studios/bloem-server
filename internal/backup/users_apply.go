@@ -314,6 +314,10 @@ func documentItems(doc *UserDocument) []string {
 // createAccount creates a new account with the backup's fields and records
 // that this restore made it.
 func (a *applier) createAccount(ctx context.Context, tx pgx.Tx, doc *UserDocument, plan accountPlan) (int, error) {
+	ctx, err := bloemPlanContext(ctx, tx, doc.Account) // Bloem: the membership joins that organization
+	if err != nil {
+		return 0, err
+	}
 	user, err := auth.CreateRestoredAccountInTx(ctx, tx, restoredAccount(doc.Account, plan))
 	if err != nil {
 		return 0, err
@@ -552,6 +556,7 @@ func (a *applier) createProfile(ctx context.Context, tx pgx.Tx, doc *UserDocumen
 		ID: id, Name: e.Name, Avatar: avatar, IsPrimary: e.IsPrimary, PINHash: e.PINHash, IsChild: e.IsChild,
 		MaxContentRating: e.MaxContentRating, MaxAdvisoryAge: e.MaxAdvisoryAge, RequireAdvisoryAge: e.RequireAdvisoryAge,
 		LibraryRestrictionsEnabled: e.LibraryRestrictionsEnabled, AllowedLibraryIDs: pp.allowed, MaxPlaybackQuality: e.MaxPlaybackQuality,
+		BloemAccessGroup: e.BloemAccessGroup,
 	}); err != nil {
 		return false, err
 	}
