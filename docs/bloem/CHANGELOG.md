@@ -9,9 +9,8 @@ A Silo backup dumped the whole database, about 63 GB on production, though a res
 of chosen accounts reads only the per-account documents beside the dump. Bloem's
 server now takes user-data backups: the dump keeps the accounts, profiles, every
 per-user table, and the organizations, memberships and groups they belong to, and
-leaves the catalog, embeddings and scan state out. Its restore set holds the accounts
-and libraries only, without the plugin archives and collection artwork, and it copies
-none of the server's files; a restore of accounts no longer takes a whole backup
+leaves the catalog, embeddings and scan state out. Its restore set leaves the plugin
+archives and the server's settings out, and it copies none of the server's files; a restore of accounts no longer takes a whole backup
 first, so it runs in seconds. Such a backup refuses to replace the live database; point-in-time
 recovery covers the whole server ([How backups work in Bloem](../architecture/bloem-backup.md)).
 Four new seams in `internal/backup` (`service.go`, `swap.go`, `restoreset_write.go`,

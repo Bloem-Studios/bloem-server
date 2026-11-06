@@ -66,11 +66,12 @@ func bloemExcludedTableData(ctx context.Context, q queryer, excluded []string) (
 }
 
 // bloemRestoreSetSections are the restore-set sections a user-data backup
-// writes: the accounts, and the libraries, which a restore maps each
-// profile's allowed libraries by. Plugins (with their archives),
-// collections and home sections (with their artwork) and settings are the
-// server's configuration, not user data.
-var bloemRestoreSetSections = []string{SectionUsers, SectionLibraries}
+// writes: the accounts, and what a restore of them reads besides. The
+// libraries map each profile's allowed libraries; the collections and home
+// sections map the server collections a profile's page layouts name, across
+// servers too. Plugins (with their archives) and settings are the server's
+// configuration, which a restore of accounts never reads.
+var bloemRestoreSetSections = []string{SectionUsers, SectionLibraries, SectionCollections, SectionHomeSections}
 
 // bloemLeavesOutSection reports whether a user-data backup leaves the
 // restore-set section out.

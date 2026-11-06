@@ -10,12 +10,13 @@
 A backup is a copy an administrator can bring back later. On Bloem it holds **user
 data only**: the accounts and their profiles, everything each profile keeps (watch
 history and progress, ratings, favourites, watchlists, lists, settings), the
-organizations, memberships and access groups they belong to, their avatars, and the
-list of libraries their access is matched by. The catalog, the recommendations'
-embeddings, the scan state, the plugins, the server's collections, home rows and
-settings, and the server's files (artwork, subtitles, branding) are left out: they
-are most of the server, and the server rebuilds them or keeps them itself. A
-production backup is tens of megabytes instead of the whole database.
+organizations, memberships and access groups they belong to, their avatars, and what
+restoring them is matched against: the libraries, and the server's collections and
+home rows a profile's page layouts name. The catalog, the recommendations'
+embeddings, the scan state, the plugins, the server's settings and the server's other
+files (subtitles, branding) are left out: they are most of the server, and the server
+rebuilds them or keeps them itself. A production backup is a few hundred megabytes,
+most of it collection artwork, instead of the whole database.
 
 Recovering the whole server is not what a backup is for on Bloem. The database's
 point-in-time recovery does that, so a Bloem backup refuses to replace the live
@@ -75,8 +76,9 @@ at all or is preview-only, because the backup does not record those two.
   top of the tables every backup leaves out. A manifest whose `excluded_table_data`
   names `media_items` is a user-data backup, and `RestoreSwap` refuses it (one seam
   line in `swap.go`; the exclusion is one in `service.go`). Its restore set holds only
-  the users and libraries sections (`bloemRestoreSetSections`, one line in
-  `restoreset_write.go`), and it copies no server files (`withBlobs` is off; avatars
+  the users, libraries, collections and home-sections sections, which a restore of
+  accounts maps by (`bloemRestoreSetSections`, one line in `restoreset_write.go`), and
+  it copies no server files (`withBlobs` is off; avatars
   travel in the users section). A restore whose selection is accounts only takes no
   before-restore backup (`bloemBeforeRestoreContext` in `selective_apply.go`,
   `bloemSkipBeforeRestore` in `backupWith`). The switch is off by default, so Silo's

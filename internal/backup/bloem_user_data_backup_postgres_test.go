@@ -20,7 +20,7 @@ func bloemUserDataBackups(t *testing.T) {
 // TestBloemUserDataBackupLeavesOutTheCatalogDB: a user-data backup's dump
 // keeps the accounts, profiles, per-user tables, organizations, memberships
 // and groups, leaves the catalog and the rest of the server's data out; its
-// restore set holds the accounts and libraries only, it copies no server
+// restore set leaves the plugins and settings out, it copies no server
 // files, and it cannot replace a live database; a whole-server backup can.
 func TestBloemUserDataBackupLeavesOutTheCatalogDB(t *testing.T) {
 	bloemUserDataBackups(t)
@@ -47,14 +47,20 @@ func TestBloemUserDataBackupLeavesOutTheCatalogDB(t *testing.T) {
 	if !slices.Contains(excluded, "auth_sessions") {
 		t.Error("a user-data backup keeps sign-in sessions")
 	}
-	// The restore set holds the accounts and the libraries they map by, and
-	// no server files are copied: avatars travel with the accounts.
+	// The restore set holds the accounts and the sections their restore
+	// maps by, not the plugins or settings, and no server files are copied:
+	// avatars travel with the accounts.
 	if src.Manifest.RestoreSet == nil {
 		t.Fatal("a user-data backup has no restore set")
 	}
 	for section := range src.Manifest.RestoreSet.Sections {
 		if !slices.Contains(bloemRestoreSetSections, section) {
 			t.Errorf("a user-data backup's restore set holds section %s", section)
+		}
+	}
+	for _, section := range []string{SectionPlugins, SectionSettings} {
+		if _, ok := src.Manifest.RestoreSet.Sections[section]; ok {
+			t.Errorf("a user-data backup's restore set holds the server's %s", section)
 		}
 	}
 	for _, o := range src.Manifest.Objects {
