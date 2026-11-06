@@ -35,6 +35,7 @@ func loginSessionWebPushDB(t *testing.T) (*WebPushRepository, *pgxpool.Pool) {
 			('expired', 7, now() - interval '1 hour', NULL)`); err != nil {
 		t.Fatal(err)
 	}
+	seedSchemaTenantProfiles(t, pool, "default")
 	return NewWebPushRepository(pool), pool
 }
 

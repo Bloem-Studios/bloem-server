@@ -342,6 +342,7 @@ web/src/hooks/admin/useSettingsHealth.ts # include owned announcements
 internal/apiv2/admin_scoped_email_db_test.go # exercise upstream scoped-key security assertions against the complete tenant schema
 
 internal/notifications/push_test_send_db_test.go # supply real active tenant profiles to the upstream push regression
+internal/notifications/webpush_login_session_db_test.go # supply an active tenant profile on the upstream web push test's private schema
 
 
 
