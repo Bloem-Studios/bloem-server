@@ -33,6 +33,9 @@ func TestAuthorityComparisonCoversEveryField(t *testing.T) {
 		"RequestsAllowed":            func(p *access.EffectiveUserPolicy) { p.RequestsAllowed = true },
 	}
 	for _, f := range reflect.VisibleFields(reflect.TypeFor[access.EffectiveUserPolicy]()) {
+		if _, bloem := bloemFieldDecisions[f.Name]; bloem { // Bloem: bloem_coverage_test.go
+			continue
+		}
 		widen, ok := accessWidenings[f.Name]
 		if !ok {
 			t.Errorf("access policy field %s has no widening case: add one, and compare it in access.WiderThan", f.Name)
@@ -108,6 +111,9 @@ func TestProfileComparisonCoversEveryField(t *testing.T) {
 	}
 	compared := map[string]bool{}
 	for _, f := range reflect.VisibleFields(reflect.TypeFor[userstore.Profile]()) {
+		if _, bloem := bloemFieldDecisions[f.Name]; bloem { // Bloem: bloem_coverage_test.go
+			continue
+		}
 		field, ok := profileColumns[f.Name]
 		if _, why := notAuthority[f.Name]; !ok && !why {
 			t.Errorf("profile field %s is neither compared nor listed as no authority: add it to profileLimits and looserThan, or say why not", f.Name)

@@ -45,6 +45,7 @@ more detailed pages of its area, and ends with a "For developers" section.
 - [How apps connect](../architecture/bloem-apps.md) — the three entrances, signing in, remote control.
 - [Switching between Silo and Bloem](../architecture/bloem-silo-switching-explained.md) — one database, two servers taking turns, both install layouts.
 - [How Bloem keeps up with Silo](../architecture/bloem-following-silo.md) — the merge bot and each Silo batch, its deploy, "Silo wins", where Bloem keeps its own work.
+- [How backups work in Bloem](../architecture/bloem-backup.md) — what a restore brings back of Bloem's data, credentials kept from the live server, what selective restore does not cover yet.
 
 The pictures are drawn by `scripts/bloem/draw-pictures.py`.
 

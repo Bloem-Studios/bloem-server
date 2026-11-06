@@ -120,6 +120,8 @@ internal/auth/password_hash_test.go  # compose upstream bcrypt test initializati
 internal/auth/repository.go
 internal/auth/service.go
 internal/auth/session.go
+internal/backup/backuptest/backuptest.go  # one call: the template gets Bloem's fixture-compatibility triggers (bloem_fixture_compat.go), because Silo's backup tests seed profiles and libraries with bare SQL
+internal/backup/credentials_authority_test.go  # two guards: Bloem's access-policy and profile fields are decided in bloem_coverage_test.go
 internal/blobgc/collector_s3_db_test.go  # added lines: collect the test's own queue row first; dbpins runs listed packages at once and another may hold an older due row (failed in Bloem CI on 2026-11-02)
 internal/branding/branding.go
 internal/branding/render.go

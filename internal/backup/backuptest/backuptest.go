@@ -116,6 +116,9 @@ func createTemplate(dsn string) (name string, err error) {
 	if err := database.MigrateOnly(ctx, pool, migrations.FS, "sql"); err != nil {
 		return "", fmt.Errorf("migrating: %w", err)
 	}
+	if err := bloemPrepareTemplate(ctx, pool); err != nil { // Bloem: bloem_fixture_compat.go
+		return "", err
+	}
 	return name, nil
 }
 

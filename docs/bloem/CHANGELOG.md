@@ -3,6 +3,20 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 6, 2026 — Silo's backup understands Bloem's data
+
+Silo's backup and restore, merged through `cb4f45d0c`, refused Bloem: 80 Bloem tables,
+10 settings and Bloem's access fields were unclassified, and Silo's restore tests hit
+Bloem's organization constraints. `internal/backup/bloem_classification.go` now
+classifies every Bloem table, switch and setting on Bloem's own lines (Xtream sign-ins
+and preview ticket keys come from the live server; preview guest sessions are left
+out), and Silo's backup test databases get Bloem's fixture-compatibility triggers. A
+selective restore does not yet compare Bloem's playback, preview, organization and
+access-group fields ([How backups work in Bloem](../architecture/bloem-backup.md)).
+Backups stay off in production. Two new seams, both test-only:
+`internal/backup/backuptest/backuptest.go` and
+`internal/backup/credentials_authority_test.go`; the ledger goes from 320 to 322.
+
 ## November 5, 2026 — AI subtitle cues stay up after speech
 
 `5eecc34c4` holds each AI-generated cue 0.6 s after its speech ends, as human

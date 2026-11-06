@@ -2,8 +2,11 @@
 --
 -- NOT A MIGRATION. This file is installed only by cmd/bloem-testdb, only into
 -- a database whose name marks it as a test database, and every trigger below
--- is a no-op unless the session carries bloem.fixture_compat = 'on' (set with
--- ALTER DATABASE by the same tool). Production databases never have these
+-- is a no-op unless the shim is armed (bloem_fixture_compat_armed): the session
+-- carries bloem.fixture_compat = 'on' (set with ALTER DATABASE by the same
+-- tool), or carries no value and the database's name marks it as a test
+-- database, as a copy or a restored dump of one does. SET bloem.fixture_compat
+-- = 'off' disarms it. Production databases never have these
 -- objects, and the tenancy fences they sit beside are untouched: every row
 -- written here satisfies the same constraints and triggers a production write
 -- does.
@@ -17,6 +20,21 @@
 -- files stay byte-identical to Silo's.
 --
 -- Idempotent: re-running replaces every object.
+
+-- Whether the triggers below act. A database copied from a test database
+-- (CREATE DATABASE ... TEMPLATE) or restored from its dump has the triggers
+-- but not the ALTER DATABASE setting; its name still marks it as a test
+-- database (bloemtestdb.IsTestDatabaseName).
+CREATE OR REPLACE FUNCTION public.bloem_fixture_compat_armed()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT coalesce(
+        nullif(current_setting('bloem.fixture_compat', true), '') = 'on',
+        lower(current_database()) LIKE '%test%' OR lower(current_database()) LIKE '%\_ci'
+    )
+$$;
 
 -- Memberships the shim created on a fixture's behalf. A fixture that later
 -- writes its own membership for the account displaces them (see below).
@@ -68,7 +86,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF current_setting('bloem.fixture_compat', true) IS DISTINCT FROM 'on'
+    IF NOT public.bloem_fixture_compat_armed()
        OR current_setting('bloem.fixture_shim_writing', true) = 'on' THEN
         RETURN NEW;
     END IF;
@@ -106,7 +124,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF current_setting('bloem.fixture_compat', true) IS DISTINCT FROM 'on' THEN
+    IF NOT public.bloem_fixture_compat_armed() THEN
         RETURN NULL;
     END IF;
     IF EXISTS (SELECT 1 FROM public.organization_memberships WHERE account_id = NEW.id) THEN
@@ -136,7 +154,7 @@ DECLARE
     default_org uuid;
     account_group bigint;
 BEGIN
-    IF current_setting('bloem.fixture_compat', true) IS DISTINCT FROM 'on'
+    IF NOT public.bloem_fixture_compat_armed()
        OR NEW.organization_id IS NOT NULL
        OR NEW.user_id IS NULL THEN
         RETURN NEW;
@@ -172,7 +190,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF current_setting('bloem.fixture_compat', true) = 'on' THEN
+    IF public.bloem_fixture_compat_armed() THEN
         DELETE FROM public.organization_entitlements WHERE media_folder_id = OLD.id;
     END IF;
     RETURN OLD;
@@ -189,7 +207,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF current_setting('bloem.fixture_compat', true) = 'on' THEN
+    IF public.bloem_fixture_compat_armed() THEN
         DELETE FROM public.organization_entitlements WHERE plugin_installation_id = OLD.id;
     END IF;
     RETURN OLD;

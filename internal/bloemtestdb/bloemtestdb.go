@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Silo-Server/silo-server/internal/database"
@@ -94,10 +95,27 @@ func Prepare(ctx context.Context, dsn string, opts Options) error {
 	}
 	logf("database settings applied")
 
-	if _, err := pool.Exec(ctx, fixtureCompatSQL); err != nil {
-		return fmt.Errorf("bloemtestdb: install fixture compatibility triggers: %w", err)
+	if err := InstallFixtureCompat(ctx, pool); err != nil {
+		return err
 	}
 	logf("fixture compatibility triggers installed")
+	return nil
+}
+
+// Execer runs one SQL statement; a *pgxpool.Pool and a *pgx.Conn are both
+// one.
+type Execer interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+// InstallFixtureCompat installs sql/fixture_compat.sql into the migrated
+// test database db is connected to. The triggers act in a database whose
+// name marks it as a test database, or where the session carries
+// DatabaseSettings.
+func InstallFixtureCompat(ctx context.Context, db Execer) error {
+	if _, err := db.Exec(ctx, fixtureCompatSQL); err != nil {
+		return fmt.Errorf("bloemtestdb: install fixture compatibility triggers: %w", err)
+	}
 	return nil
 }
 
