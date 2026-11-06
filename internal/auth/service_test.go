@@ -127,11 +127,13 @@ func newSetupInitialUserService(bootstrapper *recordingOwnershipBootstrapper) (*
 	service := &Service{
 		provider:  provider,
 		jwt:       NewJWTService("test-secret", time.Hour, 24*time.Hour),
-		sessions:  sessions,
-		users:     users,
 		providers: map[string]AuthProvider{"local": provider},
 		order:     []string{"local"},
 		accounts:  NewAccountProvisioner(users, nil),
+		bloemServiceDeps: bloemServiceDeps{
+			bloemSessions: sessions,
+			bloemUsers:    users,
+		},
 	}
 	service.SetOwnershipBootstrapper(bootstrapper)
 	return service, users, provider, sessions

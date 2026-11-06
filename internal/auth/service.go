@@ -102,8 +102,8 @@ func ClaimsFromContext(ctx context.Context) *Claims {
 type Service struct {
 	provider    AuthProvider
 	jwt         *JWTService
-	sessions    serviceSessionRepository
-	users       serviceUserRepository
+	sessions    *SessionRepository
+	users       *UserRepository
 	inviteCodes *InviteCodeRepository
 	settings    SettingsGetter
 	// providers are registered once at start (the built-in local provider,
@@ -175,18 +175,15 @@ func NewService(
 	service := &Service{
 		provider:    provider,
 		jwt:         jwt,
+		sessions:    sessions,
+		users:       users,
 		inviteCodes: inviteCodes,
 		settings:    settings,
 		providers:   map[string]AuthProvider{},
 		metadata:    map[string]LoginProviderInfo{},
 		accounts:    NewAccountProvisioner(users, storeProvider),
 	}
-	if users != nil {
-		service.users = users
-	}
-	if sessions != nil {
-		service.sessions = sessions
-	}
+	service.bloemUseRepositories(sessions, users)
 	if provider != nil {
 		service.RegisterProvider(LoginProviderInfo{
 			ID:          LocalProviderID,
@@ -521,7 +518,7 @@ type IdentitySession struct {
 func (s *Service) OpenIdentitySession(ctx context.Context, db OAuthSessionDB, c IdentitySession) (*TokenPair, error) {
 	if db == nil {
 		var pair *TokenPair
-		err := pgx.BeginFunc(ctx, s.sessions, func(tx pgx.Tx) error {
+		err := pgx.BeginFunc(ctx, s.sessions.pool, func(tx pgx.Tx) error {
 			var err error
 			pair, err = s.OpenIdentitySession(ctx, tx, c)
 			return err
@@ -797,7 +794,7 @@ func (s *Service) loginWithProvider(
 		// Linking and account changes hold this row lock while retiring local
 		// credentials. Recheck the authenticated snapshot before inserting a
 		// session so an in-flight login cannot outlive their revocation.
-		err = pgx.BeginFunc(ctx, s.users, func(tx pgx.Tx) error {
+		err = pgx.BeginFunc(ctx, s.users.pool, func(tx pgx.Tx) error {
 			current, err := lockUser(ctx, tx, user.ID)
 			if IsNotFound(err) {
 				return ErrInvalidCredentials
@@ -880,7 +877,7 @@ func (s *Service) loginWithProvider(
 // The rule lives in needsSetup so the standalone SetupState reporter answers
 // identically.
 func (s *Service) NeedsSetup(ctx context.Context) (bool, error) {
-	return needsSetup(ctx, s.users)
+	return needsSetup(ctx, s.bloemUsers)
 }
 
 // SetupInitialUser creates the first admin account and signs it in.
@@ -905,7 +902,7 @@ func (s *Service) SetupInitialUser(
 		user *models.User
 		pair *TokenPair
 	)
-	claimant, ok := s.users.(interface {
+	claimant, ok := s.bloemUsers.(interface {
 		ClaimInitialSetup(context.Context, func(pgx.Tx) error) error
 	})
 	if !ok {
@@ -1040,7 +1037,7 @@ func (s *Service) StartImpersonation(ctx context.Context, adminUserID, targetUse
 	if adminUserID == targetUserID {
 		return nil, nil, nil, ErrImpersonationNotAllowed
 	}
-	tx, err := s.sessions.Begin(ctx)
+	tx, err := s.sessions.pool.Begin(ctx)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -1469,13 +1466,7 @@ func (s *Service) GetSessions(ctx context.Context, userID int) ([]*models.AuthSe
 // GetSessionsPage returns one keyset page of the user's live sessions; see
 // SessionRepository.ListByUserPage.
 func (s *Service) GetSessionsPage(ctx context.Context, userID int, after *SessionKey, limit int) ([]*models.AuthSession, error) {
-	pager, ok := s.sessions.(interface {
-		ListByUserPage(context.Context, int, *SessionKey, int) ([]*models.AuthSession, error)
-	})
-	if !ok {
-		return nil, fmt.Errorf("session pagination unavailable")
-	}
-	return pager.ListByUserPage(ctx, userID, after, limit)
+	return s.sessions.ListByUserPage(ctx, userID, after, limit)
 }
 
 // CurrentLoginSession returns the caller's live session independently of the

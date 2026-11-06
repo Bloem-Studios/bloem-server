@@ -63,7 +63,7 @@ func (s *Service) bloemRefreshSession(ctx context.Context, claims *Claims) (*Tok
 // bloemLiveSession is the session while it is live, and nil when it cannot be
 // read or has ended.
 func (s *Service) bloemLiveSession(ctx context.Context, id string) *models.AuthSession {
-	session, err := s.sessions.GetByID(ctx, id)
+	session, err := s.bloemSessions.GetByID(ctx, id)
 	if err != nil || session.RevokedAt != nil || !session.ExpiresAt.After(time.Now()) {
 		return nil
 	}

@@ -18,6 +18,22 @@ import (
 type bloemServiceDeps struct {
 	ownership          OwnershipBootstrapper
 	profileCredentials directProfileCredentials
+	// bloemUsers and bloemSessions are Silo's users and sessions repositories
+	// as Bloem's own lines use them: behind interfaces, so Bloem's tests can
+	// fake them. Silo's lines keep Silo's concrete fields.
+	bloemUsers    serviceUserRepository
+	bloemSessions serviceSessionRepository
+}
+
+// bloemUseRepositories gives Bloem's lines the repositories NewService was
+// given. A nil repository stays a nil interface, not a typed nil.
+func (s *Service) bloemUseRepositories(sessions *SessionRepository, users *UserRepository) {
+	if users != nil {
+		s.bloemUsers = users
+	}
+	if sessions != nil {
+		s.bloemSessions = sessions
+	}
 }
 
 var (
@@ -131,7 +147,7 @@ func (s *Service) LoginProfile(ctx context.Context, email, password string, devi
 		ProfileCredentialRevision: &credentialRevision,
 		AuthMethod:                AuthMethodDirectProfile,
 	}
-	if err := s.sessions.CreateProfileSessionIfCurrent(ctx, session, subject); err != nil {
+	if err := s.bloemSessions.CreateProfileSessionIfCurrent(ctx, session, subject); err != nil {
 		return nil, SessionSubject{}, fmt.Errorf("creating direct profile session: %w", err)
 	}
 	pair, err := s.generateTokenPair(Claims{
@@ -172,7 +188,7 @@ func (s *Service) SetupInitialUserInTransaction(
 	defaultProfileName string,
 	deviceName, ip string,
 ) (*TokenPair, *models.User, error) {
-	users, ok := s.users.(transactionalSetupUserRepository)
+	users, ok := s.bloemUsers.(transactionalSetupUserRepository)
 	if !ok {
 		return nil, nil, errors.New("account repository does not support transactional setup")
 	}
@@ -209,7 +225,7 @@ func (s *Service) SetupInitialUserInTransaction(
 	if err := ownership.ActivateInitialOwnershipInTransaction(ctx, tx, user.ID); err != nil {
 		return nil, nil, fmt.Errorf("activating initial ownership: %w", err)
 	}
-	sessions, ok := s.sessions.(transactionalSessionRepository)
+	sessions, ok := s.bloemSessions.(transactionalSessionRepository)
 	if !ok {
 		return nil, nil, errors.New("session repository does not support transactional setup")
 	}
@@ -236,11 +252,11 @@ func (s *Service) SetupInitialUserInTransaction(
 // caller-owned transaction so a lifecycle receipt and its token response are
 // committed atomically with that session.
 func (s *Service) StartImpersonationInTransaction(ctx context.Context, tx pgx.Tx, adminUserID, targetUserID int, deviceName, ip string) (*TokenPair, *models.User, *models.User, error) {
-	sessions, ok := any(s.sessions).(transactionalSessionRepository)
+	sessions, ok := any(s.bloemSessions).(transactionalSessionRepository)
 	if !ok {
 		return nil, nil, nil, errors.New("session repository does not support caller-owned transactions")
 	}
-	users, ok := any(s.users).(interface {
+	users, ok := any(s.bloemUsers).(interface {
 		GetByIDInTransaction(context.Context, pgx.Tx, int) (*models.User, error)
 	})
 	if !ok {
@@ -320,7 +336,7 @@ func (s *Service) refreshDirectProfile(
 		claims.DeviceID == session.DeviceID &&
 		claims.CredentialRevision == *session.ProfileCredentialRevision
 	if !bindingHolds {
-		_ = s.sessions.Revoke(ctx, session.ID)
+		_ = s.bloemSessions.Revoke(ctx, session.ID)
 		return nil, ErrSessionRevoked
 	}
 
@@ -338,14 +354,14 @@ func (s *Service) refreshDirectProfile(
 		if !errors.Is(err, ErrSessionRevoked) {
 			return nil, sessionCheckUnavailable("revalidating direct profile subject", err)
 		}
-		_ = s.sessions.Revoke(ctx, session.ID)
+		_ = s.bloemSessions.Revoke(ctx, session.ID)
 		return nil, ErrSessionRevoked
 	}
 
 	// Slide the session window forward exactly as account refresh does, so an
 	// active direct-profile client never hits the hard expiry set at login.
 	newExpiry := time.Now().Add(s.jwt.RefreshExpiry())
-	if err := s.sessions.ExtendExpiresAt(ctx, session.ID, newExpiry); err != nil && !IsSessionNotFound(err) {
+	if err := s.bloemSessions.ExtendExpiresAt(ctx, session.ID, newExpiry); err != nil && !IsSessionNotFound(err) {
 		return nil, sessionCheckUnavailable("extending session", err)
 	}
 

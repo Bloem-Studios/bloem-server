@@ -29,51 +29,31 @@ func (e *OrganizationDomainError) Error() string {
 // error fails the sign-in.
 type SignInDomainCheck func(ctx context.Context, accountID int) error
 
-// SetSignInDomainCheck makes every new session pass check first. Setting it
-// again replaces the previous check.
+// SetSignInDomainCheck makes every new session this service creates pass
+// check first. Setting it again replaces the previous check.
+//
+// The service gets its own copy of its session repository carrying the check,
+// used by Silo's lines (the sessions field) and Bloem's (bloemSessions) alike.
+// The repository it was built with is shared with other services, such as
+// device sign-in, and stays unchecked.
 func (s *Service) SetSignInDomainCheck(check SignInDomainCheck) {
-	if check == nil {
+	if check == nil || s.sessions == nil {
 		return
 	}
-	inner := s.sessions
-	if wrapped, ok := inner.(domainCheckedSessions); ok {
-		inner = wrapped.serviceSessionRepository
+	checked := *s.sessions
+	checked.bloemSignInCheck = check
+	if current, ok := s.bloemSessions.(*SessionRepository); ok && current == s.sessions {
+		s.bloemSessions = &checked
 	}
-	s.sessions = domainCheckedSessions{serviceSessionRepository: inner, check: check}
+	s.sessions = &checked
 }
 
-// domainCheckedSessions is the session repository with the domain check in
-// front of every way a session is created. An impersonation session is an
-// administrator's, not a sign-in, and is not checked.
-type domainCheckedSessions struct {
-	serviceSessionRepository
-	check SignInDomainCheck
-}
-
-func (d domainCheckedSessions) allowed(ctx context.Context, session models.AuthSession) error {
-	if session.ImpersonatorUserID != nil {
+// bloemCheckSignInDomain runs the repository's domain check for a new
+// session. An impersonation session is an administrator's, not a sign-in, and
+// is not checked.
+func (r *SessionRepository) bloemCheckSignInDomain(ctx context.Context, session models.AuthSession) error {
+	if r.bloemSignInCheck == nil || session.ImpersonatorUserID != nil {
 		return nil
 	}
-	return d.check(ctx, session.UserID)
-}
-
-func (d domainCheckedSessions) Create(ctx context.Context, session models.AuthSession) error {
-	if err := d.allowed(ctx, session); err != nil {
-		return err
-	}
-	return d.serviceSessionRepository.Create(ctx, session)
-}
-
-func (d domainCheckedSessions) CreateProfileSessionIfCurrent(ctx context.Context, session models.AuthSession, subject SessionSubject) error {
-	if err := d.allowed(ctx, session); err != nil {
-		return err
-	}
-	return d.serviceSessionRepository.CreateProfileSessionIfCurrent(ctx, session, subject)
-}
-
-func (d domainCheckedSessions) createWithQuerier(ctx context.Context, q sessionExecQuerier, session models.AuthSession) error {
-	if err := d.allowed(ctx, session); err != nil {
-		return err
-	}
-	return d.serviceSessionRepository.createWithQuerier(ctx, q, session)
+	return r.bloemSignInCheck(ctx, session.UserID)
 }

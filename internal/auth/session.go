@@ -35,6 +35,9 @@ const sessionColumns = `id, user_id, device_name, COALESCE(device_id, '') AS dev
 // SessionRepository provides CRUD operations for the auth_sessions table.
 type SessionRepository struct {
 	pool *pgxpool.Pool
+	// Bloem: the organization-domain check every session this copy creates
+	// passes first (bloem_sign_in_domain.go). Nil checks nothing.
+	bloemSignInCheck SignInDomainCheck
 }
 
 // NewSessionRepository creates a new SessionRepository backed by the given pool.
@@ -133,6 +136,9 @@ func (r *SessionRepository) createWithQuerier(
 	}
 	applyClientDevice(ctx, &session)
 	if err := normalizeSessionAuthMethod(&session); err != nil {
+		return err
+	}
+	if err := r.bloemCheckSignInDomain(ctx, session); err != nil {
 		return err
 	}
 	if session.Purpose == "" {

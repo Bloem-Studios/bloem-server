@@ -469,13 +469,13 @@ func TestDirectProfileRefreshKeepsSessionWhenRevalidationFails(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			service.profileCredentials = tt.credentials
-			service.sessions = sessions
+			service.bloemSessions = sessions
 			if tt.expiryError != nil {
-				service.sessions = failingDirectProfileExpiry{serviceSessionRepository: sessions, err: tt.expiryError}
+				service.bloemSessions = failingDirectProfileExpiry{serviceSessionRepository: sessions, err: tt.expiryError}
 			}
 			defer func() {
 				service.profileCredentials = credentials.ProfileCredentialService
-				service.sessions = sessions
+				service.bloemSessions = sessions
 			}()
 
 			result, err := service.Refresh(ctx, pair.RefreshToken)
@@ -497,7 +497,7 @@ func TestDirectProfileRefreshKeepsSessionWhenRevalidationFails(t *testing.T) {
 			}
 
 			service.profileCredentials = credentials.ProfileCredentialService
-			service.sessions = sessions
+			service.bloemSessions = sessions
 			if _, err := service.Refresh(ctx, pair.RefreshToken); err != nil {
 				t.Fatalf("retry after recovery: %v", err)
 			}

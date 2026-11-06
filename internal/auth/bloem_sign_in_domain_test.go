@@ -5,90 +5,98 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/Silo-Server/silo-server/internal/models"
 )
 
-// recordingSessions counts the sessions it was asked to create; every other
-// method of the embedded repository is left unimplemented.
-type recordingSessions struct {
-	serviceSessionRepository
-	created int
+// countingExec stands in for the database a session is inserted into and
+// counts the inserts it was asked to run.
+type countingExec struct{ inserts int }
+
+func (c *countingExec) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
+	c.inserts++
+	return pgconn.CommandTag{}, nil
 }
 
-func (r *recordingSessions) Create(context.Context, models.AuthSession) error {
-	r.created++
-	return nil
+// domainCheckedService is a service built the way NewService builds one, over
+// shared, the repository other services (device sign-in) also hold.
+func domainCheckedService(shared *SessionRepository, check SignInDomainCheck) *Service {
+	svc := &Service{sessions: shared}
+	svc.bloemUseRepositories(shared, nil)
+	svc.SetSignInDomainCheck(check)
+	return svc
 }
 
-func (r *recordingSessions) CreateProfileSessionIfCurrent(context.Context, models.AuthSession, SessionSubject) error {
-	r.created++
-	return nil
-}
-
-func (r *recordingSessions) createWithQuerier(context.Context, sessionExecQuerier, models.AuthSession) error {
-	r.created++
-	return nil
-}
-
-func TestDomainCheckedSessionsRefusesBeforeCreating(t *testing.T) {
-	inner := &recordingSessions{}
-	svc := &Service{sessions: inner}
+func TestSignInDomainCheckRefusesBeforeCreating(t *testing.T) {
 	var checked []int
-	svc.SetSignInDomainCheck(func(_ context.Context, accountID int) error {
+	svc := domainCheckedService(&SessionRepository{}, func(_ context.Context, accountID int) error {
 		checked = append(checked, accountID)
 		return &OrganizationDomainError{SignInURL: "https://main.domain.com"}
 	})
 	ctx := context.Background()
+	db := &countingExec{}
+	// Silo's lines create sessions through the concrete sessions field (password
+	// and provider sign-in, identity sessions); Bloem's lines (direct-profile
+	// sign-in, setup) through bloemSessions. Every path ends in createWithQuerier.
 	for name, create := range map[string]func() error{
-		"Create": func() error { return svc.sessions.Create(ctx, models.AuthSession{UserID: 5}) },
-		"CreateProfileSessionIfCurrent": func() error {
-			return svc.sessions.CreateProfileSessionIfCurrent(ctx, models.AuthSession{UserID: 5}, SessionSubject{})
-		},
-		"createWithQuerier": func() error { return svc.sessions.createWithQuerier(ctx, nil, models.AuthSession{UserID: 5}) },
+		"Silo's sessions.Create":                  func() error { return svc.sessions.Create(ctx, models.AuthSession{UserID: 5}) },
+		"Silo's sessions.createWithQuerier":       func() error { return svc.sessions.createWithQuerier(ctx, db, models.AuthSession{UserID: 5}) },
+		"Bloem's bloemSessions.createWithQuerier": func() error { return svc.bloemSessions.createWithQuerier(ctx, db, models.AuthSession{UserID: 5}) },
 	} {
 		var domainErr *OrganizationDomainError
 		if err := create(); !errors.As(err, &domainErr) || domainErr.SignInURL != "https://main.domain.com" {
 			t.Errorf("%s: %v, want the organization domain refusal", name, err)
 		}
 	}
-	if inner.created != 0 {
-		t.Fatalf("created %d sessions, want none", inner.created)
+	if db.inserts != 0 {
+		t.Fatalf("inserted %d sessions, want none", db.inserts)
 	}
 	if len(checked) != 3 || checked[0] != 5 {
 		t.Fatalf("checked %v, want account 5 three times", checked)
 	}
 }
 
-func TestDomainCheckedSessionsAllowsWhenTheCheckPasses(t *testing.T) {
-	inner := &recordingSessions{}
-	svc := &Service{sessions: inner}
-	svc.SetSignInDomainCheck(func(context.Context, int) error { return nil })
-	if err := svc.sessions.Create(context.Background(), models.AuthSession{UserID: 5}); err != nil || inner.created != 1 {
-		t.Fatalf("err=%v created=%d, want the session created", err, inner.created)
+func TestSignInDomainCheckLeavesTheSharedRepositoryUnchecked(t *testing.T) {
+	shared := &SessionRepository{}
+	domainCheckedService(shared, func(context.Context, int) error {
+		t.Fatal("a session created through the shared repository was checked")
+		return nil
+	})
+	db := &countingExec{}
+	if err := shared.createWithQuerier(context.Background(), db, models.AuthSession{UserID: 5}); err != nil || db.inserts != 1 {
+		t.Fatalf("err=%v inserts=%d, want the device sign-in session created", err, db.inserts)
 	}
 }
 
-func TestDomainCheckedSessionsSkipsImpersonation(t *testing.T) {
-	inner := &recordingSessions{}
-	svc := &Service{sessions: inner}
-	svc.SetSignInDomainCheck(func(context.Context, int) error {
+func TestSignInDomainCheckAllowsWhenTheCheckPasses(t *testing.T) {
+	svc := domainCheckedService(&SessionRepository{}, func(context.Context, int) error { return nil })
+	db := &countingExec{}
+	if err := svc.sessions.createWithQuerier(context.Background(), db, models.AuthSession{UserID: 5}); err != nil || db.inserts != 1 {
+		t.Fatalf("err=%v inserts=%d, want the session created", err, db.inserts)
+	}
+}
+
+func TestSignInDomainCheckSkipsImpersonation(t *testing.T) {
+	svc := domainCheckedService(&SessionRepository{}, func(context.Context, int) error {
 		t.Fatal("an impersonation session was checked")
 		return nil
 	})
 	admin := 1
-	if err := svc.sessions.Create(context.Background(), models.AuthSession{UserID: 5, ImpersonatorUserID: &admin}); err != nil || inner.created != 1 {
-		t.Fatalf("err=%v created=%d", err, inner.created)
+	db := &countingExec{}
+	if err := svc.sessions.createWithQuerier(context.Background(), db, models.AuthSession{UserID: 5, ImpersonatorUserID: &admin}); err != nil || db.inserts != 1 {
+		t.Fatalf("err=%v inserts=%d", err, db.inserts)
 	}
 }
 
 func TestSetSignInDomainCheckDoesNotStack(t *testing.T) {
-	inner := &recordingSessions{}
-	svc := &Service{sessions: inner}
 	calls := 0
 	check := func(context.Context, int) error { calls++; return nil }
+	svc := domainCheckedService(&SessionRepository{}, check)
 	svc.SetSignInDomainCheck(check)
-	svc.SetSignInDomainCheck(check)
-	_ = svc.sessions.Create(context.Background(), models.AuthSession{UserID: 5})
+	if err := svc.sessions.createWithQuerier(context.Background(), &countingExec{}, models.AuthSession{UserID: 5}); err != nil {
+		t.Fatal(err)
+	}
 	if calls != 1 {
 		t.Fatalf("check ran %d times, want once", calls)
 	}
