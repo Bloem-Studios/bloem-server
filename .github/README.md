@@ -74,11 +74,11 @@ Checked on November 5, 2026, against `main` at `66def9b30`.
 
 | | |
 | --- | --- |
-| Bloem `main` | `56a71e430`: the merge bot's fix keeping Silo's auth service repository fields, with Bloem's on its own fields, on `1b6b6ca8d`: Silo's own fix for its jellycompat test (Silo #3570) taken as Silo merged it, on `1430c3769`: the merge of Silo through `cb4f45d0c` by the merge bot, with Bloem's migration adapters, storage library creation, tenant request policy, remote catalog seed staging and requests page put back on Bloem's own lines, on `5c1f2bff0`: the deployment receipt for Silo through `d941225b4`, on `2f04bcd2a`: the merge of Silo through `d941225b4` by the merge bot, and its regenerated contracts |
-| Silo integrated | all of Silo `main` through `cb4f45d0c` (November 5, 2026, 16:25 UTC), merged in `1430c3769`, plus two Silo fixes cherry-picked from its newer `main`: the jellycompat test fix `a5ec117a4` (Silo #3570) in `1b6b6ca8d` and the klauspost/compress bump for GO-2026-6865 `7b1c3f752` (Silo #3589) in `4a3586f15`; Silo `main` had 24 newer commits when checked, left for the next batch |
+| Bloem `main` | `cbe660ea8`: Bloem's profile read scanning the titles a household allows above a profile's limits (Silo #3562), on `7fd751638`: the merge of Silo through `6791aac86`, with Silo's side taken in the one conflict (`internal/access/resolver.go`), on `aca08577d`: Bloem's data classified for Silo's backup and restore ([how](../docs/architecture/bloem-backup.md)) |
+| Silo integrated | all of Silo `main` through `6791aac86` (November 6, 2026, 02:26 UTC), merged in `7fd751638` |
 | Silo merges | the merge bot, since November 2, 2026: each Silo batch is merged with Silo winning, checked, pushed to `main` and deployed once Bloem CI passes it ([how](../docs/architecture/bloem-following-silo.md)) |
 | Seam ledger | 322 Silo-owned files that Bloem differs in, two test-only hooks for Silo's backup tests ([How backups work in Bloem](../docs/architecture/bloem-backup.md)) and eight temporary web fixes added in `74e207aca` and `0edcd6e49` that go when Silo merges its own versions (the library grid from `d690b98a5` matches Silo again since Silo #3501, merged in `73cbf3b3a`), declared in [`contracts/seams.txt`](../contracts/seams.txt) |
-| Production | `a1315bd8b` since 21:52 UTC on November 5, Silo through `d941225b4` plus the AI subtitle cue hold, deployed by hand without waiting for Bloem CI; both transcode nodes run the same image. See the [receipt](../docs/operations/2026-11-05-ai-subtitle-cue-hold-deployment.md) |
+| Production | `35448f3be` since 09:04 UTC on November 6, Silo through `d941225b4` plus the AI subtitle cue hold and the klauspost/compress bump for GO-2026-6865, from the daily deploy; both transcode nodes run the same image |
 
 The two October 31 Silo merges brought:
 
