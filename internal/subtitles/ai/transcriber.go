@@ -45,6 +45,9 @@ const (
 	maxCueSeconds        = 7.0
 	minCueSeconds        = 1.0
 	cueSplitPauseSeconds = 1.0
+	// cueHold keeps a cue on screen briefly after its speech ends, as human
+	// subtitles do, up to the next cue or the end of the audio chunk.
+	cueHold = 600 * time.Millisecond
 )
 
 // TranscribeJobRequest is the input to a Transcriber.
@@ -168,7 +171,7 @@ func (t *WhisperTranscriber) transcribe(ctx context.Context, req TranscribeJobRe
 	var all []SubtitleCue
 	detected := ""
 	for done, idx := range order {
-		cues, lang, err := t.transcribeChunk(ctx, chunks[idx], req.LanguageHint, timeout, startOffset)
+		cues, lang, err := t.transcribeChunk(ctx, chunks[idx], chunkSeconds, req.LanguageHint, timeout, startOffset)
 		if err != nil {
 			return nil, "", fmt.Errorf("transcribe chunk %d/%d: %w", idx+1, len(chunks), err)
 		}
@@ -205,7 +208,7 @@ func (t *WhisperTranscriber) transcribeIncremental(
 	detected := ""
 	done := 0
 	process := func(chunk playback.AudioChunk, chunkOffset float64) error {
-		cues, lang, err := t.transcribeChunk(ctx, chunk, req.LanguageHint, timeout, chunkOffset)
+		cues, lang, err := t.transcribeChunk(ctx, chunk, chunkSeconds, req.LanguageHint, timeout, chunkOffset)
 		if err != nil {
 			return fmt.Errorf("transcribe chunk at %.3fs: %w", chunk.Start, err)
 		}
@@ -270,6 +273,7 @@ func (t *WhisperTranscriber) runIncrementalPass(
 func (t *WhisperTranscriber) transcribeChunk(
 	ctx context.Context,
 	chunk playback.AudioChunk,
+	chunkSeconds int,
 	languageHint string,
 	timeout time.Duration,
 	startOffset float64,
@@ -294,7 +298,10 @@ func (t *WhisperTranscriber) transcribeChunk(
 	// at one extraction rather than extraction + retranscription leftovers.
 	_ = os.Remove(chunk.Path)
 
-	return cuesFromSegments(tr.Segments, chunk.Start+startOffset), normalizeDetectedLanguage(tr.Language), nil
+	chunkStart := chunk.Start + startOffset
+	cues := cuesFromSegments(tr.Segments, chunkStart)
+	holdCueEnds(cues, time.Duration((chunkStart+float64(chunkSeconds))*float64(time.Second)))
+	return cues, normalizeDetectedLanguage(tr.Language), nil
 }
 
 func clampASRChunkSeconds(chunkSeconds int) int {
@@ -413,8 +420,9 @@ type cueWord struct {
 // cuesFromWords groups word timings into cues: a cue closes at a speech
 // pause, when the text would exceed the wrap capacity, when it would exceed
 // the maximum duration, or after a sentence ends once a full line is
-// accumulated. Cue end times come from the last word, so cues disappear when
-// speech stops instead of lingering through silence. Chinese and Japanese
+// accumulated. Cue end times come from the last word, so cues disappear
+// shortly after speech stops (holdCueEnds) instead of lingering through
+// silence. Chinese and Japanese
 // words follow each other without a space, and a cue of such text too full
 // for the next word closes after its last clause mark rather than inside a
 // word, when at least a line comes before the mark.
@@ -572,6 +580,22 @@ func enforceMinCueDurations(cues []SubtitleCue) {
 		}
 		if cues[i].End < minEnd {
 			cues[i].End = minEnd
+		}
+	}
+}
+
+// holdCueEnds extends each cue by cueHold, never into the next cue and, for
+// the last cue, never past limit: the end of the audio chunk, where the next
+// chunk's cues can begin. A cue already ending later is left as it is. Cues
+// are chronological within a chunk.
+func holdCueEnds(cues []SubtitleCue, limit time.Duration) {
+	for i := range cues {
+		bound := limit
+		if i+1 < len(cues) {
+			bound = cues[i+1].Start
+		}
+		if end := min(cues[i].End+cueHold, bound); end > cues[i].End {
+			cues[i].End = end
 		}
 	}
 }
