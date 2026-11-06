@@ -1,7 +1,7 @@
 # How Bloem's adapters over Silo work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-05
-> and checked against `main` at `1430c3769`. Adapters are Bloem's own: they are how Bloem changes Silo's
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-06
+> and checked against `main` at `56a71e430`. Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
 
@@ -526,6 +526,22 @@ Email uses the same bundled Bloem wordmark as the sidebar when no custom wordmar
 configured. The owned mail initializer (`internal/mail/bloem_brand.go`) replaces the
 fallback bytes and derived dimensions while retaining upstream's inline MIME content
 ID.
+
+### Auth service repositories
+
+Silo's auth service (`internal/auth/service.go`) keeps Silo's concrete
+`sessions *SessionRepository` and `users *UserRepository` fields, and Silo's lines use
+them, their `pool` included. Bloem's lines use `bloemSessions` and `bloemUsers`
+(`bloemServiceDeps` in `internal/auth/bloem_service.go`): the same repositories behind
+interfaces, so Bloem's tests can fake them. `NewService` sets both on one added line
+(`bloemUseRepositories`).
+
+A Bloem rule that must also hold for sessions Silo's lines create goes into the
+repository, on Bloem's lines in the seam `internal/auth/session.go`. The
+organization-domain check is the example: `SetSignInDomainCheck` gives the service a
+copy of its repository carrying `bloemSignInCheck`, and `createWithQuerier` runs it.
+Since `56a71e430` (2026-11-06). Before it, Bloem's interfaces replaced Silo's field types,
+and Silo's database tests that use the concrete repositories did not compile.
 
 ### Network sign-in metadata
 

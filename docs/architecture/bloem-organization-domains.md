@@ -1,7 +1,7 @@
 # How organization domains and branding work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Organization domains and branding are a Bloem addition:
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-06
+> and checked against `main` at `56a71e430`. Organization domains and branding are a Bloem addition:
 > Silo has one name, one look and one public address per server. This page explains
 > them in plain language; the technical rules are in the
 > [For developers](#for-developers) section.
@@ -276,10 +276,13 @@ asset store, and deleting an organization's asset only clears its row.
 ### Signing in on another organization's domain
 
 Every sign-in creates a session through the auth service's session repository.
-`Service.SetSignInDomainCheck` puts `Directory.SignInCheck` in front of it
-(`domainCheckedSessions`, wired by `bloemInstallSignInDomainCheck`). It checks
-`Create`, `CreateProfileSessionIfCurrent` and `createWithQuerier`; setting the check
-again replaces it rather than stacking.
+`Service.SetSignInDomainCheck` (wired by `bloemInstallSignInDomainCheck`) gives the
+service its own copy of that repository with `Directory.SignInCheck` set on it
+(`bloemSignInCheck`). The copy runs the check in `createWithQuerier`, which every way
+of creating a session goes through: Silo's password, provider and identity sign-ins
+and Bloem's direct-profile sign-in and setup. The repository the service was built
+with is shared with device sign-in and stays unchecked. An impersonation session is
+not checked, and setting the check again replaces it rather than stacking.
 
 When the request's domain is registered to another organization than the account's
 active membership, the sign-in is refused before a session exists, with
@@ -396,7 +399,7 @@ A branding update changes only the fields it names; an empty string clears one.
   the `TestOverlay*` tests and `TestBrandingServiceThroughOverlay`, the store tests,
   `TestSignInCheck`, `TestSignInCheckLetsAnOrganizationWithoutADomainUseTheServerAddress`
   and `TestOAuthBaseURLFollowsTheRequestDomain`.
-- `internal/auth`: the `TestDomainCheckedSessions*` tests,
+- `internal/auth`: the `TestSignInDomainCheck*` tests,
   `TestSetSignInDomainCheckDoesNotStack`, `TestOrganizationDomainErrorMessage`,
   `TestOAuthWebFlowStaysOnTheOrganizationDomain`,
   `TestOAuthOffTheOrganizationDomainKeepsThePublicURL` and
