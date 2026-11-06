@@ -1,7 +1,7 @@
 # How Silo backend switching works
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Silo switching is a Bloem addition: Silo knows nothing about
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-06
+> and checked against `main` at `8e7435562`. Silo switching is a Bloem addition: Silo knows nothing about
 > it. Its job is to keep a database that Bloem serves readable and writable by an
 > unmodified Silo image. The commands, database rules and checks are in the
 > [For developers](#for-developers) section; the plain-language tour is
@@ -148,10 +148,12 @@ that migration.
   switchable). A Bloem transaction that inserts an account and then alters the `users`
   table fails while switchable, because PostgreSQL refuses `ALTER TABLE` on a table
   with pending trigger events.
-- **`auth_sessions.device_id` accepts NULL as `''`.** Upstream writes NULL when a
-  client sends no device headers (`auth_sessions_00_device_id_blank`, migration
-  `20261009130019_auth_session_device_id_blank.sql`, which applies whether or not
-  switching is on).
+- **`auth_sessions.device_id` is Silo's nullable column.** NULL means the client
+  reported no device, as in Silo, whose push retention reads NULL as "this login names
+  no device". Bloem stored `''` there from 2026-10-09 until migration
+  `20261106203909_bloem_auth_session_device_id_null.sql` turned those rows back into
+  NULL; it applies whether or not switching is on. Bloem's own writes use NULL too,
+  and every read coalesces it to `''`.
 
 A new NOT NULL column, constraint or trigger on a table upstream Silo writes (`users`,
 `user_profiles`, `auth_sessions`, `access_groups`, ...) must accept Silo's writes while
@@ -253,7 +255,7 @@ merging upstream changes that add Silo writes to tables Bloem constrains, or tha
 `internal/tenancy/silo_switching_writes_test.go`,
 `internal/auth/bloem_repository_switching_test.go`,
 `migrations/bloem_account_policy_on_users_test.go` and
-`migrations/auth_session_device_id_blank_test.go`; the Pastime removal's switching
+`migrations/auth_session_device_id_null_test.go`; the Pastime removal's switching
 test is `internal/tenancy/bloem_pastime_removal_switching_test.go`.
 
 ### Related pages

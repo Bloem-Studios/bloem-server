@@ -71,15 +71,13 @@ func TestLoginSessionRecordsReportedDeviceDB(t *testing.T) {
 	})
 	t.Run("no device headers keeps the User-Agent", func(t *testing.T) {
 		r := login(t, headers("User-Agent", "okhttp/4.12.0"))
-		// Bloem's device_id is NOT NULL DEFAULT '' (it binds direct-profile
-		// sessions), so "no device" is an empty string rather than NULL.
-		if r.name != "okhttp/4.12.0" || deref(r.id) != "" || r.platform != nil || r.listedID != "" || r.listedPlatform != "" {
+		if r.name != "okhttp/4.12.0" || r.id != nil || r.platform != nil || r.listedID != "" || r.listedPlatform != "" {
 			t.Fatalf("row = %q %v %v", r.name, deref(r.id), deref(r.platform))
 		}
 	})
 	t.Run("malformed id dropped and long values clamped", func(t *testing.T) {
 		r := login(t, headers(ClientDeviceIDHeader, "id one,id two", ClientDeviceNameHeader, strings.Repeat("n", 300), ClientDevicePlatformHeader, strings.Repeat("p", 90)))
-		if deref(r.id) != "" || utf8.RuneCountInString(r.name) != maxClientDeviceNameLen || r.platform == nil || len(*r.platform) != maxClientDevicePlatformLen {
+		if r.id != nil || utf8.RuneCountInString(r.name) != maxClientDeviceNameLen || r.platform == nil || len(*r.platform) != maxClientDevicePlatformLen {
 			t.Fatalf("row = %q %v %v", r.name, deref(r.id), deref(r.platform))
 		}
 	})

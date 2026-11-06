@@ -107,7 +107,7 @@ func (p *PreviewGuests) CreateInTx(ctx context.Context, tx pgx.Tx, guest NewPrev
 	}
 	id := uuid.NewString()
 	if _, err := tx.Exec(ctx, `INSERT INTO auth_sessions (id, user_id, device_name, device_id, expires_at, auth_method)
-		VALUES ($1, $2, '', '', $3, 'preview_guest')`, id, guest.AccountID, guest.ExpiresAt); err != nil {
+		VALUES ($1, $2, '', NULL, $3, 'preview_guest')`, id, guest.AccountID, guest.ExpiresAt); err != nil {
 		return nil, fmt.Errorf("opening a guest session: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO bloem_preview_guest_sessions (session_id, idle_ttl_seconds, client_bucket, play_grant_id)

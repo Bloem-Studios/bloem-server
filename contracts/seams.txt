@@ -113,7 +113,6 @@ internal/auth/admin_users_test.go  # complete isolated tenant schema for account
 internal/auth/api_key_scopes.go
 internal/auth/client_device.go  # a reported device never replaces the device a direct-profile session is bound to
 internal/auth/jwt.go
-internal/auth/login_session_device_db_test.go  # auth_sessions.device_id is NOT NULL DEFAULT '' in Bloem, so no device is '' rather than NULL
 internal/auth/login_sessions_db_test.go  # directly inserted accounts get the default-organization membership Bloem profiles require
 internal/auth/oauth_handler.go  # one field and five call sites: a web sign-in or provider sign-out through an OAuth provider keeps the organization domain it started on (bloem_oauth_domain.go); approved by the owner on 2026-11-01 ("Finish the rest of the open issues")
 internal/auth/password_hash_test.go  # compose upstream bcrypt test initialization with isolated Bloem auth database lifecycle
