@@ -1,45 +1,23 @@
 # How backups work in Bloem
 
 > **Provenance and status.** Bloem page, written on 2026-11-06 and updated the same
-> day against `main` at `8d3d5e17d`. Backup and restore are Silo's feature, merged
-> from Silo through `6791aac86`; this page covers what Bloem adds so they understand
-> Bloem's data. The nightly backup is switched off on Bloem's production server
-> (`backup.enabled` is false), where point-in-time database recovery covers recovery;
+> day against `main` at `8a37ea9bc`. Backup and restore are Silo's feature, merged
+> from Silo through `cecd5b9bc`; this page covers what Bloem changes. The nightly
+> backup is switched off on Bloem's production server (`backup.enabled` is false);
 > "Back up now" and each person's "Your data" export still work. Silo's
 > [backup reference](backups.md) holds the full design.
 
-A backup is a copy of the server's database and files that an administrator can bring
-back later. Bloem has more data than Silo: organizations, plans, Live TV, storage
-sources, previews and book requests. Silo's backup code refuses to run on a table or
-setting it has not been told about, so Bloem tells it about every one of its own, in
-Bloem's own file, without changing Silo's lists.
+A backup is a copy an administrator can bring back later. On Bloem it holds **user
+data only**: the accounts and their profiles, everything each profile keeps (watch
+history and progress, ratings, favourites, watchlists, lists, settings), the
+organizations, memberships and access groups they belong to, and uploaded files such
+as avatars. The catalog, the recommendations' embeddings and the scan state are left
+out: they are most of the database, and the server rebuilds them. A production backup
+is a few hundred megabytes instead of the whole database.
 
-## What a restore brings back
-
-Every table belongs to one of five groups, and the group decides what a restore does
-with it.
-
-| Group | What a full restore does | Bloem examples |
-| --- | --- | --- |
-| Data | Brings it back as the backup has it | organizations, memberships, plans and their revisions, branding, promotions, book requests, Live TV tuners, channels, guide sources, recording rules and recordings |
-| Server state | Brings it back, and the server rebuilds or reconciles it | the storage scan index, the Live TV guide, job and lease state, receipts, counters |
-| Logs and queues | Leaves it out | remote commands to devices |
-| Short-lived sign-ins | Leaves it out, so people sign in again | preview guest sessions and their playback grants, Watch Together room owners |
-| Credentials kept from the live server | Keeps what the server has right before the restore, never the backup's | Xtream provider sign-ins, the preview storefront's ticket keys |
-
-Accounts come back whole with their organizations. A switch that grants or reaches
-something, such as an access group's playback switch, a storage source, a Live TV
-channel or a guide source, stays off when an administrator turned it off after the
-backup, and comes back off when it was removed after the backup.
-
-## A made-up example
-
-Fernwood TV takes a backup on Monday. On Tuesday its administrator changes the Xtream
-password of one tuner, hides an adult channel and turns off a storage source. On
-Wednesday the server is restored from Monday's backup. The tuner keeps Tuesday's
-password, because credentials come from the live server. The channel stays hidden and
-the storage source stays off, because switches keep the stricter value. A recording
-rule a household added on Tuesday is gone, as is everything else added since Monday.
+Recovering the whole server is not what a backup is for on Bloem. The database's
+point-in-time recovery does that, so a Bloem backup refuses to replace the live
+database.
 
 ## Bringing back chosen accounts
 
@@ -68,7 +46,7 @@ at all or is preview-only, because the backup does not record those two.
 
 | Who | What |
 | --- | --- |
-| Platform administrator | Takes backups and restores the whole server, when backups are switched on |
+| Platform administrator | Takes backups ("Back up now") and restores chosen accounts and profiles from them |
 | Organization administrator | Nothing: backup and restore are server-wide |
 
 ## Words used in the code
@@ -82,6 +60,25 @@ at all or is preview-only, because the backup does not record those two.
 | `SettingKindOf` | How a restore treats each server setting |
 
 ## For developers
+
+- User-data backups (`bloem_user_data_backup.go`): Bloem's server binary calls
+  `backup.SetBloemUserDataOnly(true)` first thing (`runBloemCommand`). The dump then
+  leaves out the data of every table without a `user_id` or `profile_id` column,
+  except `users`, `organizations`, `organization_memberships` and `access_groups`, on
+  top of the tables every backup leaves out. A manifest whose `excluded_table_data`
+  names `media_items` is a user-data backup, and `RestoreSwap` refuses it (one seam
+  line in `swap.go`; the exclusion is one in `service.go`). The switch is off by
+  default, so Silo's own tests keep whole-server backups.
+- Whole-server classification, for a backup taken with the switch off. Every table
+  belongs to one group: data, restored as the backup has it (organizations,
+  memberships, plans, branding, promotions, book requests, the Live TV setup); server
+  state, restored and rebuilt (the storage scan index, the Live TV guide, job and lease
+  state); logs and queues, left out (remote commands); short-lived sign-ins, left out
+  (preview guest sessions and their grants, Watch Together room owners); and
+  credentials kept from the live server, never the backup's (Xtream sign-ins, the
+  preview storefront's ticket keys). Grant switches (an access group's playback switch,
+  a storage source, a Live TV channel or guide source) keep the stricter of the
+  backup's and the live value.
 
 - Bloem's classifications live in `internal/backup/bloem_classification.go`. Its
   `init` adds them to Silo's lists, so Silo's `tables.go`, `credentials.go`,

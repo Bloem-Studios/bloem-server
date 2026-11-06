@@ -13,8 +13,10 @@ import (
 // its access group and its profiles' groups are matched by name within that
 // organization, never another organization's namesake. The fixture triggers
 // that place bare test writes in the default organization are off while
-// the restore runs, so the restore has to do it itself, as in production.
+// the restore runs, so the restore has to do it itself, as in production,
+// from a user-data backup.
 func TestBloemRestoredAccountsJoinTheirOrganizationDB(t *testing.T) {
+	bloemUserDataBackups(t)
 	f := newSelectiveFixture(t)
 	ctx := t.Context()
 	s := seedBloemTenancy(t, f.pool)

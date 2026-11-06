@@ -3,6 +3,18 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 6, 2026 — Bloem's backups hold user data only
+
+A Silo backup dumped the whole database, about 63 GB on production, though a restore
+of chosen accounts reads only the per-account documents beside the dump. Bloem's
+server now takes user-data backups: the dump keeps the accounts, profiles, every
+per-user table, and the organizations, memberships and groups they belong to, and
+leaves the catalog, embeddings and scan state out (a few hundred megabytes on
+production). Such a backup refuses to replace the live database; point-in-time
+recovery covers the whole server ([How backups work in Bloem](../architecture/bloem-backup.md)).
+Two new seams (`internal/backup/service.go`, `internal/backup/swap.go`); the ledger
+goes from 325 to 327.
+
 ## November 6, 2026 — restoring accounts puts them back in their organization
 
 Silo's selective restore could not bring an account or profile back on Bloem: it

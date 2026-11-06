@@ -530,6 +530,9 @@ func (s *Service) backup(ctx context.Context, prep backupPrep, kind Kind, starte
 		return RunResult{}, err
 	}
 
+	if excluded, err = bloemExcludedTableData(ctx, tx, excluded); err != nil { // Bloem: bloem_user_data_backup.go
+		return RunResult{}, err
+	}
 	progress(10, "Dumping the database")
 	dumpEntry, tocMode, err := s.dump(ctx, t, tools, snapshot, excluded, objectKey(serverID, id, t.name(DumpName)))
 	if err != nil {

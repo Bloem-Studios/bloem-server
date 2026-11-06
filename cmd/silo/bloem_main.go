@@ -19,6 +19,7 @@ import (
 	"github.com/Silo-Server/silo-server/internal/api"
 	"github.com/Silo-Server/silo-server/internal/apiv2"
 	"github.com/Silo-Server/silo-server/internal/auth"
+	"github.com/Silo-Server/silo-server/internal/backup"
 	"github.com/Silo-Server/silo-server/internal/blobstore"
 	"github.com/Silo-Server/silo-server/internal/branding"
 	"github.com/Silo-Server/silo-server/internal/cache"
@@ -244,6 +245,9 @@ func bloemWireCoreDependencies(ctx context.Context, deps *api.Dependencies, pool
 // runBloemCommand runs a Bloem maintenance subcommand named by args[1] and
 // reports whether it did; main returns when it has.
 func runBloemCommand(args []string) bool {
+	// Bloem's backups hold user data only; point-in-time recovery covers
+	// the whole database (internal/backup/bloem_user_data_backup.go).
+	backup.SetBloemUserDataOnly(true)
 	if len(args) > 1 && args[1] == "silo-switching" {
 		if err := runSiloSwitchingCommand(context.Background(), args[2:]); err != nil {
 			log.Fatalf("silo-switching: %v", err)
