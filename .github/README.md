@@ -74,11 +74,11 @@ Checked on November 5, 2026, against `main` at `66def9b30`.
 
 | | |
 | --- | --- |
-| Bloem `main` | `cbe660ea8`: Bloem's profile read scanning the titles a household allows above a profile's limits (Silo #3562), on `7fd751638`: the merge of Silo through `6791aac86`, with Silo's side taken in the one conflict (`internal/access/resolver.go`), on `aca08577d`: Bloem's data classified for Silo's backup and restore ([how](../docs/architecture/bloem-backup.md)) |
-| Silo integrated | all of Silo `main` through `6791aac86` (November 6, 2026, 02:26 UTC), merged in `7fd751638` |
+| Bloem `main` | `7fa5e2ffb`: the merge of Silo through `cecd5b9bc`, with no conflicts, on `cbe660ea8`: Bloem's profile read scanning the titles a household allows above a profile's limits (Silo #3562), on `7fd751638`: the merge of Silo through `6791aac86` |
+| Silo integrated | all of Silo `main` through `cecd5b9bc` (November 6, 2026, 13:24 UTC), merged in `7fa5e2ffb` |
 | Silo merges | the merge bot, since November 2, 2026: each Silo batch is merged with Silo winning, checked, pushed to `main` and deployed once Bloem CI passes it ([how](../docs/architecture/bloem-following-silo.md)) |
 | Seam ledger | 322 Silo-owned files that Bloem differs in, two test-only hooks for Silo's backup tests ([How backups work in Bloem](../docs/architecture/bloem-backup.md)) and eight temporary web fixes added in `74e207aca` and `0edcd6e49` that go when Silo merges its own versions (the library grid from `d690b98a5` matches Silo again since Silo #3501, merged in `73cbf3b3a`), declared in [`contracts/seams.txt`](../contracts/seams.txt) |
-| Production | `35448f3be` since 09:04 UTC on November 6, Silo through `d941225b4` plus the AI subtitle cue hold and the klauspost/compress bump for GO-2026-6865, from the daily deploy; both transcode nodes run the same image |
+| Production | `8d3d5e17d` since 13:54 UTC on November 6, Silo through `6791aac86` plus Bloem's profile read scanning the titles a household allows (Silo #3562), deployed by hand; both transcode nodes run the same image |
 
 The two October 31 Silo merges brought:
 
