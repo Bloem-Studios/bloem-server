@@ -86,15 +86,12 @@ func (r *Resolver) Resolve(ctx context.Context, input ResolveInput) (Scope, erro
 		return Scope{}, fmt.Errorf("opening user store for %d: %w", input.UserID, err)
 	}
 
-	var profile *userstore.Profile
-	if input.ProfileID != "" {
-		profile, err = store.GetProfile(ctx, input.ProfileID)
-		if err != nil {
-			return Scope{}, fmt.Errorf("loading profile %s: %w", input.ProfileID, err)
-		}
-		if profile == nil {
-			return Scope{}, ErrProfileNotFound
-		}
+	// Bloem: bloem_resolver_profile.go. A missing profile answers
+	// ErrProfileNotFound before the tenant group lookup, and the profile is
+	// read once.
+	store, bloemProfile, err := bloemRequestProfile(ctx, store, input.ProfileID)
+	if err != nil {
+		return Scope{}, err
 	}
 
 	effective, err := EffectivePolicyForRequest(ctx, user, input.ProfileID, r.groups)
@@ -109,7 +106,7 @@ func (r *Resolver) Resolve(ctx context.Context, input ResolveInput) (Scope, erro
 		LibrariesRestricted:        effective.LibraryIDs != nil,
 		MaxPlaybackQuality:         NormalizePlaybackQuality(effective.MaxPlaybackQuality),
 		PlaybackAllowed:            effective.PlaybackAllowed,
-		LiveTVAllowed:              LiveTVAllowed(user, profile, effective),
+		LiveTVAllowed:              LiveTVAllowed(user, bloemProfile, effective),
 		DownloadAllowed:            effective.DownloadAllowed,
 		PolicyRevision:             user.AccessPolicyRevision,
 		ProfileVerified:            input.ProfileID == "",
@@ -121,7 +118,15 @@ func (r *Resolver) Resolve(ctx context.Context, input ResolveInput) (Scope, erro
 	}
 
 	preferences := ResolveViewerPreferences(ctx, store, r.defaults, input.ProfileID)
-	if profile != nil {
+	var profile *userstore.Profile
+	if input.ProfileID != "" {
+		profile, err = store.GetProfile(ctx, input.ProfileID)
+		if err != nil {
+			return Scope{}, fmt.Errorf("loading profile %s: %w", input.ProfileID, err)
+		}
+		if profile == nil {
+			return Scope{}, ErrProfileNotFound
+		}
 
 		scope.MaturityLimits = ProfileMaturity(profile, scope.AllowUnratedContent)
 		scope.MaxPlaybackQuality = MinQuality(scope.MaxPlaybackQuality, NormalizePlaybackQuality(profile.MaxPlaybackQuality))
@@ -265,14 +270,14 @@ func subtractInts(src, exclude []int) []int {
 }
 
 // ProfileMaturity is the profile's maturity limits under the server's
-// unrated-content decision, as Resolve applies them.
+// unrated-content decision, with its allowed titles, as Resolve applies them.
 func ProfileMaturity(profile *userstore.Profile, allowUnrated bool) MaturityLimits {
 	return MaturityLimits{
 		MaxContentRating:    profile.MaxContentRating,
 		AllowUnratedContent: allowUnrated,
 		MaxAdvisoryAge:      profile.MaxAdvisoryAge,
 		RequireAdvisoryAge:  profile.RequireAdvisoryAge && profile.MaxAdvisoryAge > 0,
-	}
+	}.WithAllowedTitles(profile.AllowedTitleIDs)
 }
 
 // ProfileLibraries is the libraries a profile may see under its account's

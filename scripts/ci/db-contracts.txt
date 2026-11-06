@@ -13,6 +13,7 @@
 ./internal/catalog TestMixedCatalogMangaCounts
 ./internal/catalog TestContentRatingCeilingAcrossSystemsDB
 ./internal/catalog TestRatingsPageFollowsAccessDB
+./internal/userstore/pgstore TestTitleAllowancesLiftProfileLimitsDB
 ./internal/catalog TestJellyfinPersonReadsMatchNativeVisibilityPostgres
 ./internal/recommendations TestRecentCompletedItemIDsGroupsSeriesBeforeLimit
 ./internal/sections TestCompatibilityRecentlyAddedReturnsFlatDistinctSeries
@@ -22,11 +23,14 @@
 ./internal/catalog TestCountsAndListingsLeaveOutItemsHeldByRemovalGraceDB
 ./internal/catalog TestSearchLeavesOutItemsInNoLibraryPostgres
 ./internal/api/handlers TestUnmatchedItemsLeaveOutItemsInNoLibraryDB
+./internal/api/handlers TestPersonalListPagesKeepVisibleEpisodesDB
+./internal/catalog TestPersonalListPageFollowsAccessDB
 ./internal/audiobooks TestABSListsLeaveOutBooksInNoLibraryDB
 ./internal/api/handlers TestAdminStatsLeaveOutFilesAndItemsHeldByRemovalGraceDB
 ./internal/sections TestRuleRowsReadTheViewersWatchStatePostgres
 ./internal/scanner TestFileRepositoryPreservesFirstSeenScanProvenance
 ./internal/scanner TestMultiEpisodeFileServesSpannedEpisodesDB
+./internal/scanner TestScannedGroupForItemDB
 ./internal/scanner TestMatroskaTrackBackfillRecordsTrackNumbers
 ./internal/scanner TestMatroskaTrackBackfillStopsOnStalledStorage
 ./internal/scanner TestMatroskaTrackBackfillStopsOnIntermittentStalls
@@ -371,6 +375,7 @@
 ./internal/downloads TestMonitorSyncKeepsDeletedEpisodesDeletedPostgres
 ./internal/downloads TestMonitorSyncSkipsWatchedEpisodesPostgres
 ./internal/downloads TestDownloadCreatePagesPostgres
+./internal/downloads TestSeriesPageFollowsTheVersionTemplatePostgres
 ./internal/downloads TestArtifactRecoveryDeletesWrongSizedRemoteBeforeRequeue
 ./internal/downloads TestArtifactEnsureQueuedRoundTripsToneMapRecipe
 ./internal/downloads TestSubscriptionQualityPostgres
@@ -920,6 +925,7 @@
 ./internal/backup TestAccountsAndImportOnOneConnectionDB
 ./internal/backup TestImportsReadInBatchesDB
 ./internal/historyimport TestMatchAllAgreesWithMatchDB
+./internal/historyimport TestEnqueuePersonalRunAllowsOneActiveRunPerAccount
 ./internal/backup TestCollectionImportKeepsTheProfileQuotaDB
 ./internal/backup TestNewAccountNeedsItsPrimaryProfileDB
 
