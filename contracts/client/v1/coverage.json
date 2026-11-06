@@ -3000,6 +3000,22 @@
     {
       "type": "internal/apiv2.ProfileImportResult",
       "reason": "Upstream Silo wire type taken as shipped in the 2026-11-05 sync (Silo through cb4f45d0c: the Your data page's profile export and import). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.AdminMatchHints",
+      "reason": "Administrative /api/v2 surface. Its only consumer is the bundled web admin UI, which is typed straight from the committed OpenAPI artifact (make apiv2-web-types); no native client reads an admin endpoint."
+    },
+    {
+      "type": "internal/apiv2.AllowCollectionTitlesResult",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-11-06 sync (Silo through 6791aac86: titles a household allows above a profile's rating limit). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.AllowedCollection",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-11-06 sync (Silo through 6791aac86: titles a household allows above a profile's rating limit). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
+    },
+    {
+      "type": "internal/apiv2.TitleAllowanceProfile",
+      "reason": "Upstream Silo wire type taken as shipped in the 2026-11-06 sync (Silo through 6791aac86: titles a household allows above a profile's rating limit). Bloem's clients are unreleased and follow Silo's v2 API, so it is not registered separately."
     }
   ]
 }
