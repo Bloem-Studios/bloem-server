@@ -100,6 +100,9 @@ type GroupPolicy struct {
 	MaxProfiles                int      `json:"max_profiles"`
 	AllowedPermissions         []string `json:"allowed_permissions"`
 	RequestsAllowed            bool     `json:"requests_allowed"`
+	// Bloem's playback switch and preview flag (bloem_restore_access.go).
+	BloemPlaybackAllowed *bool `json:"bloem_playback_allowed,omitempty"`
+	BloemPreviewOnly     bool  `json:"bloem_preview_only,omitempty"`
 }
 
 // EffectivePolicy is access.EffectiveUserPolicy as a restore set carries it.
@@ -118,6 +121,9 @@ type EffectivePolicy struct {
 	MaxProfiles                int      `json:"max_profiles"`
 	Permissions                []string `json:"permissions"`
 	RequestsAllowed            bool     `json:"requests_allowed"`
+	// Bloem's playback switch and preview flag (bloem_restore_access.go).
+	BloemPlaybackAllowed *bool `json:"bloem_playback_allowed,omitempty"`
+	BloemPreviewOnly     bool  `json:"bloem_preview_only,omitempty"`
 }
 
 // ProfileEntry is one user_profiles row: name, avatar, primary flag, PIN
@@ -136,8 +142,10 @@ type ProfileEntry struct {
 	LibraryRestrictionsEnabled bool   `json:"library_restrictions_enabled"`
 	AllowedLibraryIDs          []int  `json:"allowed_library_ids"`
 	MaxPlaybackQuality         string `json:"max_playback_quality"`
-	// BloemAccessGroup is the profile's access group (bloem_restore_tenancy.go).
-	BloemAccessGroup string `json:"bloem_access_group,omitempty"`
+	// BloemAccessGroup is the profile's access group (bloem_restore_tenancy.go),
+	// and BloemGroup that group with its policy (bloem_restore_access.go).
+	BloemAccessGroup string      `json:"bloem_access_group,omitempty"`
+	BloemGroup       *GroupEntry `json:"bloem_group,omitempty"`
 	// Data holds each data type's document by data type id.
 	// Data is each type's own document, which the type bounds itself
 	// (userdata.DecodeStrict).

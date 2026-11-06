@@ -55,32 +55,34 @@ func bloemAttachOrganizations(ctx context.Context, tx pgx.Tx, accounts []Account
 			accounts[i].BloemOrganization = &o
 		}
 	}
-	return nil
+	return bloemAttachAccess(ctx, tx, accounts)
 }
 
-// bloemAttachProfileGroups records each profile's access group name in its
-// restore-set entry.
+// bloemAttachProfileGroups records each profile's access group, its name
+// and its policy, in its restore-set entry.
 func bloemAttachProfileGroups(ctx context.Context, tx pgx.Tx, userID int, profiles []ProfileEntry) error {
 	rows, err := tx.Query(ctx, `
-		SELECT p.id, g.name FROM user_profiles p JOIN access_groups g ON g.id = p.access_group_id
+		SELECT p.id, `+bloemProfileGroupColumns+` FROM user_profiles p JOIN access_groups g ON g.id = p.access_group_id
 		WHERE p.user_id = $1`, userID)
 	if err != nil {
 		return fmt.Errorf("reading profile access groups: %w", err)
 	}
 	defer rows.Close()
-	groups := map[string]string{}
+	groups := map[string]GroupEntry{}
 	for rows.Next() {
-		var id, name string
-		if err := rows.Scan(&id, &name); err != nil {
+		id, group, err := scanProfileGroup(rows)
+		if err != nil {
 			return err
 		}
-		groups[id] = name
+		groups[id] = group
 	}
 	if err := rows.Err(); err != nil {
 		return err
 	}
 	for i := range profiles {
-		profiles[i].BloemAccessGroup = groups[profiles[i].ID]
+		if group, ok := groups[profiles[i].ID]; ok {
+			profiles[i].BloemAccessGroup, profiles[i].BloemGroup = group.Name, &group
+		}
 	}
 	return nil
 }

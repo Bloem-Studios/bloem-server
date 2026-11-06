@@ -162,5 +162,6 @@ func WiderThan(policy, limit EffectiveUserPolicy) []PolicyWidening {
 		sort.Strings(extra)
 		add("permissions", strings.Join(extra, ", "), "not granted")
 	}
+	out = append(out, bloemWiderThan(policy, limit)...) // Bloem: bloem_widening.go
 	return out
 }

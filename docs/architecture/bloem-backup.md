@@ -46,9 +46,14 @@ every restore so it can be undone; on Bloem, point-in-time recovery of the datab
 stands in for that copy, and a restore of accounts only adds what is missing and
 merges the data chosen for them.
 
-**Not compared yet.** A restore refuses an account the server would give more than
-the backup did, field by field. It does not yet compare whether an account may play
-at all or is preview-only, because the backup does not record those two.
+**Never more than the backup.** A restore leaves out an account the server would give
+more than the backup did, field by field: its libraries, quality, downloads,
+transcoding, stream limits, requests, permissions, whether it may play at all and
+whether it is preview-only. A new profile is checked the same way against the group it
+would join here: when that group gives it more than its group did in the backup, the
+profile is left out and the review says what it would gain. A backup taken before
+this check existed does not record playback and preview, so those two are not
+compared for it.
 
 ## Who can change what
 
@@ -119,11 +124,17 @@ at all or is preview-only, because the backup does not record those two.
   and `users_apply.go` in `internal/backup`.
 - Bloem's fields on Silo's access-policy and profile types are listed in
   `internal/backup/bloem_coverage_test.go`, which Silo's coverage tests consult through
-  two seam lines in `credentials_authority_test.go`. `PlaybackAllowed` and `PreviewOnly`
-  are marked "not compared yet". Comparing them needs them in the restore set's
-  `EffectivePolicy` first: `access.WiderThan` would otherwise report every restored
-  account as wider, since the restore file's policy has no playback switch. A
-  profile's `OrganizationID` and `AccessGroupID` are placed, not compared.
+  two seam lines in `credentials_authority_test.go`. `access.WiderThan` compares
+  `PlaybackAllowed` and `PreviewOnly` too (`bloemWiderThan` in
+  `internal/access/bloem_widening.go`, one seam line in `groups.go`). A restore set
+  records them as `bloem_playback_allowed` and `bloem_preview_only` on an account's
+  effective policy and group, and each profile's group with its policy as
+  `bloem_group` (`bloem_restore_access.go`); `access.GroupPolicyByName`'s Bloem lookup
+  and `access.BloemGroupPolicyByID` read them on this server. `bloemCheckProfileGroup`
+  (one seam line in `users_plan.go`'s `planProfiles`) compares a new profile's group
+  here, as `pgstore.BloemRestoredProfileGroup` picks it, with the backup's.
+  `TestBloemRestoreNeverGivesMoreAccessDB` covers both. A profile's `OrganizationID`
+  and `AccessGroupID` are placed, not compared.
 - Test databases: Silo's `internal/backup/backuptest` migrates a template of its own.
   `bloem_fixture_compat.go` installs Bloem's fixture-compatibility triggers there
   (one seam line in `backuptest.go`). The triggers arm themselves in any database whose

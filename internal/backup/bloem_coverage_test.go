@@ -22,8 +22,8 @@ func init() {
 // the follow-up.
 var bloemFieldDecisions = map[string]string{
 	// accesspolicy.EffectiveUserPolicy
-	"PlaybackAllowed": "not compared yet: a restore set's effective policy has no playback switch",
-	"PreviewOnly":     "not compared yet: a restore set's effective policy has no preview flag",
+	"PlaybackAllowed": "compared by access.WiderThan's Bloem part (internal/access/bloem_widening.go)",
+	"PreviewOnly":     "compared by access.WiderThan's Bloem part (internal/access/bloem_widening.go)",
 	// userstore.Profile
 	"OrganizationID":     "placed, not compared: a restored profile joins its account's organization (bloem_restore_tenancy.go)",
 	"AccessGroupID":      "placed, not compared: a restored profile joins its recorded group's namesake there (bloem_restore_tenancy.go)",

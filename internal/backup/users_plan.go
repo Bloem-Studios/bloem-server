@@ -426,6 +426,7 @@ func (u *userPlanner) planNew(ctx context.Context, plan *accountPlan) error {
 	}
 	here := access.ApplyGroupPolicy(user, group)
 	limit := a.Effective.access()
+	bloemLimitFields(&limit, a.Effective) // Bloem: bloem_restore_access.go
 	limit.LibraryIDs, _ = mapLibraries(limit.LibraryIDs, u.libMap)
 	for _, w := range access.WiderThan(here, limit) {
 		acct.PolicyDifferences = append(acct.PolicyDifferences, PolicyDifference{Field: w.Field, Backup: w.Limit, Here: w.Policy})
@@ -517,6 +518,9 @@ func (u *userPlanner) planProfiles(ctx context.Context, plan *accountPlan) error
 		default:
 			pp.preview.Status, pp.preview.Selectable = ItemNotOnThisServer, true
 			pp.preview.Message = "Creates the profile with its PIN and access from the backup."
+		}
+		if err := u.bloemCheckProfileGroup(ctx, plan, &pp); err != nil { // Bloem: bloem_restore_access.go
+			return err
 		}
 		pp.preview.Target = pp.target()
 		plan.profiles = append(plan.profiles, pp)

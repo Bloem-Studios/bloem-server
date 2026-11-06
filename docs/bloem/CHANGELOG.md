@@ -3,6 +3,17 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 6, 2026 — restores never give more access than the backup
+
+A restore compared an account's access with the backup's field by field, but not
+Bloem's two own fields, whether it may play at all and whether it is preview-only,
+and Silo's group read left the playback switch out on both sides. A restore could give
+an account playback its backup never had, and a new profile joined whatever group of
+its name the server had, however much that group allowed. Backups now record both
+fields for each account and its group, and each profile's group with its policy; a
+restore leaves out an account, or a new profile, the server would give more than the
+backup did, and says what it would gain. No new seams.
+
 ## November 6, 2026 — Bloem's backups hold user data only
 
 A Silo backup dumped the whole database, about 63 GB on production, though a restore
