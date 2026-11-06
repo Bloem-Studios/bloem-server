@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Silo-Server/silo-server/internal/tenancy"
@@ -153,11 +154,14 @@ func bloemQueueProfile(batch *pgx.Batch, userID int, id string) (func(pgx.BatchR
 	}, true
 }
 
-// bloemProfileFromRow is Silo's profileFromRow for bloemProfileByIDQuery.
+// bloemProfileFromRow is Silo's profileFromRow for bloemProfileByIDQuery: the
+// allowed libraries and allowed titles Silo's query ends with, then
+// bloemProfileColumns.
 func bloemProfileFromRow(row pgx.Row, id string) (*userstore.Profile, error) {
 	var libraryIDs []int
+	var allowedTitleIDs []string
 	var fields bloemProfileFields
-	p, err := scanProfile(row, append([]any{&libraryIDs}, fields.targets()...)...)
+	p, err := scanProfile(row, append([]any{&libraryIDs, &allowedTitleIDs}, fields.targets()...)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -169,6 +173,12 @@ func bloemProfileFromRow(row pgx.Row, id string) (*userstore.Profile, error) {
 	// reports it.
 	if len(libraryIDs) > 0 {
 		p.AllowedLibraryIDs = libraryIDs
+	}
+	// As Silo's profileFromRow: the read returns distinct IDs in no set
+	// order, and sorting keeps scope fingerprints stable.
+	if len(allowedTitleIDs) > 0 {
+		slices.Sort(allowedTitleIDs)
+		p.AllowedTitleIDs = allowedTitleIDs
 	}
 	return p, nil
 }
