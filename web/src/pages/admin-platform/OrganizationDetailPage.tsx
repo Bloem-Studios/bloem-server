@@ -37,6 +37,8 @@ import {
   type OrganizationMembership,
   type PlatformOrganization,
 } from "@/hooks/queries/admin/organizations";
+import { AccountPicker } from "@/components/admin/policy/AccountPicker";
+import { useAccountNames } from "@/components/admin/policy/useAccountNames";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 function CountCard({ label, value }: { label: string; value: number }) {
@@ -71,16 +73,26 @@ function AddMembershipDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add membership</DialogTitle>
+          <DialogTitle>Add a member</DialogTitle>
           <DialogDescription>
-            Add an existing account to {organization.name}. Membership authority is scoped to this
-            organization.
+            Add an account that already exists on this server to {organization.name}. An
+            organization admin can only manage this organization.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="membership-account">Account ID</Label>
+            <AccountPicker
+              id="membership-account-search"
+              label="Find the account"
+              multiple={false}
+              selected={/^[1-9]\d*$/.test(accountId) ? [Number(accountId)] : []}
+              onChange={(ids) => setAccountId(ids[0] ? String(ids[0]) : "")}
+            />
+            <Label htmlFor="membership-account" className="text-muted-foreground text-xs">
+              Account number
+            </Label>
             <Input
+              className="sm:max-w-40"
               id="membership-account"
               inputMode="numeric"
               value={accountId}
@@ -98,7 +110,7 @@ function AddMembershipDialog({
               value={role}
               onChange={(e) => setRole(e.target.value as "admin" | "user")}
             >
-              <option value="user">User</option>
+              <option value="user">Member</option>
               <option value="admin">Organization admin</option>
             </select>
           </div>
@@ -138,7 +150,7 @@ function AddMembershipDialog({
                 })
             }
           >
-            {mutation.isPending ? "Adding…" : "Add membership"}
+            {mutation.isPending ? "Adding…" : "Add member"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -187,11 +199,14 @@ function MembershipRow({
         {isOwner ? (
           <Badge variant="default">Owner</Badge>
         ) : (
-          <Badge variant="outline">{membership.legacy_role === "admin" ? "Admin" : "User"}</Badge>
+          <Badge variant="outline">{membership.legacy_role === "admin" ? "Admin" : "Member"}</Badge>
         )}
       </TableCell>
       <TableCell>
-        <Badge variant={membership.status === "active" ? "secondary" : "outline"}>
+        <Badge
+          variant={membership.status === "active" ? "secondary" : "outline"}
+          className="capitalize"
+        >
           {membership.status}
         </Badge>
       </TableCell>
@@ -235,6 +250,7 @@ export default function OrganizationDetailPage() {
   const memberships = useOrganizationMemberships(id, membershipCursor);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   useDocumentTitle(organization.data?.name ?? "Organization");
+  const accountName = useAccountNames();
 
   if (organization.isLoading)
     return (
@@ -272,23 +288,25 @@ export default function OrganizationDetailPage() {
             <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
               {current.name}
             </h1>
-            <Badge variant={current.status === "active" ? "default" : "secondary"}>
+            <Badge
+              variant={current.status === "active" ? "default" : "secondary"}
+              className="capitalize"
+            >
               {current.status}
             </Badge>
           </div>
           <p className="page-subtitle text-sm sm:text-base">
-            {current.slug} · owner account {current.owner_account_id ?? "unassigned"} · policy
-            revision {current.policy_revision}
+            <span className="font-mono">{current.slug}</span> · Owner:{" "}
+            {current.owner_account_id ? accountName(current.owner_account_id) : "nobody yet"}
           </p>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <CountCard label="Memberships" value={current.membership_count ?? items.length} />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <CountCard label="Members" value={current.membership_count ?? items.length} />
         <CountCard label="Profiles" value={current.profile_count ?? 0} />
-        <CountCard label="Libraries" value={current.library_count ?? 0} />
-        <CountCard label="Entitlements" value={current.entitlement_count ?? 0} />
-        <CountCard label="Policy revision" value={current.policy_revision} />
+        <CountCard label="Own libraries" value={current.library_count ?? 0} />
+        <CountCard label="Libraries shared with it" value={current.entitlement_count ?? 0} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -297,32 +315,32 @@ export default function OrganizationDetailPage() {
             <div className="flex items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Memberships
+                Members
               </CardTitle>
               <Button size="sm" onClick={() => setAddMemberOpen(true)}>
                 <Plus className="mr-1 h-4 w-4" />
-                Add
+                Add member
               </Button>
             </div>
           </CardHeader>
           <CardContent className="px-0">
             {memberships.isLoading ? (
               <div className="p-6 text-sm" role="status">
-                Loading memberships…
+                Loading members…
               </div>
             ) : memberships.isError ? (
               <p className="text-destructive p-6 text-sm" role="alert">
                 {memberships.error.message}
               </p>
             ) : items.length === 0 ? (
-              <p className="text-muted-foreground p-6 text-sm">No memberships.</p>
+              <p className="text-muted-foreground p-6 text-sm">No members yet.</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Account</TableHead>
-                      <TableHead>Authority</TableHead>
+                      <TableHead>Role</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>
                         <span className="sr-only">Actions</span>
@@ -379,15 +397,17 @@ export default function OrganizationDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4" />
-              Security state
+              Good to know
             </CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground space-y-3 text-sm">
             <p>
-              Lifecycle and membership changes are revision guarded and written to the platform
-              audit log.
+              Every change to this organization and its members is recorded in the activity log.
             </p>
-            <p>Suspension is reversible. This interface does not expose hard deletion.</p>
+            <p>
+              Suspending blocks its members until you reactivate it. Nothing is deleted, and
+              organizations can’t be deleted here.
+            </p>
           </CardContent>
         </Card>
       </div>

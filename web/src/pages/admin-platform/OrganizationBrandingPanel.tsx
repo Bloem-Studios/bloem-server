@@ -19,7 +19,7 @@ const FIELDS = [
   { key: "server_name", label: "Server name", placeholder: "Bloem" },
   {
     key: "login_subtitle",
-    label: "Login subtitle",
+    label: "Sign-in page subtitle",
     placeholder: "Sign in with an existing account.",
   },
   { key: "accent_color", label: "Accent colour", placeholder: "#336699" },
@@ -66,14 +66,29 @@ function BrandingFields({
       {FIELDS.map((field) => (
         <div key={field.key} className="grid gap-1">
           <Label htmlFor={`organization-branding-${field.key}`}>{field.label}</Label>
-          <Input
-            id={`organization-branding-${field.key}`}
-            placeholder={field.placeholder}
-            value={values[field.key]}
-            onChange={(event) =>
-              setValues((current) => ({ ...current, [field.key]: event.target.value }))
-            }
-          />
+          <div className="flex gap-2">
+            {field.key === "accent_color" ? (
+              <input
+                type="color"
+                aria-label="Pick the accent colour"
+                className="border-input h-9 w-12 shrink-0 cursor-pointer rounded-md border bg-transparent p-1"
+                value={
+                  /^#[0-9a-f]{6}$/i.test(values.accent_color) ? values.accent_color : "#336699"
+                }
+                onChange={(event) =>
+                  setValues((current) => ({ ...current, accent_color: event.target.value }))
+                }
+              />
+            ) : null}
+            <Input
+              id={`organization-branding-${field.key}`}
+              placeholder={field.placeholder}
+              value={values[field.key]}
+              onChange={(event) =>
+                setValues((current) => ({ ...current, [field.key]: event.target.value }))
+              }
+            />
+          </div>
         </div>
       ))}
       <div className="sm:col-span-2">

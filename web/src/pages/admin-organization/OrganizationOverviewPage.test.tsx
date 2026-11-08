@@ -50,5 +50,5 @@ it("renders organization-scoped health and revision counts", async () => {
   expect(await screen.findByRole("heading", { name: "North Sea Media" })).toBeInTheDocument();
   expect(screen.getByText("4,200")).toBeInTheDocument();
   expect(screen.getByText("6,500")).toBeInTheDocument();
-  expect(screen.getByText("Revision 12")).toBeInTheDocument();
+  expect(screen.getByText("Settings revision").nextSibling).toHaveTextContent("12");
 });

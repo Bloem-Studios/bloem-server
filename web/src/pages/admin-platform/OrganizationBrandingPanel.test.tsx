@@ -42,7 +42,7 @@ it("saves only the fields that changed", async () => {
   renderPanel();
   const name = (await screen.findByLabelText("Server name")) as HTMLInputElement;
   expect(name.value).toBe("Main");
-  fireEvent.change(screen.getByLabelText("Login subtitle"), {
+  fireEvent.change(screen.getByLabelText("Sign-in page subtitle"), {
     target: { value: "Welcome to Main" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Save branding" }));

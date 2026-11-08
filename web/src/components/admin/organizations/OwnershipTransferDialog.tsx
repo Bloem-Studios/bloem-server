@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AccountPicker } from "@/components/admin/policy/AccountPicker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -59,19 +60,29 @@ export function OwnershipTransferDialog({
         <DialogHeader>
           <DialogTitle>Transfer ownership</DialogTitle>
           <DialogDescription>
-            This changes the protected owner of {organization.name}. The new owner must already be
-            an enabled member. The action is revision guarded and audited.
+            The owner can’t be removed from {organization.name}. The new owner must already be an
+            active member.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="new-owner-account">New owner</Label>
+            <AccountPicker
+              id="new-owner-search"
+              label="Find the new owner"
+              multiple={false}
+              selected={/^[1-9]\d*$/.test(ownerAccountId) ? [Number(ownerAccountId)] : []}
+              onChange={(ids) => setOwnerAccountId(ids[0] ? String(ids[0]) : "")}
+            />
+            <Label htmlFor="new-owner-account" className="text-muted-foreground text-xs">
+              New owner
+            </Label>
             <Input
+              className="sm:max-w-40"
               id="new-owner-account"
               inputMode="numeric"
               value={ownerAccountId}
               onChange={(event) => setOwnerAccountId(event.target.value)}
-              placeholder="Account ID"
+              placeholder="Account number"
             />
             {ownerError ? <p className="text-destructive text-sm">{ownerError}</p> : null}
           </div>
@@ -85,7 +96,7 @@ export function OwnershipTransferDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ownership-password">Account password</Label>
+            <Label htmlFor="ownership-password">Your password</Label>
             <Input
               id="ownership-password"
               type="password"
@@ -109,7 +120,7 @@ export function OwnershipTransferDialog({
             disabled={!canSubmit}
             onClick={() => onTransfer({ ownerAccountId: parsedOwner, password })}
           >
-            {pending ? "Transferring…" : "Confirm transfer"}
+            {pending ? "Transferring…" : "Transfer ownership"}
           </Button>
         </DialogFooter>
       </DialogContent>

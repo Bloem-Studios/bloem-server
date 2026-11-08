@@ -49,17 +49,17 @@ const ASSIGNABLE_PERMISSIONS: Array<{ value: string; label: string; description:
   {
     value: PERMISSION_WATCH_LIVE_TV,
     label: "Watch Live TV",
-    description: "Permit an account’s Live TV grant; independent of library access.",
+    description: "Watch live channels. This doesn’t depend on which libraries they can see.",
   },
   {
     value: PERMISSION_METADATA_CURATION,
-    label: "Metadata curation",
+    label: "Edit metadata",
     description: "Edit metadata for items in the member's libraries.",
   },
   {
     value: PERMISSION_MARKER_EDIT,
-    label: "Marker editing",
-    description: "Create and adjust intro / credit markers.",
+    label: "Edit intro and credits markers",
+    description: "Add and adjust where intros and credits start and end.",
   },
 ];
 
@@ -172,8 +172,8 @@ export default function OrganizationAdminAccessGroups() {
           <UsersRound className="text-muted-foreground mx-auto size-8" />
           <h2 className="mt-3 text-lg font-semibold">No access groups yet</h2>
           <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-            Create a group to manage libraries, downloads, streams, and permissions for many users
-            at once, then assign users to it from their profile.
+            Create a group to set libraries, downloads, screens and permissions for many people at
+            once, then assign users to it from their profile.
           </p>
         </div>
       )}
@@ -357,7 +357,7 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
           scopeLabel={organization ? active?.name : "available"}
         />
         <div className="space-y-2">
-          <Label htmlFor="group-quality">Maximum playback quality</Label>
+          <Label htmlFor="group-quality">Best picture quality</Label>
           <Select
             value={qualityPreset}
             onValueChange={(value) => setQualityPreset(value as PlaybackQualityPreset)}
@@ -379,21 +379,21 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
       <section className="surface-panel space-y-3 rounded-2xl border-0 p-5">
         <h2 className="text-sm font-semibold">Downloads &amp; requests</h2>
         <ToggleRow
-          label="Allow downloads"
-          description="Members may download items to their devices."
+          label="Download original files"
+          description="Save the file as it is, for watching offline."
           checked={downloadAllowed}
           onCheckedChange={setDownloadAllowed}
         />
         <ToggleRow
-          label="Allow transcoded downloads"
-          description="Members may download converted versions, not just the original file."
+          label="Download converted copies"
+          description="Save a smaller copy made for the device, where the app supports it."
           checked={transcodeAllowed}
           onCheckedChange={setTranscodeAllowed}
           disabled={!downloadAllowed}
         />
         <ToggleRow
-          label="Allow media requests"
-          description="Members may request titles that aren't in the library yet."
+          label="Media requests"
+          description="Ask for movies and shows the server doesn’t have yet."
           checked={requestsAllowed}
           onCheckedChange={setRequestsAllowed}
         />
@@ -404,28 +404,28 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
         <div className="grid gap-4 sm:grid-cols-2">
           <LimitField
             id="group-streams"
-            label="Max streams"
+            label="Screens at once"
             hint="0 = unlimited"
             value={maxStreams}
             onChange={setMaxStreams}
           />
           <LimitField
             id="group-transcodes"
-            label="Max transcodes"
+            label="Conversions at once"
             hint="0 = unlimited"
             value={maxTranscodes}
             onChange={setMaxTranscodes}
           />
         </div>
         <ToggleRow
-          label="Allow video transcoding"
-          description="Members may play items that need server-side video conversion."
+          label="Video conversion"
+          description="Convert a video when the device can’t play the file as it is."
           checked={videoTranscodeAllowed}
           onCheckedChange={setVideoTranscodeAllowed}
         />
         <ToggleRow
-          label="Allow audio transcoding"
-          description="Members may play items that need audio conversion without video encoding."
+          label="Audio conversion"
+          description="Convert only the sound when the device can’t play it."
           checked={audioTranscodeAllowed}
           onCheckedChange={setAudioTranscodeAllowed}
         />
@@ -446,7 +446,7 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
               onCheckedChange={(checked) =>
                 setPermissions(checked ? null : ASSIGNABLE_PERMISSIONS.map((entry) => entry.value))
               }
-              aria-label="Allow all permissions"
+              aria-label="Allow every permission"
             />
           </div>
         </div>
@@ -484,7 +484,7 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
           )}
         </div>
         <Button type="button" onClick={save} disabled={updateGroup.isPending}>
-          {updateGroup.isPending ? "Saving..." : "Save changes"}
+          {updateGroup.isPending ? "Saving…" : "Save changes"}
         </Button>
       </div>
 

@@ -104,7 +104,7 @@ describe("OrganizationDetailPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Suspend organization" }));
 
     expect(screen.getByText(/Suspend North Sea Media/)).toBeInTheDocument();
-    expect(screen.getByText(/2 active memberships/)).toBeInTheDocument();
+    expect(screen.getByText(/2 active members lose access/)).toBeInTheDocument();
     expect(screen.queryByText(/delete organization/i)).not.toBeInTheDocument();
   });
 
@@ -120,13 +120,13 @@ describe("OrganizationDetailPage", () => {
     await screen.findByRole("heading", { name: "North Sea Media" });
 
     fireEvent.click(screen.getByRole("button", { name: "Transfer ownership" }));
-    const submit = screen.getByRole("button", { name: "Confirm transfer" });
+    const submit = screen.getByRole("button", { name: "Transfer ownership" });
     expect(submit).toBeDisabled();
     fireEvent.change(screen.getByLabelText("New owner"), { target: { value: "8" } });
     fireEvent.change(screen.getByLabelText("Type North Sea Media to confirm"), {
       target: { value: "North Sea Media" },
     });
-    fireEvent.change(screen.getByLabelText("Account password"), { target: { value: "secret" } });
+    fireEvent.change(screen.getByLabelText("Your password"), { target: { value: "secret" } });
     expect(submit).toBeEnabled();
     fireEvent.click(submit);
 
@@ -162,8 +162,8 @@ describe("OrganizationDetailPage", () => {
     fireEvent.change(screen.getByLabelText("Type North Sea Media to confirm"), {
       target: { value: "North Sea Media" },
     });
-    fireEvent.change(screen.getByLabelText("Account password"), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "Confirm transfer" }));
+    fireEvent.change(screen.getByLabelText("Your password"), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Transfer ownership" }));
     expect(
       await screen.findByText("Must identify an enabled organization member."),
     ).toBeInTheDocument();
@@ -241,6 +241,6 @@ describe("OrganizationDetailPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Next membership page" }));
     expect(await screen.findByText("Next page")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Suspend organization" }));
-    expect(screen.getByText(/73 active memberships/)).toBeInTheDocument();
+    expect(screen.getByText(/73 active members lose access/)).toBeInTheDocument();
   });
 });

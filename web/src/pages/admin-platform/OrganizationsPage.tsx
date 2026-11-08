@@ -28,6 +28,7 @@ import {
   usePlatformOrganizations,
   type OrganizationStatus,
 } from "@/hooks/queries/admin/organizations";
+import { AccountPicker } from "@/components/admin/policy/AccountPicker";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -44,6 +45,7 @@ function CreateOrganizationDialog({
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [owner, setOwner] = useState("");
+  const [slugEdited, setSlugEdited] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function close(openState: boolean) {
@@ -52,6 +54,7 @@ function CreateOrganizationDialog({
       setName("");
       setSlug("");
       setOwner("");
+      setSlugEdited(false);
       setErrors({});
       mutation.reset();
     }
@@ -61,10 +64,11 @@ function CreateOrganizationDialog({
     const nextErrors: Record<string, string> = {};
     if (!name.trim()) nextErrors.name = "Enter an organization name.";
     if (!slugPattern.test(slug)) {
-      nextErrors.slug = "Use lowercase letters, numbers, and hyphens only.";
+      nextErrors.slug = "Use lowercase letters, numbers and hyphens, like north-sea-media.";
     }
     const ownerId = Number(owner);
-    if (!Number.isInteger(ownerId) || ownerId <= 0) nextErrors.owner = "Enter a valid account ID.";
+    if (!Number.isInteger(ownerId) || ownerId <= 0)
+      nextErrors.owner = "Choose who owns the organization.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
     try {
@@ -92,7 +96,8 @@ function CreateOrganizationDialog({
         <DialogHeader>
           <DialogTitle>Create organization</DialogTitle>
           <DialogDescription>
-            Creates an active tenant boundary and its first organization administrator.
+            A new organization gets its own members, libraries and plan. The owner becomes its first
+            administrator.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -101,24 +106,44 @@ function CreateOrganizationDialog({
             <Input
               id="new-organization-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (!slugEdited) setSlug(slugify(e.target.value));
+              }}
             />
             {errors.name ? <p className="text-destructive text-sm">{errors.name}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="new-organization-slug">Slug</Label>
+            <Label htmlFor="new-organization-slug">Short name</Label>
             <Input
               id="new-organization-slug"
+              className="font-mono"
               value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              onChange={(e) => {
+                setSlug(e.target.value);
+                setSlugEdited(true);
+              }}
             />
+            <p className="text-muted-foreground text-xs">
+              Used in links. Lowercase letters, numbers and hyphens.
+            </p>
             {errors.slug ? <p className="text-destructive text-sm">{errors.slug}</p> : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="new-organization-owner">Owner account ID</Label>
+            <AccountPicker
+              id="new-organization-owner-search"
+              label="Owner"
+              multiple={false}
+              selected={/^[1-9]\d*$/.test(owner) ? [Number(owner)] : []}
+              onChange={(ids) => setOwner(ids[0] ? String(ids[0]) : "")}
+            />
+            <Label htmlFor="new-organization-owner" className="text-muted-foreground text-xs">
+              Owner account number
+            </Label>
             <Input
               id="new-organization-owner"
               inputMode="numeric"
+              className="sm:max-w-40"
               value={owner}
               onChange={(e) => setOwner(e.target.value)}
             />
@@ -170,7 +195,7 @@ export default function OrganizationsPage() {
             Organizations
           </h1>
           <p className="page-subtitle text-sm sm:text-base">
-            Create, inspect, and safely suspend tenant boundaries across the platform.
+            Every organization on this server. Open one to manage its members, plan and libraries.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
@@ -200,10 +225,10 @@ export default function OrganizationsPage() {
             setCursorHistory([""]);
           }}
         >
-          <option value="all">All statuses</option>
+          <option value="all">Any status</option>
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
-          <option value="initializing">Initializing</option>
+          <option value="initializing">Setting up</option>
         </select>
       </div>
 
@@ -235,7 +260,6 @@ export default function OrganizationsPage() {
                 <TableHead>People</TableHead>
                 <TableHead>Profiles</TableHead>
                 <TableHead>Libraries</TableHead>
-                <TableHead>Policy</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -253,14 +277,16 @@ export default function OrganizationsPage() {
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={organization.status === "active" ? "default" : "secondary"}>
+                    <Badge
+                      variant={organization.status === "active" ? "default" : "secondary"}
+                      className="capitalize"
+                    >
                       {organization.status}
                     </Badge>
                   </TableCell>
                   <TableCell>{organization.membership_count ?? 0}</TableCell>
                   <TableCell>{organization.profile_count ?? 0}</TableCell>
                   <TableCell>{organization.library_count ?? 0}</TableCell>
-                  <TableCell>r{organization.policy_revision}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -295,4 +321,11 @@ export default function OrganizationsPage() {
       <CreateOrganizationDialog open={createOpen} onOpenChange={setCreateOpen} />
     </section>
   );
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }

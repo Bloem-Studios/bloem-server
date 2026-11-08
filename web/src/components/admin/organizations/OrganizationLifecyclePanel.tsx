@@ -89,8 +89,11 @@ export function OrganizationLifecyclePanel({
     <Card>
       <CardHeader className="border-b">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle>Lifecycle and identity</CardTitle>
-          <Badge variant={organization.status === "active" ? "default" : "secondary"}>
+          <CardTitle>Name and status</CardTitle>
+          <Badge
+            variant={organization.status === "active" ? "default" : "secondary"}
+            className="capitalize"
+          >
             {organization.status}
           </Badge>
         </div>
@@ -110,8 +113,16 @@ export function OrganizationLifecyclePanel({
             ) : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="organization-slug">Slug</Label>
-            <Input id="organization-slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
+            <Label htmlFor="organization-slug">Short name</Label>
+            <Input
+              id="organization-slug"
+              className="font-mono"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+            />
+            <p className="text-muted-foreground text-xs">
+              Used in links. Changing it breaks links people have saved.
+            </p>
             {fieldErrors.slug ? (
               <p className="text-destructive text-sm">{fieldErrors.slug}</p>
             ) : null}
@@ -154,8 +165,8 @@ export function OrganizationLifecyclePanel({
         }
         description={
           confirmStatus === "suspended"
-            ? `This blocks access for ${activeMemberships} active ${activeMemberships === 1 ? "membership" : "memberships"}. Media and audit history are retained.`
-            : `This restores access for active memberships in ${organization.name}.`
+            ? `${activeMemberships} active ${activeMemberships === 1 ? "member loses" : "members lose"} access until you reactivate it. Nothing is deleted.`
+            : `Members of ${organization.name} can use it again.`
         }
         confirmLabel={confirmStatus === "suspended" ? "Suspend" : "Reactivate"}
         variant={confirmStatus === "suspended" ? "destructive" : "default"}

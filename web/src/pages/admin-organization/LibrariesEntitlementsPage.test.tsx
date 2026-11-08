@@ -98,8 +98,8 @@ describe("LibrariesEntitlementsPage", () => {
     setup();
     expect(await screen.findByText("Local Movies")).toBeInTheDocument();
     expect(screen.getByText("Owned by North Sea Media")).toBeInTheDocument();
-    expect(screen.getByText("Platform entitlement")).toBeInTheDocument();
-    expect(screen.getByText(/intersection of this organization ceiling/i)).toBeInTheDocument();
+    expect(screen.getByText("Shared by the server")).toBeInTheDocument();
+    expect(screen.getByText(/the most this organization’s members can see/i)).toBeInTheDocument();
     expect(screen.queryByText(/unconditional access/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Manage Local Movies" })).not.toBeInTheDocument();
     expect(vi.mocked(adminV2Api)).toHaveBeenCalledWith("/organization/libraries");
@@ -107,10 +107,10 @@ describe("LibrariesEntitlementsPage", () => {
 
   it("confirms suspension, uses the grant revision rather than the organization revision, and reloads", async () => {
     setup();
-    fireEvent.click(await screen.findByRole("button", { name: "Suspend access" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Pause" }));
     expect(writes()).toHaveLength(0);
-    await confirm("Suspend access");
-    await screen.findByRole("button", { name: "Restore access" });
+    await confirm("Pause");
+    await screen.findByRole("button", { name: "Restore" });
     expect(writes()).toEqual([
       [
         "/organization/entitlements/8",
@@ -122,7 +122,12 @@ describe("LibrariesEntitlementsPage", () => {
         expect.objectContaining({ key: "organization:org-1" }),
       ],
     ]);
-    expect(screen.getByText(/security revision 4/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        vi.mocked(adminV2Api).mock.calls.filter(([path]) => path === "/organization/libraries")
+          .length,
+      ).toBeGreaterThan(1),
+    );
   });
 
   it("restores a suspended grant but never offers activation of a revoked grant", async () => {
@@ -134,11 +139,11 @@ describe("LibrariesEntitlementsPage", () => {
       entitlement: { id: "revoked", status: "revoked", security_revision: 5 },
     });
     setup();
-    expect(await screen.findByRole("button", { name: "Restore access" })).toBeEnabled();
+    expect(await screen.findByRole("button", { name: "Restore" })).toBeEnabled();
     expect(screen.queryByRole("group", { name: "Manage Withdrawn" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Restore access" }));
-    await confirm("Restore access");
-    await screen.findByRole("button", { name: "Suspend access" });
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+    await confirm("Restore");
+    await screen.findByRole("button", { name: "Pause" });
     expect(JSON.parse(String(writes()[0]![1]?.body))).toEqual({
       expected_revision: 3,
       status: "active",
@@ -147,10 +152,12 @@ describe("LibrariesEntitlementsPage", () => {
 
   it("requires confirmation for withdrawal and removes only the grant after success", async () => {
     setup();
-    fireEvent.click(await screen.findByRole("button", { name: "Withdraw grant" }));
-    expect(screen.getByText(/cannot restore a withdrawn grant here/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Give back" }));
+    expect(
+      screen.getByText(/Only a platform administrator can share it again/),
+    ).toBeInTheDocument();
     expect(writes()).toHaveLength(0);
-    await confirm("Withdraw grant");
+    await confirm("Give back");
     await waitFor(() => expect(screen.queryByText("Platform Series")).not.toBeInTheDocument());
     expect(screen.getByText("Local Movies")).toBeInTheDocument();
     expect(writes()[0]![1]).toEqual({ method: "DELETE", body: '{"expected_revision":3}' });
@@ -158,7 +165,7 @@ describe("LibrariesEntitlementsPage", () => {
 
   it("does not mutate when confirmation is cancelled", async () => {
     setup();
-    fireEvent.click(await screen.findByRole("button", { name: "Withdraw grant" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Give back" }));
     fireEvent.click(
       within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }),
     );
@@ -167,7 +174,7 @@ describe("LibrariesEntitlementsPage", () => {
 
   it("refreshes a stale grant without replaying the rejected write", async () => {
     setup();
-    fireEvent.click(await screen.findByRole("button", { name: "Suspend access" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Pause" }));
     libraries = libraries.map((item) =>
       item.entitlement
         ? { ...item, entitlement: { ...item.entitlement, security_revision: 4 } }
@@ -176,9 +183,14 @@ describe("LibrariesEntitlementsPage", () => {
     vi.mocked(adminV2Api).mockRejectedValueOnce(
       new AdminV2ClientError(409, "authorization_state_changed", "Changed"),
     );
-    await confirm("Suspend access");
-    expect(await screen.findByRole("alert")).toHaveTextContent("This grant changed");
-    expect(screen.getByText(/security revision 4/)).toBeInTheDocument();
+    await confirm("Pause");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Someone else changed this library");
+    await waitFor(() =>
+      expect(
+        vi.mocked(adminV2Api).mock.calls.filter(([path]) => path === "/organization/libraries")
+          .length,
+      ).toBeGreaterThan(1),
+    );
     expect(writes()).toHaveLength(1);
     expect(JSON.parse(String(writes()[0]![1]?.body)).expected_revision).toBe(3);
   });
@@ -186,14 +198,14 @@ describe("LibrariesEntitlementsPage", () => {
   it("shows read failures and allows a safe reload", async () => {
     vi.mocked(adminV2Api).mockRejectedValueOnce(new Error("Service unavailable"));
     setup();
-    expect(await screen.findByRole("alert")).toHaveTextContent("Service unavailable");
-    fireEvent.click(screen.getByRole("button", { name: "Reload libraries" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Libraries couldn’t be loaded");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Local Movies")).toBeInTheDocument();
   });
 
   it("closes an old confirmation when the organization changes", async () => {
     const view = setup();
-    fireEvent.click(await screen.findByRole("button", { name: "Withdraw grant" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Give back" }));
     activateAdminV2Context("org-2", "organization:org-2");
     mockUseAdminContext.mockReturnValue({
       active: { key: "organization:org-2", scope: "organization", name: "Other" },

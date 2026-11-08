@@ -30,17 +30,17 @@ export default function OrganizationOverviewPage() {
         className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-4"
         role="alert"
       >
-        {overview.error?.message ?? "Organization overview is unavailable."}
+        This organization couldn’t be loaded. Reload the page to try again.
       </div>
     );
   }
 
   const organization = overview.data;
   const metrics = [
-    { label: "People", value: organization.membership_count, icon: Users },
+    { label: "Members", value: organization.membership_count, icon: Users },
     { label: "Profiles", value: organization.profile_count, icon: UserRound },
     { label: "Owned libraries", value: organization.library_count, icon: Library },
-    { label: "Entitlements", value: organization.entitlement_count, icon: ShieldCheck },
+    { label: "Libraries shared with it", value: organization.entitlement_count, icon: ShieldCheck },
   ];
   return (
     <section className="admin-page space-y-6">
@@ -52,11 +52,12 @@ export default function OrganizationOverviewPage() {
               {organization.name}
             </h1>
           </div>
-          <p className="page-subtitle">
-            Organization health, media scope, and authorization state.
-          </p>
+          <p className="page-subtitle">Members, libraries and who owns this organization.</p>
         </div>
-        <Badge variant={organization.status === "active" ? "secondary" : "destructive"}>
+        <Badge
+          variant={organization.status === "active" ? "secondary" : "destructive"}
+          className="capitalize"
+        >
           {organization.status}
         </Badge>
       </div>
@@ -72,19 +73,23 @@ export default function OrganizationOverviewPage() {
       </div>
 
       <div className="surface-panel rounded-2xl p-5">
-        <h2 className="font-semibold">Authorization state</h2>
+        <h2 className="font-medium">About</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-muted-foreground">Policy</dt>
-            <dd className="mt-1 font-medium">Revision {organization.policy_revision}</dd>
+            <dt className="text-muted-foreground">Owner</dt>
+            <dd className="mt-1 font-medium">
+              {organization.owner_account_id
+                ? `Account ${organization.owner_account_id}`
+                : "Nobody yet"}
+            </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Organization slug</dt>
-            <dd className="mt-1 font-medium">{organization.slug}</dd>
+            <dt className="text-muted-foreground">Short name</dt>
+            <dd className="mt-1 font-mono">{organization.slug}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Owner account</dt>
-            <dd className="mt-1 font-medium">{organization.owner_account_id ?? "Not assigned"}</dd>
+            <dt className="text-muted-foreground">Settings revision</dt>
+            <dd className="mt-1 tabular-nums">{organization.policy_revision}</dd>
           </div>
         </dl>
       </div>

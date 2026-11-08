@@ -513,8 +513,8 @@ preview of what will change first. It is **Cohorts** in an organization, and **B
 Policies** for directly managed accounts.
 
 In an organization's **Libraries** page, tell owned libraries apart from grants.
-You can suspend, restore or withdraw an existing grant after confirming; a withdrawal cannot be
-undone from this page. If someone changed a grant since you loaded it, reload and review it
+Shared libraries can be paused (**Pause**), restored (**Restore**) or withdrawn (**Give
+back**) after confirming; giving a library back cannot be undone from this page. If someone changed a grant since you loaded it, reload and review it
 before acting. **Activity** shows redacted lifecycle and entitlement events for the
 organization, 50 at a time; load more on purpose. It records the events those ledgers contain,
 not a promise that every action appears. **Access Checks** is a separate diagnostic page.
@@ -891,7 +891,7 @@ path, and it can belong to only one organization.
 
 **The Branding panel**, on the same page, sets what visitors on the organization's domains see:
 
-- **Server name**, **Login subtitle**, **Accent colour** and **Default theme**, saved with **Save
+- **Server name**, **Sign-in page subtitle**, **Accent colour** and **Default theme**, saved with **Save
   branding**;
 - four images: **Wordmark**, **Mark**, **Favicon** and **Sign-in background**, each uploaded or
   removed on its own.
@@ -1159,8 +1159,8 @@ or less, because of the address they used.
   protected *Preview*. Revisions are immutable; confirmation is bound to the preview and expires
   after ten minutes for one account or organization (`entitlementConfirmationTTL`), or 15 minutes
   after the selection for a policy cohort (`selectionTTL` in `internal/adminpeople/service.go`).
-- Grants: suspend, restore or withdraw after confirmation; withdrawal cannot be undone from the
-  page; a stale grant must be reloaded first. Activity & Audit pages are 50 events, redacted.
+- Grants: **Pause**, **Restore** or **Give back** after confirmation; giving back cannot be undone
+  from the page; a stale grant must be reloaded first. **Activity** pages are 50 events, redacted.
 - Browse-only previews: the storefront issues short-lived launch tickets; the server exchanges each
   once for a bounded guest session on a separate preview host. Server setup uses the scoped preview
   administration API. Source publication alone does not configure hosts or enable the preview.

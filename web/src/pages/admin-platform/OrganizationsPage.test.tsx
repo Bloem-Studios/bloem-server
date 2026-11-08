@@ -8,6 +8,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { adminV2Api, AdminV2ClientError } from "@/api/adminV2Client";
 import OrganizationsPage from "./OrganizationsPage";
 
+vi.mock("@/components/admin/policy/AccountPicker", () => ({
+  AccountPicker: () => null,
+}));
+
 vi.mock("@/api/adminV2Client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/api/adminV2Client")>();
   return { ...actual, adminV2Api: vi.fn() };
@@ -101,10 +105,10 @@ describe("OrganizationsPage", () => {
     fireEvent.change(screen.getByLabelText("Organization name"), {
       target: { value: "North Sea" },
     });
-    fireEvent.change(screen.getByLabelText("Slug"), { target: { value: "Not Valid" } });
+    fireEvent.change(screen.getByLabelText("Short name"), { target: { value: "Not Valid" } });
     fireEvent.click(screen.getByRole("button", { name: /^Create$/ }));
 
-    expect(await screen.findByText(/lowercase letters, numbers, and hyphens/)).toBeInTheDocument();
+    expect(await screen.findByText(/lowercase letters, numbers and hyphens/)).toBeInTheDocument();
     expect(vi.mocked(adminV2Api)).toHaveBeenCalledTimes(1);
   });
 
@@ -121,8 +125,8 @@ describe("OrganizationsPage", () => {
     await screen.findByText("No organizations match these filters.");
     fireEvent.click(screen.getByRole("button", { name: "Create organization" }));
     fireEvent.change(screen.getByLabelText("Organization name"), { target: { value: "North" } });
-    fireEvent.change(screen.getByLabelText("Slug"), { target: { value: "north" } });
-    fireEvent.change(screen.getByLabelText("Owner account ID"), { target: { value: "7" } });
+    fireEvent.change(screen.getByLabelText("Short name"), { target: { value: "north" } });
+    fireEvent.change(screen.getByLabelText("Owner account number"), { target: { value: "7" } });
     fireEvent.click(screen.getByRole("button", { name: /^Create$/ }));
     expect(await screen.findByText("Slug is already in use.")).toBeInTheDocument();
   });

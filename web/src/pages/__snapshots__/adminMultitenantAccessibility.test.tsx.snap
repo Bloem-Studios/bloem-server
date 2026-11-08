@@ -398,11 +398,11 @@ exports[`multitenant administration responsive release snapshots > captures Orga
           <p
             class="page-subtitle"
           >
-            Organization health, media scope, and authorization state.
+            Members, libraries and who owns this organization.
           </p>
         </div>
         <span
-          class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90"
+          class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90 capitalize"
           data-slot="badge"
           data-variant="secondary"
         >
@@ -451,7 +451,7 @@ exports[`multitenant administration responsive release snapshots > captures Orga
           <p
             class="text-muted-foreground mt-1 text-sm"
           >
-            People
+            Members
           </p>
         </article>
         <article
@@ -561,7 +561,7 @@ exports[`multitenant administration responsive release snapshots > captures Orga
           <p
             class="text-muted-foreground mt-1 text-sm"
           >
-            Entitlements
+            Libraries shared with it
           </p>
         </article>
       </div>
@@ -569,9 +569,9 @@ exports[`multitenant administration responsive release snapshots > captures Orga
         class="surface-panel rounded-2xl p-5"
       >
         <h2
-          class="font-semibold"
+          class="font-medium"
         >
-          Authorization state
+          About
         </h2>
         <dl
           class="mt-4 grid gap-4 text-sm sm:grid-cols-3"
@@ -580,22 +580,22 @@ exports[`multitenant administration responsive release snapshots > captures Orga
             <dt
               class="text-muted-foreground"
             >
-              Policy
+              Owner
             </dt>
             <dd
               class="mt-1 font-medium"
             >
-              Revision 7
+              Account 7
             </dd>
           </div>
           <div>
             <dt
               class="text-muted-foreground"
             >
-              Organization slug
+              Short name
             </dt>
             <dd
-              class="mt-1 font-medium"
+              class="mt-1 font-mono"
             >
               north-sea-media
             </dd>
@@ -604,10 +604,10 @@ exports[`multitenant administration responsive release snapshots > captures Orga
             <dt
               class="text-muted-foreground"
             >
-              Owner account
+              Settings revision
             </dt>
             <dd
-              class="mt-1 font-medium"
+              class="mt-1 tabular-nums"
             >
               7
             </dd>
@@ -675,11 +675,11 @@ exports[`multitenant administration responsive release snapshots > captures Orga
           <p
             class="page-subtitle"
           >
-            Organization health, media scope, and authorization state.
+            Members, libraries and who owns this organization.
           </p>
         </div>
         <span
-          class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90"
+          class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90 capitalize"
           data-slot="badge"
           data-variant="secondary"
         >
@@ -728,7 +728,7 @@ exports[`multitenant administration responsive release snapshots > captures Orga
           <p
             class="text-muted-foreground mt-1 text-sm"
           >
-            People
+            Members
           </p>
         </article>
         <article
@@ -838,7 +838,7 @@ exports[`multitenant administration responsive release snapshots > captures Orga
           <p
             class="text-muted-foreground mt-1 text-sm"
           >
-            Entitlements
+            Libraries shared with it
           </p>
         </article>
       </div>
@@ -846,9 +846,9 @@ exports[`multitenant administration responsive release snapshots > captures Orga
         class="surface-panel rounded-2xl p-5"
       >
         <h2
-          class="font-semibold"
+          class="font-medium"
         >
-          Authorization state
+          About
         </h2>
         <dl
           class="mt-4 grid gap-4 text-sm sm:grid-cols-3"
@@ -857,22 +857,22 @@ exports[`multitenant administration responsive release snapshots > captures Orga
             <dt
               class="text-muted-foreground"
             >
-              Policy
+              Owner
             </dt>
             <dd
               class="mt-1 font-medium"
             >
-              Revision 7
+              Account 7
             </dd>
           </div>
           <div>
             <dt
               class="text-muted-foreground"
             >
-              Organization slug
+              Short name
             </dt>
             <dd
-              class="mt-1 font-medium"
+              class="mt-1 font-mono"
             >
               north-sea-media
             </dd>
@@ -881,10 +881,10 @@ exports[`multitenant administration responsive release snapshots > captures Orga
             <dt
               class="text-muted-foreground"
             >
-              Owner account
+              Settings revision
             </dt>
             <dd
-              class="mt-1 font-medium"
+              class="mt-1 tabular-nums"
             >
               7
             </dd>
@@ -1499,7 +1499,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
           <p
             class="page-subtitle text-sm sm:text-base"
           >
-            Create, inspect, and safely suspend tenant boundaries across the platform.
+            Every organization on this server. Open one to manage its members, plan and libraries.
           </p>
         </div>
         <button
@@ -1575,7 +1575,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
           <option
             value="all"
           >
-            All statuses
+            Any status
           </option>
           <option
             value="active"
@@ -1590,7 +1590,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
           <option
             value="initializing"
           >
-            Initializing
+            Setting up
           </option>
         </select>
       </div>
@@ -1648,13 +1648,6 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                 >
                   Libraries
                 </th>
-                <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
-                  data-slot="table-head"
-                  scope="col"
-                >
-                  Policy
-                </th>
               </tr>
             </thead>
             <tbody
@@ -1687,7 +1680,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                   data-slot="table-cell"
                 >
                   <span
-                    class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-primary text-primary-foreground [a&]:hover:bg-primary/90"
+                    class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-primary text-primary-foreground [a&]:hover:bg-primary/90 capitalize"
                     data-slot="badge"
                     data-variant="default"
                   >
@@ -1711,12 +1704,6 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                   data-slot="table-cell"
                 >
                   3
-                </td>
-                <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
-                  data-slot="table-cell"
-                >
-                  r7
                 </td>
               </tr>
             </tbody>
@@ -1813,7 +1800,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
           <p
             class="page-subtitle text-sm sm:text-base"
           >
-            Create, inspect, and safely suspend tenant boundaries across the platform.
+            Every organization on this server. Open one to manage its members, plan and libraries.
           </p>
         </div>
         <button
@@ -1889,7 +1876,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
           <option
             value="all"
           >
-            All statuses
+            Any status
           </option>
           <option
             value="active"
@@ -1904,7 +1891,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
           <option
             value="initializing"
           >
-            Initializing
+            Setting up
           </option>
         </select>
       </div>
@@ -1962,13 +1949,6 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                 >
                   Libraries
                 </th>
-                <th
-                  class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
-                  data-slot="table-head"
-                  scope="col"
-                >
-                  Policy
-                </th>
               </tr>
             </thead>
             <tbody
@@ -2001,7 +1981,7 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                   data-slot="table-cell"
                 >
                   <span
-                    class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-primary text-primary-foreground [a&]:hover:bg-primary/90"
+                    class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 bg-primary text-primary-foreground [a&]:hover:bg-primary/90 capitalize"
                     data-slot="badge"
                     data-variant="default"
                   >
@@ -2025,12 +2005,6 @@ exports[`multitenant administration responsive release snapshots > captures Plat
                   data-slot="table-cell"
                 >
                   3
-                </td>
-                <td
-                  class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
-                  data-slot="table-cell"
-                >
-                  r7
                 </td>
               </tr>
             </tbody>

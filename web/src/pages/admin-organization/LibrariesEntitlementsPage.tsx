@@ -11,7 +11,7 @@ import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 export default function LibrariesEntitlementsPage() {
   const { active } = useAdminContext();
-  useDocumentTitle("Libraries & Entitlements");
+  useDocumentTitle("Libraries");
   if (active?.scope !== "organization") {
     return <p role="alert">Select an organization to manage its libraries.</p>;
   }
@@ -25,21 +25,20 @@ function OrganizationLibraries({ active }: { active: AdminContextSummary }) {
       <div className="page-header">
         <div className="space-y-2">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
-            Libraries &amp; Entitlements
+            Libraries
           </h1>
           <p className="page-subtitle">
-            Media available to {active?.name ?? "this organization"}, separated by ownership and
-            Platform grants.
+            Libraries {active?.name ?? "this organization"} owns, and libraries the server shares
+            with it.
           </p>
         </div>
       </div>
 
       <div className="border-border bg-muted/30 rounded-xl border p-4 text-sm">
-        <span className="font-semibold">
-          Effective access is the intersection of this organization ceiling and profile/group
-          restrictions.
-        </span>{" "}
-        <span className="text-muted-foreground">Both layers must allow the media.</span>
+        <span className="font-medium">These are the most this organization’s members can see.</span>{" "}
+        <span className="text-muted-foreground">
+          Each person’s plan, access group and profile can narrow it further.
+        </span>
       </div>
 
       {libraries.isLoading && (
@@ -53,15 +52,15 @@ function OrganizationLibraries({ active }: { active: AdminContextSummary }) {
           className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-4"
           role="alert"
         >
-          <p>{libraries.error.message}</p>
+          <p>Libraries couldn’t be loaded.</p>
           <Button variant="outline" className="mt-3" onClick={() => void libraries.refetch()}>
-            Reload libraries
+            Try again
           </Button>
         </div>
       )}
       {libraries.data?.length === 0 && (
         <p className="text-muted-foreground py-8 text-center text-sm">
-          No libraries are inside this organization’s media ceiling.
+          This organization has no libraries yet.
         </p>
       )}
       {libraries.data && libraries.data.length > 0 && (
@@ -77,15 +76,18 @@ function OrganizationLibraries({ active }: { active: AdminContextSummary }) {
                 <Badge variant={item.access_kind === "owned" ? "secondary" : "outline"}>
                   {item.access_kind === "owned"
                     ? `Owned by ${active?.name ?? "organization"}`
-                    : "Platform entitlement"}
+                    : "Shared by the server"}
                 </Badge>
               </div>
-              <h2 className="mt-5 text-lg font-semibold">{item.name}</h2>
+              <h2 className="mt-5 text-lg font-medium">{item.name}</h2>
               <p className="text-muted-foreground mt-1 text-sm capitalize">{item.type}</p>
               {item.entitlement && (
                 <p className="text-muted-foreground mt-3 text-xs">
-                  Entitlement {item.entitlement.status} · security revision{" "}
-                  {item.entitlement.security_revision}
+                  {item.entitlement.status === "active"
+                    ? "Members can use it"
+                    : item.entitlement.status === "suspended"
+                      ? "Paused: members can’t use it until it is restored"
+                      : "Withdrawn"}
                 </p>
               )}
               <LibraryEntitlementActions

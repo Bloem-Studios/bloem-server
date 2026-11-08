@@ -28,9 +28,9 @@ export function LibraryEntitlementActions({
   if (library.access_kind !== "entitled" || !grant || grant.status === "revoked") return null;
 
   const labels = {
-    active: "Restore access",
-    suspended: "Suspend access",
-    withdraw: "Withdraw grant",
+    active: "Restore",
+    suspended: "Pause",
+    withdraw: "Give back",
   };
   const action = confirmation?.action ?? "suspended";
   const busy = disabled || change.isPending;
@@ -52,10 +52,10 @@ export function LibraryEntitlementActions({
     } catch (cause) {
       setError(
         cause instanceof AdminV2ClientError && cause.status === 409
-          ? "This grant changed. Review the refreshed library status before trying again."
+          ? "Someone else changed this library just now. Check its status and try again."
           : cause instanceof Error
             ? cause.message
-            : "Could not confirm the change. Refresh the library list before trying again.",
+            : "The change couldn’t be confirmed. Reload the page and try again.",
       );
     } finally {
       setConfirmation(null);
@@ -85,13 +85,13 @@ export function LibraryEntitlementActions({
       <ConfirmDialog
         open={confirmation !== null}
         onOpenChange={(open) => !open && setConfirmation(null)}
-        title={`${labels[action]}: ${library.name}`}
+        title={`${action === "withdraw" ? "Give back" : labels[action]} ${library.name}?`}
         description={
           action === "withdraw"
-            ? "This removes the library from this organization’s media ceiling. You cannot restore a withdrawn grant here; a platform administrator must grant it again. Media files are not deleted."
+            ? "Members lose this library for good. Only a platform administrator can share it again. No files are deleted."
             : action === "suspended"
-              ? "This blocks organization access to this library. You can restore this grant later. Media files are not deleted."
-              : "This restores the organization’s grant. Profile and access-group restrictions still apply."
+              ? "Members can’t use this library until you restore it. No files are deleted."
+              : "Members can use this library again, within their own plan and profile limits."
         }
         confirmLabel={labels[action]}
         variant={action === "active" ? "default" : "destructive"}
