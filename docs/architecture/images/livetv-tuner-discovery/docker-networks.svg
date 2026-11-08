@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="450" viewBox="0 0 1200 450" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">Discovery from Docker</title>
-<desc id="d">Three cases. In Docker's usual bridge network on Linux, the broadcast doesn't reach the local network, so Search my network finds nothing; the Live TV override puts Bloem on the host network, where it listens on port 8080. On Docker Desktop for Mac or Windows, host networking doesn't reach the real network, so use tuner address only. Run from source on the host, discovery just works.</desc>
+<desc id="d">Three cases. In Docker's usual bridge network on Linux, the broadcast doesn't reach the local network, so Search my network finds nothing; the Live TV override puts Bloem on the host network, where it listens on port 8080. On Docker Desktop for Mac or Windows, host networking doesn't reach the real network, so type the tuner address instead. Run from source on the host, discovery just works.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="449" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Discovery from Docker</text>
@@ -11,8 +11,8 @@
 <text x="60" y="208" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">stays inside Docker, so Search my network</text>
 <text x="60" y="228" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">finds nothing.</text>
 <rect x="60" y="266" width="320" height="68" rx="10" fill="#FFFFFF" stroke="#EF4444" stroke-width="1.2"/>
-<text x="76" y="294" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Type the tuner address, or the Live TV</text>
-<text x="76" y="314" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">override.</text>
+<text x="76" y="294" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Type the tuner address, or use the Live</text>
+<text x="76" y="314" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">TV override.</text>
 <rect x="420" y="124" width="360" height="230" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.6"/>
 <text x="440" y="158" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Linux, with the Live TV override</text>
 <text x="440" y="188" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">docker-compose.livetv.yml puts Bloem on the</text>
@@ -25,8 +25,8 @@
 <text x="820" y="188" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">Host networking there doesn't reach your</text>
 <text x="820" y="208" font-size="14.5" font-weight="normal" fill="#4B5563" text-anchor="start">real network.</text>
 <rect x="820" y="266" width="320" height="68" rx="10" fill="#FFFFFF" stroke="#F59E0B" stroke-width="1.2"/>
-<text x="836" y="294" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Type the tuner address, or run Bloem from</text>
-<text x="836" y="314" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">source.</text>
+<text x="836" y="294" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Type the tuner address, or run Bloem</text>
+<text x="836" y="314" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">from source.</text>
 <text x="40" y="390" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">From source on the host, or on bare metal, discovery uses the host's own network and needs nothing special. Never put a tuner's discover or stream address on</text>
 <text x="40" y="410" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">the internet.</text>
 </svg>

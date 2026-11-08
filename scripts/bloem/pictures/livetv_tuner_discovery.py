@@ -14,9 +14,9 @@ def _mono(s, x, y, txt, size=13.5, fill=INK):
 
 def two_ways():
     s = Svg(1200, 760, "Two ways Bloem finds a tuner",
-            "Left: Discover on LAN. Bloem sends a broadcast on UDP port 65001, and HDHomeRun tuners and Dispatcharr "
+            "Left: Search my network. Bloem sends a broadcast on UDP port 65001, and HDHomeRun tuners and Dispatcharr "
             "answer; each answer is checked over HTTP and listed, with tuners already added marked Added. Right: "
-            "Probe URL only, or adding a tuner by address. Bloem tries discover.json at the usual places, including "
+            "adding a tuner by its address. Bloem tries discover.json at the usual places, including "
             "Dispatcharr's /hdhr/ path and port 9191, and stores the tuner's identity from the answer. Below: an "
             "Xtream provider is added with its own form instead.")
     s.header("Two ways Bloem finds a tuner",
@@ -25,7 +25,7 @@ def two_ways():
 
     # Left: LAN discovery.
     s.rect(40, 124, 540, 476, "#FFFFFF", "#E5E7EB", rx=16)
-    s.text(64, 160, "Discover on LAN", size=20, weight="700")
+    s.text(64, 160, "Search my network", size=20, weight="700")
     s.text(64, 184, "Needs Bloem on the local network itself.", size=14, fill=MUTED)
     box(s, 64, 208, 200, 92, BLOEM, "Bloem", "Broadcasts a question.", size=14)
     for i, (t, b) in enumerate([("HDHomeRun", "on an antenna or cable"), ("Dispatcharr", "pretending to be one")]):
@@ -47,7 +47,7 @@ def two_ways():
 
     # Right: probe URL.
     s.rect(620, 124, 540, 476, "#FFFFFF", "#E5E7EB", rx=16)
-    s.text(644, 160, "Probe URL only, or Tuner URL", size=20, weight="700")
+    s.text(644, 160, "Tuner address", size=20, weight="700")
     s.text(644, 184, "You give a host or base address; Bloem tries, in order:", size=14, fill=MUTED)
     tries = ["{base}/hdhr/discover.json", "{base}/discover.json", "http://{host}:9191/hdhr/discover.json",
              "https://{host}:9191/hdhr/discover.json"]
@@ -73,19 +73,19 @@ def two_ways():
 def docker_networks():
     s = Svg(1200, 450, "Discovery from Docker",
             "Three cases. In Docker's usual bridge network on Linux, the broadcast doesn't reach the local network, "
-            "so Discover on LAN finds nothing; the Live TV override puts Bloem on the host network, where it listens "
+            "so Search my network finds nothing; the Live TV override puts Bloem on the host network, where it listens "
             "on port 8080. On Docker Desktop for Mac or Windows, host networking doesn't reach the real network, so "
-            "use Probe URL only. Run from source on the host, discovery just works.")
+            "type the tuner address instead. Run from source on the host, discovery just works.")
     s.header("Discovery from Docker",
-             "Probe URL always works. Discover on LAN needs Bloem on the real local network.")
+             "A tuner address always works. Search my network needs Bloem on the real local network.")
     st, a, w = TIERS["stop"], TIERS["account"], TIERS["warn"]
     cards = [
         (st, "Docker, bridge network", "Bloem's usual Compose setup. The broadcast stays inside Docker, so "
-         "Discover on LAN finds nothing.", "Use Probe URL only, or the Live TV override."),
+         "Search my network finds nothing.", "Type the tuner address, or use the Live TV override."),
         (a, "Linux, with the Live TV override", "docker-compose.livetv.yml puts Bloem on the host network. It "
          "listens on port 8080, not 8090.", "Point apps and any proxy at port 8080."),
         (w, "Docker Desktop, Mac or Windows", "Host networking there doesn't reach your real network.",
-         "Use Probe URL only, or run Bloem from source."),
+         "Type the tuner address, or run Bloem from source."),
     ]
     for i, (c, t, b, do) in enumerate(cards):
         x = 40 + i * 380
