@@ -60,24 +60,28 @@ export const bloemPlatformAdminRoutes = (
 /** Organization-context admin pages plus the context chooser and fallback redirect. */
 export const bloemAdminContextRoutes = (
   <>
+    {/* Nested under one "organization" route: React Router 8 ranks a sibling
+        "organization/*" above "organization", which hid the overview. */}
     <Route element={<OrganizationContextGuard />}>
-      <Route path="organization" element={<OrganizationOverviewPage />} />
-      <Route path="organization/people" element={<PeoplePage />} />
-      <Route path="organization/policy-cohorts" element={<EntitlementCohortsPage />} />
-      <Route path="organization/access-groups" element={<AdminAccessGroups />} />
-      <Route path="organization/libraries" element={<LibrariesEntitlementsPage />} />
-      <Route
-        path="organization/invitations"
-        element={
-          <div className="page-shell py-4 sm:py-6">
-            <OrganizationInvitationsTab />
-          </div>
-        }
-      />
-      <Route path="organization/policy-decisions" element={<PolicyDecisionsPage />} />
-      <Route path="organization/storage" element={<StorageSourcesPage />} />
-      <Route path="organization/activity" element={<ActivityAuditPage />} />
-      <Route path="organization/*" element={<Navigate to="/admin/organization" replace />} />
+      <Route path="organization">
+        <Route index element={<OrganizationOverviewPage />} />
+        <Route path="people" element={<PeoplePage />} />
+        <Route path="policy-cohorts" element={<EntitlementCohortsPage />} />
+        <Route path="access-groups" element={<AdminAccessGroups />} />
+        <Route path="libraries" element={<LibrariesEntitlementsPage />} />
+        <Route
+          path="invitations"
+          element={
+            <div className="page-shell py-4 sm:py-6">
+              <OrganizationInvitationsTab />
+            </div>
+          }
+        />
+        <Route path="policy-decisions" element={<PolicyDecisionsPage />} />
+        <Route path="storage" element={<StorageSourcesPage />} />
+        <Route path="activity" element={<ActivityAuditPage />} />
+        <Route path="*" element={<Navigate to="/admin/organization" replace />} />
+      </Route>
     </Route>
     <Route path="context" element={<AdminContextSelection />} />
     <Route path="*" element={<AdminContextRedirect />} />

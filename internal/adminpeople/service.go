@@ -1667,7 +1667,7 @@ func (s *Service) executePolicyBulkRecord(ctx context.Context, tx pgx.Tx, organi
 		return "", "", err
 	}
 	targetEffectivePolicy := accesspolicy.ApplyGroupPolicy(
-		&models.User{Permissions: accountPermissions, MaxProfiles: accountMaxProfiles},
+		&models.User{Permissions: entitlements.AccountPermissionOverride(accountPermissions), MaxProfiles: accountMaxProfiles},
 		&accesspolicy.GroupPolicy{
 			ManagedProfileLimit: true,
 			LibraryIDs:          targetPolicy.LibraryIDs, PlaybackAllowed: targetPolicy.PlaybackAllowed,

@@ -4,12 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { useOrganizationOverview } from "@/hooks/queries/admin/organizationPeople";
+import { useAccountNames } from "@/components/admin/policy/useAccountNames";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 export default function OrganizationOverviewPage() {
   const { active } = useAdminContext();
   const contextKey = active?.key ?? "organization:unavailable";
   const overview = useOrganizationOverview(contextKey);
+  const accountName = useAccountNames();
   useDocumentTitle(active?.name ?? "Organization overview");
 
   if (overview.isLoading) {
@@ -79,7 +81,7 @@ export default function OrganizationOverviewPage() {
             <dt className="text-muted-foreground">Owner</dt>
             <dd className="mt-1 font-medium">
               {organization.owner_account_id
-                ? `Account ${organization.owner_account_id}`
+                ? accountName(organization.owner_account_id)
                 : "Nobody yet"}
             </dd>
           </div>

@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/Silo-Server/silo-server/internal/accesspolicy"
 )
@@ -368,8 +369,78 @@ func loadUnadoptedTemplateGroup(ctx context.Context, tx pgx.Tx, organizationID u
 	return id, policy, true, nil
 }
 
+// cohortGroupNameAttempts bounds the retries when a concurrent transaction
+// takes the same group name first.
+const cohortGroupNameAttempts = 5
+
+// insertCohortGroup creates the protected access group behind a cohort. Its
+// name reads like the cohort, "Family (cohort)", with a number added when the
+// organization already has a group by that name; group names are unique per
+// organization.
 func insertCohortGroup(ctx context.Context, tx pgx.Tx, organizationID, revisionID uuid.UUID, templateKey string, templateRevision int64, name string, policy Policy) (int64, error) {
-	groupName := fmt.Sprintf("Managed Cohort %s [%s]", name, revisionID.String()[:8])
+	for attempt := 0; ; attempt++ {
+		groupName, err := freeCohortGroupName(ctx, tx, organizationID, name)
+		if err != nil {
+			return 0, err
+		}
+		savepoint, err := tx.Begin(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("entitlements: begin cohort group savepoint: %w", err)
+		}
+		groupID, err := insertCohortGroupNamed(ctx, savepoint, organizationID, revisionID, templateKey, templateRevision, groupName, policy)
+		if err == nil {
+			if err := savepoint.Commit(ctx); err != nil {
+				return 0, fmt.Errorf("entitlements: release cohort group savepoint: %w", err)
+			}
+			return groupID, nil
+		}
+		_ = savepoint.Rollback(ctx)
+		var pgErr *pgconn.PgError
+		if attempt+1 < cohortGroupNameAttempts && errors.As(err, &pgErr) &&
+			pgErr.Code == "23505" && pgErr.ConstraintName == "access_groups_organization_name_key" {
+			continue
+		}
+		return 0, err
+	}
+}
+
+// freeCohortGroupName returns "<name> (cohort)", or "<name> (cohort N)" with
+// the lowest N from 2 that no group in the organization uses yet.
+func freeCohortGroupName(ctx context.Context, tx pgx.Tx, organizationID uuid.UUID, name string) (string, error) {
+	base := strings.TrimSpace(name)
+	if base == "" {
+		base = "Plan"
+	}
+	base += " (cohort"
+	rows, err := tx.Query(ctx,
+		`SELECT name FROM access_groups WHERE organization_id=$1 AND left(name, length($2)) = $2`,
+		organizationID, base)
+	if err != nil {
+		return "", fmt.Errorf("entitlements: list cohort group names: %w", err)
+	}
+	defer rows.Close()
+	taken := map[string]bool{}
+	for rows.Next() {
+		var existing string
+		if err := rows.Scan(&existing); err != nil {
+			return "", fmt.Errorf("entitlements: scan cohort group name: %w", err)
+		}
+		taken[existing] = true
+	}
+	if err := rows.Err(); err != nil {
+		return "", fmt.Errorf("entitlements: list cohort group names: %w", err)
+	}
+	if candidate := base + ")"; !taken[candidate] {
+		return candidate, nil
+	}
+	for number := 2; ; number++ {
+		if candidate := fmt.Sprintf("%s %d)", base, number); !taken[candidate] {
+			return candidate, nil
+		}
+	}
+}
+
+func insertCohortGroupNamed(ctx context.Context, tx pgx.Tx, organizationID, revisionID uuid.UUID, templateKey string, templateRevision int64, groupName string, policy Policy) (int64, error) {
 	var groupID int64
 	err := tx.QueryRow(ctx, `
 		INSERT INTO access_groups (

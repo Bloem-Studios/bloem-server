@@ -26,12 +26,15 @@ function routeGuards() {
     }
   });
   const routes = new Map<string, string[]>();
-  function visit(node: ts.Node, parents: string[], file: ts.SourceFile) {
+  // Paths are recorded as React Router resolves them: a nested route's path is
+  // joined to its parent's, except below a splat or absolute parent.
+  function visit(node: ts.Node, parents: string[], file: ts.SourceFile, prefix = "") {
     let guards = parents;
+    let childPrefix = prefix;
     if (ts.isJsxExpression(node) && node.expression && ts.isIdentifier(node.expression)) {
       const fragment = fragments.get(node.expression.text);
       if (fragment) {
-        visit(fragment, parents, bloemRoutes);
+        visit(fragment, parents, bloemRoutes, prefix);
         return;
       }
     }
@@ -57,9 +60,13 @@ function routeGuards() {
       const path = attributes.find(
         (attribute) => attribute.name.getText(file) === "path",
       )?.initializer;
-      if (path && ts.isStringLiteral(path)) routes.set(path.text, guards);
+      if (path && ts.isStringLiteral(path)) {
+        const full = prefix && !path.text.startsWith("/") ? `${prefix}/${path.text}` : path.text;
+        routes.set(full, guards);
+        childPrefix = full.endsWith("*") ? "" : full;
+      }
     }
-    ts.forEachChild(node, (child) => visit(child, guards, file));
+    ts.forEachChild(node, (child) => visit(child, guards, file, childPrefix));
   }
   visit(app, [], app);
   return routes;

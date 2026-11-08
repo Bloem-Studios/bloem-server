@@ -1043,7 +1043,7 @@ func policyFromEffective(policy entitlements.EffectivePolicySnapshot) entitlemen
 
 func effectivePolicyTargetForAccount(target entitlements.Policy, accountPermissions []string, accountMaxProfiles *int) entitlements.Policy {
 	effective := accesspolicy.ApplyGroupPolicy(
-		&models.User{Permissions: accountPermissions, MaxProfiles: accountMaxProfiles},
+		&models.User{Permissions: entitlements.AccountPermissionOverride(accountPermissions), MaxProfiles: accountMaxProfiles},
 		&accesspolicy.GroupPolicy{ManagedProfileLimit: true, MaxProfiles: target.MaxProfiles, AllowedPermissions: target.AllowedPermissions},
 	)
 	target.AllowedPermissions = effective.Permissions

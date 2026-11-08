@@ -773,6 +773,14 @@ func nilIfEmptyPermissions(values []string) []string {
 	return values
 }
 
+// AccountPermissionOverride reads a stored account permission list the way the
+// account snapshot does: empty means no override, so the group's allowed
+// permissions stand. Every caller that applies a group policy to a stored
+// account must use it, or previews and jobs disagree with the snapshot.
+func AccountPermissionOverride(values []string) []string {
+	return nilIfEmptyPermissions(values)
+}
+
 func appendNilPreservingStrings(values []string) []string {
 	if values == nil {
 		return nil
