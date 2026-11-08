@@ -12,7 +12,7 @@ public enum GeneratedContract {
     public static let SERVER_REVISION: String = "e9eacedf57da20632ecd6bea9b12f46f28de5b00"
     public static let GENERATOR_VERSION: Int = 1
     /// Digest of the normalised type graph; changes only when a wire shape changes.
-    public static let CONTRACT_DIGEST: String = "sha256:d7c054be395f667145550a0401eb219acf115cb14041cb97907c82586dbde3f6"
+    public static let CONTRACT_DIGEST: String = "sha256:5389655d150675cba1537132122692e4b2aa89e305b49c27949bb7ea902a600d"
     /// Qualified type name → direction (request, response or both).
     public static let DIRECTION: [String: String] = [
         "Ambience.Assets": "response",
@@ -957,6 +957,7 @@ public enum GeneratedContract {
         "Nativestorage.ReplaceLocationsRequest": "request",
         "Nativestorage.RootSelection": "request",
         "Nativestorage.SavedRootSelection": "response",
+        "Nativestorage.SourceLibrary": "response",
         "Nativestorage.SourcePage": "response",
         "Nativestorage.SourceView": "response",
         "Nativestorage.UpgradeCommand": "request",
@@ -2072,6 +2073,7 @@ public enum GeneratedContract {
         "Nativestorage.ReplaceLocationsRequest": "bloem",
         "Nativestorage.RootSelection": "bloem",
         "Nativestorage.SavedRootSelection": "bloem",
+        "Nativestorage.SourceLibrary": "bloem",
         "Nativestorage.SourcePage": "bloem",
         "Nativestorage.SourceView": "bloem",
         "Nativestorage.UpgradeCommand": "bloem",
@@ -2313,6 +2315,7 @@ public enum GeneratedContract {
         "Nativestorage.ReplaceLocationsRequest": "native_storage.library_location_atomic_editing",
         "Nativestorage.RootSelection": "native_storage.library_location_atomic_editing",
         "Nativestorage.SavedRootSelection": "native_storage.library_location_atomic_editing",
+        "Nativestorage.SourceLibrary": "native_storage.source_management",
         "Nativestorage.SourcePage": "native_storage.source_management",
         "Nativestorage.SourceView": "native_storage.source_management",
         "Nativestorage.UpgradeCommand": "native_storage.source_management",

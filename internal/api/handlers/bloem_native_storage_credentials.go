@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"unicode"
 
+	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/plugins"
 )
 
@@ -62,4 +63,33 @@ func (h *BloemNativeStorageManagementHandler) HandleRotateCredentials(w http.Res
 		return
 	}
 	nativeStorageWrite(w, 200, nativeStorageConfigurationResponse{SourceKey: key, Revision: revision})
+}
+
+// HandleDeleteRemovedSource deletes a removed source that no library reads
+// from, so it leaves the source list for good.
+func (h *BloemNativeStorageManagementHandler) HandleDeleteRemovedSource(w http.ResponseWriter, r *http.Request) {
+	actor, ok := h.actor(w, r)
+	if !ok {
+		return
+	}
+	key, ok := nativeStoragePathUUID(w, r, "source_key")
+	if !ok {
+		return
+	}
+	var cmd nativeStorageDeleteSourceCommand
+	if _, ok = h.command(w, r, &cmd); !ok {
+		return
+	}
+	if cmd.ExpectedRevision <= 0 {
+		writeNativeStorageError(w, &catalog.NativeOnboardingError{Code: "invalid_request"}, true)
+		return
+	}
+	if !h.sourceAvailable(w) {
+		return
+	}
+	if err := h.Sources.DeleteRemovedSource(r.Context(), actor, key, cmd.ExpectedRevision); err != nil {
+		writeNativeStorageError(w, err, true)
+		return
+	}
+	nativeStorageWrite(w, 200, nativeStorageDeleteSourceResponse{SourceKey: key, Deleted: true})
 }

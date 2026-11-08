@@ -736,6 +736,17 @@ func (r *NativeStorageRegistry) removeGuarded(ctx context.Context, id int, owner
 		if err = nativeManagementRevision(source.ConfigurationRevision, *expected); err != nil {
 			return err
 		}
+		// An administrator cannot cut a library off from its files: a source
+		// of this installation that backs a library stays until the library
+		// no longer reads from it.
+		var inUse bool
+		if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM library_storage_locations l JOIN bloem_storage_sources s ON s.key=l.source_key
+ WHERE s.installation_id=$1 OR s.key=$2)`, id, *key).Scan(&inUse); err != nil {
+			return err
+		}
+		if inUse {
+			return storagesource.ErrSourceInUse
+		}
 		if source.InstallationID == nil {
 			var latest *int64
 			if err = tx.QueryRow(ctx, "SELECT latest_installation_id FROM bloem_storage_sources WHERE key=$1", *key).Scan(&latest); err != nil {

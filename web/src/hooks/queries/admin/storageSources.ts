@@ -20,6 +20,10 @@ export interface StorageSource {
   configured: boolean;
   /** Non-secret, display-safe facts about the connection (bucket, region, endpoint, ...). */
   connection_summary: Record<string, string>;
+  /** True while any library reads from the source; it can't be removed then. */
+  in_use: boolean;
+  /** The libraries reading from the source that this administrator can see. */
+  libraries: { id: number; name: string }[];
 }
 
 /** A verified storage plugin release available for installation. */
@@ -543,6 +547,26 @@ export function useConfigureStorageSource() {
     onSuccess: () => {
       toast.success("Bookwarehouse connected");
       void queryClient.invalidateQueries({ queryKey: adminV2QueryKey(key, "native-storage") });
+    },
+    onError: (error) => toast.error(sourceActionErrorMessage(error)),
+  });
+}
+
+/** Deletes a removed source that no library uses, so it leaves the list for good. */
+export function useDeleteRemovedStorageSource() {
+  const queryClient = useQueryClient();
+  const { scope, key } = useStorageScope();
+  return useMutation({
+    mutationFn: ({ source }: { source: StorageSource }) =>
+      adminV2Api<unknown>(`/${scope}/native-storage/sources/${source.source_key}`, {
+        method: "DELETE",
+        body: JSON.stringify({ expected_revision: source.configuration_revision }),
+      }),
+    onSuccess: () => {
+      toast.success("Storage source deleted");
+      void queryClient.invalidateQueries({
+        queryKey: adminV2QueryKey(key, "native-storage", "sources"),
+      });
     },
     onError: (error) => toast.error(sourceActionErrorMessage(error)),
   });

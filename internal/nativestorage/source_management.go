@@ -33,6 +33,19 @@ type SourceView struct {
 	// ConnectionSummary is a per-plugin allowlist of display-safe connection
 	// fields. It never carries credentials and is never nil.
 	ConnectionSummary map[string]string `json:"connection_summary"`
+	// InUse is true while any library reads from the source; such a source
+	// cannot be disabled or removed. It counts libraries the actor cannot see.
+	InUse bool `json:"in_use"`
+	// Libraries names the libraries reading from the source that the actor
+	// may see: every library in platform scope, the organization's own in
+	// organization scope. It is never nil.
+	Libraries []SourceLibrary `json:"libraries"`
+}
+
+// SourceLibrary is one library that reads from a storage source.
+type SourceLibrary struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 type SourcePage struct {
 	Sources   []SourceView `json:"sources"`
@@ -79,6 +92,9 @@ func nativeDomainMap(err error) error {
 	}
 	if errors.Is(err, resourcetenancy.ErrInvalidActor) {
 		return nativeDomainError("authorization_state_stale")
+	}
+	if errors.Is(err, storagesource.ErrSourceInUse) {
+		return nativeDomainError("source_in_use")
 	}
 	return catalog.MapNativeOnboardingError(err)
 }
@@ -331,4 +347,77 @@ func (s *SourceManagement) sourceMutationAuthorizer(actor auth.AdminContextClaim
 		}
 		return nativeSourceRevision(current.ConfigurationRevision, expected)
 	}
+}
+
+// DeleteRemovedSource deletes a removed source for good: one whose plugin
+// installation was disabled or uninstalled, so it can never run again, and
+// that no library reads from. Its discovered entries and scan history go with
+// it, and so does a disabled installation it leaves behind that no other
+// source names. Nothing in the storage itself is touched. An attached source
+// is refused with source_attached and one a library uses with source_in_use.
+func (s *SourceManagement) DeleteRemovedSource(ctx context.Context, actor auth.AdminContextClaims, key uuid.UUID, expected int64) error {
+	if key == uuid.Nil || expected <= 0 {
+		return nativeDomainError("invalid_request")
+	}
+	tx, err := s.begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer nativeDomainRollback(ctx, tx)
+	source, err := nativeDomainSourceTx(ctx, tx, key)
+	if err != nil {
+		return nativeDomainMap(err)
+	}
+	if err = s.sourceMutationAuthorizer(actor, source, nil, expected)(ctx, tx); err != nil {
+		return err
+	}
+	var installation, latest *int64
+	var inUse bool
+	err = tx.QueryRow(ctx, `SELECT installation_id, latest_installation_id,
+ EXISTS(SELECT 1 FROM library_storage_locations WHERE source_key=$1)
+ FROM bloem_storage_sources WHERE key=$1 FOR UPDATE`, key).Scan(&installation, &latest, &inUse)
+	if err != nil {
+		return nativeDomainMap(err)
+	}
+	if installation != nil {
+		return nativeDomainError("source_attached")
+	}
+	if inUse {
+		return nativeDomainError("source_in_use")
+	}
+	// The source and its scan runs name each other, so the discovery run is
+	// released first; scan directories, cursors and change tokens cascade.
+	for _, statement := range []string{
+		"UPDATE bloem_storage_sources SET discovery_run_id=NULL WHERE key=$1",
+		"DELETE FROM bloem_storage_entries WHERE source_key=$1",
+		"DELETE FROM bloem_storage_scan_runs WHERE source_key=$1",
+		"DELETE FROM bloem_storage_sources WHERE key=$1",
+	} {
+		if _, err = tx.Exec(ctx, statement, key); err != nil {
+			return nativeDomainMap(err)
+		}
+	}
+	if latest != nil {
+		if err = deleteOrphanInstallationTx(ctx, tx, *latest); err != nil {
+			return nativeDomainMap(err)
+		}
+	}
+	return nativeDomainMap(tx.Commit(ctx))
+}
+
+// deleteOrphanInstallationTx deletes a disabled installation no source names
+// any more. Disable leaves its installation behind; once the last source
+// naming it is gone, nothing can ever run it again.
+func deleteOrphanInstallationTx(ctx context.Context, tx pgx.Tx, id int64) error {
+	var orphan bool
+	err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_installations p WHERE p.id=$1 AND NOT p.enabled
+ AND NOT EXISTS(SELECT 1 FROM bloem_storage_sources s WHERE s.installation_id=$1 OR s.latest_installation_id=$1))`, id).Scan(&orphan)
+	if err != nil || !orphan {
+		return err
+	}
+	if _, err = tx.Exec(ctx, "DELETE FROM organization_entitlements WHERE plugin_installation_id=$1", id); err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, "DELETE FROM plugin_installations WHERE id=$1", id)
+	return err
 }

@@ -141,6 +141,15 @@ type BloemNativeStorageRemoveBody struct {
 	ExpectedRevision int64     `json:"expected_revision" minimum:"1" doc:"Current source configuration revision, not the library revision."`
 }
 
+type BloemNativeStorageDeleteSourceBody struct {
+	ExpectedRevision int64 `json:"expected_revision" minimum:"1" doc:"Current source configuration revision."`
+}
+
+type BloemNativeStorageSourceDeletion struct {
+	SourceKey uuid.UUID `json:"source_key"`
+	Deleted   bool      `json:"deleted" enum:"true"`
+}
+
 type BloemNativeStorageRemoval struct {
 	InstallationID int    `json:"installation_id"`
 	State          string `json:"state" enum:"disabled_detached,uninstalled_detached"`
@@ -229,7 +238,12 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 			&huma.Param{Name: "limit", In: "query", Schema: &huma.Schema{Type: "integer", Minimum: &one, Maximum: &hundred, Default: 50}})
 	}
 	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{403: bloemNativeStorageForbidden})
-	bloemDocumentErrors[BloemNativeStorageError](reg, &op, bloemNativeStorageErrors(scope, path))
+	errorKey := path
+	if method == "DELETE" && path == "/sources/{source_key}" {
+		// Deleting a source writes, unlike reading it on the same path.
+		errorKey = deleteSourceErrors
+	}
+	bloemDocumentErrors[BloemNativeStorageError](reg, &op, bloemNativeStorageErrors(scope, errorKey))
 	op.Responses[strconv.Itoa(status)] = &huma.Response{Description: summary}
 	for _, response := range op.Responses {
 		response.Headers = map[string]*huma.Header{"Cache-Control": {Description: "Native management handler responses are not cacheable.", Schema: &huma.Schema{Type: "string", Enum: []any{"no-store"}}}}
@@ -239,6 +253,9 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 	}
 	registerBloemChiDocument[struct{}, bloemNativeStorageOutput[T]](reg, op)
 }
+
+// deleteSourceErrors keys the errors of DELETE /sources/{source_key}.
+const deleteSourceErrors = "DELETE /sources/{source_key}"
 
 // bloemNativeStorageNotes adds operation-specific rules to the shared description.
 var bloemNativeStorageNotes = map[string]string{
@@ -292,6 +309,11 @@ func bloemNativeStorageErrors(scope, path string) map[int]string {
 		r[503] = unavailable
 	case "/sources/{source_key}":
 		r[400], r[404], r[503] = read, hidden, unavailable
+	case deleteSourceErrors:
+		r[400] = strictJSON
+		r[404] = hidden
+		r[409] = revision + " source_attached: the source still has its plugin installation; remove it first. source_in_use: a library reads from the source; delete the library first."
+		r[413], r[503] = jsonLarge, unavailable
 	case "/installations":
 		r[400] = strictForm + " organization_id is rejected in organization scope, and source_key and expected_revision go together."
 		r[404] = retained
@@ -340,7 +362,7 @@ func bloemNativeStorageErrors(scope, path string) map[int]string {
 		r[404], r[409], r[413], r[503] = hidden+detached, revision, jsonLarge, unavailable+unknown
 	case "/installations/{installation_id}/disable", "/installations/{installation_id}":
 		r[400] = strictJSON
-		r[404], r[409], r[413], r[503] = hidden, revision, jsonLarge, unavailable+unknown
+		r[404], r[409], r[413], r[503] = hidden, revision+" source_in_use: a library reads from a source of this installation; change the library first.", jsonLarge, unavailable+unknown
 	case "/s3/buckets", "/s3/folders":
 		r[400] = strictJSON + " Region, credential, bucket, prefix and cursor bounds apply as documented on the fields."
 		r[413] = jsonLarge
@@ -376,6 +398,7 @@ func registerBloemNativeStorageDocument(reg *Registry) {
 		bloemNativeStorageDocument[BloemNativeStorageArtifacts](reg, scope, "GET", "/artifacts", "listArtifacts", "List automatically verified catalog releases and any optional manual artifacts.", 200, nil, false)
 		bloemNativeStorageDocument[nativestorage.SourcePage](reg, scope, "GET", "/sources", "listSources", "List visible sources and their current configuration revisions.", 200, nil, true)
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "GET", "/sources/{source_key}", "getSource", "Read a visible source without configuration secrets.", 200, nil, false)
+		bloemNativeStorageDocument[BloemNativeStorageSourceDeletion](reg, scope, "DELETE", "/sources/{source_key}", "deleteRemovedSource", "Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched.", 200, bloemNativeStorageJSONBody[BloemNativeStorageDeleteSourceBody](reg), false)
 		install := bloemNativeStorageMultipart[BloemNativeStorageInstallBody](reg)
 		if scope == "platform" {
 			install = bloemNativeStorageMultipart[BloemNativeStoragePlatformInstallBody](reg)
@@ -396,10 +419,10 @@ func registerBloemNativeStorageDocument(reg *Registry) {
 		bloemNativeStorageDocument[BloemNativeStorageConfiguration](reg, scope, "PUT", "/sources/{source_key}/configuration", "replaceConfiguration", "Replace complete configuration only while the source namespace is empty.", 200, bloemNativeStorageJSONBody[BloemNativeStorageConfigurationBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageConfiguration](reg, scope, "POST", "/sources/{source_key}/credentials", "rotateCredentials", "Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned.", 200, bloemNativeStorageJSONBody[BloemNativeStorageCredentialsBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageSource](reg, scope, "POST", "/installations/{installation_id}/upgrade", "upgrade", "Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept.", 200, bloemNativeStorageMultipart[BloemNativeStorageUpgradeBody](reg), false)
-		bloemNativeStorageDocument[BloemNativeStorageRemoval](reg, scope, "POST", "/installations/{installation_id}/disable", "disable", "Disable and detach the source; its library, catalog and reading progress are retained.", 200, bloemNativeStorageJSONBody[BloemNativeStorageRemoveBody](reg), false)
+		bloemNativeStorageDocument[BloemNativeStorageRemoval](reg, scope, "POST", "/installations/{installation_id}/disable", "disable", "Disable and detach a source no library reads from; its catalog and reading progress are retained.", 200, bloemNativeStorageJSONBody[BloemNativeStorageRemoveBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageS3Buckets](reg, scope, "POST", "/s3/buckets", "listS3Buckets", "List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses.", 200, bloemNativeStorageS3JSONBody[BloemNativeStorageS3BucketsBody](reg), false)
 		bloemNativeStorageDocument[BloemNativeStorageS3Folders](reg, scope, "POST", "/s3/folders", "listS3Folders", "List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing.", 200, bloemNativeStorageS3JSONBody[BloemNativeStorageS3FoldersBody](reg), false)
-		bloemNativeStorageDocument[BloemNativeStorageRemoval](reg, scope, "DELETE", "/installations/{installation_id}", "uninstall", "Uninstall and detach the source; its library, catalog and reading progress are retained.", 200, bloemNativeStorageJSONBody[BloemNativeStorageRemoveBody](reg), false)
+		bloemNativeStorageDocument[BloemNativeStorageRemoval](reg, scope, "DELETE", "/installations/{installation_id}", "uninstall", "Uninstall and detach a source no library reads from; its catalog and reading progress are retained.", 200, bloemNativeStorageJSONBody[BloemNativeStorageRemoveBody](reg), false)
 	}
 	bloemNativeStorageDocumentSchemas(reg.api.OpenAPI().Components.Schemas)
 }

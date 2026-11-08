@@ -272,6 +272,15 @@ generation, so the running process is replaced; the source, its encrypted
 configuration and its library stay as they are. Ordinary plugin handlers hide
 native installations.
 
+Disable and uninstall both detach every source of the installation, and a
+detached source cannot be attached again: the admin UI offers only Remove.
+An administrator's disable or uninstall is refused with `source_in_use` (409)
+while any `library_storage_locations` row names a source of the installation,
+so a library is never cut off from its files; deleting the library releases
+it. Each source view carries `in_use` and `libraries`, the libraries reading
+from it that the actor may see: all of them in platform scope, the actor's
+organization's own in organization scope.
+
 Configuration replacement, upgrade and removal fence the installation's runtime
 while they run. A refused or failed action that commits nothing lifts its fence:
 the unchanged generation restarts on the next read or scan. After a commit, or a

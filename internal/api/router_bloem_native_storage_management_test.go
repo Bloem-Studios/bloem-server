@@ -60,7 +60,7 @@ func TestNativeOnboardingHTTPRemovedLibraryRoutesAreGone(t *testing.T) {
 		status       int
 	}{
 		{"POST", "/libraries", 404}, {"GET", "/libraries/7", 404}, {"POST", "/libraries/7/scan", 404},
-		{"GET", "/sources/" + key + "/bindings", 404}, {"DELETE", "/sources/" + key, 405}, {"POST", "/sources/" + key + "/enable", 404},
+		{"GET", "/sources/" + key + "/bindings", 404}, {"POST", "/sources/" + key + "/enable", 404},
 	} {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, httptest.NewRequest(request.method, "/api/bloem/v1/admin/platform/native-storage"+request.path, nil))

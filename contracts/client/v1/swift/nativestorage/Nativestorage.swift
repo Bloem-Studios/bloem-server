@@ -524,6 +524,37 @@ public enum Nativestorage {
         }
     }
 
+    /// Wire type `internal/nativestorage.SourceLibrary`. Direction: response. Dialect: bloem. Gate: native_storage.source_management.
+    public struct SourceLibrary: Codable, Hashable, Sendable {
+        public let id: Int
+        public let name: String
+
+        public enum CodingKeys: String, CodingKey {
+            case id = "id"
+            case name = "name"
+        }
+
+        public init(
+            id: Int = 0,
+            name: String = ""
+        ) {
+            self.id = id
+            self.name = name
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.id = try container.decodeIfPresent(Int.self, forKey: .id) ?? 0
+            self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.id, forKey: .id)
+            try container.encode(self.name, forKey: .name)
+        }
+    }
+
     /// Wire type `internal/nativestorage.SourcePage`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. Registered root.
     public struct SourcePage: Codable, Hashable, Sendable {
         public let sources: [SourceView]
@@ -569,6 +600,8 @@ public enum Nativestorage {
         public let state: String
         public let configured: Bool
         public let connectionSummary: [String: String]
+        public let inUse: Bool
+        public let libraries: [SourceLibrary]
 
         public enum CodingKeys: String, CodingKey {
             case sourceKey = "source_key"
@@ -583,6 +616,8 @@ public enum Nativestorage {
             case state = "state"
             case configured = "configured"
             case connectionSummary = "connection_summary"
+            case inUse = "in_use"
+            case libraries = "libraries"
         }
 
         public init(
@@ -597,7 +632,9 @@ public enum Nativestorage {
             enabled: Bool = false,
             state: String = "",
             configured: Bool = false,
-            connectionSummary: [String: String] = [:]
+            connectionSummary: [String: String] = [:],
+            inUse: Bool = false,
+            libraries: [SourceLibrary] = []
         ) {
             self.sourceKey = sourceKey
             self.ownerKind = ownerKind
@@ -611,6 +648,8 @@ public enum Nativestorage {
             self.state = state
             self.configured = configured
             self.connectionSummary = connectionSummary
+            self.inUse = inUse
+            self.libraries = libraries
         }
 
         public init(from decoder: any Decoder) throws {
@@ -627,6 +666,8 @@ public enum Nativestorage {
             self.state = try container.decodeIfPresent(String.self, forKey: .state) ?? ""
             self.configured = try container.decodeIfPresent(Bool.self, forKey: .configured) ?? false
             self.connectionSummary = try container.decodeIfPresent([String: String].self, forKey: .connectionSummary) ?? [:]
+            self.inUse = try container.decodeIfPresent(Bool.self, forKey: .inUse) ?? false
+            self.libraries = try container.decodeIfPresent([SourceLibrary].self, forKey: .libraries) ?? []
         }
 
         public func encode(to encoder: any Encoder) throws {
@@ -643,6 +684,8 @@ public enum Nativestorage {
             try container.encode(self.state, forKey: .state)
             try container.encode(self.configured, forKey: .configured)
             try container.encode(self.connectionSummary, forKey: .connectionSummary)
+            try container.encode(self.inUse, forKey: .inUse)
+            try container.encode(self.libraries, forKey: .libraries)
         }
     }
 

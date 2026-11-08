@@ -69,6 +69,7 @@ func TestFailedSourceMutationKeepsReadsAvailable(t *testing.T) {
 			}
 			// A committed removal advances the generation. The previous
 			// generation's view must stay fenced although it was readable.
+			f.releaseLibraries(ctx, t)
 			if err := f.management.Remove(ctx, f.actor, f.installed.Installation.ID, f.installed.Source.Key, after.Source.ConfigurationRevision, false); err != nil {
 				t.Fatal("remove", err)
 			}
@@ -84,6 +85,15 @@ type fencedSourceFixture struct {
 	actor      auth.AdminContextClaims
 	cmd        DiscoverInstallCommand
 	installed  *plugins.NativeStorageSnapshot
+}
+
+// releaseLibraries drops the fixture library's location, so the source no
+// longer backs a library and may be removed.
+func (f *fencedSourceFixture) releaseLibraries(ctx context.Context, t *testing.T) {
+	t.Helper()
+	if _, err := f.management.pool.Exec(ctx, "DELETE FROM library_storage_locations WHERE source_key=$1", f.installed.Source.Key); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // newFencedSourceFixture installs a runnable storage source with an attached

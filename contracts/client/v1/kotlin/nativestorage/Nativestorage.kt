@@ -169,6 +169,15 @@ public data class SavedRootSelection(
     public val logicalPath: String = "",
 )
 
+/** Wire type `internal/nativestorage.SourceLibrary`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. */
+@Serializable
+public data class SourceLibrary(
+    @SerialName("id")
+    public val id: Int = 0,
+    @SerialName("name")
+    public val name: String = "",
+)
+
 /** Wire type `internal/nativestorage.SourcePage`. Direction: response. Dialect: bloem. Gate: native_storage.source_management. Registered root. */
 @Serializable
 public data class SourcePage(
@@ -205,6 +214,10 @@ public data class SourceView(
     public val configured: Boolean = false,
     @SerialName("connection_summary")
     public val connectionSummary: Map<String, String> = emptyMap(),
+    @SerialName("in_use")
+    public val inUse: Boolean = false,
+    @SerialName("libraries")
+    public val libraries: List<SourceLibrary> = emptyList(),
 )
 
 /** Wire type `internal/nativestorage.UpgradeCommand`. Direction: request. Dialect: bloem. Gate: native_storage.source_management. Registered root. */

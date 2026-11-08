@@ -17,7 +17,7 @@ import {
   type StorageArtifact,
   type StorageSource,
   useConfigureStorageSource,
-  useDisableStorageSource,
+  useDeleteRemovedStorageSource,
   useRemoveStorageSource,
   useReplaceStorageConfiguration,
   useRotateStorageCredentials,
@@ -34,6 +34,7 @@ import {
   withS3FieldCopy,
   withoutEmpty,
 } from "./storageSchema";
+import { type SourceStatus, sourceStatus } from "./storageStatus";
 
 const S3_PLUGIN = "bloem.storage.s3";
 const BOOKWAREHOUSE_PLUGIN = "bloem.storage.bookwarehouse";
@@ -76,13 +77,19 @@ function pluginLabel(pluginId: string): string {
   return pluginId;
 }
 
-/** The source's state as a word an administrator reads, not the server's code. */
-function stateLabel(state: string): string {
-  if (state === "attached") return "Ready";
-  if (state === "disabled") return "Disabled";
-  const words = state.replaceAll("_", " ");
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
+const STATUS_LABEL: Record<SourceStatus, string> = {
+  live: "Live",
+  setup: "Needs setup",
+  off: "Off",
+  removed: "Removed",
+};
+
+const STATUS_STYLE: Record<SourceStatus, string> = {
+  live: "border-transparent bg-emerald-600/15 text-emerald-700 dark:text-emerald-400",
+  setup: "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  off: "",
+  removed: "text-muted-foreground",
+};
 
 function ArtifactSelect({
   artifacts,
@@ -351,6 +358,36 @@ function S3EditForm({
   );
 }
 
+function DeleteConfirmation({
+  source,
+  name,
+  onDone,
+}: {
+  source: StorageSource;
+  name: string;
+  onDone: () => void;
+}) {
+  const remove = useDeleteRemovedStorageSource();
+  return (
+    <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[13px]">
+      <p>Delete {name} from this list? Nothing in your storage is deleted.</p>
+      <div className="flex gap-2">
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={remove.isPending}
+          onClick={() => remove.mutate({ source }, { onSuccess: onDone })}
+        >
+          {remove.isPending ? "Deleting..." : "Delete source"}
+        </Button>
+        <Button variant="ghost" size="sm" disabled={remove.isPending} onClick={onDone}>
+          Keep
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function RemoveConfirmation({
   source,
   name,
@@ -364,8 +401,8 @@ function RemoveConfirmation({
   return (
     <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[13px]">
       <p>
-        Remove {name}? Libraries that read from it stop finding their files until you add the source
-        again. Nothing in your storage is deleted.
+        Remove {name}? This can&apos;t be undone: to use this storage again, add it as a new source.
+        Nothing in your storage is deleted.
       </p>
       <div className="flex gap-2">
         <Button
@@ -377,39 +414,6 @@ function RemoveConfirmation({
           {remove.isPending ? "Removing..." : "Remove source"}
         </Button>
         <Button variant="ghost" size="sm" disabled={remove.isPending} onClick={onDone}>
-          Keep
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function DisableConfirmation({
-  source,
-  name,
-  onDone,
-}: {
-  source: StorageSource;
-  name: string;
-  onDone: () => void;
-}) {
-  const disable = useDisableStorageSource();
-  return (
-    <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[13px]">
-      <p>
-        Disable {name}? Its libraries stop reading from it. You can&apos;t turn it back on from this
-        page; to use the storage again, add it as a new source. Nothing in your storage is deleted.
-      </p>
-      <div className="flex gap-2">
-        <Button
-          variant="destructive"
-          size="sm"
-          disabled={disable.isPending}
-          onClick={() => disable.mutate({ source }, { onSuccess: onDone })}
-        >
-          {disable.isPending ? "Disabling..." : "Disable source"}
-        </Button>
-        <Button variant="ghost" size="sm" disabled={disable.isPending} onClick={onDone}>
           Keep
         </Button>
       </div>
@@ -434,6 +438,7 @@ function SummaryLine({ source }: { source: StorageSource }) {
     summary.prefix ? `Folder ${summary.prefix}` : "",
     summary.region ? `Region ${summary.region}` : "",
     summary.endpoint ? `Address ${summary.endpoint}` : "",
+    summary.base_url_host ? `Server ${summary.base_url_host}` : "",
     summary.revision_mode === "checked-etag"
       ? "Checks each file"
       : summary.revision_mode
@@ -448,6 +453,25 @@ function SummaryLine({ source }: { source: StorageSource }) {
       ))}
     </p>
   );
+}
+
+/** Which libraries read from the source, or what its status means when none do. */
+function UsageLine({ source, status }: { source: StorageSource; status: SourceStatus }) {
+  const names = (source.libraries ?? []).map((library) => library.name);
+  let text: string;
+  if (names.length > 0) {
+    text = `Used by ${names.join(", ")}. A source a library uses can't be removed.`;
+  } else if (source.in_use) {
+    text = "Used by a library in another organization.";
+  } else if (status === "removed") {
+    text =
+      "Its plugin was removed, so it can't be turned back on. Add a new source to use this storage again.";
+  } else if (status === "setup") {
+    text = "Not connected yet. Enter its connection details below.";
+  } else {
+    text = "Not used by any library.";
+  }
+  return <p className="text-muted-foreground mt-1 pl-[26px] text-[12.5px]">{text}</p>;
 }
 
 type Panel = "edit" | "rotate" | "upgrade" | null;
@@ -474,14 +498,15 @@ export function StorageSourceRow({
   const test = useTestStorageSource();
   const { scope } = useStorageScope();
   const [panel, setPanel] = useState<Panel>(null);
-  const [disabling, setDisabling] = useState(false);
   const [serverSaysInUse, setServerSaysInUse] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const isS3 = source.plugin_id === S3_PLUGIN;
   const isBookwarehouse = source.plugin_id === BOOKWAREHOUSE_PLUGIN;
-  const locked = inUse || serverSaysInUse;
+  const usedByLibrary = inUse || source.in_use === true;
+  const locked = usedByLibrary || serverSaysInUse;
+  const status = sourceStatus(source);
   const manageable = source.installation_id !== null;
   const name = displayName(source);
   const kind = pluginLabel(source.plugin_id);
@@ -506,15 +531,13 @@ export function StorageSourceRow({
           <span className="font-medium">{name}</span>
           {kind !== name ? <span className="text-muted-foreground"> · {kind}</span> : null}
         </span>
-        <Badge variant={source.state === "attached" ? "secondary" : "outline"}>
-          {stateLabel(source.state)}
+        <Badge variant="outline" className={STATUS_STYLE[status]}>
+          {STATUS_LABEL[status]}
         </Badge>
-        {!source.enabled && source.state !== "disabled" ? (
-          <Badge variant="outline">Disabled</Badge>
-        ) : null}
       </div>
 
-      {isS3 ? <SummaryLine source={source} /> : null}
+      <SummaryLine source={source} />
+      <UsageLine source={source} status={status} />
 
       <div className="mt-1.5 flex flex-wrap gap-1 pl-[26px]">
         {source.configured ? (
@@ -554,12 +577,12 @@ export function StorageSourceRow({
             {panel === "upgrade" ? "Cancel" : "Upgrade"}
           </Button>
         ) : null}
-        {manageable && source.enabled && !platformBlocked ? (
-          <Button variant="ghost" size="sm" onClick={() => setDisabling(true)} disabled={disabling}>
-            Disable
+        {status === "removed" && !platformBlocked && !usedByLibrary ? (
+          <Button variant="ghost" size="sm" onClick={() => setRemoving(true)} disabled={removing}>
+            Delete
           </Button>
         ) : null}
-        {manageable && !platformBlocked ? (
+        {manageable && !platformBlocked && !usedByLibrary ? (
           <Button variant="ghost" size="sm" onClick={() => setRemoving(true)} disabled={removing}>
             Remove
           </Button>
@@ -622,19 +645,12 @@ export function StorageSourceRow({
         <UpgradeForm source={source} artifacts={artifacts} onDone={() => setPanel(null)} />
       ) : null}
 
-      {disabling ? (
-        <DisableConfirmation
-          source={source}
-          name={name}
-          onDone={() => {
-            setDisabling(false);
-            setPanel(null);
-          }}
-        />
-      ) : null}
-
       {removing ? (
-        <RemoveConfirmation source={source} name={name} onDone={() => setRemoving(false)} />
+        status === "removed" ? (
+          <DeleteConfirmation source={source} name={name} onDone={() => setRemoving(false)} />
+        ) : (
+          <RemoveConfirmation source={source} name={name} onDone={() => setRemoving(false)} />
+        )
       ) : null}
     </li>
   );

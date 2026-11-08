@@ -52,6 +52,15 @@ type nativeStorageRemoveCommand struct {
 	ExpectedRevision int64     `json:"expected_revision"`
 }
 
+type nativeStorageDeleteSourceCommand struct {
+	ExpectedRevision int64 `json:"expected_revision"`
+}
+
+type nativeStorageDeleteSourceResponse struct {
+	SourceKey uuid.UUID `json:"source_key"`
+	Deleted   bool      `json:"deleted"`
+}
+
 type nativeStorageRemoveResponse struct {
 	InstallationID int    `json:"installation_id"`
 	State          string `json:"state"`

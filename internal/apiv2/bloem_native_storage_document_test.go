@@ -23,7 +23,7 @@ func TestBloemNativeStorageDocumentOperations(t *testing.T) {
 		{"post", "/installations/{installation_id}/disable", "200"}, {"delete", "/installations/{installation_id}", "200"},
 		{"post", "/installations/{installation_id}/upgrade", "200"},
 		{"post", "/catalog/installations", "201"}, {"post", "/catalog/installations/discover", "201"}, {"post", "/catalog/installations/{installation_id}/upgrade", "200"},
-		{"post", "/sources/{source_key}/credentials", "200"},
+		{"post", "/sources/{source_key}/credentials", "200"}, {"delete", "/sources/{source_key}", "200"},
 		{"post", "/s3/buckets", "200"}, {"post", "/s3/folders", "200"},
 	}
 	count := 0
@@ -176,6 +176,7 @@ func TestBloemNativeStorageDocumentReachableStatuses(t *testing.T) {
 		{"platform", "put", "/sources/{source_key}/configuration", []string{"200", "400", "401", "403", "404", "409", "413", "503"}},
 		{"organization", "put", "/sources/{source_key}/configuration", []string{"200", "400", "401", "403", "404", "409", "413", "422", "503"}},
 		{"platform", "post", "/sources/{source_key}/credentials", []string{"200", "400", "401", "403", "404", "409", "413", "503"}},
+		{"organization", "delete", "/sources/{source_key}", []string{"200", "400", "401", "403", "404", "409", "413", "503"}},
 		{"organization", "post", "/catalog/installations/discover", []string{"201", "400", "401", "403", "404", "409", "413", "422", "503"}},
 	} {
 		t.Run(tc.scope+tc.method+tc.path, func(t *testing.T) {
@@ -203,7 +204,7 @@ func TestBloemNativeStorageDocumentReachableStatuses(t *testing.T) {
 func TestBloemNativeStorageDocumentNullableResponses(t *testing.T) {
 	doc := bloemWebDocument(t)
 	key := uuid.MustParse("19b3c8a5-44e4-4334-8133-a2f8b8ee0f90")
-	source := nativestorage.SourceView{SourceKey: key, OwnerKind: "platform", PluginID: "storage", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, State: "detached", ConnectionSummary: map[string]string{}}
+	source := nativestorage.SourceView{SourceKey: key, OwnerKind: "platform", PluginID: "storage", ProviderSourceID: "books", RootEntryID: "root", ConfigurationRevision: 1, State: "detached", ConnectionSummary: map[string]string{}, Libraries: []nativestorage.SourceLibrary{}}
 	for _, tc := range []struct {
 		path string
 		body any

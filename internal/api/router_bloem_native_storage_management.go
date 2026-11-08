@@ -41,6 +41,7 @@ func mountNativeStorageScopeRoutes(r chi.Router, handler *handlers.BloemNativeSt
 	r.Get("/artifacts", handler.HandleArtifacts)
 	r.Get("/sources", handler.HandleListSources)
 	r.Get("/sources/{source_key}", handler.HandleGetSource)
+	r.Delete("/sources/{source_key}", handler.HandleDeleteRemovedSource)
 	r.Get("/sources/{source_key}/browse", handler.HandleBrowseSource)
 	r.Post("/installations", handler.HandleInstall)
 	r.Post("/installations/discover", handler.HandleDiscoverInstall)

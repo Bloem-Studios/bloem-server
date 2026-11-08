@@ -12,7 +12,7 @@ public object GeneratedContract {
     public const val SERVER_REVISION: String = "e9eacedf57da20632ecd6bea9b12f46f28de5b00"
     public const val GENERATOR_VERSION: Int = 1
     /** Digest of the normalised type graph; changes only when a wire shape changes. */
-    public const val CONTRACT_DIGEST: String = "sha256:d7c054be395f667145550a0401eb219acf115cb14041cb97907c82586dbde3f6"
+    public const val CONTRACT_DIGEST: String = "sha256:5389655d150675cba1537132122692e4b2aa89e305b49c27949bb7ea902a600d"
     /** Fully qualified class name → direction (request, response or both). */
     public val DIRECTION: Map<String, String> = mapOf(
         "org.bloemserver.bloem.contract.ambience.Assets" to "response",
@@ -957,6 +957,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.nativestorage.ReplaceLocationsRequest" to "request",
         "org.bloemserver.bloem.contract.nativestorage.RootSelection" to "request",
         "org.bloemserver.bloem.contract.nativestorage.SavedRootSelection" to "response",
+        "org.bloemserver.bloem.contract.nativestorage.SourceLibrary" to "response",
         "org.bloemserver.bloem.contract.nativestorage.SourcePage" to "response",
         "org.bloemserver.bloem.contract.nativestorage.SourceView" to "response",
         "org.bloemserver.bloem.contract.nativestorage.UpgradeCommand" to "request",
@@ -2072,6 +2073,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.nativestorage.ReplaceLocationsRequest" to "bloem",
         "org.bloemserver.bloem.contract.nativestorage.RootSelection" to "bloem",
         "org.bloemserver.bloem.contract.nativestorage.SavedRootSelection" to "bloem",
+        "org.bloemserver.bloem.contract.nativestorage.SourceLibrary" to "bloem",
         "org.bloemserver.bloem.contract.nativestorage.SourcePage" to "bloem",
         "org.bloemserver.bloem.contract.nativestorage.SourceView" to "bloem",
         "org.bloemserver.bloem.contract.nativestorage.UpgradeCommand" to "bloem",
@@ -2313,6 +2315,7 @@ public object GeneratedContract {
         "org.bloemserver.bloem.contract.nativestorage.ReplaceLocationsRequest" to "native_storage.library_location_atomic_editing",
         "org.bloemserver.bloem.contract.nativestorage.RootSelection" to "native_storage.library_location_atomic_editing",
         "org.bloemserver.bloem.contract.nativestorage.SavedRootSelection" to "native_storage.library_location_atomic_editing",
+        "org.bloemserver.bloem.contract.nativestorage.SourceLibrary" to "native_storage.source_management",
         "org.bloemserver.bloem.contract.nativestorage.SourcePage" to "native_storage.source_management",
         "org.bloemserver.bloem.contract.nativestorage.SourceView" to "native_storage.source_management",
         "org.bloemserver.bloem.contract.nativestorage.UpgradeCommand" to "native_storage.source_management",

@@ -24,7 +24,10 @@ const source: StorageSource = {
   state: "attached",
   configured: true,
   connection_summary: {},
+  in_use: false,
+  libraries: [],
 };
+let sourceList: StorageSource[] = [source];
 const artifacts: StorageArtifact[] = [
   {
     artifact_key: "bookwarehouse-0.2.0",
@@ -50,7 +53,7 @@ let artifactsQuery: Record<string, unknown> = {};
 const refetch = vi.fn();
 
 vi.mock("@/hooks/queries/admin/storageSources", () => ({
-  useStorageSources: () => ({ data: [source], isSuccess: true, isError: false }),
+  useStorageSources: () => ({ data: sourceList, isSuccess: true, isError: false }),
   useStorageArtifacts: () => ({
     data: artifacts,
     isSuccess: true,
@@ -86,12 +89,36 @@ describe("StorageSourcesPanel", () => {
     refetch.mockReset();
     artifactsQuery = {};
     source.configured = true;
+    sourceList = [source];
+  });
+
+  it("puts live sources first and folds removed ones away", () => {
+    const setup = { ...source, source_key: "s-setup", installation_id: 15, configured: false };
+    const gone = {
+      ...source,
+      source_key: "s-gone",
+      plugin_id: "bloem.storage.s3",
+      provider_source_id: "s3_old",
+      installation_id: null,
+      enabled: false,
+      state: "detached",
+      configured: false,
+    };
+    sourceList = [gone, setup, source];
+    render(<StorageSourcesPanel />);
+    expect(screen.getByText("1 source is live.")).toBeInTheDocument();
+    const statuses = screen.getAllByText(/^(Live|Needs setup|Removed)$/).map((e) => e.textContent);
+    expect(statuses).toEqual(["Live", "Needs setup", "Removed"]);
+    const folded = screen.getByText("Removed sources (1)").closest("details")!;
+    expect(folded).not.toHaveAttribute("open");
+    expect(within(folded).getByText("s3_old")).toBeInTheDocument();
   });
 
   it("lists sources with their state", () => {
     render(<StorageSourcesPanel />);
     const row = screen.getByText("Bookwarehouse").closest("li")!;
-    expect(within(row).getByText("Ready")).toBeInTheDocument();
+    expect(within(row).getByText("Live")).toBeInTheDocument();
+    expect(screen.getByText("1 source is live.")).toBeInTheDocument();
     expect(within(row).queryByText(/bloem\.storage/)).not.toBeInTheDocument();
   });
 

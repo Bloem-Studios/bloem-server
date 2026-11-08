@@ -775,3 +775,28 @@ func TestNativeStorageRegistrySnapshotValidatesEachArchiveOnce(t *testing.T) {
 		t.Fatal("rewritten archive not validated")
 	}
 }
+
+// An administrator's disable or uninstall must not cut a library off from its
+// files: while a library location names the source, both are refused and the
+// installation keeps running.
+func TestNativeStorageRegistryRemoveAuthorizedRefusesSourceInUse(t *testing.T) {
+	allow := func(context.Context, pgx.Tx) error { return nil }
+	for _, uninstall := range []bool{false, true} {
+		t.Run(map[bool]string{false: "disable", true: "uninstall"}[uninstall], func(t *testing.T) {
+			r, s := nativeRegistryScanFixture(t)
+			err := r.RemoveAuthorized(t.Context(), s.Installation.ID, s.Source.Key, s.Source.OwnerID, s.Source.ConfigurationRevision, uninstall, allow)
+			if !errors.Is(err, storagesource.ErrSourceInUse) {
+				t.Fatalf("in-use source removed: %v", err)
+			}
+			if _, err = r.Snapshot(t.Context(), s.Source.Key, s.Source.OwnerID); err != nil {
+				t.Fatalf("refused removal changed the source: %v", err)
+			}
+			if _, err = r.pool.Exec(t.Context(), `DELETE FROM library_storage_locations WHERE folder_id=91921`); err != nil {
+				t.Fatal(err)
+			}
+			if err = r.RemoveAuthorized(t.Context(), s.Installation.ID, s.Source.Key, s.Source.OwnerID, s.Source.ConfigurationRevision, uninstall, allow); err != nil {
+				t.Fatalf("unused source not removed: %v", err)
+			}
+		})
+	}
+}

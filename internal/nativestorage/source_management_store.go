@@ -51,7 +51,7 @@ func nativeSourceRevision(actual, expected int64) error {
 func sourceView(source storagesource.SourceConfig, owner resourcetenancy.Owner, state string, configured bool) SourceView {
 	return SourceView{SourceKey: source.Key, OwnerKind: owner.Kind, OrganizationID: owner.OrganizationID, InstallationID: source.InstallationID,
 		PluginID: source.PluginID, ProviderSourceID: source.ProviderSourceID, RootEntryID: source.RootEntryID, ConfigurationRevision: source.ConfigurationRevision,
-		Enabled: source.Enabled, State: state, Configured: configured, ConnectionSummary: map[string]string{}}
+		Enabled: source.Enabled, State: state, Configured: configured, ConnectionSummary: map[string]string{}, Libraries: []SourceLibrary{}}
 }
 
 // withConnectionSummary fills the allowlisted, non-secret connection summary of
@@ -138,7 +138,38 @@ func (s *SourceManagement) sourceViewTx(ctx context.Context, tx pgx.Tx, actor au
 			state = "disabled"
 		}
 	}
-	return s.connectionSummaryFor(ctx, actor.Scope, sourceView(source, owner, state, configured)), nil
+	view := sourceView(source, owner, state, configured)
+	if view.InUse, view.Libraries, err = sourceLibrariesTx(ctx, tx, actor, key); err != nil {
+		return SourceView{}, nativeDomainMap(err)
+	}
+	return s.connectionSummaryFor(ctx, actor.Scope, view), nil
+}
+
+// sourceLibrariesTx reports whether any library reads from the source and
+// names the ones the actor may see: all of them in platform scope, only the
+// actor's organization's own in organization scope.
+func sourceLibrariesTx(ctx context.Context, tx pgx.Tx, actor auth.AdminContextClaims, key uuid.UUID) (bool, []SourceLibrary, error) {
+	libraries := []SourceLibrary{}
+	var inUse bool
+	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM library_storage_locations WHERE source_key=$1)", key).Scan(&inUse); err != nil || !inUse {
+		return false, libraries, err
+	}
+	rows, err := tx.Query(ctx, `SELECT f.id, f.name FROM library_storage_locations l
+ JOIN media_folders f ON f.id=l.folder_id LEFT JOIN resource_owners o ON o.id=f.owner_id
+ WHERE l.source_key=$1 AND ($2::boolean OR (o.kind='organization' AND o.organization_id=$3))
+ ORDER BY f.name, f.id LIMIT 100`, key, actor.Scope == auth.AdminScopePlatform, actor.OrganizationID)
+	if err != nil {
+		return false, nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var library SourceLibrary
+		if err = rows.Scan(&library.ID, &library.Name); err != nil {
+			return false, nil, err
+		}
+		libraries = append(libraries, library)
+	}
+	return true, libraries, rows.Err()
 }
 
 // This predicate is applied in SQL before the keyset LIMIT. Resource locks and

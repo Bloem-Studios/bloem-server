@@ -28,6 +28,7 @@ DELETE /api/bloem/v1/admin/organization/entitlements/{folder_id}
 DELETE /api/bloem/v1/admin/organization/groups/{id}
 DELETE /api/bloem/v1/admin/organization/invitations/{id}
 DELETE /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}
+DELETE /api/bloem/v1/admin/organization/native-storage/sources/{source_key}
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}
 DELETE /api/bloem/v1/admin/platform/accounts/entitlement-bulk/policy-jobs/{job_id}/cancel
@@ -40,6 +41,7 @@ DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/entitlement
 DELETE /api/bloem/v1/admin/platform/accounts/{account_id}/profiles/{profile_id}
 DELETE /api/bloem/v1/admin/platform/ambience/{id}
 DELETE /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}
+DELETE /api/bloem/v1/admin/platform/native-storage/sources/{source_key}
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/accounts/{account_id}/entitlement
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs
 DELETE /api/bloem/v1/admin/platform/organizations/{organization_id}/entitlement-bulk/policy-jobs/{job_id}

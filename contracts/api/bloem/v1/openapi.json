@@ -3342,6 +3342,21 @@
         ],
         "type": "object"
       },
+      "BloemNativeStorageDeleteSourceBody": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "description": "Current source configuration revision.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_revision"
+        ],
+        "type": "object"
+      },
       "BloemNativeStorageDiscoverInstallBody": {
         "additionalProperties": false,
         "properties": {
@@ -3781,6 +3796,25 @@
         },
         "required": [
           "source"
+        ],
+        "type": "object"
+      },
+      "BloemNativeStorageSourceDeletion": {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          },
+          "source_key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_key",
+          "deleted"
         ],
         "type": "object"
       },
@@ -10298,6 +10332,23 @@
         ],
         "type": "object"
       },
+      "SourceLibrary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
       "SourcePage": {
         "additionalProperties": false,
         "properties": {
@@ -10339,12 +10390,21 @@
           "enabled": {
             "type": "boolean"
           },
+          "in_use": {
+            "type": "boolean"
+          },
           "installation_id": {
             "format": "int64",
             "type": [
               "integer",
               "null"
             ]
+          },
+          "libraries": {
+            "items": {
+              "$ref": "#/components/schemas/SourceLibrary"
+            },
+            "type": "array"
           },
           "organization_id": {
             "type": [
@@ -10383,7 +10443,9 @@
           "enabled",
           "state",
           "configured",
-          "connection_summary"
+          "connection_summary",
+          "in_use",
+          "libraries"
         ],
         "type": "object"
       },
@@ -16720,7 +16782,7 @@
                 }
               }
             },
-            "description": "Uninstall and detach the source; its library, catalog and reading progress are retained.",
+            "description": "Uninstall and detach a source no library reads from; its catalog and reading progress are retained.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -16825,7 +16887,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_in_use: a library reads from a source of this installation; change the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -16886,7 +16948,7 @@
             "bloemOrganizationContext": []
           }
         ],
-        "summary": "Uninstall and detach the source; its library, catalog and reading progress are retained.",
+        "summary": "Uninstall and detach a source no library reads from; its catalog and reading progress are retained.",
         "tags": [
           "native-storage"
         ]
@@ -16927,7 +16989,7 @@
                 }
               }
             },
-            "description": "Disable and detach the source; its library, catalog and reading progress are retained.",
+            "description": "Disable and detach a source no library reads from; its catalog and reading progress are retained.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -17032,7 +17094,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_in_use: a library reads from a source of this installation; change the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -17093,7 +17155,7 @@
             "bloemOrganizationContext": []
           }
         ],
-        "summary": "Disable and detach the source; its library, catalog and reading progress are retained.",
+        "summary": "Disable and detach a source no library reads from; its catalog and reading progress are retained.",
         "tags": [
           "native-storage"
         ]
@@ -17941,6 +18003,211 @@
       }
     },
     "/api/bloem/v1/admin/organization/native-storage/sources/{source_key}": {
+      "delete": {
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them.",
+        "operationId": "deleteRemovedSourceBloemOrganizationNativeStorage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemNativeStorageDeleteSourceBody"
+              }
+            }
+          },
+          "description": "Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageSourceDeletion"
+                }
+              }
+            },
+            "description": "Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request: query parameters were sent, or the body is not a strict application/json object with exactly the documented fields and valid values.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source still has its plugin installation; remove it first. source_in_use: a library reads from the source; delete the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: the JSON body exceeds 1 MiB.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemOrganizationContext": []
+          }
+        ],
+        "summary": "Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched.",
+        "tags": [
+          "native-storage"
+        ]
+      },
       "get": {
         "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them.",
         "operationId": "getSourceBloemOrganizationNativeStorage",
@@ -26137,7 +26404,7 @@
                 }
               }
             },
-            "description": "Uninstall and detach the source; its library, catalog and reading progress are retained.",
+            "description": "Uninstall and detach a source no library reads from; its catalog and reading progress are retained.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -26242,7 +26509,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_in_use: a library reads from a source of this installation; change the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -26303,7 +26570,7 @@
             "bloemPlatformContext": []
           }
         ],
-        "summary": "Uninstall and detach the source; its library, catalog and reading progress are retained.",
+        "summary": "Uninstall and detach a source no library reads from; its catalog and reading progress are retained.",
         "tags": [
           "native-storage"
         ]
@@ -26344,7 +26611,7 @@
                 }
               }
             },
-            "description": "Disable and detach the source; its library, catalog and reading progress are retained.",
+            "description": "Disable and detach a source no library reads from; its catalog and reading progress are retained.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -26449,7 +26716,7 @@
                 }
               }
             },
-            "description": "revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_in_use: a library reads from a source of this installation; change the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "description": "Native management handler responses are not cacheable.",
@@ -26510,7 +26777,7 @@
             "bloemPlatformContext": []
           }
         ],
-        "summary": "Disable and detach the source; its library, catalog and reading progress are retained.",
+        "summary": "Disable and detach a source no library reads from; its catalog and reading progress are retained.",
         "tags": [
           "native-storage"
         ]
@@ -27358,6 +27625,211 @@
       }
     },
     "/api/bloem/v1/admin/platform/native-storage/sources/{source_key}": {
+      "delete": {
+        "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them.",
+        "operationId": "deleteRemovedSourceBloemPlatformNativeStorage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloemNativeStorageDeleteSourceBody"
+              }
+            }
+          },
+          "description": "Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageSourceDeletion"
+                }
+              }
+            },
+            "description": "Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "invalid_request: query parameters were sent, or the body is not a strict application/json object with exactly the documented fields and valid values.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeError"
+                }
+              }
+            },
+            "description": "insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "not_found: invalid path identity, absent resource or hidden authority.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source still has its plugin installation; remove it first. source_in_use: a library reads from the source; delete the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "request_too_large: the JSON body exceeds 1 MiB.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloemNativeStorageError"
+                }
+              }
+            },
+            "description": "native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Native management handler responses are not cacheable.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bloemPlatformContext": []
+          }
+        ],
+        "summary": "Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched.",
+        "tags": [
+          "native-storage"
+        ]
+      },
       "get": {
         "description": "Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them.",
         "operationId": "getSourceBloemPlatformNativeStorage",

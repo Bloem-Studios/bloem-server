@@ -12,6 +12,7 @@ const testSource = vi.fn();
 const replaceConfig = vi.fn();
 const rotate = vi.fn();
 const remove = vi.fn();
+const deleteRemoved = vi.fn();
 const disable = vi.fn();
 const upgrade = vi.fn();
 let scopeValue: "platform" | "organization" = "platform";
@@ -24,6 +25,7 @@ vi.mock("@/hooks/queries/admin/storageSources", () => ({
   useRotateStorageCredentials: () => ({ mutate: rotate, isPending: false }),
   useDisableStorageSource: () => ({ mutate: disable, isPending: false }),
   useRemoveStorageSource: () => ({ mutate: remove, isPending: false }),
+  useDeleteRemovedStorageSource: () => ({ mutate: deleteRemoved, isPending: false }),
   useTestStorageSource: () => ({ mutate: testSource, isPending: false }),
   useListS3Buckets: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useListS3Folders: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -117,6 +119,7 @@ describe("StorageSourceRow", () => {
     replaceConfig.mockReset();
     rotate.mockReset();
     remove.mockReset();
+    deleteRemoved.mockReset();
     disable.mockReset();
     upgrade.mockReset();
     scopeValue = "platform";
@@ -520,7 +523,7 @@ describe("StorageSourceRow", () => {
           "This source uses a local address without https, so only its keys can be changed here.",
         ),
       ).toBeInTheDocument();
-      for (const name of ["Test", "Replace keys", "Disable", "Remove"]) {
+      for (const name of ["Test", "Replace keys", "Remove"]) {
         expect(screen.getByRole("button", { name })).toBeInTheDocument();
       }
     });
@@ -569,7 +572,7 @@ describe("StorageSourceRow", () => {
     it("keeps the management actions on an organization source in an organization scope", () => {
       scopeValue = "organization";
       renderRow({ ...s3Source, owner_kind: "organization" } as StorageSource);
-      for (const name of ["Test", "Edit", "Replace keys", "Disable", "Remove"]) {
+      for (const name of ["Test", "Edit", "Replace keys", "Remove"]) {
         expect(queryAction(name)).toBeEnabled();
       }
     });
@@ -694,33 +697,81 @@ describe("StorageSourceRow", () => {
     expect(remove).toHaveBeenCalledWith({ source: s3Source }, expect.any(Object));
   });
 
-  it("does not disable until the administrator confirms", () => {
+  it("offers no Disable, which would detach the source just like Remove", () => {
     render(
       <ul>
         <StorageSourceRow source={s3Source} artifact={s3Artifact} />
       </ul>,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Disable" }));
-    expect(
-      screen.getByText(
-        /Its libraries stop reading from it\. You can't turn it back on from this page/,
-      ),
-    ).toBeInTheDocument();
-    expect(disable).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Disable source" }));
-    expect(disable).toHaveBeenCalledTimes(1);
-    expect(disable).toHaveBeenCalledWith({ source: s3Source }, expect.any(Object));
+    expect(screen.queryByRole("button", { name: "Disable" })).not.toBeInTheDocument();
+    expect(screen.getByText("Live")).toBeInTheDocument();
+    expect(screen.getByText("Not used by any library.")).toBeInTheDocument();
   });
 
-  it("keeps the source when the disable confirmation is dismissed", () => {
+  it("warns that Remove can't be undone before removing", () => {
     render(
       <ul>
         <StorageSourceRow source={s3Source} artifact={s3Artifact} />
       </ul>,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Disable" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(screen.getByText(/This can't be undone/)).toBeInTheDocument();
+    expect(remove).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Keep" }));
-    expect(screen.queryByRole("button", { name: "Disable source" })).not.toBeInTheDocument();
-    expect(disable).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Remove source" })).not.toBeInTheDocument();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("names the libraries using a source and offers no Remove", () => {
+    const used = {
+      ...s3Source,
+      in_use: true,
+      libraries: [
+        { id: 25, name: "Electronic Books" },
+        { id: 28, name: "Audio books" },
+      ],
+    } as StorageSource;
+    render(
+      <ul>
+        <StorageSourceRow source={used} artifact={s3Artifact} />
+      </ul>,
+    );
+    expect(screen.getByText(/Used by Electronic Books, Audio books\./)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replace keys" })).toBeInTheDocument();
+  });
+
+  it("says another organization's library uses a source without naming it", () => {
+    render(
+      <ul>
+        <StorageSourceRow source={{ ...s3Source, in_use: true, libraries: [] } as StorageSource} />
+      </ul>,
+    );
+    expect(screen.getByText("Used by a library in another organization.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
+  });
+
+  it("marks a source whose plugin is gone as removed, with no actions", () => {
+    const gone = {
+      ...s3Source,
+      installation_id: null,
+      enabled: false,
+      state: "detached",
+      configured: false,
+      connection_summary: {},
+    } as StorageSource;
+    render(
+      <ul>
+        <StorageSourceRow source={gone} />
+      </ul>,
+    );
+    expect(screen.getByText("Removed")).toBeInTheDocument();
+    expect(screen.getByText(/can't be turned back on/)).toBeInTheDocument();
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Delete"]);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(deleteRemoved).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Delete source" }));
+    expect(deleteRemoved).toHaveBeenCalledWith({ source: gone }, expect.any(Object));
   });
 });

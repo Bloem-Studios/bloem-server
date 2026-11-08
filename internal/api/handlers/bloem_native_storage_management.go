@@ -147,6 +147,7 @@ func NativeStorageAPIError(err error) *APIError {
 		"artifact_rejected":                  {422, "Native storage artifact rejected"},
 		"revision_conflict":                  {409, "Revision changed; reload and retry"},
 		"source_attached":                    {409, "Source is already attached"},
+		"source_in_use":                      {409, "A library reads from this source"},
 		"configuration_namespace_unverified": {409, "Configuration namespace replacement is unsupported"},
 		"retained_namespace_unverified":      {409, "Retained namespace reinstallation is unsupported"},
 		"native_mode_required":               {409, "Native library mode required"},

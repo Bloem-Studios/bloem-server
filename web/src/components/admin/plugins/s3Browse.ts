@@ -195,6 +195,8 @@ export function sourceActionErrorMessage(error: unknown): string {
       return SOURCE_GONE_MESSAGE;
     case "configuration_namespace_unverified":
       return SOURCE_IN_USE_MESSAGE;
+    case "source_in_use":
+      return "A library reads from this source, so it can't be removed. Delete the library first.";
     case "s3_access_denied":
       return "The storage service refused these keys. Check the access key and the secret key.";
   }
