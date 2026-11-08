@@ -172,8 +172,17 @@ const JOB_HEADINGS: Record<string, string> = {
   cancelled: "Change stopped",
 };
 
-export function jobHeading(status: string): string {
-  return JOB_HEADINGS[status] ?? humanize(status);
+/** A heading for a bulk change that says what actually happened. */
+export function jobHeading(job: {
+  status: string;
+  succeeded: number;
+  skipped: unknown[];
+  failed: unknown[];
+}): string {
+  const notChanged = job.skipped.length + job.failed.length;
+  if (job.status === "completed" && notChanged > 0)
+    return job.succeeded === 0 ? "Nothing was changed" : "Change applied to some accounts";
+  return JOB_HEADINGS[job.status] ?? humanize(job.status);
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -207,6 +216,13 @@ export function needsFreshSelection(error: unknown): boolean {
 }
 
 const ACTION_LABELS: Record<string, string> = {
+  "silo.permission.decision": "Permission check",
+  "data.silo.permission.decision": "Permission check",
+  "silo.scope.decision": "Library access check",
+  "data.silo.scope.decision": "Library access check",
+  "silo.action.decision": "Playback or download check",
+  "data.silo.action.decision": "Playback or download check",
+  "data.silo.slow.decision": "Check",
   playback_admission: "Start playback",
   direct_play: "Play",
   transcode: "Convert video",

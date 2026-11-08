@@ -68,8 +68,9 @@ export default function PolicyDecisionsPage() {
             Access Checks
           </h1>
           <p className="page-subtitle max-w-3xl">
-            Each time someone in {active?.name ?? "this organization"} starts a video or a download,
-            Bloem checks their settings and records the answer. Pick one to see why.
+            When Bloem checks whether someone in {active?.name ?? "this organization"} may do
+            something, such as use a library, play a video or use a permission, it records the
+            answer here. Pick one to see why.
           </p>
         </div>
       </div>

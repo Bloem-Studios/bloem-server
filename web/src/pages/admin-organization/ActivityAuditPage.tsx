@@ -85,10 +85,8 @@ function OrganizationAudit({ context }: { context: AdminContextSummary }) {
               <li key={`${event.source}:${event.id}`} className="space-y-2 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="font-medium">{activityLabel(event.action)}</h2>
-                  {event.outcome !== "success" ? (
-                    <Badge variant="outline" className="capitalize">
-                      {event.outcome.replace(/_/g, " ")}
-                    </Badge>
+                  {event.outcome !== "success" && event.outcome !== "succeeded" ? (
+                    <Badge variant="outline">{outcomeLabel(event.outcome)}</Badge>
                   ) : null}
                 </div>
                 <p className="text-muted-foreground text-sm">
@@ -132,7 +130,33 @@ const ACTIVITY_LABELS: Record<string, string> = {
   "membership.role_changed": "Member's role changed",
   "membership.status_changed": "Member suspended or reactivated",
   "entitlement.policy_assignment": "Plan or settings changed for an account",
+  "people.bulk_job_created": "Bulk change started",
+  "people.bulk_policy_job_created": "Bulk plan or settings change started",
+  "people.bulk_job_completed": "Bulk change finished",
+  "people.bulk_job_failed": "Bulk change failed",
+  "people.bulk_job_cancelled": "Bulk change stopped",
+  "people.bulk_group_assigned": "Profiles moved to an access group",
+  "people.bulk_policy_assigned": "Account moved to a new plan or settings",
+  "people.bulk_membership_suspended": "Member suspended in a bulk change",
+  "people.bulk_membership_reactivated": "Member reactivated in a bulk change",
+  "people.bulk_record_skipped": "An account was skipped in a bulk change",
+  "people.bulk_record_failed": "An account failed in a bulk change",
+  "people.membership_updated": "Membership changed",
+  "people.profile_group_updated": "Profile moved to another access group",
 };
+
+const OUTCOME_LABELS: Record<string, string> = {
+  partial_failure: "Some not changed",
+  conflict: "Not changed",
+  failed: "Failed",
+  failure: "Failed",
+  skipped: "Skipped",
+  denied: "Refused",
+};
+
+function outcomeLabel(outcome: string): string {
+  return OUTCOME_LABELS[outcome] ?? outcome.replace(/_/g, " ");
+}
 
 function activityLabel(action: string): string {
   if (ACTIVITY_LABELS[action]) return ACTIVITY_LABELS[action]!;

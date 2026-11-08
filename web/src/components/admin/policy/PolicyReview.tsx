@@ -271,7 +271,7 @@ export function PolicyJobView({
       <div className="flex items-start gap-3">
         <Icon className="text-muted-foreground mt-1 size-5" aria-hidden />
         <div>
-          <h2 className="text-lg font-medium">{jobHeading(job.status)}</h2>
+          <h2 className="text-lg font-medium">{jobHeading(job)}</h2>
           <p className="text-muted-foreground text-sm tabular-nums">
             {job.progress_current.toLocaleString()} of {job.progress_total.toLocaleString()}{" "}
             accounts done

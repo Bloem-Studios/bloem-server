@@ -287,9 +287,9 @@ function TunersTab() {
         </details>
       </section>
 
-      <section className="max-w-2xl" aria-label="Add an Xtream provider">
+      <div className="max-w-2xl">
         <XtreamProviderForm />
-      </section>
+      </div>
     </div>
   );
 }

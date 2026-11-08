@@ -16,7 +16,7 @@ export default function BulkJobResult({ job }: { job: PeopleBulkJob }) {
           <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" aria-hidden />
         )}
         <div className="min-w-0 flex-1">
-          <h2 className="font-medium">{jobHeading(job.status)}</h2>
+          <h2 className="font-medium">{jobHeading(job)}</h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {job.progress_current.toLocaleString()} of {job.progress_total.toLocaleString()} done
           </p>
