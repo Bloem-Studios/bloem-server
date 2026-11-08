@@ -28,14 +28,14 @@ export function DirectProfileCredentials() {
   if (!allowed || !authority) return null;
   return (
     <section className="mt-8 space-y-4 border-t pt-6" aria-labelledby="direct-profile-heading">
-      <h2 id="direct-profile-heading" className="text-xl font-semibold">
-        Profile sign-in credentials
+      <h2 id="direct-profile-heading" className="text-xl font-medium">
+        Separate sign-in for a profile
       </h2>
       <p className="text-muted-foreground text-sm">
-        Create a separate sign-in for a household profile in supported native clients. The browser
-        still uses account sign-in: direct-profile credentials do not authorize its Silo v2 routes.
-        Changes require your account’s enabled local password; SSO-only reauthentication is not
-        supported here.
+        Give a household profile its own email and password, so it can sign in to the Bloem apps
+        without the account password. The website still uses the account sign-in. To change this,
+        you need your account password; accounts that only sign in through single sign-on can’t use
+        it.
       </p>
       {capability.isPending ? (
         <p role="status">Checking support…</p>
@@ -43,7 +43,7 @@ export function DirectProfileCredentials() {
         <div role="alert">
           <p>{capability.error.message}</p>
           <Button variant="outline" onClick={() => void capability.refetch()}>
-            Retry feature check
+            Try again
           </Button>
         </div>
       ) : capability.data?.feature_tokens?.includes("profile_credential_management_v1") ? (
@@ -57,7 +57,7 @@ export function DirectProfileCredentials() {
         />
       ) : (
         <p className="text-muted-foreground text-sm">
-          This server does not provide household credential management.
+          This server doesn’t support separate profile sign-ins.
         </p>
       )}
     </section>
@@ -73,7 +73,7 @@ function HouseholdCredentials() {
       <div role="alert">
         <p>Could not load household profiles.</p>
         <Button variant="outline" onClick={() => void profiles.refetch()}>
-          Reload household profiles
+          Try again
         </Button>
       </div>
     );
@@ -149,11 +149,11 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
     // remounts the form, discarding both its confirmation and password drafts.
     const expectedRevision = Number(body.get("confirm"));
     if (!current || !body.has("confirm") || expectedRevision !== status.data.credential_revision) {
-      setError("Enter your account password and confirm the session impact.");
+      setError("Enter your account password and tick the box to confirm.");
       return;
     }
     if (!disabling && (!email || !password)) {
-      setError("Enter a profile login email and new password.");
+      setError("Enter an email and a new password for the profile.");
       return;
     }
     busy.current = true;
@@ -177,8 +177,8 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
       if (isCapturedProfileAuthorityActive(authority))
         setNotice(
           disabling
-            ? "Direct profile sign-in disabled; its direct sessions have been revoked."
-            : "Profile credentials saved; previous direct sessions have been revoked.",
+            ? "The profile’s own sign-in is off, and it has been signed out of its apps."
+            : "Sign-in saved. The profile was signed out of its apps and must sign in again.",
         );
     } catch (cause) {
       if (isCapturedProfileAuthorityActive(authority))
@@ -203,7 +203,7 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
       <div role="alert">
         <p>{status.error.message}</p>
         <Button variant="outline" onClick={() => void status.refetch()}>
-          Reload credential status
+          Try again
         </Button>
       </div>
     );
@@ -216,13 +216,13 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
     >
       <p className="text-sm">
         {status.data.configured
-          ? `Direct sign-in enabled for ${status.data.login_email}`
-          : "Direct sign-in is disabled for this profile."}
+          ? `This profile signs in as ${status.data.login_email}`
+          : "This profile has no sign-in of its own."}
       </p>
       <fieldset disabled={pending || status.isFetching} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="profile-login-email">Profile login email</Label>
+            <Label htmlFor="profile-login-email">Profile email</Label>
             <Input
               id="profile-login-email"
               name="login_email"
@@ -232,7 +232,7 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="profile-login-password">New profile password</Label>
+            <Label htmlFor="profile-login-password">New password for the profile</Label>
             <Input
               id="profile-login-password"
               name="password"
@@ -242,7 +242,7 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="credential-account-password">Your current account password</Label>
+          <Label htmlFor="credential-account-password">Your account password</Label>
           <Input
             id="credential-account-password"
             name="current_password"
@@ -259,16 +259,15 @@ function CredentialForm({ id, name }: { id: string; name: string }) {
             required
             className="accent-primary mt-1 size-4"
           />
-          I understand that changing or disabling these credentials ends this profile’s direct
-          sign-in sessions.
+          I understand this signs the profile out of every app it signed in to with its own sign-in.
         </label>
         <div className="flex flex-wrap gap-3">
           <Button type="submit" value="save">
-            {pending ? "Saving…" : "Save profile credentials"}
+            {pending ? "Saving…" : "Save sign-in"}
           </Button>
           {status.data.configured && (
             <Button type="submit" value="disable" formNoValidate variant="destructive">
-              Disable direct sign-in
+              Turn off its sign-in
             </Button>
           )}
         </div>

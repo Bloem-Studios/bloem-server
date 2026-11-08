@@ -6,6 +6,10 @@ import type { AdminContextSummary } from "@/api/bloemTypes";
 import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AccountPicker } from "@/components/admin/policy/AccountPicker";
+import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
+import { useOrganizationLibraries } from "@/hooks/queries/admin/organizationLibraries";
+import { usePlatformOrganizations } from "@/hooks/queries/admin/organizations";
 import { SettingsPageHeader } from "@/components/settings/SettingsPageHeader";
 import { useReportUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import {
@@ -212,7 +216,7 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
     if (audience === "role") targeting.role = role;
     if (audience === "organization") {
       if (!target.trim()) {
-        setValidation("Enter the organization ID.");
+        setValidation("Choose the organization.");
         return;
       }
       targeting.organization_id = target.trim();
@@ -223,7 +227,7 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
         Number(target) <= 0 ||
         !Number.isSafeInteger(Number(target))
       ) {
-        setValidation("Enter a valid library ID.");
+        setValidation("Choose the library.");
         return;
       }
       targeting.library_id = Number(target);
@@ -243,7 +247,7 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
         ) ||
         (!userValues.length && !profileValues.length)
       ) {
-        setValidation("Choose at least one valid user or profile ID.");
+        setValidation("Choose at least one account or profile. Account numbers are whole numbers.");
         return;
       }
       targeting.user_ids = [...new Set(userValues.map(Number))];
@@ -340,21 +344,29 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
             </select>
           </label>
         )}
-        {["organization", "library", "explicit"].includes(audience) && (
-          <label className="block space-y-2 text-sm">
-            {audience === "organization"
-              ? "Organization ID"
-              : audience === "library"
-                ? "Library ID"
-                : "User IDs, separated by commas"}
-            <Input value={target} onChange={(e) => setTarget(e.target.value)} />
-          </label>
+        {audience === "organization" && (
+          <OrganizationTarget context={context} value={target} onChange={setTarget} />
+        )}
+        {audience === "library" && (
+          <LibraryTarget context={context} value={target} onChange={setTarget} />
         )}
         {audience === "explicit" && (
-          <label className="block space-y-2 text-sm">
-            Profile IDs, separated by commas
-            <Input value={profiles} onChange={(e) => setProfiles(e.target.value)} />
-          </label>
+          <>
+            <AccountPicker
+              id="announcement-accounts"
+              label="Accounts (all their profiles)"
+              selected={accountNumbers(target)}
+              onChange={(ids) => setTarget(ids.join(", "))}
+            />
+            <label className="block space-y-2 text-sm">
+              Or account numbers, separated by commas
+              <Input value={target} onChange={(e) => setTarget(e.target.value)} />
+            </label>
+            <label className="block space-y-2 text-sm">
+              Profile IDs, separated by commas (optional)
+              <Input value={profiles} onChange={(e) => setProfiles(e.target.value)} />
+            </label>
+          </>
         )}
         <label className="flex items-center gap-3 text-sm">
           <input
@@ -559,5 +571,85 @@ function AnnouncementsComposer({ context }: { context: AdminContextSummary }) {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function accountNumbers(value: string): number[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => /^[1-9]\d*$/.test(item))
+    .map(Number);
+}
+
+function OrganizationTarget({
+  context,
+  value,
+  onChange,
+}: {
+  context: AdminContextSummary;
+  value: string;
+  onChange(value: string): void;
+}) {
+  const organizations = usePlatformOrganizations({ limit: 100 });
+  const options = context.scope === "platform" ? (organizations.data?.organizations ?? []) : [];
+  if (!options.length) {
+    return (
+      <label className="block space-y-2 text-sm">
+        Organization ID
+        <Input value={value} onChange={(e) => onChange(e.target.value)} />
+      </label>
+    );
+  }
+  return (
+    <label className="block space-y-2 text-sm">
+      Organization
+      <select className={selectClass} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Choose an organization</option>
+        {options.map((organization) => (
+          <option key={organization.id} value={organization.id}>
+            {organization.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function LibraryTarget({
+  context,
+  value,
+  onChange,
+}: {
+  context: AdminContextSummary;
+  value: string;
+  onChange(value: string): void;
+}) {
+  const platform = useAdminLibraries({ enabled: context.scope === "platform" });
+  const organization = useOrganizationLibraries(context.key, context.scope === "organization");
+  const options =
+    context.scope === "platform"
+      ? (platform.data ?? []).map(({ id, name }) => ({ id, name }))
+      : (organization.data ?? []).map((library) => ({ id: library.folder_id, name: library.name }));
+  if (!options.length) {
+    return (
+      <label className="block space-y-2 text-sm">
+        Library ID
+        <Input value={value} onChange={(e) => onChange(e.target.value)} />
+      </label>
+    );
+  }
+  return (
+    <label className="block space-y-2 text-sm">
+      Library
+      <select className={selectClass} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Choose a library</option>
+        {options.map((library) => (
+          <option key={library.id} value={String(library.id)}>
+            {library.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

@@ -19,7 +19,7 @@ import { randomUUID } from "@/lib/uuid";
 
 export default function EngagementPage() {
   const { active } = useAdminContext();
-  useDocumentTitle("Campaigns & seasonal packs");
+  useDocumentTitle("Campaigns & Seasonal Packs");
   if (active?.scope !== "platform")
     return <p role="alert">Select the platform context to manage campaigns and seasonal packs.</p>;
   return (
@@ -92,7 +92,7 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
       setError(
         cause instanceof Error
           ? cause.message
-          : "Could not confirm publication. Review the refreshed registry before retrying.",
+          : "Bloem couldn’t confirm it was published. Check the list before trying again.",
       );
       throw cause;
     }
@@ -121,7 +121,7 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
         init: { method: "DELETE" },
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not remove the registry entry.");
+      setError(cause instanceof Error ? cause.message : "It couldn’t be deleted. Try again.");
     } finally {
       setDeleting(null);
     }
@@ -131,7 +131,7 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
     return (
       <div role="alert">
         <p>{capabilities.error.message}</p>
-        <Button onClick={() => void capabilities.refetch()}>Retry feature check</Button>
+        <Button onClick={() => void capabilities.refetch()}>Try again</Button>
       </div>
     );
   if (!supported) return <p>This server does not support platform-context engagement authoring.</p>;
@@ -140,11 +140,12 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
     <section className="admin-page space-y-6">
       <header className="space-y-2">
         <h1 className="page-title" tabIndex={-1}>
-          Campaigns &amp; seasonal packs
+          Campaigns &amp; Seasonal Packs
         </h1>
         <p className="page-subtitle">
-          Author server messages and optional seasonal artwork. Viewers keep control of playback and
-          motion.
+          Campaigns are cards on the home screen, title pages and around playback. Seasonal packs
+          add a look for a time of year, like snow. Viewers can always keep watching, and motion
+          follows their settings.
         </p>
       </header>
       {error && (
@@ -155,8 +156,8 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
       {editing ? (
         <div className="border-border rounded-xl border p-5">
           <p className="text-muted-foreground mb-5 text-sm">
-            Review the audience and schedule before publishing. Saving an existing entry replaces
-            it; this registry does not provide revision locking.
+            Check who sees it and when before you publish. If someone else edits the same entry at
+            the same time, the last one saved wins.
           </p>
           {editing.kind === "promotions" ? (
             <CampaignEditor
@@ -193,12 +194,12 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
             <TabsTrigger value="promotions">Campaigns</TabsTrigger>
             <TabsTrigger value="ambience">Seasonal packs</TabsTrigger>
           </TabsList>
-          {query.isPending && <p role="status">Loading registry…</p>}
+          {query.isPending && <p role="status">Loading…</p>}
           {query.isError && (
             <div role="alert" className="my-4 space-y-2">
               <p>{query.error.message}</p>
               <Button variant="outline" onClick={() => void query.refetch()}>
-                Reload registry
+                Try again
               </Button>
             </div>
           )}
@@ -292,8 +293,8 @@ function EngagementRegistry({ context }: { context: AdminContextSummary }) {
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(null)}
         title={`Delete ${deleting?.name ?? "entry"}?`}
-        description="This removes the entry from future delivery. Uploaded artwork and already delivered inbox messages are not deleted."
-        confirmLabel="Delete entry"
+        description="Nobody sees it from now on. Uploaded images and messages already in people’s inboxes stay."
+        confirmLabel="Delete"
         variant="destructive"
         isPending={write.isPending}
         onConfirm={() => void remove()}

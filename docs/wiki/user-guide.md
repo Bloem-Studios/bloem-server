@@ -148,7 +148,7 @@ belongs to the profile that started it: another profile on the same login cannot
 **Settings → Profiles**, **Settings → Account** and **Settings → Signed-in sessions** are for the
 household's **main profile** (or an administrator). Other profiles do not see them.
 
-**Profile sign-in credentials** (a Bloem addition), under **Settings → Profiles**, let a permitted
+**Separate sign-in for a profile** (a Bloem addition), under **Settings → Profiles**, let a permitted
 household manager set, change or switch off a separate sign-in for one profile, for apps that
 support it:
 

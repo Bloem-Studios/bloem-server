@@ -76,7 +76,7 @@ Each of these is covered below:
 - **Audiobook and ebook requests**, beside Silo's movie and series requests ([2.9](#29-requests)).
 - **Storage sources.** Libraries that read from S3 or Bookwarehouse buckets as well as local
   folders ([2.2](#22-libraries)).
-- **Profile sign-in credentials** for supported native apps ([user guide](user-guide.md#2-profiles)).
+- **Separate sign-in for a profile** in the Bloem apps ([user guide](user-guide.md#2-profiles)).
 - **A native API** for Bloem's own apps, `/api/bloem/v1` ([reference](../bloem-api-reference.md)).
 
 ### What Bloem removed

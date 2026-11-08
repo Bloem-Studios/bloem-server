@@ -2,6 +2,9 @@ import { useId, useState, type FormEvent, type HTMLInputTypeAttribute } from "re
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AccountPicker } from "@/components/admin/policy/AccountPicker";
+import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
+import { usePlatformOrganizations } from "@/hooks/queries/admin/organizations";
 import { CampaignCardView } from "./CampaignCardView";
 import {
   campaignImage,
@@ -110,6 +113,122 @@ function Check({
     </label>
   );
 }
+const SURFACE_LABELS: Record<string, string> = {
+  home: "Home screen",
+  detail: "Title pages",
+  pre_playback: "Before playback",
+  in_playback: "During playback",
+};
+
+const AUDIENCE_LABELS: Record<CampaignTargeting["audience"], string> = {
+  all: "Everyone",
+  role: "By account role",
+  organization: "One organization",
+  library: "People who can see a library",
+  explicit: "Chosen accounts or profiles",
+};
+
+function formatUTC(value: string) {
+  return `${value.replace("T", " ").replace(/:\d{2}(\.\d+)?Z$/, "")} UTC`;
+}
+
+/** An organization picker; empty means everywhere when `everywhere` is given. */
+function OrganizationSelect({
+  name,
+  label,
+  value,
+  everywhere,
+  required = false,
+}: {
+  name: string;
+  label: string;
+  value?: string | null;
+  everywhere?: string;
+  required?: boolean;
+}) {
+  const id = useId();
+  const organizations = usePlatformOrganizations({ limit: 100 });
+  const options = organizations.data?.organizations ?? [];
+  if (organizations.isError) {
+    return (
+      <div className="space-y-2">
+        <Label htmlFor={id}>{label} (organization ID)</Label>
+        <Input id={id} name={name} defaultValue={value ?? ""} required={required} />
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <select
+        id={id}
+        name={name}
+        className={inputClass}
+        defaultValue={value ?? ""}
+        key={options.length}
+        required={required}
+      >
+        <option value="">{everywhere ?? "Choose an organization"}</option>
+        {value && !options.some((organization) => organization.id === value) ? (
+          <option value={value}>{value}</option>
+        ) : null}
+        {options.map((organization) => (
+          <option key={organization.id} value={organization.id}>
+            {organization.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function LibrarySelect({ name, label, value }: { name: string; label: string; value?: number }) {
+  const id = useId();
+  const libraries = useAdminLibraries();
+  const options = libraries.data ?? [];
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <select
+        id={id}
+        name={name}
+        className={inputClass}
+        defaultValue={value ? String(value) : ""}
+        key={options.length}
+        required
+      >
+        <option value="">Choose a library</option>
+        {value && !options.some((library) => library.id === value) ? (
+          <option value={String(value)}>Library {value}</option>
+        ) : null}
+        {options.map((library) => (
+          <option key={library.id} value={String(library.id)}>
+            {library.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function TimezoneField({ value }: { value: string }) {
+  const id = useId();
+  const zones =
+    typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>Time zone for the yearly repeat</Label>
+      <Input id={id} name="timezone" list={`${id}-zones`} defaultValue={value} required />
+      <datalist id={`${id}-zones`}>
+        {zones.map((zone) => (
+          <option key={zone} value={zone} />
+        ))}
+      </datalist>
+      <p className="text-muted-foreground text-xs">Start typing a city, like Europe/London.</p>
+    </div>
+  );
+}
+
 function Artwork({
   value,
   setValue,
@@ -128,16 +247,16 @@ function Artwork({
   const [error, setError] = useState("");
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>Artwork URL</Label>
+      <Label htmlFor={id}>Artwork</Label>
       <Input
         id={id}
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder="https://… or a server asset path"
+        placeholder="https://… or an uploaded image"
       />
       {available ? (
         <label className="block text-sm">
-          Upload artwork (PNG, JPEG, WebP or GIF, up to 8 MiB)
+          Or upload an image (PNG, JPEG, WebP or GIF, up to 8 MB)
           <input
             className="mt-2 block max-w-full text-sm"
             type="file"
@@ -148,7 +267,7 @@ function Artwork({
               event.currentTarget.value = "";
               if (!file) return;
               if (file.size > 8 * 1024 * 1024) {
-                setError("Artwork must be at most 8 MiB.");
+                setError("Images can be up to 8 MB.");
                 return;
               }
               setPending(true);
@@ -164,10 +283,10 @@ function Artwork({
         </label>
       ) : (
         <p className="text-muted-foreground text-xs">
-          Upload storage is not configured. You can use an HTTPS artwork URL.
+          Uploads aren’t set up on this server. Use an https image address instead.
         </p>
       )}
-      {pending && <p role="status">Uploading artwork…</p>}
+      {pending && <p role="status">Uploading…</p>}
       {error && (
         <p role="alert" className="text-destructive text-sm">
           {error}
@@ -181,19 +300,20 @@ function WindowFields({ start, end }: { start?: string; end?: string }) {
     <fieldset className="space-y-3">
       <legend className="font-medium">Schedule (UTC)</legend>
       <p className="text-muted-foreground text-sm">
-        Start is inclusive; end is exclusive. A campaign is never a forced playback wait.
+        It shows from the start time until just before the end time. A campaign never makes anyone
+        wait to watch.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           name="starts_at"
-          label="Starts at (UTC)"
+          label="Starts (UTC)"
           type="datetime-local"
           value={dateInput(start)}
           required
         />
         <Field
           name="ends_at"
-          label="Ends at (UTC)"
+          label="Ends (UTC)"
           type="datetime-local"
           value={dateInput(end)}
           required
@@ -217,6 +337,7 @@ export function CampaignEditor({
   );
   const [review, setReview] = useState<CampaignInput | null>(null);
   const [error, setError] = useState("");
+  const [accountIDs, setAccountIDs] = useState<number[]>(initial?.targeting.user_ids ?? []);
   function preview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -227,24 +348,25 @@ export function CampaignEditor({
       if (audience === "organization")
         targeting.organization_id = text(form, "target_organization");
       if (audience === "library")
-        targeting.library_id = integer(text(form, "library_id"), "Library ID", 1);
+        targeting.library_id = integer(text(form, "library_id"), "The library", 1);
       if (audience === "explicit") {
-        targeting.user_ids = list(form, "user_ids").map((id) => integer(id, "Account ID", 1));
+        targeting.user_ids = [...accountIDs];
         targeting.profile_ids = list(form, "profile_ids");
         if (!targeting.user_ids.length && !targeting.profile_ids.length)
-          throw new Error("Choose at least one explicit account or profile.");
+          throw new Error("Choose at least one account or profile.");
       }
       const startsAt = utc(text(form, "starts_at")),
         endsAt = utc(text(form, "ends_at"));
       if (startsAt >= endsAt) throw new Error("The end must be after the start.");
-      if (!campaignImage(image))
-        throw new Error("Choose HTTPS artwork or an uploaded server image.");
+      if (!campaignImage(image)) throw new Error("Use an https image address or upload an image.");
       const surfaces = form.getAll("surface").map(String);
-      if (!surfaces.length) throw new Error("Choose at least one placement.");
+      if (!surfaces.length) throw new Error("Choose at least one place to show it.");
       const style = text(form, "playback_style");
       const dismissible = form.has("dismissible");
       if (surfaces.includes("in_playback") && (!style || !dismissible))
-        throw new Error("In-playback campaigns require a presentation style and dismissal.");
+        throw new Error(
+          "To show it during playback, choose how it looks and let viewers dismiss it.",
+        );
       setReview({
         organization_id: text(form, "organization_id") || null,
         surfaces,
@@ -293,7 +415,7 @@ export function CampaignEditor({
         aria-label="Campaign editor"
       >
         <fieldset disabled={pending} className="space-y-6">
-          <h2 className="text-xl font-semibold">{initial ? "Edit campaign" : "Create campaign"}</h2>
+          <h2 className="text-xl font-medium">{initial ? "Edit campaign" : "New campaign"}</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               name="headline"
@@ -302,12 +424,18 @@ export function CampaignEditor({
               required
               maxLength={120}
             />
-            <Field name="kicker" label="Kicker" value={initial?.kicker} maxLength={40} />
-            <Field name="subtitle" label="Subtitle" value={initial?.subtitle} maxLength={200} />
             <Field
+              name="kicker"
+              label="Small label above the headline"
+              value={initial?.kicker}
+              maxLength={40}
+            />
+            <Field name="subtitle" label="Subtitle" value={initial?.subtitle} maxLength={200} />
+            <OrganizationSelect
               name="organization_id"
-              label="Owning organization ID (blank for deployment-wide)"
+              label="Belongs to"
               value={initial?.organization_id}
+              everywhere="The whole server"
             />
           </div>
           <Artwork
@@ -320,75 +448,44 @@ export function CampaignEditor({
             available={storageAvailable}
             upload={upload}
           />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              name="image_width"
-              label="Image width (optional)"
-              type="number"
-              min={1}
-              value={initial?.image_width}
-            />
-            <Field
-              name="image_height"
-              label="Image height (optional)"
-              type="number"
-              min={1}
-              value={initial?.image_height}
-            />
-          </div>
-          <p className="text-muted-foreground text-sm">
-            Use 16:9 artwork. Declared dimensions are checked by Server.
-          </p>
+          <p className="text-muted-foreground text-sm">Use 16:9 artwork.</p>
           <fieldset className="space-y-3">
-            <legend className="font-medium">Placements</legend>
+            <legend className="font-medium">Where it shows</legend>
             <div className="flex flex-wrap gap-4">
               {["home", "detail", "pre_playback", "in_playback"].map((surface) => (
                 <Check
                   key={surface}
                   name="surface"
                   value={surface}
-                  label={surface.replaceAll("_", " ")}
+                  label={SURFACE_LABELS[surface] ?? surface}
                   checked={initial ? initial.surfaces.includes(surface) : surface === "home"}
                 />
               ))}
             </div>
           </fieldset>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              name="home_position"
-              label="Home row position (0 is first)"
-              type="number"
-              min={0}
-              value={initial?.placement.home_position ?? 1}
-            />
-            <Field
-              name="detail_slot"
-              label="Detail slot hint (optional)"
-              value={initial?.placement.detail_slot}
-            />
-            <Field
-              name="content_ids"
-              label="Restrict to content IDs (comma-separated, optional)"
-              value={initial?.placement.content_ids?.join(", ")}
-            />
-            <Field name="priority" label="Priority" type="number" value={initial?.priority ?? 0} />
-          </div>
+          <Field
+            name="home_position"
+            label="Row on the home screen (0 is the top)"
+            type="number"
+            min={0}
+            value={initial?.placement.home_position ?? 1}
+          />
           <label className="block space-y-2 text-sm">
-            In-playback presentation
+            How it looks during playback
             <select
               name="playback_style"
               className={inputClass}
               defaultValue={initial?.placement.playback_style ?? ""}
             >
-              <option value="">None</option>
-              <option value="card">Card</option>
-              <option value="pip">Muted picture-in-picture</option>
+              <option value="">Not shown during playback</option>
+              <option value="card">A card</option>
+              <option value="pip">A small muted video</option>
             </select>
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               name="duration_seconds"
-              label="Overlay duration (5–60 seconds; never a forced wait)"
+              label="Seconds on screen (5 to 60)"
               type="number"
               min={5}
               max={60}
@@ -396,7 +493,7 @@ export function CampaignEditor({
             />
             <Field
               name="video_url"
-              label="Muted PiP video URL (HTTPS, optional)"
+              label="Small video address (https, optional)"
               value={initial?.placement.video_url}
             />
           </div>
@@ -404,7 +501,7 @@ export function CampaignEditor({
           <fieldset className="space-y-4">
             <legend className="font-medium">Audience</legend>
             <label className="block space-y-2 text-sm">
-              Audience type
+              Who sees it
               <select
                 name="audience"
                 className={inputClass}
@@ -413,9 +510,9 @@ export function CampaignEditor({
                   setAudience(event.target.value as CampaignTargeting["audience"])
                 }
               >
-                {["all", "role", "organization", "library", "explicit"].map((value) => (
+                {(["all", "role", "organization", "library", "explicit"] as const).map((value) => (
                   <option key={value} value={value}>
-                    {value}
+                    {AUDIENCE_LABELS[value]}
                   </option>
                 ))}
               </select>
@@ -428,65 +525,107 @@ export function CampaignEditor({
                   className={inputClass}
                   defaultValue={initial?.targeting.role ?? "user"}
                 >
-                  <option value="user">User</option>
-                  <option value="admin">Administrator</option>
+                  <option value="user">Members</option>
+                  <option value="admin">Administrators</option>
                 </select>
               </label>
             )}
             {audience === "organization" && (
-              <Field
+              <OrganizationSelect
                 name="target_organization"
-                label="Audience organization ID"
+                label="Organization"
                 value={initial?.targeting.organization_id}
                 required
               />
             )}
             {audience === "library" && (
-              <Field
+              <LibrarySelect
                 name="library_id"
-                label="Audience library ID"
-                type="number"
-                min={1}
+                label="Library"
                 value={initial?.targeting.library_id}
-                required
               />
             )}
             {audience === "explicit" && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field
-                  name="user_ids"
-                  label="Account IDs (comma-separated)"
-                  value={initial?.targeting.user_ids?.join(", ")}
+              <div className="space-y-4">
+                <AccountPicker
+                  id="campaign-accounts"
+                  label="Accounts"
+                  selected={accountIDs}
+                  onChange={(ids) => {
+                    setAccountIDs(ids);
+                    setReview(null);
+                  }}
                 />
                 <Field
                   name="profile_ids"
-                  label="Profile IDs (comma-separated)"
+                  label="Profile IDs, separated by commas (optional)"
                   value={initial?.targeting.profile_ids?.join(", ")}
                 />
               </div>
             )}
           </fieldset>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field name="deeplink" label="Deep link (optional)" value={initial?.deeplink} />
             <Field
               name="cta_label"
-              label="CTA label (optional)"
+              label="Button text (optional)"
               value={initial?.cta?.label}
               maxLength={40}
             />
             <Field
               name="cta_url"
-              label="CTA destination (HTTPS, app path or bloem://)"
+              label="Button link (https, app path or bloem://)"
               value={initial?.cta?.url}
             />
           </div>
+          <details className="space-y-4">
+            <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm transition-colors">
+              More options
+            </summary>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <Field
+                name="deeplink"
+                label="Opens when tapped (optional)"
+                value={initial?.deeplink}
+              />
+              <Field
+                name="priority"
+                label="Priority (higher shows first)"
+                type="number"
+                value={initial?.priority ?? 0}
+              />
+              <Field
+                name="content_ids"
+                label="Only on these titles (content IDs, separated by commas)"
+                value={initial?.placement.content_ids?.join(", ")}
+              />
+              <Field
+                name="detail_slot"
+                label="Spot on title pages (optional)"
+                value={initial?.placement.detail_slot}
+              />
+              <Field
+                name="image_width"
+                label="Image width in pixels (optional)"
+                type="number"
+                min={1}
+                value={initial?.image_width}
+              />
+              <Field
+                name="image_height"
+                label="Image height in pixels (optional)"
+                type="number"
+                min={1}
+                value={initial?.image_height}
+              />
+            </div>
+          </details>
           <Check
             name="dismissible"
             label="Allow viewers to dismiss"
             checked={initial?.dismissible ?? true}
           />
           <div className="flex gap-3">
-            <Button type="submit">Review campaign</Button>
+            <Button type="submit">Check campaign</Button>
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
@@ -500,10 +639,11 @@ export function CampaignEditor({
       )}
       {review && (
         <section className="border-border space-y-4 border-t pt-4" aria-label="Campaign review">
-          <h3 className="font-semibold">Review before publishing</h3>
+          <h3 className="font-medium">Check it before publishing</h3>
           <p className="text-muted-foreground text-sm">
-            Audience: {review.targeting.audience}. Placements: {review.surfaces.join(", ")}.{" "}
-            {review.starts_at} to {review.ends_at}.
+            Who sees it: {AUDIENCE_LABELS[review.targeting.audience]}. Where:{" "}
+            {review.surfaces.map((surface) => SURFACE_LABELS[surface] ?? surface).join(", ")}. From{" "}
+            {formatUTC(review.starts_at)} to {formatUTC(review.ends_at)}.
           </p>
           <div className="max-w-lg">
             <CampaignCardView
@@ -581,25 +721,26 @@ export function SeasonEditor({
         aria-label="Seasonal pack editor"
       >
         <fieldset disabled={pending || spriteUpload} className="space-y-6">
-          <h2 className="text-xl font-semibold">
-            {initial ? "Edit seasonal pack" : "Create seasonal pack"}
+          <h2 className="text-xl font-medium">
+            {initial ? "Edit seasonal pack" : "New seasonal pack"}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               name="effect_id"
-              label="Effect ID (snow, or an artwork-pack slug)"
+              label="Effect (snow, or the name of an artwork pack)"
               value={initial?.effect_id ?? "snow"}
               required
               maxLength={64}
             />
-            <Field
+            <OrganizationSelect
               name="organization_id"
-              label="Organization ID (blank for deployment-wide)"
+              label="Belongs to"
               value={initial?.organization_id}
+              everywhere="The whole server"
             />
             <Field
               name="intensity"
-              label="Intensity (0 disables rendering; 1 is full)"
+              label="Strength (0 is off, 1 is full)"
               type="number"
               min={0}
               max={1}
@@ -615,23 +756,24 @@ export function SeasonEditor({
                 label="Repeat every year"
                 checked={initial?.window.repeat_yearly}
               />
-              <Field
-                name="timezone"
-                label="IANA timezone for annual repeats"
-                value={initial?.window.timezone ?? "UTC"}
-                required
-              />
+              <TimezoneField value={initial?.window.timezone ?? "UTC"} />
             </>
           )}
           <fieldset className="space-y-3">
-            <legend className="font-medium">Surfaces (none means all)</legend>
+            <legend className="font-medium">Where it shows (none means everywhere)</legend>
             <div className="flex flex-wrap gap-4">
               {["all", "home", "login"].map((surface) => (
                 <Check
                   key={surface}
                   name="surface"
                   value={surface}
-                  label={surface}
+                  label={
+                    surface === "all"
+                      ? "Everywhere"
+                      : surface === "home"
+                        ? "Home screen"
+                        : "Sign-in page"
+                  }
                   checked={initial ? initial.surfaces.includes(surface) : surface === "all"}
                 />
               ))}
@@ -648,7 +790,7 @@ export function SeasonEditor({
             upload={upload}
           />
           <label className="block space-y-2 text-sm">
-            Sprite URLs (one per line, maximum 32)
+            Small images that drift across the screen (one address per line, up to 32)
             <textarea
               className="border-input bg-background min-h-24 w-full rounded-md border p-3"
               value={sprites}
@@ -657,7 +799,7 @@ export function SeasonEditor({
           </label>
           {storageAvailable && (
             <label className="block text-sm">
-              Add a sprite image
+              Upload a drifting image
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
@@ -667,7 +809,7 @@ export function SeasonEditor({
                   event.currentTarget.value = "";
                   if (!file) return;
                   if (file.size > 8 * 1024 * 1024) {
-                    setError("Artwork must be at most 8 MiB.");
+                    setError("Images can be up to 8 MB.");
                     return;
                   }
                   setSpriteUpload(true);
@@ -683,7 +825,7 @@ export function SeasonEditor({
             </label>
           )}
           <div className="flex gap-3">
-            <Button type="submit">Review seasonal pack</Button>
+            <Button type="submit">Check seasonal pack</Button>
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
@@ -700,7 +842,7 @@ export function SeasonEditor({
           className="border-border space-y-3 border-t pt-4"
           aria-label="Seasonal pack review"
         >
-          <h3 className="font-semibold">Review before publishing</h3>
+          <h3 className="font-medium">Check it before publishing</h3>
           <p className="text-sm">
             {review.effect_id} · Intensity {review.intensity} ·{" "}
             {review.surfaces.join(", ") || "all"} ·{" "}

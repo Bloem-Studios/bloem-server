@@ -89,7 +89,7 @@ describe("server admin announcements", () => {
     await user.selectOptions(screen.getByLabelText("Audience"), "library");
     await user.type(screen.getByLabelText("Library ID"), "-1");
     await user.click(screen.getByRole("button", { name: "Preview announcement" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid library ID.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Choose the library.");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mockApi.mock.calls.every(([, options]) => options?.method !== "POST")).toBe(true);
   });
