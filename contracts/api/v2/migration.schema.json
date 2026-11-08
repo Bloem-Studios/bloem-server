@@ -86,6 +86,7 @@
         "bloem-admin-core",
         "bloem-admin-organization",
         "bloem-book-requests",
+        "bloem-library-locations",
         "bloem-livetv",
         "bloem-native",
         "bloem-native-storage",

@@ -160,8 +160,10 @@ def bloem_section(parts, entry):
         rest = parts[1:]
         if not rest or rest[0] in ("*", "session"):
             return "bloem-admin-core"
-        if rest[0] in ("platform", "organization") and _first_static(rest[1:]) in ("native-storage", "library-locations"):
+        if rest[0] in ("platform", "organization") and _first_static(rest[1:]) == "native-storage":
             return "bloem-native-storage"
+        if rest[0] in ("platform", "organization") and _first_static(rest[1:]) == "library-locations":
+            return "bloem-library-locations"
         if rest[0] == "platform":
             subject = rest[1] if len(rest) > 1 else None
             table = BLOEM_PLATFORM.get(subject)

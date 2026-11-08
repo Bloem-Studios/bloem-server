@@ -51,6 +51,8 @@ const source: StorageSource = {
   state: "ready",
   configured: true,
   connection_summary: { bucket: "media" },
+  in_use: false,
+  libraries: [],
 };
 
 function wrapper({ children }: { children: ReactNode }) {

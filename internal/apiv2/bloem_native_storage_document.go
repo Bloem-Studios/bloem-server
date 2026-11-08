@@ -239,7 +239,7 @@ func bloemNativeStorageDocument[T any](reg *Registry, scope, method, path, id, s
 	}
 	bloemDocumentErrors[BloemNativeError](reg, &op, map[int]string{403: bloemNativeStorageForbidden})
 	errorKey := path
-	if method == "DELETE" && path == "/sources/{source_key}" {
+	if method+" "+path == deleteSourceErrors {
 		// Deleting a source writes, unlike reading it on the same path.
 		errorKey = deleteSourceErrors
 	}

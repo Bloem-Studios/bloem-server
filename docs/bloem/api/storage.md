@@ -13,7 +13,7 @@ For the plain-language picture, read the [Storage sources explainer](../../archi
 - [Native video playback](../../architecture/bloem-native-video-playback.md)
 - [Native audiobook presentations](../../architecture/bloem-native-audio-playback.md)
 
-## Operations (40)
+## Operations (42)
 
 | Method and path | Summary |
 | --- | --- |
@@ -27,13 +27,14 @@ For the plain-language picture, read the [Storage sources explainer](../../archi
 | [`POST /api/bloem/v1/admin/organization/native-storage/catalog/installations/{installation_id}/upgrade`](#post-apibloemv1adminorganizationnative-storagecataloginstallationsinstallation_idupgrade) | Download and verify a catalog upgrade, retaining configuration and library. |
 | [`POST /api/bloem/v1/admin/organization/native-storage/installations`](#post-apibloemv1adminorganizationnative-storageinstallations) | Install an approved artifact and source without creating a library or scan. |
 | [`POST /api/bloem/v1/admin/organization/native-storage/installations/discover`](#post-apibloemv1adminorganizationnative-storageinstallationsdiscover) | Discover the root of a new approved S3 installation and publish it atomically without a library or scan. |
-| [`DELETE /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}`](#delete-apibloemv1adminorganizationnative-storageinstallationsinstallation_id) | Uninstall and detach the source; its library, catalog and reading progress are retained. |
-| [`POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/disable`](#post-apibloemv1adminorganizationnative-storageinstallationsinstallation_iddisable) | Disable and detach the source; its library, catalog and reading progress are retained. |
+| [`DELETE /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}`](#delete-apibloemv1adminorganizationnative-storageinstallationsinstallation_id) | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
+| [`POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/disable`](#post-apibloemv1adminorganizationnative-storageinstallationsinstallation_iddisable) | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
 | [`POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/upgrade`](#post-apibloemv1adminorganizationnative-storageinstallationsinstallation_idupgrade) | Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept. |
 | [`POST /api/bloem/v1/admin/organization/native-storage/s3/buckets`](#post-apibloemv1adminorganizationnative-storages3buckets) | List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses. |
 | [`POST /api/bloem/v1/admin/organization/native-storage/s3/folders`](#post-apibloemv1adminorganizationnative-storages3folders) | List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing. |
 | [`GET /api/bloem/v1/admin/organization/native-storage/sources`](#get-apibloemv1adminorganizationnative-storagesources) | List visible sources and their current configuration revisions. |
 | [`GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}`](#get-apibloemv1adminorganizationnative-storagesourcessource_key) | Read a visible source without configuration secrets. |
+| [`DELETE /api/bloem/v1/admin/organization/native-storage/sources/{source_key}`](#delete-apibloemv1adminorganizationnative-storagesourcessource_key) | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
 | [`GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/browse`](#get-apibloemv1adminorganizationnative-storagesourcessource_keybrowse) | Browse authorized directories without starting discovery or opening files. |
 | [`PUT /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/configuration`](#put-apibloemv1adminorganizationnative-storagesourcessource_keyconfiguration) | Replace complete configuration only while the source namespace is empty. |
 | [`POST /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/credentials`](#post-apibloemv1adminorganizationnative-storagesourcessource_keycredentials) | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
@@ -47,13 +48,14 @@ For the plain-language picture, read the [Storage sources explainer](../../archi
 | [`POST /api/bloem/v1/admin/platform/native-storage/catalog/installations/{installation_id}/upgrade`](#post-apibloemv1adminplatformnative-storagecataloginstallationsinstallation_idupgrade) | Download and verify a catalog upgrade, retaining configuration and library. |
 | [`POST /api/bloem/v1/admin/platform/native-storage/installations`](#post-apibloemv1adminplatformnative-storageinstallations) | Install an approved artifact and source without creating a library or scan. |
 | [`POST /api/bloem/v1/admin/platform/native-storage/installations/discover`](#post-apibloemv1adminplatformnative-storageinstallationsdiscover) | Discover the root of a new approved S3 installation and publish it atomically without a library or scan. |
-| [`DELETE /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}`](#delete-apibloemv1adminplatformnative-storageinstallationsinstallation_id) | Uninstall and detach the source; its library, catalog and reading progress are retained. |
-| [`POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/disable`](#post-apibloemv1adminplatformnative-storageinstallationsinstallation_iddisable) | Disable and detach the source; its library, catalog and reading progress are retained. |
+| [`DELETE /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}`](#delete-apibloemv1adminplatformnative-storageinstallationsinstallation_id) | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
+| [`POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/disable`](#post-apibloemv1adminplatformnative-storageinstallationsinstallation_iddisable) | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
 | [`POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/upgrade`](#post-apibloemv1adminplatformnative-storageinstallationsinstallation_idupgrade) | Install a newer approved artifact of the same plugin; the source, its configuration, library and catalog are kept. |
 | [`POST /api/bloem/v1/admin/platform/native-storage/s3/buckets`](#post-apibloemv1adminplatformnative-storages3buckets) | List the buckets the supplied S3 credentials can see, for choosing a new source. Stateless: the credentials are used for this request only and never stored, logged or returned. The endpoint is checked against server-side request forgery and the connection is pinned to the checked addresses. |
 | [`POST /api/bloem/v1/admin/platform/native-storage/s3/folders`](#post-apibloemv1adminplatformnative-storages3folders) | List one page (at most 200) of the immediate child folders of a prefix in a bucket, for choosing a new source's prefix. Files are never returned. Stateless, with the same endpoint guard and credential handling as the bucket listing. |
 | [`GET /api/bloem/v1/admin/platform/native-storage/sources`](#get-apibloemv1adminplatformnative-storagesources) | List visible sources and their current configuration revisions. |
 | [`GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}`](#get-apibloemv1adminplatformnative-storagesourcessource_key) | Read a visible source without configuration secrets. |
+| [`DELETE /api/bloem/v1/admin/platform/native-storage/sources/{source_key}`](#delete-apibloemv1adminplatformnative-storagesourcessource_key) | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
 | [`GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse`](#get-apibloemv1adminplatformnative-storagesourcessource_keybrowse) | Browse authorized directories without starting discovery or opening files. |
 | [`PUT /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/configuration`](#put-apibloemv1adminplatformnative-storagesourcessource_keyconfiguration) | Replace complete configuration only while the source namespace is empty. |
 | [`POST /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/credentials`](#post-apibloemv1adminplatformnative-storagesourcessource_keycredentials) | Replace only the S3 access key, secret key and session token of an enabled source, including one a library uses. Credentials are never returned. |
@@ -296,7 +298,7 @@ Exactly two parts, request JSON (at most 1 MiB) and nonempty binary (at most 256
 
 ### `DELETE /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}`
 
-Uninstall and detach the source; its library, catalog and reading progress are retained.
+Uninstall and detach a source no library reads from; its catalog and reading progress are retained.
 
 Operation ID: `uninstallBloemOrganizationNativeStorage`.
 Credentials: `bloemOrganizationContext`.
@@ -312,18 +314,18 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 
 | Status | Body | Meaning |
 | --- | --- | --- |
-| 200 | [`BloemNativeStorageRemoval`](#bloemnativestorageremoval) | Uninstall and detach the source; its library, catalog and reading progress are retained. |
+| 200 | [`BloemNativeStorageRemoval`](#bloemnativestorageremoval) | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
 | 400 | [`BloemNativeStorageError`](#bloemnativestorageerror) | invalid_request: query parameters were sent, or the body is not a strict application/json object with exactly the documented fields and valid values. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
 | 404 | [`BloemNativeStorageError`](#bloemnativestorageerror) | not_found: invalid path identity, absent resource or hidden authority. |
-| 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
+| 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict returns current_revision, the source's current configuration revision. source_in_use: a library reads from a source of this installation; change the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
 ### `POST /api/bloem/v1/admin/organization/native-storage/installations/{installation_id}/disable`
 
-Disable and detach the source; its library, catalog and reading progress are retained.
+Disable and detach a source no library reads from; its catalog and reading progress are retained.
 
 Operation ID: `disableBloemOrganizationNativeStorage`.
 Credentials: `bloemOrganizationContext`.
@@ -339,12 +341,12 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 
 | Status | Body | Meaning |
 | --- | --- | --- |
-| 200 | [`BloemNativeStorageRemoval`](#bloemnativestorageremoval) | Disable and detach the source; its library, catalog and reading progress are retained. |
+| 200 | [`BloemNativeStorageRemoval`](#bloemnativestorageremoval) | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
 | 400 | [`BloemNativeStorageError`](#bloemnativestorageerror) | invalid_request: query parameters were sent, or the body is not a strict application/json object with exactly the documented fields and valid values. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
 | 404 | [`BloemNativeStorageError`](#bloemnativestorageerror) | not_found: invalid path identity, absent resource or hidden authority. |
-| 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
+| 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict returns current_revision, the source's current configuration revision. source_in_use: a library reads from a source of this installation; change the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
@@ -467,6 +469,33 @@ Experimental native storage sources served by host-approved storage plugins; the
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
 | 404 | [`BloemNativeStorageError`](#bloemnativestorageerror) | not_found: invalid path identity, absent resource or hidden authority. |
 | 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
+| 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
+
+### `DELETE /api/bloem/v1/admin/organization/native-storage/sources/{source_key}`
+
+Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched.
+
+Operation ID: `deleteRemovedSourceBloemOrganizationNativeStorage`.
+Credentials: `bloemOrganizationContext`.
+
+Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `source_key` | path | string (uuid) | yes |  |
+
+Request body (required, `application/json`): [`BloemNativeStorageDeleteSourceBody`](#bloemnativestoragedeletesourcebody).
+Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemNativeStorageSourceDeletion`](#bloemnativestoragesourcedeletion) | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
+| 400 | [`BloemNativeStorageError`](#bloemnativestorageerror) | invalid_request: query parameters were sent, or the body is not a strict application/json object with exactly the documented fields and valid values. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
+| 404 | [`BloemNativeStorageError`](#bloemnativestorageerror) | not_found: invalid path identity, absent resource or hidden authority. |
+| 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source still has its plugin installation; remove it first. source_in_use: a library reads from the source; delete the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
+| 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
 ### `GET /api/bloem/v1/admin/organization/native-storage/sources/{source_key}/browse`
@@ -788,7 +817,7 @@ Exactly two parts, request JSON (at most 1 MiB) and nonempty binary (at most 256
 
 ### `DELETE /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}`
 
-Uninstall and detach the source; its library, catalog and reading progress are retained.
+Uninstall and detach a source no library reads from; its catalog and reading progress are retained.
 
 Operation ID: `uninstallBloemPlatformNativeStorage`.
 Credentials: `bloemPlatformContext`.
@@ -804,18 +833,18 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 
 | Status | Body | Meaning |
 | --- | --- | --- |
-| 200 | [`BloemNativeStorageRemoval`](#bloemnativestorageremoval) | Uninstall and detach the source; its library, catalog and reading progress are retained. |
+| 200 | [`BloemNativeStorageRemoval`](#bloemnativestorageremoval) | Uninstall and detach a source no library reads from; its catalog and reading progress are retained. |
 | 400 | [`BloemNativeStorageError`](#bloemnativestorageerror) | invalid_request: query parameters were sent, or the body is not a strict application/json object with exactly the documented fields and valid values. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
 | 404 | [`BloemNativeStorageError`](#bloemnativestorageerror) | not_found: invalid path identity, absent resource or hidden authority. |
-| 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
+| 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict returns current_revision, the source's current configuration revision. source_in_use: a library reads from a source of this installation; change the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
 ### `POST /api/bloem/v1/admin/platform/native-storage/installations/{installation_id}/disable`
 
-Disable and detach the source; its library, catalog and reading progress are retained.
+Disable and detach a source no library reads from; its catalog and reading progress are retained.
 
 Operation ID: `disableBloemPlatformNativeStorage`.
 Credentials: `bloemPlatformContext`.
@@ -831,12 +860,12 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 
 | Status | Body | Meaning |
 | --- | --- | --- |
-| 200 | [`BloemNativeStorageRemoval`](#bloemnativestorageremoval) | Disable and detach the source; its library, catalog and reading progress are retained. |
+| 200 | [`BloemNativeStorageRemoval`](#bloemnativestorageremoval) | Disable and detach a source no library reads from; its catalog and reading progress are retained. |
 | 400 | [`BloemNativeStorageError`](#bloemnativestorageerror) | invalid_request: query parameters were sent, or the body is not a strict application/json object with exactly the documented fields and valid values. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token. |
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
 | 404 | [`BloemNativeStorageError`](#bloemnativestorageerror) | not_found: invalid path identity, absent resource or hidden authority. |
-| 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict returns current_revision, the source's current configuration revision. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
+| 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict returns current_revision, the source's current configuration revision. source_in_use: a library reads from a source of this installation; change the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
 | 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. mutation_outcome_unknown returns operation_id, operation and authorized known recovery identifiers; a lost commit acknowledgement is not rollback. tenant_unavailable: administrative authority could not be checked. |
 
@@ -959,6 +988,33 @@ Experimental native storage sources served by host-approved storage plugins; the
 | 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
 | 404 | [`BloemNativeStorageError`](#bloemnativestorageerror) | not_found: invalid path identity, absent resource or hidden authority. |
 | 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
+| 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
+
+### `DELETE /api/bloem/v1/admin/platform/native-storage/sources/{source_key}`
+
+Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched.
+
+Operation ID: `deleteRemovedSourceBloemPlatformNativeStorage`.
+Credentials: `bloemPlatformContext`.
+
+Experimental native storage sources served by host-approved storage plugins; the capabilities list which source kinds and media this host supports. A library uses a source as its storage location through the library-locations operations or the v2 library API. Requires the matching signed administrative context with current account/session, scope and actual resource authority. Entitlement to use a shared source does not permit configuring or removing its installation. Hidden resources retain not_found precedence. Inspect this scope's capabilities before offering mutations; backend_verified remains false. Reads have no body. Query parameters other than the documented pagination fields are rejected, including repeated or empty values. Reconcile unknown native-storage mutation outcomes instead of automatically replaying them.
+
+| Parameter | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `source_key` | path | string (uuid) | yes |  |
+
+Request body (required, `application/json`): [`BloemNativeStorageDeleteSourceBody`](#bloemnativestoragedeletesourcebody).
+Strict application/json object, at most 1 MiB. Exact field names; duplicate or unknown keys, trailing JSON and invalid UTF-8 are rejected. Revisions are positive integers.
+
+| Status | Body | Meaning |
+| --- | --- | --- |
+| 200 | [`BloemNativeStorageSourceDeletion`](#bloemnativestoragesourcedeletion) | Delete a removed source no library reads from, with its discovered entries, scan history and a disabled installation it leaves behind. The storage itself is not touched. |
+| 400 | [`BloemNativeStorageError`](#bloemnativestorageerror) | invalid_request: query parameters were sent, or the body is not a strict application/json object with exactly the documented fields and valid values. |
+| 401 | [`BloemNativeError`](README.md#bloemnativeerror) | Authentication or a current session of the required token type is missing; administrative routes require an administrative-context token. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | insufficient_platform_authority or insufficient_organization_authority: the administrative context's scope does not match the route, or the account lost that authority; organization_suspended: the organization context's organization is suspended. |
+| 404 | [`BloemNativeStorageError`](#bloemnativestorageerror) | not_found: invalid path identity, absent resource or hidden authority. |
+| 409 | [`BloemNativeStorageError`](#bloemnativestorageerror) | revision_conflict returns current_revision, the source's current configuration revision. source_attached: the source still has its plugin installation; remove it first. source_in_use: a library reads from the source; delete the library first. authorization_state_changed: the storage owner or source changed while the request waited for its locks; reload and retry. |
+| 413 | [`BloemNativeStorageError`](#bloemnativestorageerror) | request_too_large: the JSON body exceeds 1 MiB. |
 | 503 | [`BloemNativeStorageError`](#bloemnativestorageerror) | native_storage_unavailable: native storage, the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked. |
 
 ### `GET /api/bloem/v1/admin/platform/native-storage/sources/{source_key}/browse`
@@ -1201,6 +1257,12 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | `secret_key` | string | yes | Replacement S3 secret access key. No control characters. Encrypted at rest, never returned. |
 | `session_token` | string |  | Optional replacement session token; omitted or empty clears any stored token. Encrypted at rest, never returned. |
 
+### BloemNativeStorageDeleteSourceBody
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `expected_revision` | integer (int64) | yes | Current source configuration revision. |
+
 ### BloemNativeStorageDiscoverInstallBody
 
 | Field | Type | Required | Description |
@@ -1316,6 +1378,13 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `source` | [`SourceView`](#sourceview) | yes |  |
+
+### BloemNativeStorageSourceDeletion
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `deleted` | boolean: `True` | yes |  |
+| `source_key` | string | yes |  |
 
 ### BloemNativeStorageSourceMedia
 
@@ -1472,6 +1541,13 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | `selection_ref` | string | yes |  |
 | `source_key` | string | yes |  |
 
+### SourceLibrary
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `id` | integer (int64) | yes |  |
+| `name` | string | yes |  |
+
 ### SourcePage
 
 | Field | Type | Required | Description |
@@ -1487,7 +1563,9 @@ Strict application/json object, at most 1 MiB. Exact field names; duplicate or u
 | `configured` | boolean | yes |  |
 | `connection_summary` | object of string | yes |  |
 | `enabled` | boolean | yes |  |
+| `in_use` | boolean | yes |  |
 | `installation_id` | integer or null (int64) | yes |  |
+| `libraries` | array of [`SourceLibrary`](#sourcelibrary) | yes |  |
 | `organization_id` | string or null | yes |  |
 | `owner_kind` | string | yes |  |
 | `plugin_id` | string | yes |  |

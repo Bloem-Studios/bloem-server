@@ -111,6 +111,8 @@ const s3Source = {
     region: "us-east-1",
     endpoint: "https://s3.example.com",
   },
+  in_use: false,
+  libraries: [],
 } as StorageSource;
 
 describe("StorageSourceRow", () => {

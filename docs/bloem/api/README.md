@@ -12,7 +12,7 @@ Every typed operation under `/api/bloem/v1`, grouped by the topics of Bloem's ex
 | Topic | Operations | Explainer |
 | --- | ---: | --- |
 | [Live TV](live-tv.md) | 30 | [bloem-live-tv.md](../../architecture/bloem-live-tv.md) |
-| [Storage sources](storage.md) | 40 | [bloem-storage-sources.md](../../architecture/bloem-storage-sources.md) |
+| [Storage sources](storage.md) | 42 | [bloem-storage-sources.md](../../architecture/bloem-storage-sources.md) |
 | [Requests](requests.md) | 33 | [bloem-requests.md](../../architecture/bloem-requests.md) |
 | [Plans and preview](plans.md) | 34 | [bloem-plans.md](../../architecture/bloem-plans.md) |
 | [Messages and promotions](messages.md) | 24 | [bloem-messages-and-promotions.md](../../architecture/bloem-messages-and-promotions.md) |
