@@ -178,9 +178,7 @@ function DialogBody({
     if (error) {
       return (
         <div role="alert" className="space-y-3 text-sm">
-          <p className="text-destructive">
-            Plugin catalog unavailable. The list of storage plugins could not be loaded.
-          </p>
+          <p className="text-destructive">The list of storage types couldn&apos;t be loaded.</p>
           {onRetry ? (
             <Button
               type="button"
@@ -195,7 +193,7 @@ function DialogBody({
         </div>
       );
     }
-    return <p className="text-muted-foreground text-sm">Loading storage plugins...</p>;
+    return <p className="text-muted-foreground text-sm">Loading storage types...</p>;
   }
 
   // Offered in every administrative scope: an organization administrator adds
@@ -226,7 +224,11 @@ function DialogBody({
   }
 
   if (!s3 && !bookwarehouse) {
-    return <p className="text-muted-foreground text-sm">No storage plugins are available.</p>;
+    return (
+      <p className="text-muted-foreground text-sm">
+        No storage types are available. The platform administrator has to approve one first.
+      </p>
+    );
   }
   return (
     <div className="space-y-3">
@@ -236,7 +238,7 @@ function DialogBody({
           description={`Backblaze B2, Wasabi, Cloudflare R2, Amazon S3 and more · ${s3.version}`}
         >
           <Button variant="outline" onClick={() => setChoice("s3")}>
-            S3
+            Set up S3
           </Button>
         </PluginRow>
       ) : null}
@@ -247,7 +249,7 @@ function DialogBody({
           description={`Audiobook tracks · ${bookwarehouse.version}`}
         >
           <Button variant="outline" onClick={() => setChoice("bookwarehouse-audio")}>
-            Audiobooks
+            Set up audiobooks
           </Button>
         </PluginRow>
       ) : null}

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
+import { sourceActionErrorMessage } from "@/components/admin/plugins/s3Browse";
 import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
 import type { PluginConfigSchema } from "@/api/types";
 
@@ -126,7 +127,7 @@ export function useInstallStorageSource() {
       toast.success("Storage source added");
       void queryClient.invalidateQueries({ queryKey: adminV2QueryKey(key, "native-storage") });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Install failed"),
+    onError: (error) => toast.error(sourceActionErrorMessage(error)),
   });
 }
 
@@ -163,10 +164,10 @@ export function useUpgradeStorageSource() {
         },
       ),
     onSuccess: () => {
-      toast.success("Storage plugin upgraded");
+      toast.success("Storage source upgraded");
       void queryClient.invalidateQueries({ queryKey: adminV2QueryKey(key, "native-storage") });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Upgrade failed"),
+    onError: (error) => toast.error(sourceActionErrorMessage(error)),
   });
 }
 
@@ -262,7 +263,7 @@ export function useDiscoverStorageSource() {
       });
     },
     onError: (error, variables) => {
-      if (!variables.silent) toast.error(error instanceof Error ? error.message : "Install failed");
+      if (!variables.silent) toast.error(sourceActionErrorMessage(error));
     },
   });
 }
@@ -378,7 +379,7 @@ export function useReplaceStorageConfiguration() {
         queryKey: adminV2QueryKey(key, "native-storage", "sources"),
       });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Update failed"),
+    onError: (error) => toast.error(sourceActionErrorMessage(error)),
   });
 }
 
@@ -409,12 +410,12 @@ export function useRotateStorageCredentials() {
         ),
       }),
     onSuccess: () => {
-      toast.success("Credentials rotated");
+      toast.success("Keys replaced");
       void queryClient.invalidateQueries({
         queryKey: adminV2QueryKey(key, "native-storage", "sources"),
       });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Rotation failed"),
+    onError: (error) => toast.error(sourceActionErrorMessage(error)),
   });
 }
 
@@ -434,7 +435,7 @@ export function useDisableStorageSource() {
         queryKey: adminV2QueryKey(key, "native-storage", "sources"),
       });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Disable failed"),
+    onError: (error) => toast.error(sourceActionErrorMessage(error)),
   });
 }
 
@@ -454,7 +455,7 @@ export function useRemoveStorageSource() {
         queryKey: adminV2QueryKey(key, "native-storage", "sources"),
       });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Remove failed"),
+    onError: (error) => toast.error(sourceActionErrorMessage(error)),
   });
 }
 
@@ -478,7 +479,7 @@ export function useTestStorageSource() {
       } catch (error) {
         return {
           ok: false,
-          message: error instanceof Error && error.message ? error.message : "Connection failed",
+          message: sourceActionErrorMessage(error),
         };
       }
     },
@@ -543,6 +544,6 @@ export function useConfigureStorageSource() {
       toast.success("Bookwarehouse connected");
       void queryClient.invalidateQueries({ queryKey: adminV2QueryKey(key, "native-storage") });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Connection failed"),
+    onError: (error) => toast.error(sourceActionErrorMessage(error)),
   });
 }

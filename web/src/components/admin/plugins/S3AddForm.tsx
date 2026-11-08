@@ -25,7 +25,7 @@ import {
   addErrorMessage,
   browseErrorMessage,
   defaultRegionFor,
-  defaultRevisionModeFor,
+  DEFAULT_REVISION_MODE,
   inferAmazonRegion,
   isAmazonEndpoint,
   isBrowseUnsupported,
@@ -102,8 +102,8 @@ interface Problem {
 }
 
 const REVISION_OPTIONS: { value: RevisionMode; label: string }[] = [
-  { value: "checked-etag", label: "Checked ETag" },
-  { value: "strict", label: "Versioned (strict default)" },
+  { value: "checked-etag", label: "Check each file before and after reading (any bucket)" },
+  { value: "strict", label: "Read exact file versions only (needs versioning)" },
 ];
 
 function ordered(form: PluginAdminForm, first: string[]): PluginAdminForm {
@@ -223,12 +223,12 @@ function S3AddFormBody({
     () => ({
       ...formValuesFromConfig(descriptor.fields),
       region: DEFAULT_REGION,
-      revision_mode: defaultRevisionModeFor(""),
+      revision_mode: DEFAULT_REVISION_MODE,
     }),
     [descriptor],
   );
   const [values, setValues] = useState<Values>(initial);
-  // Region and revision mode follow the endpoint until the administrator sets them.
+  // The region follows the endpoint until the administrator sets it.
   const touched = useRef(new Set<string>());
   const [mode, setMode] = useState<Mode>("connect");
   const [provider, setProvider] = useState<S3ProviderId | null>(null);
@@ -402,8 +402,6 @@ function S3AddFormBody({
       const endpoint =
         typeof next.endpoint === "string" ? withHttpsScheme(next.endpoint.trim()) : "";
       if (!touched.current.has("region")) merged.region = defaultRegionFor(endpoint);
-      if (!touched.current.has("revision_mode"))
-        merged.revision_mode = defaultRevisionModeFor(endpoint);
     }
     if (derivedRegion !== undefined) merged.region = derivedRegion;
     if (CONNECTION_KEYS.some((key) => merged[key] !== values[key])) dropConnection();
@@ -937,15 +935,13 @@ function S3AddFormBody({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="s3-add-revision_mode">Revision mode</Label>
+                <Label htmlFor="s3-add-revision_mode">How Bloem checks files</Label>
                 <select
                   id="s3-add-revision_mode"
                   className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
                   value={revision}
-                  onChange={(event) => {
-                    touched.current.add("revision_mode");
-                    setValues({ ...values, revision_mode: event.target.value });
-                  }}
+                  aria-describedby="s3-add-revision_mode-hint"
+                  onChange={(event) => setValues({ ...values, revision_mode: event.target.value })}
                 >
                   {REVISION_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -953,9 +949,11 @@ function S3AddFormBody({
                     </option>
                   ))}
                 </select>
-                <p className="text-muted-foreground text-xs">
-                  Amazon S3 keeps object versions, so it defaults to Versioned (strict default);
-                  other providers usually do not, so they default to Checked ETag.
+                <p id="s3-add-revision_mode-hint" className="text-muted-foreground text-xs">
+                  Bloem makes sure it plays the same file it scanned. The first choice works with
+                  every bucket, and still reads exact versions when the bucket keeps them. Choose
+                  the second only if versioning is turned on for every bucket here: it refuses any
+                  file without a version, so a bucket without versioning shows nothing.
                 </p>
               </div>
               {mode === "typed" ? (
@@ -1105,7 +1103,7 @@ function S3AddFormBody({
       <div ref={feedbackRef} tabIndex={-1} className="space-y-3 outline-none">
         {duplicates.length > 0 ? (
           <p className="text-sm text-amber-600 dark:text-amber-400">
-            A source with this bucket and prefix already exists
+            A source for this bucket and folder already exists
             {targets.length > 1 ? ` for ${duplicates.join(", ")}` : ""}. You can still add another.
           </p>
         ) : null}

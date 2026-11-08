@@ -13,7 +13,7 @@ import {
   BROWSE_UNSUPPORTED_MESSAGE,
   browseErrorMessage,
   defaultRegionFor,
-  defaultRevisionModeFor,
+  DEFAULT_REVISION_MODE,
   isAmazonEndpoint,
   isBrowseUnsupported,
 } from "./s3Browse";
@@ -27,7 +27,7 @@ describe("Amazon detection and defaults", () => {
     "s3.amazonaws.com",
   ])("%s is Amazon", (endpoint) => {
     expect(isAmazonEndpoint(endpoint)).toBe(true);
-    expect(defaultRevisionModeFor(endpoint)).toBe("strict");
+    expect(DEFAULT_REVISION_MODE).toBe("checked-etag");
   });
 
   it.each([
@@ -59,7 +59,7 @@ describe("Amazon detection and defaults", () => {
   ])("%j is a gateway", (endpoint) => {
     expect(isAmazonEndpoint(endpoint)).toBe(false);
     expect(defaultRegionFor(endpoint)).toBe("us-east-1");
-    expect(defaultRevisionModeFor(endpoint)).toBe("checked-etag");
+    expect(DEFAULT_REVISION_MODE).toBe("checked-etag");
   });
 
   it("names the Amazon region message the form shows", () => {
@@ -81,7 +81,7 @@ describe("browseErrorMessage", () => {
       "These keys can't list buckets. If your provider gave you a specific bucket name, type it instead.",
     );
     expect(browseErrorMessage(err(422, "s3_access_denied"), "folders")).toBe(
-      "These keys can't list folders here. You can type the folder (prefix) instead.",
+      "These keys can't list folders here. You can type the folder name instead.",
     );
   });
   it("explains an unreachable service for a backend error and for a network failure", () => {
@@ -166,7 +166,7 @@ describe("addErrorMessage", () => {
     [
       403,
       "insufficient_organization_authority",
-      "You don't have permission to add storage sources.",
+      "You don't have permission to change storage sources.",
     ],
     [500, "internal", "Couldn't add this bucket. Try again."],
     [409, "conflict", "Couldn't add this bucket. Try again."],

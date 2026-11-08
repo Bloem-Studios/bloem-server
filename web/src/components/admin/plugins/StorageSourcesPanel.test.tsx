@@ -91,16 +91,17 @@ describe("StorageSourcesPanel", () => {
   it("lists sources with their state", () => {
     render(<StorageSourcesPanel />);
     const row = screen.getByText("Bookwarehouse").closest("li")!;
-    expect(within(row).getByText("attached")).toBeInTheDocument();
-    expect(within(row).getByText(/bloem\.storage\.bookwarehouse/)).toBeInTheDocument();
+    expect(within(row).getByText("Ready")).toBeInTheDocument();
+    expect(within(row).queryByText(/bloem\.storage/)).not.toBeInTheDocument();
   });
 
   it("offers only releases of the source's own plugin for an upgrade", () => {
     render(<StorageSourcesPanel />);
     fireEvent.click(screen.getByRole("button", { name: /upgrade/i }));
-    fireEvent.click(screen.getByRole("combobox", { name: "Release to upgrade to" }));
-    expect(screen.getByRole("option", { name: /bookwarehouse 0\.2\.0/ })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: /bloem\.storage\.other/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("combobox", { name: "Version to upgrade to" }));
+    expect(screen.getByRole("option", { name: /Version 0\.2\.0/ })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Version 1\.0\.0/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("option")).toHaveLength(1);
   });
 
   it("installs Bookwarehouse from the catalog without approval, uploads or JSON", () => {

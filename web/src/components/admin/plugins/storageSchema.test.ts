@@ -83,10 +83,10 @@ describe("validateS3Connection", () => {
     ).toMatch(/https/);
     expect(
       validateS3Connection({ bucket: "media", endpoint: "https://s3.example.com/x" }).endpoint,
-    ).toMatch(/path/);
+    ).toMatch(/without a bucket or folder/);
     expect(
       validateS3Connection({ bucket: "media", endpoint: "https://u:p@s3.example.com" }).endpoint,
-    ).toMatch(/credentials/);
+    ).toMatch(/user name or password/);
   });
   it("requires a bucket and valid-looking bucket name", () => {
     expect(validateS3Connection({}).bucket).toBeTruthy();
@@ -103,16 +103,16 @@ describe("validateS3Connection", () => {
   it("flags a query string or fragment in the endpoint", () => {
     expect(
       validateS3Connection({ bucket: "media", endpoint: "https://s3.example.com?x=1" }).endpoint,
-    ).toMatch(/query or fragment/);
+    ).toMatch(/\? or #/);
     expect(
       validateS3Connection({ bucket: "media", endpoint: "https://s3.example.com/#frag" }).endpoint,
-    ).toMatch(/query or fragment/);
+    ).toMatch(/\? or #/);
     expect(
       validateS3Connection({ bucket: "media", endpoint: "https://s3.example.com/?" }).endpoint,
-    ).toMatch(/query or fragment/);
+    ).toMatch(/\? or #/);
     expect(
       validateS3Connection({ bucket: "media", endpoint: "https://s3.example.com#" }).endpoint,
-    ).toMatch(/query or fragment/);
+    ).toMatch(/\? or #/);
   });
 });
 
@@ -167,10 +167,10 @@ describe("withS3FieldCopy", () => {
   it("labels the optional fields and gives the prefix its hint", () => {
     const fields = withS3FieldCopy(s3Schema({ maxLength: 63 }) as never).admin_form!.fields;
     const byKey = Object.fromEntries(fields.map((f) => [f.key, f]));
-    expect(byKey.prefix!.label).toBe("Prefix (optional)");
+    expect(byKey.prefix!.label).toBe("Folder (optional)");
     expect(byKey.prefix!.description).toBe(PREFIX_HINT);
     expect(PREFIX_HINT).toBe(
-      "Leave empty to use the whole bucket (recommended); choose folders per library",
+      "Leave empty to use the whole bucket (recommended). You choose folders for each library later.",
     );
     expect(byKey.session_token!.label).toBe("Session token (optional)");
     expect(byKey.bucket!.label).toBe("Bucket (optional)");
@@ -187,7 +187,7 @@ describe("validateS3Connection with an optional bucket", () => {
     expect(validateS3Connection({ bucket: "", prefix: "" }, { bucketOptional: true })).toEqual({});
     expect(
       validateS3Connection({ bucket: "", prefix: "movies/" }, { bucketOptional: true }).prefix,
-    ).toBe("A prefix needs a bucket. Leave it empty to use every bucket.");
+    ).toBe("A folder needs a bucket. Leave it empty to use every bucket.");
     expect(validateS3Connection({ bucket: "A_B" }, { bucketOptional: true }).bucket).toBeTruthy();
   });
 });

@@ -18,10 +18,10 @@ const ENDPOINT_REJECTED_MESSAGE =
 const BUCKETS_DENIED_MESSAGE =
   "These keys can't list buckets. If your provider gave you a specific bucket name, type it instead.";
 const FOLDERS_DENIED_MESSAGE =
-  "These keys can't list folders here. You can type the folder (prefix) instead.";
+  "These keys can't list folders here. You can type the folder name instead.";
 const KEYS_REJECTED_MESSAGE =
   "The provider rejected these keys for this bucket. Check the access key, the secret key and the bucket name.";
-const NO_PERMISSION_MESSAGE = "You don't have permission to add storage sources.";
+const NO_PERMISSION_MESSAGE = "You don't have permission to change storage sources.";
 const UNAVAILABLE_MESSAGE = "Storage isn't available on this server right now. Try again later.";
 const PLUGIN_REJECTED_MESSAGE =
   "This storage plugin release can't be used. Ask your platform administrator.";
@@ -29,7 +29,7 @@ const ADD_FAILED_MESSAGE = "Couldn't add this bucket. Try again.";
 
 /** Shown on a bucket whose add may have succeeded; retrying blindly could create a second source. */
 export const OUTCOME_UNKNOWN_MESSAGE =
-  "May have been created — check the source list before retrying.";
+  "This may have worked. Check the list of sources before you try again.";
 const UNREACHABLE_MESSAGE = "Couldn't reach the storage service. Check the address and try again.";
 const RATE_LIMITED_MESSAGE = "Too many requests. Wait a minute and try again.";
 const INCOMPLETE_MESSAGE = "Check the address and keys, then try again.";
@@ -48,7 +48,7 @@ function hostOf(endpoint: string): string {
   return "";
 }
 
-/** True for an Amazon S3 address, which has object versioning and needs an explicit region. */
+/** True for an Amazon S3 address, which needs an explicit region. */
 export function isAmazonEndpoint(endpoint: string): boolean {
   return hostOf(endpoint).endsWith(".amazonaws.com");
 }
@@ -71,10 +71,12 @@ export function defaultRegionFor(endpoint: string): string {
   return isAmazonEndpoint(endpoint) ? inferAmazonRegion(endpoint) : DEFAULT_REGION;
 }
 
-/** Only Amazon S3 versions objects; everything else is checked by ETag. */
-export function defaultRevisionModeFor(endpoint: string): RevisionMode {
-  return isAmazonEndpoint(endpoint) ? "strict" : "checked-etag";
-}
+/**
+ * Checked ETag for every provider. It still reads exact versions when a bucket
+ * keeps them, while strict mode refuses every file of a bucket without
+ * versioning, which is how Amazon S3 buckets start. Strict is an explicit choice.
+ */
+export const DEFAULT_REVISION_MODE: RevisionMode = "checked-etag";
 
 /** An address typed without a scheme is taken to be https. */
 export function withHttpsScheme(endpoint: string): string {
@@ -172,4 +174,30 @@ export function addErrorMessage(error: unknown): string {
   if (status === 502 || status === 504) return UNREACHABLE_MESSAGE;
   if (status === 503) return UNAVAILABLE_MESSAGE;
   return ADD_FAILED_MESSAGE;
+}
+
+const SOURCE_CHANGED_MESSAGE =
+  "This source changed in the meantime. Reload the page and try again.";
+const SOURCE_GONE_MESSAGE = "This source no longer exists. Reload the page.";
+const SOURCE_IN_USE_MESSAGE =
+  "A library uses this source, so only its keys can be changed. Use Replace keys.";
+
+/**
+ * What to tell the administrator when testing, changing, disabling or removing
+ * an existing source fails. Like the add messages, it is chosen from the
+ * server's error code and status only and never shows the server's own text.
+ */
+export function sourceActionErrorMessage(error: unknown): string {
+  switch (codeOf(error)) {
+    case "revision_conflict":
+      return SOURCE_CHANGED_MESSAGE;
+    case "not_found":
+      return SOURCE_GONE_MESSAGE;
+    case "configuration_namespace_unverified":
+      return SOURCE_IN_USE_MESSAGE;
+    case "s3_access_denied":
+      return "The storage service refused these keys. Check the access key and the secret key.";
+  }
+  const message = addErrorMessage(error);
+  return message === ADD_FAILED_MESSAGE ? OTHER_MESSAGE : message;
 }

@@ -59,11 +59,11 @@ const s3Schema = {
   admin_form: {
     fields: [
       field("source_id", "Source ID"),
-      field("source_name", "Source name"),
+      field("source_name", "Name (optional)"),
       field("bucket", "Bucket"),
       field("prefix", "Prefix"),
       field("region", "Region"),
-      field("endpoint", "S3 endpoint"),
+      field("endpoint", "Address"),
       field("access_key", "Access key", "PASSWORD", true),
       field("secret_key", "Secret key", "PASSWORD", true),
       field("state_path", "State path"),
@@ -157,7 +157,7 @@ describe("StorageSourceRow", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByLabelText("Bucket")).toHaveValue("media");
-    expect(screen.getByLabelText("Prefix (optional)")).toHaveValue("movies/");
+    expect(screen.getByLabelText("Folder (optional)")).toHaveValue("movies/");
     expect(screen.getByLabelText("Access key")).toHaveValue("");
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
     expect(screen.getByRole("alert")).toHaveTextContent(/Enter the keys again to save/);
@@ -222,12 +222,12 @@ describe("StorageSourceRow", () => {
 
     it("refuses a prefix without a bucket", () => {
       edit();
-      fireEvent.change(screen.getByLabelText("Prefix (optional)"), {
+      fireEvent.change(screen.getByLabelText("Folder (optional)"), {
         target: { value: "movies/" },
       });
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
       expect(screen.getByRole("alert")).toHaveTextContent(
-        "A prefix needs a bucket. Leave it empty to use every bucket.",
+        "A folder needs a bucket. Leave it empty to use every bucket.",
       );
       expect(replaceConfig).not.toHaveBeenCalled();
     });
@@ -293,12 +293,12 @@ describe("StorageSourceRow", () => {
     fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK" } });
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
     expect(
-      screen.getByText(/used by a library; only the keys can be changed/i),
+      screen.getByText(/uses this source, so only its keys can be changed/i),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Bucket")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "NEWAK" } });
     fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "NEWSK" } });
-    fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save new keys" }));
     expect(rotate).toHaveBeenCalledWith(
       { source: s3Source, accessKey: "NEWAK", secretKey: "NEWSK", sessionToken: "" },
       expect.any(Object),
@@ -312,9 +312,9 @@ describe("StorageSourceRow", () => {
       </ul>,
     );
     expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+    fireEvent.click(screen.getByRole("button", { name: "Replace keys" }));
     expect(
-      screen.getByText(/used by a library; only the keys can be changed/i),
+      screen.getByText(/uses this source, so only its keys can be changed/i),
     ).toBeInTheDocument();
   });
 
@@ -324,17 +324,17 @@ describe("StorageSourceRow", () => {
         <StorageSourceRow source={s3Source} artifact={s3Artifact} />
       </ul>,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+    fireEvent.click(screen.getByRole("button", { name: "Replace keys" }));
     fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK2" } });
     fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK2" } });
     expect(screen.getByLabelText("Access key")).toHaveAttribute("type", "password");
     expect(screen.getByLabelText("Secret key")).toHaveAttribute("type", "password");
     expect(screen.getByLabelText(/Session token/)).toHaveAttribute("type", "password");
-    fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save new keys" }));
     expect(screen.getByLabelText("Access key")).toHaveValue("AK2");
 
     rotate.mockImplementation((_i: unknown, o: { onSuccess?: () => void }) => o.onSuccess?.());
-    fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save new keys" }));
     expect(screen.queryByLabelText("Access key")).not.toBeInTheDocument();
   });
 
@@ -359,7 +359,7 @@ describe("StorageSourceRow", () => {
       );
       openEditAndFillKeys();
       expect(replaceConfig).toHaveBeenCalledTimes(1);
-      expect(screen.queryByText(/used by a library/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/uses this source/i)).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
       expect(screen.getByLabelText("Bucket")).toHaveValue("other-bucket");
       expect(screen.getByLabelText("Access key")).toHaveValue("AK");
@@ -373,7 +373,7 @@ describe("StorageSourceRow", () => {
       );
       openEditAndFillKeys();
       expect(replaceConfig).toHaveBeenCalledTimes(1);
-      expect(screen.queryByText(/used by a library/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/uses this source/i)).not.toBeInTheDocument();
       expect(screen.getByLabelText("Bucket")).toHaveValue("other-bucket");
       expect(screen.getByLabelText("Access key")).toHaveValue("AK");
       expect(screen.getByLabelText("Secret key")).toHaveValue("SK");
@@ -385,7 +385,7 @@ describe("StorageSourceRow", () => {
           <StorageSourceRow source={s3Source} artifact={s3Artifact} />
         </ul>,
       );
-      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      fireEvent.click(screen.getByRole("button", { name: "Replace keys" }));
       fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK2" } });
       fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK2" } });
       fireEvent.change(screen.getByLabelText(/Session token/), { target: { value: "TOK" } });
@@ -393,18 +393,18 @@ describe("StorageSourceRow", () => {
       rotate.mockImplementation((_i: unknown, o: { onError?: (e: Error) => void }) =>
         o.onError?.(new Error("rotation refused")),
       );
-      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save new keys" }));
       expect(rotate).toHaveBeenCalledTimes(1);
       expect(screen.getByLabelText("Access key")).toHaveValue("AK2");
       expect(screen.getByLabelText("Secret key")).toHaveValue("SK2");
       expect(screen.getByLabelText(/Session token/)).toHaveValue("TOK");
 
       rotate.mockImplementation((_i: unknown, o: { onSuccess?: () => void }) => o.onSuccess?.());
-      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save new keys" }));
       expect(rotate).toHaveBeenCalledTimes(2);
       // The form closes on success; reopening it shows empty inputs.
       expect(screen.queryByLabelText("Access key")).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      fireEvent.click(screen.getByRole("button", { name: "Replace keys" }));
       expect(screen.getByLabelText("Access key")).toHaveValue("");
       expect(screen.getByLabelText("Secret key")).toHaveValue("");
       expect(screen.getByLabelText(/Session token/)).toHaveValue("");
@@ -436,7 +436,7 @@ describe("StorageSourceRow", () => {
       );
       const button = screen.getByRole("button", { name: "Test" });
       expect(button).toBeDisabled();
-      expect(button).toHaveAccessibleDescription(/enable the source/i);
+      expect(button).toHaveAccessibleDescription(/disabled source can't be tested/i);
       fireEvent.click(button);
       expect(testSource).not.toHaveBeenCalled();
     });
@@ -493,10 +493,10 @@ describe("StorageSourceRow", () => {
         </ul>,
       );
       showTestResult();
-      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      fireEvent.click(screen.getByRole("button", { name: "Replace keys" }));
       fireEvent.change(screen.getByLabelText("Access key"), { target: { value: "AK2" } });
       fireEvent.change(screen.getByLabelText("Secret key"), { target: { value: "SK2" } });
-      fireEvent.click(screen.getByRole("button", { name: "Rotate keys" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save new keys" }));
       expect(rotate).toHaveBeenCalledTimes(1);
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
@@ -517,10 +517,10 @@ describe("StorageSourceRow", () => {
       expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
       expect(
         screen.getByText(
-          "This source uses plain HTTP on loopback; only its keys can be changed here.",
+          "This source uses a local address without https, so only its keys can be changed here.",
         ),
       ).toBeInTheDocument();
-      for (const name of ["Test", "Rotate keys", "Disable", "Remove"]) {
+      for (const name of ["Test", "Replace keys", "Disable", "Remove"]) {
         expect(screen.getByRole("button", { name })).toBeInTheDocument();
       }
     });
@@ -532,7 +532,7 @@ describe("StorageSourceRow", () => {
         </ul>,
       );
       expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
-      expect(screen.queryByText(/plain HTTP on loopback/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/local address without https/i)).not.toBeInTheDocument();
     });
   });
 
@@ -546,22 +546,22 @@ describe("StorageSourceRow", () => {
     }
     const queryAction = (name: string) => screen.queryByRole("button", { name });
 
-    it("hides Edit and Rotate keys for a source that is not manageable", () => {
+    it("hides Edit and Replace keys for a source that is not manageable", () => {
       renderRow({ ...s3Source, installation_id: null } as StorageSource);
       expect(queryAction("Edit")).not.toBeInTheDocument();
-      expect(queryAction("Rotate keys")).not.toBeInTheDocument();
+      expect(queryAction("Replace keys")).not.toBeInTheDocument();
     });
 
-    it("hides Edit and Rotate keys for a disabled source", () => {
+    it("hides Edit and Replace keys for a disabled source", () => {
       renderRow({ ...s3Source, enabled: false, state: "disabled" } as StorageSource);
       expect(queryAction("Edit")).not.toBeInTheDocument();
-      expect(queryAction("Rotate keys")).not.toBeInTheDocument();
+      expect(queryAction("Replace keys")).not.toBeInTheDocument();
     });
 
     it("hides every management action on a platform source in an organization scope", () => {
       scopeValue = "organization";
       renderRow(s3Source);
-      for (const name of ["Edit", "Rotate keys", "Disable", "Remove"]) {
+      for (const name of ["Edit", "Replace keys", "Disable", "Remove"]) {
         expect(queryAction(name)).not.toBeInTheDocument();
       }
     });
@@ -569,7 +569,7 @@ describe("StorageSourceRow", () => {
     it("keeps the management actions on an organization source in an organization scope", () => {
       scopeValue = "organization";
       renderRow({ ...s3Source, owner_kind: "organization" } as StorageSource);
-      for (const name of ["Test", "Edit", "Rotate keys", "Disable", "Remove"]) {
+      for (const name of ["Test", "Edit", "Replace keys", "Disable", "Remove"]) {
         expect(queryAction(name)).toBeEnabled();
       }
     });
@@ -586,7 +586,7 @@ describe("StorageSourceRow", () => {
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
       expect(replaceConfig).toHaveBeenCalledTimes(1);
       fireEvent.click(screen.getByRole("button", { name: "Remove" }));
-      fireEvent.click(screen.getByRole("button", { name: /confirm remove/i }));
+      fireEvent.click(screen.getByRole("button", { name: /remove source/i }));
       expect(remove).toHaveBeenCalledWith({ source: own }, expect.any(Object));
     });
 
@@ -674,23 +674,23 @@ describe("StorageSourceRow", () => {
         </ul>,
       );
       fireEvent.click(screen.getByRole("button", { name: "Upgrade" }));
-      fireEvent.click(screen.getByRole("combobox", { name: "Release to upgrade to" }));
+      fireEvent.click(screen.getByRole("combobox", { name: "Version to upgrade to" }));
       const options = screen.getAllByRole("option");
       expect(options).toHaveLength(1);
-      expect(options[0]).toHaveTextContent("bloem.storage.s3 0.3.2");
+      expect(options[0]).toHaveTextContent("Version 0.3.2");
     });
   });
 
-  it("confirms before removing and says the source is retained", () => {
+  it("confirms before removing and says nothing in the storage is deleted", () => {
     render(
       <ul>
         <StorageSourceRow source={s3Source} artifact={s3Artifact} />
       </ul>,
     );
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
-    expect(screen.getByText(/retained/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing in your storage is deleted/i)).toBeInTheDocument();
     expect(remove).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: /confirm remove/i }));
+    fireEvent.click(screen.getByRole("button", { name: /remove source/i }));
     expect(remove).toHaveBeenCalledWith({ source: s3Source }, expect.any(Object));
   });
 
@@ -703,11 +703,11 @@ describe("StorageSourceRow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Disable" }));
     expect(
       screen.getByText(
-        "Disabling detaches this source from its libraries. It cannot be re-enabled from this page.",
+        /Its libraries stop reading from it\. You can't turn it back on from this page/,
       ),
     ).toBeInTheDocument();
     expect(disable).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Confirm disable" }));
+    fireEvent.click(screen.getByRole("button", { name: "Disable source" }));
     expect(disable).toHaveBeenCalledTimes(1);
     expect(disable).toHaveBeenCalledWith({ source: s3Source }, expect.any(Object));
   });
@@ -720,7 +720,7 @@ describe("StorageSourceRow", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Disable" }));
     fireEvent.click(screen.getByRole("button", { name: "Keep" }));
-    expect(screen.queryByRole("button", { name: "Confirm disable" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Disable source" })).not.toBeInTheDocument();
     expect(disable).not.toHaveBeenCalled();
   });
 });

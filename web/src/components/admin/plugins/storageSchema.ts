@@ -35,9 +35,9 @@ export function pruneConfigSchema(
   };
 }
 
-/** The hint shown under every S3 prefix field. */
+/** The hint shown under every S3 folder (prefix) field. */
 export const PREFIX_HINT =
-  "Leave empty to use the whole bucket (recommended); choose folders per library";
+  "Leave empty to use the whole bucket (recommended). You choose folders for each library later.";
 
 /**
  * True when the S3 release accepts a source with no bucket, which then covers
@@ -67,7 +67,35 @@ export function withS3FieldCopy(schema: PluginConfigSchema): PluginConfigSchema 
       fields: schema.admin_form.fields.map((field) => {
         switch (field.key) {
           case "prefix":
-            return { ...field, label: "Prefix (optional)", description: PREFIX_HINT };
+            return { ...field, label: "Folder (optional)", description: PREFIX_HINT };
+          case "source_name":
+            return {
+              ...field,
+              label: "Name (optional)",
+              description: "How this source is shown in Bloem. Leave empty to use the bucket name.",
+            };
+          case "endpoint":
+            return {
+              ...field,
+              label: "Address",
+              description: "The https:// address your storage provider gave you.",
+            };
+          case "revision_mode":
+            return {
+              ...field,
+              label: "How Bloem checks files",
+              description:
+                "Check each file before and after reading works with every bucket. Read exact file versions only needs versioning turned on for the bucket; files without a version are refused.",
+              options: field.options?.map((option) => ({
+                ...option,
+                label:
+                  option.value === "checked-etag"
+                    ? "Check each file before and after reading (any bucket)"
+                    : option.value === "versioned"
+                      ? "Read exact file versions only (needs versioning)"
+                      : option.label,
+              })),
+            };
           case "session_token":
             return { ...field, label: "Session token (optional)" };
           case "bucket":
@@ -107,22 +135,23 @@ export function validateS3Connection(
     errors.bucket = "Bucket names must not look like an IP address.";
   const prefix = text("prefix");
   if (prefix !== "" && !bucket && options.bucketOptional)
-    errors.prefix = "A prefix needs a bucket. Leave it empty to use every bucket.";
-  else if (prefix.startsWith("/")) errors.prefix = "The prefix must not start with a slash.";
+    errors.prefix = "A folder needs a bucket. Leave it empty to use every bucket.";
+  else if (prefix.startsWith("/")) errors.prefix = "The folder must not start with a slash.";
   else if (prefix !== "" && !prefix.endsWith("/"))
-    errors.prefix = "The prefix must end with a slash, for example movies/.";
+    errors.prefix = "The folder must end with a slash, for example movies/.";
   const endpoint = text("endpoint");
   if (endpoint) {
     try {
       const u = new URL(endpoint);
-      if (u.protocol !== "https:") errors.endpoint = "The endpoint must use https.";
+      if (u.protocol !== "https:") errors.endpoint = "The address must start with https://.";
       // Checked on the raw text: an empty "?" or "#" leaves u.search / u.hash empty.
       else if (endpoint.includes("?") || endpoint.includes("#"))
-        errors.endpoint = "The endpoint must not include a query or fragment.";
+        errors.endpoint = "The address must not contain ? or #.";
       else if (u.username || u.password)
-        errors.endpoint = "The endpoint must not contain credentials.";
+        errors.endpoint = "The address must not contain a user name or password.";
       else if (u.pathname !== "/" && u.pathname !== "")
-        errors.endpoint = "The endpoint must not include a path.";
+        errors.endpoint =
+          "Use only the address itself, without a bucket or folder after it, such as https://s3.example.com.";
     } catch {
       errors.endpoint = "Enter a full URL such as https://s3.example.com.";
     }

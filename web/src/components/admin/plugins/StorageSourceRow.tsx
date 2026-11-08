@@ -39,11 +39,11 @@ const S3_PLUGIN = "bloem.storage.s3";
 const BOOKWAREHOUSE_PLUGIN = "bloem.storage.bookwarehouse";
 /** The server refuses a whole-configuration replacement on a source a library uses. */
 const IN_USE_ERROR_CODE = "configuration_namespace_unverified";
-const IN_USE_NOTICE = "This source is used by a library; only the keys can be changed.";
+const IN_USE_NOTICE = "A library uses this source, so only its keys can be changed.";
 // The connection summary omits the plain-http endpoint of such a source, so a whole-configuration
 // replace built from it would silently re-point the source; only its keys can be changed.
 const LOOPBACK_LOCKED_NOTICE =
-  "This source uses plain HTTP on loopback; only its keys can be changed here.";
+  "This source uses a local address without https, so only its keys can be changed here.";
 
 // Server-managed or developer-only fields an administrator is never asked for when editing.
 const HIDDEN_EDIT_FIELDS = [
@@ -66,7 +66,22 @@ function errorCode(error: unknown): string | undefined {
 }
 
 function artifactLabel(artifact: StorageArtifact): string {
-  return `${artifact.plugin_id} ${artifact.version} (${artifact.os}/${artifact.arch})`;
+  return `Version ${artifact.version} (${artifact.os}/${artifact.arch})`;
+}
+
+/** What kind of storage a source is, in words rather than its plugin ID. */
+function pluginLabel(pluginId: string): string {
+  if (pluginId === S3_PLUGIN) return "S3 storage";
+  if (pluginId === BOOKWAREHOUSE_PLUGIN) return "Bookwarehouse";
+  return pluginId;
+}
+
+/** The source's state as a word an administrator reads, not the server's code. */
+function stateLabel(state: string): string {
+  if (state === "attached") return "Ready";
+  if (state === "disabled") return "Disabled";
+  const words = state.replaceAll("_", " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 function ArtifactSelect({
@@ -83,7 +98,7 @@ function ArtifactSelect({
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger aria-label={label} className="sm:flex-1">
-        <SelectValue placeholder="Choose a release" />
+        <SelectValue placeholder="Choose a version" />
       </SelectTrigger>
       <SelectContent>
         {artifacts.map((artifact) => (
@@ -121,7 +136,7 @@ function UpgradeForm({
   if (releases.length === 0) {
     return (
       <p className="text-muted-foreground mt-2 text-[13px]">
-        No catalog releases of {source.plugin_id} are available.
+        No other versions of {pluginLabel(source.plugin_id)} are available.
       </p>
     );
   }
@@ -131,7 +146,7 @@ function UpgradeForm({
         artifacts={releases}
         value={artifactKey}
         onChange={setArtifactKey}
-        label="Release to upgrade to"
+        label="Version to upgrade to"
       />
       <Button type="submit" size="sm" disabled={!artifactKey || upgrade.isPending}>
         {upgrade.isPending ? "Upgrading..." : "Upgrade"}
@@ -232,7 +247,7 @@ function RotateKeysForm({ source, onDone }: { source: StorageSource; onDone: () 
         />
       </label>
       <Button type="submit" disabled={rotate.isPending || !accessKey || !secretKey}>
-        {rotate.isPending ? "Rotating..." : "Rotate keys"}
+        {rotate.isPending ? "Saving..." : "Save new keys"}
       </Button>
     </form>
   );
@@ -274,7 +289,8 @@ function S3EditForm({
   if (!schema) {
     return (
       <p className="text-muted-foreground mt-2 text-[13px]">
-        This S3 release does not describe its configuration, so the source cannot be edited here.
+        This version of the S3 plugin doesn't describe its settings, so the source can't be edited
+        here.
       </p>
     );
   }
@@ -348,8 +364,8 @@ function RemoveConfirmation({
   return (
     <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[13px]">
       <p>
-        Remove {name}? The source&apos;s settings are retained, but libraries that read from it can
-        no longer reach their books until it is set up again.
+        Remove {name}? Libraries that read from it stop finding their files until you add the source
+        again. Nothing in your storage is deleted.
       </p>
       <div className="flex gap-2">
         <Button
@@ -358,7 +374,7 @@ function RemoveConfirmation({
           disabled={remove.isPending}
           onClick={() => remove.mutate({ source }, { onSuccess: onDone })}
         >
-          {remove.isPending ? "Removing..." : "Confirm remove"}
+          {remove.isPending ? "Removing..." : "Remove source"}
         </Button>
         <Button variant="ghost" size="sm" disabled={remove.isPending} onClick={onDone}>
           Keep
@@ -368,12 +384,21 @@ function RemoveConfirmation({
   );
 }
 
-function DisableConfirmation({ source, onDone }: { source: StorageSource; onDone: () => void }) {
+function DisableConfirmation({
+  source,
+  name,
+  onDone,
+}: {
+  source: StorageSource;
+  name: string;
+  onDone: () => void;
+}) {
   const disable = useDisableStorageSource();
   return (
     <div className="mt-2 space-y-2 rounded-md border border-dashed p-3 text-[13px]">
       <p>
-        Disabling detaches this source from its libraries. It cannot be re-enabled from this page.
+        Disable {name}? Its libraries stop reading from it. You can&apos;t turn it back on from this
+        page; to use the storage again, add it as a new source. Nothing in your storage is deleted.
       </p>
       <div className="flex gap-2">
         <Button
@@ -382,7 +407,7 @@ function DisableConfirmation({ source, onDone }: { source: StorageSource; onDone
           disabled={disable.isPending}
           onClick={() => disable.mutate({ source }, { onSuccess: onDone })}
         >
-          {disable.isPending ? "Disabling..." : "Confirm disable"}
+          {disable.isPending ? "Disabling..." : "Disable source"}
         </Button>
         <Button variant="ghost" size="sm" disabled={disable.isPending} onClick={onDone}>
           Keep
@@ -406,9 +431,14 @@ function SummaryLine({ source }: { source: StorageSource }) {
   const parts = [
     allBuckets ? "All buckets" : "",
     summary.bucket ? `Bucket ${summary.bucket}` : "",
-    summary.prefix ? `Prefix ${summary.prefix}` : "",
+    summary.prefix ? `Folder ${summary.prefix}` : "",
     summary.region ? `Region ${summary.region}` : "",
-    summary.endpoint ? `Endpoint ${summary.endpoint}` : "",
+    summary.endpoint ? `Address ${summary.endpoint}` : "",
+    summary.revision_mode === "checked-etag"
+      ? "Checks each file"
+      : summary.revision_mode
+        ? "Exact versions only"
+        : "",
   ].filter(Boolean);
   if (parts.length === 0) return null;
   return (
@@ -454,6 +484,7 @@ export function StorageSourceRow({
   const locked = inUse || serverSaysInUse;
   const manageable = source.installation_id !== null;
   const name = displayName(source);
+  const kind = pluginLabel(source.plugin_id);
   const sourceDisabled = !source.enabled || source.state === "disabled";
   // The server refuses to change a platform source from an organization scope.
   const platformBlocked = scope === "organization" && source.owner_kind === "platform";
@@ -473,12 +504,14 @@ export function StorageSourceRow({
         <HardDrive className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate">
           <span className="font-medium">{name}</span>
-          <span className="text-muted-foreground"> · {source.plugin_id}</span>
+          {kind !== name ? <span className="text-muted-foreground"> · {kind}</span> : null}
         </span>
         <Badge variant={source.state === "attached" ? "secondary" : "outline"}>
-          {source.state}
+          {stateLabel(source.state)}
         </Badge>
-        {!source.enabled ? <Badge variant="outline">disabled</Badge> : null}
+        {!source.enabled && source.state !== "disabled" ? (
+          <Badge variant="outline">Disabled</Badge>
+        ) : null}
       </div>
 
       {isS3 ? <SummaryLine source={source} /> : null}
@@ -500,7 +533,7 @@ export function StorageSourceRow({
             </Button>
             {sourceDisabled ? (
               <span id={testHintId} className="sr-only">
-                Enable the source to test its connection.
+                A disabled source can't be tested.
               </span>
             ) : null}
           </>
@@ -512,7 +545,7 @@ export function StorageSourceRow({
         ) : null}
         {isS3 && canManage ? (
           <Button variant="ghost" size="sm" onClick={() => toggle("rotate")}>
-            {panel === "rotate" ? "Cancel" : "Rotate keys"}
+            {panel === "rotate" ? "Cancel" : "Replace keys"}
           </Button>
         ) : null}
         {source.state === "attached" && canUpgrade ? (
@@ -564,8 +597,8 @@ export function StorageSourceRow({
           />
         ) : (
           <p className="text-muted-foreground mt-2 text-[13px]">
-            The plugin catalog has no release of {source.plugin_id}, so the source cannot be edited
-            here.
+            The plugin catalog has no version of {pluginLabel(source.plugin_id)}, so the source
+            can&apos;t be edited here.
           </p>
         )
       ) : null}
@@ -592,6 +625,7 @@ export function StorageSourceRow({
       {disabling ? (
         <DisableConfirmation
           source={source}
+          name={name}
           onDone={() => {
             setDisabling(false);
             setPanel(null);

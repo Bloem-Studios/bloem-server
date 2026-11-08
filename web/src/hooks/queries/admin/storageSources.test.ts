@@ -362,14 +362,25 @@ describe("storage source mutations", () => {
     );
   });
 
-  it("test connection never throws: a failure resolves ok false with the message", async () => {
+  it("test connection never throws: a failure resolves ok false with fixed text", async () => {
     adminV2Api.mockImplementation(async () => {
       throw new AdminV2ClientError(502, "storage_unreachable", "Bucket unreachable");
     });
     const { result } = renderHook(() => useTestStorageSource(), { wrapper });
     await expect(result.current.mutateAsync({ source })).resolves.toEqual({
       ok: false,
-      message: "Bucket unreachable",
+      message: "Couldn't reach the storage service. Check the address and try again.",
+    });
+  });
+
+  it("explains a refused key in words, not with the server's text", async () => {
+    adminV2Api.mockImplementation(async () => {
+      throw new AdminV2ClientError(422, "s3_access_denied", "The S3 backend denied access");
+    });
+    const { result } = renderHook(() => useTestStorageSource(), { wrapper });
+    await expect(result.current.mutateAsync({ source })).resolves.toEqual({
+      ok: false,
+      message: "The storage service refused these keys. Check the access key and the secret key.",
     });
   });
 });
