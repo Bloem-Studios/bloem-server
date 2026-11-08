@@ -930,7 +930,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 data-slot="table-head"
                 scope="col"
               >
-                Account
+                Person
               </th>
               <th
                 class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
@@ -944,7 +944,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 data-slot="table-head"
                 scope="col"
               >
-                Profiles and groups
+                Profiles and access groups
               </th>
               <th
                 class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
@@ -954,18 +954,15 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 Last activity
               </th>
               <th
-                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
-                data-slot="table-head"
-                scope="col"
-              >
-                Security revision
-              </th>
-              <th
                 class="text-foreground h-10 px-2 py-3 align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
                 data-slot="table-head"
                 scope="col"
               >
-                Details
+                <span
+                  class="sr-only"
+                >
+                  Details
+                </span>
               </th>
             </tr>
           </thead>
@@ -997,7 +994,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 data-slot="table-cell"
               >
                 <span
-                  class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+                  class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground capitalize"
                   data-slot="badge"
                   data-variant="outline"
                 >
@@ -1044,22 +1041,17 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 8/13/2026
               </td>
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] font-mono text-xs"
-                data-slot="table-cell"
-              >
-                3
-              </td>
-              <td
                 class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
                 data-slot="table-cell"
               >
                 <button
+                  aria-label="Details for Alex"
                   class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 duration-150 hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
                   data-size="sm"
                   data-slot="button"
                   data-variant="ghost"
                 >
-                  Inspect Alex
+                  Details
                 </button>
               </td>
             </tr>
@@ -1090,7 +1082,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
             </div>
           </div>
           <span
-            class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+            class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground capitalize"
             data-slot="badge"
             data-variant="outline"
           >
@@ -1130,18 +1122,14 @@ exports[`multitenant administration responsive release snapshots > captures Peop
           </div>
         </div>
         <button
+          aria-label="Details for Alex"
           class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent duration-150 hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5 mt-3"
           data-size="sm"
           data-slot="button"
           data-variant="outline"
         >
-          Inspect Alex
+          Details
         </button>
-        <p
-          class="text-muted-foreground mt-2 text-xs"
-        >
-          Security revision 3
-        </p>
       </li>
     </ul>
     <aside
@@ -1159,17 +1147,17 @@ exports[`multitenant administration responsive release snapshots > captures Peop
         data-slot="button"
         data-variant="default"
       >
-        Apply policy
+        Change plan or settings
       </button>
       <select
-        aria-label="Assign selected people to group"
+        aria-label="Move their profiles to an access group"
         class="border-input bg-background h-9 rounded-md border px-3 text-sm"
       >
         <option
           selected=""
           value=""
         >
-          Assign group…
+          Move to access group
         </option>
         <option
           value="1"
@@ -1183,15 +1171,15 @@ exports[`multitenant administration responsive release snapshots > captures Peop
         data-slot="button"
         data-variant="outline"
       >
-        Reactivate memberships
+        Reactivate
       </button>
       <button
-        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-destructive text-white shadow-sm duration-150 hover:bg-destructive/90 focus-visible:ring-destructive/20 h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
+        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent duration-150 hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
         data-size="sm"
         data-slot="button"
-        data-variant="destructive"
+        data-variant="outline"
       >
-        Suspend memberships
+        Suspend
       </button>
     </aside>
   </div>
@@ -1232,7 +1220,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 data-slot="table-head"
                 scope="col"
               >
-                Account
+                Person
               </th>
               <th
                 class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
@@ -1246,7 +1234,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 data-slot="table-head"
                 scope="col"
               >
-                Profiles and groups
+                Profiles and access groups
               </th>
               <th
                 class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
@@ -1256,18 +1244,15 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 Last activity
               </th>
               <th
-                class="text-foreground h-10 px-2 py-3 text-left align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]"
-                data-slot="table-head"
-                scope="col"
-              >
-                Security revision
-              </th>
-              <th
                 class="text-foreground h-10 px-2 py-3 align-middle font-medium whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
                 data-slot="table-head"
                 scope="col"
               >
-                Details
+                <span
+                  class="sr-only"
+                >
+                  Details
+                </span>
               </th>
             </tr>
           </thead>
@@ -1299,7 +1284,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 data-slot="table-cell"
               >
                 <span
-                  class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+                  class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground capitalize"
                   data-slot="badge"
                   data-variant="outline"
                 >
@@ -1346,22 +1331,17 @@ exports[`multitenant administration responsive release snapshots > captures Peop
                 8/13/2026
               </td>
               <td
-                class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] font-mono text-xs"
-                data-slot="table-cell"
-              >
-                3
-              </td>
-              <td
                 class="p-2 align-middle whitespace-nowrap sm:px-3 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] text-right"
                 data-slot="table-cell"
               >
                 <button
+                  aria-label="Details for Alex"
                   class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 duration-150 hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
                   data-size="sm"
                   data-slot="button"
                   data-variant="ghost"
                 >
-                  Inspect Alex
+                  Details
                 </button>
               </td>
             </tr>
@@ -1392,7 +1372,7 @@ exports[`multitenant administration responsive release snapshots > captures Peop
             </div>
           </div>
           <span
-            class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground"
+            class="inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors duration-150 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3 border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground capitalize"
             data-slot="badge"
             data-variant="outline"
           >
@@ -1432,18 +1412,14 @@ exports[`multitenant administration responsive release snapshots > captures Peop
           </div>
         </div>
         <button
+          aria-label="Details for Alex"
           class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent duration-150 hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5 mt-3"
           data-size="sm"
           data-slot="button"
           data-variant="outline"
         >
-          Inspect Alex
+          Details
         </button>
-        <p
-          class="text-muted-foreground mt-2 text-xs"
-        >
-          Security revision 3
-        </p>
       </li>
     </ul>
     <aside
@@ -1461,17 +1437,17 @@ exports[`multitenant administration responsive release snapshots > captures Peop
         data-slot="button"
         data-variant="default"
       >
-        Apply policy
+        Change plan or settings
       </button>
       <select
-        aria-label="Assign selected people to group"
+        aria-label="Move their profiles to an access group"
         class="border-input bg-background h-9 rounded-md border px-3 text-sm"
       >
         <option
           selected=""
           value=""
         >
-          Assign group…
+          Move to access group
         </option>
         <option
           value="1"
@@ -1485,15 +1461,15 @@ exports[`multitenant administration responsive release snapshots > captures Peop
         data-slot="button"
         data-variant="outline"
       >
-        Reactivate memberships
+        Reactivate
       </button>
       <button
-        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-destructive text-white shadow-sm duration-150 hover:bg-destructive/90 focus-visible:ring-destructive/20 h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
+        class="inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border bg-transparent duration-150 hover:bg-accent hover:text-accent-foreground h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
         data-size="sm"
         data-slot="button"
-        data-variant="destructive"
+        data-variant="outline"
       >
-        Suspend memberships
+        Suspend
       </button>
     </aside>
   </div>

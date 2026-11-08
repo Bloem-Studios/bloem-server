@@ -74,7 +74,7 @@ no other plan can take its key. See
 1. Create or select a plan.
 2. Check its policy and whether it is enabled.
 3. Create a **new revision** for every change. Old revisions are never rewritten.
-4. On the organization's page (**Tenant entitlement**) or the **Direct Accounts**
+4. On the organization's page (**Plan**) or the **Direct Accounts**
    page, select the exact revision and run the preview.
 5. Review the changes, then confirm within ten minutes. The confirmation belongs
    to what you previewed; if anything changed, preview again.
@@ -83,7 +83,7 @@ To roll back, create a new revision from an older one. Groups an organization
 made itself are kept when you apply a plan to the organization.
 
 To move a reviewed set of existing accounts between exact revisions, use policy
-cohorts and bulk jobs: **Bulk Account Policies** for direct accounts, **Policy
+cohorts and bulk jobs: **Change Many Accounts** for direct accounts, **Policy
 Cohorts** in an organization context. See
 [bulk policy cohorts](../../operations/bulk-policy-cohorts.md).
 

@@ -38,31 +38,43 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EntitlementTemplateEditor } from "./EntitlementTemplateEditor";
+import {
+  formatDateTime,
+  limitLabel,
+  qualityLabel,
+} from "@/components/admin/policy/policyVocabulary";
 
 function policySummary(template: EntitlementTemplate) {
   const policy = template.policy;
-  return [
-    policy.playback_allowed
-      ? `${policy.max_streams} ${policy.max_streams === 1 ? "stream" : "streams"}`
-      : "Browse only",
-    `${policy.max_profiles} ${policy.max_profiles === 1 ? "profile" : "profiles"}`,
-    `Downloads ${policy.download_allowed ? "on" : "off"}`,
-    `Transcoded downloads ${policy.download_transcode_allowed ? "on" : "off"}`,
-    `Requests ${policy.requests_allowed ? "on" : "off"}`,
-    `Quality ${policy.max_playback_quality || "unrestricted"}`,
-  ].join(" · ");
+  const parts = policy.playback_allowed
+    ? [
+        policy.max_streams === 0 ? "Unlimited screens" : limitLabel(policy.max_streams, "screen"),
+        qualityLabel(policy.max_playback_quality),
+        policy.download_allowed || policy.download_transcode_allowed ? "Downloads" : "No downloads",
+      ]
+    : ["Browse only, no playback"];
+  parts.push(
+    policy.max_profiles === 0 ? "Unlimited profiles" : limitLabel(policy.max_profiles, "profile"),
+  );
+  parts.push(policy.requests_allowed ? "Requests" : "No requests");
+  return parts.join(" · ");
 }
 
 function formatTimestamp(value?: string) {
-  if (!value) return "Timestamp unavailable";
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return value ? formatDateTime(value) : "Date not recorded";
+}
+
+/** A key suggestion for a copy, like "standard-copy". */
+function suggestKey(name: string) {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug ? `${slug}-copy` : "";
 }
 
 export default function EntitlementTemplatesPage() {
-  useDocumentTitle("Entitlement Templates");
+  useDocumentTitle("Plans");
   const templates = useEntitlementTemplates();
   const libraries = useAdminLibraries();
   const create = useCreateEntitlementTemplate();
@@ -109,17 +121,17 @@ export default function EntitlementTemplatesPage() {
             revise.reset();
           }}
         >
-          <ArrowLeft className="size-4" /> All templates
+          <ArrowLeft className="size-4" /> All plans
         </Button>
         <div className="page-header">
           <div>
             <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">
-              {selected?.name ?? "New entitlement template"}
+              {selected?.name ?? "New plan"}
             </h1>
             <p className="page-subtitle text-sm sm:text-base">
               {selected
-                ? `Revision ${selected.revision} · edits create an immutable new revision.`
-                : "Starts with all libraries, 3 streams, 5 profiles, and both download modes enabled."}
+                ? `Revision ${selected.revision}. Saving creates revision ${selected.revision + 1}; accounts stay on the revision they have until you move them.`
+                : "Starts with all libraries, 3 screens, 5 profiles and downloads allowed. Change anything before you save."}
             </p>
           </div>
         </div>
@@ -134,7 +146,7 @@ export default function EntitlementTemplatesPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <History className="size-4" /> Revision history
+                <History className="size-4" /> Revisions
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -148,7 +160,10 @@ export default function EntitlementTemplatesPage() {
                       className="border-border flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3"
                     >
                       <div className="space-y-1">
-                        <p className="font-medium">Revision {revision.revision}</p>
+                        <p className="font-medium">
+                          Revision {revision.revision}
+                          {revision.revision === selected.revision ? " (current)" : ""}
+                        </p>
                         <p className="text-muted-foreground">
                           {formatTimestamp(revision.created_at)}
                         </p>
@@ -159,7 +174,7 @@ export default function EntitlementTemplatesPage() {
                           type="button"
                           size="sm"
                           variant="outline"
-                          aria-label={`Roll back to revision ${revision.revision}`}
+                          aria-label={`Go back to revision ${revision.revision}`}
                           disabled={rollback.isPending}
                           onClick={() =>
                             void rollback
@@ -173,7 +188,7 @@ export default function EntitlementTemplatesPage() {
                               .catch(() => undefined)
                           }
                         >
-                          Restore as new revision
+                          Go back to this
                         </Button>
                       ) : null}
                     </li>
@@ -182,7 +197,7 @@ export default function EntitlementTemplatesPage() {
               )}
               {history.isError ? (
                 <p className="text-destructive text-sm" role="alert">
-                  {history.error.message}
+                  Revisions couldn’t be loaded.
                 </p>
               ) : null}
               {rollback.error ? (
@@ -201,10 +216,11 @@ export default function EntitlementTemplatesPage() {
     <section className="page-shell space-y-6 py-4 sm:py-6">
       <div className="page-header gap-5">
         <div>
-          <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Entitlement Templates</h1>
-          <p className="page-subtitle text-sm sm:text-base">
-            Reusable per-member policies for Bloem tenants. Existing tenants change only after a dry
-            run and explicit apply.
+          <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Plans</h1>
+          <p className="page-subtitle max-w-3xl text-sm sm:text-base">
+            A plan sets what an account gets: libraries, screens, picture quality, downloads and
+            requests. Editing a plan never changes accounts already on it; you move them to the new
+            revision when you are ready.
           </p>
         </div>
         <Button
@@ -214,17 +230,17 @@ export default function EntitlementTemplatesPage() {
             setCreating(true);
           }}
         >
-          <Plus className="size-4" /> New template
+          <Plus className="size-4" /> New plan
         </Button>
       </div>
       {templates.isLoading ? (
         <Skeleton className="h-48 w-full" />
       ) : templates.isError ? (
         <p className="text-destructive" role="alert">
-          {templates.error.message}
+          Plans couldn’t be loaded. Reload the page to try again.
         </p>
       ) : templates.data?.length === 0 ? (
-        <p className="text-muted-foreground">No entitlement templates yet.</p>
+        <p className="text-muted-foreground">No plans yet. Create one to get started.</p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {templates.data?.map((template) => (
@@ -237,11 +253,11 @@ export default function EntitlementTemplatesPage() {
                       template.archived ? "outline" : template.enabled ? "secondary" : "outline"
                     }
                   >
-                    {template.archived ? "Archived" : template.enabled ? "Enabled" : "Disabled"}
+                    {template.archived ? "Archived" : template.enabled ? "Offered" : "Not offered"}
                   </Badge>
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  {template.key} · revision {template.revision}
+                  Revision {template.revision} · <span className="font-mono">{template.key}</span>
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -264,16 +280,16 @@ export default function EntitlementTemplatesPage() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    aria-label={`Clone ${template.name}`}
+                    aria-label={`Copy ${template.name}`}
                     onClick={() => {
                       clone.reset();
                       setCloneCandidate(template);
-                      setCloneKey("");
+                      setCloneKey(suggestKey(template.name));
                       setCloneName(template.name);
                     }}
                     disabled={clone.isPending}
                   >
-                    <Copy className="size-3.5" /> Clone
+                    <Copy className="size-3.5" /> Copy
                   </Button>
                   <Button
                     type="button"
@@ -295,11 +311,10 @@ export default function EntitlementTemplatesPage() {
         </div>
       )}
       <p className="text-muted-foreground text-sm">
-        Product mappings can only select enabled, non-archived templates.{" "}
+        Only offered plans can be given to organizations, accounts and storefront products.{" "}
         <Link className="underline" to="/admin/platform/organizations">
-          Manage tenant applications
+          Go to organizations
         </Link>
-        .
       </p>
       <Dialog
         open={Boolean(cloneCandidate)}
@@ -312,22 +327,27 @@ export default function EntitlementTemplatesPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Clone {cloneCandidate?.name}</DialogTitle>
+            <DialogTitle>Copy {cloneCandidate?.name}</DialogTitle>
             <DialogDescription>
-              Copy the pinned source revision into a new template with its own stable key.
+              Makes a new plan with the same settings as revision {cloneCandidate?.revision}.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="clone-key">New key</Label>
+              <Label htmlFor="clone-key">Key</Label>
               <Input
                 id="clone-key"
+                className="font-mono"
                 value={cloneKey}
                 onChange={(event) => setCloneKey(event.target.value)}
               />
+              <p className="text-muted-foreground text-xs">
+                A short ID for the storefront and the API, like premium-plus. It can’t be changed
+                later.
+              </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="clone-name">New name</Label>
+              <Label htmlFor="clone-name">Name</Label>
               <Input
                 id="clone-name"
                 value={cloneName}
@@ -336,7 +356,7 @@ export default function EntitlementTemplatesPage() {
             </div>
             {clone.error ? (
               <p className="text-destructive text-sm" role="alert">
-                {clone.error.message}
+                {clone.error.message || "The copy couldn’t be made. Try a different key."}
               </p>
             ) : null}
           </div>
@@ -363,7 +383,7 @@ export default function EntitlementTemplatesPage() {
                   .catch(() => undefined);
               }}
             >
-              Create clone
+              Make copy
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -376,8 +396,8 @@ export default function EntitlementTemplatesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Archive {archiveCandidate?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Archived templates remain available for audit history but cannot be selected for new
-              mappings.
+              Accounts already on this plan keep their settings, and its history stays readable.
+              Nobody new can be put on it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -401,7 +421,7 @@ export default function EntitlementTemplatesPage() {
               }}
               disabled={archive.isPending}
             >
-              Archive template
+              Archive plan
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -180,6 +180,18 @@ function installBaseRoutes(options: { snapshotItems?: unknown[] } = {}) {
   });
 }
 
+function snapshotCalls() {
+  return vi
+    .mocked(adminV2Api)
+    .mock.calls.filter(([path]) => path === "/platform/accounts/entitlement-snapshots");
+}
+
+function previewCalls() {
+  return vi
+    .mocked(adminV2Api)
+    .mock.calls.filter(([path]) => path === "/platform/accounts/entitlement-bulk/policy-previews");
+}
+
 function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -194,8 +206,8 @@ function renderPage() {
 }
 
 async function reviewAccounts(user: ReturnType<typeof userEvent.setup>, ids = "41, 42") {
-  await user.type(screen.getByLabelText("Server account IDs"), ids);
-  await user.click(screen.getByRole("button", { name: "Review selected accounts" }));
+  await user.type(screen.getByLabelText("Account numbers"), ids);
+  await user.click(screen.getByRole("button", { name: "Look up current settings" }));
   await screen.findByRole("heading", { name: "Account 41" });
 }
 
@@ -205,16 +217,67 @@ describe("DirectAccountPolicyBulkPage", () => {
     vi.clearAllMocks();
   });
 
-  it("requires a unique explicit bounded Server account selection", async () => {
+  it("requires whole account numbers before reading any account", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(screen.queryByRole("radiogroup", { name: "Policy operation" })).not.toBeInTheDocument();
-    await user.type(screen.getByLabelText("Server account IDs"), "41, 41");
-    await user.click(screen.getByRole("button", { name: "Review selected accounts" }));
+    expect(
+      screen.queryByRole("radiogroup", { name: "What should change" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Look up current settings" })).toBeDisabled();
+    await user.type(screen.getByLabelText("Account numbers"), "41, 4x");
+    await user.click(screen.getByRole("button", { name: "Look up current settings" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/duplicate Server account IDs/i);
-    expect(adminV2Api).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/whole numbers/i);
+    expect(snapshotCalls()).toHaveLength(0);
+  });
+
+  it("reads each account once even when it is listed twice", async () => {
+    const user = userEvent.setup();
+    installBaseRoutes({ snapshotItems: [{ account_id: 41, snapshot: snapshot(41) }] });
+    renderPage();
+    await reviewAccounts(user, "41, 41");
+
+    expect(JSON.parse(String(snapshotCalls()[0]?.[1]?.body))).toEqual({ account_ids: [41] });
+  });
+
+  it("puts accounts on a chosen plan revision from the plan list", async () => {
+    const user = userEvent.setup();
+    vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
+      if (path === "/platform/entitlement-templates?status=enabled") {
+        return {
+          templates: [
+            { key: "premium", name: "Premium", revision: 7, enabled: true, archived: false },
+          ],
+        } as never;
+      }
+      if (path === "/platform/accounts/entitlement-snapshots" && init?.method === "POST") {
+        return {
+          observed_at: "2026-08-21T10:15:00Z",
+          items: [{ account_id: 41, snapshot: snapshot(41) }],
+        } as never;
+      }
+      if (String(path).includes("/entitlement-cohorts")) return { cohorts } as never;
+      if (path === "/platform/accounts/entitlement-bulk/policy-previews") {
+        return previewResponse("apply_entitlement_template") as never;
+      }
+      throw new Error(`Unexpected API route: ${String(path)}`);
+    });
+    renderPage();
+    await reviewAccounts(user, "41");
+    await user.click(screen.getByRole("radio", { name: "Put on a plan" }));
+    await user.selectOptions(await screen.findByLabelText("Plan"), "premium");
+    expect(screen.getByLabelText("Revision")).toHaveValue("7");
+    await user.selectOptions(screen.getByLabelText("Revision"), "6");
+    await user.click(screen.getByRole("button", { name: "Preview" }));
+
+    await screen.findByRole("heading", { name: "4. Review and apply" });
+    expect(JSON.parse(String(previewCalls()[0]?.[1]?.body)).command).toEqual({
+      kind: "apply_entitlement_template",
+      template_key: "premium",
+      template_revision: 6,
+      include_custom_profiles: false,
+    });
   });
 
   it("renders complete authoritative account and profile policy before enabling operations", async () => {
@@ -223,24 +286,24 @@ describe("DirectAccountPolicyBulkPage", () => {
     renderPage();
     await reviewAccounts(user);
 
-    const account41 = screen.getByRole("article", { name: "Account 41 authoritative policy" });
-    expect(account41).toHaveTextContent("managed");
-    expect(account41).toHaveTextContent("Template premium · revision 7");
-    expect(account41).toHaveTextContent("Cohort revision 3");
-    expect(account41).toHaveTextContent("Policy revision 8");
-    expect(account41).toHaveTextContent("Libraries 12, 18");
-    expect(account41).toHaveTextContent("Audio transcoding Allowed");
+    const account41 = screen.getByRole("article", { name: "Account 41 current settings" });
+    expect(account41).toHaveTextContent("Plan premium, revision 7");
+    expect(account41).toHaveTextContent(/Libraries\s*Library 12, Library 18/);
+    expect(account41).toHaveTextContent(/Audio conversion\s*Yes/);
+    expect(account41).toHaveTextContent("Profiles (2)");
     expect(account41).toHaveTextContent("Custom 41");
-    expect(account41).toHaveTextContent("Custom exception");
-    expect(account41).toHaveTextContent("legacy unmanaged");
-    expect(screen.getByText(/Observed together at/)).toHaveTextContent("2026");
+    expect(account41).toHaveTextContent("Has its own settings");
+    expect(account41).toHaveTextContent("Follows the account");
+    const account42 = screen.getByRole("article", { name: "Account 42 current settings" });
+    expect(account42).toHaveTextContent("Has its own settings");
+    expect(screen.getByText(/^As of/)).toHaveTextContent("2026");
 
-    expect(screen.getByRole("radiogroup", { name: "Policy operation" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Preview policy impact" })).toBeDisabled();
+    expect(screen.getByRole("radiogroup", { name: "What should change" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview" })).toBeDisabled();
     expect(screen.getAllByRole("radio").every((radio) => !radio.hasAttribute("checked"))).toBe(
       true,
     );
-    expect(screen.queryByRole("combobox", { name: "Target cohort" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Cohort" })).not.toBeInTheDocument();
   });
 
   it("blocks the workflow when an account is outside the authoritative direct-account scope", async () => {
@@ -254,8 +317,10 @@ describe("DirectAccountPolicyBulkPage", () => {
     renderPage();
     await reviewAccounts(user, "41, 999");
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/Account 999.*not found/i);
-    expect(screen.queryByRole("radiogroup", { name: "Policy operation" })).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/Account 999 isn't a direct account/);
+    expect(
+      screen.queryByRole("radiogroup", { name: "What should change" }),
+    ).not.toBeInTheDocument();
   });
 
   it("discards a reviewed preview as soon as the visible account selection changes", async () => {
@@ -279,19 +344,19 @@ describe("DirectAccountPolicyBulkPage", () => {
 
     renderPage();
     await reviewAccounts(user);
-    await user.click(screen.getByRole("radio", { name: "Restore the managed default" }));
-    await user.click(screen.getByRole("button", { name: "Preview policy impact" }));
-    await screen.findByRole("heading", { name: "Review authoritative impact" });
-    await user.click(screen.getByRole("checkbox", { name: /I confirm this exact account set/i }));
+    await user.click(screen.getByRole("radio", { name: "Reset to the organization default" }));
+    await user.click(screen.getByRole("button", { name: "Preview" }));
+    await screen.findByRole("heading", { name: "4. Review and apply" });
+    await user.click(screen.getByRole("checkbox", { name: /checked this change for 2 accounts/ }));
 
-    await user.clear(screen.getByLabelText("Server account IDs"));
-    await user.type(screen.getByLabelText("Server account IDs"), "99");
+    await user.clear(screen.getByLabelText("Account numbers"));
+    await user.type(screen.getByLabelText("Account numbers"), "99");
 
+    expect(screen.queryByRole("heading", { name: "4. Review and apply" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Apply to 2 accounts" })).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "Review authoritative impact" }),
+      screen.queryByRole("radiogroup", { name: "What should change" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Start policy job" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("radiogroup", { name: "Policy operation" })).not.toBeInTheDocument();
   });
 
   it("does not retain an old reviewed workflow when replacement account IDs are invalid", async () => {
@@ -300,15 +365,15 @@ describe("DirectAccountPolicyBulkPage", () => {
     renderPage();
     await reviewAccounts(user);
 
-    await user.clear(screen.getByLabelText("Server account IDs"));
-    await user.type(screen.getByLabelText("Server account IDs"), "41, invalid");
-    await user.click(screen.getByRole("button", { name: "Review selected accounts" }));
+    await user.clear(screen.getByLabelText("Account numbers"));
+    await user.type(screen.getByLabelText("Account numbers"), "41, invalid");
+    await user.click(screen.getByRole("button", { name: "Look up current settings" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/positive whole numbers/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/whole numbers/i);
+    expect(screen.queryByRole("heading", { name: "2. Current settings" })).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "Authoritative observations" }),
+      screen.queryByRole("radiogroup", { name: "What should change" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole("radiogroup", { name: "Policy operation" })).not.toBeInTheDocument();
   });
 
   it("ignores a snapshot response that resolves after the account selection changes", async () => {
@@ -325,10 +390,10 @@ describe("DirectAccountPolicyBulkPage", () => {
     });
 
     renderPage();
-    await user.type(screen.getByLabelText("Server account IDs"), "41");
-    await user.click(screen.getByRole("button", { name: "Review selected accounts" }));
-    await user.clear(screen.getByLabelText("Server account IDs"));
-    await user.type(screen.getByLabelText("Server account IDs"), "99");
+    await user.type(screen.getByLabelText("Account numbers"), "41");
+    await user.click(screen.getByRole("button", { name: "Look up current settings" }));
+    await user.clear(screen.getByLabelText("Account numbers"));
+    await user.type(screen.getByLabelText("Account numbers"), "99");
 
     await act(async () => {
       lateSnapshot.resolve({
@@ -339,9 +404,7 @@ describe("DirectAccountPolicyBulkPage", () => {
     });
 
     expect(screen.queryByRole("heading", { name: "Account 41" })).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: "Authoritative observations" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "2. Current settings" })).not.toBeInTheDocument();
   });
 
   it("rejects an equal-sized snapshot response for different account IDs", async () => {
@@ -357,12 +420,14 @@ describe("DirectAccountPolicyBulkPage", () => {
     });
 
     renderPage();
-    await user.type(screen.getByLabelText("Server account IDs"), "41");
-    await user.click(screen.getByRole("button", { name: "Review selected accounts" }));
+    await user.type(screen.getByLabelText("Account numbers"), "41");
+    await user.click(screen.getByRole("button", { name: "Look up current settings" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/did not match.*account IDs/i);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/different accounts/);
     expect(screen.queryByRole("heading", { name: "Account 51" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("radiogroup", { name: "Policy operation" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("radiogroup", { name: "What should change" }),
+    ).not.toBeInTheDocument();
   });
 
   it("ignores a preview response that resolves after the account selection changes", async () => {
@@ -384,20 +449,18 @@ describe("DirectAccountPolicyBulkPage", () => {
 
     renderPage();
     await reviewAccounts(user, "41");
-    await user.click(screen.getByRole("radio", { name: "Restore the managed default" }));
-    await user.click(screen.getByRole("button", { name: "Preview policy impact" }));
-    await user.clear(screen.getByLabelText("Server account IDs"));
-    await user.type(screen.getByLabelText("Server account IDs"), "99");
+    await user.click(screen.getByRole("radio", { name: "Reset to the organization default" }));
+    await user.click(screen.getByRole("button", { name: "Preview" }));
+    await user.clear(screen.getByLabelText("Account numbers"));
+    await user.type(screen.getByLabelText("Account numbers"), "99");
 
     await act(async () => {
       latePreview.resolve(previewResponse("restore_default_entitlement"));
       await latePreview.promise;
     });
 
-    expect(
-      screen.queryByRole("heading", { name: "Review authoritative impact" }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Start policy job" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "4. Review and apply" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Apply to 2 accounts" })).not.toBeInTheDocument();
   });
 
   it("ignores a job response that resolves after the account selection changes", async () => {
@@ -432,13 +495,13 @@ describe("DirectAccountPolicyBulkPage", () => {
 
     renderPage();
     await reviewAccounts(user, "41");
-    await user.click(screen.getByRole("radio", { name: "Restore the managed default" }));
-    await user.click(screen.getByRole("button", { name: "Preview policy impact" }));
-    await screen.findByRole("heading", { name: "Review authoritative impact" });
-    await user.click(screen.getByRole("checkbox", { name: /I confirm this exact account set/i }));
-    await user.click(screen.getByRole("button", { name: "Start policy job" }));
-    await user.clear(screen.getByLabelText("Server account IDs"));
-    await user.type(screen.getByLabelText("Server account IDs"), "99");
+    await user.click(screen.getByRole("radio", { name: "Reset to the organization default" }));
+    await user.click(screen.getByRole("button", { name: "Preview" }));
+    await screen.findByRole("heading", { name: "4. Review and apply" });
+    await user.click(screen.getByRole("checkbox", { name: /checked this change for 2 accounts/ }));
+    await user.click(screen.getByRole("button", { name: "Apply to 2 accounts" }));
+    await user.clear(screen.getByLabelText("Account numbers"));
+    await user.type(screen.getByLabelText("Account numbers"), "99");
 
     await act(async () => {
       lateJob.resolve({
@@ -455,9 +518,9 @@ describe("DirectAccountPolicyBulkPage", () => {
       await lateJob.promise;
     });
 
-    expect(screen.queryByRole("heading", { name: "Policy job completed" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Change applied" })).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Refresh authoritative selection" }),
+      screen.queryByRole("button", { name: "Review these accounts again" }),
     ).not.toBeInTheDocument();
   });
 
@@ -491,14 +554,13 @@ describe("DirectAccountPolicyBulkPage", () => {
 
     renderPage();
     await reviewAccounts(user);
-    await user.click(screen.getByRole("radio", { name: "Apply an exact template revision" }));
-    await user.type(screen.getByLabelText("Template key"), "premium");
-    await user.type(screen.getByLabelText("Template revision"), "7");
-    await user.click(screen.getByRole("button", { name: "Preview policy impact" }));
+    await user.click(screen.getByRole("radio", { name: "Put on a plan" }));
+    await user.type(screen.getByLabelText("Plan key"), "premium");
+    await user.type(screen.getByLabelText("Revision"), "7");
+    await user.click(screen.getByRole("button", { name: "Preview" }));
 
-    await screen.findByRole("heading", { name: "Review authoritative impact" });
-    expect(screen.getByText("Accounts 41, 42")).toBeInTheDocument();
-    expect(screen.getByText("Excluded").parentElement).toHaveTextContent("0");
+    await screen.findByRole("heading", { name: "4. Review and apply" });
+    expect(screen.getByText("Left out").parentElement).toHaveTextContent("0");
     const previewCall = vi
       .mocked(adminV2Api)
       .mock.calls.find(([path]) => path === "/platform/accounts/entitlement-bulk/policy-previews");
@@ -512,14 +574,14 @@ describe("DirectAccountPolicyBulkPage", () => {
       },
     });
 
-    await user.click(screen.getByRole("checkbox", { name: /I confirm this exact account set/i }));
-    await user.click(screen.getByRole("button", { name: "Start policy job" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(/preview changed or expired/i);
-    await user.click(screen.getByRole("button", { name: "Refresh authoritative selection" }));
+    await user.click(screen.getByRole("checkbox", { name: /checked this change for 2 accounts/ }));
+    await user.click(screen.getByRole("button", { name: "Apply to 2 accounts" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /Something changed since the preview/,
+    );
+    await user.click(screen.getByRole("button", { name: "Look up the accounts again" }));
     await waitFor(() => expect(snapshotReads).toBe(2));
-    expect(
-      screen.queryByRole("heading", { name: "Review authoritative impact" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "4. Review and apply" })).not.toBeInTheDocument();
   });
 
   it("sends the exact derived download patch, re-previews custom-profile opt-in, and shows safe progress", async () => {
@@ -577,20 +639,27 @@ describe("DirectAccountPolicyBulkPage", () => {
 
     renderPage();
     await reviewAccounts(user);
-    await user.click(screen.getByRole("radio", { name: "Derive a policy for this selection" }));
+    await user.click(screen.getByRole("radio", { name: "Change some settings" }));
     await user.selectOptions(
-      screen.getByRole("combobox", { name: "Base cohort" }),
+      screen.getByRole("combobox", { name: "Start from cohort" }),
       cohorts[0]!.cohort_id,
     );
-    await user.type(screen.getByLabelText("Derived cohort name"), "Download cohort");
-    await user.selectOptions(screen.getByRole("combobox", { name: "Downloads" }), "true");
-    await user.click(screen.getByRole("button", { name: "Preview policy impact" }));
-    expect(await screen.findByText("2 custom profiles remain unchanged")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Name for the new cohort"), "Download cohort");
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Download original files" }),
+      "true",
+    );
+    await user.click(screen.getByRole("button", { name: "Preview" }));
+    expect(
+      await screen.findByText("2 with their own settings stay as they are"),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("checkbox", { name: "Move custom profiles too" }));
-    expect(screen.getByText(/Preview is out of date/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Recalculate policy impact" }));
-    expect(await screen.findByText("2 custom profiles move")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("checkbox", { name: /Also change profiles with their own settings/ }),
+    );
+    expect(screen.getByText(/the preview is out of date/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Update preview" }));
+    expect(await screen.findByText("2 with their own settings change too")).toBeInTheDocument();
     expect(previewCommands).toEqual([
       {
         kind: "derive_entitlement_cohort",
@@ -608,10 +677,10 @@ describe("DirectAccountPolicyBulkPage", () => {
       },
     ]);
 
-    await user.click(screen.getByRole("checkbox", { name: /I confirm this exact account set/i }));
-    await user.click(screen.getByRole("button", { name: "Start policy job" }));
-    expect(await screen.findByRole("heading", { name: "Policy job running" })).toBeInTheDocument();
-    expect(screen.getByText("1 of 2 processed")).toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: /checked this change for 2 accounts/ }));
+    await user.click(screen.getByRole("button", { name: "Apply to 2 accounts" }));
+    expect(await screen.findByRole("heading", { name: "Applying the change" })).toBeInTheDocument();
+    expect(screen.getByText("1 of 2 accounts done")).toBeInTheDocument();
 
     const jobCall = vi
       .mocked(adminV2Api)
@@ -672,19 +741,22 @@ describe("DirectAccountPolicyBulkPage", () => {
 
     renderPage();
     await reviewAccounts(user, "41");
-    await user.click(screen.getByRole("radio", { name: "Derive a policy for this selection" }));
+    await user.click(screen.getByRole("radio", { name: "Change some settings" }));
     await user.selectOptions(
-      screen.getByRole("combobox", { name: "Base cohort" }),
+      screen.getByRole("combobox", { name: "Start from cohort" }),
       cohorts[0]!.cohort_id,
     );
-    await user.type(screen.getByLabelText("Derived cohort name"), "New selectable cohort");
-    await user.selectOptions(screen.getByRole("combobox", { name: "Downloads" }), "true");
-    await user.click(screen.getByRole("button", { name: "Preview policy impact" }));
-    await screen.findByRole("heading", { name: "Review authoritative impact" });
-    await user.click(screen.getByRole("checkbox", { name: /I confirm this exact account set/i }));
-    await user.click(screen.getByRole("button", { name: "Start policy job" }));
+    await user.type(screen.getByLabelText("Name for the new cohort"), "New selectable cohort");
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Download original files" }),
+      "true",
+    );
+    await user.click(screen.getByRole("button", { name: "Preview" }));
+    await screen.findByRole("heading", { name: "4. Review and apply" });
+    await user.click(screen.getByRole("checkbox", { name: /checked this change for 2 accounts/ }));
+    await user.click(screen.getByRole("button", { name: "Apply to 2 accounts" }));
 
-    await screen.findByRole("heading", { name: "Policy job completed" });
+    await screen.findByRole("heading", { name: "Change applied" });
     await waitFor(() => expect(cohortLoads).toBe(2));
   });
 
@@ -709,14 +781,10 @@ describe("DirectAccountPolicyBulkPage", () => {
     renderPage();
     await reviewAccounts(user);
     expect(screen.queryByText(/remove policy/i)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("radio", { name: "Restore the managed default" }));
-    await user.click(screen.getByRole("button", { name: "Preview policy impact" }));
+    await user.click(screen.getByRole("radio", { name: "Reset to the organization default" }));
+    await user.click(screen.getByRole("button", { name: "Preview" }));
 
-    expect(
-      await screen.findByText(
-        /Every selected account remains attached to an enforceable managed policy/i,
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "4. Review and apply" })).toBeInTheDocument();
     const previewCall = vi
       .mocked(adminV2Api)
       .mock.calls.find(([path]) => path === "/platform/accounts/entitlement-bulk/policy-previews");

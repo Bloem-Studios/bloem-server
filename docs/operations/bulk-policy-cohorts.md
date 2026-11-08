@@ -39,19 +39,20 @@ once. An account that later matches the same filter is not changed.
 ![Six steps from picking accounts to reading them back, and the four kinds of change](../architecture/images/bulk-policy-cohorts/review-and-apply.svg)
 
 1. **Pick the accounts.** An organization administrator uses the people filters; a
-   platform administrator gives an exact list of account numbers. Up to 10,000
-   accounts. The list is frozen at that moment.
+   platform administrator searches for accounts by name or email, or pastes a list of
+   account numbers. Up to 10,000 accounts. The list is frozen at that moment.
 2. **Choose exactly one change.** Nothing is chosen for you:
-   - **Move to an existing cohort** that this organization already uses;
-   - **Apply an exact template revision**: one revision of an enabled plan;
-   - **Derive a policy for this selection**: an existing cohort plus stated changes;
-   - **Restore the managed default**: the organization's protected default. There is
+   - **Move to a cohort** that this organization already uses;
+   - **Put on a plan**: one revision of an enabled plan;
+   - **Change some settings**: an existing cohort plus stated changes;
+   - **Reset to the organization default**: the organization's protected default. There is
      no "remove policy": every account always has one.
 3. **Read the preview.** It shows how many accounts match and how many were left out,
-   which cohorts they are on now, the target and its fingerprint (**policy digest**),
-   every field that changes, which accounts already have it, and which profiles move.
-4. **Decide about profiles with their own policy** (below). The default is to leave
-   them alone.
+   which cohorts they are on now, the target and its fingerprint (**policy digest**,
+   shown as **Settings fingerprint** under **Details**), every field that changes,
+   which accounts already have it, and which profiles move.
+4. **Decide about profiles with their own policy** (below), with **Also change profiles
+   with their own settings** next to the change. The default is to leave them alone.
 5. **Confirm** within 15 minutes of picking the accounts. The confirmation is tied to
    exactly what you reviewed. If anything changed in between, make a new preview.
 6. **Bloem applies it** in the background, in batches. It checks each account again
@@ -100,7 +101,7 @@ unticked. Afterwards Anna and Tom are on policy B, and Kids is still on its own 
 
 | Who | What they manage |
 | --- | --- |
-| Organization administrator | Bulk changes for active members of their own organization, under **Organization → People** (select people, then **Apply policy**). Reading the organization's cohorts under **Organization → Policy Cohorts**. |
+| Organization administrator | Bulk changes for active members of their own organization, under **Organization → People** (select people, then **Change plan or settings**). Reading the organization's cohorts under **Organization → Policy Cohorts**. |
 | Platform administrator | Bulk changes for an explicit list of accounts in the default organization, under **Platform → Bulk Account Policies**, and through the platform API for any organization. |
 | An automation with an API key | The platform routes, when the key belongs to an enabled platform administrator and is unscoped or carries `admin:entitlements:bulk`. |
 
@@ -188,7 +189,7 @@ unless asked) and never removes an applied policy.
 Organization administrators use:
 
 - **Organization → People** (`/admin/organization/people`) to select people and open
-  **Apply policy**;
+  **Change plan or settings**;
 - **Organization → Policy Cohorts** (`/admin/organization/policy-cohorts`) to inspect
   source revision, policy, lineage, member count, creator/time, and archive state; and
 - the organization routes `GET /api/bloem/v1/admin/organization/entitlement-cohorts`

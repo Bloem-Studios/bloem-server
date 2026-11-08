@@ -235,11 +235,10 @@ describe("multitenant administration accessibility", () => {
     );
 
     expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
-      "Account",
+      "Person",
       "Status",
-      "Profiles and groups",
+      "Profiles and access groups",
       "Last activity",
-      "Security revision",
       "Details",
     ]);
     expect(screen.getAllByLabelText("Group for Alex profile")).not.toHaveLength(0);

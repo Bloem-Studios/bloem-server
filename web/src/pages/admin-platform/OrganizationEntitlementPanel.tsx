@@ -21,6 +21,9 @@ import {
   type EntitlementDryRun,
 } from "@/hooks/queries/admin/entitlementTemplates";
 import { EntitlementPolicyDetails } from "./EntitlementPolicyDetails";
+import { PolicyValueChange } from "@/components/admin/policy/PolicyValueChange";
+import { formatDateTime, libraryListLabel } from "@/components/admin/policy/policyVocabulary";
+import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
 
 function safeAuditHref(organizationID: string, href: string | null) {
   const fallback = `/admin/activity?organization_id=${encodeURIComponent(organizationID)}&event=entitlement`;
@@ -35,11 +38,7 @@ function safeAuditHref(organizationID: string, href: string | null) {
 }
 
 function formatTimestamp(value: string | null) {
-  if (!value) return "Never reconciled";
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return value ? formatDateTime(value) : "Not yet";
 }
 
 export function OrganizationEntitlementPanel({ organizationID }: { organizationID: string }) {
@@ -49,8 +48,8 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
   const apply = useApplyTenantEntitlement(organizationID);
   const [selectedKey, setSelectedKey] = useState("");
   const [preview, setPreview] = useState<EntitlementDryRun | null>(null);
-  const [acknowledged, setAcknowledged] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const libraries = useAdminLibraries();
   const effectiveSelectedKey = selectedKey || detail.data?.template_key || "";
   const selected = templates.data?.find((template) => template.key === effectiveSelectedKey);
   const currentTemplateUnavailable =
@@ -59,7 +58,6 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
 
   async function previewChanges() {
     if (!selected) return;
-    setAcknowledged(false);
     setPreview(
       await dryRun.mutateAsync({
         template_key: selected.key,
@@ -77,7 +75,6 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
       idempotency_key: crypto.randomUUID(),
     });
     setConfirming(false);
-    setAcknowledged(false);
     setPreview(null);
     dryRun.reset();
   }
@@ -85,93 +82,85 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Tenant entitlement</CardTitle>
+        <CardTitle>Plan</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {detail.isLoading ? (
           <p className="text-sm" role="status">
-            Loading current entitlement…
+            Loading…
           </p>
         ) : detail.isError ? (
           <p className="text-destructive text-sm" role="alert">
-            {detail.error.message}
+            The plan couldn’t be loaded.
           </p>
         ) : detail.data ? (
           <div className="border-border grid gap-3 rounded-lg border p-3 text-sm sm:grid-cols-2">
             <div>
-              <p className="text-muted-foreground text-xs">Current template</p>
+              <p className="text-muted-foreground text-xs">Current plan</p>
               <p className="font-medium">
                 {detail.data.template_key && detail.data.template_revision
-                  ? `${detail.data.template_key} · revision ${detail.data.template_revision}`
-                  : "No template assigned"}
+                  ? `${detail.data.template_key}, revision ${detail.data.template_revision}`
+                  : "No plan yet"}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">Tenant limits</p>
+              <p className="text-muted-foreground text-xs">Organization limits</p>
               <p className="font-medium">
-                {detail.data.tenant_limits.slots} slots · {detail.data.tenant_limits.transcodes}{" "}
-                transcodes
+                {detail.data.tenant_limits.slots.toLocaleString()} screens ·{" "}
+                {detail.data.tenant_limits.transcodes.toLocaleString()} conversions at once
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">Effective libraries</p>
+              <p className="text-muted-foreground text-xs">Libraries</p>
               <p className="font-medium">
-                {detail.data.library_ids === null
-                  ? "All enabled libraries"
-                  : detail.data.library_ids.length > 0
-                    ? `Libraries ${detail.data.library_ids.join(", ")}`
-                    : "No libraries"}
+                {libraryListLabel(detail.data.library_ids, libraries.data ?? [])}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">Last reconciliation</p>
+              <p className="text-muted-foreground text-xs">Last applied</p>
               <p className="font-medium">{formatTimestamp(detail.data.last_reconciled_at)}</p>
             </div>
             <div className="sm:col-span-2">
-              <p className="text-muted-foreground text-xs">Managed default group</p>
+              <p className="text-muted-foreground text-xs">Default settings for members</p>
               {detail.data.managed_default_group ? (
                 <div className="space-y-2">
-                  <p className="font-medium">
-                    {detail.data.managed_default_group.name} ·{" "}
-                    {detail.data.managed_default_group.policy.max_streams} streams ·{" "}
-                    {detail.data.managed_default_group.policy.max_profiles} profiles ·{" "}
-                    {detail.data.managed_default_group.policy.max_transcodes} transcodes
-                  </p>
+                  <p className="font-medium">{detail.data.managed_default_group.name}</p>
                   <EntitlementPolicyDetails policy={detail.data.managed_default_group.policy} />
                 </div>
               ) : (
-                <p className="font-medium">No managed default group</p>
+                <p className="font-medium">None yet</p>
               )}
             </div>
             <Link
               className="underline sm:col-span-2"
               to={safeAuditHref(organizationID, detail.data.audit_history_href)}
             >
-              View apply history
+              See past changes
             </Link>
           </div>
         ) : null}
         <p className="text-muted-foreground text-sm">
-          Preview the managed default-group changes first. Custom groups are never modified.
+          Choosing a plan changes the organization’s default settings for members. Access groups the
+          organization made itself are never changed. You see the changes before they apply.
         </p>
         {templates.isLoading ? (
           <p className="text-sm" role="status">
-            Loading templates…
+            Loading plans…
           </p>
         ) : templates.isError ? (
           <p className="text-destructive text-sm" role="alert">
-            {templates.error.message}
+            Plans couldn’t be loaded.
           </p>
         ) : templates.data?.length === 0 ? (
           <div className="border-warning/40 bg-warning/10 space-y-1 rounded-lg border p-3 text-sm">
-            <p>No enabled entitlement templates are available.</p>
+            <p>No plans are offered yet.</p>
             <Link className="underline" to="/admin/platform/entitlement-templates">
-              Manage entitlement templates
+              Go to plans
             </Link>
           </div>
         ) : (
           <div className="space-y-1.5">
-            <Label htmlFor="tenant-template">Template</Label>
+            <Label htmlFor="tenant-template">Plan</Label>
             <select
               id="tenant-template"
               className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -179,20 +168,19 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
               onChange={(event) => {
                 setSelectedKey(event.target.value);
                 setPreview(null);
-                setAcknowledged(false);
                 dryRun.reset();
                 apply.reset();
               }}
             >
-              <option value="">Select a template</option>
+              <option value="">Choose a plan</option>
               {currentTemplateUnavailable ? (
                 <option value={detail.data?.template_key ?? ""} disabled>
-                  Current template unavailable
+                  Current plan is no longer offered
                 </option>
               ) : null}
               {(templates.data ?? []).map((template) => (
                 <option key={template.key} value={template.key}>
-                  {template.name} · rev {template.revision}
+                  {template.name} (revision {template.revision})
                 </option>
               ))}
             </select>
@@ -203,54 +191,44 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
           onClick={() => void previewChanges().catch(() => undefined)}
           disabled={!selected || dryRun.isPending}
         >
-          Preview changes
+          {dryRun.isPending ? "Checking…" : "Preview changes"}
         </Button>
         {dryRun.error ? (
           <p className="text-destructive text-sm" role="alert">
-            {dryRun.error.message}
+            The preview couldn’t be made. Try again.
           </p>
         ) : null}
         {preview ? (
           <div className="border-border space-y-3 rounded-lg border p-3">
             <p className="text-sm font-medium">
-              {preview.changed ? "Managed default group changes" : "No changes are required"}
+              {preview.changed
+                ? "These settings change"
+                : "Nothing changes: it already uses this plan"}
             </p>
             {preview.changes.map((change) => (
-              <p key={change.field} className="text-muted-foreground text-sm">
-                <span className="text-foreground font-medium">{change.field}</span>:{" "}
-                {String(change.before)} → {String(change.after)}
-              </p>
+              <PolicyValueChange key={change.field} change={change} />
             ))}
             {preview.warnings.map((warning) => (
               <p key={warning} className="text-warning text-sm">
                 {warning}
               </p>
             ))}
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={acknowledged}
-                onChange={(event) => setAcknowledged(event.target.checked)}
-              />{" "}
-              I understand this applies only to the managed default group.
-            </label>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={!acknowledged || !preview.changed}
-              onClick={() => setConfirming(true)}
-            >
-              Apply to existing tenant
-            </Button>
+            {preview.changed ? (
+              <Button type="button" onClick={() => setConfirming(true)}>
+                Apply
+              </Button>
+            ) : null}
           </div>
         ) : null}
         <AlertDialog open={confirming} onOpenChange={setConfirming}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Apply this entitlement?</AlertDialogTitle>
+              <AlertDialogTitle>
+                Put this organization on {selected?.name ?? "this plan"}?
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                This updates the tenant-managed default group using the reviewed dry run. Custom
-                groups stay unchanged.
+                Members on the default settings get the changes you reviewed. Access groups the
+                organization made itself stay as they are.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -262,12 +240,12 @@ export function OrganizationEntitlementPanel({ organizationID }: { organizationI
                   void applyChanges().catch(() => undefined);
                 }}
               >
-                Confirm apply
+                Apply
               </AlertDialogAction>
             </AlertDialogFooter>
             {apply.error ? (
               <p className="text-destructive text-sm" role="alert">
-                {apply.error.message}
+                {apply.error.message || "The plan couldn’t be applied. Preview again and retry."}
               </p>
             ) : null}
           </AlertDialogContent>

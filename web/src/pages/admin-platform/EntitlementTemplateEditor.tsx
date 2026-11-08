@@ -7,7 +7,7 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PERMISSION_WATCH_LIVE_TV } from "@/lib/bloemPermissions";
+import { PLAYBACK_QUALITIES, POLICY_PERMISSIONS } from "@/components/admin/policy/policyVocabulary";
 import { PERMISSION_MARKER_EDIT, PERMISSION_METADATA_CURATION } from "@/lib/permissions";
 
 export interface EntitlementTemplateLibrary {
@@ -36,12 +36,6 @@ const DEFAULT_POLICY: EntitlementTemplatePolicy = {
   requests_allowed: true,
   allowed_permissions: null,
 };
-
-const ENTITLEMENT_PERMISSIONS: ReadonlyArray<readonly [string, string]> = [
-  [PERMISSION_METADATA_CURATION, "Metadata curation"],
-  [PERMISSION_MARKER_EDIT, "Marker editing"],
-  [PERMISSION_WATCH_LIVE_TV, "Watch Live TV"],
-];
 
 function policyFor(template?: EntitlementTemplate): EntitlementTemplatePolicy {
   return template
@@ -141,7 +135,8 @@ function EntitlementTemplateEditorForm({
 }: EntitlementTemplateEditorProps) {
   const browseOnly = template?.key === "browse-only";
   const [key, setKey] = useState(template?.key ?? "");
-  const [name, setName] = useState(template?.name ?? "New entitlement template");
+  const [keyEdited, setKeyEdited] = useState(Boolean(template));
+  const [name, setName] = useState(template?.name ?? "");
   const [policy, setPolicy] = useState<EntitlementTemplatePolicy>(policyFor(template));
   const [enabled, setEnabled] = useState(template?.enabled ?? true);
 
@@ -192,30 +187,41 @@ function EntitlementTemplateEditorForm({
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="template-key">Key</Label>
-            <Input
-              id="template-key"
-              value={key}
-              onChange={(event) => setKey(event.target.value)}
-              disabled={Boolean(template)}
-              placeholder="e.g. standard-plus"
-            />
-            <p className="text-muted-foreground text-xs">
-              Stable lowercase identifier; it cannot change after creation.
-            </p>
-          </div>
-          <div className="space-y-1.5">
             <Label htmlFor="template-name">Name</Label>
             <Input
               id="template-name"
+              placeholder="Standard Plus"
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setName(event.target.value);
+                if (!keyEdited) setKey(slugify(event.target.value));
+              }}
             />
+            <p className="text-muted-foreground text-xs">What admins and the storefront show.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="template-key">Key</Label>
+            <Input
+              id="template-key"
+              className="font-mono"
+              value={key}
+              onChange={(event) => {
+                setKey(event.target.value);
+                setKeyEdited(true);
+              }}
+              disabled={Boolean(template)}
+              placeholder="standard-plus"
+            />
+            <p className="text-muted-foreground text-xs">
+              {template
+                ? "A plan's key can't be changed."
+                : "A short ID for links and the storefront. Lowercase, and it can't be changed later."}
+            </p>
           </div>
           <PolicyCheckbox
             id="template-enabled"
-            label="Available for new mappings"
-            description="Disabled templates stay readable but cannot be selected for new products."
+            label="Offer this plan"
+            description="Only offered plans can be given to organizations, accounts and storefront products. Accounts already on it are not affected."
             checked={enabled}
             onChange={setEnabled}
           />
@@ -227,8 +233,8 @@ function EntitlementTemplateEditorForm({
         ) : null}
         {browseOnly ? (
           <p className="border-warning/40 bg-warning/10 rounded-lg border p-3 text-sm">
-            Browse-only does not permit playback. Its playback and download gates are protected so
-            it remains safe to use for discovery-only access.
+            Browse-only lets people look around without playing anything, so playback and downloads
+            stay off and can’t be switched on.
           </p>
         ) : null}
       </section>
@@ -236,32 +242,42 @@ function EntitlementTemplateEditorForm({
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold">Libraries</h2>
-            <p className="text-muted-foreground text-xs">
-              Choose the libraries members may browse.
+            <h2 className="text-sm font-medium">Libraries</h2>
+            <p className="text-muted-foreground text-sm">
+              A plan can only show libraries the organization or account already has.
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => updatePolicy({ library_ids: null })}
-            >
-              Select all libraries
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => updatePolicy({ library_ids: [] })}
-            >
-              Clear all libraries
-            </Button>
-          </div>
         </div>
-        {libraries.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No libraries are available.</p>
+        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Library access">
+          <label className="border-border has-[:checked]:border-primary has-[:checked]:bg-primary/5 flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors">
+            <input
+              type="radio"
+              name="library-scope"
+              className="mt-0.5"
+              checked={policy.library_ids === null}
+              onChange={() => updatePolicy({ library_ids: null })}
+            />
+            <span>
+              <span className="block font-medium">All libraries</span>
+              <span className="text-muted-foreground block">Including ones added later</span>
+            </span>
+          </label>
+          <label className="border-border has-[:checked]:border-primary has-[:checked]:bg-primary/5 flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors">
+            <input
+              type="radio"
+              name="library-scope"
+              className="mt-0.5"
+              checked={policy.library_ids !== null}
+              onChange={() => updatePolicy({ library_ids: libraries.map((library) => library.id) })}
+            />
+            <span>
+              <span className="block font-medium">Only the ones I pick</span>
+              <span className="text-muted-foreground block">New libraries stay hidden</span>
+            </span>
+          </label>
+        </div>
+        {policy.library_ids === null ? null : libraries.length === 0 ? (
+          <p className="text-muted-foreground text-sm">There are no libraries to pick from yet.</p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">
             {libraries.map((library) => (
@@ -282,11 +298,11 @@ function EntitlementTemplateEditorForm({
       </section>
 
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
-        <h2 className="text-sm font-semibold">Playback and limits</h2>
+        <h2 className="text-sm font-medium">Playback</h2>
         <PolicyCheckbox
           id="playback-allowed"
-          label="Allow playback"
-          description="Members can start playback from selected libraries."
+          label="Plays video"
+          description="Turn off for a browse-only plan: people can look around but not play."
           checked={policy.playback_allowed}
           onChange={(playback_allowed) =>
             updatePolicy(
@@ -305,39 +321,40 @@ function EntitlementTemplateEditorForm({
           disabled={browseOnly}
         />
         <div className="space-y-1.5">
-          <Label htmlFor="max-playback-quality">Maximum playback quality</Label>
+          <Label htmlFor="max-playback-quality">Best picture quality</Label>
           <select
             id="max-playback-quality"
             className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm sm:w-72"
             value={policy.max_playback_quality}
             onChange={(event) => updatePolicy({ max_playback_quality: event.target.value })}
           >
-            <option value="">Any quality</option>
-            <option value="original">Original quality</option>
-            <option value="1080p">Up to 1080p</option>
-            <option value="2160p">Up to 4K</option>
+            {PLAYBACK_QUALITIES.map(([value, label]) => (
+              <option key={value || "any"} value={value}>
+                {label}
+              </option>
+            ))}
           </select>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <NumberField
             id="max-streams"
-            label="Max streams"
-            hint="0 = no stream limit"
+            label="Screens at once"
+            hint="0 means no limit"
             value={policy.max_streams}
             onChange={(max_streams) => updatePolicy({ max_streams })}
             disabled={!policy.playback_allowed}
           />
           <NumberField
             id="max-profiles"
-            label="Max profiles"
-            hint="0 = no profile limit"
+            label="Profiles"
+            hint="0 means no limit"
             value={policy.max_profiles}
             onChange={(max_profiles) => updatePolicy({ max_profiles })}
           />
           <NumberField
             id="max-transcodes"
-            label="Max transcodes"
-            hint="0 = no transcode limit"
+            label="Conversions at once"
+            hint="Videos converted for a device at the same time. 0 means no limit."
             value={policy.max_transcodes}
             onChange={(max_transcodes) => updatePolicy({ max_transcodes })}
             disabled={!policy.playback_allowed}
@@ -345,8 +362,8 @@ function EntitlementTemplateEditorForm({
         </div>
         <PolicyCheckbox
           id="transcode-allowed"
-          label="Allow playback transcoding"
-          description="Members may play media that requires server-side conversion."
+          label="Video conversion"
+          description="Convert a video when the device can't play the file as it is. Off means only files the device can play directly will play."
           checked={policy.transcode_allowed}
           onChange={(transcode_allowed) => updatePolicy({ transcode_allowed })}
           disabled={browseOnly || !policy.playback_allowed}
@@ -354,11 +371,11 @@ function EntitlementTemplateEditorForm({
       </section>
 
       <section className="surface-panel space-y-3 rounded-2xl border-0 p-5">
-        <h2 className="text-sm font-semibold">Downloads and requests</h2>
+        <h2 className="text-sm font-medium">Downloads and requests</h2>
         <PolicyCheckbox
           id="download-allowed"
-          label="Allow downloads"
-          description="Members may save original media files to their devices."
+          label="Download original files"
+          description="Save the file as it is, for watching offline."
           checked={policy.download_allowed}
           onChange={(download_allowed) =>
             updatePolicy({
@@ -370,16 +387,16 @@ function EntitlementTemplateEditorForm({
         />
         <PolicyCheckbox
           id="download-transcode-allowed"
-          label="Allow transcoded downloads"
-          description="Members may download converted versions when supported."
+          label="Download converted copies"
+          description="Save a smaller copy made for the device, where the app supports it."
           checked={policy.download_transcode_allowed}
           onChange={(download_transcode_allowed) => updatePolicy({ download_transcode_allowed })}
           disabled={browseOnly || !policy.playback_allowed || !policy.download_allowed}
         />
         <PolicyCheckbox
           id="requests-allowed"
-          label="Allow media requests"
-          description="Members may ask administrators to add unavailable media."
+          label="Media requests"
+          description="Ask for movies and shows the server doesn't have yet."
           checked={policy.requests_allowed}
           onChange={(requests_allowed) => updatePolicy({ requests_allowed })}
         />
@@ -387,15 +404,15 @@ function EntitlementTemplateEditorForm({
 
       <section className="surface-panel space-y-3 rounded-2xl border-0 p-5">
         <div>
-          <h2 className="text-sm font-semibold">Permissions</h2>
-          <p className="text-muted-foreground text-xs">
-            Restrict which elevated media-management actions this entitlement may grant.
+          <h2 className="text-sm font-medium">Extra permissions</h2>
+          <p className="text-muted-foreground text-sm">
+            Which extra permissions people on this plan can have, such as editing metadata.
           </p>
         </div>
         <PolicyCheckbox
           id="all-permissions"
-          label="Allow all permissions"
-          description="New permissions are granted automatically. Turn this off to maintain an explicit allowlist."
+          label="Allow every permission"
+          description="Includes permissions added in future updates. Turn off to pick them one by one."
           checked={policy.allowed_permissions === null}
           onChange={(allowAll) =>
             updatePolicy({
@@ -407,7 +424,7 @@ function EntitlementTemplateEditorForm({
         />
         {policy.allowed_permissions !== null ? (
           <div className="grid gap-2 sm:grid-cols-2">
-            {ENTITLEMENT_PERMISSIONS.map(([permission, label]) => (
+            {POLICY_PERMISSIONS.map(([permission, label]) => (
               <label
                 key={permission}
                 className="border-border flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm"
@@ -433,9 +450,16 @@ function EntitlementTemplateEditorForm({
 
       <div className="flex justify-end">
         <Button type="submit" disabled={!key.trim() || !name.trim() || saving}>
-          {saving ? "Saving…" : "Save template"}
+          {saving ? "Saving…" : template ? "Save as new revision" : "Create plan"}
         </Button>
       </div>
     </form>
   );
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }

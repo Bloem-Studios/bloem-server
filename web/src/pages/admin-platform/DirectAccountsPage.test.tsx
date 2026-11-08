@@ -6,6 +6,10 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import DirectAccountsPage from "./DirectAccountsPage";
 
+vi.mock("@/components/admin/policy/AccountPicker", () => ({
+  AccountPicker: ({ label }: { label: string }) => <div>{label}</div>,
+}));
+
 vi.mock("./AccountEntitlementPanel", () => ({
   AccountEntitlementPanel: ({ userID }: { userID: string }) => (
     <div>Loaded direct account {userID}</div>
@@ -22,8 +26,8 @@ describe("DirectAccountsPage", () => {
     );
 
     expect(screen.queryByText(/Loaded direct account/)).not.toBeInTheDocument();
-    await user.type(screen.getByLabelText("Account ID"), "42");
-    await user.click(screen.getByRole("button", { name: "Load account" }));
+    await user.type(screen.getByLabelText("Or enter an account number"), "42");
+    await user.click(screen.getByRole("button", { name: "Open account" }));
 
     expect(screen.getByText("Loaded direct account 42")).toBeInTheDocument();
   });
@@ -35,7 +39,7 @@ describe("DirectAccountsPage", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("link", { name: "Manage bulk policies" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Change many accounts" })).toHaveAttribute(
       "href",
       "/admin/platform/direct-accounts/bulk",
     );

@@ -106,7 +106,7 @@ describe("PeoplePage", () => {
     renderPage();
     expect((await screen.findAllByText("Ada")).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect((await screen.findAllByText("Bea")).length).toBeGreaterThan(0);
     expect(screen.queryAllByText("Ada")).toHaveLength(0);
 
@@ -146,7 +146,7 @@ describe("PeoplePage", () => {
 
     renderPage("/admin/organization/people?query=ada&status=active&sort=email");
     await screen.findAllByText("Ada");
-    fireEvent.click(screen.getByRole("button", { name: "Select all 1,253 results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select all 1,253" }));
 
     expect(await screen.findByText("1,250 people selected")).toBeInTheDocument();
     const selectionCall = vi
@@ -186,7 +186,7 @@ describe("PeoplePage", () => {
 
     renderPage();
     expect(
-      await screen.findByRole("columnheader", { name: "Security revision" }),
+      await screen.findByRole("columnheader", { name: "Profiles and access groups" }),
     ).toBeInTheDocument();
     const [group] = await screen.findAllByRole("combobox", { name: "Group for Ada profile" });
     fireEvent.change(group!, { target: { value: "3" } });
@@ -241,7 +241,7 @@ describe("PeoplePage", () => {
       vi.mocked(adminV2Api).mock.calls.some(([path]) => path === "/organization/people/1"),
     ).toBe(true);
 
-    fireEvent.click(screen.getByRole("button", { name: "Retry group change" }));
+    fireEvent.click(screen.getByRole("button", { name: /anyway/ }));
     await waitFor(() => expect(patchCount).toBe(2));
     const patches = vi
       .mocked(adminV2Api)
@@ -280,15 +280,18 @@ describe("PeoplePage", () => {
 
     renderPage();
     await screen.findAllByText("Ada");
-    fireEvent.click(screen.getByRole("button", { name: "Select all 2 results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select all 2" }));
     await screen.findByText("2 people selected");
-    fireEvent.change(screen.getByRole("combobox", { name: "Assign selected people to group" }), {
-      target: { value: "3" },
-    });
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Move their profiles to an access group" }),
+      {
+        target: { value: "3" },
+      },
+    );
 
     const dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).getByText(/Assign.*Kids/i)).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start bulk job" }));
+    expect(within(dialog).getByText(/Move their profiles to Kids/i)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
     await waitFor(() => {
       const call = vi
         .mocked(adminV2Api)
@@ -324,11 +327,11 @@ describe("PeoplePage", () => {
 
     renderPage();
     await screen.findAllByText("Ada");
-    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await screen.findAllByText("Bea");
-    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
     await screen.findAllByText("Cara");
-    fireEvent.click(screen.getByRole("button", { name: "Previous page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
     expect((await screen.findAllByText("Bea")).length).toBeGreaterThan(0);
     expect(screen.getByLabelText("current location")).toHaveTextContent("cursor=page-two");
 
@@ -336,9 +339,7 @@ describe("PeoplePage", () => {
       target: { value: "new" },
     });
     fireEvent.submit(screen.getByRole("search"));
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled(),
-    );
+    await waitFor(() => expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled());
     fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
     await waitFor(() =>
       expect(screen.getByRole("searchbox", { name: "Search people" })).toHaveValue(""),
@@ -363,15 +364,15 @@ describe("PeoplePage", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Access group" }), {
       target: { value: "3" },
     });
-    fireEvent.change(screen.getByLabelText("Recent activity since"), {
+    fireEvent.change(screen.getByLabelText("Active since"), {
       target: { value: "2026-08-01" },
     });
-    fireEvent.click(await screen.findByRole("button", { name: "Select all 2 results" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Select all 2" }));
     await screen.findByText("2 people selected");
-    fireEvent.click(screen.getByRole("button", { name: "Suspend memberships" }));
+    fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
 
     const dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).getByText(/group Kids/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/in Kids/i)).toBeInTheDocument();
     expect(within(dialog).getByText(/active since 2026-08-01/i)).toBeInTheDocument();
     const selectionCall = vi
       .mocked(adminV2Api)
@@ -426,16 +427,16 @@ describe("PeoplePage", () => {
 
     renderPage();
     await screen.findAllByText("Ada");
-    fireEvent.click(screen.getByRole("button", { name: "Select all 1 results" }));
-    await screen.findByText("1 people selected");
-    fireEvent.click(screen.getByRole("button", { name: "Suspend memberships" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select all 1" }));
+    await screen.findByText("1 person selected");
+    fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
     fireEvent.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {
-        name: "Start bulk job",
+        name: "Suspend",
       }),
     );
 
-    await screen.findByText("Bulk job completed");
+    await screen.findByText("Change applied");
     await waitFor(() => expect(peopleLoads).toBeGreaterThan(1));
   });
 
@@ -470,19 +471,23 @@ describe("PeoplePage", () => {
 
     renderPage();
     await screen.findAllByText("Ada");
-    fireEvent.click(screen.getByRole("button", { name: "Select all 4 results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select all 4" }));
     await screen.findByText("3 people selected");
-    fireEvent.click(screen.getByRole("button", { name: "Suspend memberships" }));
+    fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
 
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByText(/North Sea Media/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/3 matched/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/1 excluded/)).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start bulk job" }));
+    expect(within(dialog).getByText(/3 people/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/1 more match but are left out/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Suspend" }));
 
-    expect(await screen.findByText("1 succeeded")).toBeInTheDocument();
-    expect(screen.getByText("Account 8 — protected owner")).toBeInTheDocument();
-    expect(screen.getByText("Account 9 — authorization state changed")).toBeInTheDocument();
+    expect(await screen.findByText("1 changed")).toBeInTheDocument();
+    expect(
+      screen.getByText("Account 8: is the server owner and can't be changed here"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Account 9: your admin access changed while this ran"),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/^Success$/i)).not.toBeInTheDocument();
   });
 
@@ -532,13 +537,13 @@ describe("PeoplePage", () => {
 
     renderPage("/admin/organization/people?policy_cohort=cohort-standard");
     await screen.findAllByText("Ada");
-    fireEvent.click(screen.getByRole("button", { name: "Select all 4 results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select all 4" }));
     await screen.findByText("4 people selected");
-    fireEvent.click(screen.getByRole("button", { name: "Apply policy" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change plan or settings" }));
 
     expect(
-      await screen.findByRole("dialog", { name: "Apply entitlement policy" }),
+      await screen.findByRole("dialog", { name: "Change plan or settings" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/immutable selection/i)).toBeInTheDocument();
+    expect(screen.getByText(/This list is fixed now/i)).toBeInTheDocument();
   });
 });

@@ -62,38 +62,38 @@ new key, to match what you sell. Two are protected:
 
 Choose the **Platform** administrative context, then:
 
-- **Entitlement Templates** (`/admin/platform/entitlement-templates`): the plans
+- **Plans** (`/admin/platform/entitlement-templates`): the plans
   and their history.
 - **Direct Accounts** (`/admin/platform/direct-accounts`): one direct account at a
   time.
-- **Bulk Account Policies** (`/admin/platform/direct-accounts/bulk`): a reviewed
+- **Change Many Accounts** (`/admin/platform/direct-accounts/bulk`): a reviewed
   list of direct accounts.
-- **Organizations**, then an organization, then **Tenant entitlement**: the
+- **Organizations**, then an organization, then **Plan**: the
   organization's plan.
 
 An organization administrator works in the **Organization** context: **People**,
-then **Apply policy**, and **Policy Cohorts** for the history.
+then **Change plan or settings**, and **Cohorts** for the history.
 
 ## Create, revise, clone and archive
 
-1. Open **Entitlement Templates** and select **New template**.
-2. Choose a stable lowercase key, a display name, whether it is enabled, and the
-   policy.
+1. Open **Plans** and select **New plan**.
+2. Type a name; Bloem suggests a lowercase key from it, which you can change
+   before saving. Choose whether the plan is offered, and set the policy.
 3. Save. This makes revision 1.
 4. To change a plan, create a **new revision**. Earlier revisions stay as they
-   were and are listed in **Revision history**.
-5. **Clone** when the new policy is a different product or purpose. The clone
+   were and are listed under **Revisions**.
+5. **Copy** when the new policy is a different product or purpose. The clone
    starts switched off, so you can review it before anyone uses it.
 6. **Archive** only when nobody should choose the key any more. Accounts already
    on it keep their policy.
 
-To roll back, pick an older revision in **Revision history** and select
-**Restore as new revision**. Bloem never edits or deletes past revisions.
+To roll back, pick an older revision under **Revisions** and select
+**Go back to this**. Bloem never edits or deletes past revisions.
 
 ## Put an organization on a plan
 
 1. Open **Platform → Organizations** and select the organization.
-2. In **Tenant entitlement**, pick an enabled plan and an exact revision.
+2. In **Plan**, pick an enabled plan and an exact revision.
 3. Run the **preview** (dry run). Check the old and new plan and revision, the
    policy, which profiles move, the libraries, and the organization's seats and
    conversions.
@@ -116,13 +116,13 @@ Don't repeat the one-account steps in a loop. A bulk move takes one fixed
 selection, one reviewed preview and one job that finishes the whole change:
 
 - An organization administrator selects people under **Organization → People**,
-  chooses **Apply policy**, and can see the history under **Policy Cohorts**.
+  chooses **Change plan or settings**, and can see the history under **Cohorts**.
 - A platform administrator uses **Platform → Bulk Account Policies** for a list
   of direct account numbers.
 - Moving people to an exact plan revision reuses that revision's group for the
   organization. Changing a few fields for a selection makes a separate group for
   them; it doesn't change the plan or anyone else.
-- **Restore the managed default** puts accounts back on the protected default.
+- **Reset to the organization default** puts accounts back on the protected default.
   It never leaves an account without a policy.
 
 The preview shows who is on what now, exactly where each account will come from,
@@ -154,8 +154,8 @@ This example is made up.
 An installation wants Standard to allow four screens. The platform administrator:
 
 1. Opens **Standard** and creates revision 2 with four screens. Revision 1 stays.
-2. Opens **Bulk Account Policies**, pastes the list of direct accounts on
-   Standard revision 1, and chooses revision 2.
+2. Opens **Change Many Accounts**, pastes the list of direct accounts on
+   Standard revision 1, chooses **Put on a plan**, then **Standard** and revision 2.
 3. Reads the preview: 120 accounts change from three screens to four, and 4
    accounts are already on revision 2.
 4. Confirms within 15 minutes of pasting the list (a bulk move's confirmation

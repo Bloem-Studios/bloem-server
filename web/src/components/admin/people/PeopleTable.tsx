@@ -34,12 +34,13 @@ export default function PeopleTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Account</TableHead>
+              <TableHead>Person</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Profiles and groups</TableHead>
+              <TableHead>Profiles and access groups</TableHead>
               <TableHead>Last activity</TableHead>
-              <TableHead>Security revision</TableHead>
-              <TableHead className="text-right">Details</TableHead>
+              <TableHead className="text-right">
+                <span className="sr-only">Details</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -50,7 +51,9 @@ export default function PeopleTable({
                   <div className="text-muted-foreground text-xs">{person.email}</div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline">{person.membership_status}</Badge>
+                  <Badge variant="outline" className="capitalize">
+                    {person.membership_status}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <ProfileGroups
@@ -64,10 +67,14 @@ export default function PeopleTable({
                 <TableCell className="text-muted-foreground text-sm">
                   {new Date(person.last_activity).toLocaleDateString()}
                 </TableCell>
-                <TableCell className="font-mono text-xs">{person.security_revision}</TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => onInspect(person)}>
-                    Inspect {person.display_name || person.email}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Details for ${person.display_name || person.email}`}
+                    onClick={() => onInspect(person)}
+                  >
+                    Details
                   </Button>
                 </TableCell>
               </TableRow>
@@ -83,7 +90,9 @@ export default function PeopleTable({
                 <div className="font-medium">{person.display_name || person.email}</div>
                 <div className="text-muted-foreground text-xs">{person.email}</div>
               </div>
-              <Badge variant="outline">{person.membership_status}</Badge>
+              <Badge variant="outline" className="capitalize">
+                {person.membership_status}
+              </Badge>
             </div>
             <div className="mt-4">
               <ProfileGroups
@@ -94,12 +103,15 @@ export default function PeopleTable({
                 onChangeGroup={onChangeGroup}
               />
             </div>
-            <Button className="mt-3" variant="outline" size="sm" onClick={() => onInspect(person)}>
-              Inspect {person.display_name || person.email}
+            <Button
+              className="mt-3"
+              variant="outline"
+              size="sm"
+              aria-label={`Details for ${person.display_name || person.email}`}
+              onClick={() => onInspect(person)}
+            >
+              Details
             </Button>
-            <p className="text-muted-foreground mt-2 text-xs">
-              Security revision {person.security_revision}
-            </p>
           </li>
         ))}
       </ul>

@@ -509,15 +509,15 @@ To change what accounts get, safely:
 The full guide is [Entitlement Templates](admin/entitlement-templates.md).
 
 A **policy cohort** moves a reviewed set of existing accounts between exact plan revisions, with a
-preview of what will change first. It is **Policy Cohorts** in an organization, and **Bulk Account
+preview of what will change first. It is **Cohorts** in an organization, and **Bulk Account
 Policies** for directly managed accounts.
 
-In an organization's **Libraries & Entitlements** page, tell owned libraries apart from grants.
+In an organization's **Libraries** page, tell owned libraries apart from grants.
 You can suspend, restore or withdraw an existing grant after confirming; a withdrawal cannot be
 undone from this page. If someone changed a grant since you loaded it, reload and review it
-before acting. **Activity & Audit** shows redacted lifecycle and entitlement events for the
+before acting. **Activity** shows redacted lifecycle and entitlement events for the
 organization, 50 at a time; load more on purpose. It records the events those ledgers contain,
-not a promise that every action appears. **Policy Decisions** is a separate diagnostic page.
+not a promise that every action appears. **Access Checks** is a separate diagnostic page.
 
 An organization can also be served on its own addresses, under its own name and logo:
 see [2.18](#218-organization-domains-and-branding).

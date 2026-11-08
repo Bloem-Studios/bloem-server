@@ -79,25 +79,24 @@ describe("EntitlementCohortsPage", () => {
     renderPage();
 
     const cohort = await screen.findByRole("article", { name: "Low bandwidth revision 1" });
-    expect(within(cohort).getByText("Archived")).toBeInTheDocument();
-    expect(within(cohort).getByText("31 people")).toBeInTheDocument();
-    expect(within(cohort).getByText(/standard.*revision 4/i)).toBeInTheDocument();
-    expect(within(cohort).getByText(/Derived from.*cohort-parent/i)).toBeInTheDocument();
-    expect(within(cohort).getByText(/Created by account 7/i)).toBeInTheDocument();
-    const policy = within(cohort).getByRole("region", { name: "Effective policy" });
-    expect(policy).toHaveTextContent(/Libraries.*All libraries/i);
-    expect(policy).toHaveTextContent(/Playback.*Allowed/i);
-    expect(policy).toHaveTextContent(/Maximum streams.*1/i);
-    expect(policy).toHaveTextContent(/Maximum profiles.*4/i);
-    expect(policy).toHaveTextContent(/Transcoding.*Allowed/i);
-    expect(policy).toHaveTextContent(/Maximum transcodes.*1/i);
-    expect(policy).toHaveTextContent(/Downloads.*Not allowed/i);
-    expect(policy).toHaveTextContent(/Transcoded downloads.*Not allowed/i);
-    expect(policy).toHaveTextContent(/Maximum playback quality.*720p/i);
-    expect(policy).toHaveTextContent(/Permissions.*Unrestricted/i);
-    expect(policy).toHaveTextContent(/Requests.*Allowed/i);
+    expect(within(cohort).getByText(/31\s+accounts\s+· Archived/)).toBeInTheDocument();
+    expect(within(cohort).getByText("From plan standard, revision 4")).toBeInTheDocument();
+    expect(within(cohort).getByText("cohort-parent")).toBeInTheDocument();
+    expect(within(cohort).getByText("Account 7")).toBeInTheDocument();
+    const policy = within(cohort).getByRole("region", { name: "Settings" });
+    expect(policy).toHaveTextContent(/Libraries\s*All libraries/);
+    expect(policy).toHaveTextContent(/Plays video\s*Yes/);
+    expect(policy).toHaveTextContent(/Screens at once\s*1 screen/);
+    expect(policy).toHaveTextContent(/Profiles\s*4 profiles/);
+    expect(policy).toHaveTextContent(/Video conversion\s*Yes/);
+    expect(policy).toHaveTextContent(/Conversions at once\s*1 conversion/);
+    expect(policy).toHaveTextContent(/Download original files\s*No/);
+    expect(policy).toHaveTextContent(/Download converted copies\s*No/);
+    expect(policy).toHaveTextContent(/Best picture quality\s*720p/);
+    expect(policy).toHaveTextContent(/Extra permissions\s*All permissions/);
+    expect(policy).toHaveTextContent(/Media requests\s*Yes/);
     expect(
-      within(cohort).queryByRole("link", { name: "Apply Low bandwidth to people" }),
+      within(cohort).queryByRole("link", { name: "Move people to Low bandwidth" }),
     ).not.toBeInTheDocument();
     expect(within(cohort).queryByRole("button", { name: /edit/i })).not.toBeInTheDocument();
     expect(vi.mocked(adminV2Api)).toHaveBeenCalledWith(
@@ -108,14 +107,12 @@ describe("EntitlementCohortsPage", () => {
   it("renders safe loading, empty, and error states", async () => {
     vi.mocked(adminV2Api).mockResolvedValueOnce({ cohorts: [] } as never);
     const first = renderPage();
-    expect(
-      await screen.findByText(/No policy cohorts have been materialized/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No cohorts yet/i)).toBeInTheDocument();
     first.unmount();
     vi.mocked(adminV2Api).mockRejectedValueOnce(
       new AdminV2ClientError(503, "entitlements_unavailable", "Cohorts unavailable"),
     );
     renderPage();
-    expect(await screen.findByRole("alert")).toHaveTextContent("Cohorts unavailable");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Cohorts couldn’t be loaded");
   });
 });

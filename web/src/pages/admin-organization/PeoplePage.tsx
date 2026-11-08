@@ -236,7 +236,8 @@ export default function PeoplePage() {
             People
           </h1>
           <p className="page-subtitle">
-            Memberships, profiles, and access groups in {active?.name ?? "this organization"}.
+            Everyone in {active?.name ?? "this organization"}. Change a profile’s access group here,
+            or select everyone that matches your filters to change their plan or membership.
           </p>
         </div>
         {resultCount > 0 ? (
@@ -246,8 +247,8 @@ export default function PeoplePage() {
             disabled={createSelection.isPending}
           >
             {createSelection.isPending
-              ? "Creating selection…"
-              : `Select all ${resultCount.toLocaleString()} results`}
+              ? "Selecting…"
+              : `Select all ${resultCount.toLocaleString()}`}
           </Button>
         ) : null}
       </div>
@@ -265,7 +266,7 @@ export default function PeoplePage() {
           <Input
             type="search"
             aria-label="Search people"
-            placeholder="Email, display name, or profile"
+            placeholder="Name, email or profile"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             className="pl-9"
@@ -284,7 +285,7 @@ export default function PeoplePage() {
             })
           }
         >
-          <option value="all">All statuses</option>
+          <option value="all">Any status</option>
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
           <option value="invited">Invited</option>
@@ -299,7 +300,7 @@ export default function PeoplePage() {
             })
           }
         >
-          <option value="all">All access groups</option>
+          <option value="all">Any access group</option>
           {(groups.data ?? []).map((group) => (
             <option key={group.id} value={group.id}>
               {group.name}
@@ -308,7 +309,8 @@ export default function PeoplePage() {
         </select>
         <Input
           type="date"
-          aria-label="Recent activity since"
+          aria-label="Active since"
+          title="Active since"
           value={filters.activeSince?.slice(0, 10) ?? ""}
           onChange={(event) =>
             updateFilters({
@@ -336,7 +338,7 @@ export default function PeoplePage() {
           className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-4 text-sm"
           role="alert"
         >
-          {profileConflict.message} Intended: {profileConflict.intendedGroup}. Current:{" "}
+          {profileConflict.message} You chose {profileConflict.intendedGroup}; it is now{" "}
           {profileConflict.currentGroup}.
           <Button
             className="ml-3"
@@ -371,7 +373,7 @@ export default function PeoplePage() {
                 .finally(() => setChangingProfileId(undefined));
             }}
           >
-            Retry group change
+            Use {profileConflict.intendedGroup} anyway
           </Button>
         </div>
       ) : null}
@@ -387,12 +389,12 @@ export default function PeoplePage() {
           className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-4"
           role="alert"
         >
-          {people.error.message}
+          People couldn’t be loaded. Reload the page to try again.
         </div>
       ) : (people.data?.items.length ?? 0) === 0 ? (
         <div className="surface-panel text-muted-foreground rounded-2xl p-10 text-center">
           <Users className="mx-auto mb-3 h-8 w-8" />
-          No people match these filters.
+          Nobody matches these filters.
         </div>
       ) : (
         <PeopleTable
@@ -418,10 +420,10 @@ export default function PeoplePage() {
             setSearchParams(peopleFiltersToSearch({ ...filters, cursor: previousCursor }));
           }}
         >
-          <ChevronLeft className="mr-2 h-4 w-4" /> Previous page
+          <ChevronLeft className="mr-2 h-4 w-4" /> Previous
         </Button>
         <span className="text-muted-foreground text-sm">
-          Approximately {resultCount.toLocaleString()} results
+          About {resultCount.toLocaleString()} {resultCount === 1 ? "person" : "people"}
         </span>
         <Button
           variant="outline"
@@ -433,7 +435,7 @@ export default function PeoplePage() {
             setSearchParams(peopleFiltersToSearch({ ...filters, cursor: nextCursor }));
           }}
         >
-          Next page <ChevronRight className="ml-2 h-4 w-4" />
+          Next <ChevronRight className="ml-2 h-4 w-4" />
         </Button>
       </nav>
 
@@ -466,19 +468,26 @@ export default function PeoplePage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm bulk people action</AlertDialogTitle>
+            <AlertDialogTitle>
+              {pendingAction
+                ? actionLabel(pendingAction, groups.data ?? [])
+                : "Change these people"}
+              ?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingAction ? actionLabel(pendingAction, groups.data ?? []) : "Apply this action"}{" "}
-              in {active?.name ?? "this organization"}. The immutable selection contains{" "}
-              {selection?.matched.toLocaleString() ?? 0} matched and{" "}
-              {selection?.excluded.toLocaleString() ?? 0} excluded. Filters:{" "}
-              {filterSummary(filters, groups.data ?? [])}.
+              This changes {selection?.matched.toLocaleString() ?? 0}{" "}
+              {selection?.matched === 1 ? "person" : "people"} in{" "}
+              {active?.name ?? "this organization"} ({filterSummary(filters, groups.data ?? [])})
+              {selection?.excluded
+                ? `; ${selection.excluded.toLocaleString()} more match but are left out`
+                : ""}
+              . People who match later are not included.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => void startBulkJob()} disabled={createJob.isPending}>
-              Start bulk job
+              {pendingAction?.kind === "suspend_memberships" ? "Suspend" : "Apply"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -490,10 +499,10 @@ export default function PeoplePage() {
 function actionLabel(action: PendingAction, groups: { id: number; name: string }[]): string {
   if (action.kind === "assign_group") {
     const group = groups.find((candidate) => candidate.id === action.groupId);
-    return `Assign the selected profiles to ${group?.name ?? `group #${action.groupId}`}`;
+    return `Move their profiles to ${group?.name ?? `group ${action.groupId}`}`;
   }
-  if (action.kind === "reactivate_memberships") return "Reactivate selected memberships";
-  return "Suspend selected memberships";
+  if (action.kind === "reactivate_memberships") return "Reactivate their memberships";
+  return "Suspend their memberships";
 }
 
 function filterSummary(filters: PeopleFilters, groups: { id: number; name: string }[]): string {
@@ -501,11 +510,10 @@ function filterSummary(filters: PeopleFilters, groups: { id: number; name: strin
     (id) => groups.find((group) => group.id === id)?.name ?? `#${id}`,
   );
   const parts = [
-    filters.query ? `search “${filters.query}”` : "all people",
-    filters.status.length ? `status ${filters.status.join(", ")}` : "all statuses",
-    selectedGroups.length ? `group ${selectedGroups.join(", ")}` : "all groups",
-    filters.activeSince ? `active since ${filters.activeSince.slice(0, 10)}` : "any activity date",
-    `sort ${filters.sort.replace(/_/g, " ")}`,
-  ];
-  return parts.join("; ");
+    filters.query ? `matching “${filters.query}”` : "",
+    filters.status.length ? filters.status.join(" or ") : "",
+    selectedGroups.length ? `in ${selectedGroups.join(" or ")}` : "",
+    filters.activeSince ? `active since ${filters.activeSince.slice(0, 10)}` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(", ") : "everyone";
 }

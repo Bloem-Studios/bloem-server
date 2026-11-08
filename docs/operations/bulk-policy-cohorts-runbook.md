@@ -111,7 +111,7 @@ Bloem itself reports.
 
 ## 5. Preview and apply
 
-Pick only the canary account, choose **Apply an exact template revision**, and choose the
+Pick only the canary account, choose **Put on a plan**, and choose the
 exact plan and revision. The preview must show:
 
 - 1 account matched and none left out;
@@ -165,7 +165,7 @@ Fingerprint the account's policy again with the same `jq` command.
 ## 7. Put it back
 
 Make a new one-account selection and preview. Put the account back on its exact earlier
-cohort. Use **Restore the managed default** only if the account was on the managed
+cohort. Use **Reset to the organization default** only if the account was on the managed
 default before. Never approximate a custom or older state with a plan.
 
 Confirm with a new idempotency key, follow the job to the end, and repeat every check

@@ -55,13 +55,15 @@ describe("PolicyDecisionsPage", () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.click(await screen.findByRole("button", { name: /download.*denied/i }));
-    expect(await screen.findByText("downloads_disabled")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /download.*refused/i }));
+    expect(
+      await screen.findByText("Downloads are switched off on this server"),
+    ).toBeInTheDocument();
     expect(screen.getByText("[redacted]")).toBeInTheDocument();
     expect(screen.getByText(/Account 17/)).toBeInTheDocument();
     expect(screen.getByText(/Profile profile-7/)).toBeInTheDocument();
     expect(screen.getByText(/Kids/)).toBeInTheDocument();
-    expect(screen.getByText(/2, 7/)).toBeInTheDocument();
+    expect(screen.getByText(/Library 2, Library 7/)).toBeInTheDocument();
     expect(screen.getByText(/vendor.*13/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /activate|save policy|new document/i })).toBeNull();
   });
@@ -97,7 +99,7 @@ describe("PolicyDecisionsPage", () => {
     );
 
     expect(await screen.findByRole("button", { name: /play.*allowed/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Load more decisions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show more" }));
     expect(await screen.findByRole("button", { name: /download.*allowed/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /play.*allowed/i })).toBeInTheDocument();
   });

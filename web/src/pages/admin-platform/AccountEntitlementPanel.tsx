@@ -20,13 +20,12 @@ import {
   type EntitlementDryRun,
 } from "@/hooks/queries/admin/entitlementTemplates";
 import { EntitlementPolicyDetails } from "./EntitlementPolicyDetails";
+import { PolicyValueChange } from "@/components/admin/policy/PolicyValueChange";
+import { formatDateTime, libraryListLabel } from "@/components/admin/policy/policyVocabulary";
+import { useAdminLibraries } from "@/hooks/queries/admin/libraries";
 
 function formatTimestamp(value: string | null) {
-  if (!value) return "Never reconciled";
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return value ? formatDateTime(value) : "Not yet";
 }
 
 export function AccountEntitlementPanel({ userID }: { userID: string }) {
@@ -36,8 +35,8 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
   const apply = useApplyAccountEntitlement(userID);
   const [selectedKey, setSelectedKey] = useState("");
   const [preview, setPreview] = useState<EntitlementDryRun | null>(null);
-  const [acknowledged, setAcknowledged] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const libraries = useAdminLibraries();
   const effectiveSelectedKey = selectedKey || detail.data?.template_key || "";
   const selected = templates.data?.find((template) => template.key === effectiveSelectedKey);
   const currentTemplateUnavailable =
@@ -46,7 +45,6 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
 
   async function previewChanges() {
     if (!selected) return;
-    setAcknowledged(false);
     setPreview(
       await dryRun.mutateAsync({
         template_key: selected.key,
@@ -64,7 +62,6 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
       idempotency_key: crypto.randomUUID(),
     });
     setPreview(null);
-    setAcknowledged(false);
     setConfirming(false);
     dryRun.reset();
   }
@@ -72,57 +69,48 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Account entitlement</CardTitle>
+        <CardTitle>Plan</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-muted-foreground text-sm">
-          Changes apply only to the managed account group. Custom profile groups are never modified.
+          Choosing a plan changes this account’s settings. Profiles with their own settings stay as
+          they are. You see the changes before they apply.
         </p>
         {detail.isLoading ? (
           <p role="status" className="text-sm">
-            Loading current entitlement…
+            Loading…
           </p>
         ) : detail.isError ? (
           <p role="alert" className="text-destructive text-sm">
-            {detail.error.message}
+            This account couldn’t be loaded. Check the account number.
           </p>
         ) : detail.data ? (
           <div className="border-border space-y-2 rounded-lg border p-3 text-sm">
             <p className="font-medium">
               {detail.data.template_key && detail.data.template_revision
-                ? `${detail.data.template_key} · revision ${detail.data.template_revision}`
-                : "No template assigned"}
+                ? `Plan ${detail.data.template_key}, revision ${detail.data.template_revision}`
+                : "No plan yet"}
             </p>
             {detail.data.managed_default_group ? (
               <div className="space-y-2">
-                <p>
-                  {detail.data.managed_default_group.name} ·{" "}
-                  {detail.data.managed_default_group.policy.max_streams} streams ·{" "}
-                  {detail.data.managed_default_group.policy.max_profiles} profiles ·{" "}
-                  {detail.data.managed_default_group.policy.max_transcodes} transcodes
-                </p>
                 <EntitlementPolicyDetails policy={detail.data.managed_default_group.policy} />
               </div>
             ) : (
-              <p>No managed account group</p>
+              <p className="text-muted-foreground">No settings yet</p>
             )}
-            <p>
-              {detail.data.library_ids === null
-                ? "All enabled libraries"
-                : detail.data.library_ids.length > 0
-                  ? `Libraries ${detail.data.library_ids.join(", ")}`
-                  : "No libraries"}
+            <p>Libraries: {libraryListLabel(detail.data.library_ids, libraries.data ?? [])}</p>
+            <p className="text-muted-foreground">
+              Last applied: {formatTimestamp(detail.data.last_reconciled_at)}
             </p>
-            <p>Last reconciliation: {formatTimestamp(detail.data.last_reconciled_at)}</p>
           </div>
         ) : null}
         {templates.isError ? (
           <p role="alert" className="text-destructive text-sm">
-            {templates.error.message}
+            Plans couldn’t be loaded.
           </p>
         ) : (
           <div className="space-y-1.5">
-            <Label htmlFor={`account-template-${userID}`}>Template</Label>
+            <Label htmlFor={`account-template-${userID}`}>Plan</Label>
             <select
               id={`account-template-${userID}`}
               className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -130,20 +118,19 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
               onChange={(event) => {
                 setSelectedKey(event.target.value);
                 setPreview(null);
-                setAcknowledged(false);
                 dryRun.reset();
                 apply.reset();
               }}
             >
-              <option value="">Select a template</option>
+              <option value="">Choose a plan</option>
               {currentTemplateUnavailable ? (
                 <option value={detail.data?.template_key ?? ""} disabled>
-                  Current template unavailable
+                  Current plan is no longer offered
                 </option>
               ) : null}
               {(templates.data ?? []).map((template) => (
                 <option key={template.key} value={template.key}>
-                  {template.name} · rev {template.revision}
+                  {template.name} (revision {template.revision})
                 </option>
               ))}
             </select>
@@ -154,50 +141,44 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
           disabled={!selected || dryRun.isPending}
           onClick={() => void previewChanges().catch(() => undefined)}
         >
-          Preview account changes
+          {dryRun.isPending ? "Checking…" : "Preview changes"}
         </Button>
         {dryRun.error ? (
           <p role="alert" className="text-destructive text-sm">
-            {dryRun.error.message}
+            The preview couldn’t be made. Try again.
           </p>
         ) : null}
         {preview ? (
           <div className="border-border space-y-3 rounded-lg border p-3">
+            <p className="text-sm font-medium">
+              {preview.changed
+                ? "These settings change"
+                : "Nothing changes: it already uses this plan"}
+            </p>
             {preview.changes.map((change) => (
-              <p key={change.field} className="text-sm">
-                <span className="font-medium">{change.field}</span>: {String(change.before)} →{" "}
-                {String(change.after)}
-              </p>
+              <PolicyValueChange key={change.field} change={change} />
             ))}
             {preview.warnings.map((warning) => (
               <p key={warning} className="text-warning text-sm">
                 {warning}
               </p>
             ))}
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={acknowledged}
-                onChange={(event) => setAcknowledged(event.target.checked)}
-              />
-              I understand this updates only the managed account group.
-            </label>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={!acknowledged || !preview.changed}
-              onClick={() => setConfirming(true)}
-            >
-              Apply to account
-            </Button>
+            {preview.changed ? (
+              <Button type="button" onClick={() => setConfirming(true)}>
+                Apply
+              </Button>
+            ) : null}
           </div>
         ) : null}
         <AlertDialog open={confirming} onOpenChange={setConfirming}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Apply this account entitlement?</AlertDialogTitle>
+              <AlertDialogTitle>
+                Put this account on {selected?.name ?? "this plan"}?
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                This uses the reviewed dry run and preserves every custom profile group.
+                The account gets the changes you reviewed. Profiles with their own settings stay as
+                they are.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -209,12 +190,12 @@ export function AccountEntitlementPanel({ userID }: { userID: string }) {
                   void applyChanges().catch(() => undefined);
                 }}
               >
-                Confirm account apply
+                Apply
               </AlertDialogAction>
             </AlertDialogFooter>
             {apply.error ? (
               <p role="alert" className="text-destructive text-sm">
-                {apply.error.message}
+                {apply.error.message || "The plan couldn’t be applied. Preview again and retry."}
               </p>
             ) : null}
           </AlertDialogContent>

@@ -26,11 +26,15 @@ export default function PersonDetailSheet({
             </SheetHeader>
             <div className="space-y-5 px-4 pb-6">
               <div className="flex gap-2">
-                <Badge variant="outline">{person.membership_status}</Badge>
-                <Badge variant="secondary">{person.legacy_role}</Badge>
+                <Badge variant="outline" className="capitalize">
+                  {person.membership_status}
+                </Badge>
+                <Badge variant="secondary" className="capitalize">
+                  {person.legacy_role}
+                </Badge>
               </div>
               <div>
-                <h3 className="text-sm font-semibold">Profiles</h3>
+                <h3 className="text-sm font-medium">Profiles and access groups</h3>
                 <ul className="mt-2 space-y-2">
                   {person.profiles.map((profile) => (
                     <li key={profile.id} className="surface-panel rounded-xl p-3 text-sm">
@@ -41,10 +45,12 @@ export default function PersonDetailSheet({
                 </ul>
               </div>
               <dl className="grid grid-cols-2 gap-3 text-sm">
-                <dt className="text-muted-foreground">Security revision</dt>
-                <dd>{person.security_revision}</dd>
-                <dt className="text-muted-foreground">Last activity</dt>
+                <dt className="text-muted-foreground">Last active</dt>
                 <dd>{new Date(person.last_activity).toLocaleString()}</dd>
+                <dt className="text-muted-foreground">Account</dt>
+                <dd className="font-mono text-xs">
+                  {person.account_id} · revision {person.security_revision}
+                </dd>
               </dl>
             </div>
           </>

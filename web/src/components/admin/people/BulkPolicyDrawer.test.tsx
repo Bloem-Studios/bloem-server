@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -106,11 +106,24 @@ function renderDrawer(props: Partial<React.ComponentProps<typeof BulkPolicyDrawe
   );
 }
 
+const libraries = {
+  libraries: [
+    { folder_id: 8, name: "Kids", type: "movies", access_kind: "owned" },
+    { folder_id: 13, name: "Documentaries", type: "movies", access_kind: "owned" },
+  ],
+};
+
+function previewCalls() {
+  return vi
+    .mocked(adminV2Api)
+    .mock.calls.filter(([path]) => path === "/organization/people/policy-previews");
+}
+
 async function goToOperationStep() {
-  expect(screen.getByRole("heading", { name: "Review selection" })).toBeInTheDocument();
-  expect(screen.getByText("120 matched")).toBeInTheDocument();
-  expect(screen.getByText("3 excluded")).toBeInTheDocument();
-  await userEvent.click(screen.getByRole("button", { name: "Choose policy operation" }));
+  expect(screen.getByRole("heading", { name: "Check the accounts" })).toBeInTheDocument();
+  expect(screen.getByText("Selected").nextSibling).toHaveTextContent("120");
+  expect(screen.getByText("Left out by your filters").nextSibling).toHaveTextContent("3");
+  await userEvent.click(screen.getByRole("button", { name: "Next" }));
 }
 
 describe("BulkPolicyDrawer", () => {
@@ -119,57 +132,53 @@ describe("BulkPolicyDrawer", () => {
     vi.clearAllMocks();
   });
 
-  it("offers every operation, explicit set modes, a live draft diff, and dependency-safe controls", async () => {
+  it("offers every change, library and permission pickers, a live summary, and dependency-safe controls", async () => {
+    vi.mocked(adminV2Api).mockImplementation(async (path) => {
+      if (path === "/organization/libraries") return libraries as never;
+      throw new Error(`unexpected ${path}`);
+    });
     renderDrawer();
     await goToOperationStep();
 
-    expect(screen.getByRole("radiogroup", { name: "Policy operation" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Move to an existing cohort" })).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "What should change" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Move to a cohort" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Put on a plan" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Change some settings" })).toBeInTheDocument();
     expect(
-      screen.getByRole("radio", { name: "Apply an exact template revision" }),
+      screen.getByRole("radio", { name: "Reset to the organization default" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("radio", { name: "Derive a policy for this selection" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Restore the managed default" })).toBeInTheDocument();
 
-    await userEvent.click(
-      screen.getByRole("radio", { name: "Derive a policy for this selection" }),
-    );
+    await userEvent.click(screen.getByRole("radio", { name: "Change some settings" }));
     await userEvent.selectOptions(
-      screen.getByRole("combobox", { name: "Base cohort" }),
+      screen.getByRole("combobox", { name: "Start from cohort" }),
       standard.cohort_id,
     );
     await userEvent.type(
-      screen.getByRole("textbox", { name: "Derived cohort name" }),
+      screen.getByRole("textbox", { name: "Name for the new cohort" }),
       "Browse only",
     );
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Libraries" }), "add");
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Kids" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Documentaries" }));
     await userEvent.selectOptions(
-      screen.getByRole("combobox", { name: "Library operation" }),
-      "add",
-    );
-    await userEvent.type(screen.getByRole("textbox", { name: "Library IDs" }), "8, 13");
-    await userEvent.selectOptions(
-      screen.getByRole("combobox", { name: "Permission operation" }),
+      screen.getByRole("combobox", { name: "Extra permissions" }),
       "remove",
     );
-    await userEvent.type(screen.getByRole("textbox", { name: "Permissions" }), "request_media");
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Playback" }), "false");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Edit metadata" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Plays video" }), "false");
 
-    expect(screen.getByRole("spinbutton", { name: "Maximum streams" })).toBeDisabled();
-    expect(screen.getByRole("combobox", { name: "Transcoding" })).toBeDisabled();
-    const diff = screen.getByRole("region", { name: "Draft policy changes" });
-    expect(diff).toHaveTextContent(/libraries: add 8, 13/i);
-    expect(diff).toHaveTextContent(/permissions: remove request_media/i);
-    expect(diff).toHaveTextContent(/playback: disabled/i);
+    expect(screen.getByRole("spinbutton", { name: "Screens at once" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Video conversion" })).toBeDisabled();
+    const diff = screen.getByRole("region", { name: "Your changes" });
+    expect(diff).toHaveTextContent(/Libraries: Add Kids, Documentaries/);
+    expect(diff).toHaveTextContent(/Extra permissions: Remove Edit metadata/);
+    expect(diff).toHaveTextContent(/Plays video: not allowed/);
   });
 
-  it("uses the authoritative preview, resets it after custom-profile changes, and synchronously guards enqueue", async () => {
-    let previewCalls = 0;
+  it("uses the server preview, re-previews after the custom-profile option changes, and guards enqueue", async () => {
     let jobCalls = 0;
     vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
       if (path === "/organization/people/policy-previews" && init?.method === "POST") {
-        previewCalls += 1;
         const body = JSON.parse(String(init.body));
         return {
           preview: {
@@ -207,57 +216,54 @@ describe("BulkPolicyDrawer", () => {
           },
         } as never;
       }
+      if (path === "/organization/libraries") return libraries as never;
       throw new Error(`unexpected ${path}`);
     });
 
     renderDrawer();
     await goToOperationStep();
     await userEvent.selectOptions(
-      screen.getByRole("combobox", { name: "Target cohort" }),
+      screen.getByRole("combobox", { name: "Cohort" }),
       standard.cohort_id,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Preview policy impact" }));
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
 
-    expect(await screen.findByRole("heading", { name: "Review impact" })).toBeInTheDocument();
-    expect(screen.getByText("172 inherited profiles move")).toBeInTheDocument();
-    expect(screen.getByText("9 custom profiles remain unchanged")).toBeInTheDocument();
-    expect(screen.getByText("90 accounts change maximum streams")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Observed current cohorts" })).toHaveTextContent(
-      /Template browse.*revision 1.*Cohort cohort-old.*revision 1.*Access group Browse access.*9.*106 managed/i,
+    expect(await screen.findByRole("heading", { name: "Review the change" })).toBeInTheDocument();
+    expect(screen.getByText("172 that follow their account change with it")).toBeInTheDocument();
+    expect(screen.getByText("9 with their own settings stay as they are")).toBeInTheDocument();
+    expect(screen.getByText("Screens at once for 90 accounts")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Where they are now" })).toHaveTextContent(
+      /106 accounts: plan browse, revision 1/,
     );
-    const target = screen.getByRole("region", { name: "Authoritative policy target" });
-    expect(target).toHaveTextContent(/Standard/);
-    expect(target).toHaveTextContent(/Cohort revision.*2/i);
-    expect(target).toHaveTextContent(/Template.*standard.*revision 4/i);
-    expect(target).toHaveTextContent(/digest-standard/i);
-    expect(screen.getByRole("region", { name: "Authoritative target policy" })).toHaveTextContent(
-      /Maximum streams.*2/i,
+    const target = screen.getByRole("region", { name: "What they'll get" });
+    expect(target).toHaveTextContent(/Plan standard, revision 4/);
+    expect(target).toHaveTextContent(/digest-standard/);
+    expect(screen.getByRole("region", { name: "New settings" })).toHaveTextContent(
+      /Screens at once\s*2 screens/,
     );
 
-    await userEvent.click(screen.getByRole("checkbox", { name: "Move custom profiles too" }));
-    expect(screen.queryByText("172 inherited profiles move")).not.toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(/preview is out of date/i);
-    await userEvent.click(screen.getByRole("button", { name: "Recalculate policy impact" }));
-    expect(await screen.findByText("9 custom profiles move")).toBeInTheDocument();
-    expect(previewCalls).toBe(2);
-
-    await userEvent.click(screen.getByRole("button", { name: "Continue to confirmation" }));
-    expect(screen.getByRole("heading", { name: "Confirm policy job" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Observed current cohorts" })).toHaveTextContent(
-      /browse.*106 managed/i,
-    );
-    expect(screen.getByRole("region", { name: "Authoritative policy target" })).toHaveTextContent(
-      /Standard.*digest-standard/i,
-    );
-    expect(screen.getByRole("button", { name: "Start policy job" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "I understand this creates a durable policy job" }),
+      screen.getByRole("checkbox", { name: /Also change profiles with their own settings/ }),
     );
-    const start = screen.getByRole("button", { name: "Start policy job" });
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(await screen.findByText("9 with their own settings change too")).toBeInTheDocument();
+    expect(previewCalls()).toHaveLength(2);
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("heading", { name: "Confirm" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "What they'll get" })).toHaveTextContent(
+      /standard.*digest-standard/,
+    );
+    expect(screen.getByRole("button", { name: "Apply to 120 accounts" })).toBeDisabled();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /checked this change for 120 accounts/ }),
+    );
+    const start = screen.getByRole("button", { name: "Apply to 120 accounts" });
     fireEvent.click(start);
     fireEvent.click(start);
 
-    expect(await screen.findByRole("heading", { name: "Policy job running" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Applying the change" })).toBeInTheDocument();
     expect(jobCalls).toBe(1);
     const call = vi
       .mocked(adminV2Api)
@@ -281,30 +287,39 @@ describe("BulkPolicyDrawer", () => {
         requestBody = JSON.parse(String(init?.body));
         return { preview } as never;
       }
+      if (path === "/organization/libraries") return libraries as never;
       throw new Error(`unexpected ${path}`);
     });
 
     renderDrawer();
     await goToOperationStep();
-    await userEvent.click(
-      screen.getByRole("radio", { name: "Derive a policy for this selection" }),
-    );
+    await userEvent.click(screen.getByRole("radio", { name: "Change some settings" }));
     await userEvent.type(
-      screen.getByRole("textbox", { name: "Derived cohort name" }),
+      screen.getByRole("textbox", { name: "Name for the new cohort" }),
       "No playback",
     );
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Transcoding" }), "true");
-    await userEvent.type(screen.getByRole("spinbutton", { name: "Maximum transcodes" }), "3");
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Downloads" }), "true");
     await userEvent.selectOptions(
-      screen.getByRole("combobox", { name: "Transcoded downloads" }),
+      screen.getByRole("combobox", { name: "Video conversion" }),
       "true",
     );
-    await userEvent.type(screen.getByRole("spinbutton", { name: "Maximum streams" }), "4");
-    await userEvent.type(screen.getByRole("textbox", { name: "Maximum playback quality" }), "4k");
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Playback" }), "false");
-    await userEvent.click(screen.getByRole("button", { name: "Preview policy impact" }));
+    await userEvent.type(screen.getByRole("spinbutton", { name: "Conversions at once" }), "3");
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Download original files" }),
+      "true",
+    );
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Download converted copies" }),
+      "true",
+    );
+    await userEvent.type(screen.getByRole("spinbutton", { name: "Screens at once" }), "4");
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Best picture quality" }),
+      "2160p",
+    );
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Plays video" }), "false");
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
 
+    await waitFor(() => expect(requestBody).toBeDefined());
     expect(requestBody).toMatchObject({
       command: {
         patch: {
@@ -328,32 +343,29 @@ describe("BulkPolicyDrawer", () => {
     renderDrawer({ initialCohortID: "archived-cohort" });
     await goToOperationStep();
 
-    expect(screen.getByRole("combobox", { name: "Target cohort" })).toHaveValue("");
-    await userEvent.click(screen.getByRole("button", { name: "Preview policy impact" }));
-    expect(screen.getByRole("alert")).toHaveTextContent(/choose an active target cohort/i);
-    expect(adminV2Api).not.toHaveBeenCalled();
+    expect(screen.getByRole("combobox", { name: "Cohort" })).toHaveValue("");
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(/Choose a cohort/);
+    expect(previewCalls()).toHaveLength(0);
   });
 
-  it("rejects a malformed library ID list instead of silently dropping tokens", async () => {
-    vi.mocked(adminV2Api).mockResolvedValue({ preview } as never);
+  it("asks for at least one library before previewing a library change", async () => {
+    vi.mocked(adminV2Api).mockResolvedValue(libraries as never);
     renderDrawer();
     await goToOperationStep();
-    await userEvent.click(
-      screen.getByRole("radio", { name: "Derive a policy for this selection" }),
+    await userEvent.click(screen.getByRole("radio", { name: "Change some settings" }));
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Name for the new cohort" }),
+      "Fewer libraries",
     );
-    await userEvent.type(screen.getByRole("textbox", { name: "Derived cohort name" }), "Bad input");
-    await userEvent.selectOptions(
-      screen.getByRole("combobox", { name: "Library operation" }),
-      "add",
-    );
-    await userEvent.type(screen.getByRole("textbox", { name: "Library IDs" }), "8, nope, 13");
-    await userEvent.click(screen.getByRole("button", { name: "Preview policy impact" }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Libraries" }), "add");
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/positive numeric library IDs/i);
-    expect(adminV2Api).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/Pick at least one library/);
+    expect(previewCalls()).toHaveLength(0);
   });
 
-  it("shows progress, cancels queued work, and never exposes an unexpected failure", async () => {
+  it("shows progress, stops queued work, and never exposes an unexpected failure", async () => {
     vi.mocked(adminV2Api).mockImplementation(async (path, init) => {
       if (path === "/organization/people/policy-previews") return { preview } as never;
       if (path === "/organization/people/policy-jobs") {
@@ -401,28 +413,27 @@ describe("BulkPolicyDrawer", () => {
     renderDrawer();
     await goToOperationStep();
     await userEvent.selectOptions(
-      screen.getByRole("combobox", { name: "Target cohort" }),
+      screen.getByRole("combobox", { name: "Cohort" }),
       standard.cohort_id,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Preview policy impact" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Continue to confirmation" }));
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+    await screen.findByRole("heading", { name: "Review the change" });
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "I understand this creates a durable policy job" }),
+      screen.getByRole("checkbox", { name: /checked this change for 120 accounts/ }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Start policy job" }));
+    await userEvent.click(screen.getByRole("button", { name: "Apply to 120 accounts" }));
 
-    expect(await screen.findByRole("progressbar", { name: "Policy job progress" })).toHaveAttribute(
+    expect(await screen.findByRole("progressbar", { name: "Progress" })).toHaveAttribute(
       "aria-valuenow",
       "50",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Cancel policy job" }));
-    expect(
-      await screen.findByRole("heading", { name: "Policy job cancelled" }),
-    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+    expect(await screen.findByRole("heading", { name: "Change stopped" })).toBeInTheDocument();
     expect(screen.queryByText(/never-display-this/i)).not.toBeInTheDocument();
   });
 
-  it("offers a fresh immutable selection for stale confirmations and exposes keyboard labels", async () => {
+  it("offers a fresh selection for stale confirmations and exposes keyboard labels", async () => {
     const retrySelection = vi.fn();
     vi.mocked(adminV2Api).mockRejectedValue(
       new AdminV2ClientError(
@@ -433,19 +444,19 @@ describe("BulkPolicyDrawer", () => {
     );
     renderDrawer({ onRetrySelection: retrySelection });
 
-    expect(screen.getByRole("dialog", { name: "Apply entitlement policy" })).toBeInTheDocument();
-    expect(screen.getByRole("list", { name: "Policy workflow steps" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Change plan or settings" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Steps" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     await goToOperationStep();
     await userEvent.selectOptions(
-      screen.getByRole("combobox", { name: "Target cohort" }),
+      screen.getByRole("combobox", { name: "Cohort" }),
       standard.cohort_id,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Preview policy impact" }));
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/preview changed or expired/i);
-    await userEvent.click(screen.getByRole("button", { name: "Refresh selection and retry" }));
+    expect(alert).toHaveTextContent(/Something changed since the preview/);
+    await userEvent.click(screen.getByRole("button", { name: "Review the accounts again" }));
     expect(retrySelection).toHaveBeenCalledOnce();
   });
 });

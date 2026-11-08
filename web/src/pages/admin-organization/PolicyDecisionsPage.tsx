@@ -1,10 +1,17 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronRight, ShieldCheck, ShieldX } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { adminV2Api, adminV2QueryKey } from "@/api/adminV2Client";
-import { Badge } from "@/components/ui/badge";
+import {
+  accessActionLabel,
+  accessReasonLabel,
+  formatDateTime,
+  libraryListLabel,
+  type NamedLibrary,
+} from "@/components/admin/policy/policyVocabulary";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
+import { useOrganizationLibraries } from "@/hooks/queries/admin/organizationLibraries";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 interface DecisionExplanation {
@@ -44,140 +51,193 @@ export default function PolicyDecisionsPage() {
       ).then((data) => data.decision),
     enabled: selectedID !== undefined,
   });
-  useDocumentTitle("Policy Decisions");
+  const libraryQuery = useOrganizationLibraries(contextKey, Boolean(active));
+  const libraries = useMemo<NamedLibrary[]>(
+    () =>
+      (libraryQuery.data ?? []).map((library) => ({ id: library.folder_id, name: library.name })),
+    [libraryQuery.data],
+  );
+  useDocumentTitle("Access Checks");
+  const rows = decisions.data?.pages.flatMap((page) => page.decisions) ?? [];
 
   return (
     <section className="admin-page space-y-6">
       <div className="page-header">
         <div className="space-y-2">
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
-            Policy Decisions
+            Access Checks
           </h1>
-          <p className="page-subtitle">
-            Read-only authorization explanations for {active?.name ?? "this organization"}.
+          <p className="page-subtitle max-w-3xl">
+            Each time someone in {active?.name ?? "this organization"} starts a video or a download,
+            Bloem checks their settings and records the answer. Pick one to see why.
           </p>
         </div>
       </div>
 
-      {decisions.isLoading && <p className="text-muted-foreground text-sm">Loading decisions…</p>}
-      {decisions.isError && <p role="alert">{decisions.error.message}</p>}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <div className="space-y-2">
-          {decisions.data?.pages
-            .flatMap((page) => page.decisions)
-            .map((decision) => (
+      {decisions.isLoading ? <p className="text-muted-foreground text-sm">Loading…</p> : null}
+      {decisions.isError ? (
+        <p className="text-destructive text-sm" role="alert">
+          Access checks couldn’t be loaded. Reload the page to try again.
+        </p>
+      ) : null}
+      {!decisions.isLoading && !decisions.isError && rows.length === 0 ? (
+        <p className="surface-panel text-muted-foreground rounded-2xl p-8 text-center text-sm">
+          Nothing has been checked yet.
+        </p>
+      ) : null}
+      {rows.length ? (
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="space-y-2">
+            {rows.map((decision) => (
               <button
                 key={decision.id}
                 type="button"
+                aria-pressed={decision.id === selectedID}
                 onClick={() => setSelectedID(decision.id)}
-                className="surface-panel focus-visible:ring-ring flex w-full items-center gap-3 rounded-xl p-4 text-left outline-none focus-visible:ring-2"
+                className="surface-panel focus-visible:ring-ring hover:bg-muted/40 aria-pressed:border-primary flex w-full items-center gap-3 rounded-xl border border-transparent p-4 text-left transition-colors outline-none focus-visible:ring-2"
               >
                 {decision.allowed ? (
-                  <ShieldCheck className="size-5 text-emerald-500" aria-hidden />
+                  <ShieldCheck className="size-5 shrink-0 text-emerald-600" aria-hidden />
                 ) : (
-                  <ShieldX className="text-destructive size-5" aria-hidden />
+                  <ShieldX className="text-destructive size-5 shrink-0" aria-hidden />
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium">{decision.action}</span>
-                  <span className="text-muted-foreground block text-xs">
-                    {decision.allowed ? "Allowed" : "Denied"} ·{" "}
-                    {decision.reason_code || "No reason code"}
+                  <span className="block font-medium">
+                    {accessActionLabel(decision.action)}: {decision.allowed ? "allowed" : "refused"}
+                  </span>
+                  <span className="text-muted-foreground block truncate text-sm">
+                    {decision.allowed ? "" : `${accessReasonLabel(decision.reason_code)} · `}
+                    {formatDateTime(decision.timestamp)}
                   </span>
                 </span>
-                <ChevronRight className="text-muted-foreground size-4" aria-hidden />
+                <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
               </button>
             ))}
-          {decisions.hasNextPage && (
-            <button
-              type="button"
-              className="border-border hover:bg-muted w-full rounded-lg border px-3 py-2 text-sm font-medium"
-              onClick={() => void decisions.fetchNextPage()}
-              disabled={decisions.isFetchingNextPage}
-            >
-              {decisions.isFetchingNextPage ? "Loading more…" : "Load more decisions"}
-            </button>
-          )}
+            {decisions.hasNextPage ? (
+              <button
+                type="button"
+                className="border-border hover:bg-muted w-full rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
+                onClick={() => void decisions.fetchNextPage()}
+                disabled={decisions.isFetchingNextPage}
+              >
+                {decisions.isFetchingNextPage ? "Loading…" : "Show more"}
+              </button>
+            ) : null}
+          </div>
+          <div className="surface-panel min-h-48 rounded-2xl p-5 lg:sticky lg:top-4 lg:self-start">
+            {selectedID === undefined ? (
+              <p className="text-muted-foreground text-sm">Pick a check to see the details.</p>
+            ) : selected.isLoading ? (
+              <p className="text-muted-foreground text-sm">Loading…</p>
+            ) : selected.isError ? (
+              <p className="text-destructive text-sm" role="alert">
+                This check couldn’t be loaded.
+              </p>
+            ) : selected.data ? (
+              <DecisionDetails decision={selected.data} libraries={libraries} />
+            ) : null}
+          </div>
         </div>
-        <div className="surface-panel min-h-48 rounded-2xl p-5">
-          {!selectedID && (
-            <p className="text-muted-foreground text-sm">
-              Select a decision to inspect its explanation.
-            </p>
-          )}
-          {selected.isLoading && (
-            <p className="text-muted-foreground text-sm">Loading explanation…</p>
-          )}
-          {selected.data && <DecisionDetails decision={selected.data} />}
-        </div>
-      </div>
+      ) : null}
     </section>
   );
 }
 
-function DecisionDetails({ decision }: { decision: DecisionExplanation }) {
+function DecisionDetails({
+  decision,
+  libraries,
+}: {
+  decision: DecisionExplanation;
+  libraries: NamedLibrary[];
+}) {
+  const resource = Object.entries(decision.resource);
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Decision {decision.id}</h2>
-        <Badge variant={decision.allowed ? "secondary" : "destructive"}>
-          {decision.allowed ? "Allowed" : "Denied"}
-        </Badge>
+      <div>
+        <h2 className="text-lg font-medium">
+          {accessActionLabel(decision.action)}: {decision.allowed ? "allowed" : "refused"}
+        </h2>
+        <p className="text-muted-foreground text-sm">{formatDateTime(decision.timestamp)}</p>
       </div>
+      {!decision.allowed ? (
+        <p className="border-destructive/30 bg-destructive/10 rounded-lg border p-3 text-sm">
+          {accessReasonLabel(decision.reason_code)}
+        </p>
+      ) : null}
       <dl className="grid gap-4 text-sm sm:grid-cols-2">
-        <Detail label="Organization" value={decision.organization.id} />
-        <Detail label="Membership" value={decision.organization.membership_id ?? "Not recorded"} />
         <Detail
-          label="Subject"
-          value={`Account ${decision.subject.account_id ?? "—"} · Profile ${decision.subject.profile_id ?? "—"}`}
+          label="Who"
+          value={`Account ${decision.subject.account_id ?? "not recorded"}${
+            decision.subject.profile_id ? ` · Profile ${decision.subject.profile_id}` : ""
+          }`}
         />
         <Detail
           label="Access group"
-          value={
-            decision.group.name
-              ? `${decision.group.name} (${decision.group.id})`
-              : String(decision.group.id ?? "Not resolved")
-          }
+          value={decision.group.name ?? (decision.group.id ? `Group ${decision.group.id}` : "None")}
         />
         <Detail
-          label="Tenant library ceiling"
-          value={decision.library_ceiling.length ? decision.library_ceiling.join(", ") : "None"}
+          label="Libraries they could use"
+          value={libraryListLabel(decision.library_ceiling, libraries)}
+          wide
         />
-        <Detail label="Action" value={decision.action} />
-        <Detail label="Reason code" value={decision.reason_code || "Not recorded"} />
       </dl>
-      <div>
-        <h3 className="text-sm font-semibold">Resource</h3>
-        <dl className="mt-2 grid gap-2 text-sm">
-          {Object.entries(decision.resource).map(([key, value]) => (
-            <Detail key={key} label={key.replace(/_/g, " ")} value={formatValue(value)} />
-          ))}
+      {resource.length ? (
+        <section>
+          <h3 className="text-sm font-medium">What they asked for</h3>
+          <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+            {resource.map(([key, value]) => (
+              <Detail key={key} label={sentence(key)} value={formatValue(value)} />
+            ))}
+          </dl>
+        </section>
+      ) : null}
+      <details className="text-sm">
+        <summary className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+          Details
+        </summary>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Detail label="Check" value={String(decision.id)} />
+          <Detail label="Reason code" value={decision.reason_code || "None"} />
+          <Detail label="Organization ID" value={decision.organization.id} />
+          <Detail label="Membership ID" value={decision.organization.membership_id ?? "None"} />
+          {decision.group.id ? (
+            <Detail label="Access group ID" value={String(decision.group.id)} />
+          ) : null}
+          <Detail
+            label="Rules checked"
+            value={
+              decision.policy_versions.length
+                ? decision.policy_versions
+                    .map(
+                      (version) =>
+                        `${version.kind}${version.name ? ` ${version.name}` : ""} version ${version.version}`,
+                    )
+                    .join(", ")
+                : "None recorded"
+            }
+            wide
+          />
         </dl>
-      </div>
-      <div>
-        <h3 className="text-sm font-semibold">Contributing policy versions</h3>
-        <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
-          {decision.policy_versions.map((version) => (
-            <li key={`${version.kind}:${version.name ?? ""}:${version.version}`}>
-              {version.kind}
-              {version.name ? ` ${version.name}` : ""} · version {version.version}
-            </li>
-          ))}
-        </ul>
-      </div>
+      </details>
     </div>
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function Detail({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
   const redacted = value === "[redacted]";
   return (
-    <div>
-      <dt className="text-muted-foreground capitalize">{label}</dt>
-      <dd className="mt-0.5 font-medium break-all">
-        {value} {redacted && <span className="sr-only">Sensitive value redacted</span>}
+    <div className={wide ? "min-w-0 sm:col-span-2" : "min-w-0"}>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 break-words">
+        {value} {redacted ? <span className="sr-only">Sensitive value hidden</span> : null}
       </dd>
     </div>
   );
+}
+
+function sentence(key: string): string {
+  const text = key.replace(/_/g, " ");
+  return text ? text[0]!.toUpperCase() + text.slice(1) : key;
 }
 
 function formatValue(value: unknown): string {

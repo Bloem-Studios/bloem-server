@@ -71,10 +71,10 @@ describe("EntitlementTemplateEditor", () => {
       />,
     );
 
-    await user.type(screen.getByLabelText("Key"), "custom");
-    await user.click(screen.getByRole("button", { name: "Select all libraries" }));
+    await user.type(screen.getByLabelText("Name"), "Custom");
+    await user.click(screen.getByRole("radio", { name: /Only the ones I pick/ }));
     await user.click(screen.getByRole("checkbox", { name: "Movies" }));
-    await user.click(screen.getByRole("button", { name: "Save template" }));
+    await user.click(screen.getByRole("button", { name: "Create plan" }));
 
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({ policy: expect.objectContaining({ library_ids: [2] }) }),
@@ -94,9 +94,10 @@ describe("EntitlementTemplateEditor", () => {
       />,
     );
 
-    await user.type(screen.getByLabelText("Key"), "custom");
-    await user.click(screen.getByRole("button", { name: "Select all libraries" }));
-    await user.click(screen.getByRole("button", { name: "Save template" }));
+    await user.type(screen.getByLabelText("Name"), "Custom");
+    await user.click(screen.getByRole("radio", { name: /Only the ones I pick/ }));
+    await user.click(screen.getByRole("radio", { name: /All libraries/ }));
+    await user.click(screen.getByRole("button", { name: "Create plan" }));
 
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({ policy: expect.objectContaining({ library_ids: null }) }),
@@ -107,10 +108,10 @@ describe("EntitlementTemplateEditor", () => {
     const user = userEvent.setup();
     render(<EntitlementTemplateEditor libraries={[]} onSave={vi.fn()} />);
 
-    await user.click(screen.getByRole("checkbox", { name: "Allow downloads" }));
+    await user.click(screen.getByRole("checkbox", { name: "Download original files" }));
 
-    expect(screen.getByRole("checkbox", { name: "Allow transcoded downloads" })).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: "Allow transcoded downloads" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Download converted copies" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Download converted copies" })).not.toBeChecked();
   });
 
   it("clears playback-dependent capabilities when playback is disabled", async () => {
@@ -118,14 +119,14 @@ describe("EntitlementTemplateEditor", () => {
     const save = vi.fn();
     render(<EntitlementTemplateEditor libraries={[]} onSave={save} />);
 
-    await user.type(screen.getByLabelText("Key"), "view-only");
-    await user.click(screen.getByRole("checkbox", { name: "Allow playback" }));
+    await user.type(screen.getByLabelText("Name"), "View only");
+    await user.click(screen.getByRole("checkbox", { name: "Plays video" }));
 
-    expect(screen.getByLabelText("Max streams")).toHaveValue(0);
-    expect(screen.getByLabelText("Max transcodes")).toHaveValue(0);
-    expect(screen.getByRole("checkbox", { name: "Allow playback transcoding" })).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: "Allow downloads" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Save template" }));
+    expect(screen.getByLabelText("Screens at once")).toHaveValue(0);
+    expect(screen.getByLabelText("Conversions at once")).toHaveValue(0);
+    expect(screen.getByRole("checkbox", { name: "Video conversion" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Download original files" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Create plan" }));
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
         policy: expect.objectContaining({
@@ -170,14 +171,14 @@ describe("EntitlementTemplateEditor", () => {
       />,
     );
 
-    expect(screen.getByText(/does not permit playback/i)).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Allow playback" })).toBeDisabled();
+    expect(screen.getByText(/without playing anything/i)).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Plays video" })).toBeDisabled();
     expect(screen.getByLabelText("Name")).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Save template" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save as new revision" })).toBeEnabled();
 
     await user.clear(screen.getByLabelText("Name"));
     await user.type(screen.getByLabelText("Name"), "Browse media");
-    await user.click(screen.getByRole("button", { name: "Save template" }));
+    await user.click(screen.getByRole("button", { name: "Save as new revision" }));
 
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -191,13 +192,16 @@ describe("EntitlementTemplateEditor", () => {
     );
   });
 
-  it("requires an explicit key when creating a template", async () => {
+  it("suggests a key from the name and requires one when creating a plan", async () => {
     const user = userEvent.setup();
     render(<EntitlementTemplateEditor libraries={[]} onSave={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: "Save template" })).toBeDisabled();
-    await user.type(screen.getByLabelText("Key"), "event-pass");
-    expect(screen.getByRole("button", { name: "Save template" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Create plan" })).toBeDisabled();
+    await user.type(screen.getByLabelText("Name"), "Event pass");
+    expect(screen.getByLabelText("Key")).toHaveValue("event-pass");
+    expect(screen.getByRole("button", { name: "Create plan" })).toBeEnabled();
+    await user.clear(screen.getByLabelText("Key"));
+    expect(screen.getByRole("button", { name: "Create plan" })).toBeDisabled();
   });
 
   it("saves playback quality and media request controls", async () => {
@@ -205,9 +209,9 @@ describe("EntitlementTemplateEditor", () => {
     const save = vi.fn();
     render(<EntitlementTemplateEditor libraries={[]} template={standard} onSave={save} />);
 
-    await user.selectOptions(screen.getByLabelText("Maximum playback quality"), "1080p");
-    await user.click(screen.getByRole("checkbox", { name: "Allow media requests" }));
-    await user.click(screen.getByRole("button", { name: "Save template" }));
+    await user.selectOptions(screen.getByLabelText("Best picture quality"), "1080p");
+    await user.click(screen.getByRole("checkbox", { name: "Media requests" }));
+    await user.click(screen.getByRole("button", { name: "Save as new revision" }));
 
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -224,9 +228,9 @@ describe("EntitlementTemplateEditor", () => {
     const save = vi.fn();
     render(<EntitlementTemplateEditor libraries={[]} template={standard} onSave={save} />);
 
-    await user.click(screen.getByRole("checkbox", { name: "Allow all permissions" }));
-    await user.click(screen.getByRole("checkbox", { name: "Marker editing" }));
-    await user.click(screen.getByRole("button", { name: "Save template" }));
+    await user.click(screen.getByRole("checkbox", { name: "Allow every permission" }));
+    await user.click(screen.getByRole("checkbox", { name: "Edit intro and credits markers" }));
+    await user.click(screen.getByRole("button", { name: "Save as new revision" }));
 
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -275,7 +279,7 @@ describe("EntitlementTemplatesPage", () => {
       vi.mocked(adminV2Api).mock.calls.some(([path]) => String(path).includes("/archive")),
     ).toBe(false);
 
-    await user.click(screen.getByRole("button", { name: "Archive template" }));
+    await user.click(screen.getByRole("button", { name: "Archive plan" }));
     expect(
       vi.mocked(adminV2Api).mock.calls.some(([path]) => String(path).includes("/standard/archive")),
     ).toBe(true);
@@ -290,7 +294,7 @@ describe("EntitlementTemplatesPage", () => {
     renderWithQuery(<EntitlementTemplatesPage />);
 
     await user.click(await screen.findByRole("button", { name: "Edit Standard" }));
-    await user.click(screen.getByRole("button", { name: "Save template" }));
+    await user.click(screen.getByRole("button", { name: "Save as new revision" }));
 
     const revision = vi
       .mocked(adminV2Api)
@@ -309,12 +313,12 @@ describe("EntitlementTemplatesPage", () => {
     });
     renderWithQuery(<EntitlementTemplatesPage />);
 
-    await user.click(await screen.findByRole("button", { name: "Clone Standard" }));
-    expect(screen.getByRole("dialog", { name: "Clone Standard" })).toBeInTheDocument();
-    await user.type(screen.getByLabelText("New key"), "standard-copy");
-    await user.clear(screen.getByLabelText("New name"));
-    await user.type(screen.getByLabelText("New name"), "Standard copy");
-    await user.click(screen.getByRole("button", { name: "Create clone" }));
+    await user.click(await screen.findByRole("button", { name: "Copy Standard" }));
+    expect(screen.getByRole("dialog", { name: "Copy Standard" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Key")).toHaveValue("standard-copy");
+    await user.clear(screen.getByLabelText("Name"));
+    await user.type(screen.getByLabelText("Name"), "Standard copy");
+    await user.click(screen.getByRole("button", { name: "Make copy" }));
 
     expect(
       vi.mocked(adminV2Api).mock.calls.some(
@@ -339,7 +343,7 @@ describe("EntitlementTemplatesPage", () => {
     renderWithQuery(<EntitlementTemplatesPage />);
 
     await user.click(await screen.findByRole("button", { name: "Archive Standard" }));
-    await user.click(screen.getByRole("button", { name: "Archive template" }));
+    await user.click(screen.getByRole("button", { name: "Archive plan" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Template is still in use.");
   });
@@ -361,10 +365,10 @@ describe("EntitlementTemplatesPage", () => {
     renderWithQuery(<EntitlementTemplatesPage />);
 
     await user.click(await screen.findByRole("button", { name: "Edit Standard" }));
-    expect(await screen.findByText(/1 stream · 5 profiles/)).toBeInTheDocument();
-    expect(screen.getByText(/Requests off/)).toBeInTheDocument();
+    expect(await screen.findByText(/1 screen · Original quality/)).toBeInTheDocument();
+    expect(screen.getByText(/5 profiles · No requests/)).toBeInTheDocument();
     expect(screen.getByText(/Aug 20/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Roll back to revision 1" }));
+    await user.click(screen.getByRole("button", { name: "Go back to revision 1" }));
 
     expect(
       vi.mocked(adminV2Api).mock.calls.some(
@@ -425,32 +429,31 @@ describe("OrganizationEntitlementPanel", () => {
     });
     renderWithQuery(<OrganizationEntitlementPanel organizationID="org-1" />);
 
-    expect(await screen.findByText("standard · revision 2")).toBeInTheDocument();
-    expect(screen.getByLabelText("Template")).toHaveValue("standard");
-    expect(screen.getByText("25 slots · 4 transcodes")).toBeInTheDocument();
-    expect(screen.getByText("All enabled libraries")).toBeInTheDocument();
-    expect(screen.getByText(/2 streams · 5 profiles/)).toBeInTheDocument();
+    expect(await screen.findByText("standard, revision 2")).toBeInTheDocument();
+    expect(screen.getByLabelText("Plan")).toHaveValue("standard");
+    expect(screen.getByText(/25 screens · 4 conversions at once/)).toBeInTheDocument();
+    expect(screen.getByText("Members")).toBeInTheDocument();
+    expect(screen.getByText("Screens at once:").nextSibling).toHaveTextContent("2 screens");
     expect(screen.getByText(/Aug 21/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View apply history" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "See past changes" })).toHaveAttribute(
       "href",
       "/admin/activity?organization_id=org-1&event=entitlement",
     );
-    expect(screen.getByText("Playback allowed")).toBeInTheDocument();
-    expect(screen.getByText("Original downloads allowed")).toBeInTheDocument();
-    expect(screen.getByText("Permissions unrestricted")).toBeInTheDocument();
+    expect(screen.getByText("Plays video:").nextSibling).toHaveTextContent("Yes");
+    expect(screen.getByText("Download original files:").nextSibling).toHaveTextContent("Yes");
+    expect(screen.getByText("Extra permissions:").nextSibling).toHaveTextContent("All permissions");
 
     await user.click(await screen.findByRole("button", { name: "Preview changes" }));
-    expect(await screen.findByText("max_streams")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Apply to existing tenant" })).toBeDisabled();
+    expect(await screen.findByText("Screens at once")).toBeInTheDocument();
+    expect(screen.getByText(/1 → 3/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("checkbox", { name: /I understand/i }));
-    await user.click(screen.getByRole("button", { name: "Apply to existing tenant" }));
+    await user.click(screen.getByRole("button", { name: "Apply" }));
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     expect(vi.mocked(adminV2Api).mock.calls.some(([path]) => String(path).endsWith("/apply"))).toBe(
       false,
     );
 
-    await user.click(screen.getByRole("button", { name: "Confirm apply" }));
+    await user.click(screen.getByRole("button", { name: "Apply" }));
     expect(vi.mocked(adminV2Api).mock.calls.some(([path]) => String(path).endsWith("/apply"))).toBe(
       true,
     );
@@ -475,10 +478,8 @@ describe("OrganizationEntitlementPanel", () => {
 
     renderWithQuery(<OrganizationEntitlementPanel organizationID="org-1" />);
 
-    expect(
-      await screen.findByText("No enabled entitlement templates are available."),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Manage entitlement templates" })).toHaveAttribute(
+    expect(await screen.findByText("No plans are offered yet.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to plans" })).toHaveAttribute(
       "href",
       "/admin/platform/entitlement-templates",
     );
@@ -524,18 +525,19 @@ describe("AccountEntitlementPanel", () => {
 
     renderWithQuery(<AccountEntitlementPanel userID="42" />);
 
-    expect(await screen.findByText("standard · revision 2")).toBeInTheDocument();
-    expect(screen.getByLabelText("Template")).toHaveValue("standard");
-    expect(screen.getByText(/Custom profile groups are never modified/)).toBeInTheDocument();
-    expect(screen.getByText("Playback allowed")).toBeInTheDocument();
-    expect(screen.getByText("Transcoded downloads allowed")).toBeInTheDocument();
-    expect(screen.getByText("Permissions unrestricted")).toBeInTheDocument();
-    expect(screen.getByText("All enabled libraries")).toBeInTheDocument();
+    expect(await screen.findByText("Plan standard, revision 2")).toBeInTheDocument();
+    expect(screen.getByLabelText("Plan")).toHaveValue("standard");
+    expect(
+      screen.getByText(/Profiles with their own settings stay as they are/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Plays video:").nextSibling).toHaveTextContent("Yes");
+    expect(screen.getByText("Download converted copies:").nextSibling).toHaveTextContent("Yes");
+    expect(screen.getByText("Extra permissions:").nextSibling).toHaveTextContent("All permissions");
+    expect(screen.getByText("Libraries: All libraries")).toBeInTheDocument();
     expect(screen.getByText(/Aug 21/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Preview account changes" }));
-    await user.click(await screen.findByRole("checkbox", { name: /managed account group/i }));
-    await user.click(screen.getByRole("button", { name: "Apply to account" }));
-    await user.click(screen.getByRole("button", { name: "Confirm account apply" }));
+    await user.click(screen.getByRole("button", { name: "Preview changes" }));
+    await user.click(await screen.findByRole("button", { name: "Apply" }));
+    await user.click(screen.getByRole("button", { name: "Apply" }));
 
     expect(
       vi
@@ -561,8 +563,8 @@ describe("AccountEntitlementPanel", () => {
 
     renderWithQuery(<AccountEntitlementPanel userID="42" />);
 
-    expect(await screen.findByRole("option", { name: "Select a template" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Template")).toHaveValue("");
-    expect(screen.getByRole("button", { name: "Preview account changes" })).toBeDisabled();
+    expect(await screen.findByRole("option", { name: "Choose a plan" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Plan")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Preview changes" })).toBeDisabled();
   });
 });

@@ -21,14 +21,15 @@ export default function BulkPeopleActionBar({
       aria-label="Bulk people actions"
     >
       <strong className="mr-auto text-sm">
-        {selection.matched.toLocaleString()} people selected
+        {selection.matched.toLocaleString()} {selection.matched === 1 ? "person" : "people"}{" "}
+        selected
       </strong>
       <Button size="sm" onClick={onApplyPolicy}>
-        Apply policy
+        Change plan or settings
       </Button>
       {groups.length > 0 ? (
         <select
-          aria-label="Assign selected people to group"
+          aria-label="Move their profiles to an access group"
           className="border-input bg-background h-9 rounded-md border px-3 text-sm"
           defaultValue=""
           onChange={(event) => {
@@ -37,7 +38,7 @@ export default function BulkPeopleActionBar({
             event.target.value = "";
           }}
         >
-          <option value="">Assign group…</option>
+          <option value="">Move to access group</option>
           {groups.map((group) => (
             <option key={group.id} value={group.id}>
               {group.name}
@@ -46,10 +47,10 @@ export default function BulkPeopleActionBar({
         </select>
       ) : null}
       <Button size="sm" variant="outline" onClick={() => onAction("reactivate_memberships")}>
-        Reactivate memberships
+        Reactivate
       </Button>
-      <Button size="sm" variant="destructive" onClick={() => onAction("suspend_memberships")}>
-        Suspend memberships
+      <Button size="sm" variant="outline" onClick={() => onAction("suspend_memberships")}>
+        Suspend
       </Button>
     </aside>
   );
