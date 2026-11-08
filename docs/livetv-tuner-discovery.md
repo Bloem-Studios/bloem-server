@@ -13,21 +13,21 @@ is set up differently.
 
 ## Two ways to find a tuner
 
-![Left, Discover on LAN: Bloem broadcasts on UDP port 65001 and HDHomeRun tuners and Dispatcharr answer. Right, Probe URL: Bloem tries discover.json at the usual places, including port 9191. Below, an Xtream provider is added with its own form](architecture/images/livetv-tuner-discovery/two-ways.svg)
+![Left, Search my network: Bloem broadcasts on UDP port 65001 and HDHomeRun tuners and Dispatcharr answer. Right, tuner address: Bloem tries discover.json at the usual places, including port 9191. Below, an Xtream provider is added with its own form](architecture/images/livetv-tuner-discovery/two-ways.svg)
 
 A platform administrator finds tuners under **Manage → Live TV → Tuners**, in the
 **Platform** context (an organization's context doesn't list it), with the main profile
 selected and any PIN entered.
 
-- **Discover on LAN** sends a question across the local network and lists the tuners
+- **Search my network** sends a question across the local network and lists the tuners
   that answer: HDHomeRun boxes, and Dispatcharr when it answers the same way. Bloem has
   to be on the local network itself for this to work.
-- **Probe URL only** tries one address you give, such as the address of a Dispatcharr
+- **Add tuner** tries the tuner address you type, such as the address of a Dispatcharr
   server or a tuner. It works wherever Bloem can reach that address.
 
-Either way, Bloem checks each tuner before you press **Add**, and tuners already added
-are marked **Added**. To add a tuner by hand, type its address in **Tuner URL**: Bloem
-finds the rest. You never type a device ID.
+**Search my network** also checks the address in **Tuner address** when one is typed. Each
+tuner it finds has an **Add** button, and tuners already added are marked **Added**. With
+**Add tuner**, Bloem finds the rest from the address. You never type a device ID.
 
 ## Dispatcharr
 
@@ -37,17 +37,17 @@ you would a tuner.
 
 ## When Bloem runs in Docker
 
-![Three cases: Docker's bridge network can't broadcast, so use Probe URL or the Live TV override; on Linux the override puts Bloem on the host network on port 8080; on Docker Desktop use Probe URL](architecture/images/livetv-tuner-discovery/docker-networks.svg)
+![Three cases: Docker's bridge network can't broadcast, so use tuner address or the Live TV override; on Linux the override puts Bloem on the host network on port 8080; on Docker Desktop use tuner address](architecture/images/livetv-tuner-discovery/docker-networks.svg)
 
 Bloem's usual Docker setup runs on a **bridge network**, a private network inside
-Docker. The question Discover on LAN sends doesn't leave it, so it finds nothing. Probe
+Docker. The question Search my network sends doesn't leave it, so it finds nothing. Probe
 URL still works.
 
 1. **On Linux,** start Bloem with the Live TV override. It puts Bloem on the host's own
    network, where it listens on port 8080 instead of 8090. Point apps and any proxy at
    8080.
 2. **On Docker Desktop for Mac or Windows,** the host's network isn't your real network.
-   Use Probe URL only, or run Bloem from source on the computer itself.
+   Type the tuner address, or run Bloem from source on the computer itself.
 3. **From source, or on bare metal,** discovery uses the computer's own network and
    needs nothing special.
 
@@ -69,8 +69,8 @@ override. See [how Xtream providers work](architecture/xtream-live-tv.md).
 
 | On this page | In the code and repository |
 | --- | --- |
-| Discover on LAN | `POST /api/bloem/v1/livetv/tuners/discover` with `include_udp`; UDP port `65001` (`internal/livetv/hdhomerun/lan_discover.go`) |
-| Probe URL only | the same route with `probe_urls`; candidates from `ProbeCandidateURLs` (`internal/livetv/hdhomerun/probe.go`) |
+| Search my network | `POST /api/bloem/v1/livetv/tuners/discover` with `include_udp`; UDP port `65001` (`internal/livetv/hdhomerun/lan_discover.go`) |
+| Tuner address | the same route with `probe_urls`; candidates from `ProbeCandidateURLs` (`internal/livetv/hdhomerun/probe.go`) |
 | Tuner URL | `POST /api/bloem/v1/livetv/tuners` with `url` |
 | The Live TV override | `docker-compose.livetv.yml` |
 | Address checks | `internal/livetv/fetch_url.go` |
@@ -104,8 +104,8 @@ Silo's admin navigation after Requests (`web/src/lib/bloemAdminNavigation.ts`).
 
 | Mode | What it finds | Requirements |
 | --- | --- | --- |
-| **Discover on LAN** | SiliconDust HDHomeRun (UDP broadcast to port `65001`) and any Dispatcharr instance that answers HDHR UDP discovery | Host must be able to broadcast/receive on the LAN |
-| **Probe URL only** | Dispatcharr HDHR emulation (`/hdhr/discover.json`) or a direct HDHR `discover.json` | Reachable HTTP(S) URL |
+| **Search my network** | SiliconDust HDHomeRun (UDP broadcast to port `65001`) and any Dispatcharr instance that answers HDHR UDP discovery | Host must be able to broadcast/receive on the LAN |
+| **Tuner address** | Dispatcharr HDHR emulation (`/hdhr/discover.json`) or a direct HDHR `discover.json` | Reachable HTTP(S) URL |
 
 Candidates are verified over HTTP before you click **Add**. Existing tuners are marked
 **Added**.
@@ -135,7 +135,7 @@ Bloem's Compose deployment uses Silo's multi-container `docker-compose.advanced.
 (selected by `COMPOSE_FILE` in `.env.bloem.example`; Silo's default
 `docker-compose.yml` now starts Silo's own all-in-one image). It runs the `silo`
 application service in **bridge** networking. Bridge mode typically **cannot** send
-SiliconDust discovery broadcasts to your LAN, so **Discover on LAN** returns no devices
+SiliconDust discovery broadcasts to your LAN, so **Search my network** returns no devices
 (URL probe still works).
 
 #### Linux: use the Live TV compose override
@@ -176,7 +176,7 @@ docker compose -f docker-compose.advanced.yml -f compose.gpu.yml -f docker-compo
 
 `network_mode: host` does **not** attach the container to your real LAN. Prefer:
 
-1. **Probe URL** with your Dispatcharr base (`http://dispatcharr.local:9191`) or HDHR IP
+1. **tuner address** with your Dispatcharr base (`http://dispatcharr.local:9191`) or HDHR IP
    (`http://192.0.2.50`)
 2. Or run Bloem **from source on the host** (not in Docker) if you need UDP discovery
 

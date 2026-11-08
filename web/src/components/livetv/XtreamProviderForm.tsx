@@ -57,16 +57,16 @@ export function XtreamProviderForm() {
     pinGeneration,
   ]);
   if (user?.role !== "admin") return null;
-  if (!profileId) return <p>Select your primary profile to configure an Xtream provider.</p>;
+  if (!profileId) return <p>Switch to your main profile to add an Xtream provider.</p>;
   if (capability.isLoading) return <p role="status">Checking Xtream support…</p>;
   if (capability.isError)
     return (
       <p role="alert">
-        Live TV capabilities could not be verified. Reload before configuring a provider.
+        Couldn’t check whether this server supports Xtream. Reload the page to try again.
       </p>
     );
   if (!capability.data?.xtream_supported)
-    return <p>This server does not advertise Xtream provider support.</p>;
+    return <p>This server doesn’t support Xtream providers.</p>;
   return (
     <ProviderForm
       key={scope}
@@ -209,24 +209,32 @@ function ProviderForm({
 
   return (
     <section className="max-w-xl space-y-4 border-t pt-6" aria-labelledby="xtream-provider-title">
-      <h3 id="xtream-provider-title" className="text-sm font-medium">
-        Xtream live TV provider
+      <h3 id="xtream-provider-title" className="text-base font-medium">
+        Add an Xtream provider
       </h3>
       <p className="text-muted-foreground text-sm">
-        Import live channels from an Xtream account. VOD and series are not imported. The provider
-        must serve MPEG-TS directly, without redirects. Credentials are encrypted on the server and
-        cleared from this form on submission. Prefer HTTPS; HTTP sends them without TLS.
+        Brings in the live channels from an Xtream account; its movies and series are not imported.
+        Bloem stores the sign-in encrypted. Use an https address if your provider has one, so the
+        password isn’t sent in the clear.
       </p>
+      <details className="text-sm">
+        <summary className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+          Provider requirements
+        </summary>
+        <p className="text-muted-foreground mt-2">
+          The provider must send live channels as MPEG-TS streams directly, without redirects.
+        </p>
+      </details>
       {(phase === "initial" || phase === "reloading") && <p role="status">Loading providers…</p>}
-      {phase === "pending" && <p role="status">Adding provider and confirming its saved state…</p>}
+      {phase === "pending" && <p role="status">Adding…</p>}
       {phase === "reload-required" && (
         <div role="alert" className="space-y-3">
           <p>
-            Provider state could not be confirmed. A previous request may have succeeded.
-            Credentials were cleared; reload before making another change.
+            Bloem couldn’t tell whether the provider was added. The form was cleared; reload to
+            check before you try again.
           </p>
           <Button variant="outline" onClick={() => void reload()}>
-            Reload providers
+            Reload
           </Button>
         </div>
       )}
@@ -234,11 +242,11 @@ function ProviderForm({
       {phase === "ready" && loaded && (
         <form className="space-y-4" autoComplete="off" onSubmit={(event) => void submit(event)}>
           <div className="space-y-1.5">
-            <Label htmlFor="xtream-name">Provider name (optional)</Label>
+            <Label htmlFor="xtream-name">Name (optional)</Label>
             <Input id="xtream-name" name="name" maxLength={128} placeholder="My TV provider" />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="xtream-url">Provider base URL</Label>
+            <Label htmlFor="xtream-url">Server address</Label>
             <Input
               id="xtream-url"
               name="url"
@@ -250,7 +258,7 @@ function ProviderForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="xtream-username">Provider username</Label>
+            <Label htmlFor="xtream-username">Username</Label>
             <Input
               id="xtream-username"
               name="username"
@@ -261,7 +269,7 @@ function ProviderForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="xtream-password">Provider password</Label>
+            <Label htmlFor="xtream-password">Password</Label>
             <Input
               id="xtream-password"
               name="password"
@@ -272,7 +280,7 @@ function ProviderForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="xtream-connections">Maximum provider connections</Label>
+            <Label htmlFor="xtream-connections">Streams at once</Label>
             <Input
               id="xtream-connections"
               name="max_connections"
@@ -283,8 +291,8 @@ function ProviderForm({
               defaultValue={1}
             />
             <p className="text-muted-foreground text-xs">
-              Shared by watching and recording across Bloem replicas. Never exceeds the limit
-              reported by your provider.
+              How many channels your provider lets you stream at the same time. Watching and
+              recording share it. Bloem never goes over your provider’s own limit.
             </p>
           </div>
           <Button type="submit">Add Xtream provider</Button>

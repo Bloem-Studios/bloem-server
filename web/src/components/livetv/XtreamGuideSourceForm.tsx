@@ -39,7 +39,7 @@ export function XtreamGuideSourceForm() {
   const profileId = getProfileId();
   const pinGeneration = getProfileTokenGeneration();
   if (user?.role !== "admin") return null;
-  if (!profileId) return <p>Select your primary profile to configure an Xtream guide.</p>;
+  if (!profileId) return <p>Switch to your main profile to add an Xtream guide.</p>;
   const scope = JSON.stringify([
     identity.serverOrigin,
     identity.authContextVersion,
@@ -148,28 +148,27 @@ function GuideForm({
   }
   return (
     <section className="max-w-xl space-y-4" aria-labelledby="xtream-guide-title">
-      <h3 id="xtream-guide-title" className="text-sm font-medium">
-        Xtream XMLTV guide
+      <h3 id="xtream-guide-title" className="sr-only">
+        Xtream provider guide
       </h3>
       <p className="text-muted-foreground text-sm">
-        Use an existing provider’s encrypted credentials to import the next two days of listings. No
-        guide URL or password is exposed to clients. After adding the source, use its Sync button.
+        Uses the provider’s saved sign-in to bring in the next two days of listings. After adding
+        it, choose Sync now on the source.
       </p>
       {phase === "reload-required" && (
         <div role="alert" className="space-y-3">
           <p>
-            Guide state could not be confirmed. The request may have succeeded. Reload and review
-            the guide sources before making another change.
+            Bloem couldn’t tell whether the guide was added. Reload to check before you try again.
           </p>
           <Button variant="outline" onClick={() => void reload()}>
-            Reload guide sources
+            Reload
           </Button>
         </div>
       )}
-      {phase === "reloading" && <p role="status">Reloading guide sources…</p>}
+      {phase === "reloading" && <p role="status">Reloading…</p>}
       {tuners.isError || sources.isError ? (
         <p role="alert">
-          Could not load provider configuration. Reload this page before adding a guide.
+          Your Xtream providers couldn’t be loaded. Reload the page before adding a guide.
         </p>
       ) : (
         <form onSubmit={(event) => void submit(event)} className="space-y-3">
@@ -184,7 +183,7 @@ function GuideForm({
             }
             required
           >
-            <option value="">Choose a provider without a guide</option>
+            <option value="">Choose a provider</option>
             {available.map((tuner) => (
               <option key={tuner.id} value={tuner.id}>
                 {tuner.model || "Xtream"} · {tuner.base_url}
@@ -193,7 +192,8 @@ function GuideForm({
           </select>
           {available.length === 0 && !tuners.isLoading && (
             <p className="text-muted-foreground text-xs">
-              Add an Xtream provider in Tuners first, or manage its existing guide below.
+              Every Xtream provider already has a guide, or none is added yet. Add providers on the
+              Tuners tab.
             </p>
           )}
           <Button

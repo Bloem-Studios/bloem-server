@@ -91,16 +91,16 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 async function fill() {
-  fireEvent.change(await screen.findByLabelText("Provider base URL"), {
+  fireEvent.change(await screen.findByLabelText("Server address"), {
     target: { value: "https://provider.test" },
   });
-  fireEvent.change(screen.getByLabelText("Provider name (optional)"), {
+  fireEvent.change(screen.getByLabelText("Name (optional)"), {
     target: { value: "Fixture TV" },
   });
-  fireEvent.change(screen.getByLabelText("Provider username"), {
+  fireEvent.change(screen.getByLabelText("Username"), {
     target: { value: "fixture-user-private" },
   });
-  fireEvent.change(screen.getByLabelText("Provider password"), {
+  fireEvent.change(screen.getByLabelText("Password"), {
     target: { value: "fixture-password-private" },
   });
 }
@@ -130,8 +130,8 @@ it("creates once with captured authority, clears credentials, and confirms saved
     password: "fixture-password-private",
     max_connections: 1,
   });
-  expect(screen.getByLabelText("Provider password")).toHaveValue("");
-  expect(screen.getByLabelText("Provider username")).toHaveValue("");
+  expect(screen.getByLabelText("Password")).toHaveValue("");
+  expect(screen.getByLabelText("Username")).toHaveValue("");
   expect(client.getMutationCache().getAll()).toHaveLength(0);
   expect(
     JSON.stringify(
@@ -155,14 +155,14 @@ it("blocks after a lost response across remounts and requires explicit readback,
   submit();
   await screen.findByRole("alert");
   expect(screen.queryByText(/private provider diagnostics/)).toBeNull();
-  expect(screen.queryByLabelText("Provider password")).toBeNull();
+  expect(screen.queryByLabelText("Password")).toBeNull();
   expect(writes()).toHaveLength(1);
   view.unmount();
   setup();
-  expect(screen.getByRole("button", { name: "Reload providers" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Add Xtream provider" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Reload providers" }));
-  expect(await screen.findByLabelText("Provider password")).toHaveValue("");
+  fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+  expect(await screen.findByLabelText("Password")).toHaveValue("");
   expect(writes()).toHaveLength(1);
 });
 
@@ -179,7 +179,7 @@ it("treats a failed post-success readback as unresolved rather than allowing ano
   await screen.findByRole("alert");
   expect(screen.queryByRole("button", { name: "Add Xtream provider" })).toBeNull();
   expect(writes()).toHaveLength(1);
-  fireEvent.click(screen.getByRole("button", { name: "Reload providers" }));
+  fireEvent.click(screen.getByRole("button", { name: "Reload" }));
   await screen.findByRole("alert");
   expect(writes()).toHaveLength(1);
 });
@@ -190,7 +190,7 @@ it("rejects stale profile/PIN intent before fetch and clears its password", asyn
   authority.pin++;
   submit();
   expect(writes()).toHaveLength(0);
-  expect(screen.getByLabelText("Provider password")).toHaveValue("");
+  expect(screen.getByLabelText("Password")).toHaveValue("");
 });
 
 it("aborts on authority change and ignores a late completion without polluting the new scope", async () => {
@@ -206,14 +206,14 @@ it("aborts on authority change and ignores a late completion without polluting t
   await fill();
   submit();
   const signal = writes()[0]?.[2]?.signal;
-  await screen.findByText(/Adding provider and confirming/);
+  await screen.findByText(/^Adding…$/);
   authority.generation++;
   view.refresh();
   expect(signal?.aborted).toBe(true);
-  await screen.findByLabelText("Provider password");
+  await screen.findByLabelText("Password");
   await act(async () => resolve(saved));
   expect(screen.queryByText(/Provider added/)).toBeNull();
-  expect(screen.getByLabelText("Provider password")).toHaveValue("");
+  expect(screen.getByLabelText("Password")).toHaveValue("");
   expect(writes()).toHaveLength(1);
   expect(
     JSON.stringify(
@@ -239,18 +239,18 @@ it("retains pending admission across remounts until the original operation settl
   submit();
   view.unmount();
   setup();
-  expect(screen.getByText(/Adding provider and confirming/)).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Reload providers" })).toBeNull();
+  expect(screen.getByText(/^Adding…$/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Reload" })).toBeNull();
   await act(async () => reject(new Error("request ended")));
-  await screen.findByRole("button", { name: "Reload providers" });
+  await screen.findByRole("button", { name: "Reload" });
   expect(writes()).toHaveLength(1);
 });
 
 it("retains the native Live TV profile requirement instead of falling back to a profileless request", () => {
   authority.profileId = null;
   setup();
-  expect(screen.getByText(/Select your primary profile/)).toBeInTheDocument();
-  expect(screen.queryByLabelText("Provider password")).toBeNull();
+  expect(screen.getByText(/Switch to your main profile/)).toBeInTheDocument();
+  expect(screen.queryByLabelText("Password")).toBeNull();
   expect(request).not.toHaveBeenCalled();
   expect(accountRequest).not.toHaveBeenCalled();
 });
@@ -258,14 +258,14 @@ it("retains the native Live TV profile requirement instead of falling back to a 
 it("does not accept credentials when the server lacks the advertised Xtream capability", () => {
   authority.supported = false;
   setup();
-  expect(screen.getByText(/does not advertise Xtream/)).toBeInTheDocument();
-  expect(screen.queryByLabelText("Provider password")).toBeNull();
+  expect(screen.getByText(/doesn’t support Xtream providers/)).toBeInTheDocument();
+  expect(screen.queryByLabelText("Password")).toBeNull();
   expect(request).not.toHaveBeenCalled();
 });
 
 it("survives Strict Mode read cancellation without stranding initial admission", async () => {
   setup(true);
-  await screen.findByLabelText("Provider password");
+  await screen.findByLabelText("Password");
   await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   expect(writes()).toHaveLength(0);
 });
@@ -273,7 +273,7 @@ it("survives Strict Mode read cancellation without stranding initial admission",
 it("does not mount credential inputs or make requests for a non-administrator", () => {
   authority.role = "user";
   setup();
-  expect(screen.queryByText("Xtream live TV provider")).toBeNull();
+  expect(screen.queryByText("Add an Xtream provider")).toBeNull();
   expect(request).not.toHaveBeenCalled();
   expect(accountRequest).not.toHaveBeenCalled();
 });

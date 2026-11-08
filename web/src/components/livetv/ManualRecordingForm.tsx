@@ -160,7 +160,7 @@ function RecordingForm({
         {notice && <p role="status">{notice}</p>}
         {schedule.needsReload && (
           <div role="alert" className="space-y-2">
-            <p>Recording status is unknown. Reload and review recordings before another action.</p>
+            <p>Bloem couldn’t confirm your last recording change. Reload your recordings first.</p>
             <Button
               type="button"
               variant="outline"

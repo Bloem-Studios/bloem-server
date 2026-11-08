@@ -621,14 +621,14 @@ To open it:
 1. Sign in as an administrator.
 2. Select your account's main profile and enter its PIN if asked.
 3. Choose the **Platform** context.
-4. Open **Manage → Live TV**. Its tabs are Tuners, Channels, Guide sources, Recordings and
-   Transcoding.
+4. Open **Manage → Live TV**. Its tabs are Tuners, Channels, Guide, Recordings and
+   Conversion.
 
 What each part does:
 
 - **Tuners.** Bloem talks to SiliconDust **HDHomeRun** tuners and to **Dispatcharr**, which makes
-  IPTV sources look like an HDHomeRun. *Discover on LAN* finds tuners by broadcasting on your
-  network. *Probe URL only* asks one address directly, such as `http://192.0.2.50` or a
+  IPTV sources look like an HDHomeRun. *Search my network* finds tuners by broadcasting on your
+  network. *Add tuner* asks one address directly, such as `http://192.0.2.50` or a
   Dispatcharr base such as `http://dispatcharr.local:9191`. Bloem checks each candidate before you
   can add it.
 - **Xtream providers.** In **Tuners → Xtream live TV provider**, enter a base URL without
@@ -666,12 +666,12 @@ provider is the only way, and it deletes those entries. See
 [Xtream setup and limits](../architecture/xtream-live-tv.md).
 
 > **Docker and LAN discovery.** Bloem's Compose stack runs on a bridge network, which usually
-> cannot send discovery broadcasts to your LAN, so *Discover on LAN* finds nothing. Either use
-> *Probe URL only* with a reachable, permitted tuner address, or on Linux start with the Live TV
+> cannot send discovery broadcasts to your LAN, so *Search my network* finds nothing. Either type a
+> reachable, permitted tuner address and use *Add tuner*, or on Linux start with the Live TV
 > override: `COMPOSE_FILE=docker-compose.advanced.yml:docker-compose.livetv.yml` in `.env`. It puts
 > Bloem on the host network, where it listens on port 8080 instead of 8090, and combines with the
 > GPU override. On Docker Desktop (Mac or Windows), host networking does not reach your real LAN;
-> use *Probe URL only*.
+> type the tuner address and use *Add tuner*.
 
 Never expose unauthenticated HDHomeRun or Dispatcharr endpoints to the internet. Xtream's outbound
 HTTP(S) requests do not need the LAN discovery override. Use the supported LAN layout for tuners:

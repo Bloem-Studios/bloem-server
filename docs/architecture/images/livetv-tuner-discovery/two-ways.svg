@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">Two ways Bloem finds a tuner</title>
-<desc id="d">Left: Discover on LAN. Bloem sends a broadcast on UDP port 65001, and HDHomeRun tuners and Dispatcharr answer; each answer is checked over HTTP and listed, with tuners already added marked Added. Right: Probe URL only, or adding a tuner by address. Bloem tries discover.json at the usual places, including Dispatcharr's /hdhr/ path and port 9191, and stores the tuner's identity from the answer. Below: an Xtream provider is added with its own form instead.</desc>
+<desc id="d">Left: Search my network. Bloem sends a broadcast on UDP port 65001, and HDHomeRun tuners and Dispatcharr answer; each answer is checked over HTTP and listed, with tuners already added marked Added. Right: tuner address only, or adding a tuner by address. Bloem tries discover.json at the usual places, including Dispatcharr's /hdhr/ path and port 9191, and stores the tuner's identity from the answer. Below: an Xtream provider is added with its own form instead.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="759" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Two ways Bloem finds a tuner</text>
 <text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Listen for tuners on the local network, or try the address you give. Either way, Bloem checks first.</text>
 <rect x="40" y="124" width="540" height="476" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
-<text x="64" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Discover on LAN</text>
+<text x="64" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Search my network</text>
 <text x="64" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Needs Bloem on the local network itself.</text>
 <rect x="64" y="208" width="200" height="92" rx="14" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
 <text x="82" y="240" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Bloem</text>
@@ -31,7 +31,7 @@
 <text x="102" y="520" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">You press Add.</text>
 <text x="64" y="574" font-size="13.5" font-weight="normal" fill="#6B7280" text-anchor="start">In Docker, a bridge network usually can't broadcast to the local network.</text>
 <rect x="620" y="124" width="540" height="476" rx="16" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
-<text x="644" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Probe URL only, or Tuner URL</text>
+<text x="644" y="160" font-size="20" font-weight="700" fill="#101827" text-anchor="start">Tuner address</text>
 <text x="644" y="184" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">You give a host or base address; Bloem tries, in order:</text>
 <rect x="644" y="214" width="492" height="40" rx="8" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1"/>
 <text x="660" y="240" font-family="'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" fill="#101827">{base}/hdhr/discover.json</text>

@@ -156,7 +156,7 @@ describe("LiveTVPlayer HLS bufferAppendError recovery", () => {
     }
 
     expect(mockHls.recoverMediaError).toHaveBeenCalledTimes(5);
-    expect(screen.getByText(/Live stream media was rejected by the browser/i)).toBeInTheDocument();
+    expect(screen.getByText(/This browser couldn’t play the channel/i)).toBeInTheDocument();
   });
 
   it("keeps account credentials out of HLS URLs", async () => {
@@ -172,7 +172,7 @@ describe("LiveTVPlayer HLS bufferAppendError recovery", () => {
     `${window.location.origin.replace("//", "//user:secret@")}/stream.m3u8`,
   ])("rejects untrusted stream addresses: %s", (url) => {
     render(<LiveTVPlayer streamUrl={url} transport="hls" />);
-    expect(screen.getByText(/unsupported Live TV stream address/)).toBeInTheDocument();
+    expect(screen.getByText(/stream address isn’t supported/)).toBeInTheDocument();
     expect(mockHls.loadSource).not.toHaveBeenCalled();
   });
 
@@ -211,7 +211,7 @@ describe("LiveTVPlayer HLS bufferAppendError recovery", () => {
     vi.spyOn(Hls, "isSupported").mockReturnValue(false);
     vi.spyOn(HTMLMediaElement.prototype, "canPlayType").mockReturnValue("probably");
     render(<LiveTVPlayer streamUrl="/api/v1/livetv/live-hls/session/index.m3u8" transport="hls" />);
-    expect(screen.getByText(/server-signed native HLS stream/)).toBeInTheDocument();
+    expect(screen.getByText(/This browser can’t play this channel/)).toBeInTheDocument();
     expect(screen.getByLabelText("Live TV")).not.toHaveAttribute("src");
   });
 });

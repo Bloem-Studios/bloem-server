@@ -90,7 +90,7 @@ describe("Live TV recording rule navigation", () => {
       "true",
     );
     expect(screen.getByText("Recording rule workflow")).toBeInTheDocument();
-    expect(screen.getByText(/No Live TV channels yet/)).toBeInTheDocument();
+    expect(screen.getByText(/No channels yet/)).toBeInTheDocument();
   });
 
   it("allows keyboard navigation to the rules and retains other URL parameters", () => {
@@ -118,7 +118,7 @@ describe("Live TV recording rule navigation", () => {
       "href",
       "/item/movie%3Aacceptance",
     );
-    expect(screen.getByText(/Automatic recording import is not available/)).toBeInTheDocument();
+    expect(screen.getByText(/isn’t in a library yet/)).toBeInTheDocument();
   });
 
   it("does not mount recording rules when the access gate denies the viewer", () => {
@@ -134,7 +134,7 @@ it("blocks guide scheduling after failed readback and offers reload without leav
   setup("/livetv");
   const record = screen.getByRole("button", { name: "Record guide program" });
   expect(record).toBeDisabled();
-  expect(screen.getByText(/Recording status is unknown/)).toBeInTheDocument();
+  expect(screen.getByText(/couldn’t confirm your last recording change/)).toBeInTheDocument();
   const reload = screen.getByRole("button", { name: "Reload recordings" });
   state.reload.mockRejectedValueOnce(new Error("Readback unavailable"));
   fireEvent.click(record);

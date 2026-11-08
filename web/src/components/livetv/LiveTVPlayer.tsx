@@ -89,13 +89,13 @@ export function LiveTVPlayer({
     try {
       parsed = new URL(resolveStreamUrl(streamUrl));
     } catch {
-      setError("The server returned an invalid Live TV stream address.");
+      setError("This channel couldn’t be started. Try again, or try another channel.");
       setStarting(false);
       return;
     }
     const url = parsed.href;
     if (parsed.origin !== window.location.origin || parsed.username || parsed.password) {
-      setError("The server returned an unsupported Live TV stream address.");
+      setError("This channel’s stream address isn’t supported. Try another channel.");
       setStarting(false);
       return;
     }
@@ -107,7 +107,7 @@ export function LiveTVPlayer({
       const playUrl = url;
       if (!Hls.isSupported()) {
         if (!video.canPlayType("application/vnd.apple.mpegurl") || !parsed.searchParams.get("st")) {
-          setError("This browser needs a server-signed native HLS stream to play Live TV.");
+          setError("This browser can’t play this channel. Try another browser or the Bloem app.");
           setStarting(false);
           return;
         }
@@ -119,7 +119,7 @@ export function LiveTVPlayer({
           });
         };
         const failed = () => {
-          setError("The live stream stopped or could not be loaded. Retune to try again.");
+          setError("The channel stopped or couldn’t load. Try again to tune it in again.");
           setStarting(false);
           onPlayingChange?.(false);
         };
@@ -242,9 +242,9 @@ export function LiveTVPlayer({
         const detail = data.details || "HLS playback error";
         const friendly =
           detail === "manifestLoadError"
-            ? "Could not load the live stream playlist. The channel may still be tuning — try again."
+            ? "The channel didn’t start. It may still be tuning in, so try again."
             : detail === "bufferAppendError"
-              ? "Live stream media was rejected by the browser. Try switching channels or refreshing."
+              ? "This browser couldn’t play the channel. Try another channel or reload the page."
               : detail;
         setError(friendly);
         setStarting(false);
@@ -256,7 +256,7 @@ export function LiveTVPlayer({
     }
 
     if (!mpegts.isSupported() || !mpegts.getFeatureList().mseLivePlayback) {
-      setError("Live MPEG-TS playback is not supported in this browser.");
+      setError("This browser can’t play this channel. Try another browser or the Bloem app.");
       setStarting(false);
       return;
     }

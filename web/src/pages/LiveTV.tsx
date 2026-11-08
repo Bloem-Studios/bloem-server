@@ -163,14 +163,15 @@ function LiveTVContent() {
         </div>
       ) : !channelsQuery.isLoading && channels.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          No Live TV channels yet. An admin can add an HDHomeRun tuner under Admin → Live TV.
+          No channels yet. An administrator can add a tuner or Xtream provider under Admin, then
+          Live TV.
         </p>
       ) : null}
       {scheduleRecording.needsReload && (
         <div role="alert" className="space-y-2">
           <p>
-            Recording status is unknown. Recording actions are blocked until you reload and review
-            the list.
+            Bloem couldn’t confirm your last recording change. Reload your recordings before you
+            schedule or cancel another.
           </p>
           <Button
             variant="outline"
@@ -459,9 +460,8 @@ function RecordingsSection({
                     </Button>
                   ) : rec.status === "completed" ? (
                     <p className="text-muted-foreground mt-1 text-xs">
-                      This recording has no linked library item. Automatic recording import is not
-                      available; an administrator must add the recording folder to a library and
-                      scan it before it can be played from that library.
+                      This recording isn’t in a library yet, so it can’t be played here. An
+                      administrator needs to add the recordings folder to a library and scan it.
                     </p>
                   ) : null}
                 </div>

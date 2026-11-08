@@ -38,10 +38,10 @@ export function LiveTVTranscodingTab() {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-6 space-y-2">
-        <h2 className="text-xl font-semibold tracking-tight">Transcoding</h2>
+        <h2 className="text-xl font-medium">Conversion</h2>
         <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-          How Bloem delivers live channels. Clients that can decode the broadcast get it untouched;
-          everything else is re-encoded, which needs to keep pace with the feed.
+          Devices that can play a broadcast get it as it is. For the rest, Bloem converts it as it
+          plays, and the conversion has to keep up with the live feed.
         </p>
       </div>
 
@@ -50,7 +50,7 @@ export function LiveTVTranscodingTab() {
           <SettingField
             label="Hardware acceleration"
             type="select"
-            hint="Encoder used for live transcodes. Auto probes this host."
+            hint="What converts live video. Auto picks what this server has."
             options={[
               { value: "auto", label: "Auto" },
               { value: "nvenc", label: "NVIDIA NVENC" },
@@ -64,7 +64,7 @@ export function LiveTVTranscodingTab() {
           <SettingField
             label="Hardware decoding"
             type="select"
-            hint="Decode the broadcast on the GPU. Software MPEG-2 decode at 59.94fps is the usual reason a live transcode cannot hold realtime. Auto uses it when this ffmpeg build has the decoder."
+            hint="Read the broadcast on the graphics card. Reading it without one is the usual reason a conversion falls behind. Auto uses it when available."
             options={[
               { value: "auto", label: "Auto" },
               { value: "on", label: "Always on" },
@@ -76,7 +76,7 @@ export function LiveTVTranscodingTab() {
           <SettingField
             label="Encoder preset"
             type="select"
-            hint="Low latency keeps up with the feed; quality compresses harder and risks falling behind."
+            hint="Low latency keeps up with the feed. Quality looks better but may fall behind."
             options={[
               { value: "low_latency", label: "Low latency (recommended)" },
               { value: "balanced", label: "Balanced" },
@@ -86,9 +86,9 @@ export function LiveTVTranscodingTab() {
             onChange={(v) => form.setValue("livetv.encoder_preset", v)}
           />
           <SettingField
-            label="Concurrent transcodes"
+            label="Conversions at once"
             type="number"
-            hint="Maximum live sessions that re-encode at once. Copy sessions are not counted. 0 uses the default of 3; -1 removes the limit."
+            hint="Channels converted at the same time. Channels sent as they are don’t count. 0 means the default of 3; -1 means no limit."
             value={form.getValue("livetv.max_transcodes")}
             onChange={(v) => form.setValue("livetv.max_transcodes", v)}
           />
@@ -98,7 +98,7 @@ export function LiveTVTranscodingTab() {
           <SettingField
             label="Frame rate cap"
             type="select"
-            hint="Fallback for hardware that cannot sustain the broadcast rate. Halves motion smoothness, so leave on Source unless transcodes run below realtime."
+            hint="Only for hardware that can’t keep up. It halves smoothness, so leave it on Source unless conversions fall behind."
             options={[
               { value: "source", label: "Source (recommended)" },
               { value: "60", label: "60fps" },
@@ -110,7 +110,7 @@ export function LiveTVTranscodingTab() {
           <SettingField
             label="Maximum resolution"
             type="select"
-            hint="Caps re-encoded video. Never upscales: a ceiling at or above the broadcast is ignored."
+            hint="The largest size for converted video. Never makes video bigger than the broadcast."
             options={[
               { value: "source", label: "Source" },
               { value: "1080p", label: "1080p" },
@@ -122,28 +122,27 @@ export function LiveTVTranscodingTab() {
           <SettingField
             label="Play method"
             type="select"
-            hint="Auto follows what each client says it can decode. Force copy sends the broadcast untouched (browsers will fail); force transcode re-encodes for everyone."
+            hint="Auto checks what each device can play. Always send as is skips conversion, which web browsers can’t play. Always convert converts for everyone."
             options={[
               { value: "auto", label: "Auto (recommended)" },
-              { value: "copy", label: "Force copy" },
-              { value: "transcode", label: "Force transcode" },
+              { value: "copy", label: "Always send as is" },
+              { value: "transcode", label: "Always convert" },
             ]}
             value={form.getValue("livetv.play_method")}
             onChange={(v) => form.setValue("livetv.play_method", v)}
           />
         </FieldGroup>
 
-        <FieldGroup label="Tuner transcoding">
+        <FieldGroup label="Conversion on the tuner">
           <div className="space-y-3 py-2">
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Some discontinued HDHomeRun models (EXTEND) could transcode on the device itself.
-              Bloem only uses it when a tuner advertises the capability — current models ignore the
-              request and keep sending MPEG-2.
+              Some older HDHomeRun models (EXTEND) can convert video themselves. Bloem uses this
+              only when a tuner says it can.
             </p>
             {tuners.isLoading ? (
               <p className="text-muted-foreground text-sm">Checking tuners…</p>
             ) : (tuners.data ?? []).length === 0 ? (
-              <p className="text-muted-foreground text-sm">No tuners configured.</p>
+              <p className="text-muted-foreground text-sm">No tuners yet.</p>
             ) : (
               <ul className="divide-border divide-y border-y">
                 {(tuners.data ?? []).map((tuner) => {
@@ -176,7 +175,7 @@ export function LiveTVTranscodingTab() {
             )}
             {deviceTranscodeTuners.length === 0 && (tuners.data ?? []).length > 0 && (
               <p className="text-muted-foreground text-xs">
-                No tuner reports device-side transcoding, so Bloem transcodes on the server.
+                No tuner can convert video itself, so Bloem converts on the server.
               </p>
             )}
           </div>

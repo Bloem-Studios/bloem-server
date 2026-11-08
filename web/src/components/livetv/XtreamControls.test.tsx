@@ -99,14 +99,14 @@ it("requires an explicit guide reload after a lost response, even across remount
   const view = render(<XtreamGuideSourceForm />);
   fireEvent.change(screen.getByLabelText("Xtream provider"), { target: { value: "provider" } });
   fireEvent.click(screen.getByRole("button", { name: "Add Xtream guide" }));
-  await screen.findByRole("button", { name: "Reload guide sources" });
+  await screen.findByRole("button", { name: "Reload" });
   view.unmount();
   render(<XtreamGuideSourceForm />);
   expect(screen.getByLabelText("Xtream provider")).toBeDisabled();
   expect(fixture.refetch).not.toHaveBeenCalled();
   expect(fixture.mutate).toHaveBeenCalledTimes(1);
   fixture.refetch.mockResolvedValueOnce({ data: [] });
-  fireEvent.click(screen.getByRole("button", { name: "Reload guide sources" }));
+  fireEvent.click(screen.getByRole("button", { name: "Reload" }));
   await waitFor(() => expect(screen.getByLabelText("Xtream provider")).not.toBeDisabled());
   expect(screen.getByLabelText("Xtream provider")).toHaveValue("");
   expect(fixture.mutate).toHaveBeenCalledTimes(1);
@@ -117,7 +117,7 @@ it("blocks another guide write when post-create readback fails", async () => {
   render(<XtreamGuideSourceForm />);
   fireEvent.change(screen.getByLabelText("Xtream provider"), { target: { value: "provider" } });
   fireEvent.click(screen.getByRole("button", { name: "Add Xtream guide" }));
-  await screen.findByRole("button", { name: "Reload guide sources" });
+  await screen.findByRole("button", { name: "Reload" });
   expect(screen.getByRole("button", { name: "Add Xtream guide" })).toBeDisabled();
   expect(fixture.mutate).toHaveBeenCalledTimes(1);
 });

@@ -179,7 +179,7 @@ it("offers manual recovery without retrying the write and requires a reviewed ne
   fireEvent.click(submit);
   const reload = await screen.findByRole("button", { name: "Reload recordings" });
   expect(submit).toBeDisabled();
-  expect(screen.getByText(/Recording status is unknown/)).toBeInTheDocument();
+  expect(screen.getByText(/couldn’t confirm your last recording change/)).toBeInTheDocument();
   fireEvent.submit(submit.closest("form")!);
   fireEvent.click(reload);
   await screen.findByText(/Could not reload recordings/);
@@ -189,7 +189,7 @@ it("offers manual recovery without retrying the write and requires a reviewed ne
   fireEvent.click(reload);
   await screen.findByText(/Review the list and enter a title/);
   expect(screen.getByLabelText("Recording title")).toHaveValue("");
-  expect(screen.queryByText(/Recording status is unknown/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/couldn’t confirm your last recording change/)).not.toBeInTheDocument();
   expect(request.mock.calls.filter((call) => call[2]?.method === "POST")).toHaveLength(1);
   fireEvent.change(screen.getByLabelText("Recording title"), {
     target: { value: "New reviewed recording" },
@@ -223,7 +223,7 @@ it("discards manual recovery results when the draft authority changes", async ()
   });
   expect(screen.getByLabelText("Recording title")).toHaveValue("");
   expect(screen.queryByText(/Recordings reloaded/)).not.toBeInTheDocument();
-  expect(screen.queryByText(/Recording status is unknown/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/couldn’t confirm your last recording change/)).not.toBeInTheDocument();
   expect(request.mock.calls.filter((call) => call[2]?.method === "POST")).toHaveLength(1);
 });
 

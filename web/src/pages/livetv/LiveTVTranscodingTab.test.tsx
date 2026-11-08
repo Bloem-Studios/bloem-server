@@ -69,7 +69,7 @@ describe("LiveTVTranscodingTab", () => {
     render(<LiveTVTranscodingTab />);
 
     expect(screen.getByText("Not supported by this tuner")).toBeInTheDocument();
-    expect(screen.getByText(/No tuner reports device-side transcoding/)).toBeInTheDocument();
+    expect(screen.getByText(/No tuner can convert video itself/)).toBeInTheDocument();
   });
 
   it("lists the profiles a capable tuner advertises", () => {
