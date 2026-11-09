@@ -2843,6 +2843,8 @@ func main() {
 		}
 		if policySystem != nil {
 			watchProviderScopes = policy.NewViewerResolver(auth.NewUserRepository(deps.DB), userStoreProvider, nil, policySystem.PDP(), accessGroupStore).WithUnratedContentPolicy(unratedContent)
+			// Bloem: a sync reaches only its organization's libraries (bloem_main.go).
+			watchProviderScopes = withBloemViewerTenancy(watchProviderScopes, deps.DB)
 		} else {
 			// Legacy resolver: proxy/test wiring without a policy system. Production integrated/api modes always take the policy path.
 			watchProviderScopes = access.NewResolver(auth.NewUserRepository(deps.DB), userStoreProvider, nil, accessGroupStore).WithUnratedContentPolicy(unratedContent)

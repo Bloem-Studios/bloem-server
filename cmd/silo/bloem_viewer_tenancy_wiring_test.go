@@ -150,7 +150,7 @@ func tenancyApplied(stack []ast.Node) bool {
 
 // nextStatementAppliesTenancy reports whether stmt assigns one variable and
 // the statement after it in block assigns that variable again through
-// withBloemViewerTenancy (internal/api/router_bloem_wiring.go), which applies
+// withBloemViewerTenancy (internal/api/router_bloem_wiring.go, cmd/silo/bloem_main.go), which applies
 // WithBloemTenancy or panics: v = withBloemViewerTenancy(v, ...).
 func nextStatementAppliesTenancy(block *ast.BlockStmt, stmt ast.Stmt) bool {
 	name := assignedName(stmt)

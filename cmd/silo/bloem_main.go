@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/Silo-Server/silo-server/internal/access"
 	"github.com/Silo-Server/silo-server/internal/adminpeople"
 	"github.com/Silo-Server/silo-server/internal/ambience"
 	"github.com/Silo-Server/silo-server/internal/api"
@@ -218,6 +219,25 @@ func newTenantAwareViewerResolver(pool *pgxpool.Pool, viewer *policy.ViewerResol
 		viewer.WithBloemTenancy(resourcetenancy.NewStore(pool)),
 		tenancy.NewSubjectResolver(tenancy.NewResolver(tenantStore), tenantStore),
 	)
+}
+
+// bloemScopeResolver is the scope resolver a Silo wiring block declares inline.
+type bloemScopeResolver = interface {
+	Resolve(context.Context, access.ResolveInput) (access.Scope, error)
+}
+
+// withBloemViewerTenancy turns on Bloem tenancy, through
+// newTenantAwareViewerResolver, for a scope resolver Silo's line just built
+// with policy.NewViewerResolver, so a background caller (a watch-provider
+// sync) reaches only its organization's libraries. Bloem's own line follows
+// Silo's: v = withBloemViewerTenancy(v, pool). It panics on any other
+// resolver, so the server never starts without tenancy.
+func withBloemViewerTenancy(resolver bloemScopeResolver, pool *pgxpool.Pool) bloemScopeResolver {
+	viewer, ok := resolver.(*policy.ViewerResolver)
+	if !ok {
+		panic(fmt.Sprintf("silo: Bloem tenancy needs a *policy.ViewerResolver, got %T", resolver))
+	}
+	return newTenantAwareViewerResolver(pool, viewer)
 }
 
 // bloemWireCoreDependencies installs Bloem's API router dependencies on deps:
