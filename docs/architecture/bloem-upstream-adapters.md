@@ -1,7 +1,7 @@
 # How Bloem's adapters over Silo work
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-09
-> and checked against `main` at `39b1e9d6a`. Adapters are Bloem's own: they are how Bloem changes Silo's
+> and checked against `main` at `5a93e8b41`. Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
 
@@ -215,6 +215,15 @@ apply an adapter twice.
 - Account and profile policy continue to be evaluated in the acting organization (an
   account has exactly one since `c60b7008e`). Server ownership, organization
   ownership, and a household's primary profile are different authority boundaries.
+- The household profile limit is Bloem's. Silo's `householdProfileLimit`
+  (`internal/api/handlers/profiles.go`, Silo #3656) feeds both `CreateProfile` and the
+  `max_profiles` that `ListProfiles` reports. When the handler has organization groups,
+  its Bloem lines answer it with `bloemHouseholdProfileLimit`, which uses
+  `effectiveProfileLimit`: the account's organization group and an entitlement
+  ceiling, in the organization an account administrator acts in. Silo's own policy
+  call cannot resolve that organization
+  (`TestCreateProfile_AccountAdminUsesTheAccountsOrganization`). A new profile's
+  inherited access group comes from the same rule (`bloemInheritedAccessGroupID`).
 
 ### Home section extensions
 
