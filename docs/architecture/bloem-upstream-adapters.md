@@ -1,7 +1,7 @@
 # How Bloem's adapters over Silo work
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-06
-> and checked against `main` at `56a71e430`. Adapters are Bloem's own: they are how Bloem changes Silo's
+> **Provenance and status.** Bloem page, rewritten on 2026-11-01, updated on 2026-11-09
+> and checked against `main` at `39b1e9d6a`. Adapters are Bloem's own: they are how Bloem changes Silo's
 > behavior without editing Silo's files. Every adapter, hook and invariant is in the
 > [For developers](#for-developers) section.
 
@@ -439,6 +439,18 @@ The recommendation engine builds cached rows under a scope resolver. Production 
 wraps it in `newTenantAwareViewerResolver` like every other viewer resolver;
 `TestProductionViewerResolversUseBloemTenancy`
 (`cmd/silo/bloem_viewer_tenancy_wiring_test.go`) fails on an untenanted one.
+
+### Watch-provider sync scope
+
+A watch-provider sync matches a whole-series marker only to episodes the connection's
+profile may open, through a viewer resolver Silo builds inline in `cmd/silo/main.go`
+(Silo `4018816da`). Bloem's own line straight after Silo's reassigns it through
+`withBloemViewerTenancy` (`cmd/silo/bloem_main.go`), which wraps it in
+`newTenantAwareViewerResolver`, because a sync runs without a request tenant, and
+panics on any other resolver. Without it a marker could mark, and a later export
+reveal, episodes in another organization's libraries.
+`TestProductionViewerResolversUseBloemTenancy` accepts that line as it accepts the
+router's.
 
 ### Updating documentation and contracts
 

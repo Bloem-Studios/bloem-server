@@ -1,7 +1,7 @@
 # How removing a title in a tracker clears its watch history
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-04, updated on 2026-11-09
-> and checked against `main` at `dba9b95e0`, which includes Silo through `67d0936f3`. Watched removals are a
+> and checked against `main` at `39b1e9d6a`, which includes Silo through `4018816da`. Watched removals are a
 > Bloem addition to Silo's watch-sync contract, proposed to Silo and carried in Bloem
 > until Silo has them. The technical rules are in the [For developers](#for-developers)
 > section.
@@ -25,16 +25,19 @@ travels on Robin's connection can only ever change Robin's profile.
 3. On the profile's next sync, the tracker's plugin passes the note to Bloem on that
    profile's connection.
 4. Bloem removes the title's **watch history** for that profile: every watch of the
-   movie, or of each episode of the show, up to the time of the removal. The title's
-   watched marks and resume points go with it.
+   movie, or of each episode of the show the profile may open, up to the time of the
+   removal. The title's watched marks and resume points go with it.
 5. Bloem also forgets any earlier watch of the title it was **holding back**. When the
    tracker reports a watch of a title that no library has yet, Bloem keeps it and
-   imports it once the title arrives. A removal drops that kept watch, so the title
-   does not come back as watched later.
+   imports it once the title arrives. A show the tracker reports as finished is kept
+   too, so episodes a library gains later are marked. A removal drops that kept watch,
+   so the title does not come back as watched later.
 
 ## What Bloem keeps
 
 - **Other profiles.** Sam's watches of the same show stay, even on the same account.
+- **Episodes the profile cannot open.** A removed show clears only the episodes in
+  libraries the profile can see, within its organization and its age limits.
 - **Anything newer.** If Robin watched or started an episode again in Bloem after the
   removal, that episode keeps everything. The newer change wins.
 - **Everything else on the profile.** Favorites, the watchlist, ratings and other
@@ -84,8 +87,13 @@ Rules:
 
 - A removal carries `media` (MOVIE, EPISODE or SERIES), `play_count` 0 and the removal
   time in `last_watched_at`. Anything else is reported as a sync warning and skipped.
-- SERIES is allowed only on a removal; it expands to the profile's local episodes
-  through the same leaf matcher as aggregate watched markers.
+- A SERIES removal expands to the profile's local episodes through the same leaf
+  matcher as Silo's whole-series watched marker (Silo accepts SERIES watched state
+  since `4018816da`). The match uses the connection profile's `ProfileAccess`, as
+  Silo's marker does: a SERIES removal reaches only episodes in the profile's allowed
+  libraries that it may open, and a movie or episode removal matches only in those
+  libraries. Bloem's tenancy narrows that access to the organization's libraries
+  (`withBloemViewerTenancy` in `cmd/silo/bloem_main.go`).
 - Removals apply before the batch's ordinary watches, only to `conn.ProfileID` of the
   connection that carried them.
 - Per matched item, Bloem reads the newest completed watch (`ListCompletedHistoryItems`)
@@ -96,13 +104,15 @@ Rules:
 - `ImportWatchedResult.Removed` counts removed items; a run with removals reports a
   recommendation-signal change like an import does.
 - Silo keeps a watch that matched no library item in `watch_provider_pending_watches`
-  and retries it on every sync (`retryPendingWatches`, since Silo `67d0936f3`).
+  and retries it on every sync (`retryPendingWatches`, since Silo `67d0936f3`). Since
+  `4018816da` it also keeps a whole-series marker after it matches, with the episodes
+  it covered (`PendingWatch.AppliedEpisodes`), and applies it again when they change.
   `ImportWatched` marks a removed row's kind and key as returned this sync (`fresh`),
   so the kept watch is not retried in the same sync, and `applyWatchedRemovals` calls
   `DeletePendingWatches` with the removals, which drops kept watches of the same kind
   and key no newer than the removal time. A removal therefore also clears a watch the
-  profile has not imported yet. Without this, the next sync imported the removed watch
-  once the title reached a library.
+  profile has not imported yet, and a series marker Silo would apply again. Without
+  this, the next sync imported the removed watch once the title reached a library.
 
 Temporary seams, listed in `contracts/seams.txt`: `internal/watchsync/types.go`
 (`RemoteWatch.Removed`), `internal/watchsync/plugin_provider_state.go` (decode hook) and
@@ -113,6 +123,7 @@ Tests: `internal/watchsync/bloem_watched_removal_test.go`
 (`TestWatchedRemovedReadsTheFieldTheHostDoesNotKnowYet`,
 `TestRemoteWatchRemovalDecodesASeriesAndRejectsPlays`,
 `TestWatchedRemovalClearsOnlyTheConnectionsProfile`,
+`TestWatchedRemovalReachesOnlyEpisodesTheProfileMayOpen`,
 `TestWatchedRemovalKeepsAWatchMadeAfterIt`, `TestWatchedRemovalRepeatsWithoutWriting`,
 `TestWatchedRemovalDropsAPendingWatch`).
 
