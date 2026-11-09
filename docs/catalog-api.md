@@ -827,7 +827,9 @@ server whose PostgreSQL ranking differed. PostgreSQL search retains its
 three-second deadline inside the overall browse deadline.
 
 Meilisearch captures the configured ranked result window in one provider response,
-then stores its filtered, ordered candidate IDs in shared Redis for 15 minutes.
+then stores its filtered, ordered candidate IDs for 15 minutes. Redis shares
+sessions across replicas. Without Redis, sessions stay in process, so a cursor
+returns `invalid_cursor` after a restart or when another replica handles it.
 The configured window must be between 1 and 1,000 candidates; a larger runtime
 index setting returns `capability_unsupported` before serving a partial ranking.
 This is the provider's reachable window, not an exact global match count.
@@ -839,8 +841,9 @@ and access scope. Pages reauthorize each candidate and advance past deleted or
 inaccessible IDs. Explicit window seeks count visible rows within this bounded
 ranking. Metadata and access remain live; the retained IDs and their order are
 immutable. Fallback may select PostgreSQL before the first page, but a continuation
-never switches providers. Expiry or Redis eviction returns `invalid_cursor`;
-Redis failure returns `dependency_unavailable`. Restarting performs a new search.
+never switches providers. Expiry or eviction returns `invalid_cursor`; a
+configured Redis failure returns `dependency_unavailable`. Restarting performs a
+new search.
 
 ### Letter index
 
@@ -1027,6 +1030,27 @@ fall back to the ID when the title is absent. Personal membership pages hydrate
 titles through the existing viewer access filter; admin pages require acting
 administrator access. Membership identity, ordering and cursor revision checks
 are unchanged. Frozen v1 membership responses do not expose this field.
+
+## Server smart collection libraries
+
+A server smart collection keeps two library lists. Its `library_ids` are where it shows: the
+library Collections tabs that list it, and the libraries through which a viewer can open it. Its
+`query_definition.library_ids` are where its titles come from, and an empty list means every
+library. The two are independent, so a collection can draw from every library and show only on the
+Movies tab. Every read of its titles (`/api/v2` and `/api/v1` collection items, home and library
+rows, the catalog `library_collection` source, Jellyfin BoxSet children and `item_count`) runs the
+rules over their own libraries and then applies the viewer's access: allowed libraries, hidden
+libraries and rating limits. A viewer who can reach none of the collection's own `library_ids` gets
+none of its titles from any of these reads, as its page refuses them. A row on one library's page
+still lists only that library's titles.
+`previewAdminCollection` previews the same rules with no viewer limits.
+
+Before this, reads narrowed the rules to the collection's `library_ids`, and rules naming no library
+took them. A migration wrote that effective list into each existing collection's rules, so none of
+them changed titles, and restoring a backup made before this change (restore set version 4 or older)
+does the same for the collections it creates. Rules naming only libraries outside the collection's
+own libraries matched nothing before; they now draw from the libraries they name, which is what the
+admin preview already showed.
 
 ## Admin template list
 

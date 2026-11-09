@@ -6,7 +6,7 @@
 ./internal/catalog TestDualLibraryItemDeniedByDisabledLibraryDB
 ./internal/catalog TestEpisodeOpensUnderEveryLibraryOfItsSeriesDB
 ./internal/catalog TestCatalogQueryRequestedLibraryOutsideAccessDB
-./internal/catalog TestLibraryCollectionWithoutLibraryOverlapResolvesEmptyDB
+./internal/catalog TestLibraryCollectionDrawsFromItsRulesLibrariesDB
 ./internal/catalog TestLibraryCollectionReplaceItemsWritesOnlyTheDifferenceDB
 ./internal/catalog TestLibraryCollectionReplaceItemsRacesMemberDeleteDB
 ./internal/catalog TestCatalogManualCollectionCursorDB
@@ -784,6 +784,10 @@
 # Server collections show a restricted viewer only the members it can open, and
 # leave out a collection whose members it can open none of (#2828).
 ./internal/api/handlers TestServerCollectionCountsFollowTheViewerDB
+
+# A scan that adds or removes titles refreshes the stored counts of the smart
+# collections drawing from that library, and only those (#3697).
+./internal/catalog TestSmartCountRefreshFollowsScannedLibraryDB
 
 # The household profile limit holds under concurrent creates (issue #2423).
 ./internal/api/handlers TestCreateProfileLimitConcurrentDB
