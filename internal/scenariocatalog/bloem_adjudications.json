@@ -3214,7 +3214,7 @@
       "registration_index": 0,
       "scenario": "profiles_list.ok",
       "transport": "v2",
-      "reason": "Silo's v2 profile listing reports max_advisory_age_supported and require_advisory_age_supported; the frozen exact-key oracle predates them. Silo wins.",
+      "reason": "Silo's v2 profile listing reports max_advisory_age_supported and require_advisory_age_supported, and max_profiles for an account with a profile limit (the fixture account resolves to the default limit); the frozen exact-key oracle predates them. Silo wins.",
       "expect": {
         "status": 200,
         "headers": [
@@ -3232,6 +3232,7 @@
               "items",
               "avatar_upload_enabled",
               "max_advisory_age_supported",
+              "max_profiles",
               "require_advisory_age_supported"
             ]
           },

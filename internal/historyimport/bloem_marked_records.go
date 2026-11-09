@@ -109,7 +109,7 @@ func playedMinute(record Record) (int64, bool) {
 // beginning even for a resumed run, so a minute counts every item the source
 // lists, and gets its own run budget. The import pass counts its pages too, so
 // an item the source added between the passes still counts.
-func withBulkMarks(provider Provider) Provider {
+func withBulkMarks(provider Provider) bulkMarkProvider {
 	return bulkMarkProvider{Provider: provider}
 }
 
