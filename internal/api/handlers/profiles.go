@@ -198,6 +198,9 @@ type ProfileView struct {
 type ProfileListView struct {
 	Profiles            []ProfileView `json:"profiles"`
 	AvatarUploadEnabled bool          `json:"avatar_upload_enabled"`
+	// MaxProfiles is the household profile limit, 0 when it could not be
+	// read. Only v2 listProfiles reports it: the frozen v1 body leaves it out.
+	MaxProfiles int `json:"-"`
 }
 
 type verifyPINResponse struct {
@@ -257,6 +260,37 @@ func profileLimitReached(limit int) *APIError {
 		fmt.Sprintf("This account has reached its profile limit (%d)", limit))
 }
 
+// householdProfileLimit is the account's household profile limit from its
+// effective access policy, or 0 when no limit can be read (no user
+// repository, or no such account). CreateProfile enforces it and
+// ListProfiles reports it, so the limit a client shows is the one a create
+// meets.
+func (h *ProfileHandler) householdProfileLimit(ctx context.Context, userID int) (int, *APIError) {
+	if h.UserRepo == nil {
+		return 0, nil
+	}
+	user, err := h.UserRepo.GetByID(ctx, userID)
+	if err != nil {
+		slog.WarnContext(ctx, "loading the account for its profile limit failed", "component", "api", "user_id", userID, "error", err)
+		return 0, apiError(http.StatusInternalServerError, "internal_error", "Failed to load user")
+	}
+	if user == nil {
+		return 0, nil
+	}
+	if h.AccessGroups != nil {
+		return h.bloemHouseholdProfileLimit(ctx, user)
+	}
+	effective, err := access.EffectivePolicyForUser(ctx, user, h.AccessGroups)
+	if err != nil {
+		slog.WarnContext(ctx, "resolving the account's profile limit failed", "component", "api", "user_id", userID, "error", err)
+		return 0, apiError(http.StatusInternalServerError, "internal_error", "Failed to load the account's profile limit")
+	}
+	if effective.MaxProfiles < 1 {
+		return 0, nil
+	}
+	return effective.MaxProfiles, nil
+}
+
 // invalidAdvisoryAgeLimit is the field error for an advisory-age limit outside
 // the storable range.
 func invalidAdvisoryAgeLimit() *APIError {
@@ -310,9 +344,16 @@ func (h *ProfileHandler) ListProfiles(ctx context.Context, userID int) (ProfileL
 	if err != nil {
 		return ProfileListView{}, apiError(http.StatusInternalServerError, "internal_error", "Failed to list profiles")
 	}
+	// A limit that cannot be read leaves MaxProfiles at 0 rather than failing
+	// the list: the picker needs the profiles more than the limit.
+	maxProfiles, limitErr := h.householdProfileLimit(ctx, userID)
+	if limitErr != nil {
+		maxProfiles = 0
+	}
 	return ProfileListView{
 		Profiles:            h.toProfileResponses(ctx, store, profilesForOrganization(ctx, profiles)),
 		AvatarUploadEnabled: h.AvatarStore != nil,
+		MaxProfiles:         maxProfiles,
 	}, nil
 }
 
@@ -504,16 +545,16 @@ func (h *ProfileHandler) CreateProfile(ctx context.Context, cmd ProfileCreateCom
 	// early check answers a full household before the name check, as it always
 	// has; the guarantee under concurrency is the re-count inside the creating
 	// transaction (createProfileWithSettingsSync).
-	profileLimit := 0
-	var inheritedAccessGroupID *int64
-	if h.UserRepo != nil {
-		user, err := h.UserRepo.GetByID(ctx, userID)
-		if err != nil {
-			return none, apiError(http.StatusInternalServerError, "internal_error", "Failed to load user")
-		}
-		if profileLimit, inheritedAccessGroupID, err = h.bloemProfileLimit(ctx, user, len(existingProfiles)); err != nil {
-			return none, err
-		}
+	profileLimit, limitErr := h.householdProfileLimit(ctx, userID)
+	if limitErr != nil {
+		return none, limitErr
+	}
+	if profileLimit >= 1 && len(existingProfiles) >= profileLimit {
+		return none, profileLimitReached(profileLimit)
+	}
+	inheritedAccessGroupID, err := h.bloemInheritedAccessGroupID(ctx, userID)
+	if err != nil {
+		return none, err
 	}
 
 	if profileNameConflicts(existingProfiles, req.Name, "") {

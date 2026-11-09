@@ -3,6 +3,7 @@ package historyimport
 // Bloem-owned tests for bulk "mark played" records (bloem_marked_records.go).
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -52,5 +53,71 @@ func TestBulkMarksCountWithinOneMinute(t *testing.T) {
 		if record.Marked {
 			t.Fatalf("%s marked across a minute boundary", record.ExternalID)
 		}
+	}
+}
+
+// onePerPageProvider delivers one record per page, in order, as a source
+// whose listing is not sorted by play time spreads a bulk mark across pages.
+type onePerPageProvider struct {
+	records []Record
+	starts  []*StreamPosition
+}
+
+func (p *onePerPageProvider) Stream(_ context.Context, from *StreamPosition, sink RecordSink) error {
+	p.starts = append(p.starts, from)
+	for i := stageOffset(from, "listing"); i < len(p.records); i++ {
+		if err := sink(RecordBatch{Records: p.records[i : i+1], Resume: StreamPosition{Stage: "listing", Offset: i}}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Silo streams an import page by page, so a bulk mark can reach the import
+// one item per page. Every item of the minute is still a mark, the first ones
+// included, and a resumed run counts the whole listing before it continues.
+func TestBulkMarksSpanStreamedPages(t *testing.T) {
+	marked := time.Date(2026, 5, 16, 22, 43, 5, 0, time.UTC)
+	watched := time.Date(2026, 5, 16, 21, 10, 0, 0, time.UTC)
+	source := &onePerPageProvider{records: []Record{
+		markedTestRecord("ep1", marked),
+		markedTestRecord("film", watched),
+		markedTestRecord("ep2", marked.Add(20*time.Second)),
+		markedTestRecord("double", watched.Add(time.Hour)),
+		markedTestRecord("double", watched.Add(time.Hour)),
+		markedTestRecord("ep3", marked.Add(50*time.Second)),
+	}}
+	for _, tc := range []struct {
+		name string
+		from *StreamPosition
+		want map[string]bool
+	}{
+		{"fresh run", nil, map[string]bool{"ep1": true, "film": false, "ep2": true, "double": false, "ep3": true}},
+		{"resumed run", &StreamPosition{Stage: "listing", Offset: 2}, map[string]bool{"ep2": true, "double": false, "ep3": true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source.starts = nil
+			got := map[string]bool{}
+			err := withBulkMarks(source).Stream(context.Background(), tc.from, func(batch RecordBatch) error {
+				for _, record := range batch.Records {
+					got[record.ExternalID] = record.Marked
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("imported %v, want %v", got, tc.want)
+			}
+			for id, want := range tc.want {
+				if got[id] != want {
+					t.Fatalf("%s marked=%v, want %v (all: %v)", id, got[id], want, got)
+				}
+			}
+			if last := source.starts[len(source.starts)-1]; last != tc.from {
+				t.Fatalf("import started at %v, want %v", last, tc.from)
+			}
+		})
 	}
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -193,18 +194,38 @@ type updateProfileRequest = ProfileUpdateRequest
 
 type profileResponse = ProfileView
 
-// bloemProfileLimit enforces the effective (account and entitlement) profile
-// ceiling for a new profile and returns that limit (0 = unlimited) and the
-// access group the profile inherits.
-func (h *ProfileHandler) bloemProfileLimit(ctx context.Context, user *models.User, existing int) (int, *int64, error) {
-	limit, inheritedGroupID, err := h.effectiveProfileLimit(ctx, user)
+// bloemHouseholdProfileLimit answers Silo's householdProfileLimit when the
+// handler has Bloem's organization groups: the limit (0 = unlimited) comes from
+// the account's organization group and its entitlement ceiling
+// (effectiveProfileLimit), which also resolves the organization an account
+// administrator acts in. ListProfiles reports it and CreateProfile enforces it.
+func (h *ProfileHandler) bloemHouseholdProfileLimit(ctx context.Context, user *models.User) (int, *APIError) {
+	limit, _, err := h.effectiveProfileLimit(ctx, user)
 	if err != nil {
-		return 0, nil, apiError(500, "internal_error", "Failed to resolve profile limit")
+		slog.WarnContext(ctx, "resolving the account's profile limit failed", "component", "api", "user_id", user.ID, "error", err)
+		return 0, apiError(http.StatusInternalServerError, "internal_error", "Failed to load the account's profile limit")
 	}
-	if limit >= 1 && existing >= limit {
-		return 0, nil, profileLimitReached(limit)
+	if limit < 1 {
+		return 0, nil
 	}
-	return limit, inheritedGroupID, nil
+	return limit, nil
+}
+
+// bloemInheritedAccessGroupID is the access group a new profile of the
+// account inherits, nil without a user repository or a group.
+func (h *ProfileHandler) bloemInheritedAccessGroupID(ctx context.Context, userID int) (*int64, error) {
+	if h.UserRepo == nil {
+		return nil, nil
+	}
+	user, err := h.UserRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to load user")
+	}
+	_, inheritedGroupID, err := h.effectiveProfileLimit(ctx, user)
+	if err != nil {
+		return nil, apiError(http.StatusInternalServerError, "internal_error", "Failed to resolve profile limit")
+	}
+	return inheritedGroupID, nil
 }
 
 // bloemUpdateProfilePrelude runs Bloem's pre-store profile update steps: it

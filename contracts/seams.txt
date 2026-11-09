@@ -159,7 +159,7 @@ internal/ebooks/enrichment.go
 internal/ebooks/enrichment_queue.go
 internal/ebooks/enrichment_test.go
 internal/events/socket_ticket.go
-internal/historyimport/service.go  # mark bulk-marked records after the fetch and record their history with their source; temporary, bulk "mark played" records become manual marks (bloem_marked_records.go) until the Emby servers retire at the end of November 2026
+internal/historyimport/service.go  # wrap the provider so bulk-marked records are marked (a counting pass first, since records stream page by page) and record their history with their source; temporary, bulk "mark played" records become manual marks (bloem_marked_records.go) until the Emby servers retire at the end of November 2026
 internal/historyimport/types.go  # Record.Marked; temporary, bulk "mark played" records become manual marks (bloem_marked_records.go) until the Emby servers retire at the end of November 2026
 internal/invitations/repository.go
 internal/invitations/repository_atomic_test.go  # fully migrated isolated databases preserve tenant FKs/triggers and strengthen rollback checks
@@ -323,7 +323,6 @@ web/src/playback/WatchPlaybackChrome.tsx
 web/src/player/components/VideoPlayer.reconnect.test.tsx # Upstream reconnect harness supplies Bloem engagement content identity; preserves native engagement contract.
 web/src/player/components/VideoPlayer.test.tsx
 web/src/player/components/VideoPlayer.tsx
-web/src/player/components/WatchPage.test.ts  # two added lines: wait for the fallback request before the refusal; Silo's test races React's effect flush (failed 1-2 in 10 alone, and in Bloem CI on 2026-11-02)
 web/src/player/components/WatchPage.tsx
 web/src/test-setup.ts
 web/src/test/requestBudget.ts  # Include Bloem public shell endpoints in deterministic boot server without exempting authenticated operations
