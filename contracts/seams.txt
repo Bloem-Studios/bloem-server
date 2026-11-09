@@ -159,7 +159,7 @@ internal/ebooks/enrichment.go
 internal/ebooks/enrichment_queue.go
 internal/ebooks/enrichment_test.go
 internal/events/socket_ticket.go
-internal/historyimport/service.go  # wrap the provider so bulk-marked records are marked (a counting pass first, since records stream page by page) and record their history with their source; temporary, bulk "mark played" records become manual marks (bloem_marked_records.go) until the Emby servers retire at the end of November 2026
+internal/historyimport/service.go  # wrap the provider so bulk-marked records are marked (counted as each page arrives, since Silo reads the source once) and record their history with their source; temporary, bulk "mark played" records become manual marks (bloem_marked_records.go) until the Emby servers retire at the end of November 2026
 internal/historyimport/types.go  # Record.Marked; temporary, bulk "mark played" records become manual marks (bloem_marked_records.go) until the Emby servers retire at the end of November 2026
 internal/invitations/repository.go
 internal/invitations/repository_atomic_test.go  # fully migrated isolated databases preserve tenant FKs/triggers and strengthen rollback checks

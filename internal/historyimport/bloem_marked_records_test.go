@@ -4,6 +4,7 @@ package historyimport
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -56,47 +57,53 @@ func TestBulkMarksCountWithinOneMinute(t *testing.T) {
 	}
 }
 
-// onePerPageProvider delivers one record per page, in order, as a source
+// bulkMarkPages delivers the records perPage at a time, in order, as a source
 // whose listing is not sorted by play time spreads a bulk mark across pages.
-type onePerPageProvider struct {
+type bulkMarkPages struct {
 	records []Record
+	perPage int
 	starts  []*StreamPosition
 }
 
-func (p *onePerPageProvider) Stream(_ context.Context, from *StreamPosition, sink RecordSink) error {
+func (p *bulkMarkPages) Stream(_ context.Context, from *StreamPosition, sink RecordSink) error {
 	p.starts = append(p.starts, from)
-	for i := stageOffset(from, "listing"); i < len(p.records); i++ {
-		if err := sink(RecordBatch{Records: p.records[i : i+1], Resume: StreamPosition{Stage: "listing", Offset: i}}); err != nil {
+	for i := stageOffset(from, "listing"); i < len(p.records); i += p.perPage {
+		end := min(i+p.perPage, len(p.records))
+		if err := sink(RecordBatch{Records: p.records[i:end], Resume: StreamPosition{Stage: "listing", Offset: i}}); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// Silo streams an import page by page, so a bulk mark can reach the import
-// one item per page. Every item of the minute is still a mark, the first ones
-// included, and a resumed run counts the whole listing before it continues.
-func TestBulkMarksSpanStreamedPages(t *testing.T) {
+// Silo's streamed import reads a source once, and Silo wins, so a minute's
+// items are counted as they arrive. A page is counted before it is marked; an
+// item that arrived on an earlier page, before its minute reached the minimum,
+// stays a play.
+func TestBulkMarksReadTheSourceOnce(t *testing.T) {
 	marked := time.Date(2026, 5, 16, 22, 43, 5, 0, time.UTC)
 	watched := time.Date(2026, 5, 16, 21, 10, 0, 0, time.UTC)
-	source := &onePerPageProvider{records: []Record{
+	records := []Record{
 		markedTestRecord("ep1", marked),
 		markedTestRecord("film", watched),
 		markedTestRecord("ep2", marked.Add(20*time.Second)),
 		markedTestRecord("double", watched.Add(time.Hour)),
 		markedTestRecord("double", watched.Add(time.Hour)),
 		markedTestRecord("ep3", marked.Add(50*time.Second)),
-	}}
+		markedTestRecord("ep4", marked.Add(54*time.Second)),
+	}
 	for _, tc := range []struct {
-		name string
-		from *StreamPosition
-		want map[string]bool
+		name    string
+		perPage int
+		from    *StreamPosition
+		want    map[string]bool
 	}{
-		{"fresh run", nil, map[string]bool{"ep1": true, "film": false, "ep2": true, "double": false, "ep3": true}},
-		{"resumed run", &StreamPosition{Stage: "listing", Offset: 2}, map[string]bool{"ep2": true, "double": false, "ep3": true}},
+		{"one page", len(records), nil, map[string]bool{"ep1": true, "film": false, "ep2": true, "double": false, "ep3": true, "ep4": true}},
+		{"one record per page", 1, nil, map[string]bool{"ep1": false, "film": false, "ep2": false, "double": false, "ep3": true, "ep4": true}},
+		{"resumed run", 1, &StreamPosition{Stage: "listing", Offset: 2}, map[string]bool{"ep2": false, "double": false, "ep3": false, "ep4": true}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			source.starts = nil
+			source := &bulkMarkPages{records: slices.Clone(records), perPage: tc.perPage}
 			got := map[string]bool{}
 			err := withBulkMarks(source).Stream(context.Background(), tc.from, func(batch RecordBatch) error {
 				for _, record := range batch.Records {
@@ -115,8 +122,8 @@ func TestBulkMarksSpanStreamedPages(t *testing.T) {
 					t.Fatalf("%s marked=%v, want %v (all: %v)", id, got[id], want, got)
 				}
 			}
-			if last := source.starts[len(source.starts)-1]; last != tc.from {
-				t.Fatalf("import started at %v, want %v", last, tc.from)
+			if len(source.starts) != 1 || source.starts[0] != tc.from {
+				t.Fatalf("source read from %v, want once from %v", source.starts, tc.from)
 			}
 		})
 	}

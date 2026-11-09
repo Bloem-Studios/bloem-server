@@ -20,11 +20,12 @@ other server, those items are watched, but they were not played.
   person share a minute, Bloem records them as watched with a manual mark, the same
   record Bloem's own **Mark watched** button writes, and not as plays.
 - **Real plays stay plays.** An item stamped on its own is a play, as before.
-- **The other server is read twice.** Silo imports a history page by page, and the
-  other server need not list one minute's items together: Emby lists them by name.
-  So Bloem first reads the whole list only to count each minute's items, then reads
-  it again to import, and marks every item of a bulk-marked minute, the first ones
-  included. An import takes about twice as long while this rule lasts.
+- **The other server is read once, as Silo reads it.** Silo imports a history page by
+  page, and the other server need not list one minute's items together: Emby lists
+  them by name. Bloem counts each minute's items as the pages arrive. Items of a minute
+  that share a page are all marks, but an item that arrived on an earlier page, before
+  its minute reached three items, stays a play. Silo wins here: its resume, cancel and
+  retry rules depend on one read.
 - **Everything else is unchanged.** Marked items still count as watched, still reach
   trackers such as Pastime (which applies the same rule), and still shape
   recommendations. Bloem's play statistics never counted imported rows.
@@ -39,7 +40,6 @@ one play at 10:15.
 | On this page | In the code and database |
 | --- | --- |
 | Bulk mark | `Record.Marked`, set by `withBulkMarks` (`bulkMarkProvider`) |
-| Counting pass | the first `Provider.Stream` call `bulkMarkProvider.Stream` makes |
 | Manual mark | `user_watch_history.source = 'manual'` (`WatchHistorySourceManual`) |
 | Imported play | `user_watch_history.source = 'import'` (`WatchHistorySourceImport`) |
 
@@ -52,13 +52,13 @@ one play at 10:15.
   watchlist records never mark.
 - Since Silo streams imports (Silo #3715, merged in `5a93e8b41`), `executeRunWithClaim`
   wraps the provider with `withBulkMarks` on one added line. `bulkMarkProvider.Stream`
-  first streams the whole source from the start, with its own run budget and a sink
-  that only counts minutes, then streams from the run's resume position and marks each
-  batch before Silo's sink applies it. A resumed run therefore counts every minute too.
-  The import pass also counts its own pages, so an item added between the passes
-  still counts. Counts are per-minute hashes of at most two IDs, capped at
-  `maxBulkMarkMinutes` (500,000) minutes; past the cap a new minute stays plays. A
-  failure in the counting pass ends the run the way a failed import pass does.
+  calls Silo's `Provider.Stream` once, from the run's resume position, and counts each
+  batch's minutes before it marks that batch and hands it to Silo's sink. A resumed
+  run counts from where it resumes. Silo's queue, checkpoint and requeue rules assume
+  one `Stream` call per run (a second call broke `TestInterruptedRunResumesWithoutDuplicates`,
+  `TestMatchFailureRequeuesTheRun` and the queue worker tests), so Bloem does not read
+  ahead. Counts are per-minute hashes of at most two IDs, capped at
+  `maxBulkMarkMinutes` (500,000) minutes; past the cap a new minute stays plays.
 - `applyImportedWatch` records history through
   `watchstate.Service.RecordImportedHistoryWithSource` with `importedHistorySource`:
   `manual` for a marked record, `import` otherwise. Progress is written as before.

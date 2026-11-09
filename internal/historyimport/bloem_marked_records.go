@@ -9,11 +9,14 @@ package historyimport
 // as Floppy and Pastime count them. The hooks in service.go and types.go are
 // temporary seams until the Emby servers retire at the end of November 2026.
 //
-// Silo streams an import page by page, and a source need not list its items by
-// play time (Emby lists them by name), so one minute's items can arrive pages
-// apart. withBulkMarks therefore reads the source twice: a first pass only
-// counts each minute's items, and the import pass marks every record of a
-// minute that reached the minimum, the first ones included.
+// Silo streams an import page by page and reads the source once; its resume,
+// cancellation and requeue rules depend on that, and Silo wins. withBulkMarks
+// therefore counts each minute's items as the pages arrive: a page is counted
+// before it is marked, so a minute whose items share a page is marked whole,
+// but an item that arrived on an earlier page, before its minute reached the
+// minimum, stays a play. A source need not list its items by play time (Emby
+// lists them by name), so a few such items can stay plays until the Emby
+// servers retire.
 
 import (
 	"context"
@@ -104,11 +107,9 @@ func playedMinute(record Record) (int64, bool) {
 	return record.LastPlayedAt.UTC().Truncate(time.Minute).Unix() / 60, true
 }
 
-// withBulkMarks counts the source's minutes in a first pass, then streams the
-// import with bulk-marked records marked. The first pass starts at the
-// beginning even for a resumed run, so a minute counts every item the source
-// lists, and gets its own run budget. The import pass counts its pages too, so
-// an item the source added between the passes still counts.
+// withBulkMarks streams the import once, counting each page's minutes before
+// marking that page's bulk-marked records. A resumed run counts from where it
+// resumes.
 func withBulkMarks(provider Provider) bulkMarkProvider {
 	return bulkMarkProvider{Provider: provider}
 }
@@ -119,13 +120,6 @@ type bulkMarkProvider struct {
 
 func (p bulkMarkProvider) Stream(ctx context.Context, from *StreamPosition, sink RecordSink) error {
 	minutes := newBulkMarkMinutes()
-	err := p.Provider.Stream(withRunBudget(ctx), nil, func(batch RecordBatch) error {
-		minutes.count(batch.Records)
-		return nil
-	})
-	if err != nil {
-		return err
-	}
 	return p.Provider.Stream(ctx, from, func(batch RecordBatch) error {
 		minutes.count(batch.Records)
 		minutes.mark(batch.Records)
