@@ -74,11 +74,11 @@ Checked on November 5, 2026, against `main` at `66def9b30`.
 
 | | |
 | --- | --- |
-| Bloem `main` | `e9eacedf5`: the merge of Silo through `a52941174`, which had no conflicts, on `09849d7af`: Silo's new web push login test gets an active tenant profile on its private schema, so Bloem's queued-delivery recheck finds its delivery |
-| Silo integrated | all of Silo `main` through `a52941174` (November 6, 2026, 22:51 UTC), merged in `e9eacedf5` |
+| Bloem `main` | `dba9b95e0`: the merge of Silo through `67d0936f3`, its two watch-sync conflicts resolved to Silo's side, then `8d0f4670f`: a Pastime watched removal also drops the watch Silo now keeps for a title not yet in a library |
+| Silo integrated | all of Silo `main` through `67d0936f3` (November 9, 2026, 00:05 UTC), merged in `dba9b95e0` |
 | Silo merges | the merge bot, since November 2, 2026: each Silo batch is merged with Silo winning, checked, pushed to `main` and deployed once Bloem CI passes it ([how](../docs/architecture/bloem-following-silo.md)) |
 | Seam ledger | 329 Silo-owned files that Bloem differs in, one a Silo web push test that needs an active tenant profile on its private schema (since the merge of Silo through `fcd546a04`), nine for Silo's backup: two test-only hooks, three that restore accounts into their organization and four that keep backups to user data ([How backups work in Bloem](../docs/architecture/bloem-backup.md)) and eight temporary web fixes added in `74e207aca` and `0edcd6e49` that go when Silo merges its own versions (the library grid from `d690b98a5` matches Silo again since Silo #3501, merged in `73cbf3b3a`), declared in [`contracts/seams.txt`](../contracts/seams.txt) |
-| Production | `8c3d5e994` since 16:46 UTC on November 6, Silo through `7073d1cd5` plus Bloem's restore of accounts and profiles into their organization and backups of user data only, deployed by hand; both transcode nodes run the same image |
+| Production | `4edc16af4` since 01:39 UTC on November 9, Silo through `a52941174` plus Bloem's storage source fixes, deployed by hand; both transcode nodes run the same image |
 
 The two October 31 Silo merges brought:
 

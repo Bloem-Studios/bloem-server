@@ -1,7 +1,7 @@
 # How removing a title in a tracker clears its watch history
 
-> **Provenance and status.** Bloem page, rewritten on 2026-11-04 and checked against
-> `main` at `7acb3168a`, which includes Silo through `4e3020a26`. Watched removals are a
+> **Provenance and status.** Bloem page, rewritten on 2026-11-04, updated on 2026-11-09
+> and checked against `main` at `dba9b95e0`, which includes Silo through `67d0936f3`. Watched removals are a
 > Bloem addition to Silo's watch-sync contract, proposed to Silo and carried in Bloem
 > until Silo has them. The technical rules are in the [For developers](#for-developers)
 > section.
@@ -27,6 +27,10 @@ travels on Robin's connection can only ever change Robin's profile.
 4. Bloem removes the title's **watch history** for that profile: every watch of the
    movie, or of each episode of the show, up to the time of the removal. The title's
    watched marks and resume points go with it.
+5. Bloem also forgets any earlier watch of the title it was **holding back**. When the
+   tracker reports a watch of a title that no library has yet, Bloem keeps it and
+   imports it once the title arrives. A removal drops that kept watch, so the title
+   does not come back as watched later.
 
 ## What Bloem keeps
 
@@ -65,6 +69,7 @@ watch stays, and Monday's note, repeated at every sync, does not remove it.
 | Removal note | `WatchSyncRemoteWatchedState.removed = true` in a `WATCHED` traversal |
 | Time of the removal | `WatchSyncRemoteWatchedState.last_watched_at` on a removal |
 | Removing watch history | `UserStore.RemoveHistoryItems` with the removal time as `removedAt` |
+| A watch held back | A `watch_provider_pending_watches` row (Silo's `pendingWatchStore`) |
 | Applying the notes | `Service.applyWatchedRemovals` in `internal/watchsync/bloem_watched_removal.go` |
 
 ## For developers
@@ -90,16 +95,26 @@ Rules:
   The store's hidden-history watermark then keeps older imports of the item hidden.
 - `ImportWatchedResult.Removed` counts removed items; a run with removals reports a
   recommendation-signal change like an import does.
+- Silo keeps a watch that matched no library item in `watch_provider_pending_watches`
+  and retries it on every sync (`retryPendingWatches`, since Silo `67d0936f3`).
+  `ImportWatched` marks a removed row's kind and key as returned this sync (`fresh`),
+  so the kept watch is not retried in the same sync, and `applyWatchedRemovals` calls
+  `DeletePendingWatches` with the removals, which drops kept watches of the same kind
+  and key no newer than the removal time. A removal therefore also clears a watch the
+  profile has not imported yet. Without this, the next sync imported the removed watch
+  once the title reached a library.
 
 Temporary seams, listed in `contracts/seams.txt`: `internal/watchsync/types.go`
 (`RemoteWatch.Removed`), `internal/watchsync/plugin_provider_state.go` (decode hook) and
-`internal/watchsync/service.go` (apply hook, result count, signal change).
+`internal/watchsync/service.go` (apply hook, result count, signal change, and marking a
+removed row as returned this sync).
 
 Tests: `internal/watchsync/bloem_watched_removal_test.go`
 (`TestWatchedRemovedReadsTheFieldTheHostDoesNotKnowYet`,
 `TestRemoteWatchRemovalDecodesASeriesAndRejectsPlays`,
 `TestWatchedRemovalClearsOnlyTheConnectionsProfile`,
-`TestWatchedRemovalKeepsAWatchMadeAfterIt`, `TestWatchedRemovalRepeatsWithoutWriting`).
+`TestWatchedRemovalKeepsAWatchMadeAfterIt`, `TestWatchedRemovalRepeatsWithoutWriting`,
+`TestWatchedRemovalDropsAPendingWatch`).
 
 Related: [How Pastime tracking was removed](bloem-pastime-removal.md), [How Bloem's SDKs
 and generated contracts fit together](bloem-sdk-compatibility.md).
