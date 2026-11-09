@@ -189,7 +189,9 @@ native movie libraries are ready and audiobooks when native audio is ready, and
   library's enabled selection on the same source returns `selection_overlap`
   (409); a source-root or all-buckets selection overlaps every other selection.
   Folders nest by provider logical path; a per-source transaction lock
-  serializes concurrent saves. Selected opaque roots are retained in
+  serializes concurrent saves. The rule is between libraries: selections
+  saved before it existed are checked only when their library is saved again,
+  and one library's own nested selections are not refused. Selected opaque roots are retained in
   `bloem_storage_selected_roots`. Enabled `movies` libraries also require the
   scanner and playback readiness boundary. A retained location's source identity
   does not change when its selected roots change.
