@@ -8,5 +8,8 @@ import "net/http"
 // host can run before Middleware without disturbing it. A nil resolver trusts
 // no proxy. Bloem-owned (internal/orgdomains maps the host to an organization).
 func (r *Resolver) RequestHostOf(req *http.Request) string {
-	return r.requestHost(req)
+	if host := r.forwardedHost(req); host != "" {
+		return host
+	}
+	return req.Host
 }
