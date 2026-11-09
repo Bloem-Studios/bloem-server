@@ -158,6 +158,37 @@ func TestWatchedRemovalClearsOnlyTheConnectionsProfile(t *testing.T) {
 	}
 }
 
+// A series removal reaches only the episodes the profile may open, as Silo's
+// whole-series marker does: an episode in a library the profile cannot see
+// keeps its watches.
+func TestWatchedRemovalReachesOnlyEpisodesTheProfileMayOpen(t *testing.T) {
+	store := userdb.NewSQLiteUserStore(openUserDB(t))
+	watchedAt := time.Date(2026, 4, 8, 19, 34, 0, 0, time.UTC)
+	seedWatch(t, store, lauraProfile, "episode-1", watchedAt)
+	seedWatch(t, store, lauraProfile, "episode-2", watchedAt)
+	service := removalService(t, store, watchedLeafMatcherStub{matches: []historyimport.Match{
+		{MediaItemID: "episode-1", Kind: historyimport.KindEpisode},
+		{MediaItemID: "episode-2", Kind: historyimport.KindEpisode},
+	}}).WithProfileAccess(func(context.Context, int, string) (ProfileAccess, error) {
+		return ProfileAccess{Accessible: func(_ context.Context, ids []string) (map[string]bool, error) {
+			open := make(map[string]bool, len(ids))
+			for _, id := range ids {
+				open[id] = id != "episode-2"
+			}
+			return open, nil
+		}}, nil
+	})
+
+	result := importRemoval(t, service, lauraProfile, historyimport.KindSeries, time.Date(2026, 11, 4, 21, 0, 0, 0, time.UTC))
+
+	if result.Removed != 1 {
+		t.Fatalf("result = %+v, want only the episode the profile may open removed", result)
+	}
+	if got := watched(t, store, lauraProfile, "episode-1", "episode-2"); got["episode-1"] || !got["episode-2"] {
+		t.Fatalf("laura's watches = %v, want episode-2 only", got)
+	}
+}
+
 // A watch made in Bloem after the Pastime removal is newer and stays.
 func TestWatchedRemovalKeepsAWatchMadeAfterIt(t *testing.T) {
 	store := userdb.NewSQLiteUserStore(openUserDB(t))
@@ -202,17 +233,20 @@ func TestWatchedRemovalRepeatsWithoutWriting(t *testing.T) {
 // them in watch_provider_pending_watches.
 type pendingFakeRepo struct {
 	*serviceFakeRepo
-	kept      []RemoteWatch
+	kept      []PendingWatch
 	inLibrary *bool
 }
 
-func (r *pendingFakeRepo) ListPendingWatches(context.Context, string, string) ([]RemoteWatch, error) {
-	return append([]RemoteWatch(nil), r.kept...), nil
+// The fake must stay a pendingWatchStore, or ImportWatched silently skips it.
+var _ pendingWatchStore = (*pendingFakeRepo)(nil)
+
+func (r *pendingFakeRepo) ListPendingWatches(context.Context, string, string) ([]PendingWatch, error) {
+	return append([]PendingWatch(nil), r.kept...), nil
 }
 
-func (r *pendingFakeRepo) SavePendingWatches(_ context.Context, _, _ string, watches []RemoteWatch) error {
+func (r *pendingFakeRepo) SavePendingWatches(_ context.Context, _, _ string, watches []PendingWatch) error {
 	for _, watch := range watches {
-		if keepable(watch) {
+		if keepable(watch.Watch) {
 			r.kept = append(r.kept, watch)
 		}
 	}
@@ -224,7 +258,7 @@ func (r *pendingFakeRepo) DeletePendingWatches(_ context.Context, _, _ string, w
 	for _, k := range r.kept {
 		drop := false
 		for _, w := range watches {
-			if keepable(w) && pendingKeyOf(w) == pendingKeyOf(k) && !k.LastWatchedAt.After(*w.LastWatchedAt) {
+			if keepable(w) && pendingKeyOf(w) == pendingKeyOf(k.Watch) && !k.Watch.LastWatchedAt.After(*w.LastWatchedAt) {
 				drop = true
 			}
 		}
@@ -234,6 +268,10 @@ func (r *pendingFakeRepo) DeletePendingWatches(_ context.Context, _, _ string, w
 	}
 	r.kept = kept
 	return nil
+}
+
+func (r *pendingFakeRepo) SeriesLeafHashes(_ context.Context, seriesIDs []string, _ []time.Time, _ []int) ([]string, error) {
+	return make([]string, len(seriesIDs)), nil
 }
 
 func (r *pendingFakeRepo) MatchPendingWatches(_ context.Context, records []historyimport.Record) ([]*historyimport.Match, error) {

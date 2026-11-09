@@ -87,8 +87,9 @@ func remoteWatchRemovalFromProto(provider string, state *pluginv1.WatchSyncRemot
 // before the removal time go. An item watched or resumed here after the
 // removal keeps everything (the newer state wins), and an item with nothing
 // left to remove is skipped, so a removal repeated by every traversal writes
-// nothing after its first application.
-func (s *Service) applyWatchedRemovals(ctx context.Context, conn Connection, rows []RemoteWatch, result *ImportWatchedResult) error {
+// nothing after its first application. A series removal reaches only the
+// episodes the profile may open, as Silo's whole-series marker does.
+func (s *Service) applyWatchedRemovals(ctx context.Context, conn Connection, profile ProfileAccess, rows []RemoteWatch, result *ImportWatchedResult) error {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -108,7 +109,7 @@ func (s *Service) applyWatchedRemovals(ctx context.Context, conn Connection, row
 		if row.LastWatchedAt == nil {
 			continue
 		}
-		matches, reason, err := s.matchWatchedLeaves(ctx, row)
+		matches, reason, err := s.matchWatchedLeaves(ctx, row, profile)
 		if err != nil {
 			return err
 		}
