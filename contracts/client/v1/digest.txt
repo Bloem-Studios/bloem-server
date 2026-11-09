@@ -8,4 +8,4 @@
 # table so the client migration can track them. The test in
 # cmd/clientdtogen/internal/digestfile fails while these pins lag the tree.
 contract: sha256:9996a888d10a301d942463dc7df616a9101302f01206cdd922d66e37253f0834
-removals-table: sha256:587a0e1a18745114680fe6ef4899200519114ac3ff18ae6a1863963c67f49e1a
+removals-table: sha256:7805ca9c882957d8b8b5c3c4702e903b6a42a847daae9a535b059910503c4362
