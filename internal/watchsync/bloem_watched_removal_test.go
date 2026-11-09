@@ -197,3 +197,105 @@ func TestWatchedRemovalRepeatsWithoutWriting(t *testing.T) {
 		t.Fatal("the rewatch was removed by a repeated removal")
 	}
 }
+
+// pendingFakeRepo keeps pending watches in memory, as PostgresRepository keeps
+// them in watch_provider_pending_watches.
+type pendingFakeRepo struct {
+	*serviceFakeRepo
+	kept      []RemoteWatch
+	inLibrary *bool
+}
+
+func (r *pendingFakeRepo) ListPendingWatches(context.Context, string, string) ([]RemoteWatch, error) {
+	return append([]RemoteWatch(nil), r.kept...), nil
+}
+
+func (r *pendingFakeRepo) SavePendingWatches(_ context.Context, _, _ string, watches []RemoteWatch) error {
+	for _, watch := range watches {
+		if keepable(watch) {
+			r.kept = append(r.kept, watch)
+		}
+	}
+	return nil
+}
+
+func (r *pendingFakeRepo) DeletePendingWatches(_ context.Context, _, _ string, watches []RemoteWatch) error {
+	kept := r.kept[:0]
+	for _, k := range r.kept {
+		drop := false
+		for _, w := range watches {
+			if keepable(w) && pendingKeyOf(w) == pendingKeyOf(k) && !k.LastWatchedAt.After(*w.LastWatchedAt) {
+				drop = true
+			}
+		}
+		if !drop {
+			kept = append(kept, k)
+		}
+	}
+	r.kept = kept
+	return nil
+}
+
+func (r *pendingFakeRepo) MatchPendingWatches(_ context.Context, records []historyimport.Record) ([]*historyimport.Match, error) {
+	out := make([]*historyimport.Match, len(records))
+	if *r.inLibrary {
+		for i := range out {
+			out[i] = &historyimport.Match{MediaItemID: testMovieMediaID}
+		}
+	}
+	return out, nil
+}
+
+type libraryMatcherStub struct{ inLibrary *bool }
+
+func (m libraryMatcherStub) Match(context.Context, historyimport.Record) (*historyimport.Match, string, error) {
+	if !*m.inLibrary {
+		return nil, "not in the library", nil
+	}
+	return &historyimport.Match{MediaItemID: testMovieMediaID}, "", nil
+}
+
+// A watch Silo keeps because its title is not in the library yet must not
+// import after Pastime removed it: the removal drops the kept watch.
+func TestWatchedRemovalDropsAPendingWatch(t *testing.T) {
+	store := userdb.NewSQLiteUserStore(openUserDB(t))
+	inLibrary := false
+	repo := &pendingFakeRepo{serviceFakeRepo: newServiceFakeRepo(), inLibrary: &inLibrary}
+	watchState := &recordingWatchState{}
+	service := NewService(repo, NewRegistry()).
+		WithMatcher(libraryMatcherStub{inLibrary: &inLibrary}).
+		WithWatchState(watchState).
+		WithUserStoreProvider(staticStoreProvider{store: store})
+	conn := Connection{ID: "conn-laura", Provider: "pastime", ProviderAccountID: "laura", UserID: 1, ProfileID: lauraProfile}
+	sync := func(rows ...RemoteWatch) ImportWatchedResult {
+		t.Helper()
+		result, err := service.ImportWatched(context.Background(), conn, ServerConfig{}, watchedImporterStub{
+			historyStubBase: historyStubBase{key: "pastime", source: userstore.WatchHistorySourcePlayback},
+			rows:            rows,
+		})
+		if err != nil {
+			t.Fatalf("ImportWatched: %v", err)
+		}
+		return result
+	}
+	watchedAt := time.Date(2026, 10, 1, 20, 0, 0, 0, time.UTC)
+	removedAt := time.Date(2026, 11, 4, 21, 0, 0, 0, time.UTC)
+	row := RemoteWatch{Provider: "pastime", ProviderItemKey: "tmdb:42", Kind: historyimport.KindMovie, Title: "The Odyssey", TMDBID: "42"}
+	watch, removal := row, row
+	watch.PlayCount, watch.LastWatchedAt = 1, &watchedAt
+	removal.LastWatchedAt, removal.Removed = &removedAt, true
+
+	if got := sync(watch); got.Imported != 0 || len(repo.kept) != 1 {
+		t.Fatalf("first sync = %+v kept %d, want the watch kept", got, len(repo.kept))
+	}
+	inLibrary = true
+	if got := sync(removal); got.Imported != 0 {
+		t.Fatalf("sync with the removal = %+v, want the kept watch not imported", got)
+	}
+	if got := sync(); got.Imported != 0 || len(repo.kept) != 0 {
+		t.Fatalf("next sync = %+v kept %d, want the removed watch gone", got, len(repo.kept))
+	}
+	if len(watchState.targetIDs) != 0 {
+		t.Fatalf("removed watch was imported for %v", watchState.targetIDs)
+	}
+}

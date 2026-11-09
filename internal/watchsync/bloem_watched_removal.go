@@ -95,6 +95,14 @@ func (s *Service) applyWatchedRemovals(ctx context.Context, conn Connection, row
 	if s.storeProvider == nil {
 		return errors.New("watch provider user store is not configured")
 	}
+	// A removal also drops the watches Silo kept for a title not in a library
+	// yet (pending_watches.go), so a later sync cannot import one the person
+	// removed. ImportWatched marks removed rows fresh, so this sync skips them.
+	if pending, ok := s.repo.(pendingWatchStore); ok {
+		if err := pending.DeletePendingWatches(ctx, conn.ID, conn.ProviderAccountID, rows); err != nil {
+			return err
+		}
+	}
 	cutoffs := make(map[string]time.Time)
 	for _, row := range rows {
 		if row.LastWatchedAt == nil {

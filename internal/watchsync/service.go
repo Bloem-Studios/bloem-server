@@ -1163,11 +1163,11 @@ func (s *Service) ImportWatched(
 	var unmatched, applied []RemoteWatch
 	var removals []RemoteWatch
 	for _, row := range rows {
+		fresh[pendingKeyOf(row)] = true
 		if row.Removed {
 			removals = append(removals, row)
 			continue
 		}
-		fresh[pendingKeyOf(row)] = true
 		matches, reason, err := s.matchWatchedLeaves(ctx, row)
 		if err != nil {
 			return result, err
