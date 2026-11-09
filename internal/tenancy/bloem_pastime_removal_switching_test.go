@@ -250,8 +250,19 @@ func TestPastimeRemovalKeepsSiloDataAndWritesInMirroredPhase(t *testing.T) {
 	}
 	assertNoPastimeObjects(t, ctx, pool)
 
-	// Every watch-provider connection and child row is exactly as it was.
-	if after := watchSyncRows(t, ctx, pool); !maps.Equal(after, watchSyncBefore) {
+	// Every watch-provider connection and child row is exactly as it was. A
+	// child table a later migration creates (Silo's
+	// watch_provider_pending_watches) starts empty and holds no row to keep.
+	after := watchSyncRows(t, ctx, pool)
+	for table, fingerprint := range after {
+		if _, existed := watchSyncBefore[table]; !existed {
+			if fingerprint != "0 " {
+				t.Errorf("new watch-sync table %s is not empty after the removal: %s", table, fingerprint)
+			}
+			delete(after, table)
+		}
+	}
+	if !maps.Equal(after, watchSyncBefore) {
 		t.Errorf("watch-sync rows changed:\nbefore %v\nafter  %v", watchSyncBefore, after)
 	}
 	connections := func(id string) int {
