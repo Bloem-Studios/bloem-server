@@ -74,8 +74,8 @@ Checked on November 5, 2026, against `main` at `66def9b30`.
 
 | | |
 | --- | --- |
-| Bloem `main` | `5a93e8b41`: the merge of Silo through `8487cd7b1`, its six conflicts resolved to Silo's side, with Bloem's profile limit and bulk-mark import rule back on Bloem's own lines, then `9205ca636`: an organization domain still follows only a trusted proxy's forwarded host |
-| Silo integrated | all of Silo `main` through `8487cd7b1` (November 9, 2026, 16:09 UTC), merged in `5a93e8b41` |
+| Bloem `main` | `7f8bc218b`: the merge of Silo through `df9f55019`, its four conflicts resolved to Silo's side with Bloem's lines kept on their own, then `1b63fdf08`: a profile restored into an organization as its account's primary inherits the account's libraries, as in Silo |
+| Silo integrated | all of Silo `main` through `df9f55019` (November 9, 2026, 21:09 UTC), merged in `7f8bc218b` |
 | Silo merges | the merge bot, since November 2, 2026: each Silo batch is merged with Silo winning, checked, pushed to `main` and deployed once Bloem CI passes it ([how](../docs/architecture/bloem-following-silo.md)) |
 | Seam ledger | 328 Silo-owned files that Bloem differs in, one a Silo web push test that needs an active tenant profile on its private schema (since the merge of Silo through `fcd546a04`), nine for Silo's backup: two test-only hooks, three that restore accounts into their organization and four that keep backups to user data ([How backups work in Bloem](../docs/architecture/bloem-backup.md)) and eight temporary web fixes added in `74e207aca` and `0edcd6e49` that go when Silo merges its own versions (the library grid from `d690b98a5` matches Silo again since Silo #3501, merged in `73cbf3b3a`), declared in [`contracts/seams.txt`](../contracts/seams.txt) |
 | Production | `ea82045c1` since 09:05 UTC on November 9, Silo through `4018816da`, daily deploy; both transcode nodes run the same image |

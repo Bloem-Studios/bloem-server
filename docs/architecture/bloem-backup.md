@@ -1,7 +1,7 @@
 # How backups work in Bloem
 
-> **Provenance and status.** Bloem page, written on 2026-11-06 and updated the same
-> day against `main` at `8a37ea9bc`. Backup and restore are Silo's feature, merged
+> **Provenance and status.** Bloem page, written on 2026-11-06, updated on 2026-11-09
+> against `main` at `1b63fdf08`. Backup and restore are Silo's feature, merged
 > from Silo through `cecd5b9bc`; this page covers what Bloem changes. The nightly
 > backup is switched off on Bloem's production server (`backup.enabled` is false);
 > "Back up now" and each person's "Your data" export still work. Silo's
@@ -37,6 +37,10 @@ the access group of every profile.
 - A restored profile joins its account's organization, in the group of the name the
   backup recorded there, else the account's group, else the organization's default
   group.
+- A restored profile that becomes its account's primary keeps no library limit: the
+  primary inherits its account's libraries, as in Silo since `df9f55019` (#3915).
+  `bloemCreateRestoredProfileInTx` applies the same rule as Silo's
+  `CreateRestoredProfileInTx` and reports the primary the same way.
 
 A backup taken before 6 November 2026 does not record organizations, so its
 accounts come back in the default organization.
