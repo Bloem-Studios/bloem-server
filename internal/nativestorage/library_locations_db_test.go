@@ -88,32 +88,20 @@ func TestCreateLibraryWithStorageSource(t *testing.T) {
 	if err != nil || folder.StorageSourceKey == nil || *folder.StorageSourceKey != source.Key {
 		t.Fatalf("stored library location = %+v %v", folder, err)
 	}
-	secondID, err := createStorageLibrary(t, pool, "ebooks", source.Key)
-	if err != nil || secondID == id {
+	selections, err := storagesource.NewRepository(pool).LocationSelections(t.Context(), id)
+	if err != nil || len(selections) != 1 {
+		t.Fatalf("library selections: %+v %v", selections, err)
+	}
+	selection := selections[0]
+	if selection.Location.SourceKey != source.Key || selection.Location.FolderID != id || len(selection.Roots) != 1 {
+		t.Fatalf("library location: %+v", selection)
+	}
+	if root := selection.Roots[0]; root.DirectoryID != "root" || root.LocationID != selection.Location.ID || !root.Enabled {
+		t.Fatalf("library root: %+v", root)
+	}
+	// The first library reads the whole source, so a second one would read the same files.
+	if secondID, err := createStorageLibrary(t, pool, "ebooks", source.Key); !errors.Is(err, ErrLocationSourceInUse) {
 		t.Fatalf("second library on one source: id=%d err=%v", secondID, err)
-	}
-	var firstLocation, secondLocation uuid.UUID
-	for _, folderID := range []int{id, secondID} {
-		selections, err := storagesource.NewRepository(pool).LocationSelections(t.Context(), folderID)
-		if err != nil || len(selections) != 1 {
-			t.Fatalf("library %d selections: %+v %v", folderID, selections, err)
-		}
-		selection := selections[0]
-		if selection.Location.SourceKey != source.Key || selection.Location.FolderID != folderID || len(selection.Roots) != 1 {
-			t.Fatalf("library %d location: %+v", folderID, selection)
-		}
-		root := selection.Roots[0]
-		if root.DirectoryID != "root" || root.LocationID != selection.Location.ID || !root.Enabled {
-			t.Fatalf("library %d root: %+v", folderID, root)
-		}
-		if folderID == id {
-			firstLocation = selection.Location.ID
-		} else {
-			secondLocation = selection.Location.ID
-		}
-	}
-	if firstLocation == uuid.Nil || secondLocation == uuid.Nil || firstLocation == secondLocation {
-		t.Fatalf("libraries share a location identity: %s %s", firstLocation, secondLocation)
 	}
 }
 

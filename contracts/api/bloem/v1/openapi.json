@@ -14864,7 +14864,7 @@
                 }
               }
             },
-            "description": "invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
+            "description": "invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. selection_overlap: another library already reads a selected folder from the same source, a folder inside it or the folder around it; an all-buckets or source-root selection overlaps every other selection on that source. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -15269,7 +15269,7 @@
                 }
               }
             },
-            "description": "revision_conflict with current_library_revision: expected_revision or expected_edit_token is stale, or a concurrent path write holds the library's paths; reload. invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
+            "description": "revision_conflict with current_library_revision: expected_revision or expected_edit_token is stale, or a concurrent path write holds the library's paths; reload. invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. selection_overlap: another library already reads a selected folder from the same source, a folder inside it or the folder around it; an all-buckets or source-root selection overlaps every other selection on that source. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -24486,7 +24486,7 @@
                 }
               }
             },
-            "description": "invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
+            "description": "invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. selection_overlap: another library already reads a selected folder from the same source, a folder inside it or the folder around it; an all-buckets or source-root selection overlaps every other selection on that source. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -24891,7 +24891,7 @@
                 }
               }
             },
-            "description": "revision_conflict with current_library_revision: expected_revision or expected_edit_token is stale, or a concurrent path write holds the library's paths; reload. invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
+            "description": "revision_conflict with current_library_revision: expected_revision or expected_edit_token is stale, or a concurrent path write holds the library's paths; reload. invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. selection_overlap: another library already reads a selected folder from the same source, a folder inside it or the folder around it; an all-buckets or source-root selection overlaps every other selection on that source. authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry.",
             "headers": {
               "Cache-Control": {
                 "schema": {

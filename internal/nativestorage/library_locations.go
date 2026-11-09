@@ -76,6 +76,13 @@ func (l *LibraryLocations) AttachTx(ctx context.Context, tx pgx.Tx, sourceKey uu
 	if err != nil {
 		return err
 	}
+	// This location selects the whole source, so any other library on it overlaps.
+	if err := storagesource.RequireNoOverlapTx(ctx, tx, sourceKey, folderID, "", ""); err != nil {
+		if errors.Is(err, storagesource.ErrSelectionOverlap) {
+			return ErrLocationSourceInUse
+		}
+		return err
+	}
 	location, err := l.sources.AddLocationTx(ctx, tx, sourceKey, folderID)
 	if err != nil {
 		return err

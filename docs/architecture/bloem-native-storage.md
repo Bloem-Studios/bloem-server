@@ -184,7 +184,12 @@ native movie libraries are ready and audiobooks when native audio is ready, and
   configuration revision. A source outlives its installation's removal.
 - **Library storage location.** `library_storage_locations`: binds one source to
   one library. Libraries can combine local paths and multiple source selections;
-  one source can back multiple libraries. Selected opaque roots are retained in
+  one source can back multiple libraries, but no two libraries may read the same
+  files from it. Saving a selection that is, contains or sits inside another
+  library's enabled selection on the same source returns `selection_overlap`
+  (409); a source-root or all-buckets selection overlaps every other selection.
+  Folders nest by provider logical path; a per-source transaction lock
+  serializes concurrent saves. Selected opaque roots are retained in
   `bloem_storage_selected_roots`. Enabled `movies` libraries also require the
   scanner and playback readiness boundary. A retained location's source identity
   does not change when its selected roots change.

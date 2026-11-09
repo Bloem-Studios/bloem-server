@@ -54,7 +54,7 @@ func libraryLocationDocument[T any](reg *Registry, scope, method, path, id, secu
 func libraryLocationErrors(reg *Registry, op *huma.Operation, kind string) {
 	const (
 		unavailable = "native_storage_unavailable: library-location editing is not composed, or the source, its provider or the database is unavailable. tenant_unavailable: administrative authority could not be checked."
-		selections  = "invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path."
+		selections  = "invalid_selection_reference: a selection_ref is invalid, expired or no longer matches its source; browse again. revision_conflict with current_source_revision: a selection's configuration_revision is stale. conflict: another library already uses a requested filesystem path. selection_overlap: another library already reads a selected folder from the same source, a folder inside it or the folder around it; an all-buckets or source-root selection overlaps every other selection on that source."
 		limits      = "selection_limit_exceeded: at most 128 selected roots and 16 plugin sources; location_mixing_unavailable: filesystem paths with plugin sources, or several plugin sources, before library_location_mixing."
 		mutation    = " mutation_outcome_unknown returns operation_id, operation and library_id: reconcile using the library_id, never assume rollback or retry."
 		authChanged = " authorization_state_changed: the storage owner, source or library changed while the request waited for its locks; reload and retry."

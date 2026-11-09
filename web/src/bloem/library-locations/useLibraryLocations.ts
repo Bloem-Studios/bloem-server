@@ -245,7 +245,9 @@ export function useLibraryLocations(
         }
         if (
           e instanceof AdminV2ClientError &&
-          (e.status === 409 || e.code === "mutation_outcome_unknown")
+          // An overlap is fixed by choosing other folders, not by reloading.
+          ((e.status === 409 && e.code !== "selection_overlap") ||
+            e.code === "mutation_outcome_unknown")
         )
           setConflict(true);
       }

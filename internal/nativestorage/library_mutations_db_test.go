@@ -467,7 +467,8 @@ func TestLibraryLocationsEditTokenActorAndExpiryDB(t *testing.T) {
 				roots = []RootSelection{}
 			}
 			if mode == "other-library" {
-				other := createMutationLibrary(t, l, a, roots, []string{"/media/other"})
+				// Paths only: the same roots would overlap the first library.
+				other := createMutationLibrary(t, l, a, []RootSelection{}, []string{"/media/other"})
 				view, err := l.ReadSelections(t.Context(), a, other)
 				if err != nil {
 					t.Fatal(err)

@@ -96,6 +96,9 @@ func nativeDomainMap(err error) error {
 	if errors.Is(err, storagesource.ErrSourceInUse) {
 		return nativeDomainError("source_in_use")
 	}
+	if errors.Is(err, storagesource.ErrSelectionOverlap) {
+		return nativeDomainError("selection_overlap")
+	}
 	return catalog.MapNativeOnboardingError(err)
 }
 func nativeOpaqueID(value string) bool {

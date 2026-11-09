@@ -21,6 +21,7 @@ var (
 	ErrReferenceConflict  = errors.New("storage catalog reference conflicts")
 	ErrCheckpointConflict = errors.New("storage discovery checkpoint conflicts")
 	ErrSourceInUse        = errors.New("storage source already backs a library")
+	ErrSelectionOverlap   = errors.New("storage selection overlaps another library")
 )
 
 type SourceConfig struct {

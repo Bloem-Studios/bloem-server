@@ -8,6 +8,38 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// RequireNoOverlapTx refuses a selected folder when another library already
+// reads any of its files from the same source: the same folder, a folder
+// inside it, or a folder containing it. Folders nest by logical path, which
+// providers report relative to the source root; the source's root entry, or an
+// empty path, is the whole source. A per-source transaction lock serializes
+// concurrent saves, so call this before writing the selection and keep the
+// transaction open until commit.
+func RequireNoOverlapTx(ctx context.Context, tx pgx.Tx, sourceKey uuid.UUID, folderID int, directoryID, logicalPath string) error {
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('bloem_storage_selection:' || $1::text, 0))`, sourceKey); err != nil {
+		return err
+	}
+	var overlap bool
+	err := tx.QueryRow(ctx, `WITH requested AS (
+		SELECT CASE WHEN $3=s.root_entry_id THEN '' ELSE btrim($4, '/') END AS path, s.root_entry_id
+		FROM bloem_storage_sources s WHERE s.key=$1)
+	SELECT EXISTS(
+		SELECT 1 FROM requested q, bloem_storage_selected_roots r
+		JOIN library_storage_locations l ON l.id=r.location_id
+		CROSS JOIN LATERAL (SELECT btrim(r.logical_path, '/') AS path) other
+		WHERE l.source_key=$1 AND l.folder_id<>$2 AND r.enabled
+		  AND (q.path='' OR other.path='' OR r.directory_id=q.root_entry_id OR r.directory_id=$3
+		       OR other.path=q.path OR starts_with(other.path, q.path || '/') OR starts_with(q.path, other.path || '/')))`,
+		sourceKey, folderID, directoryID, logicalPath).Scan(&overlap)
+	if err != nil {
+		return err
+	}
+	if overlap {
+		return ErrSelectionOverlap
+	}
+	return nil
+}
+
 // FolderLocation is the legacy single-location projection. Ambiguous libraries
 // fail closed; callers that support mixed selections use LocationSelections.
 func (r *Repository) FolderLocation(ctx context.Context, folderID int) (Location, bool, error) {

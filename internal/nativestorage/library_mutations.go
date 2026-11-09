@@ -428,6 +428,9 @@ func (l *LibraryLocations) writeSelectionsTx(ctx context.Context, tx pgx.Tx, id 
 		return err
 	}
 	for _, r := range p.roots {
+		if err := storagesource.RequireNoOverlapTx(ctx, tx, r.source.Key, id, r.directoryID, r.logicalPath); err != nil {
+			return nativeDomainMap(err)
+		}
 		location, ok := locations[r.source.Key]
 		if !ok {
 			location = uuid.New()
