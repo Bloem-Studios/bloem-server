@@ -12,38 +12,44 @@ import (
 // schema, where every profile belongs to its account's organization and an
 // access group there. The profile joins the organization of the account's
 // membership, in the group BloemRestoredProfileGroup picks. It always handles
-// the write.
-func bloemCreateRestoredProfileInTx(ctx context.Context, tx pgx.Tx, userID int, p RestoredProfile) (bool, error) {
+// the write, and reports, as Silo's does, whether the profile became the
+// account's primary: a primary inherits its account's libraries (Silo #3915),
+// so it keeps no library limit.
+func bloemCreateRestoredProfileInTx(ctx context.Context, tx pgx.Tx, userID int, p RestoredProfile) (handled, primary bool, err error) {
 	var organizationID string
 	var accountGroup *int64
-	err := tx.QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		SELECT m.organization_id::text,
 			(SELECT g.id FROM access_groups g WHERE g.id = u.access_group_id AND g.organization_id = m.organization_id)
 		FROM organization_memberships m JOIN users u ON u.id = m.account_id
 		WHERE m.account_id = $1`, userID).Scan(&organizationID, &accountGroup)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return true, fmt.Errorf("restoring profile %s: account %d belongs to no organization", p.ID, userID)
+		return true, false, fmt.Errorf("restoring profile %s: account %d belongs to no organization", p.ID, userID)
 	}
 	if err != nil {
-		return true, fmt.Errorf("reading the organization of account %d: %w", userID, err)
+		return true, false, fmt.Errorf("reading the organization of account %d: %w", userID, err)
 	}
 	groupID, err := BloemRestoredProfileGroup(ctx, tx, organizationID, accountGroup, p.BloemAccessGroup)
 	if err != nil {
-		return true, fmt.Errorf("restoring profile %s: %w", p.ID, err)
+		return true, false, fmt.Errorf("restoring profile %s: %w", p.ID, err)
 	}
 	var hasPrimary bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM user_profiles WHERE user_id = $1 AND is_primary)`, userID).Scan(&hasPrimary); err != nil {
-		return true, fmt.Errorf("checking the primary profile of user %d: %w", userID, err)
+		return true, false, fmt.Errorf("checking the primary profile of user %d: %w", userID, err)
+	}
+	primary = p.IsPrimary && !hasPrimary
+	if primary {
+		p.LibraryRestrictionsEnabled, p.AllowedLibraryIDs = false, nil
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO user_profiles (id, user_id, name, avatar, pin_hash, is_child, is_primary, max_content_rating, max_advisory_age,
 			require_advisory_age, library_restrictions_enabled, max_playback_quality, organization_id, access_group_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9::smallint, 0), $10, $11, $12, $13::uuid, $14)`,
-		p.ID, userID, p.Name, p.Avatar, p.PINHash, p.IsChild, p.IsPrimary && !hasPrimary, p.MaxContentRating, p.MaxAdvisoryAge,
+		p.ID, userID, p.Name, p.Avatar, p.PINHash, p.IsChild, primary, p.MaxContentRating, p.MaxAdvisoryAge,
 		p.RequireAdvisoryAge, p.LibraryRestrictionsEnabled, p.MaxPlaybackQuality, organizationID, groupID); err != nil {
-		return true, fmt.Errorf("inserting restored profile: %w", err)
+		return true, false, fmt.Errorf("inserting restored profile: %w", err)
 	}
-	return true, replaceProfileAllowedLibraries(ctx, tx, userID, p.ID, p.AllowedLibraryIDs)
+	return true, primary, replaceProfileAllowedLibraries(ctx, tx, userID, p.ID, p.AllowedLibraryIDs)
 }
 
 // BloemRestoredProfileGroup is the access group a profile restored into an

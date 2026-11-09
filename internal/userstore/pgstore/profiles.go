@@ -707,8 +707,8 @@ func CreateRestoredProfileInTx(ctx context.Context, tx pgx.Tx, userID int, p Res
 	if p.ID == "" {
 		return false, errors.New("a restored profile needs an id")
 	}
-	if handled, err := bloemCreateRestoredProfileInTx(ctx, tx, userID, p); handled { // Bloem: bloem_restored_profiles.go
-		return err
+	if handled, primary, err := bloemCreateRestoredProfileInTx(ctx, tx, userID, p); handled { // Bloem: bloem_restored_profiles.go
+		return primary, err
 	}
 	var hasPrimary bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM user_profiles WHERE user_id = $1 AND is_primary)`, userID).Scan(&hasPrimary); err != nil {
