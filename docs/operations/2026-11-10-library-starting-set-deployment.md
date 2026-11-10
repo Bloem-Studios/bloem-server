@@ -71,11 +71,31 @@ explain the behaviour.
   `make verify-local-paths`, `scripts/bloem/draw-pictures.py --check` and a link check
   passed.
 
-## Still to do
+## 3. Deleting the old libraries
 
-- Delete the two old libraries in the admin web app. Between them they hold about
-  420,000 titles found nowhere else; the search index filters those out of every
-  search until the deletion's sync removes them.
+Both deletions were started through `DELETE /api/v2/libraries/{id}` at 13:36 UTC and
+were accepted, which the previous release refused. Audio Books removed its 127,637
+titles in a few minutes, then slowed to one 5,000-file batch in about 45 minutes.
+
+- **Cause.** Silo's `queue_deleted_media_file_blobs` trigger looks up each deleted file
+  in `blob_gc_queue` (949,319 rows) with
+  `max(not_before) ... WHERE prefix LIKE 'chapter-images/%' AND split_part(prefix, '/', 2) = <file id>`.
+  Silo's partial index `blob_gc_queue_chapter_file_idx` covers that expression, but
+  PostgreSQL does not use a partial index's statistics for estimates. The planner
+  assumed 4,747 matches instead of about 17, and chose to walk `blob_gc_queue_due_idx`
+  backwards, reading the whole queue for every file: about 0.55 seconds each, or about
+  three and a half days for both libraries.
+- **Fix, applied by hand.** At 14:31 an extended statistics object on the expression,
+  `blob_gc_queue_chapter_image_id_stats`, then `ANALYZE blob_gc_queue`. The lookup now
+  uses Silo's index and takes 0.06 to 0.2 milliseconds. Two duplicate indexes made
+  while diagnosing it were dropped again at 14:41; the statistics object stays until a
+  migration carries the fix.
+- **Restart.** The batch running on the old plan was cancelled at 14:33 rather than
+  left to run into the job's two-hour limit. The first Audio Books job failed with
+  that cancellation and was queued again. Electronic Books completed at 14:38:38 and
+  Audio Books at 14:39:45, at about 60,000 files a minute. No file, bundle member or
+  grant of either library remains; the starting set names eight libraries. An image
+  cache cleanup of 273,241 images followed.
 
 ## Rollback
 
@@ -86,3 +106,7 @@ explain the behaviour.
 - **Schema:** the migration's Down drops the trigger and restores `ON DELETE RESTRICT`;
   the libraries it added stay in the starting set.
 - **Moved progress:** put back from the saved files by hand. There is no script.
+- **The deleted libraries** come back only from the restore point taken before the
+  deploy, which would also undo everything written since.
+- **Statistics object:** `DROP STATISTICS blob_gc_queue_chapter_image_id_stats` brings
+  the slow plan back; nothing depends on it otherwise.
