@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
+import { useBloemT } from "@/bloem/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,19 +9,20 @@ import { AccountPicker } from "@/components/admin/policy/AccountPicker";
 import { AccountEntitlementPanel } from "./AccountEntitlementPanel";
 
 export default function DirectAccountsPage() {
-  useDocumentTitle("Direct Accounts");
+  const bt = useBloemT();
+  useDocumentTitle(bt("bloem.admin.directAccounts.title"));
   const [accountInput, setAccountInput] = useState("");
   const [selectedAccountID, setSelectedAccountID] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [invalidNumber, setInvalidNumber] = useState(false);
 
   function loadAccount(event: FormEvent) {
     event.preventDefault();
     const accountID = accountInput.trim();
     if (!/^[1-9]\d*$/.test(accountID)) {
-      setError("Account numbers are whole numbers, like 41.");
+      setInvalidNumber(true);
       return;
     }
-    setError("");
+    setInvalidNumber(false);
     setSelectedAccountID(accountID);
   }
 
@@ -28,30 +30,35 @@ export default function DirectAccountsPage() {
     <section className="page-shell space-y-6 py-4 sm:py-6">
       <div className="page-header">
         <div>
-          <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">Direct Accounts</h1>
+          <h1 className="page-title text-[clamp(2rem,4vw,3rem)]">
+            {bt("bloem.admin.directAccounts.title")}
+          </h1>
           <p className="page-subtitle text-sm sm:text-base">
-            Accounts that sign up straight to this server, not through an organization. Find one to
-            see or change its plan.
+            {bt("bloem.admin.directAccounts.intro")}
           </p>
         </div>
         <Button asChild variant="outline">
-          <Link to="/admin/platform/direct-accounts/bulk">Change many accounts</Link>
+          <Link to="/admin/platform/direct-accounts/bulk">
+            {bt("bloem.admin.directAccounts.changeManyAccounts")}
+          </Link>
         </Button>
       </div>
       <section className="surface-panel space-y-4 rounded-2xl p-5">
         <AccountPicker
           id="direct-account-search"
-          label="Find an account"
+          label={bt("bloem.admin.directAccounts.findAnAccount")}
           multiple={false}
           selected={selectedAccountID ? [Number(selectedAccountID)] : []}
           onChange={(ids) => {
-            setError("");
+            setInvalidNumber(false);
             setSelectedAccountID(ids[0] ? String(ids[0]) : null);
           }}
         />
         <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={loadAccount}>
           <div className="flex-1 space-y-1.5">
-            <Label htmlFor="direct-account-id">Or enter an account number</Label>
+            <Label htmlFor="direct-account-id">
+              {bt("bloem.admin.directAccounts.orEnterAnAccountNumber")}
+            </Label>
             <Input
               id="direct-account-id"
               inputMode="numeric"
@@ -59,14 +66,14 @@ export default function DirectAccountsPage() {
               value={accountInput}
               onChange={(event) => setAccountInput(event.target.value)}
             />
-            {error ? (
+            {invalidNumber ? (
               <p className="text-destructive text-sm" role="alert">
-                {error}
+                {bt("bloem.admin.directAccounts.accountNumberNotWhole")}
               </p>
             ) : null}
           </div>
           <Button type="submit" variant="outline">
-            Open account
+            {bt("bloem.admin.directAccounts.openAccount")}
           </Button>
         </form>
       </section>

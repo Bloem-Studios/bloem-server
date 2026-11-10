@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 
 import { adminV2Api } from "@/api/adminV2Client";
+import { bloemT, useBloemT } from "@/bloem/i18n";
 import { AccountPicker } from "@/components/admin/policy/AccountPicker";
 import { PolicyChangeForm } from "@/components/admin/policy/PolicyChangeForm";
 import {
@@ -120,10 +121,12 @@ interface CancelJobRequest extends SelectionRequest {
   jobID: string;
 }
 
-const STEPS = ["Accounts", "Current settings", "Change", "Review and apply"];
+/** The most accounts one change can select. */
+const MAX_ACCOUNTS = 10_000;
 
 export default function DirectAccountPolicyBulkPage() {
-  useDocumentTitle("Change many accounts");
+  const bt = useBloemT();
+  useDocumentTitle(bt("bloem.admin.directAccounts.bulk.title"));
   const [pickedIDs, setPickedIDs] = useState<number[]>([]);
   const [pastedIDs, setPastedIDs] = useState("");
   const [selectedIDs, setSelectedIDs] = useState<number[]>([]);
@@ -167,9 +170,7 @@ export default function DirectAccountPolicyBulkPage() {
       if (!isCurrentSelection(request)) return;
       if (!snapshotMatchesSelection(response, request.accountIDs)) {
         discardReviewedSelection();
-        setSelectionError(
-          "The server answered for different accounts. Look up the accounts again.",
-        );
+        setSelectionError(bt("bloem.admin.directAccounts.bulk.serverAnsweredForOtherAccounts"));
         return;
       }
       setSnapshotData(response);
@@ -365,42 +366,50 @@ export default function DirectAccountPolicyBulkPage() {
 
   const step = previewBinding ? 4 : organizationID ? 3 : snapshotData ? 2 : 1;
   const accountCount = pickedIDs.length + countPasted(pastedIDs);
+  const steps = [
+    bt("bloem.admin.directAccounts.bulk.stepAccounts"),
+    bt("bloem.admin.directAccounts.bulk.stepCurrentSettings"),
+    bt("bloem.admin.directAccounts.bulk.stepChange"),
+    bt("bloem.admin.directAccounts.bulk.stepReviewAndApply"),
+  ];
 
   return (
     <section className="admin-page space-y-6">
       <header className="page-header">
         <div className="space-y-2">
           <p className="text-muted-foreground text-sm">
-            <Link
-              className="hover:text-foreground underline-offset-4 transition-colors hover:underline"
-              to="/admin/platform/direct-accounts"
-            >
-              Direct accounts
-            </Link>{" "}
-            / Change many accounts
+            {bt("bloem.admin.directAccounts.bulk.breadcrumb", {
+              link: (chunks) => (
+                <Link
+                  className="hover:text-foreground underline-offset-4 transition-colors hover:underline"
+                  to="/admin/platform/direct-accounts"
+                >
+                  {chunks}
+                </Link>
+              ),
+            })}
           </p>
           <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
-            Change many accounts
+            {bt("bloem.admin.directAccounts.bulk.title")}
           </h1>
           <p className="page-subtitle max-w-3xl">
-            Put up to 10,000 direct accounts on a plan, or change their settings, in one go. You see
-            exactly what changes before anything is applied.
+            {bt("bloem.admin.directAccounts.bulk.intro", { limit: MAX_ACCOUNTS })}
           </p>
         </div>
       </header>
 
-      {!visibleJob ? <StepList steps={STEPS} current={step} /> : null}
+      {!visibleJob ? <StepList steps={steps} current={step} /> : null}
 
       <section
         className="surface-panel space-y-4 rounded-2xl p-5"
         aria-labelledby="direct-account-selection"
       >
         <h2 id="direct-account-selection" className="text-lg font-medium">
-          1. Choose accounts
+          {bt("bloem.admin.directAccounts.bulk.chooseAccountsHeading")}
         </h2>
         <AccountPicker
           id="direct-account-search"
-          label="Find accounts"
+          label={bt("bloem.admin.directAccounts.bulk.findAccounts")}
           selected={pickedIDs}
           onChange={(ids) => {
             setPickedIDs(ids);
@@ -409,14 +418,16 @@ export default function DirectAccountPolicyBulkPage() {
         />
         <details className="text-sm" open={Boolean(pastedIDs)}>
           <summary className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
-            Paste a list of account numbers
+            {bt("bloem.admin.directAccounts.bulk.pasteAccountNumbers")}
           </summary>
           <div className="mt-3 space-y-1.5">
-            <Label htmlFor="direct-account-ids">Account numbers</Label>
+            <Label htmlFor="direct-account-ids">
+              {bt("bloem.admin.directAccounts.bulk.accountNumbers")}
+            </Label>
             <textarea
               id="direct-account-ids"
               className="border-input bg-background min-h-24 w-full rounded-md border px-3 py-2 text-sm"
-              placeholder="41, 42, 57"
+              placeholder={bt("bloem.admin.directAccounts.bulk.accountNumbersExample")}
               value={pastedIDs}
               onChange={(event) => {
                 setPastedIDs(event.target.value);
@@ -424,7 +435,7 @@ export default function DirectAccountPolicyBulkPage() {
               }}
             />
             <p className="text-muted-foreground text-xs">
-              Separate them with commas, spaces or new lines.
+              {bt("bloem.admin.directAccounts.bulk.accountNumbersHelp")}
             </p>
           </div>
         </details>
@@ -439,7 +450,9 @@ export default function DirectAccountPolicyBulkPage() {
           disabled={snapshots.isPending || accountCount === 0}
           onClick={() => void reviewSelection()}
         >
-          {snapshots.isPending ? "Looking up accounts…" : "Look up current settings"}
+          {snapshots.isPending
+            ? bt("bloem.admin.directAccounts.bulk.lookingUpAccounts")
+            : bt("bloem.admin.directAccounts.bulk.lookUpCurrentSettings")}
         </Button>
       </section>
 
@@ -447,10 +460,12 @@ export default function DirectAccountPolicyBulkPage() {
         <section className="space-y-4" aria-labelledby="current-settings">
           <div>
             <h2 id="current-settings" className="text-lg font-medium">
-              2. Current settings
+              {bt("bloem.admin.directAccounts.bulk.currentSettingsHeading")}
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
-              As of {formatDateTime(snapshotData.observed_at)}
+              {bt("bloem.admin.directAccounts.bulk.asOf", {
+                time: formatDateTime(snapshotData.observed_at),
+              })}
             </p>
           </div>
           {incompleteResults.length ? (
@@ -460,23 +475,24 @@ export default function DirectAccountPolicyBulkPage() {
             >
               {incompleteResults.map((item) => (
                 <p key={item.account_id}>
-                  {accountName(item.account_id)}{" "}
-                  {item.error === "not_found"
-                    ? "isn't a direct account on this server."
-                    : item.error === "stale"
-                      ? "changed while it was being read."
-                      : "couldn't be read."}
+                  {bt(
+                    item.error === "not_found"
+                      ? "bloem.admin.directAccounts.bulk.notADirectAccount"
+                      : item.error === "stale"
+                        ? "bloem.admin.directAccounts.bulk.changedWhileRead"
+                        : "bloem.admin.directAccounts.bulk.couldNotBeRead",
+                    { name: accountName(item.account_id) },
+                  )}
                 </p>
               ))}
-              <p>Remove these accounts or try again before you continue.</p>
+              <p>{bt("bloem.admin.directAccounts.bulk.removeOrTryAgain")}</p>
             </div>
           ) : !oneOrganization ? (
             <div
               className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-4 text-sm"
               role="alert"
             >
-              These accounts belong to different places. Choose direct accounts only, then look them
-              up again.
+              {bt("bloem.admin.directAccounts.bulk.differentPlaces")}
             </div>
           ) : null}
           <div className="grid gap-4 xl:grid-cols-2">
@@ -500,7 +516,7 @@ export default function DirectAccountPolicyBulkPage() {
           aria-labelledby="policy-operation-heading"
         >
           <h2 id="policy-operation-heading" className="text-lg font-medium">
-            3. What should change?
+            {bt("bloem.admin.directAccounts.bulk.whatShouldChangeHeading")}
           </h2>
           <PolicyChangeForm
             draft={draft}
@@ -530,14 +546,18 @@ export default function DirectAccountPolicyBulkPage() {
             disabled={!draft.operation || createPreview.isPending}
             onClick={() => void previewImpact()}
           >
-            {createPreview.isPending ? "Checking…" : previewOutdated ? "Update preview" : "Preview"}
+            {createPreview.isPending
+              ? bt("bloem.admin.directAccounts.bulk.checking")
+              : previewOutdated
+                ? bt("bloem.admin.directAccounts.bulk.updatePreview")
+                : bt("bloem.admin.directAccounts.bulk.preview")}
           </Button>
         </section>
       ) : null}
 
       {previewOutdated && !previewBinding ? (
         <p className="border-border bg-muted/40 rounded-xl border p-4 text-sm" role="status">
-          You changed an option, so the preview is out of date. Update it before you apply.
+          {bt("bloem.admin.directAccounts.bulk.previewOutOfDate")}
         </p>
       ) : null}
 
@@ -547,7 +567,7 @@ export default function DirectAccountPolicyBulkPage() {
           aria-labelledby="review-heading"
         >
           <h2 id="review-heading" className="text-lg font-medium">
-            4. Review and apply
+            {bt("bloem.admin.directAccounts.bulk.reviewAndApplyHeading")}
           </h2>
           <PreviewImpact preview={previewBinding.preview} />
           <PolicyTarget target={previewBinding.preview.target} libraries={libraries} />
@@ -564,12 +584,13 @@ export default function DirectAccountPolicyBulkPage() {
               disabled={!confirmed || createJob.isPending}
               onClick={() => void submitJob()}
             >
-              Apply to {previewBinding.selection.matched.toLocaleString()}{" "}
-              {previewBinding.selection.matched === 1 ? "account" : "accounts"}
+              {bt("bloem.admin.directAccounts.bulk.applyToAccounts", {
+                count: previewBinding.selection.matched,
+              })}
             </Button>
             {needsFreshSelection(createJob.error) ? (
               <Button type="button" variant="outline" onClick={() => void reviewSelection()}>
-                Look up the accounts again
+                {bt("bloem.admin.directAccounts.bulk.lookUpAgain")}
               </Button>
             ) : null}
           </div>
@@ -609,23 +630,34 @@ function AccountPolicyCard({
   name: string;
   libraries: NamedLibrary[];
 }) {
-  const source = snapshot.source_template_key
-    ? `Plan ${snapshot.source_template_key}, revision ${snapshot.source_template_revision}`
+  const bt = useBloemT();
+  const plan = snapshot.source_template_key;
+  const revision = snapshot.source_template_revision;
+  const source = plan
+    ? revision === undefined
+      ? bt("bloem.admin.directAccounts.bulk.plan", { plan })
+      : bt("bloem.admin.directAccounts.bulk.planRevision", { plan, revision })
     : policyStateLabel(snapshot.state);
   return (
     <article
       className="surface-panel space-y-4 rounded-2xl p-5"
-      aria-label={`${name} current settings`}
+      aria-label={bt("bloem.admin.directAccounts.bulk.accountCurrentSettings", { name })}
     >
       <div>
         <h3 className="text-base font-medium">{name}</h3>
         <p className="text-muted-foreground text-sm">{source}</p>
       </div>
-      <PolicySummary policy={snapshot.policy} libraries={libraries} label={`${name} settings`} />
+      <PolicySummary
+        policy={snapshot.policy}
+        libraries={libraries}
+        label={bt("bloem.admin.directAccounts.bulk.settingsOf", { name })}
+      />
       {snapshot.profiles.length ? (
         <details className="text-sm">
           <summary className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
-            Profiles ({snapshot.profiles.length})
+            {bt("bloem.admin.directAccounts.bulk.profilesCount", {
+              count: snapshot.profiles.length,
+            })}
           </summary>
           <ul className="mt-3 space-y-3">
             {snapshot.profiles.map((profile) => (
@@ -634,17 +666,24 @@ function AccountPolicyCard({
                 className="border-border space-y-2 rounded-lg border p-3"
               >
                 <p>
-                  <span className="font-medium">{profile.profile_name}</span>
-                  <span className="text-muted-foreground">
-                    {" "}
-                    · {profile.inherits_account ? "Follows the account" : "Has its own settings"}
-                  </span>
+                  {bt(
+                    profile.inherits_account
+                      ? "bloem.admin.directAccounts.bulk.profileFollowsAccount"
+                      : "bloem.admin.directAccounts.bulk.profileHasOwnSettings",
+                    {
+                      name: profile.profile_name,
+                      b: (chunks) => <span className="font-medium">{chunks}</span>,
+                      muted: (chunks) => <span className="text-muted-foreground">{chunks}</span>,
+                    },
+                  )}
                 </p>
                 {!profile.inherits_account ? (
                   <PolicySummary
                     policy={profile.policy}
                     libraries={libraries}
-                    label={`${profile.profile_name} settings`}
+                    label={bt("bloem.admin.directAccounts.bulk.settingsOf", {
+                      name: profile.profile_name,
+                    })}
                     compact
                   />
                 ) : null}
@@ -680,13 +719,16 @@ function combineAccountIDs(picked: number[], pasted: string): number[] | Error {
     .split(/[\s,]+/)
     .filter(Boolean);
   if (tokens.some((token) => !/^[1-9]\d*$/.test(token)))
-    return new Error("Account numbers are whole numbers, like 41. Check the pasted list.");
+    return new Error(bloemT("bloem.admin.directAccounts.bulk.pastedNotWholeNumbers"));
   const pastedIDs = tokens.map(Number);
   if (pastedIDs.some((id) => !Number.isSafeInteger(id)))
-    return new Error("One of the pasted account numbers is too large.");
+    return new Error(bloemT("bloem.admin.directAccounts.bulk.pastedNumberTooLarge"));
   const ids = [...new Set([...picked, ...pastedIDs])];
-  if (!ids.length) return new Error("Choose at least one account.");
-  if (ids.length > 10_000) return new Error("Choose 10,000 accounts or fewer.");
+  if (!ids.length) return new Error(bloemT("bloem.admin.directAccounts.bulk.chooseAtLeastOne"));
+  if (ids.length > MAX_ACCOUNTS)
+    return new Error(
+      bloemT("bloem.admin.directAccounts.bulk.chooseAtMost", { limit: MAX_ACCOUNTS }),
+    );
   return ids.sort((left, right) => left - right);
 }
 
