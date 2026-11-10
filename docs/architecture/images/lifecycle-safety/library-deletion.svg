@@ -1,80 +1,66 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="744" viewBox="0 0 1200 744" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="556" viewBox="0 0 1200 556" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">Deleting a library safely</title>
-<desc id="d">Five steps. An administrator asks to delete a library. Bloem first checks whether any version of the starting set names it, and refuses if so. Otherwise the library is switched off and a job starts. The worker takes a lock that stops anyone adding the library to the starting set and checks again, deletes the catalog in small batches, and in a final step moves shared collections, removes the grants and the library, and recounts series that live on elsewhere.</desc>
+<desc id="d">Five steps. An administrator asks to delete a library. The library is switched off and a job starts. The worker takes a lock that stops anyone adding the library to the starting set, deletes the catalog in small batches, and in a final step moves shared collections, removes the grants, takes the library out of every version of the starting set, removes it, and recounts series that live on elsewhere.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
-<rect x="0.5" y="0.5" width="1199" height="743" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<rect x="0.5" y="0.5" width="1199" height="555" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">Deleting a library safely</text>
-<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A library the starting set still names is never deleted, not even halfway.</text>
-<rect x="40" y="124" width="204" height="236" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
-<rect x="40" y="124" width="8" height="236" rx="4" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Deleting a library also takes it out of every version of the starting set.</text>
+<rect x="40" y="124" width="204" height="190" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="124" width="8" height="190" rx="4" fill="#9CA3AF" stroke="none" stroke-width="1.5"/>
 <circle cx="74" cy="154" r="13" fill="#9CA3AF"/>
 <text x="74" y="159" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
 <text x="64" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Ask to delete</text>
 <text x="64" y="221" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">An administrator</text>
 <text x="64" y="240" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">deletes the library.</text>
-<line x1="246" y1="242.0" x2="267" y2="242.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="269" y="124" width="204" height="236" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
-<rect x="269" y="124" width="8" height="236" rx="4" fill="#14B8A6" stroke="none" stroke-width="1.5"/>
-<circle cx="303" cy="154" r="13" fill="#14B8A6"/>
+<line x1="246" y1="219.0" x2="267" y2="219.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="269" y="124" width="204" height="190" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="269" y="124" width="8" height="190" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
+<circle cx="303" cy="154" r="13" fill="#6366F1"/>
 <text x="303" y="159" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
-<text x="293" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Check the starting</text>
-<text x="293" y="215" font-size="16" font-weight="700" fill="#101827" text-anchor="start">set</text>
-<text x="293" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Does any version of it,</text>
-<text x="293" y="261" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">old or current, name</text>
-<text x="293" y="280" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">this library?</text>
-<line x1="475" y1="242.0" x2="496" y2="242.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="498" y="124" width="204" height="236" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
-<rect x="498" y="124" width="8" height="236" rx="4" fill="#6366F1" stroke="none" stroke-width="1.5"/>
-<circle cx="532" cy="154" r="13" fill="#6366F1"/>
+<text x="293" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Switch off and</text>
+<text x="293" y="215" font-size="16" font-weight="700" fill="#101827" text-anchor="start">queue</text>
+<text x="293" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The library is switched</text>
+<text x="293" y="261" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">off and a deletion job</text>
+<text x="293" y="280" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">is created.</text>
+<line x1="475" y1="219.0" x2="496" y2="219.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="498" y="124" width="204" height="190" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="498" y="124" width="8" height="190" rx="4" fill="#14B8A6" stroke="none" stroke-width="1.5"/>
+<circle cx="532" cy="154" r="13" fill="#14B8A6"/>
 <text x="532" y="159" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
-<text x="522" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Switch off and</text>
-<text x="522" y="215" font-size="16" font-weight="700" fill="#101827" text-anchor="start">queue</text>
-<text x="522" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The library is switched</text>
-<text x="522" y="261" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">off and a deletion job</text>
-<text x="522" y="280" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">is created.</text>
-<line x1="704" y1="242.0" x2="725" y2="242.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="727" y="124" width="204" height="236" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
-<rect x="727" y="124" width="8" height="236" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<text x="522" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Lock</text>
+<text x="522" y="221" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The worker holds a lock</text>
+<text x="522" y="240" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">that stops anyone</text>
+<text x="522" y="259" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">adding the library to</text>
+<text x="522" y="278" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the starting set.</text>
+<line x1="704" y1="219.0" x2="725" y2="219.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="727" y="124" width="204" height="190" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="727" y="124" width="8" height="190" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
 <circle cx="761" cy="154" r="13" fill="#FA6400"/>
 <text x="761" y="159" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
-<text x="751" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Lock and check</text>
-<text x="751" y="215" font-size="16" font-weight="700" fill="#101827" text-anchor="start">again</text>
-<text x="751" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The worker holds a lock</text>
-<text x="751" y="261" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">that stops anyone</text>
-<text x="751" y="280" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">adding the library to</text>
-<text x="751" y="299" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the starting set, and</text>
-<text x="751" y="318" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">checks once more.</text>
-<line x1="933" y1="242.0" x2="954" y2="242.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="956" y="124" width="204" height="236" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
-<rect x="956" y="124" width="8" height="236" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
+<text x="751" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Delete in batches</text>
+<text x="751" y="221" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The catalog goes in</text>
+<text x="751" y="240" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">small batches, never in</text>
+<text x="751" y="259" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">one huge transaction.</text>
+<line x1="933" y1="219.0" x2="954" y2="219.0" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="956" y="124" width="204" height="190" rx="12" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="956" y="124" width="8" height="190" rx="4" fill="#10B981" stroke="none" stroke-width="1.5"/>
 <circle cx="990" cy="154" r="13" fill="#10B981"/>
 <text x="990" y="159" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
-<text x="980" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Delete and finish</text>
-<text x="980" y="221" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The catalog goes in</text>
-<text x="980" y="240" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">small batches. Then</text>
-<text x="980" y="259" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">shared collections</text>
-<text x="980" y="278" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">move, grants and the</text>
-<text x="980" y="297" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">library go, and series</text>
-<text x="980" y="316" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">elsewhere are</text>
-<text x="980" y="335" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">recounted.</text>
-<line x1="371.0" y1="364" x2="371.0" y2="418" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
-<text x="381.0" y="390" font-size="13" font-weight="700" fill="#B91C1C" text-anchor="start">named</text>
-<line x1="829.0" y1="364" x2="829.0" y2="418" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
-<text x="839.0" y="390" font-size="13" font-weight="700" fill="#B91C1C" text-anchor="start">named</text>
-<rect x="229" y="422" width="688" height="80" rx="14" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
-<circle cx="258" cy="462" r="12" fill="#FFFFFF" stroke="#EF4444" stroke-width="2.5"/>
-<path d="M252.6,456.6 L263.4,467.4 M263.4,456.6 L252.6,467.4" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
-<text x="282" y="456" font-size="16" font-weight="700" fill="#B91C1C" text-anchor="start">Refused, and nothing is deleted</text>
-<text x="282" y="480" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Step 2 answers 409 before the library is switched off or a job exists.</text>
-<rect x="40" y="534" width="1120" height="170" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
-<rect x="40" y="534" width="8" height="170" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
-<text x="66" y="566" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Why both checks and the lock</text>
-<circle cx="72" cy="591" r="3.5" fill="#101827"/>
-<text x="86" y="596" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Deleting the catalog first and finding the reference afterwards would lose titles and watch history while leaving the library behind.</text>
-<circle cx="72" cy="619" r="3.5" fill="#101827"/>
-<text x="86" y="624" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The lock means nobody can add the library to the starting set between the last check and the end.</text>
-<circle cx="72" cy="647" r="3.5" fill="#101827"/>
-<text x="86" y="652" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Old versions of the starting set count too: they are kept as history and never rewritten.</text>
-<circle cx="72" cy="675" r="3.5" fill="#101827"/>
-<text x="86" y="680" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A large library is not deleted in one transaction. A deletion that failed earlier is not undone.</text>
+<text x="980" y="194" font-size="16" font-weight="700" fill="#101827" text-anchor="start">Finish in one step</text>
+<text x="980" y="221" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Collections move,</text>
+<text x="980" y="240" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">grants go, the library</text>
+<text x="980" y="259" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">leaves every</text>
+<text x="980" y="278" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">starting-set version</text>
+<text x="980" y="297" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">and is removed.</text>
+<rect x="40" y="346" width="1120" height="170" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+<rect x="40" y="346" width="8" height="170" rx="4" fill="#FA6400" stroke="none" stroke-width="1.5"/>
+<text x="66" y="378" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Why the lock and the final step</text>
+<circle cx="72" cy="403" r="3.5" fill="#101827"/>
+<text x="86" y="408" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The library leaves the starting set in the same step as its grants, so no version is left naming a library that is gone.</text>
+<circle cx="72" cy="431" r="3.5" fill="#101827"/>
+<text x="86" y="436" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">While the job runs, adding the library to the starting set waits for the lock, then fails.</text>
+<circle cx="72" cy="459" r="3.5" fill="#101827"/>
+<text x="86" y="464" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Series that also live in another library are recounted, and collections that cover one move to it.</text>
+<circle cx="72" cy="487" r="3.5" fill="#101827"/>
+<text x="86" y="492" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">A large library is not deleted in one transaction. A deletion that failed earlier is not undone.</text>
 </svg>

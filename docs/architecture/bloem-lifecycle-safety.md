@@ -1,7 +1,8 @@
 # How retiring an organization and deleting a library stay safe
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Organizations, their retirement and the starting set are
+> `main` at `b6039036d`; the library deletion parts were updated on 2026-11-10, when
+> deleting a library started taking it out of the starting set. Organizations, their retirement and the starting set are
 > Bloem additions; library deletion and its job runner are Silo's, and Bloem's guard
 > wraps them. This page explains both in plain language; the technical rules are in
 > the [For developers](#for-developers) section.
@@ -33,33 +34,33 @@ When the storefront ends a reseller organization, Bloem **retires** it:
 
 ## Deleting a library
 
-![Five steps to delete a library, with a refusal when any version of the starting set names it, both before the job starts and when the worker begins](images/lifecycle-safety/library-deletion.svg)
+![Five steps to delete a library: ask, switch off and queue, lock, delete the catalog in batches, then in one final step move collections, remove the grants, take the library out of every version of the starting set and remove it](images/lifecycle-safety/library-deletion.svg)
 
-The [starting set](resource-tenancy-foundation.md#the-starting-set) names libraries
-that new organizations receive, and every version of it is kept as history. A library
-that any version names, old or current, cannot be deleted:
+The [starting set](resource-tenancy-foundation.md#the-starting-set) lists the
+libraries every new organization receives, and it has versions. Deleting a library
+takes it out of all of them:
 
 1. An administrator asks to delete a library.
-2. Bloem checks whether any version of the starting set names it. If one does, Bloem
-   refuses straight away, before the library is switched off or a deletion job exists.
-3. Otherwise the library is switched off and a deletion job is queued.
-4. The worker takes a lock that stops anyone adding the library to the starting set,
-   and checks again. If the library is named now, it stops before deleting anything.
-5. The worker deletes the catalog in small batches. In a final step it moves shared
-   collections to the other libraries they cover, removes the organizations' grants
-   and the library itself, and recounts series that live on in other libraries.
-   Records of past grant changes are kept.
+2. The library is switched off and a deletion job is queued.
+3. The worker takes a lock that stops anyone adding the library to the starting set
+   while it works.
+4. It deletes the catalog in small batches.
+5. In a final step it moves shared collections to the other libraries they cover,
+   removes the organizations' grants, takes the library out of every version of the
+   starting set, removes the library itself, and recounts series that live on in
+   other libraries. Records of past grant changes are kept.
 
-Without these checks, Bloem would delete the titles and watch history and only then
-find that the library could not go, leaving an empty library behind.
+Until November 10, 2026, Bloem refused to delete a library that any version of the
+starting set named, and nothing could take a library out of it. Such a library could
+never be deleted.
 
 What it does not do:
 
 - A large library is not deleted in one transaction. If a deletion fails part way,
   the batches already deleted stay deleted, as in Silo.
 - It does not restore anything a failed deletion removed earlier.
-- A library that a version of the starting set names stays until Bloem has a reviewed
-  way to retire such libraries.
+- It does not move anyone's progress to another library. Progress on titles that
+  exist only in the deleted library goes with them.
 
 ## Who can change what
 
@@ -80,14 +81,14 @@ What it does not do:
 | Library | a `media_folders` row (a root) |
 | The lock | the advisory fence `bloem_lock_media_folder_bundle_reference(bigint)` |
 | The guard | `internal/catalog/bloem_folder_repo.go`; the job runner wrapper in `internal/adminjob/bloem_runner.go` |
-| Refused | `catalog.ErrFolderDeletionRestricted`, answered `409 conflict` "Library is retained by an entitlement bundle" |
+| Taking it out of the starting set | the foreign key `entitlement_bundle_members_media_folder_fkey`, `ON DELETE CASCADE` since `20261110123408_bloem_library_starting_set.sql` |
 
 ## For developers
 
 - **API:** retiring is `DELETE /api/bloem/v1/admin/platform/tenants/{id}` on the
   [organizations and administration](../bloem/api/organizations.md#delete-apibloemv1adminplatformtenantsid)
   page; the legacy `DELETE /api/v1/admin/tenants/{id}` uses the same handler. Library
-  deletion is Silo's `DELETE /api/v2/libraries/{id}`, with Bloem's refusal described
+  deletion is Silo's `DELETE /api/v2/libraries/{id}`, with Bloem's guard described
   in the [libraries API overlay](../bloem/overlays/libraries-api.md).
 
 ### Tenant retirement
@@ -134,19 +135,25 @@ lifecycle receipts; no retirement test has replaced it.
 
 ### Library deletion
 
-Every bundle revision that references a library retains that root, including
-inactive and historical revisions. Deleting catalog rows before discovering that
-reference would destroy media and watch-state records while leaving the library
-itself behind. Bloem rejects such deletion before the API disables the library or
-creates a job (`CheckDeletionAllowed`, answered `409 conflict`), and the worker checks
-again before its first batch. Neither check removes or rewrites bundle history.
+A library's bundle memberships, in every revision, go with it:
+`entitlement_bundle_members_media_folder_fkey` is `ON DELETE CASCADE`
+(`20261110123408_bloem_library_starting_set.sql`), so the final transaction's
+`DELETE FROM media_folders` removes them. Before that migration the key was
+`ON DELETE RESTRICT`. Finding the reference only at the end would have destroyed
+media and watch-state records while leaving the library behind, so Bloem refused the
+deletion up front (`CheckDeletionAllowed`, `409 conflict` "Library is retained by an
+entitlement bundle") and again before the first batch. No code removed a member, so a
+library in any revision could never be deleted. A revision therefore no longer keeps
+every library it once named; the organizations' grant history is in
+`organization_entitlements` and the entitlement audit events.
 
 The worker acquires the canonical `bloem_lock_media_folder_bundle_reference(bigint)`
 advisory fence, then locks the library row with `FOR NO KEY UPDATE` until the root is
 deleted. A database trigger takes the same fence before inserting or updating a bundle
-member's new library reference, so a bundle cannot retain a library between preflight
-and final deletion. Removing a member only reduces retention and needs no fence. The
-helper hashes a namespaced bigint ID; it never narrows folder IDs to 32 bits.
+member's library reference, so a writer adding the library to a bundle during the
+deletion waits, then fails on the deleted root, instead of succeeding and being
+cascaded away unseen. Removing a member needs no fence. The helper hashes a
+namespaced bigint ID; it never narrows folder IDs to 32 bits.
 
 Ordinary scanner FK checks remain compatible with the root lock. Blocking those
 checks while a scanner holds an item can create a wait cycle: deletion's separate
@@ -177,7 +184,7 @@ after the deletion guard releases the bundle writer. No background progress call
 can write after execution returns.
 
 A running admin-job deletion owns at most three database connections in addition to
-the existing pools. Preflight opens only the guard connection. The current admin-job
+the existing pools. The current admin-job
 runner executes one catalog job at a time per runner; replicas may run separate
 deletion jobs, so connection budgeting includes three connections per active deletion
 worker. After the catalog batches finish, one guarded transaction moves admin
@@ -188,18 +195,18 @@ collections change or a deadlock aborts it; under the guard each attempt runs in
 savepoint instead, so a retry never releases the root lock. Entitlement audit events
 survive.
 
-Catalog batches retain upstream's resumable, short-transaction behavior. This guard
-prevents the known permanent bundle-reference failure; it does not make an entire
-large-library deletion atomic or restore data from an earlier failed deletion. A root
-retained by bundle history needs a separately reviewed root retirement model before
-physical deletion can be supported.
+Catalog batches retain upstream's resumable, short-transaction behavior. The guard
+does not make an entire large-library deletion atomic or restore data from an earlier
+failed deletion.
 
 Tests are in `internal/catalog/bloem_folder_deletion_test.go` (for example
-`TestBloemFolderDeletionPreservesBundleReferencedCatalog`,
 `TestBloemFolderDeletionFencesConcurrentBundleReferences`,
 `TestBloemFolderDeletionDoesNotBlockScannerForeignKeys`,
 `TestBloemFolderDeletionProgressesWithFencedWriterInSingleConnectionPool` and
-`TestBloemFolderDeletionFenceSupportsBigintRoots`) and
+`TestBloemFolderDeletionFenceSupportsBigintRoots`),
+`internal/catalog/bloem_starting_set_test.go`
+(`TestDeletingALibraryRemovesItFromEveryStartingSetRevision`,
+`TestDeleteLibraryAcceptsAStartingSetLibrary`) and
 `internal/adminjob/bloem_library_deletion_runner_test.go`.
 
 ### History
@@ -212,7 +219,10 @@ bundle-retained libraries (`5436ed812`, migration
 and with them this page's sections on keyed retirement and encrypted invitation
 receipts. `c60b7008e` (2026-10-26) limited each account to one membership. The
 storefront moved to the native tenant routes on 2026-10-31
-([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)).
+([leaving Silo's `/api/v1`](bloem-leaving-silo-v1.md)). On 2026-11-10 production's
+original Audio Books and Electronic Books libraries could not be deleted because the
+starting set named them; `20261110123408_bloem_library_starting_set.sql` made deletion
+take a library out of the starting set instead of refusing.
 
 Technical pages:
 

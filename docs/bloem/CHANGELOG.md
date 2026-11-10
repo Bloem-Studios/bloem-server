@@ -3,6 +3,21 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 10, 2026 — new libraries join the starting set, and deleting one takes it out
+
+Deleting a library that the platform's starting set named was refused with
+`409 conflict` ("Library is retained by an entitlement bundle"), and nothing could
+take a library out of the starting set, so such a library could never be deleted.
+Production's original Audio Books and Electronic Books libraries were stuck that way.
+Deleting a library now takes it out of every version of the starting set, in the same
+final step that removes its grants. A platform library created from now on joins the
+active version of the starting set when its creation commits, so organizations created
+afterwards get it; one created for an organization through native storage stays out.
+The migration `20261110123408_bloem_library_starting_set.sql` also added the platform
+libraries created since August 13 to the active version. See
+[how library ownership and grants work](../architecture/resource-tenancy-foundation.md#the-starting-set)
+and [deleting a library](../architecture/bloem-lifecycle-safety.md#deleting-a-library).
+
 ## November 10, 2026 — profile passwords are an admin setting, off by default
 
 A household could give each profile its own email and password whenever the

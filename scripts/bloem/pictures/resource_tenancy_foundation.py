@@ -63,18 +63,19 @@ def owners():
 
 def starting_set():
     s = Svg(1200, 630, "The starting set, and libraries added later",
-            "The starting set has versions that never change. Version 1 held Movies, Series and Audiobooks; version 2, now "
-            "active, holds Movies and Series. Riverside Club, created under version 1, keeps its three grants. "
-            "Harbour Hotel, created under version 2, gets two. A library added later through Silo's API is owned by "
-            "the platform, granted to the default organization at once, and joins no version.")
+            "The starting set has versions. Version 1 held Movies, Series and Audiobooks; version 2, now active, "
+            "holds Movies and Series, and Documentaries joined it when it was added. Riverside Club, created under "
+            "version 1, keeps its three grants. Harbour Hotel, created after Documentaries was added, gets Movies, "
+            "Series and Documentaries. A platform library added later is granted to the default organization at "
+            "once and joins the active version; a deleted library leaves every version.")
     s.header("The starting set, and libraries added later",
-             "A new organization gets the active version. Changing it never rewrites earlier grants.")
+             "A new organization gets the active version. A platform library added later joins it.")
     p, o, a, g, pl = TIERS["platform"], TIERS["org"], TIERS["account"], TIERS["grey"], TIERS["plan"]
 
     # Versions.
     versions = [
         (40, "Version 1", "earlier", g, ["Movies", "Series", "Audiobooks"]),
-        (420, "Version 2", "active", a, ["Movies", "Series"]),
+        (420, "Version 2", "active", a, ["Movies", "Series", "Documentaries"]),
     ]
     for x, title, state, c, libs in versions:
         s.rect(x, 120, 340, 196, pl["fill"], pl["stroke"], rx=16, sw=1.8)
@@ -84,13 +85,14 @@ def starting_set():
         bx = x + 22
         for lib in libs:
             bx += s.badge(bx, 206, lib, LIB, size=13.5) + 8
-        para(s, x + 22, 264, "Never changes. What it gave stays given." if state == "earlier" else
-             "Given to every organization created from now on. It never changes either.", 296, size=14)
+        para(s, x + 22, 264, "Kept as history. What it gave stays given." if state == "earlier" else
+             "Given to every organization created from now on.", 296, size=14)
     s.arrow(384, 218, 416, 218)
 
     # Organizations created under each version.
     for x, name, when, libs in [(40, "Riverside Club", "created under version 1", ["Movies", "Series", "Audiobooks"]),
-                                (420, "Harbour Hotel", "created under version 2", ["Movies", "Series"])]:
+                                (420, "Harbour Hotel", "created after Documentaries was added",
+                                 ["Movies", "Series", "Documentaries"])]:
         s.arrow(x + 170, 320, x + 170, 372)
         s.rect(x, 376, 340, 132, o["fill"], o["stroke"], rx=16, sw=1.8)
         s.text(x + 22, 410, name, size=18, weight="700")
@@ -98,23 +100,24 @@ def starting_set():
         bx = x + 22
         for lib in libs:
             bx += s.badge(bx, 452, lib, LIB, size=13.5) + 8
-    para(s, 40, 540, "Riverside Club keeps Audiobooks: making version 2 active did not take it away.", 720,
-         size=14.5, fill=INK)
+    para(s, 40, 540, "Riverside Club keeps Audiobooks: making version 2 active did not take it away. It gets "
+         "Documentaries only if someone grants it.", 720, size=14.5, fill=INK)
 
-    # Added later through Silo's API.
+    # A platform library added later.
     s.rect(800, 120, 360, 388, p["fill"], p["stroke"], rx=16, sw=1.8)
-    s.text(822, 156, "Added later through", size=18, weight="700")
-    s.text(822, 180, "Silo's API", size=18, weight="700")
+    s.text(822, 156, "A platform library", size=18, weight="700")
+    s.text(822, 180, "added later", size=18, weight="700")
     s.badge(822, 198, "Documentaries", LIB, size=13.5)
-    steps = ["Owned by the platform, because Silo's API cannot name an owner.",
+    steps = ["Owned by the platform. Silo's API cannot name any other owner.",
              "Granted to the default organization straight away.",
-             "Joins no version of the starting set. Adding it there takes a new version."]
+             "Joins the active version of the starting set, so organizations created afterwards get it.",
+             "Deleted later, it leaves every version."]
     y = 256
     for i, t in enumerate(steps):
         s.number(836, y + 6, i + 1, p["stroke"], r=12)
-        y = para(s, 858, y + 11, t, 284, size=14, fill=INK) + 18
+        y = para(s, 858, y + 11, t, 284, size=14, fill=INK) + 16
 
-    footer(s, "An organization's own libraries are created through native storage, never through Silo's API.",
+    footer(s, "An organization's own libraries are created through native storage and never join the starting set.",
            y=596, fill=INK)
     return s
 

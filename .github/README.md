@@ -70,15 +70,15 @@ Every other page is listed by area in the [documentation index](../docs/bloem/RE
 
 ## Current state
 
-Checked on November 10, 2026, against `main` at `7acd2c7e0`.
+Checked on November 10, 2026, against `main` at `65498dedb`.
 
 | | |
 | --- | --- |
-| Bloem `main` | `521a83f0f`: the merge of Silo through `6c1f4c919`, Silo test and CI changes only, on top of `8699054a7`: the merge of Silo through `30a6abd19`, whose web app takes its text from a translated catalog, with Bloem's web text in Bloem's own message catalog |
+| Bloem `main` | `65498dedb`: a new platform library joins the starting set and deleting a library takes it out, on top of `521a83f0f`: the merge of Silo through `6c1f4c919`, Silo test and CI changes only, on top of `8699054a7`: the merge of Silo through `30a6abd19`, whose web app takes its text from a translated catalog, with Bloem's web text in Bloem's own message catalog |
 | Silo integrated | all of Silo `main` through `6c1f4c919` (November 10, 2026, 12:08 UTC), merged in `521a83f0f` |
 | Silo merges | the merge bot, since November 2, 2026: each Silo batch is merged with Silo winning, checked, pushed to `main` and deployed once Bloem CI passes it ([how](../docs/architecture/bloem-following-silo.md)) |
 | Seam ledger | 332 Silo-owned files that Bloem differs in, one a Silo web push test that needs an active tenant profile on its private schema (since the merge of Silo through `fcd546a04`), nine for Silo's backup: two test-only hooks, three that restore accounts into their organization and four that keep backups to user data ([How backups work in Bloem](../docs/architecture/bloem-backup.md)) and seven temporary web fixes added in `74e207aca` and `0edcd6e49` that go when Silo merges its own versions (the library grid from `d690b98a5` matches Silo again since Silo #3501, merged in `73cbf3b3a`, and the library header tabs since `8699054a7`, which moved their phone layout into a Bloem adapter), and five temporary search seams from November 10: two for `gemini-embedding-2` task labels and three for `frequency` matching ([How search finds titles by words and by meaning](../docs/architecture/bloem-search-and-embeddings.md)), declared in [`contracts/seams.txt`](../contracts/seams.txt) |
-| Production | `a7bbc8404` since 07:59 UTC on November 10, Silo through `191dbc5af`, deployed by hand: profile passwords became an admin setting, off by default; both transcode nodes run the same image |
+| Production | `65498dedb` since 13:13 UTC on November 10, Silo through `6c1f4c919`, deployed by hand: libraries join the starting set and deleting one takes it out ([receipt](../docs/operations/2026-11-10-library-starting-set-deployment.md)); both transcode nodes run the same image |
 
 The two October 31 Silo merges brought:
 

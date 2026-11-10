@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
 <title id="t">The starting set, and libraries added later</title>
-<desc id="d">The starting set has versions that never change. Version 1 held Movies, Series and Audiobooks; version 2, now active, holds Movies and Series. Riverside Club, created under version 1, keeps its three grants. Harbour Hotel, created under version 2, gets two. A library added later through Silo's API is owned by the platform, granted to the default organization at once, and joins no version.</desc>
+<desc id="d">The starting set has versions. Version 1 held Movies, Series and Audiobooks; version 2, now active, holds Movies and Series, and Documentaries joined it when it was added. Riverside Club, created under version 1, keeps its three grants. Harbour Hotel, created after Documentaries was added, gets Movies, Series and Documentaries. A platform library added later is granted to the default organization at once and joins the active version; a deleted library leaves every version.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
 <rect x="0.5" y="0.5" width="1199" height="629" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
 <text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">The starting set, and libraries added later</text>
-<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A new organization gets the active version. Changing it never rewrites earlier grants.</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">A new organization gets the active version. A platform library added later joins it.</text>
 <rect x="40" y="120" width="340" height="196" rx="16" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
 <text x="62" y="156" font-size="13" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="1">Starting set</text>
 <text x="62" y="182" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Version 1</text>
@@ -16,7 +16,7 @@
 <text x="173.5" y="224.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">Series</text>
 <rect x="216" y="206" width="100" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
 <text x="266.0" y="224.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">Audiobooks</text>
-<text x="62" y="264" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Never changes. What it gave stays given.</text>
+<text x="62" y="264" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Kept as history. What it gave stays given.</text>
 <rect x="420" y="120" width="340" height="196" rx="16" fill="#F0FDFA" stroke="#14B8A6" stroke-width="1.8"/>
 <text x="442" y="156" font-size="13" font-weight="700" fill="#6B7280" text-anchor="start" letter-spacing="1">Starting set</text>
 <text x="442" y="182" font-size="19" font-weight="700" fill="#101827" text-anchor="start">Version 2</text>
@@ -26,8 +26,10 @@
 <text x="476.5" y="224.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">Movies</text>
 <rect x="519" y="206" width="69" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
 <text x="553.5" y="224.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">Series</text>
+<rect x="596" y="206" width="124" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="658.0" y="224.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">Documentaries</text>
 <text x="442" y="264" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Given to every organization created from</text>
-<text x="442" y="284" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">now on. It never changes either.</text>
+<text x="442" y="284" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">now on.</text>
 <line x1="384" y1="218" x2="416" y2="218" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
 <line x1="210" y1="320" x2="210" y2="372" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="40" y="376" width="340" height="132" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
@@ -42,28 +44,35 @@
 <line x1="590" y1="320" x2="590" y2="372" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="420" y="376" width="340" height="132" rx="16" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
 <text x="442" y="410" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Harbour Hotel</text>
-<text x="442" y="432" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">created under version 2</text>
+<text x="442" y="432" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">created after Documentaries was added</text>
 <rect x="442" y="452" width="69" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
 <text x="476.5" y="470.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">Movies</text>
 <rect x="519" y="452" width="69" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
 <text x="553.5" y="470.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">Series</text>
-<text x="40" y="540" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Riverside Club keeps Audiobooks: making version 2 active did not take it away.</text>
+<rect x="596" y="452" width="124" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
+<text x="658.0" y="470.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">Documentaries</text>
+<text x="40" y="540" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Riverside Club keeps Audiobooks: making version 2 active did not take it away. It gets</text>
+<text x="40" y="560" font-size="14.5" font-weight="normal" fill="#101827" text-anchor="start">Documentaries only if someone grants it.</text>
 <rect x="800" y="120" width="360" height="388" rx="16" fill="#FFF4EC" stroke="#FA6400" stroke-width="1.8"/>
-<text x="822" y="156" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Added later through</text>
-<text x="822" y="180" font-size="18" font-weight="700" fill="#101827" text-anchor="start">Silo's API</text>
+<text x="822" y="156" font-size="18" font-weight="700" fill="#101827" text-anchor="start">A platform library</text>
+<text x="822" y="180" font-size="18" font-weight="700" fill="#101827" text-anchor="start">added later</text>
 <rect x="822" y="198" width="124" height="26.5" rx="13.25" fill="#FFFFFF" stroke="#FDBA74" stroke-width="1.2"/>
 <text x="884.0" y="216.11" font-size="13.5" font-weight="600" fill="#101827" text-anchor="middle">Documentaries</text>
 <circle cx="836" cy="262" r="12" fill="#FA6400"/>
 <text x="836" y="267" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
-<text x="858" y="267" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Owned by the platform, because Silo's</text>
-<text x="858" y="287" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">API cannot name an owner.</text>
-<circle cx="836" cy="331" r="12" fill="#FA6400"/>
-<text x="836" y="336" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
-<text x="858" y="336" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Granted to the default organization</text>
-<text x="858" y="356" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">straight away.</text>
-<circle cx="836" cy="400" r="12" fill="#FA6400"/>
-<text x="836" y="405" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
-<text x="858" y="405" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Joins no version of the starting set.</text>
-<text x="858" y="425" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Adding it there takes a new version.</text>
-<text x="40" y="596" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An organization's own libraries are created through native storage, never through Silo's API.</text>
+<text x="858" y="267" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Owned by the platform. Silo's API cannot</text>
+<text x="858" y="287" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">name any other owner.</text>
+<circle cx="836" cy="329" r="12" fill="#FA6400"/>
+<text x="836" y="334" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="858" y="334" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Granted to the default organization</text>
+<text x="858" y="354" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">straight away.</text>
+<circle cx="836" cy="396" r="12" fill="#FA6400"/>
+<text x="836" y="401" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="858" y="401" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Joins the active version of the starting</text>
+<text x="858" y="421" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">set, so organizations created afterwards</text>
+<text x="858" y="441" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">get it.</text>
+<circle cx="836" cy="483" r="12" fill="#FA6400"/>
+<text x="836" y="488" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="858" y="488" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">Deleted later, it leaves every version.</text>
+<text x="40" y="596" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">An organization's own libraries are created through native storage and never join the starting set.</text>
 </svg>

@@ -213,7 +213,8 @@ func seedMaterializationBundle(t *testing.T, fixture resourceTenancyFixture) (uu
 					bundle_id, bundle_revision, entitlement_kind, root_kind, root_owner_id, media_folder_id
 				)
 				SELECT $1, $2, 'library_access', 'media_folder', owner_id, id
-				FROM media_folders WHERE id=$3`, bundleID, revision, root.ID); err != nil {
+				FROM media_folders WHERE id=$3
+				ON CONFLICT DO NOTHING`, bundleID, revision, root.ID); err != nil {
 				t.Fatalf("add folder bundle member: %v", err)
 			}
 		case RootPluginInstallation:
