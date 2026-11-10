@@ -44,7 +44,7 @@ const HDHOMERUN = "HDHomeRun";
 const SCHEDULES_DIRECT = "Schedules Direct";
 
 // Example values in empty fields: addresses, codes and IDs, not words.
-const TUNER_URL_PLACEHOLDER = "http://192.168.1.50";
+const TUNER_URL_PLACEHOLDER = "http://192.0.2.50";
 const STATION_ID_PLACEHOLDER = "12345";
 const COUNTRY_PLACEHOLDER = "USA";
 const POSTAL_CODE_PLACEHOLDER = "12345";
