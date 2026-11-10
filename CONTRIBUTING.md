@@ -282,8 +282,9 @@ selection may skip. Selection tools come from the trusted reusable workflow's
 main branch.
 
 `Go test` runs the full Go suite, which owns the ledger, scenario,
-offline-route, spec, and fixture assertions. `Go lint` runs the contract checks
-after lint: the generator freshness checks and the semantic API comparison. The
+offline-route, spec, and fixture assertions. `Go vet and contracts` runs
+whole-tree `go vet` and then the contract checks: the generator freshness checks
+and the semantic API comparison. `Go lint` runs golangci-lint beside it. The
 contract checks pass `CONTRACT_GO_TESTS=0` to avoid repeating the suite's
 assertions; local verify targets remain complete by default. `Go integration`
 runs its race tests against two databases of its own: a PostgreSQL 17 database
@@ -301,9 +302,9 @@ stale.
 `make test-go` has no database, so every DB-backed test in it skips. The
 `Go DB pins` CI job covers the DB-backed pins listed in
 [scripts/ci/db-pins.txt](scripts/ci/db-pins.txt): it migrates a fresh database
-and runs `make test-db-pins`, which checks those budgets and then the database
-contracts in `scripts/ci/db-contracts.txt`. Both lists fail when a named test is
-missing, skipped or failing. A test that pins a statement count or query plan
+and runs `make test-db-pins`, which checks those budgets and the database
+contracts in `scripts/ci/db-contracts.txt` in one pass. Both lists fail when a
+named test is missing, skipped or failing. A test that pins a statement count or query plan
 belongs in the budget list, added in the same change. Run this target when you
 change database or query code or add a pin. It needs a disposable, migrated
 database; with the PostgreSQL service from
