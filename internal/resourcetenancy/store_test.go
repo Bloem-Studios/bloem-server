@@ -332,12 +332,17 @@ func TestCompatibilityCreateUsesPlatformOwnerAndDefaultEntitlement(t *testing.T)
 		}
 	}
 
-	var memberCount int
-	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT count(*) FROM entitlement_bundle_members`).Scan(&memberCount); err != nil {
-		t.Fatalf("count frozen bundle members: %v", err)
+	// The new platform library joins the starting set; the new plugin does not.
+	var folderMembers, pluginMembers int
+	if err := fixture.pool.QueryRow(fixture.ctx, `SELECT
+		count(*) FILTER (WHERE m.media_folder_id = $1 AND m.bundle_revision = b.active_revision),
+		count(*) FILTER (WHERE m.plugin_installation_id = $2)
+		FROM entitlement_bundle_members m JOIN entitlement_bundles b ON b.id = m.bundle_id
+		WHERE b.is_organization_creation_default`, folder.ID, installation.ID).Scan(&folderMembers, &pluginMembers); err != nil {
+		t.Fatalf("count starting-set members: %v", err)
 	}
-	if memberCount != 1 {
-		t.Fatalf("compatibility repository creates changed frozen bundle member count to %d, want 1 builtin member", memberCount)
+	if folderMembers != 1 || pluginMembers != 0 {
+		t.Fatalf("compatibility repository creates in the starting set: library=%d plugin=%d, want 1 and 0", folderMembers, pluginMembers)
 	}
 }
 

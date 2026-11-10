@@ -10,21 +10,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var ErrFolderDeletionRestricted = errors.New("library is retained by an entitlement bundle")
-
-// CheckDeletionAllowed rejects a known permanent deletion failure before the
-// API disables the library. Execution repeats the check under a retained lock.
-func (r *FolderRepository) CheckDeletionAllowed(ctx context.Context, id int) error {
-	tx, err := r.beginFolderDeletion(ctx, id)
-	if err != nil {
-		return err
-	}
-	return tx.Rollback(ctx)
-}
-
 // beginFolderDeletion fences new bundle references across the resumable catalog
-// batches. The root lock permits ordinary FK checks so an in-flight scanner
-// holding a catalog row can finish before a separate batch deletes that row.
+// batches: a writer adding this library to a bundle waits, then fails on the
+// deleted root. The library's existing bundle memberships, in every revision,
+// cascade with its row. The root lock permits ordinary FK checks so an
+// in-flight scanner holding a catalog row can finish before a separate batch
+// deletes that row.
 func (r *FolderRepository) beginFolderDeletion(ctx context.Context, id int) (pgx.Tx, error) {
 	// The guard owns a dedicated connection; fenced bundle writers can occupy
 	// catalog-pool slots while waiting. Batches also use their own pool below.
@@ -64,15 +55,6 @@ func (r *FolderRepository) beginFolderDeletion(ctx context.Context, id int) (pgx
 			return nil, ErrFolderNotFound
 		}
 		return nil, fmt.Errorf("lock folder before delete: %w", err)
-	}
-	var retained bool
-	err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM entitlement_bundle_members WHERE media_folder_id=$1)`, id).Scan(&retained)
-	if err != nil || retained {
-		_ = guard.Rollback(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("check folder deletion references: %w", err)
-		}
-		return nil, ErrFolderDeletionRestricted
 	}
 	return guard, nil
 }
@@ -121,8 +103,9 @@ func (g *folderDeletionGuard) Rollback(ctx context.Context) error {
 }
 
 // finishFolderDeletion moves shared collections off the folder, releases live
-// grants, removes the root and recomputes surviving series atomically. Immutable bundle members and
-// entitlement audit events are never rewritten.
+// grants, removes the root and recomputes surviving series atomically. The
+// root's bundle memberships cascade with it; entitlement audit events are never
+// rewritten.
 func finishFolderDeletion(ctx context.Context, tx pgx.Tx, id int) error {
 	if err := moveCollectionsOffGuardedFolder(ctx, tx, id); err != nil {
 		return fmt.Errorf("deleting folder: %w", err)

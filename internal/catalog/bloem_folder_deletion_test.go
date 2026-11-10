@@ -3,15 +3,12 @@ package catalog_test
 import (
 	"context"
 	"errors"
-	"net/http"
 	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/Silo-Server/silo-server/internal/adminjob"
-	"github.com/Silo-Server/silo-server/internal/api/handlers"
 	"github.com/Silo-Server/silo-server/internal/catalog"
 	"github.com/Silo-Server/silo-server/internal/database"
 	"github.com/Silo-Server/silo-server/migrations"
@@ -67,70 +64,6 @@ func bloemFolderDeletionPool(t *testing.T) *pgxpool.Pool {
 		t.Fatal(err)
 	}
 	return pool
-}
-
-func TestBloemFolderDeletionPreservesBundleReferencedCatalog(t *testing.T) {
-	pool := bloemFolderDeletionPool(t)
-	ctx := t.Context()
-	var folder int
-	if err := pool.QueryRow(ctx, `INSERT INTO media_folders(type,name) VALUES('movies','Bundle-retained library') RETURNING id`).Scan(&folder); err != nil {
-		t.Fatal(err)
-	}
-	for _, query := range []string{
-		`INSERT INTO media_items(content_id,type,title) VALUES('bundle-retained-item','movie','Retained item')`,
-		`INSERT INTO media_item_libraries(content_id,media_folder_id) VALUES('bundle-retained-item',$1)`,
-		`INSERT INTO media_files(content_id,media_folder_id,file_path) VALUES('bundle-retained-item',$1,'/synthetic/retained.mkv')`,
-		`INSERT INTO entitlement_bundle_members(bundle_id,bundle_revision,entitlement_kind,root_kind,root_owner_id,media_folder_id)
-		 SELECT b.id,b.active_revision,'library_access','media_folder',f.owner_id,f.id
-		 FROM entitlement_bundles b CROSS JOIN media_folders f WHERE b.is_organization_creation_default AND f.id=$1`,
-	} {
-		args := []any{folder}
-		if !strings.Contains(query, "$1") {
-			args = nil
-		}
-		if _, err := pool.Exec(ctx, query, args...); err != nil {
-			t.Fatal(err)
-		}
-	}
-	// The retained reference belongs to a historical revision. It must still
-	// prevent physical deletion after a new active revision replaces it.
-	if _, err := pool.Exec(ctx, `INSERT INTO entitlement_bundle_versions(bundle_id,revision,created_by_service)
-	 SELECT id,active_revision+1,'folder-deletion-test' FROM entitlement_bundles WHERE is_organization_creation_default`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := pool.Exec(ctx, `UPDATE entitlement_bundles SET active_revision=active_revision+1,status='suspended' WHERE is_organization_creation_default`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := catalog.NewFolderRepository(pool).DeleteWithStats(ctx, folder, nil); !errors.Is(err, catalog.ErrFolderDeletionRestricted) {
-		t.Fatalf("bundle-referenced library deletion error = %v", err)
-	}
-	var items, files, links, grants, members int
-	if err := pool.QueryRow(ctx, `SELECT
-	 (SELECT count(*) FROM media_items WHERE content_id='bundle-retained-item'),
-	 (SELECT count(*) FROM media_files WHERE media_folder_id=$1),
-	 (SELECT count(*) FROM media_item_libraries WHERE media_folder_id=$1),
-	 (SELECT count(*) FROM organization_entitlements WHERE media_folder_id=$1),
-	 (SELECT count(*) FROM entitlement_bundle_members WHERE media_folder_id=$1)`, folder).Scan(&items, &files, &links, &grants, &members); err != nil {
-		t.Fatal(err)
-	}
-	if items != 1 || files != 1 || links != 1 || grants != 1 || members != 1 {
-		t.Fatalf("blocked deletion damaged catalog/history: items=%d files=%d links=%d grants=%d bundle_members=%d", items, files, links, grants, members)
-	}
-	handler := handlers.NewLibraryHandler(catalog.NewFolderRepository(pool), nil, nil, pool, nil)
-	handler.JobRepo = adminjob.NewRepository(pool)
-	_, err := handler.DeleteLibrary(ctx, folder, 0)
-	var apiErr *handlers.APIError
-	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusConflict {
-		t.Fatalf("delete acceptance error = %v, want conflict", err)
-	}
-	var enabled bool
-	var jobs int
-	if err := pool.QueryRow(ctx, `SELECT enabled,(SELECT count(*) FROM admin_jobs) FROM media_folders WHERE id=$1`, folder).Scan(&enabled, &jobs); err != nil {
-		t.Fatal(err)
-	}
-	if !enabled || jobs != 0 {
-		t.Fatalf("blocked acceptance disabled library or queued work: enabled=%v jobs=%d", enabled, jobs)
-	}
 }
 
 func TestBloemFolderDeletionDoesNotConsumeCatalogPool(t *testing.T) {
@@ -292,11 +225,9 @@ func TestBloemFolderDeletionFencesBundleMoves(t *testing.T) {
 	if err := pool.QueryRow(ctx, `INSERT INTO media_folders(type,name) VALUES('movies','Move target') RETURNING id`).Scan(&target); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO entitlement_bundle_members(bundle_id,bundle_revision,entitlement_kind,root_kind,root_owner_id,media_folder_id)
-	 SELECT b.id,b.active_revision,'library_access','media_folder',f.owner_id,f.id
-	 FROM entitlement_bundles b CROSS JOIN media_folders f WHERE b.is_organization_creation_default AND f.id=$1`, source); err != nil {
-		t.Fatal(err)
-	}
+	// Both libraries joined the starting set when they were created. The
+	// contender moves the source's membership onto the library being deleted,
+	// whose own membership cascades with it.
 	contender, err := pgx.ConnectConfig(ctx, pool.Config().ConnConfig.Copy())
 	if err != nil {
 		t.Fatal(err)
@@ -434,7 +365,7 @@ func TestBloemFolderDeletionProgressesWithFencedWriterInSingleConnectionPool(t *
 func TestBloemFolderDeletionFenceSupportsBigintRoots(t *testing.T) {
 	pool := bloemFolderDeletionPool(t)
 	// The upstream catalog children intentionally still use int4 folder IDs.
-	// Verify the bigint preflight and database fence without that unrelated
+	// Verify the bigint database fence without that unrelated
 	// workflow encoding limit on DeleteWithStats's child-table queries.
 	for i, operation := range []string{"insert", "move"} {
 		t.Run(operation, func(t *testing.T) {
@@ -444,19 +375,12 @@ func TestBloemFolderDeletionFenceSupportsBigintRoots(t *testing.T) {
 			if _, err := pool.Exec(ctx, `INSERT INTO media_folders(id,type,name) VALUES($1,'movies','Bigint source'),($2,'movies','Bigint target')`, source, target); err != nil {
 				t.Fatal(err)
 			}
+			// Both roots joined the starting set when they were created. The
+			// contender adds the target again, or moves the source's reference
+			// to it, while the target's own membership cascades with it.
 			insert := `INSERT INTO entitlement_bundle_members(bundle_id,bundle_revision,entitlement_kind,root_kind,root_owner_id,media_folder_id)
 			 SELECT b.id,b.active_revision,'library_access','media_folder',f.owner_id,f.id
 			 FROM entitlement_bundles b CROSS JOIN media_folders f WHERE b.is_organization_creation_default AND f.id=$1`
-			if _, err := pool.Exec(ctx, insert, source); err != nil {
-				t.Fatal(err)
-			}
-			repo := catalog.NewFolderRepository(pool)
-			if err := repo.CheckDeletionAllowed(ctx, int(source)); !errors.Is(err, catalog.ErrFolderDeletionRestricted) {
-				t.Fatalf("bigint retained-root preflight = %v", err)
-			}
-			if err := repo.CheckDeletionAllowed(ctx, int(target)); err != nil {
-				t.Fatalf("bigint empty-root preflight = %v", err)
-			}
 			guard, err := pool.Begin(ctx)
 			if err != nil {
 				t.Fatal(err)

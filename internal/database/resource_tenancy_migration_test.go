@@ -115,9 +115,16 @@ func TestResourceTenancyMigrationCleanInstallAndCompatibilityWrites(t *testing.T
 	}
 	assertCompatibilityRootEntitled(ctx, t, pool, "plugin_installation", pluginID)
 
-	var bundleMembers int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM entitlement_bundle_members`).Scan(&bundleMembers); err != nil {
-		t.Fatalf("count frozen bundle members: %v", err)
+	// A new platform library joins the starting set; a new plugin does not,
+	// and the existing members stay as they were.
+	var bundleMembers, folderMembers, pluginMembers int
+	if err := pool.QueryRow(ctx, `SELECT count(*),
+		count(*) FILTER (WHERE media_folder_id = $1), count(*) FILTER (WHERE plugin_installation_id = $2)
+		FROM entitlement_bundle_members`, folderID, pluginID).Scan(&bundleMembers, &folderMembers, &pluginMembers); err != nil {
+		t.Fatalf("count bundle members: %v", err)
+	}
+	if folderMembers != 1 || pluginMembers != 0 {
+		t.Fatalf("compatibility creates in the starting set: library=%d plugin=%d, want 1 and 0", folderMembers, pluginMembers)
 	}
 	var preexistingRoots int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM media_folders WHERE id <> $1`, folderID).Scan(&preexistingRoots); err != nil {
@@ -127,8 +134,8 @@ func TestResourceTenancyMigrationCleanInstallAndCompatibilityWrites(t *testing.T
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM plugin_installations WHERE id <> $1`, pluginID).Scan(&preexistingPlugins); err != nil {
 		t.Fatalf("count preexisting plugins: %v", err)
 	}
-	if bundleMembers != preexistingRoots+preexistingPlugins {
-		t.Fatalf("compatibility creates rewrote frozen bundle: members=%d want=%d", bundleMembers, preexistingRoots+preexistingPlugins)
+	if bundleMembers-folderMembers != preexistingRoots+preexistingPlugins {
+		t.Fatalf("compatibility creates rewrote other bundle members: members=%d want=%d", bundleMembers-folderMembers, preexistingRoots+preexistingPlugins)
 	}
 }
 

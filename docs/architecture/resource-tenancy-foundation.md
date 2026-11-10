@@ -1,7 +1,8 @@
 # How library ownership and grants work
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. Resource tenancy is a Bloem addition: Silo has no resource
+> `main` at `b6039036d`; the starting set parts were updated on 2026-11-10, when new
+> platform libraries started joining it. Resource tenancy is a Bloem addition: Silo has no resource
 > owners, organizations or grants, and every library belongs to the whole server.
 > This page explains it in plain language; the technical rules, the checking queries
 > and the rollback boundary are in the [For developers](#for-developers) section.
@@ -9,8 +10,8 @@
 Every library and plugin in Bloem has an owner, and an organization may only use
 what it owns or what the platform has granted it. This page walks through who owns
 what, how grants work, the starting set a new organization receives, what happens
-to a library added through Silo's API, and why rolling back is limited once an
-organization owns something.
+to a library added later, and why rolling back is limited once an organization owns
+something.
 
 ## Who owns a library
 
@@ -36,32 +37,38 @@ belongs to that organization ([native storage](bloem-native-storage.md)).
 
 ## The starting set
 
-![Version 1 of the starting set held Movies, Series and Audiobooks, version 2 holds Movies and Series; Riverside Club, created under version 1, keeps all three; a library added later through Silo's API is owned by the platform, granted to the default organization and joins no version](images/resource-tenancy-foundation/starting-set.svg)
+![Version 1 of the starting set held Movies, Series and Audiobooks; version 2, now active, holds Movies and Series, and Documentaries joined it when it was added. Riverside Club, created under version 1, keeps all three of its libraries; Harbour Hotel, created after Documentaries was added, gets it](images/resource-tenancy-foundation/starting-set.svg)
 
 1. The platform keeps a **starting set**: a list of platform libraries and plugins
    that every new organization receives.
-2. The starting set has **versions**. One version is active at a time, and a version
-   never changes once it has been used.
+2. The starting set has **versions**. One version is active at a time.
 3. When an organization is created, whether by a platform administrator or by the
    storefront, Bloem grants it everything in the active version, in the same step.
-4. Moving to a newer version changes only what later organizations receive. Grants
+4. A platform library added later **joins the active version**. A deleted library
+   **leaves every version**. Nothing else changes a version once it exists.
+5. Moving to a newer version changes only what later organizations receive. Grants
    already made stay as they are.
 
 When organizations were first introduced, version 1 of the starting set held every
 library and plugin the server had, and the default organization was granted all of
-them.
+them. On November 10, 2026 the platform libraries added since then joined the active
+version too.
 
-## Libraries added through Silo's API
+## Libraries added later
 
-Silo's API and apps built for Silo can still add libraries and plugins. They know
-nothing about owners, so:
+Silo's API, which the admin web app and apps built for Silo use, adds libraries and
+plugins without naming an owner. A new library is handled like this:
 
-1. the new library is owned by the platform;
+1. it is owned by the platform;
 2. the default organization is granted it straight away;
-3. it joins no version of the starting set. Giving it to future organizations needs
-   a new version.
+3. it joins the active version of the starting set, so organizations created
+   afterwards get it too. Organizations that already exist, other than the default
+   one, get it only if someone grants it.
 
-Nobody can use Silo's API to make an organization own something.
+A new plugin is granted to the default organization but does not join the starting
+set. Nobody can use Silo's API to make an organization own something, and an
+organization's own library, made through native storage, never joins the starting
+set.
 
 ## Checking and rolling back
 
@@ -80,8 +87,8 @@ together with the database snapshot taken before the deployment.
 | --- | --- |
 | Platform administrator | Platform libraries and plugins, and which organizations hold grants for them. |
 | Organization administrator | Their organization's own libraries, through native storage. Suspending, restoring or withdrawing grants already made to their organization. |
-| Bloem itself | Granting the starting set to a new organization, and granting a library added through Silo's API to the default organization. |
-| Whoever runs the database | A new version of the starting set, and making it active. There is no console screen for it. |
+| Bloem itself | Granting the starting set to a new organization. Granting a new platform library to the default organization and adding it to the active version of the starting set. Taking a deleted library out of every version. |
+| Whoever runs the database | A new version of the starting set, and making it active. Taking a library out of the starting set without deleting it. There is no console screen for either. |
 
 ## Words used in the code
 
@@ -94,6 +101,8 @@ together with the database snapshot taken before the deployment.
 | Version of the starting set | a bundle revision: `entitlement_bundle_versions`, members in `entitlement_bundle_members`, `active_revision` |
 | Granting the starting set | `tenancy.GrantDefaultBundleInTransaction`; `resourcetenancy.Materializer.MaterializeDefaultBundle` for an existing organization |
 | Added through Silo's API | a compatibility-created root, granted by trigger with `granted_by_service='resource-root-compatibility'` |
+| Joining the starting set | the deferred constraint trigger `media_folders_join_starting_set` (`bloem_add_media_folder_to_starting_set()`) |
+| Leaving it on deletion | `entitlement_bundle_members_media_folder_fkey`, `ON DELETE CASCADE` |
 | Code | `internal/resourcetenancy`, `internal/tenancy` |
 
 ## For developers
@@ -138,8 +147,24 @@ during the migration. The default organization receives one explicit active
 entitlement per member, with `granted_by_service` set to
 `resource-tenancy-migration`.
 
-A bundle revision is immutable once applied. Changing `active_revision` does not
-rewrite entitlements previously materialized from an older revision. Creating an
+A bundle revision changes in two ways only, both since
+`20261110123408_bloem_library_starting_set.sql` (2026-11-10):
+
+- A platform-owned `media_folders` row joins the active revision of the
+  creation-default bundle when its creating transaction commits. The
+  `media_folders_join_starting_set` constraint trigger is `DEFERRABLE INITIALLY
+  DEFERRED` and reads the row again at commit, so a library the same transaction
+  hands to an organization (`nativestorage.LibraryLocations.AttachCreationTx`) stays
+  out, as does one deleted in that transaction. Plugin installations never join on
+  their own.
+- A deleted library's rows go from every revision:
+  `entitlement_bundle_members_media_folder_fkey` is `ON DELETE CASCADE`.
+
+The migration also added every platform library missing from the active revision.
+A revision therefore no longer records exactly what an organization received when it
+was created; that record is the organization's `organization_entitlements` rows and
+their `source_bundle_revision`. Changing `active_revision` does not rewrite
+entitlements previously materialized from an older revision. Creating an
 organization applies the active creation-default bundle in the creating transaction
 (`tenancy.GrantDefaultBundleInTransaction`, called by platform organization creation
 in `internal/tenancy/admin_store.go` and by tenant provisioning in
@@ -151,8 +176,9 @@ grant when no active creation-default bundle exists. Rows the organization alrea
 holds are left as they are; a coverage shortfall afterwards is an error that rolls
 the transaction back. `Materializer.MaterializeDefaultBundle` applies the same grant
 to an existing active organization: it locks the organization and the active bundle,
-applies one frozen revision transactionally, and leaves existing live entitlements
-unchanged.
+applies the active revision transactionally, and leaves existing live entitlements
+unchanged. Production code does not call it; applied to an older organization, it
+would also grant the libraries that joined the revision since.
 
 No Go code writes bundle revisions or changes `active_revision`; a new revision and
 its activation are a reviewed database change.
@@ -168,9 +194,9 @@ During this expand phase:
   organization direct active access to a newly created platform root.
 
 These direct compatibility grants use
-`granted_by_service='resource-root-compatibility'`. They do not silently add the new
-root to an already-frozen bundle revision. Adding it to the default for future
-organizations requires an explicit new bundle version and audited activation.
+`granted_by_service='resource-root-compatibility'`. A new platform library also joins
+the active creation-default revision at commit (see above); a new plugin installation
+does not, and adding it for future organizations needs a new bundle version.
 
 No caller can use these compatibility paths to select an organization owner.
 Organization-private library and plugin creation exists only through the
@@ -316,7 +342,9 @@ it); tenant scope is applied by the policy engine and SQL predicates (see
 The migration (`56e8cdf74`) and the first version of this page (`3189d96ea`) date
 from 2026-08-13. Organization-owned roots arrived with native storage (`a62162cc5`,
 2026-10-12; `ccce9b1ee`, 2026-10-15). `b43fb65e0` (2026-10-26) grants each new
-organization the creation-default bundle.
+organization the creation-default bundle. `20261110123408` (2026-11-10) makes a new
+platform library join the active revision and a deleted library leave every revision,
+after production's original book libraries could not be deleted.
 
 Technical pages:
 
@@ -326,8 +354,8 @@ Technical pages:
   reach the policy engine.
 - [Native storage](bloem-native-storage.md): organization-owned sources and
   libraries.
-- [Lifecycle safety](bloem-lifecycle-safety.md): deleting a library the starting set
-  still names.
+- [Lifecycle safety](bloem-lifecycle-safety.md): deleting a library, which takes it
+  out of the starting set.
 - [Delivery boundary enforcement](delivery-boundary-enforcement.md).
 
 The pictures are SVG files under `images/resource-tenancy-foundation/`, drawn by

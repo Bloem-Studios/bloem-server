@@ -9,9 +9,10 @@ import (
 	"github.com/Silo-Server/silo-server/internal/tenancy"
 )
 
-// bundleCatalogFolder adds a platform library to the creation-default
-// entitlement bundle's active revision and returns it, plus a platform library
-// outside the bundle.
+// bundleCatalogFolder returns a platform library in the creation-default
+// entitlement bundle's active revision, plus a platform library outside it.
+// Every new platform library joins the bundle, so the outside one is taken
+// out again.
 func bundleCatalogFolder(t *testing.T, fixture tenancyFixture) (inBundle, outside int) {
 	t.Helper()
 	for _, folder := range []struct {
@@ -24,13 +25,8 @@ func bundleCatalogFolder(t *testing.T, fixture tenancyFixture) (inBundle, outsid
 		}
 	}
 	if _, err := fixture.pool.Exec(fixture.ctx, `
-		INSERT INTO entitlement_bundle_members (
-			bundle_id, bundle_revision, entitlement_kind, root_kind, root_owner_id, media_folder_id
-		)
-		SELECT bundles.id, bundles.active_revision, 'library_access', 'media_folder', folders.owner_id, folders.id
-		FROM entitlement_bundles AS bundles, media_folders AS folders
-		WHERE bundles.is_organization_creation_default AND folders.id = $1`, inBundle); err != nil {
-		t.Fatalf("add bundle member: %v", err)
+		DELETE FROM entitlement_bundle_members WHERE media_folder_id = $1`, outside); err != nil {
+		t.Fatalf("remove bundle member: %v", err)
 	}
 	return inBundle, outside
 }

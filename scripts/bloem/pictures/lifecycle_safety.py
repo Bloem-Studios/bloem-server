@@ -67,52 +67,39 @@ def step_card(s, x, y, w, h, color, n, title, body):
 
 
 def library_deletion():
-    s = Svg(1200, 744, "Deleting a library safely",
-            "Five steps. An administrator asks to delete a library. Bloem first checks whether any version of the "
-            "starting set names it, and refuses if so. Otherwise the library is switched off and a job starts. The "
-            "worker takes a lock that stops anyone adding the library to the starting set and checks again, deletes "
-            "the catalog in small batches, and in a final step moves shared collections, removes the grants and the "
-            "library, and recounts series that live on elsewhere.")
+    s = Svg(1200, 556, "Deleting a library safely",
+            "Five steps. An administrator asks to delete a library. The library is switched off and a job starts. "
+            "The worker takes a lock that stops anyone adding the library to the starting set, deletes the catalog "
+            "in small batches, and in a final step moves shared collections, removes the grants, takes the library "
+            "out of every version of the starting set, removes it, and recounts series that live on elsewhere.")
     s.header("Deleting a library safely",
-             "A library the starting set still names is never deleted, not even halfway.")
-    p, o, a, st, g, pl = (TIERS["platform"], TIERS["org"], TIERS["account"], TIERS["stop"], TIERS["grey"],
-                          TIERS["plan"])
+             "Deleting a library also takes it out of every version of the starting set.")
+    p, o, a, g, pl = (TIERS["platform"], TIERS["org"], TIERS["account"], TIERS["grey"], TIERS["plan"])
 
     steps = [
         (g, "Ask to delete", "An administrator deletes the library."),
-        (pl, "Check the starting set", "Does any version of it, old or current, name this library?"),
         (o, "Switch off and queue", "The library is switched off and a deletion job is created."),
-        (p, "Lock and check again", "The worker holds a lock that stops anyone adding the library to the "
-                                    "starting set, and checks once more."),
-        (a, "Delete and finish", "The catalog goes in small batches. Then shared collections move, grants and "
-                                 "the library go, and series elsewhere are recounted."),
+        (pl, "Lock", "The worker holds a lock that stops anyone adding the library to the starting set."),
+        (p, "Delete in batches", "The catalog goes in small batches, never in one huge transaction."),
+        (a, "Finish in one step", "Collections move, grants go, the library leaves every starting-set version "
+                                  "and is removed."),
     ]
-    x, y, w, h, gap = 40, 124, 204, 236, 25
+    x, y, w, h, gap = 40, 124, 204, 190, 25
     for i, (c, title, body) in enumerate(steps):
         bx = x + i * (w + gap)
         step_card(s, bx, y, w, h, c, i + 1, title, body)
         if i < len(steps) - 1:
             s.arrow(bx + w + 2, y + h / 2, bx + w + gap - 2, y + h / 2)
 
-    # Refusals from steps 2 and 4.
-    for i in (1, 3):
-        cx = x + i * (w + gap) + w / 2
-        s.arrow(cx, y + h + 4, cx, 418)
-        s.text(cx + 10, y + h + 30, "named", size=13, weight="700", fill=st["label"])
-    s.rect(229, 422, 688, 80, st["fill"], st["stroke"], rx=14, sw=1.5)
-    no_mark(s, 258, 462, r=12)
-    s.text(282, 456, "Refused, and nothing is deleted", size=16, weight="700", fill=st["label"])
-    s.text(282, 480, "Step 2 answers 409 before the library is switched off or a job exists.", size=14, fill=INK)
-
-    s.rect(40, 534, 1120, 170, "#FFFFFF", "#E5E7EB", rx=14)
-    s.rect(40, 534, 8, 170, p["stroke"], rx=4)
-    s.text(66, 566, "Why both checks and the lock", size=17, weight="700")
-    rows = ["Deleting the catalog first and finding the reference afterwards would lose titles and watch history "
-            "while leaving the library behind.",
-            "The lock means nobody can add the library to the starting set between the last check and the end.",
-            "Old versions of the starting set count too: they are kept as history and never rewritten.",
+    s.rect(40, 346, 1120, 170, "#FFFFFF", "#E5E7EB", rx=14)
+    s.rect(40, 346, 8, 170, p["stroke"], rx=4)
+    s.text(66, 378, "Why the lock and the final step", size=17, weight="700")
+    rows = ["The library leaves the starting set in the same step as its grants, so no version is left naming a "
+            "library that is gone.",
+            "While the job runs, adding the library to the starting set waits for the lock, then fails.",
+            "Series that also live in another library are recounted, and collections that cover one move to it.",
             "A large library is not deleted in one transaction. A deletion that failed earlier is not undone."]
-    yy = 596
+    yy = 408
     for r in rows:
         s.add(f'<circle cx="72" cy="{yy - 5}" r="3.5" fill="{INK}"/>')
         yy = para(s, 86, yy, r, 1050, size=14, fill=INK) + 8

@@ -1,7 +1,8 @@
 # Bloem overlay: Library diagnostics API
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`, which includes Silo through `63ef34b23`. It lists what Bloem
+> `main` at `b6039036d`, which includes Silo through `63ef34b23`; the deletion rule
+> was updated on 2026-11-10. It lists what Bloem
 > adds to Silo's [`docs/libraries-api.md`](../../libraries-api.md), which stays
 > exactly as Silo wrote it. Bloem replaces nothing there. The additions are in the
 > [For developers](#for-developers) section.
@@ -16,11 +17,12 @@ features.
   an ebook or movie library can read its files from a **storage source**, such as
   an S3 bucket behind an approved storage plugin, instead of folders on the server.
   Creating a library therefore takes either folders or one storage source.
-- **A library a bundle still includes cannot be deleted.** An **entitlement
-  bundle** is a set of libraries and plugins that organizations are granted
-  together, such as the platform's **starting set** for each new organization.
-  Bloem refuses to delete a library that a bundle still includes, so no bundle is
-  left pointing at nothing.
+- **A new library joins the starting set, and a deleted one leaves it.** An
+  **entitlement bundle** is a set of libraries and plugins that organizations are
+  granted together, such as the platform's **starting set** for each new
+  organization. A platform library created through these routes joins the starting
+  set, and deleting a library takes it out of every bundle in the same step that
+  removes its grants.
 
 ## Words used in the code
 
@@ -28,7 +30,7 @@ features.
 | --- | --- |
 | Storage source on a new library | `storage_source` on v2 `createLibrary`, instead of `paths` |
 | Libraries that mix folders and sources | the native `library-locations` routes |
-| A bundle that includes a library | an `entitlement_bundle_members` row (`CheckDeletionAllowed` in `internal/catalog/bloem_folder_repo.go`) |
+| A bundle that includes a library | an `entitlement_bundle_members` row; joining is the `media_folders_join_starting_set` trigger, leaving is `ON DELETE CASCADE` (`20261110123408_bloem_library_starting_set.sql`) |
 
 ## For developers
 
@@ -36,7 +38,9 @@ features.
 
 `storage_source` on `createLibrary` dates from `6c27ec35c` (2026-10-07) and the
 deletion guard from `5436ed812` (2026-10-10). This overlay was created in the Silo
-merge `a2bc7219c` (2026-10-18) and updated in `96249b876` (2026-10-25). It was
+merge `a2bc7219c` (2026-10-18) and updated in `96249b876` (2026-10-25). On 2026-11-10
+deletion stopped refusing libraries a bundle includes and new libraries started
+joining the starting set (`20261110123408`). It was
 reviewed on 2026-10-27 against Silo `3e2d306b2` and Bloem `main` at `e852f92bf`
 (`internal/api/handlers/libraries_service.go`). From `3e2d306b2` through
 `63ef34b23` Silo changed the document once, in `73a6ae6a3` (#3114, 2026-10-27),
@@ -74,14 +78,20 @@ return nor accept the member. See
 “`DELETE /api/v2/libraries/{id}` and library metadata refresh return `202`…”.
 **Bloem adds:**
 
-Bloem refuses to delete a library that any entitlement bundle revision still
-references: `DELETE /api/v2/libraries/{id}` answers `409` ("Library is retained by
-an entitlement bundle") before it disables the library or creates a job, and the
-deletion worker checks again under its folder lock before its first batch. The
-final step otherwise follows Silo: a collection that also covers another library
+Bloem's deletion worker holds a folder lock from before its first batch until the
+library is gone, so nothing can add the library to an entitlement bundle meanwhile.
+The final step otherwise follows Silo: a collection that also covers another library
 moves to it, and series that survive elsewhere recompute their membership, in the
-same guarded transaction that releases the library's organization grants. See
+same guarded transaction that releases the library's organization grants and
+removes it from every bundle revision. Before 2026-11-10,
+`DELETE /api/v2/libraries/{id}` answered `409` ("Library is retained by an
+entitlement bundle") for a library any bundle revision named. See
 [library deletion](../../architecture/bloem-lifecycle-safety.md#library-deletion).
+
+`createLibrary` adds a platform-owned library to the active revision of the
+starting set when its transaction commits; one created for an organization through
+native storage stays out. See
+[the starting set](../../architecture/resource-tenancy-foundation.md#the-starting-set).
 
 ### Related pages
 
