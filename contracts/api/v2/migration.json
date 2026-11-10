@@ -5368,7 +5368,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5416,7 +5416,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5462,7 +5462,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5508,7 +5508,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5554,7 +5554,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5600,7 +5600,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5646,7 +5646,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5692,7 +5692,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5738,7 +5738,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5784,7 +5784,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5830,7 +5830,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5876,7 +5876,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5922,7 +5922,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -5968,7 +5968,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6014,7 +6014,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6060,7 +6060,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6106,7 +6106,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6152,7 +6152,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6198,7 +6198,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6244,7 +6244,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6290,7 +6290,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6336,7 +6336,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6382,7 +6382,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6428,7 +6428,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6474,7 +6474,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6520,7 +6520,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6566,7 +6566,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6612,7 +6612,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6658,7 +6658,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6704,7 +6704,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6750,7 +6750,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6796,7 +6796,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6842,7 +6842,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6888,7 +6888,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6934,7 +6934,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6980,7 +6980,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7026,7 +7026,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7072,7 +7072,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7118,7 +7118,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7164,7 +7164,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7210,7 +7210,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7256,7 +7256,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7302,7 +7302,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7348,7 +7348,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7394,7 +7394,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7440,7 +7440,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7486,7 +7486,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7532,7 +7532,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7578,7 +7578,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7624,7 +7624,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7670,7 +7670,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7716,7 +7716,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7764,7 +7764,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7812,7 +7812,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7860,7 +7860,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7908,7 +7908,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7956,7 +7956,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8004,7 +8004,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8050,7 +8050,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8096,7 +8096,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8142,7 +8142,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8188,7 +8188,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8234,7 +8234,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8280,7 +8280,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8326,7 +8326,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8372,7 +8372,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8418,7 +8418,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8464,7 +8464,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8512,7 +8512,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8560,7 +8560,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8608,7 +8608,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8656,7 +8656,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8704,7 +8704,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8752,7 +8752,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1/admin/platform/ambience",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8808,7 +8808,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1/admin/platform/ambience",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8864,7 +8864,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1/admin/platform/ambience",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8920,7 +8920,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1/admin/platform/ambience",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8976,7 +8976,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1/admin/platform/ambience",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9032,7 +9032,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1/admin/platform/ambience",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9080,7 +9080,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9128,7 +9128,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9176,7 +9176,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9224,7 +9224,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9272,7 +9272,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9602,7 +9602,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_library_figures.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10593,7 +10593,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_new_arrivals.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11297,7 +11297,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11343,7 +11343,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11389,7 +11389,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11435,7 +11435,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11481,7 +11481,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11527,7 +11527,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11573,7 +11573,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11619,7 +11619,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11665,7 +11665,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11711,7 +11711,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11757,7 +11757,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11803,7 +11803,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11849,7 +11849,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11895,7 +11895,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11941,7 +11941,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11987,7 +11987,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12033,7 +12033,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12079,7 +12079,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12125,7 +12125,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12171,7 +12171,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12217,7 +12217,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12263,7 +12263,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12309,7 +12309,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12355,7 +12355,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12401,7 +12401,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12447,7 +12447,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12493,7 +12493,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12539,7 +12539,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12585,7 +12585,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12631,7 +12631,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12677,7 +12677,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12723,7 +12723,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12769,7 +12769,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12815,7 +12815,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12861,7 +12861,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12907,7 +12907,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12953,7 +12953,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12999,7 +12999,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13045,7 +13045,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13091,7 +13091,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13137,7 +13137,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13183,7 +13183,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13229,7 +13229,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13275,7 +13275,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13321,7 +13321,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13367,7 +13367,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13413,7 +13413,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13459,7 +13459,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13505,7 +13505,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13551,7 +13551,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13597,7 +13597,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13643,7 +13643,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13689,7 +13689,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13735,7 +13735,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13781,7 +13781,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13827,7 +13827,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13873,7 +13873,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13919,7 +13919,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13965,7 +13965,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14011,7 +14011,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14057,7 +14057,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14103,7 +14103,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14149,7 +14149,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14195,7 +14195,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14241,7 +14241,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14287,7 +14287,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14333,7 +14333,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14379,7 +14379,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14425,7 +14425,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14471,7 +14471,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14517,7 +14517,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14563,7 +14563,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14609,7 +14609,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14655,7 +14655,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14701,7 +14701,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14747,7 +14747,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14793,7 +14793,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14839,7 +14839,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14885,7 +14885,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14931,7 +14931,7 @@
       "handler_kind": "expression",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14977,7 +14977,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/bloem_preview_admin.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15023,7 +15023,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/bloem_preview_admin.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15069,7 +15069,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/bloem_preview_admin.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15115,7 +15115,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/bloem_preview_admin.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15161,7 +15161,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/bloem_preview_admin.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15207,7 +15207,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/bloem_preview_admin.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15253,7 +15253,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/bloem_preview_admin.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15299,7 +15299,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/bloem_preview_admin.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15345,7 +15345,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/bloem_preview_admin.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15391,7 +15391,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/bloem_preview_admin.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15437,7 +15437,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1/admin/platform/promotions",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15493,7 +15493,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1/admin/platform/promotions",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15549,7 +15549,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1/admin/platform/promotions",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15605,7 +15605,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1/admin/platform/promotions",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15661,7 +15661,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15709,7 +15709,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15757,7 +15757,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15805,7 +15805,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15853,7 +15853,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15901,7 +15901,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15949,7 +15949,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -15997,7 +15997,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16045,7 +16045,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16093,7 +16093,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16141,7 +16141,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16189,7 +16189,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16237,7 +16237,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16285,7 +16285,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16333,7 +16333,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16381,7 +16381,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16429,7 +16429,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16477,7 +16477,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16525,7 +16525,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16573,7 +16573,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16621,7 +16621,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16669,7 +16669,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16717,7 +16717,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16765,7 +16765,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16813,7 +16813,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16861,7 +16861,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16909,7 +16909,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16957,7 +16957,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -17005,7 +17005,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -17053,7 +17053,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -17101,7 +17101,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -17149,7 +17149,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_storefront.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -17197,7 +17197,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_upgrade_prompt.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -17243,7 +17243,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem_upgrade_prompt.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -20436,11 +20436,10 @@
       "handler_kind": "method",
       "source_file": "internal/api/router_bloem.go",
       "route_group": "/api/bloem/v1",
-      "middleware_chain": 4,
+      "middleware_chain": 3,
       "auth_class": "authenticated",
       "auth_traits": [
-        "authenticated",
-        "rate_limited"
+        "authenticated"
       ],
       "profile_required": false,
       "admin_required": false,
@@ -43430,7 +43429,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router.go",
       "route_group": "/api/v1/auth",
-      "middleware_chain": 36,
+      "middleware_chain": 35,
       "auth_class": "public",
       "auth_traits": [
         "rate_limited"
@@ -43811,7 +43810,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router.go",
       "route_group": "/api/v1/auth",
-      "middleware_chain": 37,
+      "middleware_chain": 36,
       "auth_class": "public",
       "auth_traits": [
         "rate_limited"
@@ -43985,7 +43984,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router.go",
       "route_group": "/api/v1/auth",
-      "middleware_chain": 38,
+      "middleware_chain": 37,
       "auth_class": "public",
       "auth_traits": [
         "rate_limited"
@@ -55287,7 +55286,7 @@
       "handler_kind": "method",
       "source_file": "internal/api/router.go",
       "route_group": "/api/v1",
-      "middleware_chain": 39,
+      "middleware_chain": 38,
       "auth_class": "profile_scoped",
       "auth_traits": [
         "authenticated",
@@ -69692,7 +69691,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -69752,7 +69751,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -69805,7 +69804,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -69858,7 +69857,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 42,
+      "middleware_chain": 41,
       "auth_class": "public",
       "auth_traits": [
         "cors"
@@ -69917,7 +69916,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -69970,7 +69969,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -70023,7 +70022,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -70098,7 +70097,7 @@
       "handler_kind": "expression",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 42,
+      "middleware_chain": 41,
       "auth_class": "public",
       "auth_traits": [
         "cors"
@@ -70142,7 +70141,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -70195,7 +70194,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -70249,7 +70248,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -70303,7 +70302,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -70348,7 +70347,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -70393,7 +70392,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -70438,7 +70437,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -70499,7 +70498,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -70560,7 +70559,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -70621,7 +70620,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -70682,7 +70681,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -70743,7 +70742,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -70804,7 +70803,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -70849,7 +70848,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -70894,7 +70893,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -70947,7 +70946,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -71000,7 +70999,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -71061,7 +71060,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -71122,7 +71121,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -71182,7 +71181,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -71235,7 +71234,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -71288,7 +71287,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -71341,7 +71340,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -71394,7 +71393,7 @@
       "handler_kind": "method",
       "source_file": "internal/proxy/server.go",
       "route_group": "/",
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -71454,7 +71453,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -71513,7 +71512,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -71565,7 +71564,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -71674,7 +71673,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -71726,7 +71725,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -71778,7 +71777,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -71831,7 +71830,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -71883,7 +71882,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -71935,7 +71934,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -71989,7 +71988,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -72041,7 +72040,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -72115,7 +72114,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -72209,7 +72208,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -72268,7 +72267,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -72327,7 +72326,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -72371,7 +72370,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -72433,7 +72432,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -72486,7 +72485,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -72560,7 +72559,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -72634,7 +72633,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -72709,7 +72708,7 @@
       "handler_kind": "method",
       "source_file": "internal/transcodenode/server.go",
       "route_group": "/",
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
