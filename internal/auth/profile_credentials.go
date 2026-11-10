@@ -87,6 +87,11 @@ func (s *ProfileCredentialService) set(ctx context.Context, accountID int, profi
 	if email == "" {
 		return s.clear(ctx, accountID, profileID, expectedRevision)
 	}
+	// Clearing stays allowed while profile passwords are off, so a household
+	// can still remove a stored password; giving one is refused.
+	if err := ensureProfilePasswordsEnabled(ctx, s.pool); err != nil {
+		return err
+	}
 
 	hash, err := passwordhash.Generate(ctx, []byte(password), passwordHashCost)
 	if err != nil {
@@ -322,7 +327,8 @@ func (s *ProfileCredentialService) CurrentSessionSubject(
 }
 
 // directProfilePasswordPolicy applies the server's password sign-in policy to
-// a correct direct-profile password: the server-wide local password switch
+// a correct direct-profile password: Bloem's profile password switch
+// (ErrProfilePasswordsDisabled), the server-wide local password switch
 // (ErrLocalLoginDisabled) and a network identity provider's refusal of the
 // account's person (ErrNotPermitted), the checks LocalProvider.Authenticate
 // applies to an account password. It runs after the password comparison, so a
@@ -330,6 +336,9 @@ func (s *ProfileCredentialService) CurrentSessionSubject(
 // account login there is no break-glass exemption: that exemption keeps the
 // server recoverable, and a direct-profile session has the user role.
 func directProfilePasswordPolicy(ctx context.Context, db rowQuerier, accountID int) error {
+	if err := ensureProfilePasswordsEnabled(ctx, db); err != nil {
+		return err
+	}
 	allowed, err := localPasswordLoginAllowed(ctx, db)
 	if err != nil {
 		return err

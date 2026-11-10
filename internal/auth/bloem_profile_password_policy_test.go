@@ -23,6 +23,17 @@ func setPasswordSignIn(t *testing.T, pool *pgxpool.Pool, on bool) {
 	}
 }
 
+// setProfilePasswords writes Bloem's profile password switch, which is off by
+// default, straight to server_settings.
+func setProfilePasswords(t *testing.T, pool *pgxpool.Pool, on bool) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(), `INSERT INTO server_settings (key, value) VALUES ($1, $2)
+		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+		config.ProfilePasswordsEnabledSettingKey, strconv.FormatBool(on)); err != nil {
+		t.Fatalf("set %s: %v", config.ProfilePasswordsEnabledSettingKey, err)
+	}
+}
+
 // setAccountPasswordSignIn turns one account's own password sign-in on or
 // off, as linking an OIDC or LDAP identity does.
 func setAccountPasswordSignIn(t *testing.T, pool *pgxpool.Pool, accountID int, on bool) {

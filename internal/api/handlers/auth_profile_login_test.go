@@ -107,6 +107,7 @@ func TestDirectProfileLoginMapsRefusals(t *testing.T) {
 		{"wrong password", auth.ErrInvalidCredentials, http.StatusUnauthorized, "invalid_credentials"},
 		{"subject changed during login", fmt.Errorf("creating direct profile session: %w", auth.ErrSessionRevoked), http.StatusUnauthorized, "invalid_credentials"},
 		{"password sign-in off", auth.ErrLocalLoginDisabled, http.StatusForbidden, "local_login_disabled"},
+		{"profile passwords off", fmt.Errorf("creating direct profile session: %w", auth.ErrProfilePasswordsDisabled), http.StatusForbidden, "profile_passwords_disabled"},
 		{"network provider refused", fmt.Errorf("creating direct profile session: %w", auth.ErrNotPermitted), http.StatusForbidden, "not_permitted"},
 		{"store failure", errors.New("connection refused"), http.StatusInternalServerError, "internal_error"},
 	} {

@@ -140,7 +140,7 @@ Request body (required, `application/json`): [`BloemProfileCredentialSetBody`](#
 | 204 |  | No Content |
 | 400 | [`BloemNativeError`](README.md#bloemnativeerror) | invalid_request: invalid JSON, unknown fields, trailing JSON or an administrative body exceeding 32 KiB. |
 | 401 | [`BloemNativeError`](README.md#bloemnativeerror) | unauthorized: authentication is missing or invalid, or the login session is no longer valid. |
-| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password. |
+| 403 | [`BloemNativeError`](README.md#bloemnativeerror) | account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password; profile_passwords_disabled: the server has profile passwords turned off, so a password cannot be set (DELETE stays allowed). |
 | 404 | [`BloemNativeError`](README.md#bloemnativeerror) | not_found: profile does not belong to this account or does not exist. |
 | 409 | [`BloemNativeError`](README.md#bloemnativeerror) | credential_revision_conflict: reload the reviewed status; credential_email_in_use: the login email is already registered (PUT only). |
 | 422 | [`BloemNativeValidationError`](#bloemnativevalidationerror) | validation_failed: expected_revision is not positive, login_email is not a bare email address, or password is shorter than 8 characters or longer than 72 bytes. |

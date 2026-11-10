@@ -44966,7 +44966,7 @@
                 }
               }
             },
-            "description": "account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password."
+            "description": "account_session_required, forbidden or reauthentication_failed: use an eligible account session, verify the primary profile when required, and supply the current account password; profile_passwords_disabled: the server has profile passwords turned off, so a password cannot be set (DELETE stays allowed)."
           },
           "404": {
             "content": {

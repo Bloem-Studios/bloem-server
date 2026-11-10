@@ -194,9 +194,12 @@ var bloemServerSpecificSettings = strings.Fields(`livetv.dvr_path livetv.hw_acce
 var bloemRestoredSettings = strings.Fields(`livetv.`)
 
 // bloemStricterSettings are switches a restore keeps at the stricter value:
-// announcing the server on the LAN (as server.lan_discovery), and whether
-// accounts may request ebooks (as Silo's request switches).
-var bloemStricterSettings = []string{"lan.advertisement_enabled", "bloem.requests.ebooks_enabled"}
+// announcing the server on the LAN (as server.lan_discovery), whether
+// accounts may request ebooks (as Silo's request switches), and whether
+// profiles may sign in with their own password (as auth.local_password_login).
+var bloemStricterSettings = []string{
+	"lan.advertisement_enabled", "bloem.requests.ebooks_enabled", "bloem.auth.profile_passwords_enabled",
+}
 
 // pageLiveTV is Bloem's Live TV settings page.
 const pageLiveTV = "livetv"
@@ -204,10 +207,11 @@ const pageLiveTV = "livetv"
 var bloemSettingsPages = []SettingsPage{{pageLiveTV, "Live TV"}}
 
 var bloemSettingRules = map[string]settingRule{
-	"lan.advertisement_enabled":     {page: "general", class: SettingPortable},
-	"bloem.requests.ebooks_enabled": {page: pageRequests, class: SettingPortable},
-	"livetv.":                       {page: pageLiveTV, class: SettingPortable},
-	"livetv.dvr_path":               {page: pageLiveTV, class: SettingServerSpecific},
-	"livetv.hw_accel":               {page: pageLiveTV, class: SettingServerSpecific},
-	"livetv.hw_decode":              {page: pageLiveTV, class: SettingServerSpecific},
+	"lan.advertisement_enabled":            {page: "general", class: SettingPortable},
+	"bloem.requests.ebooks_enabled":        {page: pageRequests, class: SettingPortable},
+	"bloem.auth.profile_passwords_enabled": {page: pageSignIn, class: SettingPortable},
+	"livetv.":                              {page: pageLiveTV, class: SettingPortable},
+	"livetv.dvr_path":                      {page: pageLiveTV, class: SettingServerSpecific},
+	"livetv.hw_accel":                      {page: pageLiveTV, class: SettingServerSpecific},
+	"livetv.hw_decode":                     {page: pageLiveTV, class: SettingServerSpecific},
 }
