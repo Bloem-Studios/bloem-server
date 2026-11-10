@@ -9,6 +9,7 @@ import type { components } from "./v2/schema";
 import { storage } from "../utils/storage";
 import { randomUUID } from "../lib/uuid";
 import { createPolicyFetch, type RequestPolicy } from "./bloemRequestPolicy";
+import { appLanguage } from "../lib/appLocale";
 import { problemId } from "./v2/problemId";
 import { API_READ_TIMEOUT_MS, startRequestDeadline } from "./requestDeadline";
 
@@ -777,6 +778,10 @@ function buildApiHeaders(options: RequestInit = {}): Record<string, string> {
   }
   for (const [name, value] of Object.entries(getDeviceHeaders())) {
     setHeader(headers, name, value);
+  }
+  // The language the interface applied, for server-rendered text.
+  if (!hasHeader(headers, "Accept-Language")) {
+    headers["Accept-Language"] = appLanguage();
   }
   return headers;
 }

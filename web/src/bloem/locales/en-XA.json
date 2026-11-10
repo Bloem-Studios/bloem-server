@@ -1,0 +1,306 @@
+{
+  "bloem.adminNav.announcements.description": [
+    {
+      "type": 0,
+      "value": "⟦Þûƀļîšĥ ɱéššåĝéš ţö ṽîéŵéŕš.~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.announcements.label": [
+    {
+      "type": 0,
+      "value": "⟦Åññöûñçéɱéñţš~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.description": [
+    {
+      "type": 0,
+      "value": "⟦Þûƀļîšĥ ɱéššåĝéš ţö ṽîéŵéŕš åñđ ŵîţĥđŕåŵ éåŕļîéŕ åññöûñçéɱéñţš.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.label": [
+    {
+      "type": 0,
+      "value": "⟦Åññöûñçéɱéñţš~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.newAnnouncement": [
+    {
+      "type": 0,
+      "value": "⟦Ñéŵ åññöûñçéɱéñţ~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.announcementsSettings.published": [
+    {
+      "type": 0,
+      "value": "⟦Þûƀļîšĥéđ åññöûñçéɱéñţš~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.liveTv.description": [
+    {
+      "type": 0,
+      "value": "⟦Ţûñéŕš, çĥåññéļš, ţĥé ŢṼ ĝûîđé, ŕéçöŕđîñĝš åñđ çöñṽéŕšîöñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.liveTv.label": [
+    {
+      "type": 0,
+      "value": "⟦Ļîṽé ŢṼ~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.description": [
+    {
+      "type": 0,
+      "value": "⟦Ŵĥý šöɱéöñé ŵåš åļļöŵéđ öŕ ŕéƒûšéđ šöɱéţĥîñĝ.~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationAccessChecks.label": [
+    {
+      "type": 0,
+      "value": "⟦Åççéšš Çĥéçķš~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.description": [
+    {
+      "type": 0,
+      "value": "⟦Ĝŕöûþš ţĥåţ šéţ ŵĥåţ ţĥéîŕ þŕöƒîļéš çåñ đö.~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationAccessGroups.label": [
+    {
+      "type": 0,
+      "value": "⟦Åççéšš Ĝŕöûþš~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationActivity.description": [
+    {
+      "type": 0,
+      "value": "⟦Ŵĥö çĥåñĝéđ ŵĥåţ îñ ţĥîš öŕĝåñîžåţîöñ, åñđ ŵĥéñ.~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationActivity.label": [
+    {
+      "type": 0,
+      "value": "⟦Åçţîṽîţý~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.description": [
+    {
+      "type": 0,
+      "value": "⟦Ĝŕöûþš öƒ åççöûñţš ţĥåţ šĥåŕé ţĥé šåɱé šéţţîñĝš.~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationCohorts.label": [
+    {
+      "type": 0,
+      "value": "⟦Çöĥöŕţš~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.description": [
+    {
+      "type": 0,
+      "value": "⟦Îñṽîţé åđɱîñîšţŕåţöŕš åñđ ɱéɱƀéŕš ţö ţĥîš öŕĝåñîžåţîöñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationInvitations.label": [
+    {
+      "type": 0,
+      "value": "⟦Îñṽîţåţîöñš~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.description": [
+    {
+      "type": 0,
+      "value": "⟦Ļîƀŕåŕîéš ţĥîš öŕĝåñîžåţîöñ öŵñš öŕ ĥåš ƀééñ ĝîṽéñ.~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationLibraries.label": [
+    {
+      "type": 0,
+      "value": "⟦Ļîƀŕåŕîéš~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationOverview.description": [
+    {
+      "type": 0,
+      "value": "⟦Ṁéɱƀéŕš, ļîƀŕåŕîéš åñđ ŕéçéñţ çĥåñĝéš åţ å ĝļåñçé.~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationOverview.label": [
+    {
+      "type": 0,
+      "value": "⟦Öṽéŕṽîéŵ~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationPeople.description": [
+    {
+      "type": 0,
+      "value": "⟦Éṽéŕýöñé îñ ţĥîš öŕĝåñîžåţîöñ, ţĥéîŕ þŕöƒîļéš åñđ ţĥéîŕ þļåñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationPeople.label": [
+    {
+      "type": 0,
+      "value": "⟦Þéöþļé~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationStorage.description": [
+    {
+      "type": 0,
+      "value": "⟦Š3 ƀûçķéţš ţĥîš öŕĝåñîžåţîöñ ŕéåđš îţš éƀööķš ƒŕöɱ.~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.organizationStorage.label": [
+    {
+      "type": 0,
+      "value": "⟦Šţöŕåĝé šöûŕçéš~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.description": [
+    {
+      "type": 0,
+      "value": "⟦Ṁöṽé ɱåñý đîŕéçţ åççöûñţš ţö å þļåñ öŕ çĥåñĝé ţĥéîŕ šéţţîñĝš åţ öñçé.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.platformBulkAccounts.label": [
+    {
+      "type": 0,
+      "value": "⟦Çĥåñĝé Ṁåñý Åççöûñţš~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.description": [
+    {
+      "type": 0,
+      "value": "⟦Þûţ åñ åççöûñţ ţĥåţ îšñ'ţ îñ åñ öŕĝåñîžåţîöñ öñ å þļåñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.platformDirectAccounts.label": [
+    {
+      "type": 0,
+      "value": "⟦Đîŕéçţ Åççöûñţš~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.platformEngagement.description": [
+    {
+      "type": 0,
+      "value": "⟦Þŕöɱöţîöñš, åŕţŵöŕķ åñđ šéåšöñåļ ļööķš ƒöŕ ţĥé ĥöɱé šçŕééñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.platformEngagement.label": [
+    {
+      "type": 0,
+      "value": "⟦Çåɱþåîĝñš & Šéåšöñåļ Þåçķš~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.description": [
+    {
+      "type": 0,
+      "value": "⟦Éṽéŕý öŕĝåñîžåţîöñ öñ ţĥîš šéŕṽéŕ, åñđ îţš ɱéɱƀéŕš.~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.platformOrganizations.label": [
+    {
+      "type": 0,
+      "value": "⟦Öŕĝåñîžåţîöñš~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.platformPlans.description": [
+    {
+      "type": 0,
+      "value": "⟦Ŵĥåţ åñ åççöûñţ ĝéţš: ļîƀŕåŕîéš, šçŕééñš, ǫûåļîţý åñđ đöŵñļöåđš.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.platformPlans.label": [
+    {
+      "type": 0,
+      "value": "⟦Þļåñš~~⟧"
+    }
+  ],
+  "bloem.adminNav.section.organization": [
+    {
+      "type": 0,
+      "value": "⟦Öŕĝåñîžåţîöñ~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.section.platform": [
+    {
+      "type": 0,
+      "value": "⟦Þļåţƒöŕɱ~~~~⟧"
+    }
+  ],
+  "bloem.adminTitle.organization": [
+    {
+      "type": 0,
+      "value": "⟦Öŕĝåñîžåţîöñ~~~~~~⟧"
+    }
+  ],
+  "bloem.adminTitle.organizations": [
+    {
+      "type": 0,
+      "value": "⟦Öŕĝåñîžåţîöñš~~~~~~⟧"
+    }
+  ],
+  "bloem.libraryAccess.allowAll": [
+    {
+      "type": 0,
+      "value": "⟦Åļļöŵ åļļ åṽåîļåƀļé ļîƀŕåŕîéš~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.libraryAccess.allowAllIn": [
+    {
+      "type": 0,
+      "value": "⟦Åļļöŵ åļļ "
+    },
+    {
+      "type": 1,
+      "value": "scope"
+    },
+    {
+      "type": 0,
+      "value": " ļîƀŕåŕîéš~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.libraryAccess.allowLibrary": [
+    {
+      "type": 0,
+      "value": "⟦Åļļöŵ "
+    },
+    {
+      "type": 1,
+      "value": "library"
+    },
+    {
+      "type": 0,
+      "value": "~~~⟧"
+    }
+  ],
+  "bloem.nav.liveTv": [
+    {
+      "type": 0,
+      "value": "⟦Ļîṽé ŢṼ~~~⟧"
+    }
+  ],
+  "bloem.notifications.announcement.defaultTitle": [
+    {
+      "type": 0,
+      "value": "⟦Šéŕṽéŕ åññöûñçéɱéñţ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.notifications.announcement.severity.critical": [
+    {
+      "type": 0,
+      "value": "⟦Çŕîţîçåļ~~~~⟧"
+    }
+  ],
+  "bloem.notifications.announcement.severity.info": [
+    {
+      "type": 0,
+      "value": "⟦Îñƒöŕɱåţîöñ~~~~~⟧"
+    }
+  ],
+  "bloem.notifications.announcement.severity.warning": [
+    {
+      "type": 0,
+      "value": "⟦Ŵåŕñîñĝ~~~⟧"
+    }
+  ]
+}

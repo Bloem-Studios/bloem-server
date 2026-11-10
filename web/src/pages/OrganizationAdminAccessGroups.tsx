@@ -2,6 +2,7 @@ import { ArrowLeft, Plus, Trash2, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { AccessGroup, AccessGroupInput } from "@/api/types";
+import { LibraryAccessScope } from "@/bloem/libraryAccessScope";
 import { LibraryAccessSelector } from "@/components/LibraryAccessSelector";
 import {
   AlertDialog,
@@ -350,12 +351,13 @@ function AccessGroupEditor({ group, defaultGroupName, onDeleted }: AccessGroupEd
 
       <section className="surface-panel space-y-4 rounded-2xl border-0 p-5">
         <h2 className="text-sm font-semibold">Libraries &amp; playback</h2>
-        <LibraryAccessSelector
-          libraries={libraries}
-          value={libraryIds}
-          onChange={setLibraryIds}
-          scopeLabel={organization ? active?.name : "available"}
-        />
+        <LibraryAccessScope name={organization ? active?.name : undefined}>
+          <LibraryAccessSelector
+            libraries={libraries}
+            value={libraryIds}
+            onChange={setLibraryIds}
+          />
+        </LibraryAccessScope>
         <div className="space-y-2">
           <Label htmlFor="group-quality">Best picture quality</Label>
           <Select

@@ -286,7 +286,6 @@ web/src/components/AppSidebar.test.tsx
 web/src/components/AppSidebar.tsx
 web/src/components/Layout.tsx  # opaque full-width mobile header; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/components/LibraryAccessSelector.tsx
-web/src/components/LibraryHeader.tsx  # library tabs fit or scroll at phone width; temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/components/MediaCarousel.tsx  # row titles stay on one line on phones (All link); temporary, mobile web fixes being proposed to Silo, drop when Silo's version merges
 web/src/components/RealtimeEventsProvider.test.tsx
 web/src/components/admin/libraries/LibraryFormSections.tsx  # location toggle and storage source picker for ebook libraries

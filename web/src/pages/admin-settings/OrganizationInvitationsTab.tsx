@@ -43,6 +43,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { LibraryAccessScope } from "@/bloem/libraryAccessScope";
 import { LibraryAccessSelector } from "@/components/LibraryAccessSelector";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Copy, MailPlus, RotateCw, Trash2 } from "lucide-react";
@@ -480,14 +481,15 @@ function CreateInvitationForm({
         </div>
       </div>
 
-      <LibraryAccessSelector
-        libraries={libraries}
-        value={libraryIDs}
-        onChange={setLibraryIDs}
-        scopeLabel={organization ? context?.name : "available"}
-        allLabel="Inherit from access group"
-        emptyHint="The account created at accept follows the selected group's library scope."
-      />
+      <LibraryAccessScope name={organization ? context?.name : undefined}>
+        <LibraryAccessSelector
+          libraries={libraries}
+          value={libraryIDs}
+          onChange={setLibraryIDs}
+          allLabel="Inherit from access group"
+          emptyHint="The account created at accept follows the selected group's library scope."
+        />
+      </LibraryAccessScope>
 
       <div className="space-y-2">
         <Label htmlFor="invitation-note">Personal note (optional)</Label>

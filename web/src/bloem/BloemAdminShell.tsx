@@ -1,4 +1,5 @@
 // Bloem administrative-context shell components mounted by the Silo-owned App.tsx.
+import { useBloemAdminMessages } from "@/bloem/i18n";
 import type { ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
@@ -88,6 +89,9 @@ export function AdminContextRedirect() {
 export function AdminScopedOutlet() {
   const { pathname } = useLocation();
   const admin = useOptionalAdminContext();
+  // Admin pages show Bloem's admin text too: wait for it, as Silo's layout waits for Silo's.
+  const messagesReady = useBloemAdminMessages();
+  if (!messagesReady) return null;
   if (!admin || !adminPathRequiresPlatform(pathname)) return <Outlet />;
   return <PlatformContextGuard />;
 }

@@ -1,0 +1,124 @@
+{
+  "bloem.admin.accessGroups.liveTv.description": [
+    {
+      "type": 0,
+      "value": "‏‮Permit an account’s Live TV grant; independent of library access.‬"
+    }
+  ],
+  "bloem.admin.accessGroups.liveTv.label": [
+    {
+      "type": 0,
+      "value": "‏‮Watch Live TV‬"
+    }
+  ],
+  "bloem.admin.libraries.form.checkingLocations": [
+    {
+      "type": 0,
+      "value": "‏‮Checking location capabilities…‬"
+    }
+  ],
+  "bloem.admin.libraries.form.chooseStorageSource": [
+    {
+      "type": 0,
+      "value": "‏‮Choose a storage source.‬"
+    }
+  ],
+  "bloem.admin.libraries.form.chooseStorageSourcePlaceholder": [
+    {
+      "type": 0,
+      "value": "‏‮Choose a storage source‬"
+    }
+  ],
+  "bloem.admin.libraries.form.contextChanged": [
+    {
+      "type": 0,
+      "value": "‏‮Administrative context changed. Close and reopen this form before saving.‬"
+    }
+  ],
+  "bloem.admin.libraries.form.kind.folders": [
+    {
+      "type": 0,
+      "value": "‏‮Folders‬"
+    }
+  ],
+  "bloem.admin.libraries.form.kind.label": [
+    {
+      "type": 0,
+      "value": "‏‮Book location‬"
+    }
+  ],
+  "bloem.admin.libraries.form.kind.storageSource": [
+    {
+      "type": 0,
+      "value": "‏‮Storage source‬"
+    }
+  ],
+  "bloem.admin.libraries.form.noStorageSources": [
+    {
+      "type": 0,
+      "value": "‏‮No storage sources are installed and configured.‬"
+    }
+  ],
+  "bloem.admin.libraries.form.reloadBeforeSaving": [
+    {
+      "type": 0,
+      "value": "‏‮Reload this form in the current administrative context before saving.‬"
+    }
+  ],
+  "bloem.admin.libraries.form.reloadLocations": [
+    {
+      "type": 0,
+      "value": "‏‮Reload locations‬"
+    }
+  ],
+  "bloem.admin.libraries.form.storageSource": [
+    {
+      "type": 0,
+      "value": "‏‮Storage source‬"
+    }
+  ],
+  "bloem.admin.libraries.form.storageSourceFixed": [
+    {
+      "type": 0,
+      "value": "‏‮— a library keeps its storage source‬"
+    }
+  ],
+  "bloem.admin.plugins.storageTab": [
+    {
+      "type": 0,
+      "value": "‏‮Storage‬"
+    }
+  ],
+  "bloem.admin.search.matching.frequency": [
+    {
+      "type": 0,
+      "value": "‏‮Drop the most common words until something matches‬"
+    }
+  ],
+  "bloem.admin.users.access.liveTv.description": [
+    {
+      "type": 0,
+      "value": "‏‮Watch channels and manage recordings. Independent of library access; group restrictions still apply.‬"
+    }
+  ],
+  "bloem.admin.users.access.liveTv.groupDisallows": [
+    {
+      "type": 0,
+      "value": "‏"
+    },
+    {
+      "type": 1,
+      "value": "group"
+    },
+    {
+      "type": 0,
+      "value": "‮ group doesn't allow Live TV‬"
+    }
+  ],
+  "bloem.admin.users.access.liveTv.label": [
+    {
+      "type": 0,
+      "value": "‏‮Watch Live TV‬"
+    }
+  ]
+}

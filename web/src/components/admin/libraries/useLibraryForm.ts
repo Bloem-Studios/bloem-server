@@ -9,9 +9,15 @@ import {
   useUpdateLibrary,
 } from "@/hooks/queries/admin/libraries";
 import { useStorageSources } from "@/hooks/queries/admin/storageSources";
+import { t as translate, useT, type MessageKey } from "@/i18n";
 import { PROVIDER_TRAILER_KINDS } from "@/lib/extraKinds";
 
 import { useLibraryLocations } from "@/bloem/library-locations/useLibraryLocations";
+import {
+  bloemShownErrors,
+  useBloemLibraryErrors,
+} from "@/bloem/library-locations/libraryFormErrors";
+import { bloemT } from "@/bloem/i18n";
 
 import { DEFAULT_BOX_SET_MIN_MOVIES, librarySettingSupport } from "./libraryTypes";
 
@@ -77,7 +83,22 @@ export function contentLevelsForType(libraryType: string): string[] {
   }
 }
 
+const CONTENT_LEVEL_LABELS: Readonly<Record<string, MessageKey>> = {
+  movie: "web.admin.common.libraryEditor.contentLevel.movie",
+  series: "web.admin.common.libraryEditor.contentLevel.series",
+  season: "web.admin.common.libraryEditor.contentLevel.season",
+  episode: "web.admin.common.libraryEditor.contentLevel.episode",
+  audiobook: "web.admin.common.libraryEditor.contentLevel.audiobook",
+  ebook: "web.admin.common.libraryEditor.contentLevel.ebook",
+  manga: "web.admin.common.libraryEditor.contentLevel.manga",
+  podcast: "web.admin.common.libraryEditor.contentLevel.podcast",
+  podcast_episode: "web.admin.common.libraryEditor.contentLevel.podcastEpisode",
+};
+
+/** A content level's name; a level this build does not know is spelled from its id. */
 export function contentLevelLabel(level: string): string {
+  const key = CONTENT_LEVEL_LABELS[level];
+  if (key) return translate(key);
   return level
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -178,6 +199,7 @@ export function useLibraryForm({
   onSaved,
   resetAfterCreate = false,
 }: UseLibraryFormOptions) {
+  const t = useT();
   const [name, setName] = useState(library?.name ?? "");
   const [paths, setPaths] = useState<string[]>(library?.paths?.length ? library.paths : [""]);
   const [type, setType] = useState(library?.type ?? "movies");
@@ -265,24 +287,19 @@ export function useLibraryForm({
 
   const allErrors = useMemo<LibraryFormErrors>(() => {
     const next: LibraryFormErrors = {};
-    if (!name.trim()) next.name = "Give this library a name.";
-    if (locations.enabled) {
-      if (
-        (!library || !locations.original?.locations.length) &&
-        !paths.some((p) => p.trim()) &&
-        !locations.selections.length
-      )
-        next.paths = "Add at least one folder to scan.";
-      const locationError = locations.shapeError(paths);
-      if (locationError) next.paths = locationError;
-    } else if (usesStorage) {
-      if (!library && !storageSource) next.storageSource = "Choose a storage source.";
-    } else if (!paths.some((p) => p.trim())) {
-      next.paths = "Add at least one folder to scan.";
-    }
+    if (!name.trim()) next.name = t("web.admin.common.libraryEditor.errors.nameRequired");
+    if (!paths.some((p) => p.trim()))
+      next.paths = t("web.admin.common.libraryEditor.errors.pathsRequired");
     return next;
-  }, [library, name, paths, storageSource, usesStorage, locations]);
+  }, [name, paths, t]);
   const errors: LibraryFormErrors = submitAttempted ? allErrors : {};
+  const bloemErrors = useBloemLibraryErrors(allErrors, {
+    library,
+    paths,
+    storageSource,
+    usesStorage,
+    locations,
+  });
 
   function updatePath(index: number, value: string) {
     const next = [...paths];
@@ -365,6 +382,8 @@ export function useLibraryForm({
   }
 
   function submit(): { ok: boolean; errors: LibraryFormErrors } {
+    // Submit checks Silo's errors with Bloem's library locations applied.
+    const allErrors = bloemErrors;
     setSubmitAttempted(true);
     if (
       staleContext ||
@@ -376,7 +395,7 @@ export function useLibraryForm({
     ) {
       return {
         ok: false,
-        errors: { paths: "Reload this form in the current administrative context before saving." },
+        errors: { paths: bloemT("bloem.admin.libraries.form.reloadBeforeSaving") },
       };
     }
     if (allErrors.name || allErrors.paths || allErrors.storageSource) {
@@ -556,6 +575,7 @@ export function useLibraryForm({
     errors,
     isPending,
     submit,
+    ...bloemShownErrors(submitAttempted, bloemErrors),
   };
 }
 

@@ -1,0 +1,124 @@
+{
+  "bloem.admin.accessGroups.liveTv.description": [
+    {
+      "type": 0,
+      "value": "⟦Þéŕɱîţ åñ åççöûñţ’š Ļîṽé ŢṼ ĝŕåñţ; îñđéþéñđéñţ öƒ ļîƀŕåŕý åççéšš.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.accessGroups.liveTv.label": [
+    {
+      "type": 0,
+      "value": "⟦Ŵåţçĥ Ļîṽé ŢṼ~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.checkingLocations": [
+    {
+      "type": 0,
+      "value": "⟦Çĥéçķîñĝ ļöçåţîöñ çåþåƀîļîţîéš…~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.chooseStorageSource": [
+    {
+      "type": 0,
+      "value": "⟦Çĥööšé å šţöŕåĝé šöûŕçé.~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.chooseStorageSourcePlaceholder": [
+    {
+      "type": 0,
+      "value": "⟦Çĥööšé å šţöŕåĝé šöûŕçé~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.contextChanged": [
+    {
+      "type": 0,
+      "value": "⟦Åđɱîñîšţŕåţîṽé çöñţéẋţ çĥåñĝéđ. Çļöšé åñđ ŕéöþéñ ţĥîš ƒöŕɱ ƀéƒöŕé šåṽîñĝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.kind.folders": [
+    {
+      "type": 0,
+      "value": "⟦Ƒöļđéŕš~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.kind.label": [
+    {
+      "type": 0,
+      "value": "⟦Ɓööķ ļöçåţîöñ~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.kind.storageSource": [
+    {
+      "type": 0,
+      "value": "⟦Šţöŕåĝé šöûŕçé~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.noStorageSources": [
+    {
+      "type": 0,
+      "value": "⟦Ñö šţöŕåĝé šöûŕçéš åŕé îñšţåļļéđ åñđ çöñƒîĝûŕéđ.~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.reloadBeforeSaving": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéļöåđ ţĥîš ƒöŕɱ îñ ţĥé çûŕŕéñţ åđɱîñîšţŕåţîṽé çöñţéẋţ ƀéƒöŕé šåṽîñĝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.reloadLocations": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéļöåđ ļöçåţîöñš~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.storageSource": [
+    {
+      "type": 0,
+      "value": "⟦Šţöŕåĝé šöûŕçé~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.libraries.form.storageSourceFixed": [
+    {
+      "type": 0,
+      "value": "⟦— å ļîƀŕåŕý ķééþš îţš šţöŕåĝé šöûŕçé~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.plugins.storageTab": [
+    {
+      "type": 0,
+      "value": "⟦Šţöŕåĝé~~~⟧"
+    }
+  ],
+  "bloem.admin.search.matching.frequency": [
+    {
+      "type": 0,
+      "value": "⟦Đŕöþ ţĥé ɱöšţ çöɱɱöñ ŵöŕđš ûñţîļ šöɱéţĥîñĝ ɱåţçĥéš~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.users.access.liveTv.description": [
+    {
+      "type": 0,
+      "value": "⟦Ŵåţçĥ çĥåññéļš åñđ ɱåñåĝé ŕéçöŕđîñĝš. Îñđéþéñđéñţ öƒ ļîƀŕåŕý åççéšš; ĝŕöûþ ŕéšţŕîçţîöñš šţîļļ åþþļý.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.users.access.liveTv.groupDisallows": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "group"
+    },
+    {
+      "type": 0,
+      "value": " ĝŕöûþ đöéšñ'ţ åļļöŵ Ļîṽé ŢṼ~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.admin.users.access.liveTv.label": [
+    {
+      "type": 0,
+      "value": "⟦Ŵåţçĥ Ļîṽé ŢṼ~~~~~~⟧"
+    }
+  ]
+}

@@ -1,13 +1,14 @@
+import { useBloemT } from "@/bloem/i18n";
 import type { Library } from "@/api/types";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useT } from "@/i18n";
 
 interface LibraryAccessSelectorProps {
   libraries: Pick<Library, "id" | "name" | "type" | "enabled">[];
   value: number[] | null;
   onChange: (value: number[] | null) => void;
-  scopeLabel?: string;
   // Label for the null state. Groups and invitations use the default "All
   // libraries"; the per-user policy form names where the account's default
   // scope comes from ("Inherit from group", "Admin default", ...), since null
@@ -30,10 +31,11 @@ export function LibraryAccessSelector({
   libraries,
   value,
   onChange,
-  scopeLabel = "available",
-  allLabel = "All libraries",
+  allLabel,
   emptyHint,
 }: LibraryAccessSelectorProps) {
+  const t = useT();
+  const bt = useBloemT();
   const allLibraries = value === null;
 
   function handleAllLibrariesChange(checked: boolean) {
@@ -51,14 +53,12 @@ export function LibraryAccessSelector({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label>Library Access</Label>
+        <Label>{t("web.profiles.libraryAccess.label")}</Label>
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">{allLabel}</span>
-          <Switch
-            checked={allLibraries}
-            onCheckedChange={handleAllLibrariesChange}
-            aria-label={`Allow all ${scopeLabel} libraries`}
-          />
+          <span className="text-muted-foreground text-xs">
+            {allLabel ?? t("web.profiles.libraryAccess.allLibraries")}
+          </span>
+          <Switch checked={allLibraries} onCheckedChange={handleAllLibrariesChange} />
         </div>
       </div>
 
@@ -67,7 +67,7 @@ export function LibraryAccessSelector({
       {!allLibraries && (
         <div className="grid gap-1.5">
           {libraries.length === 0 ? (
-            <p className="text-muted-foreground text-xs">No libraries available.</p>
+            <p className="text-muted-foreground text-xs">{t("web.profiles.noLibraries")}</p>
           ) : (
             libraries.map((library) => {
               const checked = value?.includes(library.id) ?? false;
@@ -80,7 +80,7 @@ export function LibraryAccessSelector({
                     <span className="text-sm">{library.name}</span>
                     {!library.enabled && (
                       <Badge variant="outline" className="px-1 py-0 text-[10px]">
-                        Disabled
+                        {t("web.profiles.libraryAccess.disabled")}
                       </Badge>
                     )}
                     <span className="text-muted-foreground text-xs capitalize">{library.type}</span>
@@ -88,7 +88,7 @@ export function LibraryAccessSelector({
                   <Switch
                     checked={checked}
                     onCheckedChange={(nextChecked) => handleLibraryToggle(library.id, nextChecked)}
-                    aria-label={`Allow ${library.name}`}
+                    aria-label={bt("bloem.libraryAccess.allowLibrary", { library: library.name })}
                   />
                 </div>
               );

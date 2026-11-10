@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useState, useId, useMemo, useRef } from "react";
 import { flushSync } from "react-dom";
 import type { FormEvent, ReactNode } from "react";
@@ -88,7 +89,9 @@ import {
   setAssignedPermission,
 } from "@/lib/permissions";
 import { formatDateTime as formatDateTimePreferred } from "@/lib/datetime";
-import { INVALID_EMAIL_MESSAGE, isValidEmail } from "@/lib/email";
+import { invalidEmailMessage, isValidEmail } from "@/lib/email";
+import { formatLocale } from "@/lib/appLocale";
+import { englishText, useT } from "@/i18n";
 
 const PAGE_SIZE_OPTIONS = ["25", "50", "100"] as const;
 type UserSortField = "username" | "email" | "role" | "enabled" | "created_at" | "last_active_at";
@@ -108,6 +111,7 @@ export default function AdminUsers() {
   return <AdminUsersPage key={adminUserScope()} />;
 }
 function AdminUsersPage() {
+  const t = useT();
   const usersQuery = useAdminUsers();
   const { data: users = [], isLoading } = usersQuery;
   const viewerId = useAuth().user?.id;
@@ -178,7 +182,7 @@ function AdminUsersPage() {
     try {
       setConfirmDeleteUser(await getAdminUser(u.id, authority));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Could not load user.");
+      setActionError(err instanceof Error ? err.message : t("web.admin.users.list.userLoadFailed"));
     } finally {
       busy.current = false;
     }
@@ -197,6 +201,10 @@ function AdminUsersPage() {
 
     setSearchParams(next, { replace: true });
   }
+
+  const reloadUsersButton = (
+    <Button onClick={() => void usersQuery.refetch()}>{t("web.admin.users.list.reload")}</Button>
+  );
 
   if (isLoading)
     return (
@@ -226,8 +234,8 @@ function AdminUsersPage() {
         />
       )}
       <PageHeader
-        title="Users"
-        subtitle="Manage access, defaults, and invite flow for the people using Silo."
+        title={t("web.admin.users.list.title")}
+        subtitle={t("web.admin.users.list.subtitle")}
         actions={
           <>
             {serverSettings !== undefined && (
@@ -243,14 +251,16 @@ function AdminUsersPage() {
                       : undefined
                   }
                 >
-                  {signupsEnabled ? "Public signups on" : "Public signups off"}
+                  {signupsEnabled
+                    ? t("web.admin.users.list.signupsOn")
+                    : t("web.admin.users.list.signupsOff")}
                   <ArrowRight className="h-3 w-3" aria-hidden="true" />
                 </Badge>
               </Link>
             )}
             <Button variant="outline" size="sm" asChild>
               <Link to="/admin/access-groups">
-                <Settings2 className="mr-1 h-4 w-4" /> Access Groups
+                <Settings2 className="me-1 h-4 w-4" /> {t("web.admin.users.list.accessGroupsLink")}
               </Link>
             </Button>
             <Dialog
@@ -262,12 +272,12 @@ function AdminUsersPage() {
             >
               <DialogTrigger asChild>
                 <Button size="sm">
-                  <Plus className="mr-1 h-4 w-4" /> Add User
+                  <Plus className="me-1 h-4 w-4" /> {t("web.admin.users.list.addUser")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Create User</DialogTitle>
+                  <DialogTitle>{t("web.admin.users.list.createDialogTitle")}</DialogTitle>
                 </DialogHeader>
                 <CreateUserForm
                   onBusy={(value) => {
@@ -283,40 +293,41 @@ function AdminUsersPage() {
       {actionError && <p role="alert">{actionError}</p>}
       {usersQuery.isError && (
         <div role="alert">
-          Could not load users.{" "}
-          <Button onClick={() => void usersQuery.refetch()}>Reload users</Button>
+          {t("web.admin.users.list.loadFailed")} {reloadUsersButton}
         </div>
       )}
-      {!available && <p role="status">User administration is unavailable.</p>}
+      {!available && <p role="status">{t("web.admin.users.list.unavailable")}</p>}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList variant="line" className="border-border w-full justify-start border-b">
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="invitations">Invitations</TabsTrigger>
-          <TabsTrigger value="invite-codes">Invite Codes</TabsTrigger>
+          <TabsTrigger value="users">{t("web.admin.users.list.tab.users")}</TabsTrigger>
+          <TabsTrigger value="invitations">{t("web.admin.users.list.tab.invitations")}</TabsTrigger>
+          <TabsTrigger value="invite-codes">
+            {t("web.admin.users.list.tab.inviteCodes")}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="users" className="pt-4">
           <div className="mb-4 flex flex-col gap-2 sm:flex-row">
             <div className="relative flex-1">
-              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+              <Search className="text-muted-foreground absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2" />
               <Input
-                placeholder="Search by username or email..."
+                placeholder={t("web.admin.users.list.searchPlaceholder")}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(0);
                 }}
-                className="pr-9 pl-9"
+                className="ps-9 pe-9"
               />
               {search && (
                 <button
                   type="button"
-                  aria-label="Clear search"
+                  aria-label={t("web.admin.users.list.clearSearch")}
                   onClick={() => {
                     setSearch("");
                     setPage(0);
                   }}
-                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
+                  className="text-muted-foreground hover:text-foreground absolute end-3 top-1/2 -translate-y-1/2"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -329,25 +340,28 @@ function AdminUsersPage() {
                 setPage(0);
               }}
             >
-              <SelectTrigger className="sm:w-56" aria-label="Filter by access group">
+              <SelectTrigger
+                className="sm:w-56"
+                aria-label={t("web.admin.users.list.groupFilterLabel")}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All groups</SelectItem>
+                <SelectItem value="all">{t("web.admin.users.list.groupFilterAll")}</SelectItem>
                 {accessGroups.map((group) => (
                   <SelectItem key={group.id} value={String(group.id)}>
                     {group.name}
                   </SelectItem>
                 ))}
-                <SelectItem value="none">No group</SelectItem>
+                <SelectItem value="none">{t("web.admin.users.list.noGroup")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           {accessGroupsQuery.isError && (
             <div role="alert" className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-              Could not load access groups, so group names and group filters are unavailable.
+              {t("web.admin.users.list.groupsLoadFailed")}
               <Button variant="outline" size="sm" onClick={() => void accessGroupsQuery.refetch()}>
-                Retry
+                {t("common.retry")}
               </Button>
             </div>
           )}
@@ -361,7 +375,7 @@ function AdminUsersPage() {
                     activeDir={sortDir}
                     onSort={handleSort}
                   >
-                    Username
+                    {t("web.admin.users.list.column.username")}
                   </SortableUserHead>
                   <SortableUserHead
                     field="email"
@@ -369,7 +383,7 @@ function AdminUsersPage() {
                     activeDir={sortDir}
                     onSort={handleSort}
                   >
-                    Email
+                    {t("web.admin.users.list.column.email")}
                   </SortableUserHead>
                   <SortableUserHead
                     field="role"
@@ -377,16 +391,16 @@ function AdminUsersPage() {
                     activeDir={sortDir}
                     onSort={handleSort}
                   >
-                    Role
+                    {t("web.admin.users.list.column.role")}
                   </SortableUserHead>
-                  <TableHead>Group</TableHead>
+                  <TableHead>{t("web.admin.users.list.column.group")}</TableHead>
                   <SortableUserHead
                     field="enabled"
                     activeField={sortField}
                     activeDir={sortDir}
                     onSort={handleSort}
                   >
-                    Status
+                    {t("web.admin.users.list.column.status")}
                   </SortableUserHead>
                   <SortableUserHead
                     field="created_at"
@@ -394,7 +408,7 @@ function AdminUsersPage() {
                     activeDir={sortDir}
                     onSort={handleSort}
                   >
-                    Created
+                    {t("web.admin.users.list.column.created")}
                   </SortableUserHead>
                   <SortableUserHead
                     field="last_active_at"
@@ -402,9 +416,9 @@ function AdminUsersPage() {
                     activeDir={sortDir}
                     onSort={handleSort}
                   >
-                    Last Active
+                    {t("web.admin.users.list.column.lastActive")}
                   </SortableUserHead>
-                  <TableHead className="w-32">Actions</TableHead>
+                  <TableHead className="w-32">{t("web.admin.users.list.column.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -423,28 +437,38 @@ function AdminUsersPage() {
                     </TableCell>
                     <TableCell>
                       {u.role === "admin" ? (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">
+                          {t("web.admin.users.list.adminGroupNone")}
+                        </span>
                       ) : u.access_group_id == null ? (
-                        <span className="text-muted-foreground">No group</span>
+                        <span className="text-muted-foreground">
+                          {t("web.admin.users.list.noGroup")}
+                        </span>
                       ) : (
                         <Link
                           to={`/admin/access-groups/${u.access_group_id}`}
                           className="hover:underline"
                         >
-                          {groupNames.get(String(u.access_group_id)) ?? "Unknown group"}
+                          {groupNames.get(String(u.access_group_id)) ??
+                            t("web.admin.users.list.unknownGroup")}
                         </Link>
                       )}
                     </TableCell>
                     <TableCell>
                       <Badge variant={u.enabled ? "outline" : "destructive"}>
-                        {u.enabled ? "Active" : "Disabled"}
+                        {u.enabled
+                          ? t("web.admin.users.list.status.active")
+                          : t("web.admin.users.list.status.disabled")}
                       </Badge>
                     </TableCell>
                     <TableCell title={formatFullDateTime(u.created_at)}>
                       {formatDateTime(u.created_at)}
                     </TableCell>
                     <TableCell title={u.last_active_at ? formatFullDateTime(u.last_active_at) : ""}>
-                      {formatRelativeTime(u.last_active_at, "Never")}
+                      {formatRelativeTime(
+                        u.last_active_at,
+                        t("web.admin.users.list.lastActiveNever"),
+                      )}
                     </TableCell>
                     <TableCell>
                       <TooltipProvider delayDuration={0}>
@@ -454,13 +478,17 @@ function AdminUsersPage() {
                               <Button asChild variant="ghost" size="icon" className="h-7 w-7">
                                 <Link
                                   to={`/admin/history?user_id=${u.id}`}
-                                  aria-label={`View ${u.username} playback history`}
+                                  aria-label={t("web.admin.users.list.historyAria", {
+                                    username: u.username,
+                                  })}
                                 >
                                   <History className="h-3 w-3" aria-hidden="true" />
                                 </Link>
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>View playback history</TooltipContent>
+                            <TooltipContent>
+                              {t("web.admin.users.list.historyTooltip")}
+                            </TooltipContent>
                           </Tooltip>
                           {available && canViewAsAccount(u, viewerId, viewerIsOwner) && (
                             <Tooltip>
@@ -469,13 +497,17 @@ function AdminUsersPage() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7"
-                                  aria-label={`View as user: ${u.username}`}
+                                  aria-label={t("web.admin.users.list.viewAsAria", {
+                                    username: u.username,
+                                  })}
                                   onClick={() => setImpersonatingUser(u)}
                                 >
                                   <UserRound className="h-3 w-3" aria-hidden="true" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>View as user</TooltipContent>
+                              <TooltipContent>
+                                {t("web.admin.users.list.viewAsTooltip")}
+                              </TooltipContent>
                             </Tooltip>
                           )}
                           {canManageAccount(u, viewerId, viewerIsOwner) && (
@@ -484,13 +516,17 @@ function AdminUsersPage() {
                                 <Button asChild variant="ghost" size="icon" className="h-7 w-7">
                                   <Link
                                     to={`/admin/users/${u.id}${userDetailTabSearch("access")}`}
-                                    aria-label={`Edit ${u.username}`}
+                                    aria-label={t("web.admin.users.list.editAria", {
+                                      username: u.username,
+                                    })}
                                   >
                                     <Pencil className="h-3 w-3" aria-hidden="true" />
                                   </Link>
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Edit user</TooltipContent>
+                              <TooltipContent>
+                                {t("web.admin.users.list.editTooltip")}
+                              </TooltipContent>
                             </Tooltip>
                           )}
                           {!u.is_owner &&
@@ -502,13 +538,17 @@ function AdminUsersPage() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7"
-                                    aria-label={`Delete ${u.username}`}
+                                    aria-label={t("web.admin.users.list.deleteAria", {
+                                      username: u.username,
+                                    })}
                                     onClick={() => void handleDelete(u)}
                                   >
                                     <Trash2 className="h-3 w-3" aria-hidden="true" />
                                   </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Delete user</TooltipContent>
+                                <TooltipContent>
+                                  {t("web.admin.users.list.deleteTooltip")}
+                                </TooltipContent>
                               </Tooltip>
                             )}
                         </div>
@@ -522,8 +562,11 @@ function AdminUsersPage() {
               <div className="flex items-center justify-between px-4 py-4">
                 <div className="flex items-center gap-4">
                   <span className="text-muted-foreground text-sm">
-                    Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, total)} of{" "}
-                    {total}
+                    {t("web.admin.users.list.pageRange", {
+                      from: page * pageSize + 1,
+                      to: Math.min((page + 1) * pageSize, total),
+                      total: total,
+                    })}
                   </span>
                   <Select
                     value={String(pageSize)}
@@ -532,13 +575,13 @@ function AdminUsersPage() {
                       setPage(0);
                     }}
                   >
-                    <SelectTrigger className="h-8 w-[100px]">
+                    <SelectTrigger className="h-8 min-w-[100px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {PAGE_SIZE_OPTIONS.map((size) => (
                         <SelectItem key={size} value={size}>
-                          {size} rows
+                          {t("web.admin.users.list.pageSizeOption", { count: Number(size) })}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -551,7 +594,7 @@ function AdminUsersPage() {
                     onClick={() => setPage((p) => p - 1)}
                     disabled={page === 0}
                   >
-                    Previous
+                    {t("web.admin.users.list.previousPage")}
                   </Button>
                   <Button
                     variant="outline"
@@ -559,7 +602,7 @@ function AdminUsersPage() {
                     onClick={() => setPage((p) => p + 1)}
                     disabled={(page + 1) * pageSize >= total}
                   >
-                    Next
+                    {t("web.admin.users.list.nextPage")}
                   </Button>
                 </div>
               </div>
@@ -627,7 +670,7 @@ function sortAdminUsers(users: AdminUser[], field: UserSortField, dir: SortDirec
         result = compareText(a.email, b.email);
         break;
       case "role":
-        result = compareText(accountRoleLabel(a), accountRoleLabel(b));
+        result = compareText(accountRoleLabel(a, englishText), accountRoleLabel(b, englishText));
         break;
       case "enabled":
         result = compareText(a.enabled ? "active" : "disabled", b.enabled ? "active" : "disabled");
@@ -692,7 +735,7 @@ function formatRelativeTime(value?: string | null, fallback = "-") {
     ["minute", 60],
     ["second", 1],
   ];
-  const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "always" });
+  const formatter = new Intl.RelativeTimeFormat(formatLocale(), { numeric: "always" });
 
   for (const [unit, secondsPerUnit] of ranges) {
     if (Math.abs(seconds) >= secondsPerUnit || unit === "second") {
@@ -710,6 +753,8 @@ function CreateUserForm({
   onClose: () => void;
   onBusy: (busy: boolean) => void;
 }) {
+  const t = useT();
+  const bt = useBloemT();
   const [authority] = useState(captureAdminUserAuthority);
   const busy = useRef(false);
   const [error, setError] = useState("");
@@ -797,7 +842,7 @@ function CreateUserForm({
     )
       return;
     if (!isValidEmail(email)) {
-      setError(INVALID_EMAIL_MESSAGE);
+      setError(invalidEmailMessage());
       return;
     }
     // A cleared or half-typed limit is not in the policy state, which still
@@ -828,7 +873,7 @@ function CreateUserForm({
       createMutation.reset();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save user.");
+      setError(err instanceof Error ? err.message : t("web.admin.users.list.create.saveFailed"));
     } finally {
       busy.current = false;
       onBusy(false);
@@ -844,29 +889,29 @@ function CreateUserForm({
           checked={createDefaultProfile}
           onChange={(event) => setCreateDefaultProfile(event.target.checked)}
         />
-        Create a default profile
-        {!capabilities.data?.default_profile &&
-          " (unavailable; uncheck to create only the account)"}
+        {capabilities.data?.default_profile
+          ? t("web.admin.users.list.create.defaultProfile")
+          : t("web.admin.users.list.create.defaultProfileUnavailable")}
       </label>
 
       <Tabs value={dialogTab} onValueChange={setDialogTab} className="min-h-0 flex-1">
         <TabsList variant="line" className="border-border mb-4 w-full justify-start border-b pb-1">
           <TabsTrigger value="account" className="flex-none px-1">
-            Account
+            {t("web.admin.users.list.create.tab.account")}
           </TabsTrigger>
           <TabsTrigger value="access" className="flex-none px-1">
-            Access
+            {t("web.admin.users.list.create.tab.access")}
           </TabsTrigger>
           <TabsTrigger value="limits" className="flex-none px-1">
-            Limits
+            {t("web.admin.users.list.create.tab.limits")}
           </TabsTrigger>
         </TabsList>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="min-h-0 flex-1 overflow-y-auto pe-1">
           <TabsContent value="account" className="mt-0 space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor={usernameId}>Username</Label>
+                <Label htmlFor={usernameId}>{t("web.admin.users.list.create.username")}</Label>
                 <Input
                   id={usernameId}
                   value={username}
@@ -875,7 +920,7 @@ function CreateUserForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor={emailId}>Email</Label>
+                <Label htmlFor={emailId}>{t("web.admin.users.list.create.email")}</Label>
                 <Input
                   id={emailId}
                   type="email"
@@ -885,7 +930,7 @@ function CreateUserForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor={passwordId}>Password</Label>
+                <Label htmlFor={passwordId}>{t("web.admin.users.list.create.password")}</Label>
                 <Input
                   id={passwordId}
                   type="password"
@@ -902,26 +947,28 @@ function CreateUserForm({
                     onCheckedChange={setRequirePasswordChange}
                   />
                   <Label htmlFor={requireChangeId} className="text-xs font-normal">
-                    Require change at first sign-in
+                    {t("web.admin.users.list.create.requirePasswordChange")}
                   </Label>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor={roleId}>Role</Label>
+                <Label htmlFor={roleId}>{t("web.admin.users.list.create.role")}</Label>
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger id={roleId}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="user">
+                      {t("web.admin.users.list.create.role.user")}
+                    </SelectItem>
                     <SelectItem value="admin" disabled={adminRoleLocked}>
-                      Admin
+                      {t("web.admin.users.list.create.role.admin")}
                     </SelectItem>
                   </SelectContent>
                 </Select>
                 {adminRoleLocked && (
                   <p className="text-muted-foreground text-xs">
-                    Only the server owner can grant the admin role.
+                    {t("web.admin.users.list.create.adminOwnerOnly")}
                   </p>
                 )}
               </div>
@@ -930,7 +977,7 @@ function CreateUserForm({
 
           <TabsContent value="access" className="mt-0 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor={accessGroupSelectId}>Group</Label>
+              <Label htmlFor={accessGroupSelectId}>{t("web.admin.users.list.create.group")}</Label>
               <Select
                 value={accessGroupValue}
                 onValueChange={(value) => {
@@ -944,11 +991,17 @@ function CreateUserForm({
                 <SelectContent>
                   {offerNoGroup && (
                     <SelectItem value="none">
-                      {awaitingDefaultGroup ? "Default group" : "No group"}
+                      {awaitingDefaultGroup
+                        ? t("web.admin.users.list.create.defaultGroup")
+                        : t("web.admin.users.list.noGroup")}
                     </SelectItem>
                   )}
                   {selectedGroupMissing && (
-                    <SelectItem value={String(selectedGroupID)}>#{selectedGroupID}</SelectItem>
+                    <SelectItem value={String(selectedGroupID)}>
+                      {t("web.admin.users.list.create.missingGroup", {
+                        id: selectedGroupID,
+                      })}
+                    </SelectItem>
                   )}
                   {accessGroups.map((group) => (
                     <SelectItem key={group.id} value={String(group.id)}>
@@ -959,15 +1012,15 @@ function CreateUserForm({
               </Select>
               {role === "admin" && (
                 <p className="text-muted-foreground text-xs">
-                  Admin accounts can&apos;t join groups.
+                  {t("web.admin.users.list.create.adminNoGroups")}
                 </p>
               )}
             </div>
             <div className="border-border flex items-center justify-between rounded-md border px-3 py-2">
               <div>
-                <Label htmlFor={markerEditId}>Marker Editing</Label>
+                <Label htmlFor={markerEditId}>{t("web.admin.users.list.create.markerEdit")}</Label>
                 <p className="text-muted-foreground text-xs">
-                  Edit intro, recap, credits, and preview markers within assigned libraries.
+                  {t("web.admin.users.list.create.markerEditHelp")}
                 </p>
               </div>
               <Switch
@@ -982,10 +1035,9 @@ function CreateUserForm({
             </div>
             <div className="border-border flex items-center justify-between rounded-md border px-3 py-2">
               <div>
-                <Label htmlFor={liveTVId}>Watch Live TV</Label>
+                <Label htmlFor={liveTVId}>{bt("bloem.admin.users.access.liveTv.label")}</Label>
                 <p className="text-muted-foreground text-xs">
-                  Watch channels and manage recordings. Independent of library access; group
-                  restrictions still apply.
+                  {bt("bloem.admin.users.access.liveTv.description")}
                 </p>
               </div>
               <Switch
@@ -1000,9 +1052,11 @@ function CreateUserForm({
             </div>
             <div className="border-border flex items-center justify-between rounded-md border px-3 py-2">
               <div>
-                <Label htmlFor={metadataCurationId}>Metadata Curation</Label>
+                <Label htmlFor={metadataCurationId}>
+                  {t("web.admin.users.list.create.metadataCuration")}
+                </Label>
                 <p className="text-muted-foreground text-xs">
-                  Edit, refresh, and rematch metadata within assigned libraries.
+                  {t("web.admin.users.list.create.metadataCurationHelp")}
                 </p>
               </div>
               <Switch
@@ -1047,7 +1101,7 @@ function CreateUserForm({
             (createDefaultProfile && !capabilities.data.default_profile)
           }
         >
-          {createMutation.isPending ? "Saving..." : "Save"}
+          {createMutation.isPending ? t("web.admin.users.list.create.saving") : t("common.save")}
         </Button>
       </div>
     </form>

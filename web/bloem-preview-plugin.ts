@@ -32,11 +32,40 @@ const modules: Record<string, string> = {
 };
 
 // Boundaries replaced for one importer only, so every other importer, Silo's
-// own tests included, keeps the original module.
+// own tests included, keeps the original module. A package is named "npm:<name>".
 const importerModules: Record<string, Record<string, string>> = {
   // The app's requests route gets Bloem's page, which adds the audiobook and
   // ebook request tabs around Silo's and imports Silo's page itself.
-  "App.tsx": { "pages/Requests.tsx": "../BloemRequests.tsx" },
+  "App.tsx": {
+    "pages/Requests.tsx": "../BloemRequests.tsx",
+    // The app shell's one route outlet sits behind the preview's route gate.
+    "npm:react-router": "adapters/appRouter.tsx",
+    // The preview chrome sits inside Silo's branding provider.
+    "contexts/BrandingProvider.tsx": "BrandingWithPreview.tsx",
+  },
+  // A guest previewing gets the preview's sidebar.
+  "components/Layout.tsx": { "components/AppSidebar.tsx": "adapters/AppSidebar.tsx" },
+  // Server activity and the build route are the platform administrator's.
+  "components/AdminLayout.tsx": {
+    "components/ServerActivity.tsx": "adapters/AdminServerActivity.tsx",
+  },
+  "components/AdminSidebar.tsx": { "hooks/queries/admin/system.ts": "adapters/adminBuildInfo.ts" },
+  // Silo's all-libraries switch gets an accessible name naming the scope.
+  "components/LibraryAccessSelector.tsx": {
+    "components/ui/switch.tsx": "adapters/LibraryAccessSwitch.tsx",
+  },
+  // The account library card counts Bloem's Live TV permission as a changed
+  // row, and the card names that row through Bloem's catalog.
+  "pages/admin-users/detail/access/LibraryAccessCard.tsx": {
+    "pages/admin-users/detail/access/useAccountCardDraft.ts": "adapters/libraryCardDraft.ts",
+  },
+  "pages/admin-users/detail/access/EditableCard.tsx": {
+    "i18n/index.ts": "adapters/i18nWithBloem.ts",
+  },
+  // Access groups list Bloem's Live TV permission with Silo's.
+  "pages/AdminAccessGroups.tsx": { "i18n/index.ts": "adapters/i18nWithBloem.ts" },
+  // Bloem's admin pages have Bloem titles.
+  "lib/documentTitle.ts": { "i18n/index.ts": "adapters/i18nWithBloem.ts" },
 };
 export function bloemPreview(): Plugin {
   let src = "";
@@ -48,6 +77,9 @@ export function bloemPreview(): Plugin {
     },
     async resolveId(source, importer, options) {
       if (!importer || source.startsWith("\0") || source.includes("node_modules")) return null;
+      const from = path.relative(src, importer.split("?")[0] ?? importer).replaceAll("\\", "/");
+      const packageAdapter = importerModules[from]?.[`npm:${source}`];
+      if (packageAdapter) return path.join(src, "bloem/preview", packageAdapter);
       if (!source.startsWith(".") && !source.startsWith("@/") && !source.startsWith(src))
         return null;
       const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
@@ -55,7 +87,6 @@ export function bloemPreview(): Plugin {
       const target = path
         .relative(src, resolved.id.split("?")[0] ?? resolved.id)
         .replaceAll("\\", "/");
-      const from = path.relative(src, importer.split("?")[0] ?? importer).replaceAll("\\", "/");
       const adapter = importerModules[from]?.[target] ?? modules[target];
       if (!adapter) return null;
       const id = path.join(src, "bloem/preview", adapter);
