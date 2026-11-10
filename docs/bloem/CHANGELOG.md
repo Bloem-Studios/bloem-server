@@ -3,6 +3,21 @@
 This records Bloem's integration milestones. Silo's image build numbers and
 upstream feature history remain separate from Bloem's application commits.
 
+## November 10, 2026 — profile passwords follow the password sign-in policy
+
+A profile's own password (`POST /api/v1/auth/profile-login`) now follows the server's
+password sign-in policy like an account password. It is refused while password sign-in
+is off for the server (`403 local_login_disabled`), while a network provider refuses
+the account's person (`403 not_permitted`), and as invalid credentials while the
+account's own password sign-in is off, which linking an OIDC or LDAP identity does.
+Refresh ends a profile session in the last two cases. Profile sign-in had no endpoint
+rate limit, because its budget names were not defined: it now spends the `login`
+budget, and setting or clearing a profile credential spends `password_change`
+([household profile credentials](overlays/auth-api.md#bloem-household-profile-credentials)).
+The first deploy of `4d500e8ac` rolled back on two unrelated error lines, a box set
+search whose client went away (`catalog: box set read failed … context canceled`), which
+the live build logs too.
+
 ## November 10, 2026 — search can drop the most common words first
 
 Meilisearch's `last` matching drops words from the end of a search until something
