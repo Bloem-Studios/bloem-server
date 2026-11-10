@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { setAccessToken } from "@/api/client";
 import { v2 } from "@/api/v2/request";
 import { userFromAccount } from "@/api/v2/account";
+import { useBloemT } from "@/bloem/i18n";
 import { exchangePreviewTicket, type GuestExchange } from "./api";
 import {
   guestRefreshToken,
@@ -29,6 +30,7 @@ function captureLaunch() {
   return flight;
 }
 export default function PreviewStart() {
+  const bt = useBloemT();
   const { completeLogin, loading, user } = useAuth();
   const navigate = useNavigate();
   const [launch] = useState(captureLaunch);
@@ -74,7 +76,7 @@ export default function PreviewStart() {
   if (failed || (!loading && !launch && !(user && guestRefreshToken()))) return <PreviewLanding />;
   return (
     <main role="status" className="p-8">
-      Opening your library preview…
+      {bt("bloem.preview.start.opening")}
     </main>
   );
 }

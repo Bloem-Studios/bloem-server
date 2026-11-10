@@ -1,4 +1,5 @@
 import { adminV2Api, type AdminRequestContext } from "@/api/adminV2Client";
+import { bloemT } from "@/bloem/i18n";
 import type { CreateLibraryRequest, Library } from "@/api/types";
 import type {
   LocationCapabilities,
@@ -27,7 +28,7 @@ export function locationApi(scope: "platform" | "organization", context: AdminRe
         sources.push(...page.sources);
         after = page.next_after;
         if (after && seen.has(after))
-          throw new Error("Source pagination did not advance. Reload sources.");
+          throw new Error(bloemT("bloem.admin.libraries.locations.errors.paginationStuck"));
         if (after) seen.add(after);
       } while (after);
       return sources;

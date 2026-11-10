@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- Preserve the original module exports at this adapter boundary. */
 import type { ComponentProps, ReactNode } from "react";
 import Original from "../../../pages/ItemDetail/components/ActionBar";
+import { useBloemT } from "@/bloem/i18n";
 import { usePreviewMode } from "../usePreviewMode";
 import { itemCtaLabel } from "../wording";
 import type { FileVersion } from "@/api/types";
@@ -22,41 +23,42 @@ function TechnicalMetadata({
   versions: FileVersion[];
   selected?: FileVersion | null;
 }) {
+  const bt = useBloemT();
   const version = selected ?? versions[0];
   return (
     <div className="flex flex-wrap gap-2">
       {versions.length > 0 && (
-        <MetadataPopover label="Version">
+        <MetadataPopover label={bt("bloem.preview.metadata.version")}>
           <ul className="space-y-2">
             {versions.map((value, index) => (
               <li key={value.file_id ?? index}>
                 {[value.resolution, value.codec_video, value.hdr ? "HDR" : "", value.container]
                   .filter(Boolean)
-                  .join(" · ") || `Version ${index + 1}`}
+                  .join(" · ") || bt("bloem.preview.metadata.versionNumber", { number: index + 1 })}
               </li>
             ))}
           </ul>
         </MetadataPopover>
       )}
       {Boolean(version?.audio_tracks?.length) && (
-        <MetadataPopover label="Audio">
+        <MetadataPopover label={bt("bloem.preview.metadata.audio")}>
           <ul className="space-y-2">
             {version?.audio_tracks?.map((track, index) => (
               <li key={index}>
                 {[track.language, track.codec, track.title].filter(Boolean).join(" · ") ||
-                  `Audio ${index + 1}`}
+                  bt("bloem.preview.metadata.audioNumber", { number: index + 1 })}
               </li>
             ))}
           </ul>
         </MetadataPopover>
       )}
       {Boolean(version?.subtitle_tracks?.length) && (
-        <MetadataPopover label="Subtitles">
+        <MetadataPopover label={bt("bloem.preview.metadata.subtitles")}>
           <ul className="space-y-2">
             {version?.subtitle_tracks?.map((track, index) => (
               <li key={index}>
                 {[track.language, track.title].filter(Boolean).join(" · ") ||
-                  `Subtitle ${index + 1}`}
+                  bt("bloem.preview.metadata.subtitleNumber", { number: index + 1 })}
               </li>
             ))}
           </ul>
@@ -66,8 +68,12 @@ function TechnicalMetadata({
   );
 }
 export default function ActionBar(props: ComponentProps<typeof Original>) {
+  return usePreviewMode().active ? <PreviewActionBar {...props} /> : <Original {...props} />;
+}
+function PreviewActionBar(props: ComponentProps<typeof Original>) {
+  // The subscribe label comes from plain code; this re-renders it on a language change.
+  useBloemT();
   const mode = usePreviewMode();
-  if (!mode.active) return <Original {...props} />;
   return (
     <div className="space-y-3">
       <Original

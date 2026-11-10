@@ -1,5 +1,6 @@
 import { getAccessToken } from "@/api/client";
 import { API_READ_TIMEOUT_MS, startRequestDeadline } from "@/api/requestDeadline";
+import { bloemT } from "@/bloem/i18n";
 import { guestRefreshToken, setGuestHost, setPreviewDiscoveryPending } from "./session";
 
 export interface PreviewStatus {
@@ -21,7 +22,7 @@ export interface GuestExchange {
 async function publicRequest<T>(path: string, body?: unknown): Promise<T> {
   const deadline = startRequestDeadline(
     API_READ_TIMEOUT_MS,
-    () => new Error("Preview request timed out"),
+    () => new Error(bloemT("bloem.preview.errors.requestTimedOut")),
   );
   try {
     const response = await fetch(`/api/bloem/v1/preview/${path}`, {
@@ -34,7 +35,7 @@ async function publicRequest<T>(path: string, body?: unknown): Promise<T> {
       signal: deadline.signal,
       cache: "no-store",
     });
-    if (!response.ok) throw new Error("The preview could not start. Please use a new launch link.");
+    if (!response.ok) throw new Error(bloemT("bloem.preview.errors.couldNotStart"));
     return (await response.json()) as T;
   } finally {
     deadline.dispose();
@@ -61,7 +62,7 @@ export async function discoverPreviewHost() {
 export async function exchangePreviewTicket(ticket: string) {
   const status = await discoverPreviewHost();
   if (!status || typeof status.brand !== "string" || !status.enabled)
-    throw new Error("Use the storefront's preview launch link.");
+    throw new Error(bloemT("bloem.preview.errors.useStorefrontLink"));
   return publicRequest<GuestExchange>("sessions", {
     ticket,
     ...(guestRefreshToken() ? { refresh_token: guestRefreshToken() } : {}),

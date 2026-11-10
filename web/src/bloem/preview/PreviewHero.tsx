@@ -1,7 +1,9 @@
 import { useEffect, useState, type ComponentProps } from "react";
 import { Link } from "react-router";
 import type Original from "../../components/HeroBanner";
+import { useBloemT } from "@/bloem/i18n";
 import { Button } from "@/components/ui/button";
+import { numberText } from "@/i18n";
 import { usePreviewMode } from "./usePreviewMode";
 import { itemCtaLabel } from "./wording";
 export default function PreviewHero({
@@ -11,6 +13,7 @@ export default function PreviewHero({
   libraryId,
   reserveHeaderSpace,
 }: ComponentProps<typeof Original>) {
+  const bt = useBloemT();
   const { presentation, requestSubscription } = usePreviewMode();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -25,7 +28,7 @@ export default function PreviewHero({
   if (!item) return null;
   return (
     <section
-      aria-label="Featured titles"
+      aria-label={bt("bloem.preview.hero.featuredTitles")}
       className={`relative flex min-h-96 items-end overflow-hidden ${heightClassName ?? ""}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -59,19 +62,21 @@ export default function PreviewHero({
             <Link
               to={`/item/${encodeURIComponent(item.content_id)}${libraryId ? `?libraryId=${libraryId}` : ""}`}
             >
-              Details
+              {bt("bloem.preview.details")}
             </Link>
           </Button>
         </div>
         {count > 1 && (
           <div className="mt-6 flex flex-wrap gap-2">
             <Button variant="ghost" size="sm" onClick={() => setPaused((value) => !value)}>
-              {paused ? "Resume slideshow" : "Pause slideshow"}
+              {paused
+                ? bt("bloem.preview.hero.resumeSlideshow")
+                : bt("bloem.preview.hero.pauseSlideshow")}
             </Button>
             {items.slice(0, count).map((slide, position) => (
               <button
                 key={slide.content_id}
-                aria-label={`Show ${slide.title}`}
+                aria-label={bt("bloem.preview.hero.showSlide", { title: slide.title })}
                 aria-pressed={position === index}
                 className="bg-muted rounded-full px-2 text-xs"
                 onClick={() => {
@@ -79,7 +84,7 @@ export default function PreviewHero({
                   setPaused(true);
                 }}
               >
-                {position + 1}
+                {numberText(position + 1)}
               </button>
             ))}
           </div>

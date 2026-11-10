@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBloemT } from "@/bloem/i18n";
 import FolderBrowser from "@/components/FolderBrowser";
 import PathAutocompleteInput from "@/components/PathAutocompleteInput";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import type { LibraryFormController } from "@/components/admin/libraries/useLibr
 import { supportsSource } from "./types";
 import { StorageFolderBrowser } from "./StorageFolderBrowser";
 export function LibraryLocationsEditor({ form }: { form: LibraryFormController }) {
+  const bt = useBloemT();
   const locations = form.locations;
   const [filesystemOpen, setFilesystemOpen] = useState(false);
   const [sourceKey, setSourceKey] = useState("");
@@ -35,10 +37,10 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
   const source = usable.find((s) => s.source_key === sourceKey);
   const invalid = locations.shapeError(form.paths);
   return (
-    <div className="space-y-3" aria-label="Library locations">
+    <div className="space-y-3" aria-label={bt("bloem.admin.libraries.locations.label")}>
       {locations.loading && (
         <p role="status" className="text-muted-foreground text-sm">
-          Loading locations…
+          {bt("bloem.admin.libraries.locations.loading")}
         </p>
       )}
       {locations.error && (
@@ -59,7 +61,7 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
             disabled={locations.pending}
             onClick={() => void locations.reload()}
           >
-            Reload locations
+            {bt("bloem.admin.libraries.locations.reload")}
           </Button>
         )}
       <fieldset disabled={!locations.ready || locations.pending} className="min-w-0 space-y-3">
@@ -68,17 +70,19 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
             <PathAutocompleteInput
               value={path}
               onValueChange={(value) => form.updatePath(i, value)}
-              placeholder="Filesystem folder"
+              placeholder={bt("bloem.admin.libraries.locations.filesystemFolder")}
               disabled={!canFilesystem}
             />
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              aria-label={`Remove filesystem folder ${i + 1}`}
+              aria-label={bt("bloem.admin.libraries.locations.removeFilesystemFolder", {
+                number: i + 1,
+              })}
               onClick={() => form.removePath(i)}
             >
-              Remove
+              {bt("bloem.admin.libraries.locations.remove")}
             </Button>
           </div>
         ))}
@@ -92,13 +96,17 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
               <div className="min-w-0 flex-1">
                 <p className="truncate">{locationRootName(root, savedSource)}</p>
                 <p className="text-muted-foreground truncate text-xs">
-                  {savedSource ? storageSourceLabel(savedSource) : "Storage source"} ·{" "}
-                  {root.logical_path}
+                  {bt("bloem.admin.libraries.locations.sourceAndPath", {
+                    source: savedSource
+                      ? storageSourceLabel(savedSource)
+                      : bt("bloem.admin.libraries.locations.storageSource"),
+                    path: root.logical_path,
+                  })}
                 </p>
                 {(!root.selection_ref ||
                   (savedSource && (!savedSource.enabled || !savedSource.configured))) && (
                   <p className="text-warning text-xs">
-                    Unavailable — remove this folder or reload when its source is available.
+                    {bt("bloem.admin.libraries.locations.unavailable")}
                   </p>
                 )}
               </div>
@@ -106,10 +114,14 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
                 type="button"
                 variant="ghost"
                 size="sm"
-                aria-label={`Remove ${root.name || "root"}`}
+                aria-label={
+                  root.name
+                    ? bt("bloem.admin.libraries.locations.removeNamed", { name: root.name })
+                    : bt("bloem.admin.libraries.locations.removeRoot")
+                }
                 onClick={() => locations.removeSelection(i)}
               >
-                Remove
+                {bt("bloem.admin.libraries.locations.remove")}
               </Button>
             </div>
           );
@@ -123,18 +135,21 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
               size="sm"
               onClick={() => setFilesystemOpen(true)}
             >
-              Browse folders
+              {bt("bloem.admin.libraries.locations.browseFolders")}
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={form.addPath}>
-              Add Path
+              {bt("bloem.admin.libraries.locations.addPath")}
             </Button>
           </div>
         )}
         {usable.length > 0 && (
           <div className="flex flex-col gap-2 sm:flex-row">
             <Select value={sourceKey} onValueChange={setSourceKey}>
-              <SelectTrigger aria-label="Choose a storage source" className="min-w-0 flex-1">
-                <SelectValue placeholder="Choose a storage source" />
+              <SelectTrigger
+                aria-label={bt("bloem.admin.libraries.locations.chooseSource")}
+                className="min-w-0 flex-1"
+              >
+                <SelectValue placeholder={bt("bloem.admin.libraries.locations.chooseSource")} />
               </SelectTrigger>
               <SelectContent>
                 {usable.map((s) => (
@@ -151,13 +166,13 @@ export function LibraryLocationsEditor({ form }: { form: LibraryFormController }
               disabled={!source}
               onClick={() => setStorageOpen(true)}
             >
-              Browse source folders
+              {bt("bloem.admin.libraries.locations.browseSourceFolders")}
             </Button>
           </div>
         )}
         {!mixing && (
           <p className="text-muted-foreground text-xs">
-            This server supports filesystem folders or one storage source per library.
+            {bt("bloem.admin.libraries.locations.oneSourcePerLibrary")}
           </p>
         )}
       </fieldset>

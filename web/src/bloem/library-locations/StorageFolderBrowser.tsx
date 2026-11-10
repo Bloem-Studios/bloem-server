@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { bloemT, useBloemT } from "@/bloem/i18n";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,15 +19,21 @@ interface Props {
   source: StorageSource;
   onSelect: (roots: RootSelection[]) => void;
 }
+/** A folder's name in the browser; the root of a source without one is "Root". */
+function folderName(dir: StorageDirectory): string {
+  return dir.name || bloemT("bloem.admin.libraries.locations.browser.root");
+}
 /** The bucket a folder of an all-buckets source is in: the first part of its path. */
 function bucketOf(dir: StorageDirectory): string {
   return dir.logical_path.split("/")[0] ?? "";
 }
 
 export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect }: Props) {
+  const bt = useBloemT();
   // An all-buckets source lists its buckets as the root's folders.
   const allBuckets = isAllBucketsSource(source);
-  const rootName = (dir: StorageDirectory) => (allBuckets ? "All buckets" : dir.name || "Root");
+  const rootName = (dir: StorageDirectory) =>
+    allBuckets ? bt("bloem.admin.libraries.locations.browser.allBuckets") : folderName(dir);
   const [page, setPage] = useState<StoragePage | null>(null);
   const [selected, setSelected] = useState<StorageDirectory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -56,7 +63,11 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
         }));
       } catch (e) {
         if (request === sequence.current && !controller.signal.aborted)
-          setError(e instanceof Error ? e.message : "Could not browse this source.");
+          setError(
+            e instanceof Error
+              ? e.message
+              : bloemT("bloem.admin.libraries.locations.browser.couldNotBrowse"),
+          );
       } finally {
         if (request === sequence.current && !controller.signal.aborted) setLoading(false);
       }
@@ -85,7 +96,10 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
       directories.map((dir) => ({
         ...dir,
         // The root of an all-buckets source is every bucket, not the source's id.
-        name: allBuckets && dir.logical_path === "" ? "All buckets" : dir.name,
+        name:
+          allBuckets && dir.logical_path === ""
+            ? bt("bloem.admin.libraries.locations.browser.allBuckets")
+            : dir.name,
         source_key: source.source_key,
         configuration_revision: source.configuration_revision,
       })),
@@ -108,19 +122,25 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
     >
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Browse {storageSourceLabel(source)}</DialogTitle>
+          <DialogTitle>
+            {bt("bloem.admin.libraries.locations.browser.title", {
+              source: storageSourceLabel(source),
+            })}
+          </DialogTitle>
           <DialogDescription>
             {allBuckets
-              ? "Each bucket is a folder. Tick whole buckets or folders inside them, in as many buckets as you like."
-              : "Choose folders for this library."}
+              ? bt("bloem.admin.libraries.locations.browser.bucketsDescription")
+              : bt("bloem.admin.libraries.locations.browser.description")}
           </DialogDescription>
           <p className="text-muted-foreground text-xs">
-            Pick the folders that hold this library&apos;s titles. One folder per movie or show
-            works best.
+            {bt("bloem.admin.libraries.locations.browser.hint")}
           </p>
         </DialogHeader>
         <div className="space-y-3">
-          <nav aria-label="Storage folder breadcrumbs" className="flex flex-wrap gap-1">
+          <nav
+            aria-label={bt("bloem.admin.libraries.locations.browser.breadcrumbs")}
+            className="flex flex-wrap gap-1"
+          >
             {page?.breadcrumbs.map((dir, i) => (
               <Button
                 type="button"
@@ -130,12 +150,12 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
                 disabled={loading}
                 onClick={() => void load(dir.selection_ref)}
               >
-                {i === 0 ? rootName(dir) : dir.name || "Root"}
+                {i === 0 ? rootName(dir) : folderName(dir)}
               </Button>
             ))}
             {page && (
               <span aria-current="page" className="px-3 py-2 text-sm font-medium">
-                {atRoot ? rootName(page.current) : page.current.name || "Root"}
+                {atRoot ? rootName(page.current) : folderName(page.current)}
               </span>
             )}
           </nav>
@@ -149,7 +169,7 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
                 void load(page!.breadcrumbs[page!.breadcrumbs.length - 1]!.selection_ref)
               }
             >
-              Up
+              {bt("bloem.admin.libraries.locations.browser.up")}
             </Button>
             <Button
               type="button"
@@ -158,7 +178,7 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
               disabled={loading}
               onClick={() => void load(page?.current.selection_ref)}
             >
-              Refresh
+              {bt("bloem.admin.libraries.locations.browser.refresh")}
             </Button>
           </div>
           {error && (
@@ -172,7 +192,7 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
                   void load(retry.current.ref, retry.current.cursor, retry.current.append)
                 }
               >
-                Retry
+                {bt("bloem.admin.libraries.locations.browser.retry")}
               </Button>
             </div>
           )}
@@ -187,7 +207,9 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
               >
                 <input
                   type="checkbox"
-                  aria-label={`Select ${dir.name}`}
+                  aria-label={bt("bloem.admin.libraries.locations.browser.select", {
+                    name: dir.name,
+                  })}
                   checked={selected.some((d) => d.selection_ref === dir.selection_ref)}
                   disabled={loading}
                   onChange={() => toggle(dir)}
@@ -205,16 +227,18 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
             ))}
             {loading && (
               <p role="status" className="text-muted-foreground p-3 text-sm">
-                Loading folders…
+                {bt("bloem.admin.libraries.locations.browser.loading")}
               </p>
             )}
             {page && !loading && !page.directories.length && !page.next_cursor && (
               <p className="text-muted-foreground p-3 text-sm">
                 {allBuckets && atRoot
-                  ? "These keys can't see any buckets yet."
+                  ? bt("bloem.admin.libraries.locations.browser.noBuckets")
                   : source.connection_summary?.prefix && !page.breadcrumbs.length
-                    ? `This source starts at ${source.connection_summary.prefix} and has no subfolders. Use the current folder, or edit the source's prefix.`
-                    : "No subfolders. You can use the current folder."}
+                    ? bt("bloem.admin.libraries.locations.browser.emptyPrefix", {
+                        prefix: source.connection_summary.prefix,
+                      })
+                    : bt("bloem.admin.libraries.locations.browser.noSubfolders")}
               </p>
             )}
           </div>
@@ -225,17 +249,20 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
               disabled={loading}
               onClick={() => void load(page.current.selection_ref, page.next_cursor, true)}
             >
-              Load more folders
+              {bt("bloem.admin.libraries.locations.browser.loadMore")}
             </Button>
           )}
           {selected.length > 0 && (
             <div className="space-y-1">
               <p role="status" className="text-muted-foreground text-sm">
                 {allBuckets
-                  ? `${selected.length} folder${selected.length === 1 ? "" : "s"} in ${
-                      new Set(selected.map(bucketOf)).size
-                    } bucket${new Set(selected.map(bucketOf)).size === 1 ? "" : "s"}`
-                  : `${selected.length} folder${selected.length === 1 ? "" : "s"} selected`}
+                  ? bt("bloem.admin.libraries.locations.browser.selectedInBuckets", {
+                      folders: selected.length,
+                      buckets: new Set(selected.map(bucketOf)).size,
+                    })
+                  : bt("bloem.admin.libraries.locations.browser.selectedCount", {
+                      count: selected.length,
+                    })}
               </p>
               <ul className="space-y-0.5 text-xs">
                 {selected.map((dir) => (
@@ -245,10 +272,12 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
                       type="button"
                       variant="ghost"
                       size="xs"
-                      aria-label={`Remove ${dir.logical_path || dir.name}`}
+                      aria-label={bt("bloem.admin.libraries.locations.removeNamed", {
+                        name: dir.logical_path || dir.name,
+                      })}
                       onClick={() => toggle(dir)}
                     >
-                      Remove
+                      {bt("bloem.admin.libraries.locations.remove")}
                     </Button>
                   </li>
                 ))}
@@ -257,14 +286,13 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
           )}
           {allBuckets && atRoot && selected.length === 0 && (
             <p className="text-muted-foreground text-xs">
-              Every bucket these keys can see, including buckets added later, becomes part of this
-              library.
+              {bt("bloem.admin.libraries.locations.browser.allBucketsNote")}
             </p>
           )}
         </div>
         <DialogFooter className="flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={close}>
-            Cancel
+            {bt("bloem.admin.libraries.locations.browser.cancel")}
           </Button>
           {selected.length === 0 && (
             <Button
@@ -273,7 +301,9 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
               disabled={loading || !page || !!error}
               onClick={() => page && commit([page.current])}
             >
-              {allBuckets && atRoot ? "Use all buckets" : "Use Current Folder"}
+              {allBuckets && atRoot
+                ? bt("bloem.admin.libraries.locations.browser.useAllBuckets")
+                : bt("bloem.admin.libraries.locations.browser.useCurrentFolder")}
             </Button>
           )}
           <Button
@@ -281,7 +311,7 @@ export function StorageFolderBrowser({ open, onOpenChange, api, source, onSelect
             disabled={loading || !selected.length || !!error}
             onClick={() => commit(selected)}
           >
-            Add selected folders
+            {bt("bloem.admin.libraries.locations.browser.addSelected")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -4,6 +4,7 @@ import { adminV2QueryKey } from "@/api/adminV2Client";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AdminV2ClientError, captureAdminRequestContext } from "@/api/adminV2Client";
 import type { CreateLibraryRequest, Library } from "@/api/types";
+import { bloemT } from "@/bloem/i18n";
 import { useOptionalAdminContext } from "@/contexts/AdminContextProvider";
 import { locationApi } from "./api";
 import {
@@ -101,7 +102,11 @@ export function useLibraryLocations(
           await sourceLoad;
         } catch (e) {
           if (request === epoch.current && !abort.signal.aborted) {
-            setError(e instanceof Error ? e.message : "Could not load locations.");
+            setError(
+              e instanceof Error
+                ? e.message
+                : bloemT("bloem.admin.libraries.locations.errors.couldNotLoad"),
+            );
             setLoaded(true);
           }
         }
@@ -139,9 +144,9 @@ export function useLibraryLocations(
         ...selections.map((s) => s.source_key),
       ]);
       if (keys.size > 1 || (paths.some((p) => p.trim()) && keys.size > 0))
-        return "This server supports filesystem folders or one storage source per library. Mixed locations are not ready.";
+        return bloemT("bloem.admin.libraries.locations.errors.mixedNotReady");
       if (id && original?.paths.length && selections.length)
-        return "This library keeps its filesystem locations until mixed locations are ready.";
+        return bloemT("bloem.admin.libraries.locations.errors.keepsFilesystem");
     }
     if (
       selections.some(
@@ -153,7 +158,7 @@ export function useLibraryLocations(
           ),
       )
     )
-      return "A selected source does not support this library type. Remove it or change the type.";
+      return bloemT("bloem.admin.libraries.locations.errors.unsupportedType");
     return "";
   }
   async function save(
@@ -183,7 +188,7 @@ export function useLibraryLocations(
           throw new AdminV2ClientError(
             409,
             "revision_conflict",
-            "Locations changed. Reload before saving.",
+            bloemT("bloem.admin.libraries.locations.errors.locationsChanged"),
           );
       }
       const refreshed: RootSelection[] = [];
@@ -200,12 +205,10 @@ export function useLibraryLocations(
             throw new AdminV2ClientError(
               409,
               "revision_conflict",
-              "Source configuration changed. Reload locations before saving.",
+              bloemT("bloem.admin.libraries.locations.errors.sourceChanged"),
             );
           if (matches.length !== 1 || !matches[0]!.selection_ref)
-            throw new Error(
-              "A retained folder is unavailable. Remove it or reload when its source is available.",
-            );
+            throw new Error(bloemT("bloem.admin.libraries.locations.errors.retainedUnavailable"));
           refreshed.push(matches[0]!);
         } else {
           const page = await api.browse(root.source_key, root.selection_ref);
@@ -235,7 +238,11 @@ export function useLibraryLocations(
       return value;
     } catch (e) {
       if (isCurrent() && request === epoch.current) {
-        setError(e instanceof Error ? e.message : "Save failed.");
+        setError(
+          e instanceof Error
+            ? e.message
+            : bloemT("bloem.admin.libraries.locations.errors.saveFailed"),
+        );
         if (
           !savedID &&
           writeStarted &&
@@ -264,7 +271,7 @@ export function useLibraryLocations(
     ready,
     pending,
     error: uncertainCreate
-      ? "Creation outcome is unknown. Close this form and check the library list before creating another library."
+      ? bloemT("bloem.admin.libraries.locations.errors.creationUnknown")
       : error,
     uncertainCreate,
     conflict,

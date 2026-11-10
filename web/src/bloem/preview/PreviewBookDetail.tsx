@@ -6,6 +6,7 @@ import PageBack from "@/components/PageBack";
 import MetadataBadges from "@/pages/ItemDetail/components/MetadataBadges";
 import ScoreRow from "@/pages/ItemDetail/components/ScoreRow";
 import { RelatedRail } from "@/pages/audiobooks/components/RelatedRail";
+import { useBloemT } from "@/bloem/i18n";
 import { usePreviewMode } from "./usePreviewMode";
 import { itemCtaLabel } from "./wording";
 export default function PreviewBookDetail({
@@ -17,6 +18,7 @@ export default function PreviewBookDetail({
   libraryId?: number;
   showAdvisoryAge?: boolean;
 }) {
+  const bt = useBloemT();
   const mode = usePreviewMode();
   const audio = item.type === "audiobook";
   const authors = (audio ? item.audiobook?.authors : item.ebook?.authors) ?? [];
@@ -24,7 +26,11 @@ export default function PreviewBookDetail({
   const chapters = audio
     ? (item.versions ?? []).flatMap((version) => version.chapters ?? [])
     : (item.manga?.chapters ?? []);
-  const context = audio ? "Audiobook" : item.type === "manga" ? "Manga" : "Ebook";
+  const context = audio
+    ? bt("bloem.preview.book.audiobook")
+    : item.type === "manga"
+      ? bt("bloem.preview.book.manga")
+      : bt("bloem.preview.book.ebook");
   return (
     <div>
       <DetailHero
@@ -49,7 +55,11 @@ export default function PreviewBookDetail({
         overview={item.overview}
         genres={item.genres}
         crewLine={
-          authors.length ? `By ${authors.map((author) => author.name).join(", ")}` : undefined
+          authors.length
+            ? bt("bloem.preview.book.byAuthors", {
+                authors: authors.map((author) => author.name).join(", "),
+              })
+            : undefined
         }
         genreHref={(genre) => {
           const params = new URLSearchParams({ genre });
@@ -70,11 +80,11 @@ export default function PreviewBookDetail({
       <div className="page-shell detail-supporting-content space-y-10 py-10">
         {chapters.length > 0 && (
           <section>
-            <h2 className="mb-4 text-xl font-semibold">Chapters</h2>
+            <h2 className="mb-4 text-xl font-semibold">{bt("bloem.preview.book.chapters")}</h2>
             <ul className="divide-y">
               {chapters.map((chapter, index) => (
                 <li key={index} className="py-3">
-                  {chapter.title || `Chapter ${index + 1}`}
+                  {chapter.title || bt("bloem.preview.book.chapterNumber", { number: index + 1 })}
                 </li>
               ))}
             </ul>
@@ -82,8 +92,14 @@ export default function PreviewBookDetail({
         )}
         {related && (
           <>
-            <RelatedRail heading="Also by this author" items={related.also_by_author ?? []} />
-            <RelatedRail heading="You might also like" items={related.similar ?? []} />
+            <RelatedRail
+              heading={bt("bloem.preview.book.alsoByThisAuthor")}
+              items={related.also_by_author ?? []}
+            />
+            <RelatedRail
+              heading={bt("bloem.preview.book.youMightAlsoLike")}
+              items={related.similar ?? []}
+            />
           </>
         )}
         {item.ebook?.series && (
