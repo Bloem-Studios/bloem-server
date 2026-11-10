@@ -1,5 +1,5 @@
 // Bloem administrative-context shell components mounted by the Silo-owned App.tsx.
-import { useBloemAdminMessages } from "@/bloem/i18n";
+import { useBloemAdminMessages, useBloemT } from "@/bloem/i18n";
 import type { ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,11 +25,12 @@ function AdminContextRoot({ children }: { children: ReactNode }) {
 }
 
 function RequireAdminContext({ children }: { children: ReactNode }) {
+  const bt = useBloemT();
   const { active, available, switching } = useAdminContext();
   if (switching && !active) {
     return (
       <div className="p-8" role="status" aria-live="polite">
-        Loading administrative context…
+        {bt("bloem.adminShell.loadingContext")}
       </div>
     );
   }
@@ -53,15 +54,14 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
 }
 
 export function AdminContextSelection() {
+  const bt = useBloemT();
   const { failure } = useAdminContext();
   return (
     <section className="admin-page max-w-2xl">
       <h1 className="page-title text-[clamp(2rem,4vw,3rem)]" tabIndex={-1}>
-        Choose administrative context
+        {bt("bloem.adminShell.chooseContext.title")}
       </h1>
-      <p className="text-muted-foreground mt-3">
-        Select Platform or an organization from the context control in the navigation.
-      </p>
+      <p className="text-muted-foreground mt-3">{bt("bloem.adminShell.chooseContext.body")}</p>
       {failure ? (
         <p
           className="border-destructive/30 bg-destructive/10 text-destructive mt-6 rounded-xl border p-4 text-sm"

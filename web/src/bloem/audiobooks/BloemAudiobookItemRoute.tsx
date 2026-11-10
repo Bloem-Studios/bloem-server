@@ -8,6 +8,8 @@ import { parseOptionalLibraryId } from "@/components/sidebarItemNavigation";
 import { useSidebarItemDetailsReady } from "@/components/sidebarItemNavigationContext";
 import { useCatalogItemDetail } from "@/hooks/queries/catalogRead";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useT } from "@/i18n";
+import { useBloemT } from "@/bloem/i18n";
 import AudiobookContent from "@/pages/ItemDetail/AudiobookContent";
 import ItemDetailSkeleton from "@/pages/ItemDetail/ItemDetailSkeleton";
 import { useThemeMusic } from "@/pages/ItemDetail/useThemeMusic";
@@ -57,18 +59,25 @@ function PresentationItemDetail({
   libraryId?: number;
   error: unknown;
 }) {
+  const t = useT();
   useDocumentTitle(item.title);
   useThemeMusic(item, false);
   useEffect(() => {
     // Matches ItemDetail: a failed refetch keeps the cached page and says so.
     if (error && !isNotFoundProblem(error)) {
-      toast.error(error instanceof Error ? error.message : "Failed to load item");
+      toast.error(error instanceof Error ? error.message : t("web.detail.page.loadFailedToast"));
     }
-  }, [error]);
+  }, [error, t]);
 
   const { presentations, chosen, choose, nativeAvailable, pending } =
     useAudiobookPresentationChoice(item);
-  const view = useMemo(() => itemForPresentation(item, chosen), [chosen, item]);
+  // Changes with the language and as Bloem's messages load.
+  const bt = useBloemT();
+  const view = useMemo(
+    () => itemForPresentation(item, chosen),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a part without chapters gets a translated "Part N" title
+    [chosen, item, bt],
+  );
 
   if (pending) {
     return <ItemDetailSkeleton />;

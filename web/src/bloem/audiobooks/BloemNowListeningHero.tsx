@@ -2,6 +2,7 @@ import { useMemo, type MouseEvent } from "react";
 import { Link } from "react-router";
 import { Info, Pause, Play } from "lucide-react";
 import type { ItemDetail, ResolvedSection } from "@/api/types";
+import { useBloemT } from "@/bloem/i18n";
 import ContinueWatchingCard from "@/components/ContinueWatchingCard";
 import MediaCarousel from "@/components/MediaCarousel";
 import NowListeningHero from "@/components/NowListeningHero";
@@ -9,10 +10,12 @@ import ViewTransitionLink from "@/components/ViewTransitionLink";
 import { useCatalogItemDetail } from "@/hooks/queries/catalogRead";
 import { useAmbientColor } from "@/hooks/useAmbientColor";
 import { useOverlayPrefs } from "@/hooks/useOverlayPrefs";
+import { useT } from "@/i18n";
 import { buildChapterList, findChapterAt, totalAudiobookDuration } from "@/lib/audiobooks/chapters";
 import { formatHoursMinutes, formatListeningTimeLeft } from "@/lib/audiobooks/duration";
 import { audiobookFilesFromVersions } from "@/lib/audiobooks/files";
 import { buildItemHref, buildMediaPlayHref } from "@/lib/mediaNavigation";
+import { useSectionTitle } from "@/lib/sectionTitle";
 import { decodeThumbhash } from "@/lib/thumbhash";
 import { useAudiobookPlaybackController } from "@/pages/audiobooks/player/audiobookPlaybackContext";
 import {
@@ -67,18 +70,29 @@ function PresentationNowListeningHero({
   libraryId,
   detail: fullDetail,
 }: BloemNowListeningHeroProps & { detail: ItemDetail }) {
+  // Silo's hero's own messages, so the two stay identical in every language.
+  const t = useT();
   const deck = section.items[0]!;
   const rest = section.items.slice(1);
   const { prefs: overlayPrefs, quickActionMode } = useOverlayPrefs();
+  const sectionTitle = useSectionTitle();
   const audiobookPlayback = useAudiobookPlaybackController();
   const { chosen } = useAudiobookPresentationChoice(fullDetail);
+  // Changes with the language and as Bloem's messages load.
+  const bt = useBloemT();
   // Until a recording is chosen the view has no tracks, so Resume falls
   // through to the item page, which decides once the capability answers.
-  const detail = useMemo(() => itemForPresentation(fullDetail, chosen), [chosen, fullDetail]);
+  const detail = useMemo(
+    () => itemForPresentation(fullDetail, chosen),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a part without chapters gets a translated "Part N" title
+    [chosen, fullDetail, bt],
+  );
   useAmbientColor(deck.poster_thumbhash);
 
   const files = useMemo(() => audiobookFilesFromVersions(detail.versions), [detail]);
-  const chapters = useMemo(() => buildChapterList(files), [files]);
+  // Built on each render so the fallback "Chapter N" labels it shows follow
+  // the interface language.
+  const chapters = buildChapterList(files);
 
   const detailProgress =
     detail.user_data && "position_seconds" in detail.user_data ? detail.user_data : undefined;
@@ -99,12 +113,19 @@ function PresentationNowListeningHero({
   const progressPercent =
     durationSeconds > 0 ? Math.min((positionSeconds / durationSeconds) * 100, 100) : 0;
   const timeLeft = formatListeningTimeLeft(positionSeconds, durationSeconds);
-  const chapterLine = chapter
-    ? `Chapter ${chapter.index} of ${chapters.length}` +
-      (chapter.label && chapter.label !== `Chapter ${chapter.index}` ? ` · ${chapter.label}` : "")
-    : durationSeconds > 0
-      ? formatHoursMinutes(durationSeconds)
-      : "";
+  let chapterLine = durationSeconds > 0 ? formatHoursMinutes(durationSeconds) : "";
+  if (chapter) {
+    const index = chapter.index;
+    const total = chapters.length;
+    // Whether the chapter has a title of its own is decided on the English
+    // data, as Silo's hero does, not by comparing translated text.
+    const entry = chapters[chapter.index - 1];
+    const englishLabel = entry && (entry.chapter.title || `Chapter ${entry.chapter.index + 1}`);
+    const titled = englishLabel && englishLabel !== `Chapter ${chapter.index}`;
+    chapterLine = titled
+      ? t("web.audiobooks.hero.chapterPositionTitled", { index, total, chapter: chapter.label })
+      : t("web.audiobooks.hero.chapterPosition", { index, total });
+  }
 
   const playHref = buildMediaPlayHref({
     contentId: deck.content_id,
@@ -136,13 +157,17 @@ function PresentationNowListeningHero({
     // auto-starts the chosen recording via ?play=1.
   };
 
-  const resumeLabel = isActivePlaying ? "Pause" : positionSeconds > 0 ? "Resume" : "Listen";
+  const resumeLabel = isActivePlaying
+    ? t("web.audiobooks.hero.pause")
+    : positionSeconds > 0
+      ? t("web.audiobooks.hero.resume")
+      : t("web.audiobooks.hero.listen");
 
   return (
     <>
       <section
         className="relative -mt-[96px] w-full overflow-hidden sm:-mt-[104px]"
-        aria-label="Now listening"
+        aria-label={t("web.audiobooks.hero.ariaLabel")}
       >
         {/* The book's own cover, blurred, stands in for a backdrop and warms
             the section with the cover's palette alongside the ambient glow. */}
@@ -193,7 +218,7 @@ function PresentationNowListeningHero({
 
             <div className="min-w-0 flex-1">
               <p className="hero-eyebrow mb-3">
-                <span className="hero-eyebrow-strong">Now Listening</span>
+                <span className="hero-eyebrow-strong">{t("web.audiobooks.hero.eyebrow")}</span>
               </p>
               <h1
                 className="font-display max-w-3xl text-3xl font-extrabold tracking-[-0.03em] text-balance sm:text-4xl lg:text-5xl"
@@ -203,9 +228,11 @@ function PresentationNowListeningHero({
               </h1>
               {(author || narrator) && (
                 <p className="text-foreground/70 mt-2 max-w-2xl truncate text-sm sm:text-base">
-                  {author}
-                  {author && narrator ? " · " : ""}
-                  {narrator && `Narrated by ${narrator}`}
+                  {author && narrator
+                    ? t("web.audiobooks.hero.authorAndNarrator", { author, narrator })
+                    : narrator
+                      ? t("web.audiobooks.hero.narratedBy", { narrator })
+                      : author}
                 </p>
               )}
 
@@ -240,7 +267,7 @@ function PresentationNowListeningHero({
                   className="pill pill-glass transition-colors duration-(--duration-fast)"
                 >
                   <Info className="h-4 w-4" />
-                  More Info
+                  {t("web.audiobooks.hero.moreInfo")}
                 </ViewTransitionLink>
               </div>
             </div>
@@ -249,7 +276,7 @@ function PresentationNowListeningHero({
       </section>
 
       {rest.length > 0 && (
-        <MediaCarousel title={section.title}>
+        <MediaCarousel title={sectionTitle(section)}>
           {rest.map((item) => (
             <ContinueWatchingCard
               key={item.content_id}

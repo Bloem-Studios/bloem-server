@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
+import { useBloemT } from "@/bloem/i18n";
 import AdminRequests from "@/pages/AdminRequests";
 import { useAdminContext } from "@/contexts/AdminContextProvider";
 import { captureAdminRequestContext } from "@/api/adminV2Client";
@@ -22,6 +23,7 @@ import { AudiobookAcquisitionPanel } from "./AudiobookAcquisitionPanel";
 import { EbookRequestIntegrationPanel } from "./EbookRequestIntegrationPanel";
 
 export default function BloemAdminRequests() {
+  const bt = useBloemT();
   const [params] = useSearchParams();
   const identity = captureSessionIdentity();
   const { active } = useAdminContext();
@@ -42,13 +44,13 @@ export default function BloemAdminRequests() {
       )}
       {ebook && !ebookSupported ? (
         <section className="space-y-4 px-4 py-6 sm:px-6">
-          <h1 className="text-3xl font-semibold">Ebook requests</h1>
+          <h1 className="text-3xl font-semibold">{bt("bloem.requests.ebook.title")}</h1>
           <p role={capabilities.isError ? "alert" : "status"}>
             {capabilities.isPending
-              ? "Checking ebook request availability…"
+              ? bt("bloem.requests.ebook.checkingAvailability")
               : capabilities.isError
-                ? "Unable to check ebook request availability."
-                : "Ebook requests are unavailable on this server."}
+                ? bt("bloem.requests.ebook.availabilityCheckFailed")
+                : bt("bloem.requests.ebook.unavailableOnServer")}
           </p>
         </section>
       ) : (ebook && ebookSupported) || (audio && audioSupported) ? (
@@ -69,8 +71,7 @@ export default function BloemAdminRequests() {
   );
 }
 function BookQueue({ ebook }: { ebook: boolean }) {
-  const label = ebook ? "Ebook" : "Audiobook";
-  const noun = label.toLowerCase();
+  const bt = useBloemT();
   const api = ebook ? ebookRequestsApi : bookRequestsApi;
   const cache = ebook ? "bloem-admin-ebook-requests" : "bloem-admin-book-requests";
   const { active, switching } = useAdminContext();
@@ -105,11 +106,11 @@ function BookQueue({ ebook }: { ebook: boolean }) {
       if (!ebook && kind !== "retry") {
         return bookRequestsApi.adminAction(row, kind, reason[row.id] ?? "", context);
       }
-      throw new Error("This action is unavailable for this request type.");
+      throw new Error(bt("bloem.admin.requests.actionUnavailable"));
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: [cache] });
-      toast.success("Request updated");
+      toast.success(bt("bloem.admin.requests.updated"));
     },
     onError: (err) => {
       toast.error(err.message);
@@ -119,29 +120,49 @@ function BookQueue({ ebook }: { ebook: boolean }) {
   return (
     <section className="space-y-6 px-4 py-6 sm:px-6">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold">{label} requests</h1>
+        <h1 className="text-3xl font-semibold">
+          {bt(ebook ? "bloem.requests.ebook.title" : "bloem.requests.audiobook.title")}
+        </h1>
         <p className="text-muted-foreground text-sm">
-          Review requests for {active?.name ?? "your organization"}. Approved titles wait for
-          fulfilment{ebook ? " and library availability" : ""}.
+          {active
+            ? bt(
+                ebook ? "bloem.admin.requests.ebook.intro" : "bloem.admin.requests.audiobook.intro",
+                {
+                  organization: active.name,
+                },
+              )
+            : bt(
+                ebook
+                  ? "bloem.admin.requests.ebook.introNoOrganization"
+                  : "bloem.admin.requests.audiobook.introNoOrganization",
+              )}
         </p>
       </header>
       {ebook && active?.authority === "platform_admin" && <EbookRequestIntegrationPanel />}
       {active?.scope !== "organization" ? (
-        <p role="status">Select an organization in the navigation to review its {noun} requests.</p>
+        <p role="status">
+          {bt(
+            ebook
+              ? "bloem.admin.requests.ebook.selectOrganization"
+              : "bloem.admin.requests.audiobook.selectOrganization",
+          )}
+        </p>
       ) : (
         <>
           {!ebook && <AudiobookAcquisitionPanel />}
           {ebook && (
             <p className="text-muted-foreground text-sm">
-              Provider progress is shown below. Ebooks become fulfilled only when they are available
-              in the linked library. Cancellation is local to Bloem; provider processing may
-              continue.
+              {bt("bloem.admin.requests.ebook.providerNote")}
             </p>
           )}
-          {list.isLoading && <p role="status">Loading requests…</p>}
+          {list.isLoading && <p role="status">{bt("bloem.requests.loading")}</p>}
           {list.isError && <p role="alert">{list.error.message}</p>}
           {list.data?.requests.length === 0 && (
-            <p className="text-muted-foreground">No {noun} requests in this organization.</p>
+            <p className="text-muted-foreground">
+              {bt(
+                ebook ? "bloem.admin.requests.ebook.empty" : "bloem.admin.requests.audiobook.empty",
+              )}
+            </p>
           )}
           <ul className="divide-y rounded-xl border">
             {list.data?.requests.map((row) => (
@@ -154,9 +175,21 @@ function BookQueue({ ebook }: { ebook: boolean }) {
                   <p className="text-sm">{bookRequestState(row)}</p>
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  Account {row.requested_by_user_id} · Profile {row.requested_by_profile_id}
-                  {row.isbn ? ` · ISBN ${row.isbn}` : ""}
-                  {row.asin ? ` · ASIN ${row.asin}` : ""}
+                  {bt("bloem.admin.requests.requester", {
+                    // The account id is an identifier: Latin digits in every language.
+                    account: String(row.requested_by_user_id),
+                    profile: row.requested_by_profile_id,
+                    identifiers:
+                      row.isbn && row.asin
+                        ? "both"
+                        : row.isbn
+                          ? "isbn"
+                          : row.asin
+                            ? "asin"
+                            : "none",
+                    isbn: row.isbn ?? "",
+                    asin: row.asin ?? "",
+                  })}
                 </p>
                 {row.note && <p className="text-sm">{row.note}</p>}
                 {row.outcome_reason && (
@@ -167,7 +200,7 @@ function BookQueue({ ebook }: { ebook: boolean }) {
                   (!ebook || row.status === "pending" || row.fulfilment === "failed") && (
                     <>
                       <label className="block space-y-1 text-sm">
-                        Reason (optional)
+                        {bt("bloem.admin.requests.reasonOptional")}
                         <Input
                           maxLength={2000}
                           value={reason[row.id] ?? ""}
@@ -184,7 +217,7 @@ function BookQueue({ ebook }: { ebook: boolean }) {
                               disabled={action.isPending || switching}
                               onClick={() => action.mutate({ row, kind: "approve" })}
                             >
-                              Approve
+                              {bt("bloem.admin.requests.approve")}
                             </Button>
                             <Button
                               size="sm"
@@ -192,7 +225,7 @@ function BookQueue({ ebook }: { ebook: boolean }) {
                               disabled={action.isPending || switching}
                               onClick={() => action.mutate({ row, kind: "decline" })}
                             >
-                              Decline
+                              {bt("bloem.admin.requests.decline")}
                             </Button>
                           </>
                         )}
@@ -203,7 +236,7 @@ function BookQueue({ ebook }: { ebook: boolean }) {
                             disabled={action.isPending || switching}
                             onClick={() => action.mutate({ row, kind: "fulfil" })}
                           >
-                            Mark fulfilled
+                            {bt("bloem.admin.requests.markFulfilled")}
                           </Button>
                         )}
                         {ebook && row.status === "approved" && row.fulfilment === "failed" && (
@@ -213,7 +246,7 @@ function BookQueue({ ebook }: { ebook: boolean }) {
                             disabled={action.isPending || switching}
                             onClick={() => action.mutate({ row, kind: "retry" })}
                           >
-                            Retry fulfilment
+                            {bt("bloem.admin.requests.retryFulfilment")}
                           </Button>
                         )}
                       </div>
@@ -228,14 +261,14 @@ function BookQueue({ ebook }: { ebook: boolean }) {
               disabled={offset === 0 || list.isFetching}
               onClick={() => setOffset(Math.max(0, offset - 100))}
             >
-              Previous
+              {bt("bloem.requests.previousPage")}
             </Button>
             <Button
               variant="outline"
               disabled={list.data?.requests.length !== 100 || list.isFetching}
               onClick={() => setOffset(offset + 100)}
             >
-              Next
+              {bt("bloem.requests.nextPage")}
             </Button>
           </div>
         </>
