@@ -67,6 +67,66 @@
       "value": "⟦Ļöåđîñĝ çöñţéẋţ…~~~~~~~~⟧"
     }
   ],
+  "bloem.adminNav.contextSwitcher.organizationAdministrator": [
+    {
+      "type": 0,
+      "value": "⟦Öŕĝåñîžåţîöñ åđɱîñîšţŕåţöŕ~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.platformAdministrator": [
+    {
+      "type": 0,
+      "value": "⟦Þļåţƒöŕɱ åđɱîñîšţŕåţöŕ~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.scopeName": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 5,
+      "value": "scope",
+      "options": {
+        "platform": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦þļåţƒöŕɱ~~~~⟧"
+            }
+          ]
+        },
+        "organization": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦öŕĝåñîžåţîöñ~~~~~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 1,
+              "value": "scope"
+            },
+            {
+              "type": 0,
+              "value": "⟧"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": 0,
+      "value": "⟧"
+    }
+  ],
   "bloem.adminNav.contextSwitcher.scopeStatus": [
     {
       "type": 0,
@@ -93,6 +153,54 @@
     {
       "type": 0,
       "value": "⟦Šéļéçţ çöñţéẋţ~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminNav.contextSwitcher.statusName": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "active": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦åçţîṽé~~~⟧"
+            }
+          ]
+        },
+        "suspended": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦šûšþéñđéđ~~~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 1,
+              "value": "status"
+            },
+            {
+              "type": 0,
+              "value": "⟧"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": 0,
+      "value": "⟧"
     }
   ],
   "bloem.adminNav.liveTv.description": [
@@ -299,6 +407,24 @@
       "value": "⟦Þļåţƒöŕɱ~~~~⟧"
     }
   ],
+  "bloem.adminShell.chooseContext.body": [
+    {
+      "type": 0,
+      "value": "⟦Šéļéçţ Þļåţƒöŕɱ öŕ åñ öŕĝåñîžåţîöñ ƒŕöɱ ţĥé çöñţéẋţ çöñţŕöļ îñ ţĥé ñåṽîĝåţîöñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminShell.chooseContext.title": [
+    {
+      "type": 0,
+      "value": "⟦Çĥööšé åđɱîñîšţŕåţîṽé çöñţéẋţ~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.adminShell.loadingContext": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ åđɱîñîšţŕåţîṽé çöñţéẋţ…~~~~~~~~~~~~~~~⟧"
+    }
+  ],
   "bloem.adminTitle.organization": [
     {
       "type": 0,
@@ -309,6 +435,342 @@
     {
       "type": 0,
       "value": "⟦Öŕĝåñîžåţîöñš~~~~~~⟧"
+    }
+  ],
+  "bloem.audiobooks.partTitle": [
+    {
+      "type": 0,
+      "value": "⟦Þåŕţ "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    },
+    {
+      "type": 0,
+      "value": "~~⟧"
+    }
+  ],
+  "bloem.audiobooks.picker.approximateResume": [
+    {
+      "type": 0,
+      "value": "⟦Ýöûŕ þļåçé ŵåš šåṽéđ ŵĥîļé ļîšţéñîñĝ ţö åñöţĥéŕ çöþý, šö ţĥîš öñé ŕéšûɱéš åţ åƀöûţ ţĥé šåɱé þöîñţ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.audiobooks.picker.copyFallback": [
+    {
+      "type": 0,
+      "value": "⟦Çöþý~~⟧"
+    }
+  ],
+  "bloem.audiobooks.picker.heading": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝ~~~~⟧"
+    }
+  ],
+  "bloem.audiobooks.picker.incomplete": [
+    {
+      "type": 0,
+      "value": "⟦Îñçöɱþļéţé: šöɱé þåŕţš åŕé ɱîššîñĝ~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopy": [
+    {
+      "type": 0,
+      "value": "⟦Ļöçåļ çöþý~~~~~⟧"
+    }
+  ],
+  "bloem.audiobooks.picker.localCopyNumbered": [
+    {
+      "type": 0,
+      "value": "⟦Ļöçåļ çöþý "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~⟧"
+    }
+  ],
+  "bloem.audiobooks.picker.noPlayableCopy": [
+    {
+      "type": 0,
+      "value": "⟦Ñö çöþý öƒ ţĥîš ƀööķ çåñ þļåý ĥéŕé ŕîĝĥţ ñöŵ.~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.audiobooks.picker.partsAndLength": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " þåŕţ~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " þåŕţš~~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "length"
+    },
+    {
+      "type": 0,
+      "value": "~⟧"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopy": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéɱöţé çöþý (ƀéţå)~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.audiobooks.picker.remoteCopyNumbered": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéɱöţé çöþý (ƀéţå) "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.audiobooks.picker.unavailable": [
+    {
+      "type": 0,
+      "value": "⟦Ñöţ åṽåîļåƀļé öñ ţĥîš šéŕṽéŕ~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.capabilities.checkFailed": [
+    {
+      "type": 0,
+      "value": "⟦Çöûļđ ñöţ çĥéçķ ţĥîš šéŕṽéŕ’š šûþþöŕţéđ Ɓļöéɱ ƒéåţûŕéš.~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.card.dismiss": [
+    {
+      "type": 0,
+      "value": "⟦Đîšɱîšš~~~⟧"
+    }
+  ],
+  "bloem.engagement.card.dismissFailed": [
+    {
+      "type": 0,
+      "value": "⟦Çöûļđ ñöţ đîšɱîšš ţĥîš ɱéššåĝé.~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.card.dismissing": [
+    {
+      "type": 0,
+      "value": "⟦Đîšɱîššîñĝ…~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.card.learnMore": [
+    {
+      "type": 0,
+      "value": "⟦Ļéåŕñ ɱöŕé~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.fromYourServer": [
+    {
+      "type": 0,
+      "value": "⟦Ƒŕöɱ ýöûŕ šéŕṽéŕ~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.home.storageUnavailable": [
+    {
+      "type": 0,
+      "value": "⟦Ɓŕöŵšéŕ šţöŕåĝé îš ûñåṽåîļåƀļé. Ýöûŕ çĥöîçé åþþļîéš îñ ţĥîš ţåƀ öñļý.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.home.toggle": [
+    {
+      "type": 0,
+      "value": "⟦Ĥöɱé þŕöɱöţîöñš: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦Öñ~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦Öƒƒ~⟧"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.home.toggleHelp": [
+    {
+      "type": 0,
+      "value": "⟦Öþţîöñåļ ɱéššåĝéš ƒŕöɱ ýöûŕ šéŕṽéŕ, šåṽéđ ƒöŕ ţĥîš þŕöƒîļé îñ ţĥîš ƀŕöŵšéŕ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.playback.close": [
+    {
+      "type": 0,
+      "value": "⟦Çļöšé öṽéŕļåý~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.playback.muted": [
+    {
+      "type": 0,
+      "value": "⟦ṀÛŢÉĐ~~⟧"
+    }
+  ],
+  "bloem.engagement.playback.saveFailed": [
+    {
+      "type": 0,
+      "value": "⟦Çöûļđ ñöţ šåṽé. Ţŕý åĝåîñ.~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.playback.saved": [
+    {
+      "type": 0,
+      "value": "⟦Šåṽéđ ţö ýöûŕ îñƀöẋ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.playback.saving": [
+    {
+      "type": 0,
+      "value": "⟦Šåṽîñĝ…~~~⟧"
+    }
+  ],
+  "bloem.engagement.playback.sendToPhone": [
+    {
+      "type": 0,
+      "value": "⟦Šéñđ ţö ɱý þĥöñé~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.prePlayback.back": [
+    {
+      "type": 0,
+      "value": "⟦Ɓåçķ~~⟧"
+    }
+  ],
+  "bloem.engagement.prePlayback.continue": [
+    {
+      "type": 0,
+      "value": "⟦Çöñţîñûé ţö çöñţéñţ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.prePlayback.help": [
+    {
+      "type": 0,
+      "value": "⟦Ýöû çåñ çöñţîñûé îɱɱéđîåţéļý, éṽéñ ŵĥîļé ɱéššåĝéš ļöåđ.~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.prePlayback.label": [
+    {
+      "type": 0,
+      "value": "⟦Ɓéƒöŕé þļåýƀåçķ~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.prePlayback.title": [
+    {
+      "type": 0,
+      "value": "⟦Ɓéƒöŕé ýöû ŵåţçĥ~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.rail.label": [
+    {
+      "type": 0,
+      "value": "⟦Ṁéššåĝéš ƒŕöɱ ýöûŕ šéŕṽéŕ~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.rail.title": [
+    {
+      "type": 0,
+      "value": "⟦Ƒŕöɱ ýöûŕ šéŕṽéŕ~~~~~~~~⟧"
+    }
+  ],
+  "bloem.engagement.seasonal.toggle": [
+    {
+      "type": 0,
+      "value": "⟦Šéåšöñåļ éƒƒéçţš: "
+    },
+    {
+      "type": 5,
+      "value": "state",
+      "options": {
+        "on": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦Öñ~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦Öƒƒ~⟧"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~~~⟧"
     }
   ],
   "bloem.libraryAccess.allowAll": [
@@ -345,6 +807,1040 @@
       "value": "~~~⟧"
     }
   ],
+  "bloem.liveTv.accessGate.askAdministrator": [
+    {
+      "type": 0,
+      "value": "⟦Åšķ ýöûŕ šéŕṽéŕ åđɱîñîšţŕåţöŕ ƒöŕ Ļîṽé ŢṼ åççéšš.~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.accessGate.backToHome": [
+    {
+      "type": 0,
+      "value": "⟦Ɓåçķ ţö ĥöɱé~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.accessGate.checkFailed": [
+    {
+      "type": 0,
+      "value": "⟦Çöûļđñ’ţ çĥéçķ Ļîṽé ŢṼ åççéšš~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.accessGate.checking": [
+    {
+      "type": 0,
+      "value": "⟦Çĥéçķîñĝ Ļîṽé ŢṼ åççéšš…~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.accessGate.notEnabled": [
+    {
+      "type": 0,
+      "value": "⟦Ļîṽé ŢṼ îšñ’ţ éñåƀļéđ ƒöŕ ţĥîš þŕöƒîļé~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.accessGate.unsupported": [
+    {
+      "type": 0,
+      "value": "⟦Ļîṽé ŢṼ îšñ’ţ åṽåîļåƀļé öñ ţĥîš šéŕṽéŕ~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.guide.channelColumn": [
+    {
+      "type": 0,
+      "value": "⟦Çĥåññéļ~~~⟧"
+    }
+  ],
+  "bloem.liveTv.guide.programTooltip": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    },
+    {
+      "type": 0,
+      "value": "~~~⟧"
+    }
+  ],
+  "bloem.liveTv.guide.recordProgramLabel": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđ "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": "~~~⟧"
+    }
+  ],
+  "bloem.liveTv.guide.recordSeriesLabel": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđ šéŕîéš: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.guide.series": [
+    {
+      "type": 0,
+      "value": "⟦Šéŕîéš~~~⟧"
+    }
+  ],
+  "bloem.liveTv.guide.watchChannel": [
+    {
+      "type": 0,
+      "value": "⟦Ŵåţçĥ "
+    },
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": "~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.changeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "⟦Ɓļöéɱ çöûļđñ’ţ çöñƒîŕɱ ýöûŕ ļåšţ ŕéçöŕđîñĝ çĥåñĝé. Ŕéļöåđ ýöûŕ ŕéçöŕđîñĝš ƒîŕšţ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.channel": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝ çĥåññéļ~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.checking": [
+    {
+      "type": 0,
+      "value": "⟦Çĥéçķîñĝ ŕéçöŕđîñĝš…~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.chooseChannel": [
+    {
+      "type": 0,
+      "value": "⟦Çĥööšé å çĥåññéļ~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.couldNotConfirm": [
+    {
+      "type": 0,
+      "value": "⟦Çöûļđ ñöţ çöñƒîŕɱ ţĥé ŕéçöŕđîñĝ.~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.endsAt": [
+    {
+      "type": 0,
+      "value": "⟦Éñđš åţ~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.failed": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "reason"
+    },
+    {
+      "type": 0,
+      "value": " Ŕéṽîéŵ ŕéçöŕđîñĝ šţåţûš ƀéƒöŕé ţŕýîñĝ åĝåîñ.~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.intro": [
+    {
+      "type": 0,
+      "value": "⟦Ûšé ţĥîš ŵĥéñ å þŕöĝŕåɱ îš ɱîššîñĝ ƒŕöɱ ţĥé ĝûîđé. Ţîɱéš ûšé ýöûŕ ƀŕöŵšéŕ’š ţîɱéžöñé ("
+    },
+    {
+      "type": 1,
+      "value": "timeZone"
+    },
+    {
+      "type": 0,
+      "value": ").~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.invalidTimes": [
+    {
+      "type": 0,
+      "value": "⟦Çĥööšé åñ éñđ ţîɱé åƒţéŕ ţĥé šţåŕţ ţîɱé åñđ îñ ţĥé ƒûţûŕé.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloadFailed": [
+    {
+      "type": 0,
+      "value": "⟦Çöûļđ ñöţ ŕéļöåđ ŕéçöŕđîñĝš. Ŕéçöŕđîñĝ åçţîöñš ŕéɱåîñ ƀļöçķéđ; ţŕý åĝåîñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.reloaded": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝš ŕéļöåđéđ. Ŕéṽîéŵ ţĥé ļîšţ åñđ éñţéŕ å ţîţļé ţö šçĥéđûļé å ñéŵ ŕéçöŕđîñĝ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.scheduled": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝ šçĥéđûļéđ.~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.startsAt": [
+    {
+      "type": 0,
+      "value": "⟦Šţåŕţš åţ~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.submit": [
+    {
+      "type": 0,
+      "value": "⟦Šçĥéđûļé ŕéçöŕđîñĝ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.summary": [
+    {
+      "type": 0,
+      "value": "⟦Šçĥéđûļé ƀý çĥåññéļ åñđ ţîɱé~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.manualRecording.title": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝ ţîţļé~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.noGuideData": [
+    {
+      "type": 0,
+      "value": "⟦Ñö ĝûîđé đåţå~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.cancelRecording": [
+    {
+      "type": 0,
+      "value": "⟦Çåñçéļ~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.channelCount": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " çĥåññéļ~~~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " çĥåññéļš~~~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "⟧"
+    }
+  ],
+  "bloem.liveTv.page.filterChannels": [
+    {
+      "type": 0,
+      "value": "⟦Ƒîļţéŕ çĥåññéļš…~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.filterCount": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "shown"
+    },
+    {
+      "type": 0,
+      "value": " öƒ "
+    },
+    {
+      "type": 1,
+      "value": "total"
+    },
+    {
+      "type": 0,
+      "value": "~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.hd": [
+    {
+      "type": 0,
+      "value": "⟦ĤĐ~⟧"
+    }
+  ],
+  "bloem.liveTv.page.historyEmpty": [
+    {
+      "type": 0,
+      "value": "⟦Çöɱþļéţéđ åñđ ƒåîļéđ ŕéçöŕđîñĝš ŵîļļ šĥöŵ ûþ ĥéŕé.~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.historyTitle": [
+    {
+      "type": 0,
+      "value": "⟦Ĥîšţöŕý~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.intro": [
+    {
+      "type": 0,
+      "value": "⟦Šéé ŵĥåţ’š öñ ñöŵ, ƀŕöŵšé ûþçöɱîñĝ þŕöĝŕåɱɱéš, åñđ ɱåñåĝé ýöûŕ ŕéçöŕđîñĝš.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.loadingChannels": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ çĥåññéļš…~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.loadingGuide": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ ĝûîđé…~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.loadingRecordings": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ ŕéçöŕđîñĝš…~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.noChannels": [
+    {
+      "type": 0,
+      "value": "⟦Ñö çĥåññéļš ýéţ. Åñ åđɱîñîšţŕåţöŕ çåñ åđđ å ţûñéŕ öŕ Ẋţŕéåɱ þŕöṽîđéŕ ûñđéŕ Åđɱîñ, ţĥéñ Ļîṽé ŢṼ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.noFilterMatches": [
+    {
+      "type": 0,
+      "value": "⟦Ñö çĥåññéļš ɱåţçĥ ţĥåţ ƒîļţéŕ.~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.notInLibrary": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš ŕéçöŕđîñĝ îšñ’ţ îñ å ļîƀŕåŕý ýéţ, šö îţ çåñ’ţ ƀé þļåýéđ ĥéŕé. Åñ åđɱîñîšţŕåţöŕ ñééđš ţö åđđ ţĥé ŕéçöŕđîñĝš ƒöļđéŕ ţö å ļîƀŕåŕý åñđ šçåñ îţ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.nowAndNext": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "now"
+    },
+    {
+      "type": 0,
+      "value": " → "
+    },
+    {
+      "type": 1,
+      "value": "next"
+    },
+    {
+      "type": 0,
+      "value": "~⟧"
+    }
+  ],
+  "bloem.liveTv.page.openRecording": [
+    {
+      "type": 0,
+      "value": "⟦Öþéñ ŕéçöŕđîñĝ~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.recordNext": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđ ñéẋţ~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.recordNow": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđ ñöŵ~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.recordingChangeUnconfirmed": [
+    {
+      "type": 0,
+      "value": "⟦Ɓļöéɱ çöûļđñ’ţ çöñƒîŕɱ ýöûŕ ļåšţ ŕéçöŕđîñĝ çĥåñĝé. Ŕéļöåđ ýöûŕ ŕéçöŕđîñĝš ƀéƒöŕé ýöû šçĥéđûļé öŕ çåñçéļ åñöţĥéŕ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.recordingDetails": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · "
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    },
+    {
+      "type": 0,
+      "value": "~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.recordingStatus": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 5,
+      "value": "status",
+      "options": {
+        "scheduled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦šçĥéđûļéđ~~~~⟧"
+            }
+          ]
+        },
+        "recording": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦ŕéçöŕđîñĝ~~~~⟧"
+            }
+          ]
+        },
+        "completed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦çöɱþļéţéđ~~~~⟧"
+            }
+          ]
+        },
+        "failed": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦ƒåîļéđ~~~⟧"
+            }
+          ]
+        },
+        "cancelled": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦çåñçéļļéđ~~~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 1,
+              "value": "status"
+            },
+            {
+              "type": 0,
+              "value": "⟧"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": 0,
+      "value": "⟧"
+    }
+  ],
+  "bloem.liveTv.page.reloadChannels": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéļöåđ çĥåññéļš~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.scheduledEmpty": [
+    {
+      "type": 0,
+      "value": "⟦Ñöţĥîñĝ šçĥéđûļéđ ýéţ. Þîçķ å þŕöĝŕåɱɱé ƒŕöɱ ţĥé ĝûîđé öŕ çĥåññéļ ļîšţ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.scheduledTitle": [
+    {
+      "type": 0,
+      "value": "⟦Šçĥéđûļéđ & îñ þŕöĝŕéšš~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.tabChannels": [
+    {
+      "type": 0,
+      "value": "⟦Çĥåññéļš~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.tabGuide": [
+    {
+      "type": 0,
+      "value": "⟦Ĝûîđé~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.tabRecordings": [
+    {
+      "type": 0,
+      "value": "⟦Ṁý ŕéçöŕđîñĝš~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.tabRules": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝ ŕûļéš~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.untitled": [
+    {
+      "type": 0,
+      "value": "⟦Ûñţîţļéđ~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.page.watch": [
+    {
+      "type": 0,
+      "value": "⟦Ŵåţçĥ~~⟧"
+    }
+  ],
+  "bloem.liveTv.player.browserCannotPlay": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš ƀŕöŵšéŕ çåñ’ţ þļåý ţĥîš çĥåññéļ. Ţŕý åñöţĥéŕ ƀŕöŵšéŕ öŕ ţĥé Ɓļöéɱ åþþ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.player.browserCouldNotPlay": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš ƀŕöŵšéŕ çöûļđñ’ţ þļåý ţĥé çĥåññéļ. Ţŕý åñöţĥéŕ çĥåññéļ öŕ ŕéļöåđ ţĥé þåĝé.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.player.couldNotStart": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš çĥåññéļ çöûļđñ’ţ ƀé šţåŕţéđ. Ţŕý åĝåîñ, öŕ ţŕý åñöţĥéŕ çĥåññéļ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.player.didNotStart": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥé çĥåññéļ đîđñ’ţ šţåŕţ. Îţ ɱåý šţîļļ ƀé ţûñîñĝ îñ, šö ţŕý åĝåîñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.player.hlsPlaybackError": [
+    {
+      "type": 0,
+      "value": "⟦ĤĻŠ þļåýƀåçķ éŕŕöŕ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.player.label": [
+    {
+      "type": 0,
+      "value": "⟦Ļîṽé ŢṼ~~~⟧"
+    }
+  ],
+  "bloem.liveTv.player.labelWithTitle": [
+    {
+      "type": 0,
+      "value": "⟦Ļîṽé: "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": "~~~⟧"
+    }
+  ],
+  "bloem.liveTv.player.playbackError": [
+    {
+      "type": 0,
+      "value": "⟦Þļåýƀåçķ éŕŕöŕ~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.player.stopped": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥé çĥåññéļ šţöþþéđ öŕ çöûļđñ’ţ ļöåđ. Ţŕý åĝåîñ ţö ţûñé îţ îñ åĝåîñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.player.unsupportedAddress": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš çĥåññéļ’š šţŕéåɱ åđđŕéšš îšñ’ţ šûþþöŕţéđ. Ţŕý åñöţĥéŕ çĥåññéļ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.blocked": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝ åçţîöñš åŕé ƀļöçķéđ. Ŕéļöåđ ŕéçöŕđîñĝš ƀéƒöŕé åñöţĥéŕ åçţîöñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelFailed": [
+    {
+      "type": 0,
+      "value": "⟦Ƒåîļéđ ţö çåñçéļ ŕéçöŕđîñĝ~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.cancelled": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝ çåñçéļļéđ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReloadFirst": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " Ŕéļöåđ ŕéçöŕđîñĝš ƀéƒöŕé åñöţĥéŕ åçţîöñ.~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.failedReviewRefreshed": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "error"
+    },
+    {
+      "type": 0,
+      "value": " Ŕéṽîéŵ ţĥé ŕéƒŕéšĥéđ ŕéçöŕđîñĝš ƀéƒöŕé åñöţĥéŕ åçţîöñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reload": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéļöåđ ŕéçöŕđîñĝš~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloadFailed": [
+    {
+      "type": 0,
+      "value": "⟦Çöûļđ ñöţ ŕéļöåđ ŕéçöŕđîñĝš. Ŕéçöŕđîñĝ åçţîöñš ŕéɱåîñ ƀļöçķéđ; ţŕý Ŕéļöåđ ŕéçöŕđîñĝš åĝåîñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.reloaded": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝš ŕéļöåđéđ. Ŕéṽîéŵ ţĥé ļîšţ ƀéƒöŕé åñöţĥéŕ ŕéçöŕđîñĝ åçţîöñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduleFailed": [
+    {
+      "type": 0,
+      "value": "⟦Ƒåîļéđ ţö šçĥéđûļé ŕéçöŕđîñĝ~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.scheduled": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝ šçĥéđûļéđ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.recordingWrites.waitForReadback": [
+    {
+      "type": 0,
+      "value": "⟦Ŵåîţ ƒöŕ ŕéçöŕđîñĝ ŕéåđƀåçķ ƀéƒöŕé ŕéļöåđîñĝ.~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.reloadRecordings": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéļöåđ ŕéçöŕđîñĝš~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.reloadingRecordings": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéļöåđîñĝ ŕéçöŕđîñĝš…~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allChannels": [
+    {
+      "type": 0,
+      "value": "⟦Åļļ çĥåññéļš~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.allProgramsOnChannel": [
+    {
+      "type": 0,
+      "value": "⟦Åļļ þŕöĝŕåɱš öñ çĥåññéļ~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.channel": [
+    {
+      "type": 0,
+      "value": "⟦Çĥåññéļ~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmDescription": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥîš ŕéɱöṽéš ţĥé ŕéçûŕŕîñĝ ŕûļé. Åļŕéåđý šçĥéđûļéđ ŕéçöŕđîñĝš åñđ ŕéçöŕđéđ ƒîļéš åŕé ñöţ đéļéţéđ. Ṁåñåĝé ţĥöšé šéþåŕåţéļý ûñđéŕ Ṁý ŕéçöŕđîñĝš.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmRemove": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéɱöṽé ŕûļé~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.confirmTitle": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéɱöṽé ŕéçöŕđîñĝ ŕûļé: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFailed": [
+    {
+      "type": 0,
+      "value": "⟦Çöûļđ ñöţ çŕéåţé ţĥé ŕéçöŕđîñĝ ŕûļé.~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createFormLabel": [
+    {
+      "type": 0,
+      "value": "⟦Çŕéåţé ŕéçöŕđîñĝ ŕûļé~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createLegend": [
+    {
+      "type": 0,
+      "value": "⟦Çŕéåţé å ŕéçöŕđîñĝ ŕûļé~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.createRule": [
+    {
+      "type": 0,
+      "value": "⟦Çŕéåţé ŕûļé~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.created": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝ ŕûļé çŕéåţéđ. Ṁåţçĥîñĝ ĝûîđé þŕöĝŕåɱš ŵîļļ ƀé šçĥéđûļéđ ƀý ţĥé šéŕṽéŕ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.creating": [
+    {
+      "type": 0,
+      "value": "⟦Çŕéåţîñĝ…~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.disabled": [
+    {
+      "type": 0,
+      "value": "⟦Đîšåƀļéđ~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.empty": [
+    {
+      "type": 0,
+      "value": "⟦Ñö šéŕîéš ŕéçöŕđîñĝ ŕûļéš ýéţ.~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.enabled": [
+    {
+      "type": 0,
+      "value": "⟦Éñåƀļéđ~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.heading": [
+    {
+      "type": 0,
+      "value": "⟦Šéŕîéš ŕéçöŕđîñĝ ŕûļéš~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.intro": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđ åñ éẋåçţ ĝûîđé šéŕîéš, öŕ ɱåţçĥ ţîţļéš çöñţåîñîñĝ ýöûŕ šéåŕçĥ ţéẋţ (îĝñöŕîñĝ ļéţţéŕ çåšé). Ñåŕŕöŵ ţĥé ŕûļé ţö öñé çĥåññéļ öŕ ɱåţçĥ åçŕöšš åļļ çĥåññéļš.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.listLabel": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéçöŕđîñĝ ŕûļéš~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.loading": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ ŕéçöŕđîñĝ ŕûļéš…~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.matchSeries": [
+    {
+      "type": 0,
+      "value": "⟦Ṁåţçĥ ĝûîđé šéŕîéš~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.newOnly": [
+    {
+      "type": 0,
+      "value": "⟦Öñļý þŕöĝŕåɱš ɱåŕķéđ ñéŵ îñ ţĥé ĝûîđé~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.reload": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéļöåđ ŕéçöŕđîñĝ ŕûļéš~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.remove": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéɱöṽé~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeFailed": [
+    {
+      "type": 0,
+      "value": "⟦Çöûļđ ñöţ ŕéɱöṽé ţĥé ŕéçöŕđîñĝ ŕûļé.~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removeRuleLabel": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéɱöṽé ŕûļé: "
+    },
+    {
+      "type": 1,
+      "value": "rule"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.removed": [
+    {
+      "type": 0,
+      "value": "⟦Ŕûļé ŕéɱöṽéđ. Åļŕéåđý šçĥéđûļéđ ŕéçöŕđîñĝš åñđ ŕéçöŕđéđ ƒîļéš åŕé ûñçĥåñĝéđ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.selectProfile": [
+    {
+      "type": 0,
+      "value": "⟦Šéļéçţ å þŕöƒîļé ţö ɱåñåĝé ŕéçöŕđîñĝ ŕûļéš.~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.seriesLabel": [
+    {
+      "type": 0,
+      "value": "⟦Šéŕîéš "
+    },
+    {
+      "type": 1,
+      "value": "seriesId"
+    },
+    {
+      "type": 0,
+      "value": "~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryNewOnly": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · Ñéŵ þŕöĝŕåɱš öñļý~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.summaryRepeats": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "channel"
+    },
+    {
+      "type": 0,
+      "value": " · Îñçļûđéš ŕéþéåţš~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.titleContains": [
+    {
+      "type": 0,
+      "value": "⟦Ţîţļé çöñţåîñš~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.unavailableChannel": [
+    {
+      "type": 0,
+      "value": "⟦Ûñåṽåîļåƀļé çĥåññéļ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.seriesRules.useTitleMatching": [
+    {
+      "type": 0,
+      "value": "⟦Ûšé ţîţļé ɱåţçĥîñĝ îñšţéåđ~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.timeRange": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "start"
+    },
+    {
+      "type": 0,
+      "value": " – "
+    },
+    {
+      "type": 1,
+      "value": "stop"
+    },
+    {
+      "type": 0,
+      "value": "~⟧"
+    }
+  ],
+  "bloem.liveTv.title": [
+    {
+      "type": 0,
+      "value": "⟦Ļîṽé ŢṼ~~~⟧"
+    }
+  ],
+  "bloem.liveTv.tryAgain": [
+    {
+      "type": 0,
+      "value": "⟦Ţŕý åĝåîñ~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.watch.backToLiveTv": [
+    {
+      "type": 0,
+      "value": "⟦Ɓåçķ ţö Ļîṽé ŢṼ~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.watch.connecting": [
+    {
+      "type": 0,
+      "value": "⟦Çöññéçţîñĝ ţö ýöûŕ çĥåññéļ…~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.liveTv.watch.selectProfileAndChannel": [
+    {
+      "type": 0,
+      "value": "⟦Šéļéçţ å þŕöƒîļé åñđ çĥåññéļ ţö ŵåţçĥ Ļîṽé ŢṼ.~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
   "bloem.nav.liveTv": [
     {
       "type": 0,
@@ -375,6 +1871,550 @@
       "value": "⟦Ŵåŕñîñĝ~~~⟧"
     }
   ],
+  "bloem.preview.banner.endsOn": [
+    {
+      "type": 0,
+      "value": "⟦Ýöûŕ þŕéṽîéŵ éñđš öñ "
+    },
+    {
+      "type": 1,
+      "value": "date"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.banner.exitPreview": [
+    {
+      "type": 0,
+      "value": "⟦Éẋîţ þŕéṽîéŵ~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.banner.freePlayLeft": [
+    {
+      "type": 0,
+      "value": "⟦Ƒŕéé þļåý: "
+    },
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " ɱîñ ļéƒţ~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.banner.minutesRemaining": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "minutes"
+    },
+    {
+      "type": 0,
+      "value": " ɱîñ ŕéɱåîñîñĝ~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.banner.signOut": [
+    {
+      "type": 0,
+      "value": "⟦Šîĝñ öûţ~~~~⟧"
+    }
+  ],
+  "bloem.preview.banner.subscribe": [
+    {
+      "type": 0,
+      "value": "⟦Šûƀšçŕîƀé~~~~⟧"
+    }
+  ],
+  "bloem.preview.banner.yourPreview": [
+    {
+      "type": 0,
+      "value": "⟦Ýöûŕ ļîƀŕåŕý þŕéṽîéŵ~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.book.alsoByThisAuthor": [
+    {
+      "type": 0,
+      "value": "⟦Åļšö ƀý ţĥîš åûţĥöŕ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.book.audiobook": [
+    {
+      "type": 0,
+      "value": "⟦Åûđîöƀööķ~~~~⟧"
+    }
+  ],
+  "bloem.preview.book.byAuthors": [
+    {
+      "type": 0,
+      "value": "⟦Ɓý "
+    },
+    {
+      "type": 1,
+      "value": "authors"
+    },
+    {
+      "type": 0,
+      "value": "~⟧"
+    }
+  ],
+  "bloem.preview.book.chapterNumber": [
+    {
+      "type": 0,
+      "value": "⟦Çĥåþţéŕ "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    },
+    {
+      "type": 0,
+      "value": "~~~~⟧"
+    }
+  ],
+  "bloem.preview.book.chapters": [
+    {
+      "type": 0,
+      "value": "⟦Çĥåþţéŕš~~~~⟧"
+    }
+  ],
+  "bloem.preview.book.ebook": [
+    {
+      "type": 0,
+      "value": "⟦Éƀööķ~~⟧"
+    }
+  ],
+  "bloem.preview.book.manga": [
+    {
+      "type": 0,
+      "value": "⟦Ṁåñĝå~~⟧"
+    }
+  ],
+  "bloem.preview.book.youMightAlsoLike": [
+    {
+      "type": 0,
+      "value": "⟦Ýöû ɱîĝĥţ åļšö ļîķé~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.browseOnly": [
+    {
+      "type": 0,
+      "value": "⟦Ɓŕöŵšé-öñļý þŕéṽîéŵ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.collections.loading": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ çöļļéçţîöñš…~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.collections.title": [
+    {
+      "type": 0,
+      "value": "⟦Çöļļéçţîöñš~~~~~⟧"
+    }
+  ],
+  "bloem.preview.collections.titleCount": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 6,
+      "value": "count",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ţîţļé~~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ţîţļéš~~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "⟧"
+    }
+  ],
+  "bloem.preview.collections.unavailable": [
+    {
+      "type": 0,
+      "value": "⟦Çöļļéçţîöñš åŕé ûñåṽåîļåƀļé. Þļéåšé ţŕý åĝåîñ.~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.cta.message": [
+    {
+      "type": 0,
+      "value": "⟦Ɓŕöŵšé ţĥé ļîƀŕåŕý ĥéŕé. Šûƀšçŕîƀé ţö ŵåţçĥ, ŕéåđ åñđ ļîšţéñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.cta.subscribeToBrand": [
+    {
+      "type": 0,
+      "value": "⟦Šûƀšçŕîƀé ţö "
+    },
+    {
+      "type": 1,
+      "value": "brand"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.cta.subscribeToListen": [
+    {
+      "type": 0,
+      "value": "⟦Šûƀšçŕîƀé ţö ļîšţéñ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.cta.subscribeToRead": [
+    {
+      "type": 0,
+      "value": "⟦Šûƀšçŕîƀé ţö ŕéåđ~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.cta.subscribeToWatch": [
+    {
+      "type": 0,
+      "value": "⟦Šûƀšçŕîƀé ţö ŵåţçĥ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.details": [
+    {
+      "type": 0,
+      "value": "⟦Đéţåîļš~~~⟧"
+    }
+  ],
+  "bloem.preview.dialog.freePlayEnded": [
+    {
+      "type": 0,
+      "value": "⟦Ýöûŕ ƒŕéé þļåý ĥåš éñđéđ~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.dialog.keepBrowsing": [
+    {
+      "type": 0,
+      "value": "⟦Ķééþ ƀŕöŵšîñĝ~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.dialog.playFree": [
+    {
+      "type": 0,
+      "value": "⟦Þļåý ƒŕéé~~~~⟧"
+    }
+  ],
+  "bloem.preview.dialog.playFreeFor": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 6,
+      "value": "minutes",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦Þļåý ƒŕéé ƒöŕ "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ɱîñûţé~~~~~~~~~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦Þļåý ƒŕéé ƒöŕ "
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ɱîñûţéš~~~~~~~~~~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": "⟧"
+    }
+  ],
+  "bloem.preview.dialog.sessionEnded": [
+    {
+      "type": 0,
+      "value": "⟦Ýöûŕ þŕéṽîéŵ šéššîöñ ĥåš éñđéđ~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.dialog.startTrial": [
+    {
+      "type": 0,
+      "value": "⟦Šţåŕţ ýöûŕ ţŕîåļ~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.dialog.startTrialToEnjoy": [
+    {
+      "type": 0,
+      "value": "⟦Šţåŕţ ýöûŕ ţŕîåļ ţö éñĵöý ţĥé ƒûļļ ļîƀŕåŕý.~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.errors.couldNotStart": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥé þŕéṽîéŵ çöûļđ ñöţ šţåŕţ. Þļéåšé ûšé å ñéŵ ļåûñçĥ ļîñķ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.errors.exitTimedOut": [
+    {
+      "type": 0,
+      "value": "⟦Þŕéṽîéŵ éẋîţ ţîɱéđ öûţ~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.errors.requestTimedOut": [
+    {
+      "type": 0,
+      "value": "⟦Þŕéṽîéŵ ŕéǫûéšţ ţîɱéđ öûţ~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.errors.useStorefrontLink": [
+    {
+      "type": 0,
+      "value": "⟦Ûšé ţĥé šţöŕéƒŕöñţ'š þŕéṽîéŵ ļåûñçĥ ļîñķ.~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.hero.featuredTitles": [
+    {
+      "type": 0,
+      "value": "⟦Ƒéåţûŕéđ ţîţļéš~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.hero.pauseSlideshow": [
+    {
+      "type": 0,
+      "value": "⟦Þåûšé šļîđéšĥöŵ~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.hero.resumeSlideshow": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéšûɱé šļîđéšĥöŵ~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.hero.showSlide": [
+    {
+      "type": 0,
+      "value": "⟦Šĥöŵ "
+    },
+    {
+      "type": 1,
+      "value": "title"
+    },
+    {
+      "type": 0,
+      "value": "~~⟧"
+    }
+  ],
+  "bloem.preview.landing.body": [
+    {
+      "type": 0,
+      "value": "⟦Ûšé å ƒŕéšĥ þŕéṽîéŵ ļîñķ ţö éẋþļöŕé ţĥé ļîƀŕåŕý, öŕ šţåŕţ ýöûŕ ţŕîåļ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.landing.browse": [
+    {
+      "type": 0,
+      "value": "⟦Ɓŕöŵšé ţĥé ļîƀŕåŕý~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.landing.title": [
+    {
+      "type": 0,
+      "value": "⟦Šţåŕţ ƀŕöŵšîñĝ ƒŕöɱ "
+    },
+    {
+      "type": 1,
+      "value": "brand"
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.metadata.audio": [
+    {
+      "type": 0,
+      "value": "⟦Åûđîö~~⟧"
+    }
+  ],
+  "bloem.preview.metadata.audioNumber": [
+    {
+      "type": 0,
+      "value": "⟦Åûđîö "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    },
+    {
+      "type": 0,
+      "value": "~~~⟧"
+    }
+  ],
+  "bloem.preview.metadata.subtitleNumber": [
+    {
+      "type": 0,
+      "value": "⟦Šûƀţîţļé "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    },
+    {
+      "type": 0,
+      "value": "~~~~⟧"
+    }
+  ],
+  "bloem.preview.metadata.subtitles": [
+    {
+      "type": 0,
+      "value": "⟦Šûƀţîţļéš~~~~⟧"
+    }
+  ],
+  "bloem.preview.metadata.version": [
+    {
+      "type": 0,
+      "value": "⟦Ṽéŕšîöñ~~~⟧"
+    }
+  ],
+  "bloem.preview.metadata.versionNumber": [
+    {
+      "type": 0,
+      "value": "⟦Ṽéŕšîöñ "
+    },
+    {
+      "type": 1,
+      "value": "number"
+    },
+    {
+      "type": 0,
+      "value": "~~~~⟧"
+    }
+  ],
+  "bloem.preview.moreActions": [
+    {
+      "type": 0,
+      "value": "⟦Ṁöŕé åçţîöñš~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.route.loading": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ...~~~~~⟧"
+    }
+  ],
+  "bloem.preview.route.loadingApplication": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ åþþļîçåţîöñ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.sidebar.calendar": [
+    {
+      "type": 0,
+      "value": "⟦Çåļéñđåŕ~~~~⟧"
+    }
+  ],
+  "bloem.preview.sidebar.collections": [
+    {
+      "type": 0,
+      "value": "⟦Çöļļéçţîöñš~~~~~⟧"
+    }
+  ],
+  "bloem.preview.sidebar.home": [
+    {
+      "type": 0,
+      "value": "⟦Ĥöɱé~~⟧"
+    }
+  ],
+  "bloem.preview.sidebar.libraries": [
+    {
+      "type": 0,
+      "value": "⟦Ļîƀŕåŕîéš~~~~⟧"
+    }
+  ],
+  "bloem.preview.sidebar.navigation": [
+    {
+      "type": 0,
+      "value": "⟦Þŕéṽîéŵ ñåṽîĝåţîöñ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.preview.sidebar.preview": [
+    {
+      "type": 0,
+      "value": "⟦Þŕéṽîéŵ~~~⟧"
+    }
+  ],
+  "bloem.preview.sidebar.search": [
+    {
+      "type": 0,
+      "value": "⟦Šéåŕçĥ~~~⟧"
+    }
+  ],
+  "bloem.preview.start.opening": [
+    {
+      "type": 0,
+      "value": "⟦Öþéñîñĝ ýöûŕ ļîƀŕåŕý þŕéṽîéŵ…~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.changeNotConfirmed": [
+    {
+      "type": 0,
+      "value": "⟦Çöûļđ ñöţ çöñƒîŕɱ ţĥé çĥåñĝé.~~~~~~~~~~~~~~⟧"
+    }
+  ],
   "bloem.profiles.directCredentials.checkingProfileCredentialStatus": [
     {
       "type": 0,
@@ -393,10 +2433,22 @@
       "value": "⟦Çĥööšé å þŕöƒîļé~~~~~~~~⟧"
     }
   ],
+  "bloem.profiles.directCredentials.confirmRequired": [
+    {
+      "type": 0,
+      "value": "⟦Éñţéŕ ýöûŕ åççöûñţ þåššŵöŕđ åñđ ţîçķ ţĥé ƀöẋ ţö çöñƒîŕɱ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
   "bloem.profiles.directCredentials.couldNotLoadHouseholdProfiles": [
     {
       "type": 0,
       "value": "⟦Çöûļđ ñöţ ļöåđ ĥöûšéĥöļđ þŕöƒîļéš.~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.emailAndPasswordRequired": [
+    {
+      "type": 0,
+      "value": "⟦Éñţéŕ åñ éɱåîļ åñđ å ñéŵ þåššŵöŕđ ƒöŕ ţĥé þŕöƒîļé.~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
     }
   ],
   "bloem.profiles.directCredentials.giveAHouseholdProfileIts": [
@@ -467,6 +2519,18 @@
       "value": "⟦Šéþåŕåţé šîĝñ-îñ ƒöŕ å þŕöƒîļé~~~~~~~~~~~~~~~⟧"
     }
   ],
+  "bloem.profiles.directCredentials.signInSaved": [
+    {
+      "type": 0,
+      "value": "⟦Šîĝñ-îñ šåṽéđ. Ţĥé þŕöƒîļé ŵåš šîĝñéđ öûţ öƒ îţš åþþš åñđ ɱûšţ šîĝñ îñ åĝåîñ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.profiles.directCredentials.signInTurnedOff": [
+    {
+      "type": 0,
+      "value": "⟦Ţĥé þŕöƒîļé’š öŵñ šîĝñ-îñ îš öƒƒ, åñđ îţ ĥåš ƀééñ šîĝñéđ öûţ öƒ îţš åþþš.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
   "bloem.profiles.directCredentials.thisProfileHasNoSign": [
     {
       "type": 0,
@@ -509,6 +2573,416 @@
     {
       "type": 0,
       "value": "⟦Ýöûŕ åççöûñţ þåššŵöŕđ~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.audiobook.identifierHint": [
+    {
+      "type": 0,
+      "value": "⟦ÎŠƁÑ öŕ ÅŠÎÑ ĥéļþš ɱåţçĥ ţĥé åûđîöƀööķ ŵĥéñ îţ åŕŕîṽéš. Ŵîţĥöûţ åñ îđéñţîƒîéŕ, åñ åđɱîñ çåñ ɱåŕķ ýöûŕ ŕéǫûéšţ ƒûļƒîļļéđ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.audiobook.intro": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéǫûéšţ å ţîţļé ƒöŕ ýöûŕ öŕĝåñîžåţîöñ. Åþþŕöṽéđ ŕéǫûéšţš ŵåîţ ûñţîļ ţĥé åûđîöƀööķ îš åđđéđ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.audiobook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "⟦Ýöû ĥåṽé ñö åûđîöƀööķ ŕéǫûéšţš.~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.audiobook.mineHeading": [
+    {
+      "type": 0,
+      "value": "⟦Ýöûŕ åûđîöƀööķ ŕéǫûéšţš~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.audiobook.open": [
+    {
+      "type": 0,
+      "value": "⟦Öþéñ åûđîöƀööķ~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.audiobook.requested": [
+    {
+      "type": 0,
+      "value": "⟦Åûđîöƀööķ ŕéǫûéšţéđ~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.audiobook.submit": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéǫûéšţ åûđîöƀööķ~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.audiobook.title": [
+    {
+      "type": 0,
+      "value": "⟦Åûđîöƀööķ ŕéǫûéšţš~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.audiobook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "⟦Åûđîöƀööķ ŕéǫûéšţš åŕé ûñåṽåîļåƀļé ƒöŕ ţĥîš þŕöƒîļé.~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.cancel": [
+    {
+      "type": 0,
+      "value": "⟦Çåñçéļ ŕéǫûéšţ~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.availabilityCheckFailed": [
+    {
+      "type": 0,
+      "value": "⟦Ûñåƀļé ţö çĥéçķ éƀööķ ŕéǫûéšţ åṽåîļåƀîļîţý.~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.cancellationNote": [
+    {
+      "type": 0,
+      "value": "⟦Çåñçéļļåţîöñ îš ļöçåļ ţö Ɓļöéɱ; ţĥé ƒûļƒîļɱéñţ þŕöṽîđéŕ ɱåý åļŕéåđý ƀé þŕöçéššîñĝ ţĥé éƀööķ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.checkingAvailability": [
+    {
+      "type": 0,
+      "value": "⟦Çĥéçķîñĝ éƀööķ ŕéǫûéšţ åṽåîļåƀîļîţý…~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.fulfilmentUnconfigured": [
+    {
+      "type": 0,
+      "value": "⟦Éƀööķ ƒûļƒîļļɱéñţ îš ñöţ çöñƒîĝûŕéđ. Åþþŕöṽéđ ŕéǫûéšţš ŵîļļ ŵåîţ ƒöŕ šéţûþ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.identifierHint": [
+    {
+      "type": 0,
+      "value": "⟦Þŕöṽîđé ţĥé ÎŠƁÑ öƒ ţĥé éđîţîöñ ýöû ŵåñţ. Ƒûļƒîļɱéñţ îš çöɱþļéţé ŵĥéñ ţĥé éƀööķ îš åṽåîļåƀļé îñ ýöûŕ ļîƀŕåŕý.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.intro": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéǫûéšţ å ţîţļé ƒöŕ ýöûŕ öŕĝåñîžåţîöñ. Åþþŕöṽéđ ŕéǫûéšţš ŵåîţ ûñţîļ ţĥé éƀööķ îš åđđéđ.~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.mineEmpty": [
+    {
+      "type": 0,
+      "value": "⟦Ýöû ĥåṽé ñö éƀööķ ŕéǫûéšţš.~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.mineHeading": [
+    {
+      "type": 0,
+      "value": "⟦Ýöûŕ éƀööķ ŕéǫûéšţš~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.open": [
+    {
+      "type": 0,
+      "value": "⟦Öþéñ éƀööķ~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.requested": [
+    {
+      "type": 0,
+      "value": "⟦Éƀööķ ŕéǫûéšţéđ~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.submit": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéǫûéšţ éƀööķ~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.title": [
+    {
+      "type": 0,
+      "value": "⟦Éƀööķ ŕéǫûéšţš~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.turnedOff": [
+    {
+      "type": 0,
+      "value": "⟦Éƀööķ ŕéǫûéšţš åŕé çûŕŕéñţļý ţûŕñéđ öƒƒ.~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.unavailableForProfile": [
+    {
+      "type": 0,
+      "value": "⟦Éƀööķ ŕéǫûéšţš åŕé ûñåṽåîļåƀļé ƒöŕ ţĥîš þŕöƒîļé.~~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.ebook.unavailableOnServer": [
+    {
+      "type": 0,
+      "value": "⟦Éƀööķ ŕéǫûéšţš åŕé ûñåṽåîļåƀļé öñ ţĥîš šéŕṽéŕ.~~~~~~~~~~~~~~~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.field.asinOptional": [
+    {
+      "type": 0,
+      "value": "⟦ÅŠÎÑ (öþţîöñåļ)~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.field.author": [
+    {
+      "type": 0,
+      "value": "⟦Åûţĥöŕ~~~⟧"
+    }
+  ],
+  "bloem.requests.field.authorOptional": [
+    {
+      "type": 0,
+      "value": "⟦Åûţĥöŕ (öþţîöñåļ)~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.field.isbn": [
+    {
+      "type": 0,
+      "value": "⟦ÎŠƁÑ~~⟧"
+    }
+  ],
+  "bloem.requests.field.isbnOptional": [
+    {
+      "type": 0,
+      "value": "⟦ÎŠƁÑ (öþţîöñåļ)~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.field.noteOptional": [
+    {
+      "type": 0,
+      "value": "⟦Ñöţé (öþţîöñåļ)~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.field.title": [
+    {
+      "type": 0,
+      "value": "⟦Ţîţļé~~⟧"
+    }
+  ],
+  "bloem.requests.isbnValue": [
+    {
+      "type": 0,
+      "value": "⟦ÎŠƁÑ "
+    },
+    {
+      "type": 1,
+      "value": "isbn"
+    },
+    {
+      "type": 0,
+      "value": "~~⟧"
+    }
+  ],
+  "bloem.requests.loading": [
+    {
+      "type": 0,
+      "value": "⟦Ļöåđîñĝ ŕéǫûéšţš…~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.mediaTabs.audiobooks": [
+    {
+      "type": 0,
+      "value": "⟦Åûđîöƀööķš~~~~~⟧"
+    }
+  ],
+  "bloem.requests.mediaTabs.ebooks": [
+    {
+      "type": 0,
+      "value": "⟦Éƀööķš~~~⟧"
+    }
+  ],
+  "bloem.requests.mediaTabs.label": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéǫûéšţ ɱéđîå ţýþé~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.mediaTabs.video": [
+    {
+      "type": 0,
+      "value": "⟦Ṁöṽîéš & šéŕîéš~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.nextPage": [
+    {
+      "type": 0,
+      "value": "⟦Ñéẋţ~~⟧"
+    }
+  ],
+  "bloem.requests.policy.limited": [
+    {
+      "type": 0,
+      "value": "⟦"
+    },
+    {
+      "type": 1,
+      "value": "remaining"
+    },
+    {
+      "type": 0,
+      "value": " öƒ "
+    },
+    {
+      "type": 6,
+      "value": "limit",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ŕéǫûéšţ~~~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " ŕéǫûéšţš~~~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": " ļéƒţ îñ "
+    },
+    {
+      "type": 6,
+      "value": "days",
+      "options": {
+        "one": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " đåý~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦"
+            },
+            {
+              "type": 7
+            },
+            {
+              "type": 0,
+              "value": " đåýš~~⟧"
+            }
+          ]
+        }
+      },
+      "offset": 0,
+      "pluralType": "cardinal"
+    },
+    {
+      "type": 0,
+      "value": ". "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦Ŕéǫûéšţš åŕé åþþŕöṽéđ åûţöɱåţîçåļļý.~~~~~~~~~~~~~~~~~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦Åñ åđɱîñ ŵîļļ ŕéṽîéŵ ýöûŕ ŕéǫûéšţ.~~~~~~~~~~~~~~~~~⟧"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.policy.unlimited": [
+    {
+      "type": 0,
+      "value": "⟦Ñö ŕéǫûéšţ ļîɱîţ. "
+    },
+    {
+      "type": 5,
+      "value": "approval",
+      "options": {
+        "automatic": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦Ŕéǫûéšţš åŕé åþþŕöṽéđ åûţöɱåţîçåļļý.~~~~~~~~~~~~~~~~~~⟧"
+            }
+          ]
+        },
+        "other": {
+          "value": [
+            {
+              "type": 0,
+              "value": "⟦Åñ åđɱîñ ŵîļļ ŕéṽîéŵ ýöûŕ ŕéǫûéšţ.~~~~~~~~~~~~~~~~~⟧"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": 0,
+      "value": "~~~~~~~~~⟧"
+    }
+  ],
+  "bloem.requests.previousPage": [
+    {
+      "type": 0,
+      "value": "⟦Þŕéṽîöûš~~~~⟧"
+    }
+  ],
+  "bloem.requests.submitting": [
+    {
+      "type": 0,
+      "value": "⟦Ŕéǫûéšţîñĝ…~~~~~⟧"
     }
   ]
 }
