@@ -14,6 +14,7 @@ import {
   Users,
   UsersRound,
   Megaphone,
+  UserRoundKey,
 } from "lucide-react";
 
 import type { AdminNavGroup, AdminNavItem, AdminNavSection } from "@/lib/adminNavigation";
@@ -162,11 +163,22 @@ export function buildOrganizationAdminNavSections(): AdminNavSection[] {
   }));
 }
 
+/** Bloem's switch for household profile passwords, shown under Sign-in & Security. */
+const PROFILE_PASSWORDS_SETTINGS: AdminSettingsSearchItem = {
+  id: "profile-passwords",
+  label: "Profile passwords",
+  description: "Whether household profiles can sign in with their own email and password.",
+  settings: [{ label: "Profile passwords" }],
+  keywords: ["profile sign-in", "profile login", "household", "profile email", "credentials"],
+  icon: UserRoundKey,
+};
+
 export function withBloemAdminSettings(
   items: AdminSettingsSearchItem[],
 ): AdminSettingsSearchItem[] {
   return [
     ...items,
+    PROFILE_PASSWORDS_SETTINGS,
     {
       id: "announcements",
       label: "Announcements",
@@ -178,7 +190,7 @@ export function withBloemAdminSettings(
   ];
 }
 
-/** Adds the owned settings page through Silo's existing topic structure. */
+/** Adds the owned settings pages through Silo's existing topic structure. */
 export function withBloemSettingsNavigation(sections: AdminNavSection[]): AdminNavSection[] {
   const item: AdminNavItem = {
     label: "Announcements",
@@ -186,12 +198,32 @@ export function withBloemSettingsNavigation(sections: AdminNavSection[]): AdminN
     icon: Megaphone,
     href: "/admin/settings/announcements",
   };
+  const profilePasswords: AdminNavItem = {
+    label: PROFILE_PASSWORDS_SETTINGS.label,
+    description: PROFILE_PASSWORDS_SETTINGS.description,
+    keywords: [
+      "settings",
+      "configuration",
+      PROFILE_PASSWORDS_SETTINGS.label,
+      ...(PROFILE_PASSWORDS_SETTINGS.keywords ?? []),
+    ],
+    settings: PROFILE_PASSWORDS_SETTINGS.settings,
+    icon: PROFILE_PASSWORDS_SETTINGS.icon,
+    href: "/admin/settings/profile-passwords",
+  };
   return sections.map((section) => ({
     ...section,
-    entries: section.entries.map((entry) =>
-      "items" in entry && entry.id === "integrations"
-        ? { ...entry, items: [...entry.items, item] }
-        : entry,
-    ),
+    entries: section.entries.map((entry) => {
+      if (!("items" in entry)) return entry;
+      if (entry.id === "integrations") return { ...entry, items: [...entry.items, item] };
+      if (entry.id === "access") {
+        // Right after Silo's Sign-in page, which it extends.
+        const items = [...entry.items];
+        const signIn = items.findIndex((page) => page.href === "/admin/settings/sign-in");
+        items.splice(signIn + 1, 0, profilePasswords);
+        return { ...entry, items };
+      }
+      return entry;
+    }),
   }));
 }

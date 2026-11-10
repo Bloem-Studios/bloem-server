@@ -57,8 +57,11 @@ export function DirectProfileCredentials() {
           ])}
         />
       ) : (
+        // The probe stops advertising the token while an administrator has
+        // profile passwords turned off (Settings → Profile passwords).
         <p className="text-muted-foreground text-sm">
-          This server doesn’t support separate profile sign-ins.
+          Profile passwords are turned off on this server. A server administrator can turn them on
+          in Settings, under Sign-in &amp; Security.
         </p>
       )}
     </section>

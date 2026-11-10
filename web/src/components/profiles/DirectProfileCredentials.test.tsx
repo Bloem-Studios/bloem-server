@@ -3,8 +3,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { nativeApiWithProfileRequestContext } from "@/api/bloemClient";
+import { ApiClientError } from "@/api/client";
 import { DirectProfileCredentials } from "./DirectProfileCredentials";
-const identity = vi.hoisted(() => ({ generation: 1, primary: true }));
+const identity = vi.hoisted(() => ({
+  generation: 1,
+  primary: true,
+  tokens: ["profile_credential_management_v1"],
+}));
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: { id: 1, role: "user" },
@@ -19,7 +24,7 @@ vi.mock("@/hooks/queries/profiles", () => ({
   }),
 }));
 vi.mock("@/hooks/queries/useBloemCapabilities", () => ({
-  useBloemCapabilities: () => ({ data: { feature_tokens: ["profile_credential_management_v1"] } }),
+  useBloemCapabilities: () => ({ data: { feature_tokens: identity.tokens } }),
 }));
 vi.mock("@/api/client", async (original) => ({
   ...(await original<typeof import("@/api/client")>()),
@@ -50,6 +55,7 @@ function setup() {
 beforeEach(() => {
   identity.generation = 1;
   identity.primary = true;
+  identity.tokens = ["profile_credential_management_v1"];
   request.mockReset();
   request.mockResolvedValue({
     profile_id: "reader",
@@ -135,6 +141,39 @@ it("discards the selected target and password draft on login generation changes"
   expect(screen.getByLabelText("Profile")).toHaveValue("");
   expect(screen.queryByLabelText("Your account password")).toBeNull();
   expect(request.mock.calls.filter((call) => call[2]?.method)).toHaveLength(0);
+});
+it("says profile passwords are off while the server does not advertise them", () => {
+  identity.tokens = [];
+  setup();
+  expect(screen.getByText(/Profile passwords are turned off on this server/)).toBeInTheDocument();
+  expect(screen.queryByLabelText("Profile")).toBeNull();
+  expect(request).not.toHaveBeenCalled();
+});
+it("shows the server's message when profile passwords were turned off before saving", async () => {
+  request.mockImplementation(async (_path, _scope, options) => {
+    if (options?.method)
+      throw new ApiClientError(
+        403,
+        "profile_passwords_disabled",
+        "Profile passwords are turned off on this server",
+      );
+    return {
+      profile_id: "reader",
+      configured: true,
+      login_email: "reader@example.test",
+      credential_revision: 2,
+    };
+  });
+  setup();
+  await selectReader();
+  fireEvent.change(screen.getByLabelText("New password for the profile"), {
+    target: { value: "profile-secret" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save sign-in" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Profile passwords are turned off on this server",
+  );
+  expect(screen.getByLabelText("New password for the profile")).toHaveValue("");
 });
 it("does not expose household credential controls on a non-primary viewer profile", () => {
   identity.primary = false;
