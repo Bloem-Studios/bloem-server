@@ -1,3 +1,4 @@
+import { bloemT, useBloemT, type BloemMessageKey, type BloemTranslate } from "@/bloem/i18n";
 import { useId, useState, type FormEvent, type HTMLInputTypeAttribute } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,15 +37,17 @@ function list(form: FormData, name: string) {
     .map((value) => value.trim())
     .filter(Boolean);
 }
-function integer(value: string, label: string, minimum = 0) {
+/** `invalid` names the message saying which field must be an integer of at least `minimum`. */
+function integer(value: string, invalid: BloemMessageKey, minimum = 0) {
   const number = Number(value);
   if (!value || !Number.isSafeInteger(number) || number < minimum)
-    throw new Error(`${label} must be an integer of at least ${minimum}.`);
+    throw new Error(bloemT(invalid, { minimum }));
   return number;
 }
 function utc(value: string) {
   const date = new Date(`${value}Z`);
-  if (!Number.isFinite(date.getTime())) throw new Error("Enter both schedule dates in UTC.");
+  if (!Number.isFinite(date.getTime()))
+    throw new Error(bloemT("bloem.admin.engagement.editor.scheduleDates"));
   return date.toISOString();
 }
 function dateInput(value?: string) {
@@ -113,19 +116,24 @@ function Check({
     </label>
   );
 }
-const SURFACE_LABELS: Record<string, string> = {
-  home: "Home screen",
-  detail: "Title pages",
-  pre_playback: "Before playback",
-  in_playback: "During playback",
+const SURFACE_LABELS: Record<string, BloemMessageKey> = {
+  home: "bloem.admin.engagement.editor.surfaceHome",
+  detail: "bloem.admin.engagement.campaign.surfaceDetail",
+  pre_playback: "bloem.admin.engagement.campaign.surfacePrePlayback",
+  in_playback: "bloem.admin.engagement.campaign.surfaceInPlayback",
 };
+/** A campaign surface's label; an unknown surface shows as stored. */
+function surfaceLabel(bt: BloemTranslate, surface: string) {
+  const key = SURFACE_LABELS[surface];
+  return key ? bt(key) : surface;
+}
 
-const AUDIENCE_LABELS: Record<CampaignTargeting["audience"], string> = {
-  all: "Everyone",
-  role: "By account role",
-  organization: "One organization",
-  library: "People who can see a library",
-  explicit: "Chosen accounts or profiles",
+const AUDIENCE_LABELS: Record<CampaignTargeting["audience"], BloemMessageKey> = {
+  all: "bloem.admin.engagement.campaign.audienceAll",
+  role: "bloem.admin.engagement.campaign.audienceRole",
+  organization: "bloem.admin.engagement.campaign.audienceOrganization",
+  library: "bloem.admin.engagement.campaign.audienceLibrary",
+  explicit: "bloem.admin.engagement.campaign.audienceExplicit",
 };
 
 function formatUTC(value: string) {
@@ -146,13 +154,16 @@ function OrganizationSelect({
   everywhere?: string;
   required?: boolean;
 }) {
+  const bt = useBloemT();
   const id = useId();
   const organizations = usePlatformOrganizations({ limit: 100 });
   const options = organizations.data?.organizations ?? [];
   if (organizations.isError) {
     return (
       <div className="space-y-2">
-        <Label htmlFor={id}>{label} (organization ID)</Label>
+        <Label htmlFor={id}>
+          {bt("bloem.admin.engagement.editor.organizationIdLabel", { label })}
+        </Label>
         <Input id={id} name={name} defaultValue={value ?? ""} required={required} />
       </div>
     );
@@ -168,7 +179,9 @@ function OrganizationSelect({
         key={options.length}
         required={required}
       >
-        <option value="">{everywhere ?? "Choose an organization"}</option>
+        <option value="">
+          {everywhere ?? bt("bloem.admin.engagement.editor.chooseOrganization")}
+        </option>
         {value && !options.some((organization) => organization.id === value) ? (
           <option value={value}>{value}</option>
         ) : null}
@@ -183,6 +196,7 @@ function OrganizationSelect({
 }
 
 function LibrarySelect({ name, label, value }: { name: string; label: string; value?: number }) {
+  const bt = useBloemT();
   const id = useId();
   const libraries = useAdminLibraries();
   const options = libraries.data ?? [];
@@ -197,9 +211,11 @@ function LibrarySelect({ name, label, value }: { name: string; label: string; va
         key={options.length}
         required
       >
-        <option value="">Choose a library</option>
+        <option value="">{bt("bloem.admin.engagement.editor.chooseLibrary")}</option>
         {value && !options.some((library) => library.id === value) ? (
-          <option value={String(value)}>Library {value}</option>
+          <option value={String(value)}>
+            {bt("bloem.admin.engagement.editor.libraryNumber", { id: String(value) })}
+          </option>
         ) : null}
         {options.map((library) => (
           <option key={library.id} value={String(library.id)}>
@@ -212,19 +228,22 @@ function LibrarySelect({ name, label, value }: { name: string; label: string; va
 }
 
 function TimezoneField({ value }: { value: string }) {
+  const bt = useBloemT();
   const id = useId();
   const zones =
     typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>Time zone for the yearly repeat</Label>
+      <Label htmlFor={id}>{bt("bloem.admin.engagement.editor.timezone")}</Label>
       <Input id={id} name="timezone" list={`${id}-zones`} defaultValue={value} required />
       <datalist id={`${id}-zones`}>
         {zones.map((zone) => (
           <option key={zone} value={zone} />
         ))}
       </datalist>
-      <p className="text-muted-foreground text-xs">Start typing a city, like Europe/London.</p>
+      <p className="text-muted-foreground text-xs">
+        {bt("bloem.admin.engagement.editor.timezoneHint")}
+      </p>
     </div>
   );
 }
@@ -242,21 +261,22 @@ function Artwork({
   available: boolean;
   upload: Upload;
 }) {
+  const bt = useBloemT();
   const id = useId();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>Artwork</Label>
+      <Label htmlFor={id}>{bt("bloem.admin.engagement.editor.artwork")}</Label>
       <Input
         id={id}
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder="https://… or an uploaded image"
+        placeholder={bt("bloem.admin.engagement.editor.artworkPlaceholder")}
       />
       {available ? (
         <label className="block text-sm">
-          Or upload an image (PNG, JPEG, WebP or GIF, up to 8 MB)
+          {bt("bloem.admin.engagement.editor.artworkUpload")}
           <input
             className="mt-2 block max-w-full text-sm"
             type="file"
@@ -267,7 +287,7 @@ function Artwork({
               event.currentTarget.value = "";
               if (!file) return;
               if (file.size > 8 * 1024 * 1024) {
-                setError("Images can be up to 8 MB.");
+                setError(bt("bloem.admin.engagement.editor.imageTooLarge"));
                 return;
               }
               setPending(true);
@@ -275,7 +295,11 @@ function Artwork({
               void upload(file, kind)
                 .then(setValue)
                 .catch((cause: unknown) =>
-                  setError(cause instanceof Error ? cause.message : "Upload failed."),
+                  setError(
+                    cause instanceof Error
+                      ? cause.message
+                      : bt("bloem.admin.engagement.editor.uploadFailed"),
+                  ),
                 )
                 .finally(() => setPending(false));
             }}
@@ -283,10 +307,10 @@ function Artwork({
         </label>
       ) : (
         <p className="text-muted-foreground text-xs">
-          Uploads aren’t set up on this server. Use an https image address instead.
+          {bt("bloem.admin.engagement.editor.uploadsUnavailable")}
         </p>
       )}
-      {pending && <p role="status">Uploading…</p>}
+      {pending && <p role="status">{bt("bloem.admin.engagement.editor.uploading")}</p>}
       {error && (
         <p role="alert" className="text-destructive text-sm">
           {error}
@@ -296,24 +320,24 @@ function Artwork({
   );
 }
 function WindowFields({ start, end }: { start?: string; end?: string }) {
+  const bt = useBloemT();
   return (
     <fieldset className="space-y-3">
-      <legend className="font-medium">Schedule (UTC)</legend>
+      <legend className="font-medium">{bt("bloem.admin.engagement.editor.scheduleLegend")}</legend>
       <p className="text-muted-foreground text-sm">
-        It shows from the start time until just before the end time. A campaign never makes anyone
-        wait to watch.
+        {bt("bloem.admin.engagement.editor.scheduleHelp")}
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           name="starts_at"
-          label="Starts (UTC)"
+          label={bt("bloem.admin.engagement.editor.scheduleStarts")}
           type="datetime-local"
           value={dateInput(start)}
           required
         />
         <Field
           name="ends_at"
-          label="Ends (UTC)"
+          label={bt("bloem.admin.engagement.editor.scheduleEnds")}
           type="datetime-local"
           value={dateInput(end)}
           required
@@ -331,6 +355,7 @@ export function CampaignEditor({
   onCancel,
   onSave,
 }: EditorProps<StoredCampaign> & { onSave: (value: CampaignInput) => Promise<void> }) {
+  const bt = useBloemT();
   const [image, setImage] = useState(initial?.image_url ?? "");
   const [audience, setAudience] = useState<CampaignTargeting["audience"]>(
     initial?.targeting.audience ?? "all",
@@ -348,25 +373,28 @@ export function CampaignEditor({
       if (audience === "organization")
         targeting.organization_id = text(form, "target_organization");
       if (audience === "library")
-        targeting.library_id = integer(text(form, "library_id"), "The library", 1);
+        targeting.library_id = integer(
+          text(form, "library_id"),
+          "bloem.admin.engagement.editor.integerLibrary",
+          1,
+        );
       if (audience === "explicit") {
         targeting.user_ids = [...accountIDs];
         targeting.profile_ids = list(form, "profile_ids");
         if (!targeting.user_ids.length && !targeting.profile_ids.length)
-          throw new Error("Choose at least one account or profile.");
+          throw new Error(bt("bloem.admin.engagement.campaign.chooseAccountOrProfile"));
       }
       const startsAt = utc(text(form, "starts_at")),
         endsAt = utc(text(form, "ends_at"));
-      if (startsAt >= endsAt) throw new Error("The end must be after the start.");
-      if (!campaignImage(image)) throw new Error("Use an https image address or upload an image.");
+      if (startsAt >= endsAt) throw new Error(bt("bloem.admin.engagement.editor.endBeforeStart"));
+      if (!campaignImage(image))
+        throw new Error(bt("bloem.admin.engagement.campaign.imageRequired"));
       const surfaces = form.getAll("surface").map(String);
-      if (!surfaces.length) throw new Error("Choose at least one place to show it.");
+      if (!surfaces.length) throw new Error(bt("bloem.admin.engagement.campaign.chooseSurface"));
       const style = text(form, "playback_style");
       const dismissible = form.has("dismissible");
       if (surfaces.includes("in_playback") && (!style || !dismissible))
-        throw new Error(
-          "To show it during playback, choose how it looks and let viewers dismiss it.",
-        );
+        throw new Error(bt("bloem.admin.engagement.campaign.playbackNeedsStyle"));
       setReview({
         organization_id: text(form, "organization_id") || null,
         surfaces,
@@ -375,35 +403,56 @@ export function CampaignEditor({
         subtitle: text(form, "subtitle"),
         image_url: image.trim(),
         image_width: text(form, "image_width")
-          ? integer(text(form, "image_width"), "Artwork width", 1)
+          ? integer(
+              text(form, "image_width"),
+              "bloem.admin.engagement.editor.integerArtworkWidth",
+              1,
+            )
           : null,
         image_height: text(form, "image_height")
-          ? integer(text(form, "image_height"), "Artwork height", 1)
+          ? integer(
+              text(form, "image_height"),
+              "bloem.admin.engagement.editor.integerArtworkHeight",
+              1,
+            )
           : null,
         deeplink: text(form, "deeplink"),
         cta:
           text(form, "cta_label") || text(form, "cta_url")
             ? { label: text(form, "cta_label"), url: text(form, "cta_url") }
             : null,
-        priority: integer(text(form, "priority"), "Priority", -2147483648),
+        priority: integer(
+          text(form, "priority"),
+          "bloem.admin.engagement.editor.integerPriority",
+          -2147483648,
+        ),
         starts_at: startsAt,
         ends_at: endsAt,
         targeting,
         dismissible,
         placement: {
           ...initial?.placement,
-          home_position: integer(text(form, "home_position"), "Home position"),
+          home_position: integer(
+            text(form, "home_position"),
+            "bloem.admin.engagement.editor.integerHomePosition",
+          ),
           detail_slot: text(form, "detail_slot"),
           content_ids: list(form, "content_ids"),
           playback_style: style,
           video_url: text(form, "video_url"),
           duration_seconds: style
-            ? integer(text(form, "duration_seconds"), "Overlay duration", 5)
+            ? integer(
+                text(form, "duration_seconds"),
+                "bloem.admin.engagement.editor.integerOverlayDuration",
+                5,
+              )
             : 0,
         },
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Check the campaign fields.");
+      setError(
+        cause instanceof Error ? cause.message : bt("bloem.admin.engagement.campaign.checkFields"),
+      );
     }
   }
   return (
@@ -412,30 +461,39 @@ export function CampaignEditor({
         onSubmit={preview}
         onChange={() => setReview(null)}
         className="space-y-6"
-        aria-label="Campaign editor"
+        aria-label={bt("bloem.admin.engagement.campaign.editorLabel")}
       >
         <fieldset disabled={pending} className="space-y-6">
-          <h2 className="text-xl font-medium">{initial ? "Edit campaign" : "New campaign"}</h2>
+          <h2 className="text-xl font-medium">
+            {initial
+              ? bt("bloem.admin.engagement.campaign.editTitle")
+              : bt("bloem.admin.engagement.campaign.newTitle")}
+          </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               name="headline"
-              label="Headline"
+              label={bt("bloem.admin.engagement.campaign.headline")}
               value={initial?.headline}
               required
               maxLength={120}
             />
             <Field
               name="kicker"
-              label="Small label above the headline"
+              label={bt("bloem.admin.engagement.campaign.kicker")}
               value={initial?.kicker}
               maxLength={40}
             />
-            <Field name="subtitle" label="Subtitle" value={initial?.subtitle} maxLength={200} />
+            <Field
+              name="subtitle"
+              label={bt("bloem.admin.engagement.campaign.subtitle")}
+              value={initial?.subtitle}
+              maxLength={200}
+            />
             <OrganizationSelect
               name="organization_id"
-              label="Belongs to"
+              label={bt("bloem.admin.engagement.editor.belongsTo")}
               value={initial?.organization_id}
-              everywhere="The whole server"
+              everywhere={bt("bloem.admin.engagement.editor.wholeServer")}
             />
           </div>
           <Artwork
@@ -448,16 +506,20 @@ export function CampaignEditor({
             available={storageAvailable}
             upload={upload}
           />
-          <p className="text-muted-foreground text-sm">Use 16:9 artwork.</p>
+          <p className="text-muted-foreground text-sm">
+            {bt("bloem.admin.engagement.campaign.artworkRatio")}
+          </p>
           <fieldset className="space-y-3">
-            <legend className="font-medium">Where it shows</legend>
+            <legend className="font-medium">
+              {bt("bloem.admin.engagement.campaign.whereItShows")}
+            </legend>
             <div className="flex flex-wrap gap-4">
               {["home", "detail", "pre_playback", "in_playback"].map((surface) => (
                 <Check
                   key={surface}
                   name="surface"
                   value={surface}
-                  label={SURFACE_LABELS[surface] ?? surface}
+                  label={surfaceLabel(bt, surface)}
                   checked={initial ? initial.surfaces.includes(surface) : surface === "home"}
                 />
               ))}
@@ -465,27 +527,29 @@ export function CampaignEditor({
           </fieldset>
           <Field
             name="home_position"
-            label="Row on the home screen (0 is the top)"
+            label={bt("bloem.admin.engagement.campaign.homePosition")}
             type="number"
             min={0}
             value={initial?.placement.home_position ?? 1}
           />
           <label className="block space-y-2 text-sm">
-            How it looks during playback
+            {bt("bloem.admin.engagement.campaign.playbackStyle")}
             <select
               name="playback_style"
               className={inputClass}
               defaultValue={initial?.placement.playback_style ?? ""}
             >
-              <option value="">Not shown during playback</option>
-              <option value="card">A card</option>
-              <option value="pip">A small muted video</option>
+              <option value="">{bt("bloem.admin.engagement.campaign.playbackStyleNone")}</option>
+              <option value="card">
+                {bt("bloem.admin.engagement.campaign.playbackStyleCard")}
+              </option>
+              <option value="pip">{bt("bloem.admin.engagement.campaign.playbackStylePip")}</option>
             </select>
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               name="duration_seconds"
-              label="Seconds on screen (5 to 60)"
+              label={bt("bloem.admin.engagement.campaign.durationSeconds")}
               type="number"
               min={5}
               max={60}
@@ -493,15 +557,17 @@ export function CampaignEditor({
             />
             <Field
               name="video_url"
-              label="Small video address (https, optional)"
+              label={bt("bloem.admin.engagement.campaign.videoUrl")}
               value={initial?.placement.video_url}
             />
           </div>
           <WindowFields start={initial?.starts_at} end={initial?.ends_at} />
           <fieldset className="space-y-4">
-            <legend className="font-medium">Audience</legend>
+            <legend className="font-medium">
+              {bt("bloem.admin.engagement.campaign.audience")}
+            </legend>
             <label className="block space-y-2 text-sm">
-              Who sees it
+              {bt("bloem.admin.engagement.campaign.whoSeesIt")}
               <select
                 name="audience"
                 className={inputClass}
@@ -512,28 +578,30 @@ export function CampaignEditor({
               >
                 {(["all", "role", "organization", "library", "explicit"] as const).map((value) => (
                   <option key={value} value={value}>
-                    {AUDIENCE_LABELS[value]}
+                    {bt(AUDIENCE_LABELS[value])}
                   </option>
                 ))}
               </select>
             </label>
             {audience === "role" && (
               <label className="block space-y-2 text-sm">
-                Account role
+                {bt("bloem.admin.engagement.campaign.accountRole")}
                 <select
                   name="role"
                   className={inputClass}
                   defaultValue={initial?.targeting.role ?? "user"}
                 >
-                  <option value="user">Members</option>
-                  <option value="admin">Administrators</option>
+                  <option value="user">{bt("bloem.admin.engagement.campaign.roleMembers")}</option>
+                  <option value="admin">
+                    {bt("bloem.admin.engagement.campaign.roleAdministrators")}
+                  </option>
                 </select>
               </label>
             )}
             {audience === "organization" && (
               <OrganizationSelect
                 name="target_organization"
-                label="Organization"
+                label={bt("bloem.admin.engagement.campaign.organization")}
                 value={initial?.targeting.organization_id}
                 required
               />
@@ -541,7 +609,7 @@ export function CampaignEditor({
             {audience === "library" && (
               <LibrarySelect
                 name="library_id"
-                label="Library"
+                label={bt("bloem.admin.engagement.campaign.library")}
                 value={initial?.targeting.library_id}
               />
             )}
@@ -549,7 +617,7 @@ export function CampaignEditor({
               <div className="space-y-4">
                 <AccountPicker
                   id="campaign-accounts"
-                  label="Accounts"
+                  label={bt("bloem.admin.engagement.campaign.accounts")}
                   selected={accountIDs}
                   onChange={(ids) => {
                     setAccountIDs(ids);
@@ -558,7 +626,7 @@ export function CampaignEditor({
                 />
                 <Field
                   name="profile_ids"
-                  label="Profile IDs, separated by commas (optional)"
+                  label={bt("bloem.admin.engagement.campaign.profileIds")}
                   value={initial?.targeting.profile_ids?.join(", ")}
                 />
               </div>
@@ -567,52 +635,52 @@ export function CampaignEditor({
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               name="cta_label"
-              label="Button text (optional)"
+              label={bt("bloem.admin.engagement.campaign.ctaLabel")}
               value={initial?.cta?.label}
               maxLength={40}
             />
             <Field
               name="cta_url"
-              label="Button link (https, app path or bloem://)"
+              label={bt("bloem.admin.engagement.campaign.ctaUrl")}
               value={initial?.cta?.url}
             />
           </div>
           <details className="space-y-4">
             <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm transition-colors">
-              More options
+              {bt("bloem.admin.engagement.campaign.moreOptions")}
             </summary>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <Field
                 name="deeplink"
-                label="Opens when tapped (optional)"
+                label={bt("bloem.admin.engagement.campaign.deeplink")}
                 value={initial?.deeplink}
               />
               <Field
                 name="priority"
-                label="Priority (higher shows first)"
+                label={bt("bloem.admin.engagement.campaign.priority")}
                 type="number"
                 value={initial?.priority ?? 0}
               />
               <Field
                 name="content_ids"
-                label="Only on these titles (content IDs, separated by commas)"
+                label={bt("bloem.admin.engagement.campaign.contentIds")}
                 value={initial?.placement.content_ids?.join(", ")}
               />
               <Field
                 name="detail_slot"
-                label="Spot on title pages (optional)"
+                label={bt("bloem.admin.engagement.campaign.detailSlot")}
                 value={initial?.placement.detail_slot}
               />
               <Field
                 name="image_width"
-                label="Image width in pixels (optional)"
+                label={bt("bloem.admin.engagement.campaign.imageWidth")}
                 type="number"
                 min={1}
                 value={initial?.image_width}
               />
               <Field
                 name="image_height"
-                label="Image height in pixels (optional)"
+                label={bt("bloem.admin.engagement.campaign.imageHeight")}
                 type="number"
                 min={1}
                 value={initial?.image_height}
@@ -621,13 +689,13 @@ export function CampaignEditor({
           </details>
           <Check
             name="dismissible"
-            label="Allow viewers to dismiss"
+            label={bt("bloem.admin.engagement.campaign.dismissible")}
             checked={initial?.dismissible ?? true}
           />
           <div className="flex gap-3">
-            <Button type="submit">Check campaign</Button>
+            <Button type="submit">{bt("bloem.admin.engagement.campaign.check")}</Button>
             <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
+              {bt("bloem.admin.engagement.editor.cancel")}
             </Button>
           </div>
         </fieldset>
@@ -638,12 +706,20 @@ export function CampaignEditor({
         </p>
       )}
       {review && (
-        <section className="border-border space-y-4 border-t pt-4" aria-label="Campaign review">
-          <h3 className="font-medium">Check it before publishing</h3>
+        <section
+          className="border-border space-y-4 border-t pt-4"
+          aria-label={bt("bloem.admin.engagement.campaign.reviewLabel")}
+        >
+          <h3 className="font-medium">
+            {bt("bloem.admin.engagement.editor.checkBeforePublishing")}
+          </h3>
           <p className="text-muted-foreground text-sm">
-            Who sees it: {AUDIENCE_LABELS[review.targeting.audience]}. Where:{" "}
-            {review.surfaces.map((surface) => SURFACE_LABELS[surface] ?? surface).join(", ")}. From{" "}
-            {formatUTC(review.starts_at)} to {formatUTC(review.ends_at)}.
+            {bt("bloem.admin.engagement.campaign.reviewSummary", {
+              audience: bt(AUDIENCE_LABELS[review.targeting.audience]),
+              surfaces: review.surfaces.map((surface) => surfaceLabel(bt, surface)).join(", "),
+              startsAt: formatUTC(review.starts_at),
+              endsAt: formatUTC(review.ends_at),
+            })}
           </p>
           <div className="max-w-lg">
             <CampaignCardView
@@ -651,7 +727,11 @@ export function CampaignEditor({
             />
           </div>
           <Button disabled={pending} onClick={() => void onSave(review).catch(() => undefined)}>
-            {pending ? "Publishing…" : initial ? "Save campaign changes" : "Publish campaign"}
+            {pending
+              ? bt("bloem.admin.engagement.editor.publishing")
+              : initial
+                ? bt("bloem.admin.engagement.campaign.saveChanges")
+                : bt("bloem.admin.engagement.campaign.publish")}
           </Button>
         </section>
       )}
@@ -671,6 +751,7 @@ export function SeasonEditor({
   onSave: (value: SeasonalInput) => Promise<void>;
   yearlyAvailable: boolean;
 }) {
+  const bt = useBloemT();
   const [banner, setBanner] = useState(initial?.assets.banner_url ?? "");
   const [sprites, setSprites] = useState(initial?.assets.sprites?.join("\n") ?? "");
   const [spriteUpload, setSpriteUpload] = useState(false);
@@ -683,16 +764,16 @@ export function SeasonEditor({
       const form = new FormData(event.currentTarget);
       const startsAt = utc(text(form, "starts_at")),
         endsAt = utc(text(form, "ends_at"));
-      if (startsAt >= endsAt) throw new Error("The end must be after the start.");
+      if (startsAt >= endsAt) throw new Error(bt("bloem.admin.engagement.editor.endBeforeStart"));
       const intensity = Number(text(form, "intensity"));
       if (!Number.isFinite(intensity) || intensity < 0 || intensity > 1)
-        throw new Error("Intensity must be between 0 and 1.");
+        throw new Error(bt("bloem.admin.engagement.season.intensityRange"));
       const assets = sprites
         .split(/[\n,]/)
         .map((value) => value.trim())
         .filter(Boolean);
       if ((banner && !campaignImage(banner)) || assets.some((url) => !campaignImage(url)))
-        throw new Error("Artwork must use HTTPS or uploaded server asset paths.");
+        throw new Error(bt("bloem.admin.engagement.season.artworkUrls"));
       const timezone = text(form, "timezone") || "UTC";
       new Intl.DateTimeFormat("en", { timeZone: timezone }).format();
       setReview({
@@ -709,7 +790,9 @@ export function SeasonEditor({
         },
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Check the seasonal fields.");
+      setError(
+        cause instanceof Error ? cause.message : bt("bloem.admin.engagement.season.checkFields"),
+      );
     }
   }
   return (
@@ -718,29 +801,31 @@ export function SeasonEditor({
         onSubmit={preview}
         onChange={() => setReview(null)}
         className="space-y-6"
-        aria-label="Seasonal pack editor"
+        aria-label={bt("bloem.admin.engagement.season.editorLabel")}
       >
         <fieldset disabled={pending || spriteUpload} className="space-y-6">
           <h2 className="text-xl font-medium">
-            {initial ? "Edit seasonal pack" : "New seasonal pack"}
+            {initial
+              ? bt("bloem.admin.engagement.season.editTitle")
+              : bt("bloem.admin.engagement.season.newTitle")}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               name="effect_id"
-              label="Effect (snow, or the name of an artwork pack)"
+              label={bt("bloem.admin.engagement.season.effect")}
               value={initial?.effect_id ?? "snow"}
               required
               maxLength={64}
             />
             <OrganizationSelect
               name="organization_id"
-              label="Belongs to"
+              label={bt("bloem.admin.engagement.editor.belongsTo")}
               value={initial?.organization_id}
-              everywhere="The whole server"
+              everywhere={bt("bloem.admin.engagement.editor.wholeServer")}
             />
             <Field
               name="intensity"
-              label="Strength (0 is off, 1 is full)"
+              label={bt("bloem.admin.engagement.season.intensity")}
               type="number"
               min={0}
               max={1}
@@ -753,14 +838,16 @@ export function SeasonEditor({
             <>
               <Check
                 name="repeat_yearly"
-                label="Repeat every year"
+                label={bt("bloem.admin.engagement.season.repeatYearly")}
                 checked={initial?.window.repeat_yearly}
               />
               <TimezoneField value={initial?.window.timezone ?? "UTC"} />
             </>
           )}
           <fieldset className="space-y-3">
-            <legend className="font-medium">Where it shows (none means everywhere)</legend>
+            <legend className="font-medium">
+              {bt("bloem.admin.engagement.season.whereItShows")}
+            </legend>
             <div className="flex flex-wrap gap-4">
               {["all", "home", "login"].map((surface) => (
                 <Check
@@ -769,10 +856,10 @@ export function SeasonEditor({
                   value={surface}
                   label={
                     surface === "all"
-                      ? "Everywhere"
+                      ? bt("bloem.admin.engagement.season.surfaceAll")
                       : surface === "home"
-                        ? "Home screen"
-                        : "Sign-in page"
+                        ? bt("bloem.admin.engagement.editor.surfaceHome")
+                        : bt("bloem.admin.engagement.season.surfaceLogin")
                   }
                   checked={initial ? initial.surfaces.includes(surface) : surface === "all"}
                 />
@@ -790,7 +877,7 @@ export function SeasonEditor({
             upload={upload}
           />
           <label className="block space-y-2 text-sm">
-            Small images that drift across the screen (one address per line, up to 32)
+            {bt("bloem.admin.engagement.season.sprites")}
             <textarea
               className="border-input bg-background min-h-24 w-full rounded-md border p-3"
               value={sprites}
@@ -799,7 +886,7 @@ export function SeasonEditor({
           </label>
           {storageAvailable && (
             <label className="block text-sm">
-              Upload a drifting image
+              {bt("bloem.admin.engagement.season.uploadSprite")}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
@@ -809,7 +896,7 @@ export function SeasonEditor({
                   event.currentTarget.value = "";
                   if (!file) return;
                   if (file.size > 8 * 1024 * 1024) {
-                    setError("Images can be up to 8 MB.");
+                    setError(bt("bloem.admin.engagement.editor.imageTooLarge"));
                     return;
                   }
                   setSpriteUpload(true);
@@ -817,7 +904,11 @@ export function SeasonEditor({
                   void upload(file, "season_sprite")
                     .then((url) => setSprites((prior) => `${prior}${prior ? "\n" : ""}${url}`))
                     .catch((cause: unknown) =>
-                      setError(cause instanceof Error ? cause.message : "Upload failed."),
+                      setError(
+                        cause instanceof Error
+                          ? cause.message
+                          : bt("bloem.admin.engagement.editor.uploadFailed"),
+                      ),
                     )
                     .finally(() => setSpriteUpload(false));
                 }}
@@ -825,9 +916,9 @@ export function SeasonEditor({
             </label>
           )}
           <div className="flex gap-3">
-            <Button type="submit">Check seasonal pack</Button>
+            <Button type="submit">{bt("bloem.admin.engagement.season.check")}</Button>
             <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
+              {bt("bloem.admin.engagement.editor.cancel")}
             </Button>
           </div>
         </fieldset>
@@ -840,30 +931,42 @@ export function SeasonEditor({
       {review && (
         <section
           className="border-border space-y-3 border-t pt-4"
-          aria-label="Seasonal pack review"
+          aria-label={bt("bloem.admin.engagement.season.reviewLabel")}
         >
-          <h3 className="font-medium">Check it before publishing</h3>
+          <h3 className="font-medium">
+            {bt("bloem.admin.engagement.editor.checkBeforePublishing")}
+          </h3>
           <p className="text-sm">
-            {review.effect_id} · Intensity {review.intensity} ·{" "}
-            {review.surfaces.join(", ") || "all"} ·{" "}
-            {review.window.repeat_yearly ? `Annual (${review.window.timezone})` : "One-time"}
+            {bt("bloem.admin.engagement.season.reviewSummary", {
+              effect: review.effect_id,
+              intensity: review.intensity,
+              surfaces: review.surfaces.join(", ") || "all",
+              repeat: review.window.repeat_yearly ? "yearly" : "once",
+              timezone: review.window.timezone,
+            })}
           </p>
           <p className="text-muted-foreground text-sm">
-            {review.window.starts_at} to {review.window.ends_at}. Viewers can opt out; playback and
-            reduced-motion preferences take priority.
+            {bt("bloem.admin.engagement.season.reviewWindow", {
+              startsAt: review.window.starts_at,
+              endsAt: review.window.ends_at,
+            })}
           </p>
           {campaignImage(banner) && (
             <img
               className="max-h-48 max-w-full rounded-lg object-contain"
               src={banner}
-              alt="Seasonal banner preview"
+              alt={bt("bloem.admin.engagement.season.bannerPreview")}
             />
           )}
           <Button
             disabled={pending || spriteUpload}
             onClick={() => void onSave(review).catch(() => undefined)}
           >
-            {pending ? "Publishing…" : initial ? "Save seasonal changes" : "Publish seasonal pack"}
+            {pending
+              ? bt("bloem.admin.engagement.editor.publishing")
+              : initial
+                ? bt("bloem.admin.engagement.season.saveChanges")
+                : bt("bloem.admin.engagement.season.publish")}
           </Button>
         </section>
       )}

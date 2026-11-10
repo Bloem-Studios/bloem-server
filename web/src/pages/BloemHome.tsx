@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { usePreviewMode } from "@/bloem/preview/usePreviewMode";
 import { useState } from "react";
 import Home from "./Home";
@@ -6,10 +7,11 @@ import { CampaignRail } from "@/components/engagement/CampaignPlacements";
 import { useCampaigns, useHomeCampaignPreference } from "@/components/engagement/useCampaigns";
 
 export default function BloemHome() {
+  const bt = useBloemT();
   const preview = usePreviewMode().active;
   const preference = useHomeCampaignPreference();
   const campaigns = useCampaigns("home", "", !preview && preference.enabled);
-  const [error, setError] = useState("");
+  const [storageUnavailable, setStorageUnavailable] = useState(false);
   return (
     <Home
       renderSupplementalRow={(index, total) => (
@@ -26,22 +28,17 @@ export default function BloemHome() {
                 size="sm"
                 aria-pressed={preference.enabled}
                 onClick={() => {
-                  const persisted = preference.setEnabled(!preference.enabled);
-                  setError(
-                    persisted
-                      ? ""
-                      : "Browser storage is unavailable. Your choice applies in this tab only.",
-                  );
+                  setStorageUnavailable(!preference.setEnabled(!preference.enabled));
                 }}
               >
-                Home promotions: {preference.enabled ? "On" : "Off"}
+                {bt("bloem.engagement.home.toggle", { state: preference.enabled ? "on" : "off" })}
               </Button>
               <p className="text-muted-foreground text-xs">
-                Optional messages from your server, saved for this profile in this browser.
+                {bt("bloem.engagement.home.toggleHelp")}
               </p>
-              {error && (
+              {storageUnavailable && (
                 <p role="alert" className="text-destructive text-sm">
-                  {error}
+                  {bt("bloem.engagement.home.storageUnavailable")}
                 </p>
               )}
             </div>

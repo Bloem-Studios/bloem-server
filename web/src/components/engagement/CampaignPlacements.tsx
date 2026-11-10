@@ -1,3 +1,4 @@
+import { useBloemT } from "@/bloem/i18n";
 import { useState, type ReactNode } from "react";
 import { useParams } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -12,10 +13,11 @@ export function CampaignRail({
   cards: CampaignCard[];
   dismiss: (id: string) => Promise<void>;
 }) {
+  const bt = useBloemT();
   if (!cards.length) return null;
   return (
-    <section className="space-y-4" aria-label="Messages from your server">
-      <h2 className="text-xl font-semibold">From your server</h2>
+    <section className="space-y-4" aria-label={bt("bloem.engagement.rail.label")}>
+      <h2 className="text-xl font-semibold">{bt("bloem.engagement.rail.title")}</h2>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => (
           <CampaignCardView key={card.id} card={card} onDismiss={() => dismiss(card.id)} />
@@ -51,6 +53,7 @@ export function PrePlaybackCampaign({
   enabled: boolean;
   onCancel: () => void;
 }) {
+  const bt = useBloemT();
   const [skipped, setSkipped] = useState(false);
   const campaigns = useCampaigns("pre_playback", contentId, enabled && !skipped);
   const bypass =
@@ -62,22 +65,22 @@ export function PrePlaybackCampaign({
   return (
     <section
       className="bg-background fixed inset-0 z-50 overflow-y-auto p-6"
-      aria-label="Before playback"
+      aria-label={bt("bloem.engagement.prePlayback.label")}
     >
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Before you watch</h1>
+            <h1 className="text-2xl font-semibold">{bt("bloem.engagement.prePlayback.title")}</h1>
             <p className="text-muted-foreground text-sm">
-              You can continue immediately, even while messages load.
+              {bt("bloem.engagement.prePlayback.help")}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Button autoFocus onClick={() => setSkipped(true)}>
-              Continue to content
+              {bt("bloem.engagement.prePlayback.continue")}
             </Button>
             <Button variant="outline" onClick={onCancel}>
-              Back
+              {bt("bloem.engagement.prePlayback.back")}
             </Button>
           </div>
         </header>
