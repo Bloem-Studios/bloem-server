@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="t d" font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+<title id="t">How one search is answered</title>
+<desc id="d">A made-up search, 'man finds a message in a bottle', goes two ways. The words half matches its words in titles, people, genres, keywords and plots, dropping the most common words first when no title has every word. The meaning half turns the search into a vector labelled as a search and compares it with each title's vector, labelled as catalog text. Bloem mixes the two lists, half from each by default. The meaning half waits until 85% of each kind of title has a vector from the current model, and a search Meilisearch has not answered in time goes to the built-in engine.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9CA3AF"/></marker></defs>
+<rect x="0.5" y="0.5" width="1199" height="499" rx="16" fill="#FFFFFF" stroke="#E5E7EB"/>
+<text x="40" y="56" font-size="28" font-weight="700" fill="#101827" text-anchor="start">How one search is answered</text>
+<text x="40" y="88" font-size="17" font-weight="normal" fill="#4B5563" text-anchor="start">Two halves look for titles, and Bloem mixes what they find.</text>
+<rect x="40" y="186" width="230" height="110" rx="14" fill="#F3F4F6" stroke="#9CA3AF" stroke-width="1.8"/>
+<text x="58" y="218" font-size="17" font-weight="700" fill="#101827" text-anchor="start">The search</text>
+<text x="58" y="242" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">“man finds a message in a</text>
+<text x="58" y="263" font-size="15" font-weight="normal" fill="#4B5563" text-anchor="start">bottle”</text>
+<rect x="330" y="124" width="500" height="124" rx="14" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.8"/>
+<text x="348" y="156" font-size="17" font-weight="700" fill="#101827" text-anchor="start">1. Words</text>
+<text x="348" y="180" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Finds titles whose title, people, genres, keywords or plot contain</text>
+<text x="348" y="200" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">the search's words. When no title has every word, it drops the</text>
+<text x="348" y="220" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">most common words first.</text>
+<rect x="330" y="272" width="500" height="124" rx="14" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.8"/>
+<text x="348" y="304" font-size="17" font-weight="700" fill="#101827" text-anchor="start">2. Meaning</text>
+<text x="348" y="328" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The search becomes a list of numbers, a vector, labelled as a</text>
+<text x="348" y="348" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">search. Bloem looks for titles whose own vector, labelled as</text>
+<text x="348" y="368" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">catalog text, lies close to it.</text>
+<rect x="890" y="186" width="270" height="110" rx="14" fill="#ECFDF5" stroke="#10B981" stroke-width="1.8"/>
+<text x="908" y="218" font-size="17" font-weight="700" fill="#101827" text-anchor="start">Mixed results</text>
+<text x="908" y="242" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">Half from each list by default.</text>
+<text x="908" y="262" font-size="14" font-weight="normal" fill="#4B5563" text-anchor="start">The share is a setting.</text>
+<line x1="273" y1="226" x2="327" y2="190" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="273" y1="256" x2="327" y2="330" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="833" y1="190" x2="887" y2="226" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="833" y1="330" x2="887" y2="256" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="446" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">The meaning half waits until 85% of each kind of title has a vector from the current model. A search Meilisearch has not answered in time goes to the built-in</text>
+<text x="40" y="466" font-size="14" font-weight="normal" fill="#101827" text-anchor="start">engine.</text>
+</svg>

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -89,6 +90,44 @@ func TestDirectProfileLoginAnswersBusyHashingWithRetry(t *testing.T) {
 	var body errorResponse
 	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil || body.Error != "service_unavailable" {
 		t.Fatalf("body = %+v, %v; want service_unavailable", body, err)
+	}
+}
+
+// A refusal of a correct profile password by the server's password policy
+// answers with the account login's codes; a subject that changed under the
+// login is a credential failure, not a server fault.
+func TestDirectProfileLoginMapsRefusals(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name   string
+		err    error
+		status int
+		code   string
+	}{
+		{"wrong password", auth.ErrInvalidCredentials, http.StatusUnauthorized, "invalid_credentials"},
+		{"subject changed during login", fmt.Errorf("creating direct profile session: %w", auth.ErrSessionRevoked), http.StatusUnauthorized, "invalid_credentials"},
+		{"password sign-in off", auth.ErrLocalLoginDisabled, http.StatusForbidden, "local_login_disabled"},
+		{"network provider refused", fmt.Errorf("creating direct profile session: %w", auth.ErrNotPermitted), http.StatusForbidden, "not_permitted"},
+		{"store failure", errors.New("connection refused"), http.StatusInternalServerError, "internal_error"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			handler := &AuthHandler{profileLogin: &profileLoginStub{err: test.err}}
+			req := httptest.NewRequest(http.MethodPost, "/auth/profile-login", strings.NewReader(`{"email":"reader@example.test","password":"profile-password","device_id":"tablet-17"}`))
+			rec := httptest.NewRecorder()
+
+			handler.HandleProfileLogin(rec, req)
+
+			var body struct {
+				Error string `json:"error"`
+			}
+			if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+			if rec.Code != test.status || body.Error != test.code {
+				t.Fatalf("response = %d %q, want %d %q", rec.Code, body.Error, test.status, test.code)
+			}
+		})
 	}
 }
 

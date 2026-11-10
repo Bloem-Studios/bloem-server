@@ -50,7 +50,6 @@ func registerBloemProfileCredentialDocument(reg *Registry) {
 		500: "internal_error: household management permissions could not be checked.",
 		503: "unavailable: profile credential management is unavailable; service_unavailable: the session could not be checked, retry after Retry-After.",
 	})
-	bloemDocumentRateLimit(reg, &get)
 	registerBloemChiDocument[BloemProfileCredentialInput, BloemProfileCredentialOutput](reg, get)
 	for _, method := range []string{"PUT", "DELETE"} {
 		id, summary := "setBloemProfileCredentials", "Set or replace direct-profile login credentials."

@@ -231,7 +231,10 @@ Direct-profile login is implemented on `/api/v1/auth/profile-login` when its dep
 wired; the capability boolean reflects that wiring. The default-deny direct-session route
 allowlist (`internal/api/direct_profile_routes.go`) still rejects Silo v2 and the native Bloem
 namespace (apart from the audiobook and ebook request viewer routes), so the embedded browser
-must use account login. Household credential status, set and clear are available through
+must use account login. A profile password follows the server's password sign-in policy
+like an account password, with no break-glass exemption
+([auth overlay](../bloem/overlays/auth-api.md#bloem-household-profile-credentials)).
+Household credential status, set and clear are available through
 `/api/bloem/v1/profile-credentials/{id}` when `profile_credential_management_v1` is
 advertised. They require a non-impersonated account login, existing household/PIN permission,
 and the current local account password for writes. Direct sessions and API keys cannot manage

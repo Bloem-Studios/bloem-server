@@ -14,7 +14,10 @@ without naming it found it in the top 50 36.5% of the time with `frequency`, aga
 16.5% with `last`, with no change for exact or misspelled titles. Three new temporary
 seams (`internal/catalog/search_meilisearch_provider.go`,
 `internal/catalog/search_provider.go`, `web/src/pages/admin-settings/SearchSettings.tsx`),
-to drop when Silo accepts `frequency`; the ledger goes from 330 to 333.
+to drop when Silo accepts `frequency`; the ledger goes from 330 to 333. Production
+switched to `frequency` with a 3,000 ms query timeout
+([How search finds titles by words and by meaning](../architecture/bloem-search-and-embeddings.md),
+[receipt](../operations/2026-11-10-search-and-embeddings-deployment.md)).
 
 ## November 10, 2026 — gemini-embedding-2 gets task labels
 
@@ -28,7 +31,9 @@ against 68.5% without. Books gained most. Labelled and unlabelled vectors don't 
 so items embedded before the change are embedded again. Two new temporary seams
 (`internal/recommendations/embeddings/client.go` and
 `internal/recommendations/search_query_vector.go`), to drop when Silo carries the
-labels; the ledger goes from 328 to 330.
+labels; the ledger goes from 328 to 330
+([overlay on Silo's recommendations page](overlays/architecture/recommendations.md),
+[receipt](../operations/2026-11-10-search-and-embeddings-deployment.md)).
 
 ## November 6, 2026 — restores never give more access than the backup
 

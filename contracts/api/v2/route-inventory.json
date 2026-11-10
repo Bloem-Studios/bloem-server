@@ -853,7 +853,7 @@
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
-        "deps.RateLimitMW.AuthEndpointHandler(\"profile_login\")"
+        "deps.RateLimitMW.AuthEndpointHandler(\"setup\")"
       ]
     },
     {
@@ -872,7 +872,7 @@
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
-        "deps.RateLimitMW.AuthEndpointHandler(\"setup\")"
+        "deps.RateLimitMW.AuthEndpointHandler(\"signup\")"
       ]
     },
     {
@@ -891,7 +891,7 @@
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
-        "deps.RateLimitMW.AuthEndpointHandler(\"signup\")"
+        "displayMiddlewares"
       ]
     },
     {
@@ -910,30 +910,11 @@
         "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
         "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
         "apimw.ProvideActingAdmin(actingAdmin)",
-        "displayMiddlewares"
-      ]
-    },
-    {
-      "id": 40,
-      "middleware": [
-        "captureNativeVideoRequest",
-        "apimw.RequestID",
-        "apimw.NormalizeClientHeaders",
-        "clientip.Middleware(deps.ClientIPResolver) [when deps.ClientIPResolver != nil]",
-        "previewHostGuard(reader, previewHostTokens{JWTService: auth.NewJWTService(deps.Config.Auth.JWTSecret, time.Hour, time.Hour), privacyKey: []byte(deps.Config.Auth.JWTSecret)})",
-        "previewAccountLoginGuard(deps.DB)",
-        "netaccess.Middleware(deps.NetworkAccess.Registry) [when deps.NetworkAccess != nil]",
-        "skipGuestLogging(apimw.RequestLogger(deps.NodeID))",
-        "middleware.Recoverer",
-        "apimw.Metrics",
-        "httpstream.CompressWithExclusions(skipNativeMediaCompression, apiv2.IdentityEncoded)",
-        "skipGuestLogging(activitylog.NewMiddleware(guestFreeActivity(deps.ActivityLogWriter, bloemPreviewReaderSource(deps)), deps.NodeID, deps.LogStreamHub)) [when deps.ActivityLogWriter != nil]",
-        "apimw.ProvideActingAdmin(actingAdmin)",
         "eitherPlatformCredential"
       ]
     },
     {
-      "id": 41,
+      "id": 40,
       "middleware": [
         "captureNativeVideoRequest",
         "apimw.RequestID",
@@ -953,7 +934,7 @@
       ]
     },
     {
-      "id": 42,
+      "id": 41,
       "middleware": [
         "clientip.Middleware(s.clientIP) [when s.clientIP != nil]",
         "netaccess.Middleware(s.ingressTokens) [when s.ingressTokens != nil]",
@@ -961,7 +942,7 @@
       ]
     },
     {
-      "id": 43,
+      "id": 42,
       "middleware": [
         "clientip.Middleware(s.clientIP) [when s.clientIP != nil]",
         "netaccess.Middleware(s.ingressTokens) [when s.ingressTokens != nil]",
@@ -970,7 +951,7 @@
       ]
     },
     {
-      "id": 44,
+      "id": 43,
       "middleware": [
         "clientip.Middleware(s.clientIP) [when s.clientIP != nil]",
         "netaccess.Middleware(s.ingressTokens) [when s.ingressTokens != nil]",
@@ -979,7 +960,7 @@
       ]
     },
     {
-      "id": 45,
+      "id": 44,
       "middleware": [
         "s.requireBearer"
       ]
@@ -6666,7 +6647,7 @@
       "handler_expr": "accounts.HandleBloemPlatformAccountCreate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6697,7 +6678,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6726,7 +6707,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6755,7 +6736,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6784,7 +6765,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6813,7 +6794,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6842,7 +6823,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6871,7 +6852,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6900,7 +6881,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6929,7 +6910,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6958,7 +6939,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -6987,7 +6968,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7016,7 +6997,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7045,7 +7026,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7074,7 +7055,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7103,7 +7084,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7132,7 +7113,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7161,7 +7142,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7190,7 +7171,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7219,7 +7200,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7248,7 +7229,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7277,7 +7258,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7306,7 +7287,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7335,7 +7316,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7364,7 +7345,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7393,7 +7374,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7422,7 +7403,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7451,7 +7432,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7480,7 +7461,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7509,7 +7490,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7538,7 +7519,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformDirectPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7567,7 +7548,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7596,7 +7577,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7625,7 +7606,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7654,7 +7635,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7683,7 +7664,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7712,7 +7693,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7741,7 +7722,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7770,7 +7751,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7799,7 +7780,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7828,7 +7809,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformDirectPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7857,7 +7838,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7886,7 +7867,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7915,7 +7896,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7944,7 +7925,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -7973,7 +7954,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8002,7 +7983,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8031,7 +8012,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8060,7 +8041,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8089,7 +8070,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8118,7 +8099,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8147,7 +8128,7 @@
       "handler_expr": "accounts.HandleBloemPlatformAccountUpdate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8178,7 +8159,7 @@
       "handler_expr": "handlers.BloemPlatformAccountResource(accounts.HandleRevokeAllUserAuthSessions)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8209,7 +8190,7 @@
       "handler_expr": "handlers.BloemPlatformAccountResource(accounts.HandleListUserAuthSessions)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8240,7 +8221,7 @@
       "handler_expr": "handlers.BloemPlatformAccountResource(accounts.HandleRevokeUserAuthSession)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8271,7 +8252,7 @@
       "handler_expr": "handlers.BloemPlatformAccountResource(accounts.HandleListUserDevices)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8302,7 +8283,7 @@
       "handler_expr": "handlers.BloemPlatformAccountResource(accounts.HandleDeleteUserDevice)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8333,7 +8314,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8362,7 +8343,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8391,7 +8372,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8420,7 +8401,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8449,7 +8430,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8478,7 +8459,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8507,7 +8488,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8536,7 +8517,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8565,7 +8546,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8594,7 +8575,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8623,7 +8604,7 @@
       "handler_expr": "entitlement.HandleAccountApply",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8654,7 +8635,7 @@
       "handler_expr": "entitlement.HandleAccountDryRun",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8685,7 +8666,7 @@
       "handler_expr": "handlers.BloemPlatformAccountResource(accounts.HandleListUserProfiles)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8716,7 +8697,7 @@
       "handler_expr": "handlers.BloemPlatformAccountResource(accounts.HandleCreateUserProfile)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8747,7 +8728,7 @@
       "handler_expr": "handlers.BloemPlatformAccountResource(accounts.HandleDeleteUserProfile)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8778,7 +8759,7 @@
       "handler_expr": "handlers.BloemPlatformAccountResource(accounts.HandleUpdateUserProfile)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8809,7 +8790,7 @@
       "handler_expr": "ambience.HandleList",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8840,7 +8821,7 @@
       "handler_expr": "ambience.HandleCreate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8871,7 +8852,7 @@
       "handler_expr": "ambience.HandleUploadAsset",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8902,7 +8883,7 @@
       "handler_expr": "ambience.HandleDelete",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8933,7 +8914,7 @@
       "handler_expr": "ambience.HandleUpdate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8964,7 +8945,7 @@
       "handler_expr": "ambience.HandleAttachAsset",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -8995,7 +8976,7 @@
       "handler_expr": "announcements.HandleList",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9026,7 +9007,7 @@
       "handler_expr": "announcements.HandleCreate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9057,7 +9038,7 @@
       "handler_expr": "announcements.HandleDelete",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9088,7 +9069,7 @@
       "handler_expr": "entitlement.HandleList",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9119,7 +9100,7 @@
       "handler_expr": "entitlement.HandleCreate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9330,7 +9311,7 @@
       "handler_expr": "h.HandleGet",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -9947,7 +9928,7 @@
       "handler_expr": "h.HandleGet",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10396,7 +10377,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetOrganizationAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10425,7 +10406,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetOrganizationAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10454,7 +10435,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetOrganizationAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10483,7 +10464,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetOrganizationAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10512,7 +10493,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetOrganizationAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10541,7 +10522,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetOrganizationAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10570,7 +10551,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetOrganizationAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10599,7 +10580,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetOrganizationAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10628,7 +10609,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetOrganizationAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10657,7 +10638,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetOrganizationAccountPolicy)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10686,7 +10667,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10715,7 +10696,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10744,7 +10725,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10773,7 +10754,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10802,7 +10783,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10831,7 +10812,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10860,7 +10841,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10889,7 +10870,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10918,7 +10899,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10947,7 +10928,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -10976,7 +10957,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11005,7 +10986,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11034,7 +11015,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11063,7 +11044,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11092,7 +11073,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11121,7 +11102,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11150,7 +11131,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11179,7 +11160,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11208,7 +11189,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11237,7 +11218,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11266,7 +11247,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11295,7 +11276,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11324,7 +11305,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11353,7 +11334,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11382,7 +11363,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11411,7 +11392,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11440,7 +11421,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11469,7 +11450,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11498,7 +11479,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11527,7 +11508,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCancelPlatformOrganizationPolicyJob)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11556,7 +11537,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11585,7 +11566,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11614,7 +11595,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11643,7 +11624,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11672,7 +11653,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11701,7 +11682,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11730,7 +11711,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11759,7 +11740,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11788,7 +11769,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11817,7 +11798,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleCreatePlatformOrganizationPolicyPreview)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11846,7 +11827,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleListPlatformEntitlementCohorts)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11875,7 +11856,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleListPlatformEntitlementCohorts)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11904,7 +11885,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleListPlatformEntitlementCohorts)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11933,7 +11914,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleListPlatformEntitlementCohorts)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11962,7 +11943,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleListPlatformEntitlementCohorts)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -11991,7 +11972,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleListPlatformEntitlementCohorts)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12020,7 +12001,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleListPlatformEntitlementCohorts)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12049,7 +12030,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleListPlatformEntitlementCohorts)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12078,7 +12059,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleListPlatformEntitlementCohorts)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12107,7 +12088,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleListPlatformEntitlementCohorts)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12136,7 +12117,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformEntitlementCohort)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12165,7 +12146,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformEntitlementCohort)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12194,7 +12175,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformEntitlementCohort)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12223,7 +12204,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformEntitlementCohort)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12252,7 +12233,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformEntitlementCohort)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12281,7 +12262,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformEntitlementCohort)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12310,7 +12291,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformEntitlementCohort)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12339,7 +12320,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformEntitlementCohort)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12368,7 +12349,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformEntitlementCohort)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12397,7 +12378,7 @@
       "handler_expr": "methodOnly(http.MethodGet, handler.HandleGetPlatformEntitlementCohort)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12426,7 +12407,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetOrganizationAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12455,7 +12436,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetOrganizationAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12484,7 +12465,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetOrganizationAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12513,7 +12494,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetOrganizationAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12542,7 +12523,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetOrganizationAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12571,7 +12552,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetOrganizationAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12600,7 +12581,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetOrganizationAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12629,7 +12610,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetOrganizationAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12658,7 +12639,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetOrganizationAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12687,7 +12668,7 @@
       "handler_expr": "methodOnly(http.MethodPost, handler.HandleGetOrganizationAccountPolicySnapshots)",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12716,7 +12697,7 @@
       "handler_expr": "h.HandleEnsureAccount",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12745,7 +12726,7 @@
       "handler_expr": "h.HandlePersonalPresentation",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12774,7 +12755,7 @@
       "handler_expr": "h.HandleCapacity",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12803,7 +12784,7 @@
       "handler_expr": "h.HandleCatalog",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12832,7 +12813,7 @@
       "handler_expr": "h.HandlePutKeys",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12861,7 +12842,7 @@
       "handler_expr": "h.HandlePutLibraries",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12890,7 +12871,7 @@
       "handler_expr": "h.HandleRevokeSessions",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12919,7 +12900,7 @@
       "handler_expr": "h.HandleGetSettings",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12948,7 +12929,7 @@
       "handler_expr": "h.HandlePutSettings",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -12977,7 +12958,7 @@
       "handler_expr": "h.HandleVerifyTicket",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13006,7 +12987,7 @@
       "handler_expr": "promotion.HandleList",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13037,7 +13018,7 @@
       "handler_expr": "promotion.HandleCreate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13068,7 +13049,7 @@
       "handler_expr": "promotion.HandleDelete",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13099,7 +13080,7 @@
       "handler_expr": "promotion.HandleUpdate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13130,7 +13111,7 @@
       "handler_expr": "tenants.HandleList",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13161,7 +13142,7 @@
       "handler_expr": "tenants.HandleCreate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13192,7 +13173,7 @@
       "handler_expr": "tenants.HandleDelete",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13223,7 +13204,7 @@
       "handler_expr": "tenants.HandleGet",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13254,7 +13235,7 @@
       "handler_expr": "domains.HandleGetBranding",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13285,7 +13266,7 @@
       "handler_expr": "domains.HandleUpdateBranding",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13316,7 +13297,7 @@
       "handler_expr": "domains.HandleDeleteBrandingAsset",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13347,7 +13328,7 @@
       "handler_expr": "domains.HandleUploadBrandingAsset",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13378,7 +13359,7 @@
       "handler_expr": "domains.HandleListDomains",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13409,7 +13390,7 @@
       "handler_expr": "domains.HandleAddDomain",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13440,7 +13421,7 @@
       "handler_expr": "domains.HandleRemoveDomain",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13471,7 +13452,7 @@
       "handler_expr": "domains.HandleSetPrimaryDomain",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13502,7 +13483,7 @@
       "handler_expr": "tenants.HandleFreeze",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13533,7 +13514,7 @@
       "handler_expr": "tenants.HandleUpdateLimits",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13564,7 +13545,7 @@
       "handler_expr": "tenants.HandleThaw",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13595,7 +13576,7 @@
       "handler_expr": "members.HandleList",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13626,7 +13607,7 @@
       "handler_expr": "members.HandleCreate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13657,7 +13638,7 @@
       "handler_expr": "members.HandleDelete",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13688,7 +13669,7 @@
       "handler_expr": "members.HandleGet",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13719,7 +13700,7 @@
       "handler_expr": "members.HandleUpdate",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13750,7 +13731,7 @@
       "handler_expr": "members.HandleRevokeAllAuthSessions",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13781,7 +13762,7 @@
       "handler_expr": "members.HandleListAuthSessions",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13812,7 +13793,7 @@
       "handler_expr": "members.HandleRevokeAuthSession",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13843,7 +13824,7 @@
       "handler_expr": "members.HandleListDevices",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13874,7 +13855,7 @@
       "handler_expr": "members.HandleDeleteDevice",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13905,7 +13886,7 @@
       "handler_expr": "members.HandleListProfiles",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13936,7 +13917,7 @@
       "handler_expr": "members.HandleCreateProfile",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13967,7 +13948,7 @@
       "handler_expr": "members.HandleDeleteProfile",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -13998,7 +13979,7 @@
       "handler_expr": "members.HandleUpdateProfile",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14029,7 +14010,7 @@
       "handler_expr": "members.HandleResetPassword",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14060,7 +14041,7 @@
       "handler_expr": "members.HandleResume",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14091,7 +14072,7 @@
       "handler_expr": "members.HandleSuspend",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 41,
+      "middleware_chain": 40,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14122,7 +14103,7 @@
       "handler_expr": "h.HandleGet",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -14151,7 +14132,7 @@
       "handler_expr": "h.HandlePut",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 40,
+      "middleware_chain": 39,
       "auth_class": "acting_admin",
       "auth_traits": [
         "acting_admin",
@@ -16175,11 +16156,10 @@
       "handler_expr": "surfaces.ProfileCredentials.HandleGet",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 4,
+      "middleware_chain": 3,
       "auth_class": "authenticated",
       "auth_traits": [
-        "authenticated",
-        "rate_limited"
+        "authenticated"
       ],
       "conditions": [
         "authMW != nil && surfaces.ProfileCredentials != nil"
@@ -29677,7 +29657,7 @@
       "handler_expr": "authHandler.HandleProfileLogin",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 36,
+      "middleware_chain": 35,
       "auth_class": "public",
       "auth_traits": [
         "rate_limited"
@@ -29878,7 +29858,7 @@
       "handler_expr": "authHandler.HandleSetup",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 37,
+      "middleware_chain": 36,
       "auth_class": "public",
       "auth_traits": [
         "rate_limited"
@@ -29963,7 +29943,7 @@
       "handler_expr": "authHandler.HandleSignup",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 38,
+      "middleware_chain": 37,
       "auth_class": "public",
       "auth_traits": [
         "rate_limited"
@@ -36106,7 +36086,7 @@
       "handler_expr": "handlers.NewNotificationsHandler(deps.Notifications, deps.EventsHub).HandleApplePushDisplay",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 39,
+      "middleware_chain": 38,
       "auth_class": "profile_scoped",
       "auth_traits": [
         "authenticated",
@@ -43596,7 +43576,7 @@
       "handler_expr": "s.handleForceReload",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -43624,7 +43604,7 @@
       "handler_expr": "s.handleReloadConfig",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -43652,7 +43632,7 @@
       "handler_expr": "s.handleReprobeCapabilities",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -43680,7 +43660,7 @@
       "handler_expr": "s.handleHealth",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 42,
+      "middleware_chain": 41,
       "auth_class": "public",
       "auth_traits": [
         "cors"
@@ -43707,7 +43687,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/downloads/file/{token}\", s.handleDownloadFile)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -43735,7 +43715,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/downloads/file/{token}\", s.handleDownloadFile)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -43763,7 +43743,7 @@
       "handler_expr": "s.handleHWCapabilities",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -43791,7 +43771,7 @@
       "handler_expr": "promhttp.Handler()",
       "handler_kind": "expression",
       "handler_resolved": false,
-      "middleware_chain": 42,
+      "middleware_chain": 41,
       "auth_class": "public",
       "auth_traits": [
         "cors"
@@ -43818,7 +43798,7 @@
       "handler_expr": "s.handleNetworkAccessStatus",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -43846,7 +43826,7 @@
       "handler_expr": "s.handleNetworkAccessConnect",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -43874,7 +43854,7 @@
       "handler_expr": "s.handleNetworkAccessDisconnect",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -43902,7 +43882,7 @@
       "handler_expr": "s.handleNetworkAccessProviderStatus",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -43930,7 +43910,7 @@
       "handler_expr": "s.handleStatus",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 44,
+      "middleware_chain": 43,
       "auth_class": "node_bearer",
       "auth_traits": [
         "cors",
@@ -43958,7 +43938,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/bandwidth-probe/{token}\", s.handleBandwidthProbe)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -43986,7 +43966,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/direct/{token}\", s.handleDirectPlay)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44014,7 +43994,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/direct/{token}\", s.handleDirectPlay)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44042,7 +44022,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/remux/audio-v2/{token}\", s.handleAudioV2Remux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44070,7 +44050,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/remux/audio-v2/{token}\", s.handleAudioV2Remux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44098,7 +44078,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/remux/{token}\", s.handleRemux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44126,7 +44106,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/remux/{token}\", s.handleRemux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44154,7 +44134,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/subtitles/{token}/{track}\", s.handleSubtitle)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44182,7 +44162,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/subtitles/{token}/{track}/fonts\", s.handleSubtitleFonts)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44210,7 +44190,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/theme/{token}\", s.handleThemeAudio)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44238,7 +44218,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/theme/{token}\", s.handleThemeAudio)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44266,7 +44246,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/transcode/{token}/master.m3u8\", s.handleTranscodeManifest)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44294,7 +44274,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/transcode/{token}/master.m3u8\", s.handleTranscodeManifest)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44322,7 +44302,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/transcode/{token}/segment/{name}\", s.handleTranscodeSegment)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44350,7 +44330,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/v3/{session_id}\", s.handleGrantIdentity)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44378,7 +44358,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/v3/{session_id}\", s.handleGrantIdentity)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44406,7 +44386,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/v3/{session_id}/master.m3u8\", s.handleGrantTranscodeManifest)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44434,7 +44414,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodHead, \"/stream/v3/{session_id}/master.m3u8\", s.handleGrantTranscodeManifest)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44462,7 +44442,7 @@
       "handler_expr": "observeProxy(s.telemetry, http.MethodGet, \"/stream/v3/{session_id}/segment/{name}\", s.handleGrantTranscodeSegment)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 43,
+      "middleware_chain": 42,
       "auth_class": "public",
       "auth_traits": [
         "cors",
@@ -44490,7 +44470,7 @@
       "handler_expr": "s.handleForceReload",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44517,7 +44497,7 @@
       "handler_expr": "s.handleReloadConfig",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44544,7 +44524,7 @@
       "handler_expr": "s.handleReprobeCapabilities",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44596,7 +44576,7 @@
       "handler_expr": "s.handleChapterThumbnailExtract",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44623,7 +44603,7 @@
       "handler_expr": "s.handleListDownloadArtifacts",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44650,7 +44630,7 @@
       "handler_expr": "s.handleDeleteDownloadArtifact",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44677,7 +44657,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodGet, \"/downloads/artifacts/{artifact_id}\", s.handleDownloadArtifact)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44704,7 +44684,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodHead, \"/downloads/artifacts/{artifact_id}\", s.handleDownloadArtifact)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44731,7 +44711,7 @@
       "handler_expr": "s.handleDownloadPrepare",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44758,7 +44738,7 @@
       "handler_expr": "s.handleDownloadPrepareProgress",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44785,7 +44765,7 @@
       "handler_expr": "s.handleHWCapabilities",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44812,7 +44792,7 @@
       "handler_expr": "s.handleMediaSample",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44864,7 +44844,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodGet, \"/remux/{session_id}\", s.handleRemux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44891,7 +44871,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodHead, \"/remux/{session_id}\", s.handleRemux)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44918,7 +44898,7 @@
       "handler_expr": "s.handleStatus",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44945,7 +44925,7 @@
       "handler_expr": "s.handleStart",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44972,7 +44952,7 @@
       "handler_expr": "s.handleStop",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -44999,7 +44979,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodGet, \"/transcode/{session_id}/master.m3u8\", s.handleManifest)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -45026,7 +45006,7 @@
       "handler_expr": "observeNode(s.telemetry, http.MethodGet, \"/transcode/{session_id}/segment/{name}\", s.handleSegment)",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -45053,7 +45033,7 @@
       "handler_expr": "s.handleSegmentDownloaded",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"
@@ -45080,7 +45060,7 @@
       "handler_expr": "s.handleTrickplayExtract",
       "handler_kind": "method",
       "handler_resolved": true,
-      "middleware_chain": 45,
+      "middleware_chain": 44,
       "auth_class": "node_bearer",
       "auth_traits": [
         "node_bearer"

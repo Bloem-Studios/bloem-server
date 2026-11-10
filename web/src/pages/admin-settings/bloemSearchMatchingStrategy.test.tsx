@@ -21,8 +21,6 @@ vi.mock("@/hooks/queries/admin/settings", () => ({
 }));
 
 function renderWithStrategy(strategy: string) {
-  // The strategy sits under the page's Advanced disclosure.
-  localStorage.setItem("silo.admin.advanced.search", "true");
   useSettingsFormMock.mockReturnValue(
     fakeSettingsForm(
       {
@@ -42,7 +40,6 @@ function renderWithStrategy(strategy: string) {
 describe("SearchSettings matching strategy", () => {
   afterEach(() => {
     cleanup();
-    localStorage.clear();
   });
 
   it("names the trailing-words strategy", () => {

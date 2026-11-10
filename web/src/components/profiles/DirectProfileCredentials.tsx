@@ -35,7 +35,8 @@ export function DirectProfileCredentials() {
         Give a household profile its own email and password, so it can sign in to the Bloem apps
         without the account password. The website still uses the account sign-in. To change this,
         you need your account password; accounts that only sign in through single sign-on can’t use
-        it.
+        it. A profile password stops working while password sign-in is turned off for this server or
+        for your account.
       </p>
       {capability.isPending ? (
         <p role="status">Checking support…</p>

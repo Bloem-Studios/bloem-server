@@ -150,18 +150,21 @@ func (s *ProfileCredentialService) clear(ctx context.Context, accountID int, pro
 }
 
 // Authenticate verifies a direct profile email/password pair and returns only
-// the profile-bound tenant subject. All failures intentionally use the same
-// ErrInvalidCredentials result to avoid disclosing account or tenant state.
+// the profile-bound tenant subject. Every failure before the password is known
+// to be correct intentionally uses the same ErrInvalidCredentials result to
+// avoid disclosing account or tenant state; a correct password can then still
+// be refused by the server's password policy (directProfilePasswordPolicy).
 func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, password string, device DeviceClaim) (SessionSubject, error) {
 	if s == nil || s.pool == nil {
 		return SessionSubject{}, fmt.Errorf("profile credential service is unavailable")
 	}
 	var (
-		subject      SessionSubject
-		passwordHash string
-		enabled      bool
-		orgStatus    string
-		memberStatus string
+		subject            SessionSubject
+		passwordHash       string
+		enabled            bool
+		localPasswordLogin bool
+		orgStatus          string
+		memberStatus       string
 	)
 	err := s.pool.QueryRow(ctx, `
 		SELECT profiles.user_id,
@@ -174,6 +177,7 @@ func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, pass
 		       profiles.credential_revision,
 		       profiles.password_hash,
 		       users.enabled,
+		       users.local_password_login_enabled,
 		       organizations.status,
 		       memberships.status
 		FROM login_email_registry registry
@@ -196,6 +200,7 @@ func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, pass
 		&subject.CredentialRevision,
 		&passwordHash,
 		&enabled,
+		&localPasswordLogin,
 		&orgStatus,
 		&memberStatus,
 	)
@@ -221,8 +226,14 @@ func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, pass
 	if errors.Is(err, passwordhash.ErrBusy) {
 		return SessionSubject{}, err
 	}
-	if err != nil || !enabled || orgStatus != statusActive || memberStatus != statusActive {
+	// An account whose own password sign-in is off (an OIDC or LDAP link
+	// turns it off) refuses its profiles' passwords as invalid credentials,
+	// as the account login refuses its password.
+	if err != nil || !enabled || !localPasswordLogin || orgStatus != statusActive || memberStatus != statusActive {
 		return SessionSubject{}, ErrInvalidCredentials
+	}
+	if err := directProfilePasswordPolicy(ctx, s.pool, subject.AccountID); err != nil {
+		return SessionSubject{}, err
 	}
 	subject.Device = device
 	subject.AuthMethod = AuthMethodDirectProfile
@@ -231,8 +242,10 @@ func (s *ProfileCredentialService) Authenticate(ctx context.Context, email, pass
 
 // CurrentSessionSubject re-resolves a direct-profile subject from the
 // database, refusing it unless the credential revision the session was bound
-// to is still current and the account, organization, and membership are all
-// still active. Refresh uses this instead of trusting the presented token.
+// to is still current, the account, organization, and membership are all
+// still active, the account still allows password sign-in, and no network
+// provider refuses it. Refresh uses this instead of trusting the presented
+// token.
 func (s *ProfileCredentialService) CurrentSessionSubject(
 	ctx context.Context,
 	accountID int,
@@ -244,10 +257,11 @@ func (s *ProfileCredentialService) CurrentSessionSubject(
 		return SessionSubject{}, fmt.Errorf("profile credential service is unavailable")
 	}
 	var (
-		subject      SessionSubject
-		enabled      bool
-		orgStatus    string
-		memberStatus string
+		subject            SessionSubject
+		enabled            bool
+		localPasswordLogin bool
+		orgStatus          string
+		memberStatus       string
 	)
 	err := s.pool.QueryRow(ctx, `
 		SELECT profiles.user_id,
@@ -259,6 +273,7 @@ func (s *ProfileCredentialService) CurrentSessionSubject(
 		       memberships.security_revision,
 		       profiles.credential_revision,
 		       users.enabled,
+		       users.local_password_login_enabled,
 		       organizations.status,
 		       memberships.status
 		FROM user_profiles profiles
@@ -277,6 +292,7 @@ func (s *ProfileCredentialService) CurrentSessionSubject(
 		&subject.SecurityRevision,
 		&subject.CredentialRevision,
 		&enabled,
+		&localPasswordLogin,
 		&orgStatus,
 		&memberStatus,
 	)
@@ -286,12 +302,49 @@ func (s *ProfileCredentialService) CurrentSessionSubject(
 		}
 		return SessionSubject{}, fmt.Errorf("load current profile subject: %w", err)
 	}
-	if subject.CredentialRevision != revision || !enabled || orgStatus != statusActive || memberStatus != statusActive {
+	if subject.CredentialRevision != revision || !enabled || !localPasswordLogin ||
+		orgStatus != statusActive || memberStatus != statusActive {
+		return SessionSubject{}, ErrSessionRevoked
+	}
+	// A network provider's refusal ends the session at refresh. The server-wide
+	// password switch does not: turning it off leaves existing account sessions
+	// running, and a direct-profile session is treated the same way.
+	refused, err := networkRefused(ctx, s.pool, subject.AccountID)
+	if err != nil {
+		return SessionSubject{}, fmt.Errorf("load current profile subject: %w", err)
+	}
+	if refused {
 		return SessionSubject{}, ErrSessionRevoked
 	}
 	subject.Device = device
 	subject.AuthMethod = AuthMethodDirectProfile
 	return subject, nil
+}
+
+// directProfilePasswordPolicy applies the server's password sign-in policy to
+// a correct direct-profile password: the server-wide local password switch
+// (ErrLocalLoginDisabled) and a network identity provider's refusal of the
+// account's person (ErrNotPermitted), the checks LocalProvider.Authenticate
+// applies to an account password. It runs after the password comparison, so a
+// refusal does not tell a stranger which emails are registered. Unlike the
+// account login there is no break-glass exemption: that exemption keeps the
+// server recoverable, and a direct-profile session has the user role.
+func directProfilePasswordPolicy(ctx context.Context, db rowQuerier, accountID int) error {
+	allowed, err := localPasswordLoginAllowed(ctx, db)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return ErrLocalLoginDisabled
+	}
+	refused, err := networkRefused(ctx, db, accountID)
+	if err != nil {
+		return err
+	}
+	if refused {
+		return ErrNotPermitted
+	}
+	return nil
 }
 
 func lockProfileCredentialSubject(ctx context.Context, tx pgx.Tx, accountID int, profileID string, expectedRevision *int64) error {

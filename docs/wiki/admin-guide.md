@@ -18,6 +18,7 @@ related:
   - ../architecture/bloem-organization-domains.md
   - ../architecture/observability.md
   - ../architecture/ai-provider-authentication.md
+  - ../architecture/bloem-search-and-embeddings.md
   - ../../FORK.md
   - user-guide.md
 ---
@@ -25,7 +26,8 @@ related:
 # Bloem Server admin guide
 
 > **Provenance and status.** Bloem page, rewritten on 2026-11-01 and checked against
-> `main` at `b6039036d`. It is the task guide for the person who runs a Bloem server.
+> `main` at `b6039036d`; the search and embedding parts were updated on 2026-11-10 against
+> `7acd2c7e0`. It is the task guide for the person who runs a Bloem server.
 > Most of what it describes is Silo's; organizations and their domains, plans, Live TV,
 > campaigns, previews and storage sources are Bloem additions. The technical rules,
 > file names and commit references are in the [For developers](#for-developers) section.
@@ -89,6 +91,16 @@ custom-CSS controls and made Cinema Dark the only theme. The dates and commits a
 [For developers](#where-bloem-comes-from-1).
 
 ### What changed most recently
+
+Bloem's own changes on November 10, 2026:
+
+- **Search can drop the most common words first.** On **Server → Search**, **When a search has
+  several words** has a new choice, **Drop the most common words until something matches**. A
+  search that describes a story finds the right title far more often with it
+  ([2.7](#27-settings)).
+- **Task labels for `gemini-embedding-2`.** With that embedding model, Bloem labels titles and
+  searches the way Google recommends, which finds the right title more often
+  ([2.17](#217-ai-services-and-recommendation-embeddings)).
 
 On November 1, 2026, Bloem merged Silo through `63ef34b23`. For the person running the server:
 
@@ -547,7 +559,7 @@ Silo's settings pages sit in the admin sidebar under the topic they belong to; t
 | Configure → Server | **General** | Server name and login subtitle, **Silo public URL**, **Show on the local network** (Silo's LAN advertisement), local network address, trusted proxies, database connections, Redis. |
 | Configure → Server | **Appearance** | Logos and icons, favicon, login background, accent colour, server-wide poster-badge defaults and title-art default. There are no theme, font or custom-CSS controls. |
 | Configure → Server | **Storage** | Where artwork and uploads are stored: local disk or S3 ([S3 storage setup](../bloem/overlays/s3-storage-setup.md)). |
-| Configure → Server | **Search** | Built-in PostgreSQL search or Meilisearch ([Optional Meilisearch](../bloem/overlays/wiki/deployment/docker.md#optional-meilisearch)). Values set through `SILO_SEARCH_PROVIDER` and related variables lock these fields. |
+| Configure → Server | **Search** | Built-in PostgreSQL search or Meilisearch ([Optional Meilisearch](../bloem/overlays/wiki/deployment/docker.md#optional-meilisearch)). Values set through `SILO_SEARCH_PROVIDER` and related variables lock these fields. With Meilisearch, set **When a search has several words** to **Drop the most common words until something matches**, and keep the **Query timeout** above the slowest searches (Bloem's production uses 3,000 ms): [How search finds titles by words and by meaning](../architecture/bloem-search-and-embeddings.md). |
 | Configure → Server | **Network Access** | Overlay-network providers such as Tailscale. |
 | Configure → Sign-in & Security | **Sign-in** | Silo passwords, public sign-ups, self-service password reset, single sign-on (with the **Redirect URI** and **Post-logout redirect URI** to register at the provider), network sign-in. |
 | Configure → Sign-in & Security | **Security** | Which local servers the server may contact, rate limiting, API key tiers. |
@@ -837,6 +849,14 @@ Recommendations**, beside the embedding lock and the **Reset embeddings** action
 the model, so the same model through another provider needs no reset. See
 [AI providers](../architecture/ai-provider-authentication.md) and
 [recommendations](../architecture/recommendations.md) (Silo's pages).
+
+**Changing the embedding model** means embedding the whole catalog again: choose the new model,
+restart, then press **Reset embeddings**. On a catalog of 1.7 million titles that takes about a
+day with Gemini. Meaning-based search for each kind of title comes back once 85% of that kind
+has new vectors; until then search matches words only. With `gemini-embedding-2`, Bloem puts a
+short task label in front of each title and each search, as Google recommends; other models get
+the plain text. [How search finds titles by words and by
+meaning](../architecture/bloem-search-and-embeddings.md) explains both.
 
 ### 2.18 Organization domains and branding
 

@@ -3484,7 +3484,7 @@ func newChiRouter(deps Dependencies) chi.Router {
 				// pinned in its golden files rather than moved to /api/bloem/v1.
 				if deps.RateLimitMW != nil {
 					r.With(deps.RateLimitMW.AuthEndpointHandler("login")).Post("/login", authHandler.HandleLogin)
-					r.With(deps.RateLimitMW.AuthEndpointHandler("profile_login")).Post("/profile-login", authHandler.HandleProfileLogin)
+					r.With(deps.RateLimitMW.AuthEndpointHandler("login")).Post("/profile-login", authHandler.HandleProfileLogin)
 					r.With(deps.RateLimitMW.AuthEndpointHandler("setup")).Post("/setup", authHandler.HandleSetup)
 					r.With(deps.RateLimitMW.AuthEndpointHandler("signup")).Post("/signup", authHandler.HandleSignup)
 				} else {
