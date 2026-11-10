@@ -314,10 +314,13 @@ can.
 
 ### The launch budget
 
-Bloem's eager English (`en.json`) counts toward the launch bundle that
-`pnpm run budget:check` measures after `pnpm exec vite build`. When it pushes the
-launch bundle over, move keys under `bloem.admin.*` only where their text renders
-inside the admin outlet.
+Bloem's eager English (`en.json`) is part of the launch bundle, everything the
+browser downloads before the app runs. `pnpm run budget:check`, after
+`pnpm exec vite build`, reports that bundle's brotli size; it reports the size
+without failing on it, and fails only on chunk-structure mistakes. Translations and
+the admin part are lazy chunks and do not count. To keep the launch bundle small,
+put text under `bloem.admin.*` wherever it renders inside the admin outlet, and
+nowhere else.
 
 ### Verifying a change
 
